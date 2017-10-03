@@ -19,7 +19,14 @@
   "homepage": "https://github.com/tsg-ut/slackbot#readme",
   "dependencies": {
     "@slack/client": "^3.14.0",
+    "common-tags": "^1.4.0",
     "dotenv": "^4.0.0",
+    "riichi-core": "^1.0.2",
     "shuffle-array": "^1.0.1"
+  },
+  "devDependencies": {
+    "@hakatashi/eslint-config": "^1.1.1",
+    "eslint": "^4.8.0",
+    "eslint-plugin-react": "^7.4.0"
   }
 }
