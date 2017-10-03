@@ -19,6 +19,7 @@
   "homepage": "https://github.com/tsg-ut/slackbot#readme",
   "dependencies": {
     "@slack/client": "^3.14.0",
-    "dotenv": "^4.0.0"
+    "dotenv": "^4.0.0",
+    "shuffle-array": "^1.0.1"
   }
 }
