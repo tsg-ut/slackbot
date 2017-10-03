@@ -100,7 +100,7 @@ rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (data) => {
 });
 
 rtm.on(RTM_EVENTS.MESSAGE, (message) => {
-	if (message.channel !== 'D1KEN3SPQ' /* && message.channel !== 'C7AAX50QY' */) {
+	if (message.channel !== process.env.CHANNEL) {
 		return;
 	}
 
