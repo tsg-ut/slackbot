@@ -74,7 +74,7 @@ const state = {
 	手牌: [],
 	山牌: [],
 	remaining自摸: 0,
-	points: 25000,
+	points: 25900,
 };
 
 const 牌List = Array(34).fill(0).map((_, index) => String.fromCodePoint(index + 0x1F000));
@@ -120,26 +120,30 @@ rtm.on(RTM_EVENTS.MESSAGE, (message) => {
 		postMessage(message.channel, `残り${state.remaining自摸}牌 https://mahjong.hakatashi.com/images/${encodeURIComponent(state.手牌.join(''))}`);
 	}
 
-	if (text.startsWith('打')) {
+	if (text.startsWith('打') || text === 'ツモ切り') {
 		if (state.phase !== 'gaming') {
 			perdon(message.channel);
 			return;
 		}
 
-		const 牌Name = text.slice(1);
-		if (!牌Names.includes(牌Name)) {
-			perdon(message.channel);
-			return;
+		if (text === 'ツモ切り') {
+			state.手牌 = state.手牌.slice(0, -1);
+		} else {
+			const 牌Name = text.slice(1);
+			if (!牌Names.includes(牌Name)) {
+				perdon(message.channel);
+				return;
+			}
+
+			const 打牌 = nameTo牌(牌Name);
+
+			if (!state.手牌.includes(打牌)) {
+				perdon(message.channel);
+				return;
+			}
+
+			state.手牌.splice(state.手牌.indexOf(打牌), 1);
 		}
-
-		const 打牌 = nameTo牌(牌Name);
-
-		if (!state.手牌.includes(打牌)) {
-			perdon(message.channel);
-			return;
-		}
-
-		state.手牌.splice(state.手牌.indexOf(打牌), 1);
 
 		if (state.remaining自摸 === 0) {
 			state.phase = 'waiting';
@@ -175,7 +179,7 @@ rtm.on(RTM_EVENTS.MESSAGE, (message) => {
 			return;
 		}
 
-		const {agari, 役s} = calculator.agari(state.手牌);
+		const {agari, 役s} = calculator.agari(state.手牌, {isHaitei: state.remaining自摸 === 0, isVirgin: state.remaining自摸 === 17});
 
 		state.phase = 'waiting';
 

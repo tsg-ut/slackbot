@@ -13,7 +13,7 @@ const 牌ToPai = (牌) => (
 	Pai[paiIndices[牌.codePointAt(0) - 0x1F000]]
 );
 
-module.exports.agari = (牌s) => {
+module.exports.agari = (牌s, {isHaitei, isVirgin}) => {
 	const pais = 牌s.map(牌ToPai);
 
 	const agari = new Agari({
@@ -103,6 +103,8 @@ module.exports.agari = (牌s) => {
 		agariPlayer: 0,
 		houjuuPlayer: null,
 		honba: 0,
+		isHaitei,
+		virgin: isVirgin,
 	});
 
 	agari.yaku = agari.yaku || [];
