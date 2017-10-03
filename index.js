@@ -3,8 +3,17 @@ require('dotenv').config();
 const {RtmClient, WebClient, CLIENT_EVENTS, RTM_EVENTS} = require('@slack/client');
 const shuffle = require('shuffle-array');
 const {stripIndent} = require('common-tags');
+const fs = require('fs');
 
 const calculator = require('./calculator.js');
+const currentPoint = (() => {
+	try {
+		// eslint-disable-next-line global-require
+		return require('./current-point.json');
+	} catch (e) {
+		return 25000;
+	}
+})();
 
 const rtm = new RtmClient(process.env.SLACK_TOKEN);
 const slack = new WebClient(process.env.SLACK_TOKEN);
@@ -74,7 +83,7 @@ const state = {
 	手牌: [],
 	山牌: [],
 	remaining自摸: 0,
-	points: 25900,
+	points: currentPoint,
 };
 
 const 牌List = Array(34).fill(0).map((_, index) => String.fromCodePoint(index + 0x1F000));
@@ -82,12 +91,16 @@ const 麻雀牌 = Array(136).fill(0).map((_, index) => (
 	String.fromCodePoint(0x1F000 + Math.floor(index / 4))
 ));
 
+const saveState = () => {
+	fs.writeFile('current-point.json', JSON.stringify(state.points));
+};
+
 rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (data) => {
 	console.log(`Logged in as ${data.self.name} of team ${data.team.name}, but not yet connected to a channel`);
 });
 
 rtm.on(RTM_EVENTS.MESSAGE, (message) => {
-	if (message.channel !== 'D1KEN3SPQ' && message.channel !== 'C7AAX50QY') {
+	if (message.channel !== 'D1KEN3SPQ' /* && message.channel !== 'C7AAX50QY' */) {
 		return;
 	}
 
@@ -155,6 +168,7 @@ rtm.on(RTM_EVENTS.MESSAGE, (message) => {
 				`);
 			} else {
 				state.points -= 3000;
+				saveState();
 				postMessage(message.channel, stripIndent`
 					不聴罰符 -3000点
 					現在の得点: ${state.points}点
@@ -185,6 +199,7 @@ rtm.on(RTM_EVENTS.MESSAGE, (message) => {
 
 		if (!agari.isAgari) {
 			state.points -= 12000;
+			saveState();
 			postMessage(message.channel, stripIndent`
 				錯和 -12000点
 				現在の得点: ${state.points}点
@@ -193,6 +208,7 @@ rtm.on(RTM_EVENTS.MESSAGE, (message) => {
 		}
 
 		state.points += agari.delta[0];
+		saveState();
 		postMessage(message.channel, stripIndent`
 			${役s.join('・')}
 			${agari.delta[0]}点
