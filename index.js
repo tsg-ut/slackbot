@@ -224,6 +224,7 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 			state.手牌.splice(state.手牌.indexOf(打牌), 1);
 		}
 
+		state.手牌 = sort(state.手牌);
 		state.phase = 'リーチ';
 		state.リーチTurn = state.remaining自摸;
 
