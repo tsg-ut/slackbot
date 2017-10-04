@@ -1,5 +1,9 @@
 require('dotenv').config();
 
+process.on('unhandledRejection', (error) => {
+	console.error(error);
+});
+
 const {RtmClient, WebClient, CLIENT_EVENTS, RTM_EVENTS} = require('@slack/client');
 const shuffle = require('shuffle-array');
 const {stripIndent} = require('common-tags');
@@ -84,6 +88,7 @@ const state = {
 	山牌: [],
 	remaining自摸: 0,
 	points: currentPoint,
+	リーチTurn: null,
 };
 
 const 牌List = Array(34).fill(0).map((_, index) => String.fromCodePoint(index + 0x1F000));
@@ -99,7 +104,7 @@ rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (data) => {
 	console.log(`Logged in as ${data.self.name} of team ${data.team.name}, but not yet connected to a channel`);
 });
 
-rtm.on(RTM_EVENTS.MESSAGE, (message) => {
+rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 	if (message.channel !== process.env.CHANNEL) {
 		return;
 	}
@@ -114,7 +119,7 @@ rtm.on(RTM_EVENTS.MESSAGE, (message) => {
 
 	const text = message.text.trim();
 
-	if (['リーチ', 'カン', 'ポン', 'チー', 'ロン'].includes(text)) {
+	if (['カン', 'ポン', 'チー', 'ロン'].includes(text)) {
 		perdon(message.channel);
 		return;
 	}
@@ -187,6 +192,108 @@ rtm.on(RTM_EVENTS.MESSAGE, (message) => {
 		`);
 	}
 
+	if (text.startsWith('リーチ ')) {
+		if (state.phase !== 'gaming') {
+			perdon(message.channel);
+			return;
+		}
+
+		const instruction = text.slice('リーチ '.length);
+
+		if (!instruction.startsWith('打') && instruction !== 'ツモ切り') {
+			perdon(message.channel);
+			return;
+		}
+
+		if (instruction === 'ツモ切り') {
+			state.手牌 = state.手牌.slice(0, -1);
+		} else {
+			const 牌Name = instruction.slice(1);
+			if (!牌Names.includes(牌Name)) {
+				perdon(message.channel);
+				return;
+			}
+
+			const 打牌 = nameTo牌(牌Name);
+
+			if (!state.手牌.includes(打牌)) {
+				perdon(message.channel);
+				return;
+			}
+
+			state.手牌.splice(state.手牌.indexOf(打牌), 1);
+		}
+
+		state.phase = 'リーチ';
+		state.リーチTurn = state.remaining自摸;
+
+		// TODO: フリテン
+		while (state.remaining自摸 > 0) {
+			state.remaining自摸--;
+
+			const 河牌s = state.山牌.slice(0, 4);
+			state.山牌 = state.山牌.slice(4);
+
+			const 当たり牌Index = 河牌s.findIndex((牌) => {
+				const {agari} = calculator.agari(state.手牌.concat([牌]), {isRiichi: false});
+				return agari.isAgari;
+			});
+
+			if (当たり牌Index !== -1) {
+				const {agari, 役s} = calculator.agari(state.手牌.concat([河牌s[当たり牌Index]]), {
+					isHaitei: state.remaining自摸 === 0 && 当たり牌Index === 3,
+					isVirgin: false,
+					isRiichi: true,
+					isDoubleRiichi: state.リーチTurn === 17,
+					isIppatsu: state.remaining自摸 - state.リーチTurn === 1,
+					isRon: 当たり牌Index !== 3,
+				});
+
+				state.points += agari.delta[0];
+				saveState();
+				postMessage(message.channel, stripIndent`
+					河${河牌s.slice(0, Math.min(当たり牌Index + 1, 3)).map(牌ToName).join('・')}${当たり牌Index === 3 ? ` 摸${牌ToName(河牌s[河牌s.length - 1])}` : ''}
+					${当たり牌Index === 3 ? 'ツモ!!!' : 'ロン!!!'}
+					https://mahjong.hakatashi.com/images/${encodeURIComponent(state.手牌.concat([河牌s[当たり牌Index]]).join(''))}
+
+					${役s.join('・')}
+					${agari.delta[0]}点
+					現在の得点: ${state.points}点
+				`);
+				state.phase = 'waiting';
+				return;
+			}
+
+			postMessage(message.channel, stripIndent`
+				河${河牌s.slice(0, 3).map(牌ToName).join('・')} 摸${牌ToName(河牌s[河牌s.length - 1])} 残り${state.remaining自摸}牌
+				https://mahjong.hakatashi.com/images/${encodeURIComponent(state.手牌.concat([河牌s[3]]).join(''))}
+			`);
+
+			await new Promise((resolve) => {
+				setTimeout(resolve, 3000);
+			});
+		}
+
+		state.phase = 'waiting';
+		const isTenpai = calculator.tenpai(state.手牌);
+		if (isTenpai) {
+			state.points -= 1000;
+			saveState();
+			postMessage(message.channel, stripIndent`
+				流局 供託点 -1000点
+				現在の得点: ${state.points}点
+			`);
+		} else {
+			state.points -= 12000;
+			saveState();
+			postMessage(message.channel, stripIndent`
+				流局 不聴立直 -12000点
+				現在の得点: ${state.points}点
+			`);
+		}
+		return;
+	}
+
 	if (text === 'ツモ') {
 		if (state.phase !== 'gaming') {
 			perdon(message.channel);
@@ -210,6 +317,7 @@ rtm.on(RTM_EVENTS.MESSAGE, (message) => {
 		state.points += agari.delta[0];
 		saveState();
 		postMessage(message.channel, stripIndent`
+			ツモ!!!
 			${役s.join('・')}
 			${agari.delta[0]}点
 			現在の得点: ${state.points}点

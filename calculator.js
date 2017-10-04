@@ -13,7 +13,7 @@ const 牌ToPai = (牌) => (
 	Pai[paiIndices[牌.codePointAt(0) - 0x1F000]]
 );
 
-module.exports.agari = (牌s, {isHaitei, isVirgin}) => {
+module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = false, isDoubleRiichi = false, isIppatsu = false, isRon = false}) => {
 	const pais = 牌s.map(牌ToPai);
 
 	const agari = new Agari({
@@ -37,7 +37,7 @@ module.exports.agari = (牌s, {isHaitei, isVirgin}) => {
 				daisuushi: 2,
 				suuankouTanki: 2,
 				junseichuurenpoutou: 2,
-				tenhou: 2,
+				tenhou: 1,
 				chihou: 2,
 				kokushi13: 2,
 			},
@@ -93,15 +93,15 @@ module.exports.agari = (牌s, {isHaitei, isVirgin}) => {
 		fuuro: [],
 		menzen: true,
 		riichi: {
-			accepted: false,
-			double: false,
-			ippatsu: false,
+			accepted: isRiichi,
+			double: isDoubleRiichi,
+			ippatsu: isIppatsu,
 		},
 		doraHyouji: [],
 		uraDoraHyouji: [],
 		chancha: 0,
 		agariPlayer: 0,
-		houjuuPlayer: null,
+		houjuuPlayer: isRon ? 1 : null,
 		honba: 0,
 		isHaitei,
 		virgin: isVirgin,
