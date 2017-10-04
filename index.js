@@ -245,7 +245,7 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 					isVirgin: false,
 					isRiichi: true,
 					isDoubleRiichi: state.リーチTurn === 17,
-					isIppatsu: state.remaining自摸 - state.リーチTurn === 1,
+					isIppatsu: state.リーチTurn - state.remaining自摸 === 1,
 					isRon: 当たり牌Index !== 3,
 				});
 
