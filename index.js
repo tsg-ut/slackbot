@@ -85,7 +85,7 @@ const perdon = (channel) => {
 const state = {
 	phase: 'waiting',
 	手牌: [],
-	山牌: [],
+	壁牌: [],
 	remaining自摸: 0,
 	points: currentPoint,
 	リーチTurn: null,
@@ -133,7 +133,7 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 		state.phase = 'gaming';
 		const shuffled牌s = shuffle(麻雀牌);
 		state.手牌 = sort(shuffled牌s.slice(0, 14));
-		state.山牌 = shuffled牌s.slice(14);
+		state.壁牌 = shuffled牌s.slice(14);
 		state.remaining自摸 = 17;
 		postMessage(message.channel, `残り${state.remaining自摸}牌 https://mahjong.hakatashi.com/images/${encodeURIComponent(state.手牌.join(''))}`);
 	}
@@ -182,8 +182,8 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 			return;
 		}
 
-		state.手牌 = sort(state.手牌).concat([state.山牌[0]]);
-		state.山牌 = state.山牌.slice(1);
+		state.手牌 = sort(state.手牌).concat([state.壁牌[0]]);
+		state.壁牌 = state.壁牌.slice(1);
 		state.remaining自摸--;
 
 		postMessage(message.channel, stripIndent`
@@ -232,8 +232,8 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 		while (state.remaining自摸 > 0) {
 			state.remaining自摸--;
 
-			const 河牌s = state.山牌.slice(0, 4);
-			state.山牌 = state.山牌.slice(4);
+			const 河牌s = state.壁牌.slice(0, 4);
+			state.壁牌 = state.壁牌.slice(4);
 
 			const 当たり牌Index = 河牌s.findIndex((牌) => {
 				const {agari} = calculator.agari(state.手牌.concat([牌]), {isRiichi: false});
