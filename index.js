@@ -71,17 +71,6 @@ const sort = (牌s) => (
 	})
 );
 
-const postMessage = (channel, text) => {
-	slack.chat.postMessage(channel, text, {
-		username: 'mahjong',
-		icon_emoji: ':mahjong:',
-	});
-};
-
-const perdon = (channel) => {
-	postMessage(channel, ':ha:');
-};
-
 const state = {
 	phase: 'waiting',
 	手牌: [],
@@ -91,7 +80,6 @@ const state = {
 	リーチTurn: null,
 };
 
-const 牌List = Array(34).fill(0).map((_, index) => String.fromCodePoint(index + 0x1F000));
 const 麻雀牌 = Array(136).fill(0).map((_, index) => (
 	String.fromCodePoint(0x1F000 + Math.floor(index / 4))
 ));
@@ -101,10 +89,29 @@ const saveState = () => {
 };
 
 rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (data) => {
-	console.log(`Logged in as ${data.self.name} of team ${data.team.name}, but not yet connected to a channel`);
+	console.log(`Logged in as ${data.self.name} of team ${data.team.name}`);
 });
 
 rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
+	const postMessage = (text, 手牌 = null) => {
+		slack.chat.postMessage(message.channel, text, {
+			username: 'mahjong',
+			// eslint-disable-next-line camelcase
+			icon_emoji: ':mahjong:',
+			...(手牌 === null ? {} : {
+				attachments: [{
+					// eslint-disable-next-line camelcase
+					image_url: `https://mahjong.hakatashi.com/images/${encodeURIComponent(手牌.join(''))}`,
+					fallback: 手牌.join(''),
+				}],
+			}),
+		});
+	};
+
+	const perdon = () => {
+		postMessage(':ha:');
+	};
+
 	if (message.channel !== process.env.CHANNEL) {
 		return;
 	}
@@ -120,13 +127,13 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 	const text = message.text.trim();
 
 	if (['カン', 'ポン', 'チー', 'ロン'].includes(text)) {
-		perdon(message.channel);
+		perdon();
 		return;
 	}
 
 	if (text === '配牌') {
 		if (state.phase !== 'waiting') {
-			perdon(message.channel);
+			perdon();
 			return;
 		}
 
@@ -135,12 +142,12 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 		state.手牌 = sort(shuffled牌s.slice(0, 14));
 		state.壁牌 = shuffled牌s.slice(14);
 		state.remaining自摸 = 17;
-		postMessage(message.channel, `残り${state.remaining自摸}牌 https://mahjong.hakatashi.com/images/${encodeURIComponent(state.手牌.join(''))}`);
+		postMessage(`残り${state.remaining自摸}牌`, state.手牌);
 	}
 
 	if (text.startsWith('打') || text === 'ツモ切り') {
 		if (state.phase !== 'gaming') {
-			perdon(message.channel);
+			perdon();
 			return;
 		}
 
@@ -149,14 +156,14 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 		} else {
 			const 牌Name = text.slice(1);
 			if (!牌Names.includes(牌Name)) {
-				perdon(message.channel);
+				perdon();
 				return;
 			}
 
 			const 打牌 = nameTo牌(牌Name);
 
 			if (!state.手牌.includes(打牌)) {
-				perdon(message.channel);
+				perdon();
 				return;
 			}
 
@@ -167,14 +174,14 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 			state.phase = 'waiting';
 			const isTenpai = calculator.tenpai(state.手牌);
 			if (isTenpai) {
-				postMessage(message.channel, stripIndent`
+				postMessage(stripIndent`
 					聴牌 0点
 					現在の得点: ${state.points}点
 				`);
 			} else {
 				state.points -= 3000;
 				saveState();
-				postMessage(message.channel, stripIndent`
+				postMessage(stripIndent`
 					不聴罰符 -3000点
 					現在の得点: ${state.points}点
 				`);
@@ -186,22 +193,21 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 		state.壁牌 = state.壁牌.slice(1);
 		state.remaining自摸--;
 
-		postMessage(message.channel, stripIndent`
+		postMessage(stripIndent`
 			摸${牌ToName(state.手牌[state.手牌.length - 1])} 残り${state.remaining自摸}牌
-			https://mahjong.hakatashi.com/images/${encodeURIComponent(state.手牌.join(''))}
-		`);
+		`, state.手牌);
 	}
 
 	if (text.startsWith('リーチ ')) {
 		if (state.phase !== 'gaming') {
-			perdon(message.channel);
+			perdon();
 			return;
 		}
 
 		const instruction = text.slice('リーチ '.length);
 
 		if (!instruction.startsWith('打') && instruction !== 'ツモ切り') {
-			perdon(message.channel);
+			perdon();
 			return;
 		}
 
@@ -210,14 +216,14 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 		} else {
 			const 牌Name = instruction.slice(1);
 			if (!牌Names.includes(牌Name)) {
-				perdon(message.channel);
+				perdon();
 				return;
 			}
 
 			const 打牌 = nameTo牌(牌Name);
 
 			if (!state.手牌.includes(打牌)) {
-				perdon(message.channel);
+				perdon();
 				return;
 			}
 
@@ -252,23 +258,21 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 
 				state.points += agari.delta[0];
 				saveState();
-				postMessage(message.channel, stripIndent`
+				postMessage(stripIndent`
 					河${河牌s.slice(0, Math.min(当たり牌Index + 1, 3)).map(牌ToName).join('・')}${当たり牌Index === 3 ? ` 摸${牌ToName(河牌s[河牌s.length - 1])}` : ''}
 					${当たり牌Index === 3 ? 'ツモ!!!' : 'ロン!!!'}
-					https://mahjong.hakatashi.com/images/${encodeURIComponent(state.手牌.concat([河牌s[当たり牌Index]]).join(''))}
 
 					${役s.join('・')}
 					${agari.delta[0]}点
 					現在の得点: ${state.points}点
-				`);
+				`, state.手牌.concat([河牌s[当たり牌Index]]));
 				state.phase = 'waiting';
 				return;
 			}
 
-			postMessage(message.channel, stripIndent`
+			postMessage(stripIndent`
 				河${河牌s.slice(0, 3).map(牌ToName).join('・')} 摸${牌ToName(河牌s[河牌s.length - 1])} 残り${state.remaining自摸}牌
-				https://mahjong.hakatashi.com/images/${encodeURIComponent(state.手牌.concat([河牌s[3]]).join(''))}
-			`);
+			`, state.手牌.concat([河牌s[3]]));
 
 			await new Promise((resolve) => {
 				setTimeout(resolve, 3000);
@@ -280,14 +284,14 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 		if (isTenpai) {
 			state.points -= 1000;
 			saveState();
-			postMessage(message.channel, stripIndent`
+			postMessage(stripIndent`
 				流局 供託点 -1000点
 				現在の得点: ${state.points}点
 			`);
 		} else {
 			state.points -= 12000;
 			saveState();
-			postMessage(message.channel, stripIndent`
+			postMessage(stripIndent`
 				流局 不聴立直 -12000点
 				現在の得点: ${state.points}点
 			`);
@@ -297,7 +301,7 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 
 	if (text === 'ツモ') {
 		if (state.phase !== 'gaming') {
-			perdon(message.channel);
+			perdon();
 			return;
 		}
 
@@ -308,7 +312,7 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 		if (!agari.isAgari) {
 			state.points -= 12000;
 			saveState();
-			postMessage(message.channel, stripIndent`
+			postMessage(stripIndent`
 				錯和 -12000点
 				現在の得点: ${state.points}点
 			`);
@@ -317,7 +321,7 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 
 		state.points += agari.delta[0];
 		saveState();
-		postMessage(message.channel, stripIndent`
+		postMessage(stripIndent`
 			ツモ!!!
 			${役s.join('・')}
 			${agari.delta[0]}点
