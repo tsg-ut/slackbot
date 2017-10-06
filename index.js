@@ -8,14 +8,19 @@ const {RtmClient, WebClient, CLIENT_EVENTS, RTM_EVENTS} = require('@slack/client
 const shuffle = require('shuffle-array');
 const {stripIndent} = require('common-tags');
 const fs = require('fs');
+const {promisify} = require('util');
 
 const calculator = require('./calculator.js');
-const currentPoint = (() => {
+const savedState = (() => {
 	try {
 		// eslint-disable-next-line global-require
 		return require('./current-point.json');
 	} catch (e) {
-		return 25000;
+		return {
+			points: 25000,
+			wins: 0,
+			loses: 0,
+		};
 	}
 })();
 
@@ -96,8 +101,10 @@ const state = {
 	手牌: [],
 	壁牌: [],
 	remaining自摸: 0,
-	points: currentPoint,
+	points: savedState.points,
 	リーチTurn: null,
+	wins: savedState.wins,
+	loses: savedState.loses,
 };
 
 const 麻雀牌 = Array(136).fill(0).map((_, index) => {
@@ -115,8 +122,12 @@ const 麻雀牌 = Array(136).fill(0).map((_, index) => {
 	return 牌;
 });
 
-const saveState = () => {
-	fs.writeFile('current-point.json', JSON.stringify(state.points));
+const saveState = async () => {
+	await promisify(fs.writeFile)('current-point.json', JSON.stringify({
+		points: state.points,
+		wins: state.wins,
+		loses: state.loses,
+	}));
 };
 
 rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (data) => {
@@ -141,6 +152,26 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 
 	const perdon = () => {
 		postMessage(':ha:');
+	};
+
+	const checkPoints = async () => {
+		if (state.points < 0) {
+			state.loses++;
+			state.points = 25000;
+			await saveState();
+			postMessage(stripIndent`
+				ハコ割れしました。点数をリセットします。
+				通算成績: ${state.wins}勝${state.loses}敗
+			`);
+		} else if (state.points > 50000) {
+			state.wins++;
+			state.points = 25000;
+			await saveState();
+			postMessage(stripIndent`
+				勝利しました。点数をリセットします。
+				通算成績: ${state.wins}勝${state.loses}敗
+			`);
+		}
 	};
 
 	if (message.channel !== process.env.CHANNEL) {
@@ -174,7 +205,7 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 		state.壁牌 = shuffled牌s.slice(14);
 		state.remaining自摸 = 17;
 		state.points -= 3000;
-		saveState();
+		await saveState();
 
 		postMessage(stripIndent`
 			場代 -3000点
@@ -219,12 +250,14 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 				`);
 			} else {
 				state.points -= 3000;
-				saveState();
+				await saveState();
 				postMessage(stripIndent`
 					不聴罰符 -3000点
 					現在の得点: ${state.points}点
 				`);
 			}
+
+			await checkPoints();
 			return;
 		}
 
@@ -296,7 +329,7 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 				});
 
 				state.points += agari.delta[0];
-				saveState();
+				await saveState();
 				postMessage(stripIndent`
 					河${河牌s.slice(0, Math.min(当たり牌Index + 1, 3)).map(牌ToName).join('・')}${当たり牌Index === 3 ? ` 摸${牌ToName(河牌s[河牌s.length - 1])}` : ''}
 					${当たり牌Index === 3 ? 'ツモ!!!' : 'ロン!!!'}
@@ -305,6 +338,7 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 					${agari.delta[0]}点
 					現在の得点: ${state.points}点
 				`, state.手牌.concat([河牌s[当たり牌Index]]));
+				await checkPoints();
 				state.phase = 'waiting';
 				return;
 			}
@@ -322,19 +356,21 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 		const isTenpai = calculator.tenpai(state.手牌);
 		if (isTenpai) {
 			state.points -= 1000;
-			saveState();
+			await saveState();
 			postMessage(stripIndent`
 				流局 供託点 -1000点
 				現在の得点: ${state.points}点
 			`);
 		} else {
 			state.points -= 12000;
-			saveState();
+			await saveState();
 			postMessage(stripIndent`
 				流局 不聴立直 -12000点
 				現在の得点: ${state.points}点
 			`);
 		}
+
+		await checkPoints();
 		return;
 	}
 
@@ -353,22 +389,24 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 
 		if (!agari.isAgari) {
 			state.points -= 12000;
-			saveState();
+			await saveState();
 			postMessage(stripIndent`
 				錯和 -12000点
 				現在の得点: ${state.points}点
 			`);
+			await checkPoints();
 			return;
 		}
 
 		state.points += agari.delta[0];
-		saveState();
+		await saveState();
 		postMessage(stripIndent`
 			ツモ!!!
 			${役s.join('・')}
 			${agari.delta[0]}点
 			現在の得点: ${state.points}点
 		`);
+		await checkPoints();
 	}
 });
 
