@@ -53,10 +53,26 @@ const 牌Names = [
 	...(漢数字s.map((漢数字) => `${漢数字}萬`)),
 	...(漢数字s.map((漢数字) => `${漢数字}索`)),
 	...(漢数字s.map((漢数字) => `${漢数字}筒`)),
+	'赤五萬', '赤五索', '赤五筒',
 ];
 
-const nameTo牌 = (name) => String.fromCodePoint(0x1F000 + 牌Names.indexOf(name));
-const 牌ToName = (牌) => 牌Names[牌.codePointAt(0) - 0x1F000];
+const nameTo牌 = (name) => {
+	const normalized = name.startsWith('赤') ? name.slice(1) : name;
+	const 牌 = String.fromCodePoint(0x1F000 + 牌Names.indexOf(normalized));
+	if (name.startsWith('赤')) {
+		return `${牌}\uFE00`;
+	}
+	return 牌;
+};
+
+const 牌ToName = (牌) => {
+	const normalized牌 = 牌.replace(/\uFE00$/, '');
+	const name = 牌Names[normalized牌.codePointAt(0) - 0x1F000];
+	if (牌.endsWith('\uFE00')) {
+		return `赤${name}`;
+	}
+	return name;
+};
 
 const sort = (牌s) => (
 	牌s.sort((牌A, 牌B) => {
@@ -67,7 +83,11 @@ const sort = (牌s) => (
 			return 牌AIndex - 牌BIndex;
 		}
 
-		return 牌A.codePointAt(0) - 牌B.codePointAt(0);
+		if (牌A.codePointAt(0) !== 牌B.codePointAt(0)) {
+			return 牌A.codePointAt(0) - 牌B.codePointAt(0);
+		}
+
+		return Array.from(牌B).length - Array.from(牌A).length;
 	})
 );
 
@@ -80,9 +100,20 @@ const state = {
 	リーチTurn: null,
 };
 
-const 麻雀牌 = Array(136).fill(0).map((_, index) => (
-	String.fromCodePoint(0x1F000 + Math.floor(index / 4))
-));
+const 麻雀牌 = Array(136).fill(0).map((_, index) => {
+	const 牌 = String.fromCodePoint(0x1F000 + Math.floor(index / 4));
+	const 同牌Index = index % 4;
+
+	if (
+		(牌 === '🀋' && 同牌Index === 0) ||
+		(牌 === '🀔' && 同牌Index === 0) ||
+		(牌 === '🀝' && (同牌Index === 0 || 同牌Index === 1))
+	) {
+		return `${牌}\uFE00`;
+	}
+
+	return 牌;
+});
 
 const saveState = () => {
 	fs.writeFile('current-point.json', JSON.stringify(state.points));
@@ -142,7 +173,15 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 		state.手牌 = sort(shuffled牌s.slice(0, 14));
 		state.壁牌 = shuffled牌s.slice(14);
 		state.remaining自摸 = 17;
-		postMessage(`残り${state.remaining自摸}牌`, state.手牌);
+		state.points -= 3000;
+		saveState();
+
+		postMessage(stripIndent`
+			場代 -3000点
+			現在の得点: ${state.points}点
+
+			残り${state.remaining自摸}牌
+		`, state.手牌);
 	}
 
 	if (text.startsWith('打') || text === 'ツモ切り') {
@@ -305,7 +344,10 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 			return;
 		}
 
-		const {agari, 役s} = calculator.agari(state.手牌, {isHaitei: state.remaining自摸 === 0, isVirgin: state.remaining自摸 === 17});
+		const {agari, 役s} = calculator.agari(state.手牌, {
+			isHaitei: state.remaining自摸 === 0,
+			isVirgin: state.remaining自摸 === 17,
+		});
 
 		state.phase = 'waiting';
 
