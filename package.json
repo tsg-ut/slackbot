@@ -21,6 +21,7 @@
     "@slack/client": "^3.14.0",
     "common-tags": "^1.4.0",
     "dotenv": "^4.0.0",
+    "lodash": "^4.17.4",
     "riichi-core": "^1.0.2",
     "shuffle-array": "^1.0.1"
   },

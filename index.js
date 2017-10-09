@@ -9,6 +9,7 @@ const shuffle = require('shuffle-array');
 const {stripIndent} = require('common-tags');
 const fs = require('fs');
 const {promisify} = require('util');
+const {chunk} = require('lodash');
 
 const calculator = require('./calculator.js');
 const savedState = (() => {
@@ -213,6 +214,26 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 
 			残り${state.remaining自摸}牌
 		`, state.手牌);
+		return;
+	}
+
+	if (text === '残り牌') {
+		if (state.phase !== 'gaming') {
+			perdon();
+			return;
+		}
+
+		const 残り牌List = new Array(34).fill(0);
+		state.壁牌.forEach((牌) => {
+			残り牌List[牌.codePointAt(0) - 0x1F000]++;
+		});
+		postMessage(stripIndent`
+			萬子: ${chunk(残り牌List.slice(7, 16), 3).map((numbers) => numbers.join('')).join(' ')}
+			筒子: ${chunk(残り牌List.slice(25, 34), 3).map((numbers) => numbers.join('')).join(' ')}
+			索子: ${chunk(残り牌List.slice(16, 25), 3).map((numbers) => numbers.join('')).join(' ')}
+			${牌Names.slice(0, 7).map((name, index) => `${name}${残り牌List[index]}`).join(' ')}
+		`);
+		return;
 	}
 
 	if (text.startsWith('打') || text === 'ツモ切り') {
