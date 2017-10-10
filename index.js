@@ -205,7 +205,7 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 		state.手牌 = sort(shuffled牌s.slice(0, 14));
 		state.壁牌 = shuffled牌s.slice(14);
 		state.remaining自摸 = 17;
-		state.points -= 3000;
+		state.points -= 1500;
 		await saveState();
 
 		postMessage(stripIndent`
