@@ -209,7 +209,7 @@ rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
 		await saveState();
 
 		postMessage(stripIndent`
-			場代 -3000点
+			場代 -1500点
 			現在の得点: ${state.points}点
 
 			残り${state.remaining自摸}牌
