@@ -57,4 +57,4 @@ typings/
 # dotenv environment variables file
 .env
 
-current-point.json
+mahjong/current-point.json
