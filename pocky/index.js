@@ -1,9 +1,3 @@
-require('dotenv').config();
-
-process.on('unhandledRejection', (error) => {
-	console.error(error);
-});
-
 const request = require("request");
 const emoji = require("node-emoji");
 

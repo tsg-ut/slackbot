@@ -1,9 +1,3 @@
-require('dotenv').config();
-
-process.on('unhandledRejection', (error) => {
-	console.error(error);
-});
-
 const {RTM_EVENTS} = require('@slack/client');
 const shuffle = require('shuffle-array');
 const {stripIndent} = require('common-tags');
