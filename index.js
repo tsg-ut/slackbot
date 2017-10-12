@@ -7,7 +7,7 @@ process.on('unhandledRejection', (error) => {
 const {RtmClient, WebClient, CLIENT_EVENTS} = require('@slack/client');
 
 const plugins = [
-	require('./mahjong')
+	require('./mahjong'),
 ];
 
 const rtmClient = new RtmClient(process.env.SLACK_TOKEN);
