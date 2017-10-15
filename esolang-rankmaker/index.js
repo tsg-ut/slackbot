@@ -51,6 +51,7 @@ module.exports = (clients) => {
 				// eslint-disable-next-line camelcase
 				icon_emoji: ':scream:',
 			});
+			return;
 		}
 
 		// eslint-disable-next-line no-unused-vars
