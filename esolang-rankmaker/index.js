@@ -45,6 +45,14 @@ module.exports = (clients) => {
 			}
 		}
 
+		if (ranking.size === 0) {
+			await slack.chat.postMessage(message.channel, 'No record available', {
+				username: 'esolang-ranking',
+				// eslint-disable-next-line camelcase
+				icon_emoji: ':scream:',
+			});
+		}
+
 		// eslint-disable-next-line no-unused-vars
 		const sortedRanking = Array.from(ranking).sort(([nameA, pointsA], [nameB, pointsB]) => {
 			const solvedA = pointsA.filter((point) => !Number.isNaN(point));
