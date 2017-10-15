@@ -9,6 +9,7 @@ const {RtmClient, WebClient, CLIENT_EVENTS} = require('@slack/client');
 const plugins = [
 	require('./mahjong'),
 	require('./pocky'),
+	require('./esolang-rankmaker'),
 ];
 
 const rtmClient = new RtmClient(process.env.SLACK_TOKEN);
