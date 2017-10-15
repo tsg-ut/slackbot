@@ -117,7 +117,7 @@ module.exports = (clients) => {
 			return;
 		}
 		const { channel, text, user, ts: timestamp } = message;
-		if (channel !== process.env.CHANNEL) {
+		if (channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
 		const query = slackDecode(text.trim());

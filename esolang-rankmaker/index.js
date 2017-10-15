@@ -61,7 +61,7 @@ module.exports = (clients) => {
 			`#${index + 1} @${name}: ${points.map((point) => Number.isNaN(point) ? '*' : point).join(' + ')} = ${sum(points.filter((point) => !Number.isNaN(point)))}`
 		)).join('\n');
 
-		await slack.chat.postMessage(process.env.CHANNEL_ESOLANG, rankingText, {
+		await slack.chat.postMessage(message.channel, rankingText, {
 			username: 'esolang-ranking',
 			// eslint-disable-next-line camelcase
 			icon_emoji: ':triangular_flag_on_post:',

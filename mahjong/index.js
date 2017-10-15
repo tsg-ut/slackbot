@@ -167,7 +167,7 @@ module.exports = (clients) => {
 			}
 		};
 
-		if (message.channel !== process.env.CHANNEL) {
+		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
 
