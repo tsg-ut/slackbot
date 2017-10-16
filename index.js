@@ -10,6 +10,7 @@ const plugins = [
 	require('./mahjong'),
 	require('./pocky'),
 	require('./esolang-rankmaker'),
+	require('./emoji-notifier'),
 ];
 
 const rtmClient = new RtmClient(process.env.SLACK_TOKEN);
