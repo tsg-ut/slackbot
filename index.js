@@ -11,6 +11,7 @@ const plugins = [
 	require('./pocky'),
 	require('./esolang-rankmaker'),
 	require('./emoji-notifier'),
+	require('./sushi-bot'),
 ];
 
 const rtmClient = new RtmClient(process.env.SLACK_TOKEN);
