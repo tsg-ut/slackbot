@@ -11,7 +11,7 @@ module.exports = (clients) => {
 			return;
 		}
 		const { channel, text, user, ts: timestamp } = message;
-        if (text.includes("すし")) {
+        if (text.includes("すし") || text.includes("寿司") || text.includes("スシ")) {
             slack.reactions.add('sushi', {channel, timestamp});
         }
 	});
