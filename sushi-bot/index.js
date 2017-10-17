@@ -1,6 +1,3 @@
-const request = require("request");
-const emoji = require("node-emoji");
-
 const { RTM_EVENTS } = require("@slack/client")
 
 module.exports = (clients) => {
