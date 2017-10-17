@@ -58,3 +58,4 @@ typings/
 .env
 
 mahjong/current-point.json
+.restart-trigger
