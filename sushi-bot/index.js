@@ -12,8 +12,8 @@ module.exports = (clients) => {
         let rtext = text;
         rtext = rtext.
             replace(/鮨/g, 'すし').
-            replace(/(su|ス|ズ|ず|寿|壽)/g, 'す').
-            replace(/(si|shi|ci|し|シ|司)/g, 'し');
+            replace(/([Ss][Uu]|[Zz][Uu]|ス|ズ|ず|寿|壽)/g, 'す').
+            replace(/([Ss][Hh]?[Ii]|[Cc][Ii]|し|シ|司)/g, 'し');
         rtext = rtext.
             replace(/akouryyy/g, 'akkoury').
             replace(/akouryy/g, '').
