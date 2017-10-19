@@ -6,6 +6,7 @@ const {stripIndent, stripIndents} = require('common-tags');
 const path = require('path');
 const {promisify} = require('util');
 const fs = require('fs');
+const url = require('url');
 const {RTM_EVENTS: {MESSAGE}} = require('@slack/client');
 const labelData = require('./labels');
 
@@ -78,9 +79,11 @@ module.exports = (clients) => {
 		const response = await axios({
 			url: imageURL,
 			method: 'get',
-			headers: {
-				Authorization: `Bearer ${process.env.SLACK_TOKEN}`,
-			},
+			...(url.parse(imageURL).host === 'files.slack.com' && {
+				headers: {
+					Authorization: `Bearer ${process.env.SLACK_TOKEN}`,
+				},
+			}),
 			responseType: 'arraybuffer',
 			timeout: 5000,
 		});
