@@ -101,7 +101,8 @@ module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = fa
 					oyaALTop: true,
 				},
 			},
-		},
+		},
+
 		agariPai: pais[pais.length - 1],
 		juntehai: pais.slice(0, -1),
 		tenpaiDecomp: decomp.decompTenpai(Pai.binsFromArray(paisWithout赤牌.slice(0, -1))),
@@ -120,6 +121,8 @@ module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = fa
 		honba: 0,
 		isHaitei,
 		virgin: isVirgin,
+		bakaze: 0,
+		jikaze: 0,
 	});
 
 	agari.yaku = agari.yaku || [];
