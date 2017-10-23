@@ -192,8 +192,8 @@ module.exports = (clients) => {
 		const text = stripIndents`
 			ImageNet Prediction:
 			${labels.reverse().slice(0, 5).map((label, index) => (
-				`${index + 1}. (Score: ${possibilities[possibilities.length - index - 1].toFixed(4)}) ${labelData[label]}`
-			)).join('\n')}
+		`${index + 1}. (${possibilities[possibilities.length - index - 1].toFixed(4)}) ${labelData[label]}`
+	)).join('\n')}
 		`;
 
 		if (file) {
@@ -206,7 +206,7 @@ module.exports = (clients) => {
 				...(ts && {
 					thread_ts: ts,
 					reply_broadcast: true,
-				})
+				}),
 			});
 		}
 	});
