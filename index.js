@@ -12,7 +12,7 @@ const plugins = [
 	require('./esolang-rankmaker'),
 	require('./emoji-notifier'),
 	require('./sushi-bot'),
-	require('./imagenet'),
+	// require('./imagenet'),
 ];
 
 const rtmClient = new RtmClient(process.env.SLACK_TOKEN);
