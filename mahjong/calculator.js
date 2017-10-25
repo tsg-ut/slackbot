@@ -27,7 +27,7 @@ const 牌ToPai = (牌, {no赤牌 = false} = {}) => {
 	return Pai[paiIndices[牌.codePointAt(0) - 0x1F000]];
 };
 
-module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = false, isDoubleRiichi = false, isIppatsu = false, isRon = false}) => {
+module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = false, isDoubleRiichi = false, isIppatsu = false, isRon = false, doraHyouji = [], uraDoraHyouji = []}) => {
 	const pais = 牌s.map((牌) => 牌ToPai(牌));
 	const paisWithout赤牌 = 牌s.map((牌) => 牌ToPai(牌, {no赤牌: true}));
 
@@ -40,8 +40,8 @@ module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = fa
 					kakan: 0,
 					ankan: 1,
 				},
-				ura: false,
-				kanUra: false,
+				ura: true,
+				kanUra: true,
 			},
 			yaku: {
 				kuitan: true,
@@ -113,8 +113,8 @@ module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = fa
 			double: isDoubleRiichi,
 			ippatsu: isIppatsu,
 		},
-		doraHyouji: [],
-		uraDoraHyouji: [],
+		doraHyouji: doraHyouji.map((牌) => 牌ToPai(牌)),
+		uraDoraHyouji: uraDoraHyouji.map((牌) => 牌ToPai(牌)),
 		chancha: 0,
 		agariPlayer: 0,
 		houjuuPlayer: isRon ? 1 : null,
@@ -135,7 +135,7 @@ module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = fa
 
 		const raw役s = tenhou6.makeAgari({chancha: 0, bakaze: 0}, agari).slice(4);
 		const 役sWithoutParens = raw役s.map((string) => string.replace(/\(.+?\)/, ''));
-		const 役sWithoutドラ = 役sWithoutParens.filter((役) => !役.includes('赤ドラ'));
+		const 役sWithoutドラ = 役sWithoutParens.filter((役) => !役.includes('ドラ'));
 		if (agari.doraTotal > 0) {
 			役sWithoutドラ.push(`ドラ${agari.doraTotal}`);
 		}

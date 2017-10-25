@@ -2,6 +2,7 @@ const {RTM_EVENTS} = require('@slack/client');
 const shuffle = require('shuffle-array');
 const {stripIndent} = require('common-tags');
 const fs = require('fs');
+const qs = require('querystring');
 const {promisify} = require('util');
 const {chunk} = require('lodash');
 const path = require('path');
@@ -94,6 +95,7 @@ const state = {
 	phase: 'waiting',
 	手牌: [],
 	壁牌: [],
+	ドラ表示牌s: [],
 	remaining自摸: 0,
 	points: savedState.points,
 	リーチTurn: null,
@@ -128,7 +130,7 @@ module.exports = (clients) => {
 	const {rtmClient: rtm, webClient: slack} = clients;
 
 	rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
-		const postMessage = (text, 手牌 = null) => {
+		const postMessage = (text, {手牌 = null, 王牌 = null, 王牌Status = 'normal'} = {}) => {
 			slack.chat.postMessage(message.channel, text, {
 				username: 'mahjong',
 				// eslint-disable-next-line camelcase
@@ -136,7 +138,12 @@ module.exports = (clients) => {
 				...(手牌 === null ? {} : {
 					attachments: [{
 						// eslint-disable-next-line camelcase
-						image_url: `https://mahjong.hakatashi.com/images/${encodeURIComponent(手牌.join(''))}`,
+						image_url: `https://mahjong.hakatashi.com/images/${encodeURIComponent(手牌.join(''))}${
+							(王牌 === null) ? '' : `?${qs.encode({
+								王牌: 王牌.join(''),
+								王牌Status,
+							})}`
+						}`,
 						fallback: 手牌.join(''),
 					}],
 				}),
@@ -146,6 +153,16 @@ module.exports = (clients) => {
 		const perdon = () => {
 			postMessage(':ha:');
 		};
+
+		const generate王牌 = (裏ドラ表示牌s = []) => ([
+			'🀫', '🀫', // 嶺上牌
+			...state.ドラ表示牌s,
+			...Array(5 - state.ドラ表示牌s.length).fill('🀫'),
+
+			'🀫', '🀫', // 嶺上牌
+			...裏ドラ表示牌s,
+			...Array(5 - 裏ドラ表示牌s.length).fill('🀫'),
+		]);
 
 		const checkPoints = async () => {
 			if (state.points < 0) {
@@ -195,7 +212,8 @@ module.exports = (clients) => {
 			state.phase = 'gaming';
 			const shuffled牌s = shuffle(麻雀牌);
 			state.手牌 = sort(shuffled牌s.slice(0, 14));
-			state.壁牌 = shuffled牌s.slice(14);
+			state.ドラ表示牌s = shuffled牌s.slice(14, 15);
+			state.壁牌 = shuffled牌s.slice(15);
 			state.remaining自摸 = 17;
 			state.points -= 1500;
 			await saveState();
@@ -205,7 +223,10 @@ module.exports = (clients) => {
 				現在の得点: ${state.points}点
 
 				残り${state.remaining自摸}牌
-			`, state.手牌);
+			`, {
+				手牌: state.手牌,
+				王牌: generate王牌(),
+			});
 			return;
 		}
 
@@ -280,7 +301,10 @@ module.exports = (clients) => {
 
 			postMessage(stripIndent`
 				摸${牌ToName(state.手牌[state.手牌.length - 1])} 残り${state.remaining自摸}牌
-			`, state.手牌);
+			`, {
+				手牌: state.手牌,
+				王牌: generate王牌(),
+			});
 		}
 
 		if (text.startsWith('リーチ ')) {
@@ -332,7 +356,12 @@ module.exports = (clients) => {
 				});
 
 				if (当たり牌Index !== -1) {
+					const 裏ドラ表示牌s = state.壁牌.slice(0, state.ドラ表示牌s.length);
+					state.壁牌 = state.壁牌.slice(state.ドラ表示牌s.length);
+
 					const {agari, 役s} = calculator.agari(state.手牌.concat([河牌s[当たり牌Index]]), {
+						doraHyouji: state.ドラ表示牌s,
+						uraDoraHyouji: 裏ドラ表示牌s,
 						isHaitei: state.remaining自摸 === 0 && 当たり牌Index === 3,
 						isVirgin: false,
 						isRiichi: true,
@@ -350,7 +379,11 @@ module.exports = (clients) => {
 						${役s.join('・')}
 						${agari.delta[0]}点
 						現在の得点: ${state.points}点
-					`, state.手牌.concat([河牌s[当たり牌Index]]));
+					`, {
+						手牌: state.手牌.concat([河牌s[当たり牌Index]]),
+						王牌: generate王牌(裏ドラ表示牌s),
+						王牌Status: 'open',
+					});
 					await checkPoints();
 					state.phase = 'waiting';
 					return;
@@ -358,7 +391,10 @@ module.exports = (clients) => {
 
 				postMessage(stripIndent`
 					河${河牌s.slice(0, 3).map(牌ToName).join('・')} 摸${牌ToName(河牌s[河牌s.length - 1])} 残り${state.remaining自摸}牌
-				`, state.手牌.concat([河牌s[3]]));
+				`, {
+					手牌: state.手牌.concat([河牌s[3]]),
+					王牌: generate王牌(),
+				});
 
 				await new Promise((resolve) => {
 					setTimeout(resolve, 3000);
@@ -394,6 +430,7 @@ module.exports = (clients) => {
 			}
 
 			const {agari, 役s} = calculator.agari(state.手牌, {
+				doraHyouji: state.ドラ表示牌s,
 				isHaitei: state.remaining自摸 === 0,
 				isVirgin: state.remaining自摸 === 17,
 			});
