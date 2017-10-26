@@ -47,7 +47,7 @@ function generateReply(text, words, index) {
 		// 	}
 		// }
 		const result = trailer;
-		return result.replace(stripRe, "") ? result : false;
+		return normalize(result).replace(stripRe, "") ? result : false;
 	}).filter(Boolean);
 	let sortedTrailers = trailers;
 	if (!isAlphabet) {
