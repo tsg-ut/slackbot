@@ -95,6 +95,7 @@ const state = {
 	phase: 'waiting',
 	手牌: [],
 	壁牌: [],
+	河: [],
 	ドラ表示牌s: [],
 	remaining自摸: 0,
 	points: savedState.points,
@@ -198,7 +199,7 @@ module.exports = (clients) => {
 
 		const text = message.text.trim();
 
-		if (['カン', 'ポン', 'チー', 'ロン'].includes(text)) {
+		if (['カン', 'ポン', 'チー'].includes(text)) {
 			perdon();
 			return;
 		}
@@ -214,6 +215,7 @@ module.exports = (clients) => {
 			state.手牌 = sort(shuffled牌s.slice(0, 14));
 			state.ドラ表示牌s = shuffled牌s.slice(14, 15);
 			state.壁牌 = shuffled牌s.slice(15);
+			state.河 = [];
 			state.remaining自摸 = 17;
 			state.points -= 1500;
 			await saveState();
@@ -296,11 +298,12 @@ module.exports = (clients) => {
 			}
 
 			state.手牌 = sort(state.手牌).concat([state.壁牌[0]]);
-			state.壁牌 = state.壁牌.slice(1);
+			state.河 = state.壁牌.slice(1, 4);
+			state.壁牌 = state.壁牌.slice(4);
 			state.remaining自摸--;
 
 			postMessage(stripIndent`
-				摸${牌ToName(state.手牌[state.手牌.length - 1])} 残り${state.remaining自摸}牌
+				河${state.河.map(牌ToName).join('・')} 摸${牌ToName(state.手牌[state.手牌.length - 1])} 残り${state.remaining自摸}牌
 			`, {
 				手牌: state.手牌,
 				王牌: generate王牌(),
@@ -456,6 +459,55 @@ module.exports = (clients) => {
 				${agari.delta[0]}点
 				現在の得点: ${state.points}点
 			`);
+			await checkPoints();
+		}
+
+		if (text === 'ロン') {
+			if (state.phase !== 'gaming' || state.河.length === 0) {
+				perdon();
+				return;
+			}
+
+			const 当たり牌Index = state.河.findIndex((牌) => {
+				const {agari} = calculator.agari(state.手牌.slice(0, -1).concat([牌]), {
+					isRon: true,
+				});
+				return agari.isAgari;
+			});
+
+			if (当たり牌Index === -1) {
+				state.points -= 12000;
+				state.phase = 'waiting';
+				await saveState();
+				postMessage(stripIndent`
+					錯和 -12000点
+					現在の得点: ${state.points}点
+				`);
+				await checkPoints();
+				return;
+			}
+
+			state.手牌 = state.手牌.slice(0, -1).concat([state.河[当たり牌Index]]);
+
+			const {agari, 役s} = calculator.agari(state.手牌, {
+				doraHyouji: state.ドラ表示牌s,
+				isVirgin: state.remaining自摸 === 17 || state.remaining自摸 === 16,
+				isRon: true,
+			});
+
+			state.phase = 'waiting';
+
+			state.points += agari.delta[0];
+			await saveState();
+			postMessage(stripIndent`
+				ロン!!!
+				${役s.join('・')}
+				${agari.delta[0]}点
+				現在の得点: ${state.points}点
+			`, {
+				手牌: state.手牌,
+				王牌: generate王牌(),
+			});
 			await checkPoints();
 		}
 	});
