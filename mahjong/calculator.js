@@ -1,6 +1,6 @@
-const {Pai, decomp} = require('riichi-core');
-const Agari = require('riichi-core/src/agari');
-const tenhou6 = require('riichi-core/src/tenhou6');
+const {Pai, decomp} = require('@hakatashi/riichi-core');
+const Agari = require('@hakatashi/riichi-core/src/agari');
+const tenhou6 = require('@hakatashi/riichi-core/src/tenhou6');
 
 const paiIndices = [
 	'1z', '2z', '3z', '4z', '7z', '6z', '5z',
@@ -115,6 +115,7 @@ module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = fa
 		},
 		doraHyouji: doraHyouji.map((牌) => 牌ToPai(牌)),
 		uraDoraHyouji: uraDoraHyouji.map((牌) => 牌ToPai(牌)),
+		additionalDora: 0,
 		chancha: 0,
 		agariPlayer: 0,
 		houjuuPlayer: isRon ? 1 : null,
