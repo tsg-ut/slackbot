@@ -6,6 +6,7 @@ const qs = require('querystring');
 const {promisify} = require('util');
 const {chunk} = require('lodash');
 const path = require('path');
+const assert = require('assert');
 
 const calculator = require('./calculator.js');
 const savedState = (() => {
@@ -93,10 +94,13 @@ const sort = (牌s) => (
 
 const state = {
 	phase: 'waiting',
+	mode: '四人',
 	手牌: [],
 	壁牌: [],
 	ドラ表示牌s: [],
 	remaining自摸: 0,
+	嶺上牌Count: 4,
+	抜きドラCount: 0,
 	points: savedState.points,
 	リーチTurn: null,
 	wins: savedState.wins,
@@ -118,6 +122,13 @@ const 麻雀牌 = Array(136).fill(0).map((_, index) => {
 	return 牌;
 });
 
+const 麻雀牌Forサンマ = 麻雀牌.filter((牌) => {
+	const codePoint = 牌.codePointAt(0);
+	return codePoint < 0x1F008 || codePoint > 0x1F00E;
+});
+
+assert.strictEqual(麻雀牌Forサンマ.length, 108);
+
 const saveState = async () => {
 	await promisify(fs.writeFile)(path.join(__dirname, 'current-point.json'), JSON.stringify({
 		points: state.points,
@@ -138,11 +149,14 @@ module.exports = (clients) => {
 				...(手牌 === null ? {} : {
 					attachments: [{
 						// eslint-disable-next-line camelcase
-						image_url: `https://mahjong.hakatashi.com/images/${encodeURIComponent(手牌.join(''))}${
-							(王牌 === null) ? '' : `?${qs.encode({
-								王牌: 王牌.join(''),
-								王牌Status,
-							})}`
+						image_url: `https://mahjong.hakatashi.com/images/${encodeURIComponent(手牌.join(''))}?${
+							qs.encode({
+								...((王牌 === null) ? {} : {
+									王牌: 王牌.join(''),
+									王牌Status,
+								}),
+								color: state.mode === '四人' ? 'white' : 'black',
+							})
 						}`,
 						fallback: 手牌.join(''),
 					}],
@@ -154,15 +168,22 @@ module.exports = (clients) => {
 			postMessage(':ha:');
 		};
 
-		const generate王牌 = (裏ドラ表示牌s = []) => ([
-			'🀫', '🀫', // 嶺上牌
-			...state.ドラ表示牌s,
-			...Array(5 - state.ドラ表示牌s.length).fill('🀫'),
+		const generate王牌 = (裏ドラ表示牌s = []) => {
+			const 嶺上牌s = [
+				...Array((state.mode === '四人' ? 4 : 8) - state.嶺上牌Count).fill('\u2003'),
+				...Array(state.嶺上牌Count).fill('🀫'),
+			];
 
-			'🀫', '🀫', // 嶺上牌
-			...裏ドラ表示牌s,
-			...Array(5 - 裏ドラ表示牌s.length).fill('🀫'),
-		]);
+			return [
+				...(state.mode === '四人' ? [嶺上牌s[0], 嶺上牌s[2]] : [嶺上牌s[0], 嶺上牌s[2], 嶺上牌s[4], 嶺上牌s[6]]),
+				...state.ドラ表示牌s,
+				...Array((state.mode === '四人' ? 5 : 3) - state.ドラ表示牌s.length).fill('🀫'),
+
+				...(state.mode === '四人' ? [嶺上牌s[1], 嶺上牌s[3]] : [嶺上牌s[1], 嶺上牌s[3], 嶺上牌s[5], 嶺上牌s[7]]),
+				...裏ドラ表示牌s,
+				...Array((state.mode === '四人' ? 5 : 3) - 裏ドラ表示牌s.length).fill('🀫'),
+			];
+		};
 
 		const checkPoints = async () => {
 			if (state.points < 0) {
@@ -210,6 +231,9 @@ module.exports = (clients) => {
 			}
 
 			state.phase = 'gaming';
+			state.mode = '四人';
+			state.抜きドラCount = 0;
+			state.嶺上牌Count = 4;
 			const shuffled牌s = shuffle(麻雀牌);
 			state.手牌 = sort(shuffled牌s.slice(0, 14));
 			state.ドラ表示牌s = shuffled牌s.slice(14, 15);
@@ -220,6 +244,36 @@ module.exports = (clients) => {
 
 			postMessage(stripIndent`
 				場代 -1500点
+				現在の得点: ${state.points}点
+
+				残り${state.remaining自摸}牌
+			`, {
+				手牌: state.手牌,
+				王牌: generate王牌(),
+			});
+			return;
+		}
+
+		if (text === 'サンマ') {
+			if (state.phase !== 'waiting') {
+				perdon();
+				return;
+			}
+
+			state.phase = 'gaming';
+			state.mode = '三人';
+			state.抜きドラCount = 0;
+			state.嶺上牌Count = 8;
+			const shuffled牌s = shuffle(麻雀牌Forサンマ);
+			state.手牌 = sort(shuffled牌s.slice(0, 14));
+			state.ドラ表示牌s = shuffled牌s.slice(14, 15);
+			state.壁牌 = shuffled牌s.slice(15);
+			state.remaining自摸 = 17;
+			state.points -= 3000;
+			await saveState();
+
+			postMessage(stripIndent`
+				場代 -3000点
 				現在の得点: ${state.points}点
 
 				残り${state.remaining自摸}牌
@@ -307,6 +361,34 @@ module.exports = (clients) => {
 			});
 		}
 
+		if (text === 'ペー' || text === 'ぺー') {
+			if (state.phase !== 'gaming' || state.mode !== '三人') {
+				perdon();
+				return;
+			}
+
+			if (!state.手牌.includes('🀃')) {
+				perdon();
+				return;
+			}
+
+			const 北Index = state.手牌.indexOf('🀃');
+			state.手牌.splice(北Index, 1);
+
+			state.抜きドラCount++;
+			state.嶺上牌Count--;
+			state.手牌 = sort(state.手牌).concat([state.壁牌[0]]);
+			state.壁牌 = state.壁牌.slice(1);
+
+			postMessage(stripIndent`
+				抜きドラ ${state.抜きドラCount}牌 残り${state.remaining自摸}牌
+			`, {
+				手牌: state.手牌,
+				王牌: generate王牌(),
+			});
+			return;
+		}
+
 		if (text.startsWith('リーチ ')) {
 			if (state.phase !== 'gaming') {
 				perdon();
@@ -347,8 +429,9 @@ module.exports = (clients) => {
 			while (state.remaining自摸 > 0) {
 				state.remaining自摸--;
 
-				const 河牌s = state.壁牌.slice(0, 4);
-				state.壁牌 = state.壁牌.slice(4);
+				const 河牌Count = state.mode === '三人' ? 3 : 4;
+				const 河牌s = state.壁牌.slice(0, 河牌Count);
+				state.壁牌 = state.壁牌.slice(河牌Count);
 
 				const 当たり牌Index = 河牌s.findIndex((牌) => {
 					const {agari} = calculator.agari(state.手牌.concat([牌]), {isRiichi: false});
@@ -359,22 +442,26 @@ module.exports = (clients) => {
 					const 裏ドラ表示牌s = state.壁牌.slice(0, state.ドラ表示牌s.length);
 					state.壁牌 = state.壁牌.slice(state.ドラ表示牌s.length);
 
+					const ドラs = [...state.ドラ表示牌s, ...裏ドラ表示牌s];
+					const 抜きドラ = state.抜きドラCount * (ドラs.filter((ドラ) => ドラ === '🀂').length + 1);
+
 					const {agari, 役s} = calculator.agari(state.手牌.concat([河牌s[当たり牌Index]]), {
-						doraHyouji: state.ドラ表示牌s,
-						uraDoraHyouji: 裏ドラ表示牌s,
-						isHaitei: state.remaining自摸 === 0 && 当たり牌Index === 3,
+						doraHyouji: state.ドラ表示牌s.map((ドラ表示牌) => (state.mode === '三人' && ドラ表示牌 === '🀇') ? '🀎' : ドラ表示牌),
+						uraDoraHyouji: 裏ドラ表示牌s.map((ドラ表示牌) => (state.mode === '三人' && ドラ表示牌 === '🀇') ? '🀎' : ドラ表示牌),
+						isHaitei: state.remaining自摸 === 0 && 当たり牌Index === 河牌Count - 1,
 						isVirgin: false,
 						isRiichi: true,
 						isDoubleRiichi: state.リーチTurn === 17,
 						isIppatsu: state.リーチTurn - state.remaining自摸 === 1,
-						isRon: 当たり牌Index !== 3,
+						isRon: 当たり牌Index !== 河牌Count - 1,
+						additionalDora: 抜きドラ,
 					});
 
 					state.points += agari.delta[0];
 					await saveState();
 					postMessage(stripIndent`
-						河${河牌s.slice(0, Math.min(当たり牌Index + 1, 3)).map(牌ToName).join('・')}${当たり牌Index === 3 ? ` 摸${牌ToName(河牌s[河牌s.length - 1])}` : ''}
-						${当たり牌Index === 3 ? 'ツモ!!!' : 'ロン!!!'}
+						河${河牌s.slice(0, Math.min(当たり牌Index + 1, 河牌Count - 1)).map(牌ToName).join('・')}${当たり牌Index === 河牌Count - 1 ? ` 摸${牌ToName(河牌s[河牌s.length - 1])}` : ''}
+						${当たり牌Index === 河牌Count - 1 ? 'ツモ!!!' : 'ロン!!!'}
 
 						${役s.join('・')}
 						${agari.delta[0]}点
@@ -390,9 +477,9 @@ module.exports = (clients) => {
 				}
 
 				postMessage(stripIndent`
-					河${河牌s.slice(0, 3).map(牌ToName).join('・')} 摸${牌ToName(河牌s[河牌s.length - 1])} 残り${state.remaining自摸}牌
+					河${河牌s.slice(0, 河牌Count - 1).map(牌ToName).join('・')} 摸${牌ToName(河牌s[河牌s.length - 1])} 残り${state.remaining自摸}牌
 				`, {
-					手牌: state.手牌.concat([河牌s[3]]),
+					手牌: state.手牌.concat([河牌s[河牌s.length - 1]]),
 					王牌: generate王牌(),
 				});
 
@@ -433,6 +520,7 @@ module.exports = (clients) => {
 				doraHyouji: state.ドラ表示牌s,
 				isHaitei: state.remaining自摸 === 0,
 				isVirgin: state.remaining自摸 === 17,
+				additionalDora: state.抜きドラCount,
 			});
 
 			state.phase = 'waiting';

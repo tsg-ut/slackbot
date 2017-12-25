@@ -27,7 +27,7 @@ const 牌ToPai = (牌, {no赤牌 = false} = {}) => {
 	return Pai[paiIndices[牌.codePointAt(0) - 0x1F000]];
 };
 
-module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = false, isDoubleRiichi = false, isIppatsu = false, isRon = false, doraHyouji = [], uraDoraHyouji = []}) => {
+module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = false, isDoubleRiichi = false, isIppatsu = false, isRon = false, doraHyouji = [], uraDoraHyouji = [], additionalDora = 0}) => {
 	const pais = 牌s.map((牌) => 牌ToPai(牌));
 	const paisWithout赤牌 = 牌s.map((牌) => 牌ToPai(牌, {no赤牌: true}));
 
@@ -115,7 +115,7 @@ module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = fa
 		},
 		doraHyouji: doraHyouji.map((牌) => 牌ToPai(牌)),
 		uraDoraHyouji: uraDoraHyouji.map((牌) => 牌ToPai(牌)),
-		additionalDora: 0,
+		additionalDora,
 		chancha: 0,
 		agariPlayer: 0,
 		houjuuPlayer: isRon ? 1 : null,
