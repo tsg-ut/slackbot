@@ -12,17 +12,24 @@ module.exports = (clients) => {
         let rtext = text;
         rtext = rtext.
             replace(/鮨/g, 'すし').
-            replace(/([Ss][Uu]|[Zz][Uu]|ス|ズ|ず|寿|壽)/g, 'す').
-            replace(/([Ss][Hh]?[Ii]|[Cc][Ii]|し|シ|司)/g, 'し');
+            replace(/(su|zu|ス|ズ|ず|寿|壽)/gi, 'す').
+            replace(/(sh?i|ci|し|シ|司)/gi, 'し');
+
         rtext = rtext.
-            replace(/akouryyy/g, 'akkoury').
-            replace(/akouryy/g, '').
-            replace(/kk/g, 'k').
-            replace(/rr/g, 'r').
-            replace(/y/g, 'yy');
+            replace(/(ca(i|い|イ)?|(ke|け|ケ)(i|い|イ|-|ー))(ki|ke|き|キ)/gi, 'ケーキ');
+
+        rtext = rtext.
+            replace(/akouryyy/gi, 'akkoury').
+            replace(/akouryy/gi, '').
+            replace(/kk/gi, 'k').
+            replace(/rr/gi, 'r').
+            replace(/y/gi, 'yy');
 
         if (rtext.includes("すし")) {
             slack.reactions.add('sushi', {channel, timestamp});
+        }
+        if (rtext.includes("ケーキ")) {
+            slack.reactions.add('cake', {channel, timestamp});
         }
         if (rtext.includes("殺") || rtext.includes("死")) {
             slack.reactions.add('no_good', {channel, timestamp});
