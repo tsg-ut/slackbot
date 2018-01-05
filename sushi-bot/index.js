@@ -16,7 +16,7 @@ module.exports = (clients) => {
             replace(/(sh?i|ci|し|シ|司)/gi, 'し');
 
         rtext = rtext.
-            replace(/(ca(i|い|イ)?|(ke|け|ケ)(i|い|イ|e|え|エ|-|ー))(ki|ke|き|キ)/gi, 'ケーキ');
+            replace(/(ca|(ke|け|ケ)(i|ぃ|い|ｨ|ィ|ｲ|イ|e|ぇ|え|ｪ|ェ|ｴ|エ|-|ー))(ki|ke|き|キ)/gi, 'ケーキ');
 
         rtext = rtext.
             replace(/akouryyy/gi, 'akkoury').
