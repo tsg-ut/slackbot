@@ -4,4 +4,13 @@ TSGのSlackで動くSlackbotたち
 
 自分がOWNERのコードの変更は直接masterにpushして構いません。 ([CODEOWNERS](CODEOWNERS)参照)
 
-masterにpushすると、[webhook.hakatashi.com](https://github.com/hakatashi/webhook.hakatashi.com)経由で自動的にhakatashiのサーバーにデプロイされます。セキュリティには気をつけて。
+push後は必ずデプロイをお願いします。
+
+## デプロイ
+
+1. TSG鯖にSSHで入る
+2. `$ sudo -u slackbot bash`
+3. `$ cd ~/slackbot`
+4. `$ git pull`
+5. `$ touch .restart-trigger`
+

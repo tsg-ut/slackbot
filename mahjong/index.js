@@ -269,11 +269,11 @@ module.exports = (clients) => {
 			state.ドラ表示牌s = shuffled牌s.slice(14, 15);
 			state.壁牌 = shuffled牌s.slice(15);
 			state.remaining自摸 = 17;
-			state.points -= 3000;
+			state.points -= 6000;
 			await saveState();
 
 			postMessage(stripIndent`
-				場代 -3000点
+				場代 -6000点
 				現在の得点: ${state.points}点
 
 				残り${state.remaining自摸}牌
