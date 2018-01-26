@@ -12,6 +12,7 @@ const plugins = [
 	require('./esolang-rankmaker'),
 	require('./emoji-notifier'),
 	require('./sushi-bot'),
+	require('./cubebot'),
 	// require('./imagenet'),
 ];
 
