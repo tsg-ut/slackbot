@@ -95,23 +95,26 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					icon_url: 'https://i.imgur.com/YyCc0mc.png',
 					attachments: [
 						getAttachment(scramble, 80),
-						...faceColors.map((color, index) => ({
-							color,
-							pretext: `${faces[index]}面`,
-							text: [
+						...faceColors.map((color, index) => {
+							const xcross = xcrosses[index];
+							const rotation = xcross.match(/^[xyz]2?'?/);
 
-								`cross: <https://alg.cubing.net/?${qs.encode({
-									setup: scramble.replace(/'/g, '-').replace(/ /g, '_'),
-									alg: crosses[index].replace(/'/g, '-').replace(/ /g, '_'),
-									view: 'playback',
-								})}|${crosses[index]}>`,
-								`x-cross: <https://alg.cubing.net/?${qs.encode({
-									setup: scramble.replace(/'/g, '-').replace(/ /g, '_'),
-									alg: xcrosses[index].replace(/'/g, '-').replace(/ /g, '_'),
-									view: 'playback',
-								})}|${xcrosses[index]}>`,
-							].join('\n'),
-						})),
+							return {
+								color,
+								text: [
+									`cross: <https://alg.cubing.net/?${qs.encode({
+										setup: (scramble + (rotation ? ` ${rotation[0]}` : '')).replace(/'/g, '-').replace(/ /g, '_'),
+										alg: (crosses[index].replace(/^[xyz]2?'? /, '')).replace(/'/g, '-').replace(/ /g, '_'),
+										view: 'playback',
+									})}|${crosses[index]}>`,
+									`x-cross: <https://alg.cubing.net/?${qs.encode({
+										setup: (scramble + (rotation ? ` ${rotation[0]}` : '')).replace(/'/g, '-').replace(/ /g, '_'),
+										alg: (xcrosses[index].replace(/^[xyz]2?'? /, '')).replace(/'/g, '-').replace(/ /g, '_'),
+										view: 'playback',
+									})}|${xcrosses[index]}>`,
+								].join('\n'),
+							};
+						}),
 					],
 				});
 			}
