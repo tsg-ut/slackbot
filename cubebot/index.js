@@ -54,6 +54,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
+		if (!message.text) {
+			return;
+		}
+
 		const {text} = message;
 
 		if (text.startsWith('スクランブル')) {
@@ -133,6 +137,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `*${mean(times).toFixed(2)}*: ${fixedTimes.join(' ')}`, {
 					username: 'cubebot',
 					icon_url: 'https://i.imgur.com/YyCc0mc.png',
+					thread_ts: message.thread_ts,
 				});
 			} else {
 				const maxIndex = times.indexOf(Math.max(...times));
@@ -143,6 +148,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `*${average.toFixed(2)}*: ${fixedTimes.join(' ')}`, {
 					username: 'cubebot',
 					icon_url: 'https://i.imgur.com/YyCc0mc.png',
+					thread_ts: message.thread_ts,
 				});
 			}
 		}
