@@ -50,7 +50,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const faceColors = ['#fefe00', '#ffffff', '#ffa100', '#ee0000', '#00d800', '#0000f2'];
 
 	rtm.on(MESSAGE, async (message) => {
-		if (message.channel !== process.env.CHANNEL_RANDOM) {
+		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
 
