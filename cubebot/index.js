@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const {JSDOM, VirtualConsole} = require('jsdom');
 const {RTM_EVENTS: {MESSAGE}} = require('@slack/client');
-const {mean} = require('lodash');
+const {mean, mapValues, identity} = require('lodash');
+const alg = require('alg');
 const Cube = require('cubejs');
 require('cubejs/lib/solve');
 
@@ -23,6 +24,7 @@ for (const scriptPath of [
 	'src/js/tools.js',
 	'src/js/tools/cross.js',
 ]) {
+	// eslint-disable-next-line no-sync
 	const script = fs.readFileSync(path.resolve(__dirname, '../lib/cstimer', scriptPath)).toString();
 	window.eval(script.replace(/['"]use strict['"];/, '').replace('solve: solve_cross,', 'solve: solve_cross, solve_xcross: solve_xcross,'));
 }
@@ -48,7 +50,28 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 	const getTimeText = (time) => time === Infinity ? 'DNF' : time.toFixed(2);
 
-	const faces = ['D', 'U', 'L', 'R', 'F', 'B'];
+	const rotationMaps = {
+		z: {U: 'R', R: 'D', D: 'L', L: 'U', F: 'F', B: 'B'},
+		'z\'': {U: 'L', R: 'U', D: 'R', L: 'D', F: 'F', B: 'B'},
+		z2: {U: 'D', R: 'L', D: 'U', L: 'R', F: 'F', B: 'B'},
+		x: {U: 'B', B: 'D', D: 'F', F: 'U', R: 'R', L: 'L'},
+		'x\'': {U: 'F', B: 'U', D: 'B', F: 'D', R: 'R', L: 'L'},
+		x2: {U: 'D', B: 'F', D: 'U', F: 'B', R: 'R', L: 'L'},
+	};
+
+	const faces = {U: 'w', D: 'y', R: 'r', L: 'o', F: 'g', B: 'b'};
+
+	const rotateFunctions = mapValues(rotationMaps, (map) => {
+		const traversal = alg.cube.makeAlgTraversal();
+		traversal.move = (move) => {
+			const newMove = alg.cube.cloneMove(move);
+			newMove.base = map[newMove.base];
+			return newMove;
+		};
+
+		return traversal;
+	});
+
 	const faceColors = ['#fefe00', '#ffffff', '#ffa100', '#ee0000', '#00d800', '#0000f2'];
 
 	rtm.on(MESSAGE, async (message) => {
@@ -63,8 +86,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		const {text} = message;
 
 		if (text.startsWith('スクランブル')) {
-			const countMatch = text.match(/\d+/);
-			const count = countMatch ? Math.min(12, parseInt(countMatch[0])) : 1;
+			const countMatches = text.match(/\d+/);
+			const count = countMatches ? Math.min(12, parseInt(countMatches[0])) : 1;
 
 			const scrambles = Array(count).fill().map(() => Cube.scramble());
 			state.scrambles = scrambles;
@@ -103,20 +126,26 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						getAttachment(scramble, 80),
 						...faceColors.map((color, index) => {
 							const xcross = xcrosses[index];
-							const rotation = xcross.match(/^[xyz]2?'?/);
+							const matches = xcross.match(/^[xyz]2?'?/);
+
+							const rotate = (matches && rotateFunctions[matches[0]]) ? rotateFunctions[matches[0]] : identity;
 
 							return {
 								color,
 								text: [
 									`cross: <https://alg.cubing.net/?${qs.encode({
-										setup: (scramble + (rotation ? ` ${rotation[0]}` : '')).replace(/'/g, '-').replace(/ /g, '_'),
+										setup: rotate(scramble).replace(/'/g, '-').replace(/ /g, '_'),
 										alg: (crosses[index].replace(/^[xyz]2?'? /, '')).replace(/'/g, '-').replace(/ /g, '_'),
 										view: 'playback',
+										stage: 'cross',
+										scheme: 'custom', // not works
 									})}|${crosses[index]}>`,
 									`x-cross: <https://alg.cubing.net/?${qs.encode({
-										setup: (scramble + (rotation ? ` ${rotation[0]}` : '')).replace(/'/g, '-').replace(/ /g, '_'),
+										setup: rotate(scramble).replace(/'/g, '-').replace(/ /g, '_'),
 										alg: (xcrosses[index].replace(/^[xyz]2?'? /, '')).replace(/'/g, '-').replace(/ /g, '_'),
 										view: 'playback',
+										stage: 'cross',
+										scheme: 'custom', // not works
 									})}|${xcrosses[index]}>`,
 								].join('\n'),
 							};
