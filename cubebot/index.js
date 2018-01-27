@@ -46,6 +46,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		})}`,
 	});
 
+	const getTimeText = (time) => time === Infinity ? 'DNF' : time.toFixed(2);
+
 	const faces = ['D', 'U', 'L', 'R', 'F', 'B'];
 	const faceColors = ['#fefe00', '#ffffff', '#ffa100', '#ee0000', '#00d800', '#0000f2'];
 
@@ -124,17 +126,17 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 		}
 
-		if (text.match(/^\s*([\d.,]+\s*)+$/)) {
-			const times = text.replace(/,/g, '.').split(/\s+/).filter((time) => time.length > 0).map((time) => parseFloat(time));
+		if (text.match(/^\s*(([\d.,]+|DNF)\s*)+$/i)) {
+			const times = text.replace(/,/g, '.').split(/\s+/).filter((time) => time.length > 0).map((time) => parseFloat(time) || Infinity);
 
 			if (times.length <= 1) {
 				return;
 			}
 
 			if (times.length < 5) {
-				const fixedTimes = times.map((time) => time.toFixed(2));
+				const timeTexts = times.map((time) => getTimeText(time));
 
-				slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `*${mean(times).toFixed(2)}*: ${fixedTimes.join(' ')}`, {
+				slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `*${getTimeText(mean(times))}*: ${timeTexts.join(' ')}`, {
 					username: 'cubebot',
 					icon_url: 'https://i.imgur.com/YyCc0mc.png',
 					thread_ts: message.thread_ts,
@@ -143,9 +145,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				const maxIndex = times.indexOf(Math.max(...times));
 				const minIndex = times.indexOf(Math.min(...times));
 				const average = mean(times.filter((time, index) => index !== maxIndex && index !== minIndex));
-				const fixedTimes = times.map((time, index) => (index === maxIndex || index === minIndex) ? `(${time.toFixed(2)})` : time.toFixed(2));
+				const fixedTimes = times.map((time, index) => (index === maxIndex || index === minIndex) ? `(${getTimeText(time)})` : getTimeText(time));
 
-				slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `*${average.toFixed(2)}*: ${fixedTimes.join(' ')}`, {
+				slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `*${getTimeText(average)}*: ${fixedTimes.join(' ')}`, {
 					username: 'cubebot',
 					icon_url: 'https://i.imgur.com/YyCc0mc.png',
 					thread_ts: message.thread_ts,
