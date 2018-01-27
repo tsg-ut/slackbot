@@ -59,6 +59,15 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		x2: {U: 'D', B: 'F', D: 'U', F: 'B', R: 'R', L: 'L'},
 	};
 
+	const reverseRotationMaps = {
+		z: rotationMaps['z\''],
+		'z\'': rotationMaps.z,
+		z2: rotationMaps.z2,
+		x: rotationMaps['x\''],
+		'x\'': rotationMaps.x,
+		x2: rotationMaps.x2,
+	};
+
 	const faces = {U: 'w', D: 'y', R: 'r', L: 'o', F: 'g', B: 'b'};
 
 	const rotateFunctions = mapValues(rotationMaps, (map) => {
@@ -129,6 +138,15 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 							const matches = xcross.match(/^[xyz]2?'?/);
 
 							const rotate = (matches && rotateFunctions[matches[0]]) ? rotateFunctions[matches[0]] : identity;
+							const schemeRotation = matches ? (face) => reverseRotationMaps[matches[0]][face] : identity;
+							const scheme = [
+								faces[schemeRotation('F')],
+								faces[schemeRotation('R')],
+								faces[schemeRotation('L')],
+								faces[schemeRotation('B')],
+								faces[schemeRotation('D')],
+								faces[schemeRotation('U')],
+							].join('');
 
 							return {
 								color,
@@ -139,13 +157,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 										view: 'playback',
 										stage: 'cross',
 										scheme: 'custom', // not works
+										custom_scheme: scheme, // not works
 									})}|${crosses[index]}>`,
 									`x-cross: <https://alg.cubing.net/?${qs.encode({
-										setup: rotate(scramble).replace(/'/g, '-').replace(/ /g, '_'),
+										setup: (scramble + (matches ? ` ${matches[0]}` : '')).replace(/'/g, '-').replace(/ /g, '_'),
 										alg: (xcrosses[index].replace(/^[xyz]2?'? /, '')).replace(/'/g, '-').replace(/ /g, '_'),
 										view: 'playback',
-										stage: 'cross',
-										scheme: 'custom', // not works
 									})}|${xcrosses[index]}>`,
 								].join('\n'),
 							};
