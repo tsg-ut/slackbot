@@ -38,7 +38,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			alg: scramble.replace(/'/g, '-').replace(/ /g, '_'),
 			view: 'playback',
 		})}`,
-		image_url: `http://stachu.cubing.net/v/visualcube.php?${qs.encode({
+		image_url: `http://roudai.net/visualcube/visualcube.php?${qs.encode({
 			fmt: 'png',
 			size,
 			sch: 'wrgyob',
