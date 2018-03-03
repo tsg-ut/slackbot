@@ -1,6 +1,8 @@
 const qs = require('querystring');
+const assert = require('assert');
 const {default: Shogi} = require('shogi9.js');
 const {default: Color} = require('shogi9.js/lib/Color.js');
+const {default: Piece} = require('shogi9.js/lib/Piece.js');
 
 const gridList = [
 	{},
@@ -34,46 +36,49 @@ const gridList = [
 	{kind: 'TO', color: Color.White},
 ];
 
-const handList = [
-	'HI',
-	'KA',
-	'KI',
-	'GI',
-	'KE',
-	'KY',
-	'FU',
-];
+const handList = ['HI', 'KA', 'KI', 'GI', 'KE', 'KY', 'FU'];
 
-module.exports.charToPiece = (char) => ({
-	歩: 'FU',
-	香: 'KY',
-	桂: 'KE',
-	銀: 'GI',
-	金: 'KI',
-	飛: 'HI',
-	角: 'KA',
-	玉: 'OU',
-	と: 'TO',
-	成香: 'NY',
-	成桂: 'NK',
-	成銀: 'NG',
-	龍: 'RY',
-	馬: 'UM',
-}[char]);
+module.exports.charToPiece = (char) =>
+	({
+		歩: 'FU',
+		香: 'KY',
+		桂: 'KE',
+		銀: 'GI',
+		金: 'KI',
+		飛: 'HI',
+		角: 'KA',
+		玉: 'OU',
+		と: 'TO',
+		成香: 'NY',
+		成桂: 'NK',
+		成銀: 'NG',
+		龍: 'RY',
+		馬: 'UM',
+	}[char]);
 
 module.exports.deserialize = (blob) => {
-	const gridsBlob = [...blob].slice(0, 8).map((byte) => byte.toString(2).padStart(8, '0')).join('');
-	const handsBlob = [...blob].slice(8, 12).map((byte) => byte.toString(2).padStart(8, '0')).join('');
+	const gridsBlob = [...blob]
+		.slice(0, 8)
+		.map((byte) => byte.toString(2).padStart(8, '0'))
+		.join('');
+	const handsBlob = [...blob]
+		.slice(8, 12)
+		.map((byte) => byte.toString(2).padStart(8, '0'))
+		.join('');
 
-	const gridNumbers = gridsBlob.slice(-45).match(/.{1,5}/g).reverse().map((bin) => parseInt(bin, 2));
+	const gridNumbers = gridsBlob
+		.slice(-45)
+		.match(/.{1,5}/g)
+		.reverse()
+		.map((bin) => parseInt(bin, 2));
 
 	const grids = gridNumbers.map((number) => gridList[number]);
 
 	const handNumbers = [];
 	let offset = handsBlob.length;
-	for (const length of [3, 3, 4, 4, 4, 4, 6]) {
-		offset -= length;
-		handNumbers.push(parseInt(handsBlob.slice(offset, offset + length), 2));
+	for (const size of [3, 3, 4, 4, 4, 4, 6]) {
+		offset -= size;
+		handNumbers.push(parseInt(handsBlob.slice(offset, offset + size), 2));
 	}
 
 	const hands = {first: {}, second: {}};
@@ -104,6 +109,67 @@ module.exports.deserialize = (blob) => {
 	});
 };
 
+module.exports.serialize = (board) => {
+	const gridNumbers = [];
+
+	for (const y of Array(3).keys()) {
+		for (const x of Array(3).keys()) {
+			const gridData = board.board[2 - x][y];
+			if (gridData) {
+				gridNumbers.push(
+					gridList.findIndex(
+						(grid) =>
+							grid.kind === gridData.kind && grid.color === gridData.color
+					)
+				);
+			} else {
+				gridNumbers.push(0);
+			}
+		}
+	}
+
+	const gridBin = gridNumbers
+		.reverse()
+		.map((number) => number.toString(2).padStart(5, '0'))
+		.join('')
+		.padStart(64, '0');
+
+	const handBins = [];
+
+	for (const [index, piece] of handList.entries()) {
+		const [size, maxPieces] = [
+			[3, 2],
+			[3, 2],
+			[4, 4],
+			[4, 4],
+			[4, 4],
+			[4, 4],
+			[6, 7],
+		][index];
+		const counts = board.hands.map(
+			(pieces) => pieces.filter(({kind}) => kind === piece).length
+		);
+		const number =
+			((maxPieces + 1) * 2 - counts[Color.Black] + 1) *
+				counts[Color.Black] /
+				2 +
+			counts[Color.White];
+		handBins.push(number.toString(2).padStart(size, '0'));
+	}
+
+	const handBin = handBins
+		.reverse()
+		.join('')
+		.padStart(32, '0');
+
+	const gridHex = gridBin.replace(/.{1,4}/g, (byte) =>
+		parseInt(byte, 2).toString(16));
+	const handHex = handBin.replace(/.{1,4}/g, (byte) =>
+		parseInt(byte, 2).toString(16));
+
+	return Buffer.from(gridHex + handHex, 'hex');
+};
+
 module.exports.getTransitions = (board) => {
 	const transitions = [];
 
@@ -111,25 +177,47 @@ module.exports.getTransitions = (board) => {
 		for (const x of Array(3).keys()) {
 			const piece = board.get(x + 1, y + 1);
 
-			if (!piece || piece.color !== Color.White) {
+			if (!piece || piece.color !== Color.Black) {
 				continue;
 			}
 
-			transitions.push(...board.getMovesFrom(x + 1, y + 1));
+			const moves = board.getMovesFrom(x + 1, y + 1);
+			for (const move of moves) {
+				const promoteBoard = board.clone();
+				promoteBoard.move(move.from.x, move.from.y, move.to.x, move.to.y, true);
+				transitions.push(promoteBoard.inverse());
+
+				if (
+					promoteBoard.get(move.to.x, move.to.y).kind !==
+					board.get(move.from.x, move.from.y)
+				) {
+					const unpromoteBoard = board.clone();
+					unpromoteBoard.move(
+						move.from.x,
+						move.from.y,
+						move.to.x,
+						move.to.y,
+						false
+					);
+					transitions.push(unpromoteBoard.inverse());
+				}
+			}
 		}
 	}
 
-	transitions.push(...board.getDropsBy(Color.White));
+	for (const drop of board.getDropsBy(Color.Black)) {
+		const dropBoard = board.clone();
+		dropBoard.drop(drop.to.x, drop.to.y, drop.kind, Color.Black);
+		transitions.push(dropBoard.inverse());
+	}
+
+	return transitions;
 };
 
 module.exports.boardToImage = (board) => {
 	const components = board.toSFENString().split(/[ /]/);
 	return `http://sfenreader.appspot.com/sfen?${qs.encode({
-		sfen: `6${
-			components[0]
-		}/6${
-			components[1]
-		}/6${
+		sfen: `6${components[0]}/6${components[1]}/6${
 			components[2]
 		}/9/9/9/9/9/9 ${components.slice(3).join(' ')}`,
 		sname: '@hakatashi',
