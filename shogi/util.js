@@ -1,3 +1,4 @@
+const qs = require('querystring');
 const {default: Shogi} = require('shogi9.js');
 const {default: Color} = require('shogi9.js/lib/Color.js');
 
@@ -51,7 +52,7 @@ module.exports.charToPiece = (char) => ({
 	金: 'KI',
 	飛: 'HI',
 	角: 'KA',
-	王: 'OU',
+	玉: 'OU',
 	と: 'TO',
 	成香: 'NY',
 	成桂: 'NK',
@@ -119,4 +120,19 @@ module.exports.getTransitions = (board) => {
 	}
 
 	transitions.push(...board.getDropsBy(Color.White));
+};
+
+module.exports.boardToImage = (board) => {
+	const components = board.toSFENString().split(/[ /]/);
+	return `http://sfenreader.appspot.com/sfen?${qs.encode({
+		sfen: `6${
+			components[0]
+		}/6${
+			components[1]
+		}/6${
+			components[2]
+		}/9/9/9/9/9/9 ${components.slice(3).join(' ')}`,
+		sname: '@hakatashi',
+		gname: '9マスしょうぎ名人',
+	})}`;
 };

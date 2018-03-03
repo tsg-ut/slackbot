@@ -4,7 +4,7 @@ const {default: Piece} = require('shogi9.js/lib/Piece.js');
 const sqlite = require('sqlite');
 const path = require('path');
 
-const {deserialize, getTransitions, charToPiece} = require('./Board.js');
+const {deserialize, getTransitions, charToPiece, boardToImage} = require('./util.js');
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const state = {
@@ -34,16 +34,20 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		if (text.startsWith('将棋')) {
 			await sqlite.open(path.resolve(__dirname, 'boards/4444.sqlite3'));
-			const data = await sqlite.get('SELECT * FROM boards WHERE result = 1 AND depth = 6 AND is_good = 1 ORDER BY RANDOM() LIMIT 1');
+			const data = await sqlite.get('SELECT * FROM boards WHERE result = 1 AND depth = 10 AND is_good = 1 ORDER BY RANDOM() LIMIT 1');
 			state.board = deserialize(data.board);
 
-			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, state.board.toSFENString(), {
+			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, '9手必勝', {
 				username: 'shogi',
 				icon_url: 'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/kenNldpvFDI6baHIW0XnB6JzITdh3hB2gCLcBGAs/s400/character_game_syougi.png',
+				attachments: [{
+					image_url: boardToImage(state.board),
+					fallback: boardToImage(state.board),
+				}],
 			});
 		}
 
-		if ((match = text.match(/^([123１２３一二三][123１２３一二三]|同)(歩|香|桂|銀|金|飛|角|王|と|成香|成桂|成銀|龍|馬)([右左直]?)([寄引上]?)(成|不成|打)?$/))) {
+		if ((match = text.match(/^([123１２３一二三][123１２３一二三]|同)(歩|香|桂|銀|金|飛|角|玉|と|成香|成桂|成銀|龍|馬)([右左直]?)([寄引上]?)(成|不成|打)?$/))) {
 			const [, position, pieceChar, xFlag, yFlag, promoteFlag] = match;
 			const piece = charToPiece(pieceChar);
 
@@ -72,13 +76,35 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 				state.board.move(move.from.x, move.from.y, move.to.x, move.to.y, isPromotable && promoteFlag === '成');
 
-				await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, state.board.toSFENString(), {
+				await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `☗${'123'[x - 1]}${'一二三'[y - 1]}${pieceChar}`, {
 					username: 'shogi',
 					icon_url: 'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/kenNldpvFDI6baHIW0XnB6JzITdh3hB2gCLcBGAs/s400/character_game_syougi.png',
+					attachments: [{
+						image_url: boardToImage(state.board),
+						fallback: boardToImage(state.board),
+					}],
 				});
-			} else {
-				perdon();
+
+				return;
 			}
+
+			const hands = state.board.getDropsBy(Color.Black).filter(({to, kind}) => to.x === x && to.y === y && kind === piece);
+			if (hands.length > 0) {
+				state.board.drop(x, y, piece, Color.Black);
+
+				await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `☗${'123'[x - 1]}${'一二三'[y - 1]}${pieceChar}`, {
+					username: 'shogi',
+					icon_url: 'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/kenNldpvFDI6baHIW0XnB6JzITdh3hB2gCLcBGAs/s400/character_game_syougi.png',
+					attachments: [{
+						image_url: boardToImage(state.board),
+						fallback: boardToImage(state.board),
+					}],
+				});
+
+				return;
+			}
+
+			perdon();
 		}
 	});
 };
