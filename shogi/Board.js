@@ -1,92 +1,72 @@
-const Grid = require('./Grid.js');
-const qs = require('querystring');
+const {default: Shogi} = require('shogi9.js');
+const {default: Color} = require('shogi9.js/lib/Color.js');
 
 const gridList = [
-	{piece: null, player: null, promoted: null},
-	{piece: '王将', player: 0, promoted: false},
-	{piece: '飛車', player: 0, promoted: false},
-	{piece: '飛車', player: 0, promoted: true},
-	{piece: '角行', player: 0, promoted: false},
-	{piece: '角行', player: 0, promoted: true},
-	{piece: '金将', player: 0, promoted: false},
-	{piece: '銀将', player: 0, promoted: false},
-	{piece: '銀将', player: 0, promoted: true},
-	{piece: '桂馬', player: 0, promoted: false},
-	{piece: '桂馬', player: 0, promoted: true},
-	{piece: '香車', player: 0, promoted: false},
-	{piece: '香車', player: 0, promoted: true},
-	{piece: '歩兵', player: 0, promoted: false},
-	{piece: '歩兵', player: 0, promoted: true},
-	{piece: '王将', player: 1, promoted: false},
-	{piece: '飛車', player: 1, promoted: false},
-	{piece: '飛車', player: 1, promoted: true},
-	{piece: '角行', player: 1, promoted: false},
-	{piece: '角行', player: 1, promoted: true},
-	{piece: '金将', player: 1, promoted: false},
-	{piece: '銀将', player: 1, promoted: false},
-	{piece: '銀将', player: 1, promoted: true},
-	{piece: '桂馬', player: 1, promoted: false},
-	{piece: '桂馬', player: 1, promoted: true},
-	{piece: '香車', player: 1, promoted: false},
-	{piece: '香車', player: 1, promoted: true},
-	{piece: '歩兵', player: 1, promoted: false},
-	{piece: '歩兵', player: 1, promoted: true},
+	{},
+	{kind: 'OU', color: Color.Black},
+	{kind: 'HI', color: Color.Black},
+	{kind: 'RY', color: Color.Black},
+	{kind: 'KA', color: Color.Black},
+	{kind: 'UM', color: Color.Black},
+	{kind: 'KI', color: Color.Black},
+	{kind: 'GI', color: Color.Black},
+	{kind: 'NG', color: Color.Black},
+	{kind: 'KE', color: Color.Black},
+	{kind: 'NK', color: Color.Black},
+	{kind: 'KY', color: Color.Black},
+	{kind: 'NK', color: Color.Black},
+	{kind: 'FU', color: Color.Black},
+	{kind: 'TO', color: Color.Black},
+	{kind: 'OU', color: Color.White},
+	{kind: 'HI', color: Color.White},
+	{kind: 'RY', color: Color.White},
+	{kind: 'KA', color: Color.White},
+	{kind: 'UM', color: Color.White},
+	{kind: 'KI', color: Color.White},
+	{kind: 'GI', color: Color.White},
+	{kind: 'NG', color: Color.White},
+	{kind: 'KE', color: Color.White},
+	{kind: 'NK', color: Color.White},
+	{kind: 'KY', color: Color.White},
+	{kind: 'NK', color: Color.White},
+	{kind: 'FU', color: Color.White},
+	{kind: 'TO', color: Color.White},
 ];
 
 const handList = [
-	'飛車',
-	'角行',
-	'金将',
-	'銀将',
-	'桂馬',
-	'香車',
-	'歩兵',
+	'HI',
+	'KA',
+	'KI',
+	'GI',
+	'KE',
+	'KY',
+	'FU',
 ];
 
-const handsToAscii = (hands) => {
-	const asciiHands = [hands.first, hands.second].map((handList) => (
-		Object.entries(handList).map(([piece, count]) => {
-			if (count === 0) {
-				return '';
-			}
+module.exports.charToPiece = (char) => ({
+	歩: 'FU',
+	香: 'KY',
+	桂: 'KE',
+	銀: 'GI',
+	金: 'KI',
+	飛: 'HI',
+	角: 'KA',
+	王: 'OU',
+	と: 'TO',
+	成香: 'NY',
+	成桂: 'NK',
+	成銀: 'NG',
+	龍: 'RY',
+	馬: 'UM',
+}[char]);
 
-			if (count === 1) {
-				return Grid.pieceToAscii[piece];
-			}
-
-			return `${Grid.pieceToAscii[piece]}${count}`;
-		}).join('')
-	));
-
-	return `${asciiHands[0].toUpperCase()}${asciiHands[1]}`;
-};
-
-class Board {
-	constructor(grids, hands) {
-		this.grids = grids;
-		this.hands = hands;
-	}
-
-	getImage() {
-		return `http://sfenreader.appspot.com/sfen?${qs.encode({
-			sfen: `6${
-				this.grids.slice(0, 3).map((grid) => grid.toAscii()).join('')
-			}/6${
-				this.grids.slice(3, 6).map((grid) => grid.toAscii()).join('')
-			}/6${
-				this.grids.slice(6, 9).map((grid) => grid.toAscii()).join('')
-			}/9/9/9/9/9/9 b ${handsToAscii(this.hands)}`,
-		})}`;
-	}
-}
-
-Board.fromBlob = (blob) => {
+module.exports.deserialize = (blob) => {
 	const gridsBlob = [...blob].slice(0, 8).map((byte) => byte.toString(2).padStart(8, '0')).join('');
 	const handsBlob = [...blob].slice(8, 12).map((byte) => byte.toString(2).padStart(8, '0')).join('');
 
 	const gridNumbers = gridsBlob.slice(-45).match(/.{1,5}/g).reverse().map((bin) => parseInt(bin, 2));
 
-	const grids = gridNumbers.map((number) => new Grid(gridList[number]));
+	const grids = gridNumbers.map((number) => gridList[number]);
 
 	const handNumbers = [];
 	let offset = handsBlob.length;
@@ -109,7 +89,34 @@ Board.fromBlob = (blob) => {
 		hands.second[handList[index]] = second;
 	}
 
-	return new Board(grids, hands);
+	return new Shogi({
+		preset: 'OTHER',
+		data: {
+			color: Color.Black,
+			board: [
+				[grids[2], grids[5], grids[8]],
+				[grids[1], grids[4], grids[7]],
+				[grids[0], grids[3], grids[6]],
+			],
+			hands: [hands.first, hands.second],
+		},
+	});
 };
 
-module.exports = Board;
+module.exports.getTransitions = (board) => {
+	const transitions = [];
+
+	for (const y of Array(3).keys()) {
+		for (const x of Array(3).keys()) {
+			const piece = board.get(x + 1, y + 1);
+
+			if (!piece || piece.color !== Color.White) {
+				continue;
+			}
+
+			transitions.push(...board.getMovesFrom(x + 1, y + 1));
+		}
+	}
+
+	transitions.push(...board.getDropsBy(Color.White));
+};
