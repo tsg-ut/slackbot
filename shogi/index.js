@@ -190,7 +190,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			state.board = state.previousBoard;
-			state.previousBoard = board.clone();
+			state.previousBoard = state.board.clone();
 			state.isPrevious打ち歩 = false;
 			state.turn = Color.Black;
 			state.player = message.user;
