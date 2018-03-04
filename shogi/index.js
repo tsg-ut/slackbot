@@ -175,7 +175,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				'SELECT * FROM boards WHERE result = 1 AND depth > 5 AND is_good = 1 ORDER BY RANDOM() LIMIT 1'
 			);
 			state.board = deserialize(data.board);
-			state.previousBoard = board.clone();
+			state.previousBoard = state.board.clone();
 			state.isPrevious打ち歩 = false;
 			state.turn = Color.Black;
 			state.player = message.user;
