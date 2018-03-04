@@ -24,22 +24,9 @@ const iconUrl = 'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const state = {
 		previousPosition: null,
-		previousBoard: new Shogi({
-			preset: 'OTHER',
-			data: {
-				color: Color.Black,
-				board: [
-					[{}, {}, {color: Color.White, kind: 'OU'}],
-					[{}, {}, {color: Color.White, kind: 'FU'}],
-					[{color: Color.Black, kind: 'OU'}, {}, {}],
-				],
-				hands: [
-					{HI: 0, KY: 0, KE: 0, GI: 0, KI: 0, KA: 0, FU: 0},
-					{HI: 1, KY: 0, KE: 0, GI: 0, KI: 0, KA: 0, FU: 0},
-				],
-			},
-		}),
+		previousBoard: null,
 		isPrevious打ち歩: false,
+		isLocked: false,
 		player: null,
 		board: null,
 		turn: null,
@@ -91,7 +78,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		await new Promise((resolve) => setTimeout(resolve, 2000));
 
 		const inversedBoard = state.board.inverse();
-		console.log(require('util').inspect(deserialize(serialize(inversedBoard)), { depth: null }));
 
 		const currentResult = await sqlite.get(
 			'SELECT board, result, depth FROM boards WHERE board = ?',
@@ -134,7 +120,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const transition = minBy(loseResults, 'depth');
 			state.board = deserialize(transition.board);
 			state.turn = Color.Black;
-			const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0));
+			const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0), Color.White);
 			state.log.push(logText);
 			await post(logText);
 
@@ -146,7 +132,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const transition = winResults.length > 0 ? maxBy(winResults, 'depth') : sample(transitionResults);
 			state.board = deserialize(transition.board);
 			state.turn = Color.Black;
-			const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0));
+			const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0), Color.White);
 			state.log.push(logText);
 			await post(logText);
 		}
@@ -164,7 +150,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		const {text} = message;
 
 		if (text.startsWith('将棋')) {
-			if (state.board !== null) {
+			if (state.board !== null || state.isLocked) {
 				perdon();
 				return;
 			}
@@ -184,7 +170,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if (text === 'もう一回') {
-			if (state.board !== null) {
+			if (state.previousBoard === null || state.board !== null || state.isLocked) {
 				perdon();
 				return;
 			}
@@ -198,15 +184,77 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await post('もう一回');
 		}
 
+		if (text === '正着手') {
+			if (state.board !== null || state.isLocked) {
+				perdon();
+				return;
+			}
+
+			state.isLocked = true;
+
+			let board = state.previousBoard;
+			const logs = [];
+
+			while (true) {
+				{
+					const transitions = getTransitions(board);
+
+					const transitionResults = await sqlite.all(
+						`SELECT board, result, depth FROM boards WHERE board IN (${Array(
+							transitions.length
+						)
+							.fill('?')
+							.join(', ')})`,
+						transitions.map((transition) => serialize(transition.board))
+					);
+
+					const transition = minBy(transitionResults.filter(({result}) => result === 0), 'depth');
+					board = deserialize(transition.board);
+					const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0), Color.Black);
+					logs.push(logText);
+
+					// 先手詰み
+					if (transition.depth === 1) {
+						break;
+					}
+				}
+
+				{
+					const transitions = getTransitions(board);
+
+					const transitionResults = await sqlite.all(
+						`SELECT board, result, depth FROM boards WHERE board IN (${Array(
+							transitions.length
+						)
+							.fill('?')
+							.join(', ')})`,
+						transitions.map((transition) => serialize(transition.board))
+					);
+
+					const transition = maxBy(transitionResults.filter(({result}) => result === 1), 'depth');
+					board = deserialize(transition.board);
+					const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0), Color.White);
+					logs.push(logText);
+				}
+			}
+
+			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `${logs.join(' ')} まで、${logs.length}手で先手の勝ちです。`, {
+				username: 'shogi',
+				icon_url: iconUrl,
+			});
+
+			state.isLocked = false;
+		}
+
 		if (
 			(match = text.match(
-				/^([123１２３一二三][123１２３一二三]|同)(歩|香|桂|銀|金|飛|角|王|玉|と|成香|成桂|成銀|龍|馬)([右左直]?)([寄引上]?)(成|不成|打)?$/
+				/^([123１２３一二三][123１２３一二三])(歩|香|桂|銀|金|飛|角|王|玉|と|成香|成桂|成銀|龍|馬)([右左直]?)([寄引上]?)(成|不成|打)?$/
 			))
 		) {
 			const [, position, pieceChar, xFlag, yFlag, promoteFlag] = match;
 			const piece = charToPiece(pieceChar);
 
-			if (state.board === null || state.turn !== Color.Black) {
+			if (state.board === null || state.turn !== Color.Black || state.isLocked) {
 				perdon();
 				return;
 			}

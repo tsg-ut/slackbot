@@ -254,24 +254,25 @@ module.exports.getTransitions = (board) => {
 	return transitions;
 };
 
-module.exports.transitionToText = (transition) => {
-	const x = '123'[3 - transition.data.to.x];
-	const y = '一二三'[3 - transition.data.to.y];
+module.exports.transitionToText = (transition, color) => {
+	const koma = color === Color.Black ? '☗' : '☖';
+	const x = '123'[color === Color.Black ? (transition.data.to.x - 1) : (3 - transition.data.to.x)];
+	const y = '一二三'[color === Color.Black ? (transition.data.to.y - 1) : (3 - transition.data.to.y)];
 
 	if (transition.type === 'move') {
 		const pieceChar = module.exports.pieceToChar(transition.kind);
 
 		if (transition.promotion === null) {
-			return `☖${x}${y}${pieceChar}`;
+			return `${koma}${x}${y}${pieceChar}`;
 		}
 
 		const promoteFlag = transition.promotion ? '成' : '不成';
-		return `☖${x}${y}${pieceChar}${promoteFlag}`;
+		return `${koma}${x}${y}${pieceChar}${promoteFlag}`;
 	}
 
 	assert(transition.type === 'drop');
 	{
 		const pieceChar = module.exports.pieceToChar(transition.data.kind);
-		return `☖${x}${y}${pieceChar}`;
+		return `${koma}${x}${y}${pieceChar}`;
 	}
 };
