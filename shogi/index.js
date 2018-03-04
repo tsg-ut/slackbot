@@ -39,6 +39,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				],
 			},
 		}),
+		previousDatabase: '00.sqlite3',
 		isPrevious打ち歩: false,
 		isLocked: false,
 		player: null,
@@ -171,7 +172,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			const databases = await promisify(fs.readdir)(path.resolve(__dirname, 'boards'));
-			await sqlite.open(path.resolve(__dirname, 'boards', sample(databases)));
+			state.previousDatabase = sample(databases);
+			await sqlite.open(path.resolve(__dirname, 'boards', state.previousDatabase));
 			const data = await sqlite.get(
 				'SELECT * FROM boards WHERE result = 1 AND depth > 5 AND is_good = 1 ORDER BY RANDOM() LIMIT 1'
 			);
@@ -191,6 +193,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
+			await sqlite.open(path.resolve(__dirname, 'boards', state.previousDatabase));
 			state.board = state.previousBoard;
 			state.previousBoard = state.board.clone();
 			state.isPrevious打ち歩 = false;
