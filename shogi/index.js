@@ -3,15 +3,17 @@ const {default: Color} = require('shogi9.js/lib/Color.js');
 const {default: Piece} = require('shogi9.js/lib/Piece.js');
 const sqlite = require('sqlite');
 const path = require('path');
+const fs = require('fs');
+const {promisify} = require('util');
 const minBy = require('lodash/minBy');
 const maxBy = require('lodash/maxBy');
+const sample = require('lodash/sample');
 
 const {
 	serialize,
 	deserialize,
 	getTransitions,
 	charToPiece,
-	boardToImage,
 } = require('./util.js');
 const {upload} = require('./image.js');
 
@@ -20,6 +22,7 @@ const iconUrl = 'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const state = {
 		previousPosition: null,
+		isPrevious打ち歩: false,
 		board: null,
 		turn: null,
 		log: [],
@@ -48,7 +51,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		});
 	};
 
-	const end = async (color) => {
+	const end = async (color, reason) => {
 		const {log} = state;
 		state.previousPosition = null;
 		state.board = null;
@@ -59,7 +62,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		const player = color === Color.Black ? '先手@hakatashi' : '後手9マスしょうぎ名人';
 
-		await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `まで、${log.length}手で${player}の勝ちです。`, {
+		await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `まで、${log.length}手で${player}の勝ちです。${reason ? `(${reason})` : ''}`, {
 			username: 'shogi',
 			icon_url: iconUrl,
 		});
@@ -74,6 +77,17 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			'SELECT board, result, depth FROM boards WHERE board = ?',
 			serialize(inversedBoard)
 		);
+
+		// 先手自殺手
+		if (!currentResult) {
+			if (state.isPrevious打ち歩) {
+				end(Color.Black, '打ち歩詰め');
+				return;
+			}
+
+			end(Color.White, '王手放置');
+			return;
+		}
 
 		// 後手詰み
 		if (currentResult.depth === 1) {
@@ -94,6 +108,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		const loseResults = transitionResults.filter(({result}) => result === 0);
 		const winResults = transitionResults.filter(({result}) => result === 1);
+		state.isPrevious打ち歩 = false;
 
 		if (loseResults.length > 0) {
 			const transition = minBy(loseResults, 'depth');
@@ -127,14 +142,16 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		const {text} = message;
 
 		if (text.startsWith('将棋')) {
-			await sqlite.open(path.resolve(__dirname, 'boards/01.sqlite3'));
+			const databases = await promisify(fs.readdir)(path.resolve(__dirname, 'boards'));
+			await sqlite.open(path.resolve(__dirname, 'boards', sample(databases)));
 			const data = await sqlite.get(
-				'SELECT * FROM boards WHERE result = 1 AND depth = 10 AND is_good = 1 ORDER BY RANDOM() LIMIT 1'
+				'SELECT * FROM boards WHERE result = 1 AND depth > 3 AND is_good = 1 ORDER BY RANDOM() LIMIT 1'
 			);
 			state.board = deserialize(data.board);
+			state.isPrevious打ち歩 = false;
 			state.turn = Color.Black;
 
-			await post('9手必勝');
+			await post(`${data.depth - 1}手必勝`);
 		}
 
 		if (
@@ -182,6 +199,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				);
 
 				state.turn = Color.White;
+				state.isPrevious打ち歩 = false;
 				const moveText = `☗${'123'[x - 1]}${'一二三'[y - 1]}${pieceChar}`;
 				state.log.push(moveText);
 
@@ -199,6 +217,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				state.board.drop(x, y, piece, Color.Black);
 
 				state.turn = Color.White;
+				state.isPrevious打ち歩 = piece === 'FU';
 				const moveText = `☗${'123'[x - 1]}${'一二三'[y - 1]}${pieceChar}`;
 				state.log.push(moveText);
 
