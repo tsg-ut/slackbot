@@ -1,7 +1,10 @@
-const imgur = require('imgur');
+const axios = require('axios');
+const concat = require("concat-stream");
 const sharp = require('sharp');
+const FormData = require('form-data');
 const {default: Color} = require('shogi9.js/lib/Color.js');
 const path = require('path');
+const qs = require('querystring');
 
 const filenameMap = {
 	FU: 'fu',
@@ -19,8 +22,6 @@ const filenameMap = {
 	RY: 'ryu',
 	UM: 'uma',
 };
-
-imgur.setClientId(process.env.IMGUR_CLIEND_ID);
 
 module.exports.upload = async (board) => {
 	const imageOptions = {
@@ -68,9 +69,24 @@ module.exports.upload = async (board) => {
 		}
 	}
 
-	image = await sharp(image, imageOptions).png().toBuffer();
+	image = await sharp(image, imageOptions).jpeg().toBuffer();
 
-	const data = await imgur.uploadBase64(image.toString('base64'));
+	const form = new FormData();
+	form.append('key', process.env.IMAGEBIN_KEY);
+	form.append('file', image, {
+		filename: 'image.jpeg',
+		contentType: 'image/jpeg',
+	});
 
-	return data;
+	const data = await new Promise((resolve) => {
+		form.pipe(concat({encoding: 'buffer'}, async (data) => {
+			resolve(await axios.post('https://imagebin.ca/upload.php', Buffer.from(data, 'binary'), {
+				headers: form.getHeaders()
+			}));
+		}));
+	});
+
+	const payload = qs.parse(data.data, '\n', ':');
+
+	return payload.url;
 };

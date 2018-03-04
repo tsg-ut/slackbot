@@ -40,13 +40,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	};
 
 	const post = async (message) => {
-		const data = await upload(state.board);
+		const imageUrl = await upload(state.board);
 		await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, message, {
 			username: 'shogi',
 			icon_url: iconUrl,
 			attachments: [
 				{
-					image_url: data.data.link,
+					image_url: imageUrl,
 					fallback: state.board.toSFENString(),
 				},
 			],
