@@ -83,17 +83,17 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		// 先手自殺手
 		if (!currentResult) {
-			if (state.isPrevious打ち歩) {
-				end(Color.Black, '打ち歩詰め');
-				return;
-			}
-
 			end(Color.White, '王手放置');
 			return;
 		}
 
 		// 後手詰み
 		if (currentResult.depth === 1) {
+			if (state.isPrevious打ち歩) {
+				end(Color.White, '打ち歩詰め');
+				return;
+			}
+
 			end(Color.Black);
 			return;
 		}
