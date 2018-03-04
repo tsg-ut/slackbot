@@ -24,7 +24,21 @@ const iconUrl = 'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const state = {
 		previousPosition: null,
-		previousBoard: null,
+		previousBoard: new Shogi({
+			preset: 'OTHER',
+			data: {
+				color: Color.Black,
+				board: [
+					[{}, {}, {}],
+					[{color: Color.White, kind: 'OU'}, {}, {color: Color.Black, kind: 'OU'}],
+					[{}, {}, {}],
+				],
+				hands: [
+					{HI: 1, KY: 0, KE: 0, GI: 0, KI: 0, KA: 0, FU: 0},
+					{HI: 1, KY: 0, KE: 0, GI: 0, KI: 0, KA: 0, FU: 0},
+				],
+			},
+		}),
 		isPrevious打ち歩: false,
 		isLocked: false,
 		player: null,
@@ -114,7 +128,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		const loseResults = transitionResults.filter(({result}) => result === 0);
 		const winResults = transitionResults.filter(({result}) => result === 1);
-		const unknownResults = transitionResults.filter(({result}) => result === 2);
+		const unknownResults = transitionResults.filter(({result}) => result === null);
 		state.isPrevious打ち歩 = false;
 
 		if (loseResults.length > 0) {
@@ -150,14 +164,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		const {text} = message;
 
-		if (text.startsWith('将棋')) {
+		if (text === '将棋') {
 			if (state.board !== null || state.isLocked) {
 				perdon();
 				return;
 			}
 
 			const databases = await promisify(fs.readdir)(path.resolve(__dirname, 'boards'));
-			await sqlite.open(path.resolve(__dirname, 'boards', '00.sqlite3'));
+			await sqlite.open(path.resolve(__dirname, 'boards', sample(databases)));
 			const data = await sqlite.get(
 				'SELECT * FROM boards WHERE result = 1 AND depth > 5 AND is_good = 1 ORDER BY RANDOM() LIMIT 1'
 			);
@@ -168,6 +182,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			state.player = message.user;
 
 			await post(`${data.depth - 1}手必勝`);
+			return;
 		}
 
 		if (text === 'もう一回') {
@@ -183,6 +198,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			state.player = message.user;
 
 			await post('もう一回');
+			return;
 		}
 
 		if (text === '正着手') {
@@ -249,6 +265,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			});
 
 			state.isLocked = false;
+			return;
 		}
 
 		if (
@@ -328,6 +345,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			perdon();
+			return;
 		}
 
 		if (text === '負けました') {
