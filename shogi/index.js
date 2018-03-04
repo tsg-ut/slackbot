@@ -1,4 +1,5 @@
 const {RTM_EVENTS: {MESSAGE}} = require('@slack/client');
+const {default: Shogi} = require('shogi9.js');
 const {default: Color} = require('shogi9.js/lib/Color.js');
 const {default: Piece} = require('shogi9.js/lib/Piece.js');
 const sqlite = require('sqlite');
@@ -126,7 +127,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				end(Color.White);
 			}
 		} else {
-			const transition = maxBy(winResults, 'depth');
+			const transition = winResults.length > 0 ? maxBy(winResults, 'depth') : sample(transitionResults);
 			state.board = deserialize(transition.board);
 			state.turn = Color.Black;
 			const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0));
