@@ -24,6 +24,21 @@ const iconUrl = 'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const state = {
 		previousPosition: null,
+		previousBoard: new Shogi({
+			preset: 'OTHER',
+			data: {
+				color: Color.Black,
+				board: [
+					[{}, {}, {color: Color.White, kind: 'OU'}],
+					[{}, {}, {color: Color.White, kind: 'FU'}],
+					[{color: Color.Black, kind: 'OU'}, {}, {}],
+				],
+				hands: [
+					{HI: 0, KY: 0, KE: 0, GI: 0, KI: 0, KA: 0, FU: 0},
+					{HI: 1, KY: 0, KE: 0, GI: 0, KI: 0, KA: 0, FU: 0},
+				],
+			},
+		}),
 		isPrevious打ち歩: false,
 		player: null,
 		board: null,
@@ -76,6 +91,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		await new Promise((resolve) => setTimeout(resolve, 2000));
 
 		const inversedBoard = state.board.inverse();
+		console.log(require('util').inspect(deserialize(serialize(inversedBoard)), { depth: null }));
 
 		const currentResult = await sqlite.get(
 			'SELECT board, result, depth FROM boards WHERE board = ?',
@@ -148,17 +164,38 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		const {text} = message;
 
 		if (text.startsWith('将棋')) {
+			if (state.board !== null) {
+				perdon();
+				return;
+			}
+
 			const databases = await promisify(fs.readdir)(path.resolve(__dirname, 'boards'));
-			await sqlite.open(path.resolve(__dirname, 'boards', sample(databases)));
+			await sqlite.open(path.resolve(__dirname, 'boards', '00.sqlite3'));
 			const data = await sqlite.get(
-				'SELECT * FROM boards WHERE result = 1 AND depth > 3 AND is_good = 1 ORDER BY RANDOM() LIMIT 1'
+				'SELECT * FROM boards WHERE result = 1 AND depth > 5 AND is_good = 1 ORDER BY RANDOM() LIMIT 1'
 			);
 			state.board = deserialize(data.board);
+			state.previousBoard = board.clone();
 			state.isPrevious打ち歩 = false;
 			state.turn = Color.Black;
 			state.player = message.user;
 
 			await post(`${data.depth - 1}手必勝`);
+		}
+
+		if (text === 'もう一回') {
+			if (state.board !== null) {
+				perdon();
+				return;
+			}
+
+			state.board = state.previousBoard;
+			state.previousBoard = board.clone();
+			state.isPrevious打ち歩 = false;
+			state.turn = Color.Black;
+			state.player = message.user;
+
+			await post('もう一回');
 		}
 
 		if (
