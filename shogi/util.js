@@ -1,4 +1,3 @@
-const qs = require('querystring');
 const assert = require('assert');
 const {default: Shogi} = require('shogi9.js');
 const {default: Color} = require('shogi9.js/lib/Color.js');
@@ -253,17 +252,6 @@ module.exports.getTransitions = (board) => {
 	}
 
 	return transitions;
-};
-
-module.exports.boardToImage = (board) => {
-	const components = board.toSFENString().split(/[ /]/);
-	return `http://sfenreader.appspot.com/sfen?${qs.encode({
-		sfen: `6${components[0]}/6${components[1]}/6${
-			components[2]
-		}/9/9/9/9/9/9 ${components.slice(3).join(' ')}`,
-		sname: '@hakatashi',
-		gname: '9マスしょうぎ名人',
-	})}`;
 };
 
 module.exports.transitionToText = (transition) => {

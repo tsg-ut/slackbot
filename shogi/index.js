@@ -24,6 +24,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const state = {
 		previousPosition: null,
 		isPrevious打ち歩: false,
+		player: null,
 		board: null,
 		turn: null,
 		log: [],
@@ -61,9 +62,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
-		const player = color === Color.Black ? '先手@hakatashi' : '後手9マスしょうぎ名人';
+		const player = color === Color.Black ? `先手<@${state.player}>` : '後手9マスしょうぎ名人';
+		const message = `まで、${log.length}手で${player}の勝ちです。${reason ? `(${reason})` : ''}`;
 
-		await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `まで、${log.length}手で${player}の勝ちです。${reason ? `(${reason})` : ''}`, {
+		await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, message, {
 			username: 'shogi',
 			icon_url: iconUrl,
 		});
@@ -116,7 +118,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			state.board = deserialize(transition.board);
 			state.turn = Color.Black;
 			const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0));
-			console.log(logText);
 			state.log.push(logText);
 			await post(logText);
 
@@ -129,7 +130,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			state.board = deserialize(transition.board);
 			state.turn = Color.Black;
 			const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0));
-			console.log(logText);
 			state.log.push(logText);
 			await post(logText);
 		}
@@ -155,6 +155,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			state.board = deserialize(data.board);
 			state.isPrevious打ち歩 = false;
 			state.turn = Color.Black;
+			state.player = message.user;
 
 			await post(`${data.depth - 1}手必勝`);
 		}
