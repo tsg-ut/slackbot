@@ -6,8 +6,6 @@ const path = require('path');
 const minBy = require('lodash/minBy');
 const maxBy = require('lodash/maxBy');
 
-const iconUrl = 'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/kenNldpvFDI6baHIW0XnB6JzITdh3hB2gCLcBGAs/s400/character_game_syougi.png';
-
 const {
 	serialize,
 	deserialize,
@@ -15,6 +13,9 @@ const {
 	charToPiece,
 	boardToImage,
 } = require('./util.js');
+const {upload} = require('./image.js');
+
+const iconUrl = 'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/kenNldpvFDI6baHIW0XnB6JzITdh3hB2gCLcBGAs/s400/character_game_syougi.png';
 
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const state = {
@@ -33,18 +34,19 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		});
 	};
 
-	const post = (message) => (
-		slack.chat.postMessage(process.env.CHANNEL_SANDBOX, message, {
+	const post = async (message) => {
+		const data = await upload(state.board);
+		await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, message, {
 			username: 'shogi',
 			icon_url: iconUrl,
 			attachments: [
 				{
-					image_url: boardToImage(state.board),
-					fallback: boardToImage(state.board),
+					image_url: data.data.link,
+					fallback: state.board.toSFENString(),
 				},
 			],
-		})
-	);
+		});
+	};
 
 	const end = async (color) => {
 		const {log} = state;
@@ -98,7 +100,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			state.board = deserialize(transition.board);
 			state.turn = Color.Black;
 			state.log.push('');
-			post('hoge');
+			await post('hoge');
 
 			// 先手詰み
 			if (transition.depth === 1) {
@@ -109,7 +111,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			state.board = deserialize(transition.board);
 			state.turn = Color.Black;
 			state.log.push('');
-			post('hoge');
+			await post('hoge');
 		}
 	};
 
@@ -125,7 +127,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		const {text} = message;
 
 		if (text.startsWith('将棋')) {
-			await sqlite.open(path.resolve(__dirname, 'boards/2366.sqlite3'));
+			await sqlite.open(path.resolve(__dirname, 'boards/01.sqlite3'));
 			const data = await sqlite.get(
 				'SELECT * FROM boards WHERE result = 1 AND depth = 10 AND is_good = 1 ORDER BY RANDOM() LIMIT 1'
 			);
@@ -137,7 +139,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		if (
 			(match = text.match(
-				/^([123１２３一二三][123１２３一二三]|同)(歩|香|桂|銀|金|飛|角|玉|と|成香|成桂|成銀|龍|馬)([右左直]?)([寄引上]?)(成|不成|打)?$/
+				/^([123１２３一二三][123１２３一二三]|同)(歩|香|桂|銀|金|飛|角|王|玉|と|成香|成桂|成銀|龍|馬)([右左直]?)([寄引上]?)(成|不成|打)?$/
 			))
 		) {
 			const [, position, pieceChar, xFlag, yFlag, promoteFlag] = match;
@@ -208,6 +210,15 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			perdon();
+		}
+
+		if (text === '負けました') {
+			if (state.board === null || state.turn !== Color.Black) {
+				perdon();
+				return;
+			}
+
+			end(Color.White);
 		}
 	});
 };

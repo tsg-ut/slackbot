@@ -1,8 +1,6 @@
 const qs = require('querystring');
-const assert = require('assert');
 const {default: Shogi} = require('shogi9.js');
 const {default: Color} = require('shogi9.js/lib/Color.js');
-const {default: Piece} = require('shogi9.js/lib/Piece.js');
 
 const gridList = [
 	{},
@@ -47,6 +45,7 @@ module.exports.charToPiece = (char) =>
 		金: 'KI',
 		飛: 'HI',
 		角: 'KA',
+		王: 'OU',
 		玉: 'OU',
 		と: 'TO',
 		成香: 'NY',
@@ -184,7 +183,7 @@ module.exports.getTransitions = (board) => {
 			const moves = board.getMovesFrom(x + 1, y + 1);
 			for (const move of moves) {
 				const promoteBoard = board.clone();
-				promoteBoard.move(move.from.x, move.from.y, move.to.x, move.to.y, true);
+				promoteBoard.move(move.from.x, move.from.y, move.to.x, move.to.y, move.from.y === 1 || move.to.y === 1);
 				transitions.push(promoteBoard.inverse());
 
 				if (
