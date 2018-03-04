@@ -29,13 +29,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			data: {
 				color: Color.Black,
 				board: [
-					[{}, {}, {}],
-					[{color: Color.White, kind: 'OU'}, {}, {color: Color.Black, kind: 'OU'}],
-					[{}, {}, {}],
+					[{color: Color.Black, kind: 'OU'}, {}, {}],
+					[{}, {}, {color: Color.Black, kind: 'KY'}],
+					[{color: Color.White, kind: 'OU'}, {}, {}],
 				],
 				hands: [
-					{HI: 1, KY: 0, KE: 0, GI: 0, KI: 0, KA: 0, FU: 0},
-					{HI: 1, KY: 0, KE: 0, GI: 0, KI: 0, KA: 0, FU: 0},
+					{HI: 0, KY: 0, KE: 0, GI: 0, KI: 0, KA: 0, FU: 0},
+					{HI: 0, KY: 0, KE: 1, GI: 0, KI: 1, KA: 0, FU: 0},
 				],
 			},
 		}),

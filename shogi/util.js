@@ -15,7 +15,7 @@ const gridList = [
 	{kind: 'KE', color: Color.Black},
 	{kind: 'NK', color: Color.Black},
 	{kind: 'KY', color: Color.Black},
-	{kind: 'NK', color: Color.Black},
+	{kind: 'NY', color: Color.Black},
 	{kind: 'FU', color: Color.Black},
 	{kind: 'TO', color: Color.Black},
 	{kind: 'OU', color: Color.White},
@@ -29,7 +29,7 @@ const gridList = [
 	{kind: 'KE', color: Color.White},
 	{kind: 'NK', color: Color.White},
 	{kind: 'KY', color: Color.White},
-	{kind: 'NK', color: Color.White},
+	{kind: 'NY', color: Color.White},
 	{kind: 'FU', color: Color.White},
 	{kind: 'TO', color: Color.White},
 ];
