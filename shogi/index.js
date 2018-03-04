@@ -39,7 +39,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				],
 			},
 		}),
-		previousDatabase: '00.sqlite3',
+		previousDatabase: '245.sqlite3',
 		isPrevious打ち歩: false,
 		isLocked: false,
 		player: null,
