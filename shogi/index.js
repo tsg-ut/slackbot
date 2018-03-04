@@ -114,6 +114,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		const loseResults = transitionResults.filter(({result}) => result === 0);
 		const winResults = transitionResults.filter(({result}) => result === 1);
+		const unknownResults = transitionResults.filter(({result}) => result === 2);
 		state.isPrevious打ち歩 = false;
 
 		if (loseResults.length > 0) {
@@ -129,7 +130,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				end(Color.White);
 			}
 		} else {
-			const transition = winResults.length > 0 ? maxBy(winResults, 'depth') : sample(transitionResults);
+			const transition = unknownResults.length > 0 ? sample(unknownResults) : maxBy(winResults, 'depth');
 			state.board = deserialize(transition.board);
 			state.turn = Color.Black;
 			const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0), Color.White);
@@ -185,7 +186,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if (text === '正着手') {
-			if (state.board !== null || state.isLocked) {
+			if (state.board !== null || state.isLocked || state.previousBoard === null) {
 				perdon();
 				return;
 			}
@@ -235,6 +236,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					board = deserialize(transition.board);
 					const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0), Color.White);
 					logs.push(logText);
+				}
+
+				if (logs.length > 100) {
+					break;
 				}
 			}
 
