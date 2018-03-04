@@ -185,35 +185,37 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				['1１一', '2２二', '3３三'].findIndex((chars) =>
 					chars.includes(position.charAt(1))) + 1;
 
-			const moves = state.board.getMovesTo(x, y, piece, Color.Black);
-			if (moves.length > 0) {
-				const move = moves[0];
-				const isPromotable =
-					(move.from.y === 1 || move.to.y === 1) && Piece.canPromote(piece);
+			if (promoteFlag !== '打') {
+				const moves = state.board.getMovesTo(x, y, piece, Color.Black);
+				if (moves.length > 0) {
+					const move = moves[0];
+					const isPromotable =
+						(move.from.y === 1 || move.to.y === 1) && Piece.canPromote(piece);
 
-				if (isPromotable && promoteFlag === undefined) {
-					perdon();
+					if (isPromotable && promoteFlag === undefined) {
+						perdon();
+						return;
+					}
+
+					state.board.move(
+						move.from.x,
+						move.from.y,
+						move.to.x,
+						move.to.y,
+						isPromotable && promoteFlag === '成'
+					);
+
+					state.turn = Color.White;
+					state.isPrevious打ち歩 = false;
+					const logText = `☗${'123'[x - 1]}${'一二三'[y - 1]}${pieceChar}`;
+					state.log.push(logText);
+
+					await post(logText);
+
+					aiTurn();
+
 					return;
 				}
-
-				state.board.move(
-					move.from.x,
-					move.from.y,
-					move.to.x,
-					move.to.y,
-					isPromotable && promoteFlag === '成'
-				);
-
-				state.turn = Color.White;
-				state.isPrevious打ち歩 = false;
-				const logText = `☗${'123'[x - 1]}${'一二三'[y - 1]}${pieceChar}`;
-				state.log.push(logText);
-
-				await post(logText);
-
-				aiTurn();
-
-				return;
 			}
 
 			const hands = state.board

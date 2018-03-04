@@ -229,10 +229,10 @@ module.exports.getTransitions = (board) => {
 						data: move,
 						kind: board.get(move.from.x, move.from.y).kind,
 						board: unpromoteBoard.inverse(),
-						promotion: true,
+						promotion: false,
 					});
 
-					transition.promotion = false;
+					transition.promotion = true;
 				}
 
 				transitions.push(transition);
