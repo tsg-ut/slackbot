@@ -1,9 +1,3 @@
-require('dotenv').config();
-
-process.on('unhandledRejection', (error) => {
-	console.log(error);
-});
-
 const imgur = require('imgur');
 const sharp = require('sharp');
 const {default: Color} = require('shogi9.js/lib/Color.js');
@@ -29,7 +23,6 @@ const filenameMap = {
 imgur.setClientId(process.env.IMGUR_CLIEND_ID);
 
 module.exports.upload = async (board) => {
-	console.log(require('util').inspect(board, {depth: null}));
 	const imageOptions = {
 		raw: {
 			width: 570,
@@ -49,7 +42,6 @@ module.exports.upload = async (board) => {
 			}
 
 			const filename = `${piece.color === Color.Black ? 'S' : 'G'}${filenameMap[piece.kind]}.png`;
-			console.log(filename);
 
 			image = await sharp(image, imageOptions).overlayWith(path.resolve(__dirname, 'images', filename), {
 				left: Math.floor(319 - 58.5 * x),
@@ -63,7 +55,6 @@ module.exports.upload = async (board) => {
 
 		for (const [pieceIndex, piece] of pieces.entries()) {
 			const filename = `${piece.color === Color.Black ? 'S' : 'G'}${filenameMap[piece.kind]}.png`;
-			console.log(filename);
 			const x = pieceIndex % 3;
 			const y = Math.floor(pieceIndex / 3);
 			if (y >= 4) {

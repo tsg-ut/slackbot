@@ -14,6 +14,7 @@ const {
 	deserialize,
 	getTransitions,
 	charToPiece,
+	transitionToText,
 } = require('./util.js');
 const {upload} = require('./image.js');
 
@@ -103,7 +104,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			)
 				.fill('?')
 				.join(', ')})`,
-			transitions.map((transition) => serialize(transition))
+			transitions.map((transition) => serialize(transition.board))
 		);
 
 		const loseResults = transitionResults.filter(({result}) => result === 0);
@@ -114,8 +115,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const transition = minBy(loseResults, 'depth');
 			state.board = deserialize(transition.board);
 			state.turn = Color.Black;
-			state.log.push('');
-			await post('hoge');
+			const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0));
+			console.log(logText);
+			state.log.push(logText);
+			await post(logText);
 
 			// 先手詰み
 			if (transition.depth === 1) {
@@ -125,8 +128,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const transition = maxBy(winResults, 'depth');
 			state.board = deserialize(transition.board);
 			state.turn = Color.Black;
-			state.log.push('');
-			await post('hoge');
+			const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0));
+			console.log(logText);
+			state.log.push(logText);
+			await post(logText);
 		}
 	};
 
@@ -200,10 +205,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 				state.turn = Color.White;
 				state.isPrevious打ち歩 = false;
-				const moveText = `☗${'123'[x - 1]}${'一二三'[y - 1]}${pieceChar}`;
-				state.log.push(moveText);
+				const logText = `☗${'123'[x - 1]}${'一二三'[y - 1]}${pieceChar}`;
+				state.log.push(logText);
 
-				await post(moveText);
+				await post(logText);
 
 				aiTurn();
 
@@ -218,10 +223,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 				state.turn = Color.White;
 				state.isPrevious打ち歩 = piece === 'FU';
-				const moveText = `☗${'123'[x - 1]}${'一二三'[y - 1]}${pieceChar}`;
-				state.log.push(moveText);
+				const logText = `☗${'123'[x - 1]}${'一二三'[y - 1]}${pieceChar}`;
+				state.log.push(logText);
 
-				await post(moveText);
+				await post(logText);
 
 				aiTurn();
 

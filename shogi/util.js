@@ -1,4 +1,5 @@
 const qs = require('querystring');
+const assert = require('assert');
 const {default: Shogi} = require('shogi9.js');
 const {default: Color} = require('shogi9.js/lib/Color.js');
 
@@ -54,6 +55,24 @@ module.exports.charToPiece = (char) =>
 		龍: 'RY',
 		馬: 'UM',
 	}[char]);
+
+module.exports.pieceToChar = (piece) =>
+	({
+		FU: '歩',
+		KY: '香',
+		KE: '桂',
+		GI: '銀',
+		KI: '金',
+		HI: '飛',
+		KA: '角',
+		OU: '玉',
+		TO: 'と',
+		NY: '成香',
+		NK: '成桂',
+		NG: '成銀',
+		RY: '龍',
+		UM: '馬',
+	}[piece]);
 
 module.exports.deserialize = (blob) => {
 	const gridsBlob = [...blob]
@@ -184,13 +203,20 @@ module.exports.getTransitions = (board) => {
 			for (const move of moves) {
 				const promoteBoard = board.clone();
 				promoteBoard.move(move.from.x, move.from.y, move.to.x, move.to.y, move.from.y === 1 || move.to.y === 1);
-				transitions.push(promoteBoard.inverse());
+				const transition = {
+					type: 'move',
+					data: move,
+					kind: board.get(move.from.x, move.from.y).kind,
+					board: promoteBoard.inverse(),
+					promotion: null,
+				};
 
 				if (
 					promoteBoard.get(move.to.x, move.to.y).kind !==
-					board.get(move.from.x, move.from.y)
+					board.get(move.from.x, move.from.y).kind
 				) {
 					const unpromoteBoard = board.clone();
+
 					unpromoteBoard.move(
 						move.from.x,
 						move.from.y,
@@ -198,8 +224,19 @@ module.exports.getTransitions = (board) => {
 						move.to.y,
 						false
 					);
-					transitions.push(unpromoteBoard.inverse());
+
+					transitions.push({
+						type: 'move',
+						data: move,
+						kind: board.get(move.from.x, move.from.y).kind,
+						board: unpromoteBoard.inverse(),
+						promotion: true,
+					});
+
+					transition.promotion = false;
 				}
+
+				transitions.push(transition);
 			}
 		}
 	}
@@ -207,7 +244,12 @@ module.exports.getTransitions = (board) => {
 	for (const drop of board.getDropsBy(Color.Black)) {
 		const dropBoard = board.clone();
 		dropBoard.drop(drop.to.x, drop.to.y, drop.kind, Color.Black);
-		transitions.push(dropBoard.inverse());
+		transitions.push({
+			type: 'drop',
+			data: drop,
+			board: dropBoard.inverse(),
+			promotion: null,
+		});
 	}
 
 	return transitions;
@@ -222,4 +264,26 @@ module.exports.boardToImage = (board) => {
 		sname: '@hakatashi',
 		gname: '9マスしょうぎ名人',
 	})}`;
+};
+
+module.exports.transitionToText = (transition) => {
+	const x = '123'[3 - transition.data.to.x];
+	const y = '一二三'[3 - transition.data.to.y];
+
+	if (transition.type === 'move') {
+		const pieceChar = module.exports.pieceToChar(transition.kind);
+
+		if (transition.promotion === null) {
+			return `☖${x}${y}${pieceChar}`;
+		}
+
+		const promoteFlag = transition.promotion ? '成' : '不成';
+		return `☖${x}${y}${pieceChar}${promoteFlag}`;
+	}
+
+	assert(transition.type === 'drop');
+	{
+		const pieceChar = module.exports.pieceToChar(transition.data.kind);
+		return `☖${x}${y}${pieceChar}`;
+	}
 };
