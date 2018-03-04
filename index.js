@@ -13,6 +13,7 @@ const plugins = [
 	require('./emoji-notifier'),
 	require('./sushi-bot'),
 	require('./cubebot'),
+	require('./shogi'),
 	// require('./imagenet'),
 ];
 

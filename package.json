@@ -28,12 +28,16 @@
     "cubejs": "^1.0.3",
     "dockerode": "^2.5.2",
     "dotenv": "^4.0.0",
+    "imgur": "^0.2.1",
     "jsdom": "^11.6.1",
     "lodash": "^4.17.4",
     "node-emoji": "^1.8.1",
     "nodemon": "^1.12.1",
     "request": "^2.83.0",
+    "sharp": "^0.19.1",
+    "shogi9.js": "^1.0.2",
     "shuffle-array": "^1.0.1",
+    "sqlite": "^2.9.1",
     "tmp": "0.0.33"
   },
   "devDependencies": {
