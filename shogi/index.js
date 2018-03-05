@@ -476,7 +476,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if (text === '負けました') {
+		if (['負けました', '投げます', 'ありません', '投了'].includes(text)) {
 			if (state.board === null || state.turn !== Color.Black) {
 				perdon();
 				return;
