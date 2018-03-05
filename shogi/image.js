@@ -1,5 +1,5 @@
 const axios = require('axios');
-const concat = require("concat-stream");
+const concat = require('concat-stream');
 const sharp = require('sharp');
 const FormData = require('form-data');
 const {default: Color} = require('shogi9.js/lib/Color.js');
@@ -32,7 +32,9 @@ module.exports.upload = async (board) => {
 		},
 	};
 
-	let image = await sharp(path.resolve(__dirname, 'images/board.png')).raw().toBuffer();
+	let image = await sharp(path.resolve(__dirname, 'images/board.png'))
+		.raw()
+		.toBuffer();
 
 	for (const y of Array(3).keys()) {
 		for (const x of Array(3).keys()) {
@@ -42,12 +44,17 @@ module.exports.upload = async (board) => {
 				continue;
 			}
 
-			const filename = `${piece.color === Color.Black ? 'S' : 'G'}${filenameMap[piece.kind]}.png`;
+			const filename = `${piece.color === Color.Black ? 'S' : 'G'}${
+				filenameMap[piece.kind]
+			}.png`;
 
-			image = await sharp(image, imageOptions).overlayWith(path.resolve(__dirname, 'images', filename), {
-				left: Math.floor(319 - 58.5 * x),
-				top: Math.floor(42 + 58.5 * y),
-			}).raw().toBuffer();
+			image = await sharp(image, imageOptions)
+				.overlayWith(path.resolve(__dirname, 'images', filename), {
+					left: Math.floor(319 - 58.5 * x),
+					top: Math.floor(42 + 58.5 * y),
+				})
+				.raw()
+				.toBuffer();
 		}
 	}
 
@@ -55,21 +62,28 @@ module.exports.upload = async (board) => {
 		const base = color === Color.Black ? {x: 412, y: 176} : {x: 111, y: 25};
 
 		for (const [pieceIndex, piece] of pieces.entries()) {
-			const filename = `${piece.color === Color.Black ? 'S' : 'G'}${filenameMap[piece.kind]}.png`;
+			const filename = `${piece.color === Color.Black ? 'S' : 'G'}${
+				filenameMap[piece.kind]
+			}.png`;
 			const x = pieceIndex % 3;
 			const y = Math.floor(pieceIndex / 3);
 			if (y >= 4) {
 				continue;
 			}
 
-			image = await sharp(image, imageOptions).overlayWith(path.resolve(__dirname, 'images', filename), {
-				left: Math.floor(base.x + 45 * x * (color === Color.Black ? 1 : -1)),
-				top: Math.floor(base.y - 50 * y * (color === Color.Black ? 1 : -1)),
-			}).raw().toBuffer();
+			image = await sharp(image, imageOptions)
+				.overlayWith(path.resolve(__dirname, 'images', filename), {
+					left: Math.floor(base.x + 45 * x * (color === Color.Black ? 1 : -1)),
+					top: Math.floor(base.y - 50 * y * (color === Color.Black ? 1 : -1)),
+				})
+				.raw()
+				.toBuffer();
 		}
 	}
 
-	image = await sharp(image, imageOptions).jpeg().toBuffer();
+	image = await sharp(image, imageOptions)
+		.jpeg()
+		.toBuffer();
 
 	const form = new FormData();
 	form.append('key', process.env.IMAGEBIN_KEY);
@@ -79,11 +93,19 @@ module.exports.upload = async (board) => {
 	});
 
 	const data = await new Promise((resolve) => {
-		form.pipe(concat({encoding: 'buffer'}, async (data) => {
-			resolve(await axios.post('https://imagebin.ca/upload.php', Buffer.from(data, 'binary'), {
-				headers: form.getHeaders()
-			}));
-		}));
+		form.pipe(
+			concat({encoding: 'buffer'}, async (data) => {
+				resolve(
+					await axios.post(
+						'https://imagebin.ca/upload.php',
+						Buffer.from(data, 'binary'),
+						{
+							headers: form.getHeaders(),
+						}
+					)
+				);
+			})
+		);
 	});
 
 	const payload = qs.parse(data.data, '\n', ':');

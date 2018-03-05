@@ -9,17 +9,21 @@ const {promisify} = require('util');
 const minBy = require('lodash/minBy');
 const maxBy = require('lodash/maxBy');
 const sample = require('lodash/sample');
+const last = require('lodash/last');
+const oneLine = require('common-tags/lib/oneLine');
 
 const {
 	serialize,
 	deserialize,
 	getTransitions,
 	charToPiece,
+	pieceToChar,
 	transitionToText,
 } = require('./util.js');
 const {upload} = require('./image.js');
 
-const iconUrl = 'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/kenNldpvFDI6baHIW0XnB6JzITdh3hB2gCLcBGAs/s400/character_game_syougi.png';
+const iconUrl =
+	'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/kenNldpvFDI6baHIW0XnB6JzITdh3hB2gCLcBGAs/s400/character_game_syougi.png';
 
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const state = {
@@ -80,8 +84,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
-		const player = color === Color.Black ? `先手<@${state.player}>` : '後手9マスしょうぎ名人';
-		const message = `まで、${log.length}手で${player}の勝ちです。${reason ? `(${reason})` : ''}`;
+		const player =
+			color === Color.Black
+				? `先手<@${state.player}>`
+				: '後手9マスしょうぎ名人';
+		const message = `まで、${log.length}手で${player}の勝ちです。${
+			reason ? `(${reason})` : ''
+		}`;
 
 		await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, message, {
 			username: 'shogi',
@@ -95,7 +104,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		const inversedBoard = state.board.inverse();
 
 		const currentResult = await sqlite.get(
-			'SELECT board, result, depth FROM boards WHERE board = ?',
+			oneLine`
+				SELECT board, result, depth
+				FROM boards
+				WHERE board = ?
+			`,
 			serialize(inversedBoard)
 		);
 
@@ -119,36 +132,67 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		const transitions = getTransitions(inversedBoard);
 
 		const transitionResults = await sqlite.all(
-			`SELECT board, result, depth FROM boards WHERE board IN (${Array(
-				transitions.length
-			)
-				.fill('?')
-				.join(', ')})`,
+			oneLine`
+				SELECT board, result, depth
+				FROM boards
+				WHERE board IN (${Array(transitions.length)
+		.fill('?')
+		.join(', ')})
+			`,
 			transitions.map((transition) => serialize(transition.board))
 		);
 
 		const loseResults = transitionResults.filter(({result}) => result === 0);
 		const winResults = transitionResults.filter(({result}) => result === 1);
-		const unknownResults = transitionResults.filter(({result}) => result === null);
+		const unknownResults = transitionResults.filter(
+			({result}) => result === null
+		);
 		state.isPrevious打ち歩 = false;
 
 		if (loseResults.length > 0) {
-			const transition = minBy(loseResults, 'depth');
-			state.board = deserialize(transition.board);
+			const transitionResult = minBy(loseResults, 'depth');
+			const transition = transitions.find(
+				({board}) =>
+					Buffer.compare(serialize(board), transitionResult.board) === 0
+			);
+			state.board = deserialize(transitionResult.board);
 			state.turn = Color.Black;
-			const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0), Color.White);
+			const logText = transitionToText(
+				transition,
+				Color.White,
+				state.previousPosition
+			);
+			state.previousPosition = {
+				x: 4 - transition.data.to.x,
+				y: 4 - transition.data.to.y,
+			};
 			state.log.push(logText);
 			await post(logText);
 
 			// 先手詰み
-			if (transition.depth === 1) {
+			if (transitionResult.depth === 1) {
 				end(Color.White);
 			}
 		} else {
-			const transition = unknownResults.length > 0 ? sample(unknownResults) : maxBy(winResults, 'depth');
-			state.board = deserialize(transition.board);
+			const transitionResult =
+				unknownResults.length > 0
+					? sample(unknownResults)
+					: maxBy(winResults, 'depth');
+			const transition = transitions.find(
+				({board}) =>
+					Buffer.compare(serialize(board), transitionResult.board) === 0
+			);
+			state.board = deserialize(transitionResult.board);
 			state.turn = Color.Black;
-			const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0), Color.White);
+			const logText = transitionToText(
+				transition,
+				Color.White,
+				state.previousPosition
+			);
+			state.previousPosition = {
+				x: 4 - transition.data.to.x,
+				y: 4 - transition.data.to.y,
+			};
 			state.log.push(logText);
 			await post(logText);
 		}
@@ -171,12 +215,20 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
-			const databases = await promisify(fs.readdir)(path.resolve(__dirname, 'boards'));
-			state.previousDatabase = sample(databases);
-			await sqlite.open(path.resolve(__dirname, 'boards', state.previousDatabase));
-			const data = await sqlite.get(
-				'SELECT * FROM boards WHERE result = 1 AND depth > 5 AND is_good = 1 ORDER BY RANDOM() LIMIT 1'
+			const databases = await promisify(fs.readdir)(
+				path.resolve(__dirname, 'boards')
 			);
+			state.previousDatabase = sample(databases);
+			await sqlite.open(
+				path.resolve(__dirname, 'boards', state.previousDatabase)
+			);
+			const data = await sqlite.get(oneLine`
+				SELECT *
+				FROM boards
+				WHERE result = 1 AND depth > 5 AND is_good = 1
+				ORDER BY RANDOM()
+				LIMIT 1
+			`);
 			state.board = deserialize(data.board);
 			state.previousBoard = state.board.clone();
 			state.isPrevious打ち歩 = false;
@@ -188,12 +240,18 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if (text === 'もう一回') {
-			if (state.previousBoard === null || state.board !== null || state.isLocked) {
+			if (
+				state.previousBoard === null ||
+				state.board !== null ||
+				state.isLocked
+			) {
 				perdon();
 				return;
 			}
 
-			await sqlite.open(path.resolve(__dirname, 'boards', state.previousDatabase));
+			await sqlite.open(
+				path.resolve(__dirname, 'boards', state.previousDatabase)
+			);
 			state.board = state.previousBoard;
 			state.previousBoard = state.board.clone();
 			state.isPrevious打ち歩 = false;
@@ -205,7 +263,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if (text === '正着手') {
-			if (state.board !== null || state.isLocked || state.previousBoard === null) {
+			if (
+				state.board !== null ||
+				state.isLocked ||
+				state.previousBoard === null
+			) {
 				perdon();
 				return;
 			}
@@ -213,6 +275,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			state.isLocked = true;
 
 			let board = state.previousBoard;
+			let previousPosition = null;
 			const logs = [];
 
 			while (true) {
@@ -220,21 +283,39 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					const transitions = getTransitions(board);
 
 					const transitionResults = await sqlite.all(
-						`SELECT board, result, depth FROM boards WHERE board IN (${Array(
-							transitions.length
-						)
-							.fill('?')
-							.join(', ')})`,
+						oneLine`
+							SELECT board, result, depth
+							FROM boards
+							WHERE board IN (${Array(transitions.length)
+		.fill('?')
+		.join(', ')})
+						`,
 						transitions.map((transition) => serialize(transition.board))
 					);
 
-					const transition = minBy(transitionResults.filter(({result}) => result === 0), 'depth');
-					board = deserialize(transition.board);
-					const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0), Color.Black);
+					const transitionResult = minBy(
+						transitionResults.filter(({result}) => result === 0),
+						'depth'
+					);
+					const transition = transitions.find(
+						({board: b}) =>
+							Buffer.compare(serialize(b), transitionResult.board) === 0
+					);
+					board = deserialize(transitionResult.board);
+					const logText = transitionToText(
+						transition,
+						Color.Black,
+						previousPosition
+					);
 					logs.push(logText);
 
+					previousPosition = {
+						x: transition.data.to.x,
+						y: transition.data.to.y,
+					};
+
 					// 先手詰み
-					if (transition.depth === 1) {
+					if (transitionResult.depth === 1) {
 						break;
 					}
 				}
@@ -251,10 +332,27 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						transitions.map((transition) => serialize(transition.board))
 					);
 
-					const transition = maxBy(transitionResults.filter(({result}) => result === 1), 'depth');
-					board = deserialize(transition.board);
-					const logText = transitionToText(transitions.find(({board}) => Buffer.compare(serialize(board), transition.board) === 0), Color.White);
+					const transitionResult = maxBy(
+						transitionResults.filter(({result}) => result === 1),
+						'depth'
+					);
+					const transition = transitions.find(
+						({board: b}) =>
+							Buffer.compare(serialize(b), transitionResult.board) === 0
+					);
+					board = deserialize(transitionResult.board);
+
+					const logText = transitionToText(
+						transition,
+						Color.White,
+						previousPosition
+					);
 					logs.push(logText);
+
+					previousPosition = {
+						x: 4 - transition.data.to.x,
+						y: 4 - transition.data.to.y,
+					};
 				}
 
 				if (logs.length > 100) {
@@ -262,10 +360,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				}
 			}
 
-			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `${logs.join(' ')} まで、${logs.length}手で先手の勝ちです。`, {
-				username: 'shogi',
-				icon_url: iconUrl,
-			});
+			await slack.chat.postMessage(
+				process.env.CHANNEL_SANDBOX,
+				`${logs.join(' ')} まで、${logs.length}手で先手の勝ち`,
+				{
+					username: 'shogi',
+					icon_url: iconUrl,
+				}
+			);
 
 			state.isLocked = false;
 			return;
@@ -273,13 +375,17 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		if (
 			(match = text.match(
-				/^([123１２３一二三][123１２３一二三])(歩|香|桂|銀|金|飛|角|王|玉|と|成香|成桂|成銀|龍|馬)([右左直]?)([寄引上]?)(成|不成|打)?$/
+				/^([123１２３一二三][123１２３一二三]|同)(歩|歩兵|香|香車|桂|桂馬|銀|銀将|金|金将|飛|飛車|角|角行|王|王将|玉|玉将|と|と金|成香|杏|成桂|圭|成銀|全|龍|竜|龍王|竜王|馬|龍馬|竜馬)([右左直]?)([寄引上]?)(成|不成|打)?$/
 			))
 		) {
 			const [, position, pieceChar, xFlag, yFlag, promoteFlag] = match;
 			const piece = charToPiece(pieceChar);
 
-			if (state.board === null || state.turn !== Color.Black || state.isLocked) {
+			if (
+				state.board === null ||
+				state.turn !== Color.Black ||
+				state.isLocked
+			) {
 				perdon();
 				return;
 			}
@@ -290,11 +396,22 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			const x =
-				['1１一', '2２二', '3３三'].findIndex((chars) =>
-					chars.includes(position.charAt(0))) + 1;
+				position === '同'
+					? state.previousPosition.x
+					: ['1１一', '2２二', '3３三'].findIndex((chars) =>
+						chars.includes(position.charAt(0))) + 1;
 			const y =
-				['1１一', '2２二', '3３三'].findIndex((chars) =>
-					chars.includes(position.charAt(1))) + 1;
+				position === '同'
+					? state.previousPosition.y
+					: ['1１一', '2２二', '3３三'].findIndex((chars) =>
+						chars.includes(position.charAt(1))) + 1;
+
+			const newPosition =
+				state.previousPosition &&
+				state.previousPosition.x === x &&
+				state.previousPosition.y === y
+					? '同'
+					: `${'123'[x - 1]}${'一二三'[y - 1]}`;
 
 			if (promoteFlag !== '打') {
 				const moves = state.board.getMovesTo(x, y, piece, Color.Black);
@@ -316,9 +433,16 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						isPromotable && promoteFlag === '成'
 					);
 
+					const didPromote =
+						state.board.get(move.to.x, move.to.y).piece !== piece;
+
 					state.turn = Color.White;
 					state.isPrevious打ち歩 = false;
-					const logText = `☗${'123'[x - 1]}${'一二三'[y - 1]}${pieceChar}`;
+					state.previousPosition = {x, y};
+					const newPromoteFlag = didPromote ? '成' : '不成';
+					const logText = `☗${newPosition}${pieceToChar(piece)}${
+						isPromotable ? newPromoteFlag : ''
+					}`;
 					state.log.push(logText);
 
 					await post(logText);
@@ -337,7 +461,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 				state.turn = Color.White;
 				state.isPrevious打ち歩 = piece === 'FU';
-				const logText = `☗${'123'[x - 1]}${'一二三'[y - 1]}${pieceChar}`;
+				state.previousPosition = {x, y};
+				const logText = `☗${newPosition}${pieceToChar(piece)}`;
 				state.log.push(logText);
 
 				await post(logText);
@@ -358,6 +483,20 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			end(Color.White);
+			return;
+		}
+
+		if (text === '盤面') {
+			if (state.board === null || state.turn !== Color.Black) {
+				perdon();
+				return;
+			}
+
+			if (state.logs.length === 0) {
+				await post('初手');
+			} else {
+				await post(`${last(state.logs)}まで`);
+			}
 		}
 	});
 };

@@ -39,20 +39,38 @@ const handList = ['HI', 'KA', 'KI', 'GI', 'KE', 'KY', 'FU'];
 module.exports.charToPiece = (char) =>
 	({
 		歩: 'FU',
+		歩兵: 'FU',
 		香: 'KY',
+		香車: 'KY',
 		桂: 'KE',
+		桂馬: 'KE',
 		銀: 'GI',
+		銀将: 'GI',
 		金: 'KI',
+		金将: 'KI',
 		飛: 'HI',
+		飛車: 'HI',
 		角: 'KA',
+		角行: 'KA',
 		王: 'OU',
+		王将: 'OU',
 		玉: 'OU',
+		玉将: 'OU',
 		と: 'TO',
+		と金: 'TO',
 		成香: 'NY',
+		杏: 'NY',
 		成桂: 'NK',
+		圭: 'NK',
 		成銀: 'NG',
+		全: 'NG',
 		龍: 'RY',
+		龍王: 'RY',
+		竜: 'RY',
+		竜王: 'RY',
 		馬: 'UM',
+		龍馬: 'UM',
+		竜馬: 'UM',
 	}[char]);
 
 module.exports.pieceToChar = (piece) =>
@@ -201,7 +219,13 @@ module.exports.getTransitions = (board) => {
 			const moves = board.getMovesFrom(x + 1, y + 1);
 			for (const move of moves) {
 				const promoteBoard = board.clone();
-				promoteBoard.move(move.from.x, move.from.y, move.to.x, move.to.y, move.from.y === 1 || move.to.y === 1);
+				promoteBoard.move(
+					move.from.x,
+					move.from.y,
+					move.to.x,
+					move.to.y,
+					move.from.y === 1 || move.to.y === 1
+				);
 				const transition = {
 					type: 'move',
 					data: move,
@@ -254,25 +278,36 @@ module.exports.getTransitions = (board) => {
 	return transitions;
 };
 
-module.exports.transitionToText = (transition, color) => {
+module.exports.transitionToText = (transition, color, previousPosition) => {
 	const koma = color === Color.Black ? '☗' : '☖';
-	const x = '123'[color === Color.Black ? (transition.data.to.x - 1) : (3 - transition.data.to.x)];
-	const y = '一二三'[color === Color.Black ? (transition.data.to.y - 1) : (3 - transition.data.to.y)];
+	const x =
+		color === Color.Black ? transition.data.to.x - 1 : 3 - transition.data.to.x;
+	const xText = '123'[x];
+	const y =
+		color === Color.Black ? transition.data.to.y - 1 : 3 - transition.data.to.y;
+	const yText = '一二三'[y];
+
+	const coords =
+		previousPosition &&
+		previousPosition.x === x + 1 &&
+		previousPosition.y === y + 1
+			? '同'
+			: `${xText}${yText}`;
 
 	if (transition.type === 'move') {
 		const pieceChar = module.exports.pieceToChar(transition.kind);
 
 		if (transition.promotion === null) {
-			return `${koma}${x}${y}${pieceChar}`;
+			return `${koma}${coords}${pieceChar}`;
 		}
 
 		const promoteFlag = transition.promotion ? '成' : '不成';
-		return `${koma}${x}${y}${pieceChar}${promoteFlag}`;
+		return `${koma}${coords}${pieceChar}${promoteFlag}`;
 	}
 
 	assert(transition.type === 'drop');
 	{
 		const pieceChar = module.exports.pieceToChar(transition.data.kind);
-		return `${koma}${x}${y}${pieceChar}`;
+		return `${koma}${coords}${pieceChar}`;
 	}
 };
