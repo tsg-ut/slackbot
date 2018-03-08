@@ -6,6 +6,35 @@ TSGのSlackで動くSlackbotたち
 
 push後は必ずデプロイをお願いします。
 
+## 環境構築
+
+### Prerequisites
+
+* Node.js Latest
+
+### セットアップ
+
+```sh
+cd /path/to/slackbot
+npm install
+cp .env.example .env
+# .envをいい感じに編集する
+```
+
+`SLACK_TOKEN`はSlackの [Legacy tokens](https://api.slack.com/custom-integrations/legacy-tokens) を使用し、`CHANNEL_XXX`系は全部自分宛のDMを指定するのがオススメ。
+
+`IMAGEBIN_KEY`はshogiを開発する時以外は必要ない。必要な場合は https://imagebin.ca/tools.php からAPIキーを取得。
+
+#### shogiのセットアップ
+
+[nine-grids-shogi-analyzer](https://github.com/hakatashi/nine-grids-shogi-analyzer)を実行したら生成される`temp.sqlite3`を`slackbot/shogi/boards/test.sqlite3`に配置する。
+
+### 実行
+
+```sh
+npm run dev
+```
+
 ## デプロイ
 
 1. TSG鯖にSSHで入る
