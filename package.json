@@ -8,6 +8,9 @@
     "dev": "nodemon index.js",
     "lint": "cd mahjong && eslint ."
   },
+  "engines": {
+    "node": ">=9.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tsg-ut/slackbot.git"

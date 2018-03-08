@@ -54,8 +54,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 	let match = null;
 
-	const perdon = () => {
-		slack.chat.postMessage(process.env.CHANNEL_SANDBOX, ':ha:', {
+	const perdon = (description = '') => {
+		slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `:ha: ${description}`, {
 			username: 'shogi',
 			icon_url: iconUrl,
 		});
@@ -414,14 +414,39 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					: `${'123'[x - 1]}${'一二三'[y - 1]}`;
 
 			if (promoteFlag !== '打') {
+				const xFilters = {
+					'': () => true,
+					右: (mx) => mx < x,
+					直: (mx) => mx === x,
+					左: (mx) => mx > x,
+				};
+				const yFilters = {
+					'': () => true,
+					引: (my) => my < y,
+					寄: (my) => my === y,
+					上: (my) => my > y,
+				};
+
 				const moves = state.board.getMovesTo(x, y, piece, Color.Black);
-				if (moves.length > 0) {
-					const move = moves[0];
+				const filteredMoves = moves.filter(
+					(move) => xFilters[xFlag](move.from.x) && yFilters[yFlag](move.from.y)
+				);
+
+				if (filteredMoves.length > 1) {
+					perdon(
+						'複数の駒がその場所に移動できます。 `[右左直]?[寄引上]?` を適切に指定してください。'
+					);
+					return;
+				}
+
+				if (filteredMoves.length === 1) {
+					const move = filteredMoves[0];
+
 					const isPromotable =
 						(move.from.y === 1 || move.to.y === 1) && Piece.canPromote(piece);
 
 					if (isPromotable && promoteFlag === undefined) {
-						perdon();
+						perdon('成・不成を指定してください。');
 						return;
 					}
 
