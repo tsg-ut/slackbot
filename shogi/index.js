@@ -395,6 +395,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
+			if ((xFlag || yFlag) && promoteFlag === '打') {
+				perdon(`「${xFlag}${yFlag}」と「打」は同時に指定できません。`);
+				return;
+			}
+
 			const x =
 				position === '同'
 					? state.previousPosition.x
@@ -414,22 +419,19 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					: `${'123'[x - 1]}${'一二三'[y - 1]}`;
 
 			if (promoteFlag !== '打') {
-				const xFilters = {
+				const filters = {
 					'': () => true,
-					右: (mx) => mx < x,
-					直: (mx) => mx === x,
-					左: (mx) => mx > x,
-				};
-				const yFilters = {
-					'': () => true,
-					引: (my) => my < y,
-					寄: (my) => my === y,
-					上: (my) => my > y,
+					右: (f) => f.x < x,
+					直: (f) => f.x === x && f.y === y + 1,
+					左: (f) => f.x > x,
+					引: (f) => f.y < y,
+					寄: (f) => f.y === y,
+					上: (f) => f.y > y,
 				};
 
 				const moves = state.board.getMovesTo(x, y, piece, Color.Black);
 				const filteredMoves = moves.filter(
-					(move) => xFilters[xFlag](move.from.x) && yFilters[yFlag](move.from.y)
+					(move) => filters[xFlag](move.from) && filters[yFlag](move.from)
 				);
 
 				if (filteredMoves.length > 1) {
@@ -474,6 +476,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 					aiTurn();
 
+					return;
+				}
+
+				if (xFlag || yFlag || position === '同') {
+					perdon('条件を満たす駒がありません。');
 					return;
 				}
 			}
