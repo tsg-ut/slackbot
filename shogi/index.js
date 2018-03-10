@@ -5,6 +5,7 @@ const {default: Piece} = require('shogi9.js/lib/Piece.js');
 const sqlite = require('sqlite');
 const path = require('path');
 const fs = require('fs');
+const assert = require('assert');
 const {promisify} = require('util');
 const minBy = require('lodash/minBy');
 const maxBy = require('lodash/maxBy');
@@ -54,11 +55,21 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 	let match = null;
 
-	const perdon = () => {
-		slack.chat.postMessage(process.env.CHANNEL_SANDBOX, ':ha:', {
+	const perdon = async (description = '') => {
+		await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, ':ha:', {
 			username: 'shogi',
 			icon_url: iconUrl,
 		});
+		if (description !== '') {
+			await slack.chat.postMessage(
+				process.env.CHANNEL_SANDBOX,
+				`${description}:korosuzo:`,
+				{
+					username: 'shogi',
+					icon_url: iconUrl,
+				}
+			);
+		}
 	};
 
 	const post = async (message) => {
@@ -375,10 +386,18 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		if (
 			(match = text.match(
-				/^([123１２３一二三][123１２３一二三]|同)(歩|歩兵|香|香車|桂|桂馬|銀|銀将|金|金将|飛|飛車|角|角行|王|王将|玉|玉将|と|と金|成香|杏|成桂|圭|成銀|全|龍|竜|龍王|竜王|馬|龍馬|竜馬)([右左直]?)([寄引上]?)(成|不成|打)?$/
+				/^([123１２３一二三][123１２３一二三]|同)(歩|歩兵|香|香車|桂|桂馬|銀|銀将|金|金将|飛|飛車|角|角行|王|王将|玉|玉将|と|と金|成香|杏|成桂|圭|成銀|全|龍|竜|龍王|竜王|馬|龍馬|竜馬)(?:([右左直]?)([寄引上]?)(成|不成)?|(打))?$/
 			))
 		) {
-			const [, position, pieceChar, xFlag, yFlag, promoteFlag] = match;
+			const [
+				,
+				position,
+				pieceChar,
+				xFlag,
+				yFlag,
+				promoteFlag,
+				dropFlag,
+			] = match;
 			const piece = charToPiece(pieceChar);
 
 			if (
@@ -392,6 +411,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 			if (position === '同' && state.previousPosition === null) {
 				perdon();
+				return;
+			}
+
+			if (position === '同' && dropFlag === '打') {
+				perdon('「同」と「打」は同時に指定できません。');
 				return;
 			}
 
@@ -413,43 +437,96 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					? '同'
 					: `${'123'[x - 1]}${'一二三'[y - 1]}`;
 
-			if (promoteFlag !== '打') {
+			if (dropFlag !== '打') {
 				const moves = state.board.getMovesTo(x, y, piece, Color.Black);
-				if (moves.length > 0) {
-					const move = moves[0];
-					const isPromotable =
-						(move.from.y === 1 || move.to.y === 1) && Piece.canPromote(piece);
 
-					if (isPromotable && promoteFlag === undefined) {
-						perdon();
+				const yFilteredMoves = moves
+					.filter((move) => {
+						if (yFlag === '引') {
+							return move.from.y < move.to.y;
+						}
+
+						if (yFlag === '上') {
+							return move.from.y > move.to.y;
+						}
+
+						if (yFlag === '寄') {
+							return move.from.y === move.to.y;
+						}
+
+						assert(!yFlag);
+						return true;
+					})
+					.sort((a, b) => b.from.x - a.from.x);
+
+				if (yFilteredMoves.length >= 1) {
+					const filteredMoves = moves.filter((move, index) => {
+						if (['HI', 'KA', 'RY', 'UM'].includes(piece)) {
+							if (xFlag === '右') {
+								return index === moves.length - 1;
+							}
+
+							if (xFlag === '左') {
+								return index === 0;
+							}
+						}
+
+						if (xFlag === '右') {
+							return move.from.x < move.to.x;
+						}
+
+						if (xFlag === '左') {
+							return move.from.x > move.to.x;
+						}
+
+						if (xFlag === '直') {
+							return move.from.x === move.to.x;
+						}
+
+						assert(!xFlag);
+						return true;
+					});
+
+					if (filteredMoves.length > 1) {
+						perdon('`[右左直]?[寄引上]?` を指定してください。');
+						return;
+					} else if (filteredMoves.length === 1) {
+						const move = filteredMoves[0];
+
+						const isPromotable =
+							(move.from.y === 1 || move.to.y === 1) && Piece.canPromote(piece);
+
+						if (isPromotable && !promoteFlag) {
+							perdon('成・不成を指定してください。');
+							return;
+						}
+
+						state.board.move(
+							move.from.x,
+							move.from.y,
+							move.to.x,
+							move.to.y,
+							isPromotable && promoteFlag === '成'
+						);
+
+						const didPromote =
+							state.board.get(move.to.x, move.to.y).piece !== piece;
+
+						state.turn = Color.White;
+						state.isPrevious打ち歩 = false;
+						state.previousPosition = {x, y};
+						const newPromoteFlag = didPromote ? '成' : '不成';
+						const logText = `☗${newPosition}${pieceToChar(piece)}${
+							isPromotable ? newPromoteFlag : ''
+						}`;
+						state.log.push(logText);
+
+						await post(logText);
+
+						aiTurn();
+
 						return;
 					}
-
-					state.board.move(
-						move.from.x,
-						move.from.y,
-						move.to.x,
-						move.to.y,
-						isPromotable && promoteFlag === '成'
-					);
-
-					const didPromote =
-						state.board.get(move.to.x, move.to.y).piece !== piece;
-
-					state.turn = Color.White;
-					state.isPrevious打ち歩 = false;
-					state.previousPosition = {x, y};
-					const newPromoteFlag = didPromote ? '成' : '不成';
-					const logText = `☗${newPosition}${pieceToChar(piece)}${
-						isPromotable ? newPromoteFlag : ''
-					}`;
-					state.log.push(logText);
-
-					await post(logText);
-
-					aiTurn();
-
-					return;
 				}
 			}
 
@@ -472,7 +549,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
-			perdon();
+			perdon('条件を満たす駒がありません。');
 			return;
 		}
 
