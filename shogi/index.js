@@ -110,10 +110,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		});
 
 		if (log.length === state.previousTurns) {
-			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, '最短勝利:tada:', {
-				username: 'shogi',
-				icon_url: iconUrl,
-			});
+			await slack.chat.postMessage(
+				process.env.CHANNEL_SANDBOX,
+				'最短勝利:tada:',
+				{
+					username: 'shogi',
+					icon_url: iconUrl,
+				}
+			);
 		}
 	};
 
@@ -157,6 +161,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				WHERE board IN (${Array(transitions.length)
 		.fill('?')
 		.join(', ')})
+				ORDER BY RANDOM()
 			`,
 			transitions.map((transition) => serialize(transition.board))
 		);
@@ -266,11 +271,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		if (text === 'もう一回') {
 			if (
 				state.previousBoard === null ||
-				state.board !== null ||
 				state.isLocked
 			) {
 				perdon();
 				return;
+			}
+
+			if (state.board !== null) {
+				await end(Color.White);
 			}
 
 			await sqlite.open(
@@ -313,6 +321,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 							WHERE board IN (${Array(transitions.length)
 		.fill('?')
 		.join(', ')})
+							ORDER BY RANDOM()
 						`,
 						transitions.map((transition) => serialize(transition.board))
 					);
@@ -348,11 +357,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					const transitions = getTransitions(board);
 
 					const transitionResults = await sqlite.all(
-						`SELECT board, result, depth FROM boards WHERE board IN (${Array(
-							transitions.length
-						)
-							.fill('?')
-							.join(', ')})`,
+						oneLine`
+							SELECT board, result, depth
+							FROM boards
+							WHERE board IN (${Array(transitions.length)
+		.fill('?')
+		.join(', ')})
+							ORDER BY RANDOM()
+						`,
 						transitions.map((transition) => serialize(transition.board))
 					);
 
