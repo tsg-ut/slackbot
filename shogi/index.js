@@ -45,6 +45,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			},
 		}),
 		previousDatabase: '245.sqlite3',
+		previousTurns: 7,
 		isPrevious打ち歩: false,
 		isLocked: false,
 		player: null,
@@ -107,6 +108,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			username: 'shogi',
 			icon_url: iconUrl,
 		});
+
+		if (log.length === state.previousTurns) {
+			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, '最短勝利:tada:', {
+				username: 'shogi',
+				icon_url: iconUrl,
+			});
+		}
 	};
 
 	const aiTurn = async () => {
@@ -218,6 +226,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
+		if (message.username === 'shogi') {
+			return;
+		}
+
 		const {text} = message;
 
 		if (text === '将棋') {
@@ -242,6 +254,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			`);
 			state.board = deserialize(data.board);
 			state.previousBoard = state.board.clone();
+			state.previousTurns = data.depth - 1;
 			state.isPrevious打ち歩 = false;
 			state.turn = Color.Black;
 			state.player = message.user;
@@ -269,7 +282,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			state.turn = Color.Black;
 			state.player = message.user;
 
-			await post('もう一回');
+			await post(`もう一回 (${state.previousTurns}手必勝)`);
 			return;
 		}
 
