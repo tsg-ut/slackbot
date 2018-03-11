@@ -269,10 +269,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if (text === 'もう一回') {
-			if (
-				state.previousBoard === null ||
-				state.isLocked
-			) {
+			if (state.previousBoard === null || state.isLocked) {
 				perdon();
 				return;
 			}

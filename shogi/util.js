@@ -224,6 +224,7 @@ module.exports.getTransitions = (board) => {
 					move.from.y,
 					move.to.x,
 					move.to.y,
+					// とりあえず成でmoveしてみる
 					move.from.y === 1 || move.to.y === 1
 				);
 				const transition = {
@@ -234,10 +235,13 @@ module.exports.getTransitions = (board) => {
 					promotion: null,
 				};
 
+				// ほんとうに成ったなら不成も生成する
 				if (
 					promoteBoard.get(move.to.x, move.to.y).kind !==
 					board.get(move.from.x, move.from.y).kind
 				) {
+					transition.promotion = true;
+
 					const unpromoteBoard = board.clone();
 
 					unpromoteBoard.move(
@@ -248,15 +252,19 @@ module.exports.getTransitions = (board) => {
 						false
 					);
 
-					transitions.push({
-						type: 'move',
-						data: move,
-						kind: board.get(move.from.x, move.from.y).kind,
-						board: unpromoteBoard.inverse(),
-						promotion: false,
-					});
-
-					transition.promotion = true;
+					// 強制的に成った場合は追加しない
+					if (
+						unpromoteBoard.get(move.to.x, move.to.y).kind ===
+						board.get(move.from.x, move.from.y).kind
+					) {
+						transitions.push({
+							type: 'move',
+							data: move,
+							kind: board.get(move.from.x, move.from.y).kind,
+							board: unpromoteBoard.inverse(),
+							promotion: false,
+						});
+					}
 				}
 
 				transitions.push(transition);
