@@ -393,14 +393,17 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				}
 			}
 
-			await slack.chat.postMessage(
-				process.env.CHANNEL_SANDBOX,
-				`${logs.join(' ')} まで、${logs.length}手で先手の勝ち`,
-				{
-					username: 'shogi',
-					icon_url: iconUrl,
-				}
-			);
+			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, '正着手', {
+				username: 'shogi',
+				icon_url: iconUrl,
+				attachments: [
+					{
+						text: `正着手\n \n \n \n \n${logs.join(' ')} まで、${
+							logs.length
+						}手で先手の勝ち`,
+					},
+				],
+			});
 
 			state.isLocked = false;
 			return;
