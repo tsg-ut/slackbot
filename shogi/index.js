@@ -73,7 +73,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 	};
 
-	const post = async (message, attachments = []) => {
+	const post = async (message) => {
 		const imageUrl = await upload(state.board);
 		await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, message, {
 			username: 'shogi',
@@ -83,7 +83,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					image_url: imageUrl,
 					fallback: state.board.toSFENString(),
 				},
-				...attachments,
 			],
 		});
 	};
@@ -244,8 +243,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
-			state.isLocked = true;
-
 			const databases = await promisify(fs.readdir)(
 				path.resolve(__dirname, 'boards')
 			);
@@ -266,6 +263,45 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			state.isPrevious打ち歩 = false;
 			state.turn = Color.Black;
 			state.player = message.user;
+
+			await post(`${data.depth - 1}手必勝`);
+			return;
+		}
+
+		if (text === 'もう一回') {
+			if (state.previousBoard === null || state.isLocked) {
+				perdon();
+				return;
+			}
+
+			if (state.board !== null) {
+				await end(Color.White);
+			}
+
+			await sqlite.open(
+				path.resolve(__dirname, 'boards', state.previousDatabase)
+			);
+			state.board = state.previousBoard;
+			state.previousBoard = state.board.clone();
+			state.isPrevious打ち歩 = false;
+			state.turn = Color.Black;
+			state.player = message.user;
+
+			await post(`もう一回 (${state.previousTurns}手必勝)`);
+			return;
+		}
+
+		if (text === '正着手') {
+			if (
+				state.board !== null ||
+				state.isLocked ||
+				state.previousBoard === null
+			) {
+				perdon();
+				return;
+			}
+
+			state.isLocked = true;
 
 			let board = state.previousBoard;
 			let previousPosition = null;
@@ -357,38 +393,16 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				}
 			}
 
-			await post(`${data.depth - 1}手必勝`, [
+			await slack.chat.postMessage(
+				process.env.CHANNEL_SANDBOX,
+				`${logs.join(' ')} まで、${logs.length}手で先手の勝ち`,
 				{
-					text: `正着手\n \n \n \n \n${logs.join(' ')} まで、${
-						logs.length
-					}手で先手の勝ち`,
-				},
-			]);
+					username: 'shogi',
+					icon_url: iconUrl,
+				}
+			);
 
 			state.isLocked = false;
-			return;
-		}
-
-		if (text === 'もう一回') {
-			if (state.previousBoard === null || state.isLocked) {
-				perdon();
-				return;
-			}
-
-			if (state.board !== null) {
-				await end(Color.White);
-			}
-
-			await sqlite.open(
-				path.resolve(__dirname, 'boards', state.previousDatabase)
-			);
-			state.board = state.previousBoard;
-			state.previousBoard = state.board.clone();
-			state.isPrevious打ち歩 = false;
-			state.turn = Color.Black;
-			state.player = message.user;
-
-			await post(`もう一回 (${state.previousTurns}手必勝)`);
 			return;
 		}
 
