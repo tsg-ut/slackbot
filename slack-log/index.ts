@@ -21,6 +21,10 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
     const channels = await axios.get(`http://${slacklogAPIDomain}/channels.json`).then(({data}) => data);
 
     rtm.on('message', async ({channel, text}) => {
+        if (!text) {
+            return;
+        }
+
         if (text.trim() === 'slacklog' || text.trim() === 'slack-log') {
             const here = `https://slack-log.tsg.ne.jp/${channel}`;
             slack.chat.postMessage({icon_emoji: 'slack', channel, text: here});
