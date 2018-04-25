@@ -26,12 +26,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				}
 			}
 
-			const [language, , code] = segments;
+			const [language, , codeData] = segments;
+			const code = codeData.toString();
 
-			const formattedText = code.includes('\n') ? `\`\`\`\n${code.toString()}\n\`\`\`` : `\n\`${code.toString()}\``;
+			const formattedText = (code.includes('\n') || code.includes('`')) ? `\`\`\`\n${code.toString()}\n\`\`\`` : `\n\`${code.toString()}\``;
 
 			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, stripIndent`
-				*${language.toString()}, ${code.length} bytes* ${formattedText}
+				*${language.toString()}, ${codeData.length} bytes* ${formattedText}
 			`, {
 				username: 'tiobot',
 				icon_url: 'https://i.imgur.com/2mB02ZI.png',
