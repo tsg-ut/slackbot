@@ -14,6 +14,7 @@ const plugins = [
 	require('./sushi-bot'),
 	require('./cubebot'),
 	require('./shogi'),
+	require('./tiobot'),
 	// require('./imagenet'),
 ];
 
