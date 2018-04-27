@@ -1,4 +1,4 @@
-const request = require("request");
+const axios = require("axios");
 const emoji = require("node-emoji");
 
 const { RTM_EVENTS } = require("@slack/client")
@@ -7,25 +7,20 @@ const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，�
 
 const ignoreRe = /( 英語| 韓国語| 中国語|の?意味|meaning|とは)+$/i;
 
-function reply(text, index) {
-	return new Promise((resolve, reject) => {
-		request({
+async function reply(text, index) {
+	try {
+		const response = await axios({
 			url: "https://www.google.com/complete/search?client=firefox&hl=ja&q=" + encodeURIComponent(text),
 			headers: {
 				"User-Agent": "Mozilla/5.0",
 			},
-			json: true,
 			method: "GET",
-		}, (error, response, body) => {
-			if (error || !response || response.statusCode !== 200 || !body) {
-				console.error(error, response, body);
-				resolve("エラーΩ＼ζ°)ﾁｰﾝ");
-				return;
-			}
-			const data = generateReply(text, body[1], index);
-			resolve(data);
 		});
-	});
+		return generateReply(text, response.data[1], index);
+	} catch (e) {
+		console.error(e);
+		return "エラーΩ＼ζ°)ﾁｰﾝ";
+	}
 }
 
 function generateReply(text, words, index) {

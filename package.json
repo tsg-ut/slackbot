@@ -36,7 +36,6 @@
     "lodash": "^4.17.4",
     "node-emoji": "^1.8.1",
     "nodemon": "^1.12.1",
-    "request": "^2.83.0",
     "sharp": "^0.19.1",
     "shogi9.js": "^1.0.2",
     "shuffle-array": "^1.0.1",
