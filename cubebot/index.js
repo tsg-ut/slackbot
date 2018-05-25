@@ -1,11 +1,46 @@
+/* eslint array-plural/array-plural: off */
+
 const qs = require('querystring');
 const fs = require('fs');
 const path = require('path');
 const {JSDOM, VirtualConsole} = require('jsdom');
-const {RTM_EVENTS: {MESSAGE}} = require('@slack/client');
-const {mean} = require('lodash');
+const {
+	RTM_EVENTS: {
+		MESSAGE,
+	},
+} = require('@slack/client');
+const {mean, shuffle, range} = require('lodash');
 const Cube = require('cubejs');
 require('cubejs/lib/solve');
+
+const getParity = (permutation) => {
+	const N = permutation.length;
+	let parity = 0;
+
+	for (const i of range(N)) {
+		for (const j of range(i)) {
+			if (permutation[i] < permutation[j]) {
+				parity = parity === 0 ? 1 : 0;
+			}
+		}
+	}
+
+	return parity;
+};
+
+const shuffleWithParity = (array, indices) => {
+	const permutation = shuffle(range(indices.length));
+	if (getParity(permutation) === 1) {
+		[permutation[0], permutation[1]] = [permutation[1], permutation[0]];
+	}
+
+	const clonedArray = array.slice();
+
+	for (const [from, to] of permutation.entries()) {
+		clonedArray[indices[to]] = array[indices[from]];
+	}
+	return clonedArray;
+};
 
 Cube.initSolver();
 
@@ -48,7 +83,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 	const getTimeText = (time) => time === Infinity ? 'DNF' : time.toFixed(2);
 
-	const faces = ['D', 'U', 'L', 'R', 'F', 'B'];
 	const faceColors = ['#fefe00', '#ffffff', '#ffa100', '#ee0000', '#00d800', '#0000f2'];
 
 	rtm.on(MESSAGE, async (message) => {
