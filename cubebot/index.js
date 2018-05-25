@@ -106,9 +106,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		const {text} = message;
+		let match = null;
 
-		if (text.startsWith('スクランブル') || text.startsWith('F2L') || text.startsWith('LL')) {
-			const countMatch = text.slice(2).match(/\d+/);
+		if ((match = text.match(/^(スクランブル|F2L|PLL|LL|ZBLL|CMLL|L6E)/))) {
+			const countMatch = text.slice(match[1].length).match(/\d+/);
 			const count = countMatch ? Math.min(12, parseInt(countMatch[0])) : 1;
 
 			const scrambles = Array(count).fill().map(() => {
@@ -125,15 +126,46 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					return Cube.inverse(cube.solve());
 				}
 
-				{
-					assert(text.startsWith('LL'));
-
+				if (text.startsWith('LL')) {
 					const cube = new Cube();
 					cube.ep = getRandomPermutation(12, [0, 1, 2, 3]);
 					cube.cp = getRandomPermutation(8, [0, 1, 2, 3]);
 					cube.eo = getRandomOrientation(12, [0, 1, 2, 3], 2);
 					cube.co = getRandomOrientation(8, [0, 1, 2, 3], 3);
-					return Cube.inverse(cube.solve(18));
+					return Cube.inverse(cube.solve(20));
+				}
+
+				if (text.startsWith('PLL')) {
+					const cube = new Cube();
+					cube.ep = getRandomPermutation(12, [0, 1, 2, 3]);
+					cube.cp = getRandomPermutation(8, [0, 1, 2, 3]);
+					return Cube.inverse(cube.solve(20));
+				}
+
+				if (text.startsWith('ZBLL')) {
+					const cube = new Cube();
+					cube.ep = getRandomPermutation(12, [0, 1, 2, 3]);
+					cube.cp = getRandomPermutation(8, [0, 1, 2, 3]);
+					cube.co = getRandomOrientation(8, [0, 1, 2, 3], 3);
+					return Cube.inverse(cube.solve(20));
+				}
+
+				if (text.startsWith('CMLL')) {
+					const cube = new Cube();
+					cube.ep = getRandomPermutation(12, [0, 1, 2, 3, 5, 7]);
+					cube.cp = getRandomPermutation(8, [0, 1, 2, 3]);
+					cube.eo = getRandomOrientation(12, [0, 1, 2, 3, 5, 7], 2);
+					cube.co = getRandomOrientation(8, [0, 1, 2, 3], 3);
+					return Cube.inverse(cube.solve(20));
+				}
+
+				{
+					assert(text.startsWith('L6E'));
+
+					const cube = new Cube();
+					cube.ep = getRandomPermutation(12, [0, 1, 2, 3, 5, 7]);
+					cube.eo = getRandomOrientation(12, [0, 1, 2, 3, 5, 7], 2);
+					return Cube.inverse(cube.solve());
 				}
 			});
 			state.scrambles = scrambles;
