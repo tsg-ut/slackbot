@@ -1,11 +1,57 @@
+/* eslint array-plural/array-plural: off, no-sync: off, max-len: off */
+
 const qs = require('querystring');
 const fs = require('fs');
 const path = require('path');
+const assert = require('assert');
 const {JSDOM, VirtualConsole} = require('jsdom');
 const {RTM_EVENTS: {MESSAGE}} = require('@slack/client');
-const {mean} = require('lodash');
+const {mean, shuffle, range, random} = require('lodash');
 const Cube = require('cubejs');
 require('cubejs/lib/solve');
+
+const getParity = (permutation) => {
+	const N = permutation.length;
+	let parity = 0;
+
+	for (const i of range(N)) {
+		for (const j of range(i)) {
+			if (permutation[i] < permutation[j]) {
+				parity = parity === 0 ? 1 : 0;
+			}
+		}
+	}
+
+	return parity;
+};
+
+const getRandomPermutation = (size, indices) => {
+	const indicesPermutation = shuffle(range(indices.length));
+	if (getParity(indicesPermutation) === 1) {
+		[indicesPermutation[0], indicesPermutation[1]] = [indicesPermutation[1], indicesPermutation[0]];
+	}
+
+	const permutation = range(size);
+
+	for (const [from, to] of indicesPermutation.entries()) {
+		permutation[indices[to]] = indices[from];
+	}
+	return permutation;
+};
+
+// https://github.com/ldez/cubejs/blob/master/src/cube.coffee#L154
+const getRandomOrientation = (size, indices, max) => {
+	let orientationCount = 0;
+	const orientation = Array(size).fill(0);
+
+	for (const i of range(indices.length - 1)) {
+		orientation[indices[i]] = random(max - 1);
+		orientationCount += orientation[indices[i]];
+	}
+
+	orientation[indices[indices.length - 1]] = (max - orientationCount % max) % max;
+	return orientation;
+};
 
 Cube.initSolver();
 
@@ -32,7 +78,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		scrambles: [],
 	};
 
-	const getAttachment = (scramble, size) => ({
+	const getAttachment = (scramble, size, inverse) => ({
 		title: scramble,
 		title_link: `https://alg.cubing.net/?${qs.encode({
 			alg: scramble.replace(/'/g, '-').replace(/ /g, '_'),
@@ -41,14 +87,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		image_url: `http://roudai.net/visualcube/visualcube.php?${qs.encode({
 			fmt: 'png',
 			size,
-			sch: 'wrgyob',
+			sch: inverse ? 'yogwrb' : 'wrgyob',
 			alg: scramble.replace(/ /g, ''),
 		})}`,
 	});
 
 	const getTimeText = (time) => time === Infinity ? 'DNF' : time.toFixed(2);
 
-	const faces = ['D', 'U', 'L', 'R', 'F', 'B'];
 	const faceColors = ['#fefe00', '#ffffff', '#ffa100', '#ee0000', '#00d800', '#0000f2'];
 
 	rtm.on(MESSAGE, async (message) => {
@@ -62,17 +107,41 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		const {text} = message;
 
-		if (text.startsWith('スクランブル')) {
-			const countMatch = text.match(/\d+/);
+		if (text.startsWith('スクランブル') || text.startsWith('F2L') || text.startsWith('LL')) {
+			const countMatch = text.slice(2).match(/\d+/);
 			const count = countMatch ? Math.min(12, parseInt(countMatch[0])) : 1;
 
-			const scrambles = Array(count).fill().map(() => Cube.scramble());
+			const scrambles = Array(count).fill().map(() => {
+				if (text.startsWith('スクランブル')) {
+					return Cube.scramble();
+				}
+
+				if (text.startsWith('F2L')) {
+					const cube = new Cube();
+					cube.ep = getRandomPermutation(12, [0, 1, 2, 3, 8, 9, 10, 11]);
+					cube.cp = getRandomPermutation(8, range(8));
+					cube.eo = getRandomOrientation(12, [0, 1, 2, 3, 8, 9, 10, 11], 2);
+					cube.co = getRandomOrientation(8, range(8), 3);
+					return Cube.inverse(cube.solve());
+				}
+
+				{
+					assert(text.startsWith('LL'));
+
+					const cube = new Cube();
+					cube.ep = getRandomPermutation(12, [0, 1, 2, 3]);
+					cube.cp = getRandomPermutation(8, [0, 1, 2, 3]);
+					cube.eo = getRandomOrientation(12, [0, 1, 2, 3], 2);
+					cube.co = getRandomOrientation(8, [0, 1, 2, 3], 3);
+					return Cube.inverse(cube.solve(18));
+				}
+			});
 			state.scrambles = scrambles;
 
 			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, '', {
 				username: 'cubebot',
 				icon_url: 'https://i.imgur.com/YyCc0mc.png',
-				attachments: scrambles.map((scramble) => getAttachment(scramble, count > 1 ? 80 : 200)),
+				attachments: scrambles.map((scramble) => getAttachment(scramble, count > 1 ? 80 : 200, !text.startsWith('スクランブル'))),
 			});
 		}
 
