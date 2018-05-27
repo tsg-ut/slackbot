@@ -19,7 +19,7 @@ module.exports = (clients) => {
 			return;
 		}
 
-		if (!message.text || !message.text.match(/^[\d\w\s()+\-*/!^'":<>,$=#.]+$/)) {
+		if (!message.text || !message.text.match(/^[\d\w\s()+\-*/!^'":<>,$=#.%]+$/)) {
 			return;
 		}
 

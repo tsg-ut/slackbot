@@ -7,12 +7,12 @@ input=$(echo "$1" | tr -d "\n ;")
 result=$(maxima --batch-string="display2d:false;$input;" --very-quiet -s | tail -n +5 | tr -d "\n ")
 
 if [ $input = $result ]; then
-  echo "Result is identical to the input"
+  echo "Result is identical to the input" >&2
   exit 1
 fi
 
 if [[ $result == READ* ]]; then
-  echo "Execution errored"
+  echo "Execution errored" >&2
   exit 1
 fi
 
