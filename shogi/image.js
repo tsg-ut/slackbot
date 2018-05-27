@@ -1,10 +1,7 @@
-const axios = require('axios');
-const concat = require('concat-stream');
 const sharp = require('sharp');
-const FormData = require('form-data');
 const {default: Color} = require('shogi9.js/lib/Color.js');
 const path = require('path');
-const qs = require('querystring');
+const cloudinary = require('cloudinary');
 
 const filenameMap = {
 	FU: 'fu',
@@ -85,30 +82,15 @@ module.exports.upload = async (board) => {
 		.jpeg()
 		.toBuffer();
 
-	const form = new FormData();
-	form.append('key', process.env.IMAGEBIN_KEY);
-	form.append('file', image, {
-		filename: 'image.jpeg',
-		contentType: 'image/jpeg',
+	const result = await new Promise((resolve, reject) => {
+		cloudinary.v2.uploader.upload_stream({resource_type: 'image'}, (error, data) => {
+			if (error) {
+				reject(error);
+			} else {
+				resolve(data);
+			}
+		}).end(image);
 	});
 
-	const data = await new Promise((resolve) => {
-		form.pipe(
-			concat({encoding: 'buffer'}, async (data) => {
-				resolve(
-					await axios.post(
-						'https://imagebin.ca/upload.php',
-						Buffer.from(data, 'binary'),
-						{
-							headers: form.getHeaders(),
-						}
-					)
-				);
-			})
-		);
-	});
-
-	const payload = qs.parse(data.data, '\n', ':');
-
-	return payload.url;
+	return result.secure_url;
 };
