@@ -11,6 +11,11 @@ if [ $input = $result ]; then
   exit 1
 fi
 
+if [[ $result == READ* ]]; then
+  echo "Execution errored"
+  exit 1
+fi
+
 tex=$(maxima --batch-string="tex($input);" --very-quiet | tail -n +2 | head -n -1 | tr -d "\$\n")
 outfile=$(mktemp)
 bash ~/pnglatex -d 300 -o "$outfile" -f "$tex" -S
