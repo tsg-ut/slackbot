@@ -1,10 +1,9 @@
 const {RTM_EVENTS} = require('@slack/client');
-const shuffle = require('shuffle-array');
 const {stripIndent} = require('common-tags');
 const fs = require('fs');
 const qs = require('querystring');
 const {promisify} = require('util');
-const {chunk} = require('lodash');
+const {chunk, shuffle} = require('lodash');
 const path = require('path');
 const assert = require('assert');
 
