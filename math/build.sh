@@ -20,7 +20,7 @@ if [[ "$result" = "[]" ]]; then
   exit 1
 fi
 
-if [ $input = $result ]; then
+if [ "[$input]" = $result ]; then
   echo "Result is identical to the input" >&2
   exit 1
 fi
