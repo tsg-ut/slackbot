@@ -89,7 +89,7 @@ module.exports = (clients) => {
 				}),
 			]);
 
-			if (stderr) {
+			if (stderr && stderr.length > 0) {
 				const error = stderr.toString();
 				if (error.startsWith('Syntax error')) {
 					slack.reactions.add('ce', {channel: message.channel, timestamp: message.ts});
