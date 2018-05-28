@@ -99,6 +99,10 @@ module.exports = (clients) => {
 					slack.reactions.add('re', {channel: message.channel, timestamp: message.ts});
 					return;
 				}
+				if (error.startsWith('Result is identical')) {
+					slack.reactions.add('tautology', {channel: message.channel, timestamp: message.ts});
+					return;
+				}
 				console.error('stderr:', stderr.toString());
 				return;
 			}
