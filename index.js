@@ -9,14 +9,12 @@ const {RtmClient, WebClient, CLIENT_EVENTS} = require('@slack/client');
 const plugins = [
 	require('./mahjong'),
 	require('./pocky'),
-	require('./esolang-rankmaker'),
 	require('./emoji-notifier'),
 	require('./sushi-bot'),
 	require('./cubebot'),
 	require('./shogi'),
 	require('./tiobot'),
 	require('./math'),
-	// require('./imagenet'),
 ];
 
 const rtmClient = new RtmClient(process.env.SLACK_TOKEN);
