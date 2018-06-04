@@ -10,6 +10,9 @@
     },
     "rules": {
         "no-console": "off",
-        "camelcase": "off"
+        "camelcase": "off",
+        "array-plural/array-plural": "off",
+        "no-sync": "off",
+        "max-len": "off"
     }
 }

@@ -6,7 +6,8 @@
   "scripts": {
     "start": "nodemon --exitcrash --watch .restart-trigger index.js",
     "dev": "nodemon index.js",
-    "lint": "cd mahjong && eslint ."
+    "lint": "cd mahjong && eslint .",
+    "test": "jest"
   },
   "engines": {
     "node": ">=9.0.0"
@@ -45,6 +46,7 @@
   "devDependencies": {
     "@hakatashi/eslint-config": "^1.1.1",
     "eslint": "^4.8.0",
-    "eslint-plugin-react": "^7.4.0"
+    "eslint-plugin-react": "^7.4.0",
+    "jest": "^23.1.0"
   }
 }

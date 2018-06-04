@@ -1,5 +1,3 @@
-/* eslint array-plural/array-plural: off, no-sync: off, max-len: off */
-
 const qs = require('querystring');
 const fs = require('fs');
 const path = require('path');
