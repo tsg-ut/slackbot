@@ -7,7 +7,7 @@
     "start": "nodemon --exitcrash --watch .restart-trigger index.js",
     "dev": "nodemon index.js",
     "lint": "cd mahjong && eslint .",
-    "test": "jest"
+    "test": "jest --verbose"
   },
   "engines": {
     "node": ">=9.0.0"
