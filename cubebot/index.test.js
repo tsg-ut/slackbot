@@ -67,6 +67,13 @@ describe('record', () => {
 		expect(text).toBe('*3.00*: (1.00) 2.00 3.00 4.00 (5.00)');
 	});
 
+	it('generates record from three times', async () => {
+		const {username, text} = await slack.getResponseTo('1 2 3');
+
+		expect(username).toBe('cubebot');
+		expect(text).toBe('*2.00*: 1.00 2.00 3.00');
+	});
+
 	it('generates record from DNF', async () => {
 		const {username, text} = await slack.getResponseTo(
 			'5.0 DNF 4.0 3.0 2.0'
