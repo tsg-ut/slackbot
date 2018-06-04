@@ -1,18 +1,19 @@
 {
-    "extends": "@hakatashi",
-    "parserOptions": {
-        "ecmaVersion": 2017,
-        "ecmaFeatures": {
-            "experimentalObjectRestSpread": true,
-            "jsx": true
-        },
-        "sourceType": "module"
-    },
-    "rules": {
-        "no-console": "off",
-        "camelcase": "off",
-        "array-plural/array-plural": "off",
-        "no-sync": "off",
-        "max-len": "off"
-    }
+	"extends": "@hakatashi",
+	"parserOptions": {
+		"ecmaVersion": 2017,
+		"ecmaFeatures": {
+			"experimentalObjectRestSpread": true,
+			"jsx": true
+		},
+		"sourceType": "module"
+	},
+	"rules": {
+		"no-console": "off",
+		"camelcase": "off",
+		"array-plural/array-plural": "off",
+		"no-sync": "off",
+		"no-loop-func": "off",
+		"max-len": "off"
+	}
 }
