@@ -205,7 +205,7 @@ module.exports.serialize = (board) => {
 	return Buffer.from(gridHex + handHex, 'hex');
 };
 
-module.exports.getTransitions = (board) => {
+module.exports.getTransitions = (board, rule) => {
 	const transitions = [];
 
 	for (const y of Array(3).keys()) {
@@ -216,7 +216,7 @@ module.exports.getTransitions = (board) => {
 				continue;
 			}
 
-			const moves = board.getMovesFrom(x + 1, y + 1);
+			const moves = board.getMovesFrom(x + 1, y + 1, rule);
 			for (const move of moves) {
 				const promoteBoard = board.clone();
 				promoteBoard.move(
@@ -225,7 +225,8 @@ module.exports.getTransitions = (board) => {
 					move.to.x,
 					move.to.y,
 					// とりあえず成でmoveしてみる
-					move.from.y === 1 || move.to.y === 1
+					move.from.y === 1 || move.to.y === 1,
+					rule
 				);
 				const transition = {
 					type: 'move',
@@ -249,7 +250,8 @@ module.exports.getTransitions = (board) => {
 						move.from.y,
 						move.to.x,
 						move.to.y,
-						false
+						false,
+						rule
 					);
 
 					// 強制的に成った場合は追加しない
@@ -272,9 +274,9 @@ module.exports.getTransitions = (board) => {
 		}
 	}
 
-	for (const drop of board.getDropsBy(Color.Black)) {
+	for (const drop of board.getDropsBy(Color.Black, rule)) {
 		const dropBoard = board.clone();
-		dropBoard.drop(drop.to.x, drop.to.y, drop.kind, Color.Black);
+		dropBoard.drop(drop.to.x, drop.to.y, drop.kind, Color.Black, rule);
 		transitions.push({
 			type: 'drop',
 			data: drop,

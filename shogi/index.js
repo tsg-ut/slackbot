@@ -48,6 +48,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		previousTurns: 7,
 		isPrevious打ち歩: false,
 		isLocked: false,
+		rule: null,
 		player: null,
 		board: null,
 		turn: null,
@@ -129,7 +130,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		const currentResult = await sqlite.get(
 			oneLine`
 				SELECT board, result, depth
-				FROM boards
+				FROM nifu
 				WHERE board = ?
 			`,
 			serialize(inversedBoard)
@@ -152,12 +153,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		const transitions = getTransitions(inversedBoard);
+		const transitions = getTransitions(inversedBoard, state.rule);
 
 		const transitionResults = await sqlite.all(
 			oneLine`
 				SELECT board, result, depth
-				FROM boards
+				FROM nifu
 				WHERE board IN (${Array(transitions.length)
 		.fill('?')
 		.join(', ')})
@@ -250,13 +251,24 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await sqlite.open(
 				path.resolve(__dirname, 'boards', state.previousDatabase)
 			);
+			state.rule = '二歩許可';
 			const data = await sqlite.get(oneLine`
 				SELECT *
-				FROM boards
+				FROM nifu
+				INNER JOIN boards
+				ON nifu.board = boards.board
+				WHERE nifu.result = 1 AND nifu.depth > 5 AND boards.result = 0
+			`);
+
+			/*
+			const data = await sqlite.get(oneLine`
+				SELECT *
+				FROM nifu
 				WHERE result = 1 AND depth > 5 AND is_good = 1
 				ORDER BY RANDOM()
 				LIMIT 1
 			`);
+			*/
 			state.board = deserialize(data.board);
 			state.previousBoard = state.board.clone();
 			state.previousTurns = data.depth - 1;
@@ -309,12 +321,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 			while (true) {
 				{
-					const transitions = getTransitions(board);
+					const transitions = getTransitions(board, state.rule);
 
 					const transitionResults = await sqlite.all(
 						oneLine`
 							SELECT board, result, depth
-							FROM boards
+							FROM nifu
 							WHERE board IN (${Array(transitions.length)
 		.fill('?')
 		.join(', ')})
@@ -351,12 +363,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				}
 
 				{
-					const transitions = getTransitions(board);
+					const transitions = getTransitions(board, state.rule);
 
 					const transitionResults = await sqlite.all(
 						oneLine`
 							SELECT board, result, depth
-							FROM boards
+							FROM nifu
 							WHERE board IN (${Array(transitions.length)
 		.fill('?')
 		.join(', ')})
