@@ -36,6 +36,7 @@
     "jsdom": "^11.6.1",
     "lodash": "^4.17.4",
     "node-emoji": "^1.8.1",
+    "node-schedule": "^1.3.0",
     "nodemon": "^1.12.1",
     "prettier-eslint-cli": "^4.7.1",
     "sharp": "^0.19.1",
