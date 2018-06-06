@@ -15,6 +15,7 @@ const plugins = [
 	require('./shogi'),
 	require('./tiobot'),
 	require('./math'),
+	require('./checkin'),
 ];
 
 const rtmClient = new RtmClient(process.env.SLACK_TOKEN);
