@@ -90,7 +90,17 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		})}`,
 	});
 
-	const getTimeText = (time) => time === Infinity ? 'DNF' : time.toFixed(2);
+	const getTimeText = (time) => {
+		if (time === Infinity) {
+			return 'DNF';
+		}
+
+		if (time >= 60) {
+			return `${Math.floor(time / 60)}:${(time % 60).toFixed(2).padStart(2, '0')}`;
+		}
+
+		return time.toFixed(2);
+	};
 
 	const faceColors = ['#fefe00', '#ffffff', '#ffa100', '#ee0000', '#00d800', '#0000f2'];
 
@@ -106,11 +116,19 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		const {text} = message;
 		let match = null;
 
-		if (message.subtype === undefined && (match = text.match(/^\s*(.+?:\s*)?(([\d.,]+|DNF)\s*)+$/i))) {
+		if (message.subtype === undefined && (match = text.match(/^\s*(.+?:\s*)?(([\d:.,]+|DNF)\s*)+$/i))) {
 			const label = match[1] ? match[1].trim().slice(0, -1) : null;
 			const labelText = label ? ` (${label})` : '';
 			const timeText = text.slice(match[1].length);
-			const times = timeText.replace(/,/g, '.').split(/\s+/).filter((time) => time.length > 0).map((time) => parseFloat(time) || Infinity);
+			const times = timeText.replace(/,/g, '.').split(/\s+/).filter((time) => time.length > 0).map((time) => {
+				const tokens = time.split(':');
+
+				if (tokens.length === 1) {
+					return parseFloat(time) || Infinity;
+				}
+
+				return (parseInt(tokens[0]) * 60 + parseFloat(tokens[1])) || Infinity;
+			});
 
 			if (times.length <= 1) {
 				return;
