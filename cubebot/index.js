@@ -106,7 +106,50 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		const {text} = message;
 		let match = null;
 
-		if ((match = text.match(/^(スクランブル|F2L|PLL|LL|ZBLL|CMLL|L6E)/))) {
+		if (message.subtype === undefined && (match = text.match(/^\s*(.+?:\s*)?(([\d.,]+|DNF)\s*)+$/i))) {
+			const label = match[1] ? match[1].trim().slice(0, -1) : null;
+			const labelText = label ? ` (${label})` : '';
+			const timeText = text.slice(match[1].length);
+			const times = timeText.replace(/,/g, '.').split(/\s+/).filter((time) => time.length > 0).map((time) => parseFloat(time) || Infinity);
+
+			if (times.length <= 1) {
+				return;
+			}
+
+			if (label.toUpperCase() === 'BLD') {
+				const minIndex = times.indexOf(Math.min(...times));
+				const fixedTimes = times.map((time, index) => index !== minIndex ? `(${getTimeText(time)})` : getTimeText(time));
+
+				slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `*${getTimeText(Math.min(...times))}*${labelText}: ${fixedTimes.join(' ')}`, {
+					username: 'cubebot',
+					icon_url: 'https://i.imgur.com/YyCc0mc.png',
+					thread_ts: message.thread_ts,
+				});
+			} else if (times.length < 5) {
+				const timeTexts = times.map((time) => getTimeText(time));
+
+				slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `*${getTimeText(mean(times))}*${labelText}: ${timeTexts.join(' ')}`, {
+					username: 'cubebot',
+					icon_url: 'https://i.imgur.com/YyCc0mc.png',
+					thread_ts: message.thread_ts,
+				});
+			} else {
+				const maxIndex = times.indexOf(Math.max(...times));
+				const minIndex = times.indexOf(Math.min(...times));
+				const average = mean(times.filter((time, index) => index !== maxIndex && index !== minIndex));
+				const fixedTimes = times.map((time, index) => (index === maxIndex || index === minIndex) ? `(${getTimeText(time)})` : getTimeText(time));
+
+				slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `*${getTimeText(average)}*${labelText}: ${fixedTimes.join(' ')}`, {
+					username: 'cubebot',
+					icon_url: 'https://i.imgur.com/YyCc0mc.png',
+					thread_ts: message.thread_ts,
+				});
+			}
+
+			return;
+		}
+
+		if ((match = text.match(/^(スクランブル|F2L|PLL|LL|ZBLL|CMLL|L6E|Edge|Corner)/))) {
 			const countMatch = text.slice(match[1].length).match(/\d+/);
 			const count = countMatch ? Math.min(12, parseInt(countMatch[0])) : 1;
 
@@ -157,12 +200,25 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					return Cube.inverse(cube.solve(20));
 				}
 
-				{
-					assert(text.startsWith('L6E'));
-
+				if (text.startsWith('L6E')) {
 					const cube = new Cube();
 					cube.ep = getRandomPermutation(12, [0, 1, 2, 3, 5, 7]);
 					cube.eo = getRandomOrientation(12, [0, 1, 2, 3, 5, 7], 2);
+					return Cube.inverse(cube.solve());
+				}
+
+				if (text.startsWith('Edge')) {
+					const cube = new Cube();
+					cube.ep = getRandomPermutation(12, range(12));
+					cube.eo = getRandomOrientation(12, range(12), 2);
+					return Cube.inverse(cube.solve());
+				}
+
+				{
+					assert(text.startsWith('Corner'));
+					const cube = new Cube();
+					cube.cp = getRandomPermutation(8, range(8));
+					cube.co = getRandomOrientation(8, range(8), 3);
 					return Cube.inverse(cube.solve());
 				}
 			});
@@ -221,35 +277,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 							};
 						}),
 					],
-				});
-			}
-		}
-
-		if (text.match(/^\s*(([\d.,]+|DNF)\s*)+$/i)) {
-			const times = text.replace(/,/g, '.').split(/\s+/).filter((time) => time.length > 0).map((time) => parseFloat(time) || Infinity);
-
-			if (times.length <= 1) {
-				return;
-			}
-
-			if (times.length < 5) {
-				const timeTexts = times.map((time) => getTimeText(time));
-
-				slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `*${getTimeText(mean(times))}*: ${timeTexts.join(' ')}`, {
-					username: 'cubebot',
-					icon_url: 'https://i.imgur.com/YyCc0mc.png',
-					thread_ts: message.thread_ts,
-				});
-			} else {
-				const maxIndex = times.indexOf(Math.max(...times));
-				const minIndex = times.indexOf(Math.min(...times));
-				const average = mean(times.filter((time, index) => index !== maxIndex && index !== minIndex));
-				const fixedTimes = times.map((time, index) => (index === maxIndex || index === minIndex) ? `(${getTimeText(time)})` : getTimeText(time));
-
-				slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `*${getTimeText(average)}*: ${fixedTimes.join(' ')}`, {
-					username: 'cubebot',
-					icon_url: 'https://i.imgur.com/YyCc0mc.png',
-					thread_ts: message.thread_ts,
 				});
 			}
 		}
