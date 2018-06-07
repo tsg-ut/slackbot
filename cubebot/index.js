@@ -96,7 +96,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if (time >= 60) {
-			return `${Math.floor(time / 60)}:${(time % 60).toFixed(2).padStart(2, '0')}`;
+			return `${Math.floor(time / 60)}:${(time % 60).toFixed(2).padStart(5, '0')}`;
 		}
 
 		return time.toFixed(2);
@@ -119,7 +119,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		if (message.subtype === undefined && (match = text.match(/^\s*(.+?:\s*)?(([\d:.,]+|DNF)\s*)+$/i))) {
 			const label = match[1] ? match[1].trim().slice(0, -1) : null;
 			const labelText = label ? ` (${label})` : '';
-			const timeText = text.slice(match[1].length);
+			const timeText = match[1] ? text.slice(match[1].length) : text;
 			const times = timeText.replace(/,/g, '.').split(/\s+/).filter((time) => time.length > 0).map((time) => {
 				const tokens = time.split(':');
 
@@ -134,7 +134,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
-			if (label.toUpperCase() === 'BLD') {
+			if (label && label.toUpperCase() === 'BLD') {
 				const minIndex = times.indexOf(Math.min(...times));
 				const fixedTimes = times.map((time, index) => index !== minIndex ? `(${getTimeText(time)})` : getTimeText(time));
 
