@@ -227,7 +227,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, '', {
 				username: 'cubebot',
 				icon_url: 'https://i.imgur.com/YyCc0mc.png',
-				attachments: scrambles.map((scramble) => getAttachment(scramble, count > 1 ? 80 : 200, !text.startsWith('スクランブル'))),
+				attachments: scrambles.map((scramble) => getAttachment(scramble, count > 1 ? 80 : 200, !text.match(/^(スクランブル|Edge|Corner)/))),
 			});
 		}
 
