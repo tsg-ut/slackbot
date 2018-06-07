@@ -5,7 +5,7 @@ const noop = require('lodash/noop');
 
 const cloudinary = jest.genMockFromModule('cloudinary');
 
-cloudinary.v2.uploader.upload_stream = (options, callback) => {
+cloudinary.v2.uploader.upload_stream = jest.fn((options, callback) => {
 	const stream = new PassThrough();
 	stream.on('end', () => {
 		callback(null, {
@@ -15,7 +15,7 @@ cloudinary.v2.uploader.upload_stream = (options, callback) => {
 	});
 	stream.on('data', noop);
 	return stream;
-};
+});
 
 cloudinary.url = '';
 

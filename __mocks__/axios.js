@@ -1,6 +1,6 @@
 /* eslint-env node, jest */
 
-const axios = (options) => Promise.resolve(axios.response);
+const axios = jest.fn((options) => Promise.resolve(axios.response));
 axios.get = axios;
 axios.post = axios;
 

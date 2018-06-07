@@ -167,7 +167,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if ((match = text.match(/^(スクランブル|F2L|PLL|LL|ZBLL|CMLL|L6E|Edge|Corner)/))) {
+		if ((match = text.match(/^(スクランブル|F2L|PLL|LL|ZBLL|CMLL|L6E|エッジ|コーナー)/))) {
 			const countMatch = text.slice(match[1].length).match(/\d+/);
 			const count = countMatch ? Math.min(12, parseInt(countMatch[0])) : 1;
 
@@ -225,7 +225,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					return Cube.inverse(cube.solve());
 				}
 
-				if (text.startsWith('Edge')) {
+				if (text.startsWith('エッジ')) {
 					const cube = new Cube();
 					cube.ep = getRandomPermutation(12, range(12));
 					cube.eo = getRandomOrientation(12, range(12), 2);
@@ -233,7 +233,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				}
 
 				{
-					assert(text.startsWith('Corner'));
+					assert(text.startsWith('コーナー'));
 					const cube = new Cube();
 					cube.cp = getRandomPermutation(8, range(8));
 					cube.co = getRandomOrientation(8, range(8), 3);
@@ -245,7 +245,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, '', {
 				username: 'cubebot',
 				icon_url: 'https://i.imgur.com/YyCc0mc.png',
-				attachments: scrambles.map((scramble) => getAttachment(scramble, count > 1 ? 80 : 200, !text.match(/^(スクランブル|Edge|Corner)/))),
+				attachments: scrambles.map((scramble) => getAttachment(scramble, count > 1 ? 80 : 200, !text.match(/^(スクランブル|エッジ|コーナー)/))),
 			});
 		}
 

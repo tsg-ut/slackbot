@@ -2,8 +2,8 @@
 
 const sqlite = jest.genMockFromModule('sqlite');
 
-sqlite.all = (sql, variables) => Promise.resolve(sqlite.records);
-sqlite.get = (sql, variables) => Promise.resolve(sqlite.records.length >= 1 ? sqlite.records[0] : null);
+sqlite.all = jest.fn(() => Promise.resolve(sqlite.records));
+sqlite.get = jest.fn(() => Promise.resolve(sqlite.records.length >= 1 ? sqlite.records[0] : null));
 
 sqlite.records = [];
 
