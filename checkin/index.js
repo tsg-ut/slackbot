@@ -4,9 +4,14 @@ const schedule = require('node-schedule');
 const axios = require('axios');
 const get = require('lodash/get');
 
+const places = [
+	{id: '4bff8900daf9c9b68c58faef', name: '理学部7号館'},
+	{id: '5b1a2ff17269fe002ce4f8de', name: 'TSG部室'},
+];
+
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const state = {
-		herenow: null,
+		herenow: new Map(),
 	};
 
 	const job = async () => {
@@ -15,31 +20,35 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		const data = await axios.get('https://api.foursquare.com/v2/venues/4bff8900daf9c9b68c58faef/herenow', {
-			params: {
-				oauth_token: process.env.SWARM_TOKEN,
-				v: '20180606',
-			},
-			responseType: 'json',
-		});
+		for (const place of places) {
+			const data = await axios.get(`https://api.foursquare.com/v2/venues/${place.id}/herenow`, {
+				params: {
+					oauth_token: process.env.SWARM_TOKEN,
+					v: '20180606',
+				},
+				responseType: 'json',
+			});
 
-		const items = get(data, ['data', 'response', 'hereNow', 'items'], []);
+			const items = get(data, ['data', 'response', 'hereNow', 'items'], []);
 
-		if (state.herenow !== null) {
-			const newUsers = items.filter(({id}) => state.herenow.find((user) => user.id === id) === undefined)
+			if (state.herenow.has(place.id)) {
+				const newUsers = items.filter(({id}) => (
+					state.herenow.get(place.id).find((user) => user.id === id) === undefined
+				));
 
-			for (const {user, shout} of newUsers) {
-				await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, stripIndent`
-					\`${user.firstName} ${user.lastName}\` が理学部7号館にチェックインしました
-					${shout ? `「${shout}」` : ''}
-				`, {
-					username: 'checkin',
-					icon_url: `${user.photo.prefix}110x110${user.photo.suffix}`,
-				});
+				for (const {user, shout} of newUsers) {
+					await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, stripIndent`
+						:bee: \`${user.firstName} ${user.lastName}\` が${place.name}にチェックインしました
+						${shout ? `「${shout}」` : ''}
+					`, {
+						username: 'checkin',
+						icon_url: `${user.photo.prefix}110x110${user.photo.suffix}`,
+					});
+				}
 			}
-		}
 
-		state.herenow = items;
+			state.herenow.set(place.id, items);
+		}
 	};
 
 	schedule.scheduleJob('*/3 * * * *', job);
