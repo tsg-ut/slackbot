@@ -42,6 +42,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const mapToObject = (map) => {
 		const object = {};
 		for (const [key, value] of map.entries()) {
+			if (!key) {
+				continue;
+			}
 			object[key.toString()] = value;
 		}
 		return object;
@@ -62,6 +65,62 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		await promisify(fs.writeFile)(path.join(__dirname, 'state.json'), JSON.stringify(savedState));
 	};
+
+	const getMeaning = async (word) => {
+		const response = await axios.get('https://ja.wikipedia.org/w/api.php', {
+			params: {
+				action: 'query',
+				prop: 'extracts',
+				titles: word,
+				exlimit: 1,
+				exintro: true,
+				explaintext: true,
+				exsentences: 1,
+				format: 'json',
+			},
+			responseType: 'json',
+		});
+
+		const pages = get(response, ['data', 'query', 'pages']);
+		if (typeof pages !== 'object') {
+			await failed(new Error());
+			return;
+		}
+
+		const wikitext = get(Object.values(pages), [0, 'extract']);
+		if (typeof wikitext !== 'string' || wikitext.length === 0) {
+			await failed(new Error());
+			return;
+		}
+
+		console.log(wikitext);
+
+		let meaning = null;
+		const lines = wikitext.split('\n').filter((line) => line.trim().length !== 0);
+
+		if (lines.length !== 1) {
+			meaning = lines[1];
+		} else {
+			meaning = wikitext.replace(/\(.+?\)/g, '');
+			meaning = meaning.replace(/（.+?）/g, '');
+			if (meaning.includes('とは、')) {
+				meaning = meaning.replace(/^.+?とは、/, '');
+			} else if (meaning.includes('は、')) {
+				meaning = meaning.replace(/^.+?は、/, '');
+			} else if (meaning.includes('とは')) {
+				meaning = meaning.replace(/^.+?とは/, '');
+			} else if (meaning.includes('、')) {
+				meaning = meaning.replace(/^.+?、/, '');
+			} else {
+				meaning = meaning.replace(/^.+?は/, '');
+			}
+			meaning = meaning.replace(/であり、.+$/, '');
+			meaning = meaning.replace(/で、.+$/, '');
+			meaning = meaning.replace(/(のこと|をいう|である|。)+$/, '');
+		}
+
+		return meaning;
+	}
 
 	let timeoutId = null;
 
@@ -124,7 +183,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const onFinishBettings = async () => {
 		assert(state.phase === 'collect_bettings');
 
-		const correctMeaningIndex = state.shuffledMeanings.findIndex(({user}) => user === null);
+		const correctMeaningIndex = state.shuffledMeanings.findIndex(({user, dummy}) => user === null && dummy === null);
 		const correctMeaning = state.shuffledMeanings[correctMeaningIndex];
 		const correctBetters = [...state.bettings.entries()].filter(([, {meaning}]) => meaning === correctMeaningIndex);
 
@@ -144,7 +203,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
 		await postMessage('今回の対戦結果～', state.shuffledMeanings.map((meaning, index) => ({
-			title: `${index + 1}. ${meaning.text} ${meaning.user ? `by <@${meaning.user}>` : ':o:'}`,
+			title: `${index + 1}. ${meaning.text} ${meaning.dummy ? `(${meaning.dummy[0]})` : (meaning.user ? `by <@${meaning.user}>` : ':o:')}`,
 			text: [...state.bettings.entries()].filter(([, {meaning}]) => meaning === index).map(([better]) => `<@${better}>`).join(' ') || '-',
 			color: colors[index],
 		})));
@@ -159,7 +218,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			} else {
 				const misdirectedUser = state.shuffledMeanings[betting.meaning].user;
 				newRatings.set(user, newRatings.get(user) - betting.coins - 1);
-				newRatings.set(misdirectedUser, newRatings.get(misdirectedUser) + betting.coins);
+				if (misdirectedUser !== null) {
+					newRatings.set(misdirectedUser, newRatings.get(misdirectedUser) + betting.coins);
+				}
 			}
 		}
 
@@ -229,13 +290,26 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 						await setState({phase: 'collect_bettings'});
 
+						const dummyMeanings = [];
+						for (const i of Array(Math.max(0, 4 - state.meanings.size))) {
+							const word = sample(candidateWords);
+							const meaning = await getMeaning(word[0]);
+							dummyMeanings.push({
+								user: null,
+								dummy: word,
+								text: meaning,
+							});
+						}
+
 						const shuffledMeanings = shuffle([{
 							user: null,
+							dummy: null,
 							text: state.theme.meaning,
 						}, ...[...state.meanings.entries()].map(([user, text]) => ({
 							user,
+							dummy: null,
 							text,
-						}))]);
+						})), ...dummyMeanings]);
 
 						await setState({shuffledMeanings});
 
@@ -260,58 +334,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					const [word, ruby] = state.candidates.find(([, ruby]) => ruby === text);
 					await setState({candidates: []});
 
-					const response = await axios.get('https://ja.wikipedia.org/w/api.php', {
-						params: {
-							action: 'query',
-							prop: 'extracts',
-							titles: word,
-							exlimit: 1,
-							exintro: true,
-							explaintext: true,
-							exsentences: 1,
-							format: 'json',
-						},
-						responseType: 'json',
-					});
-
-					const pages = get(response, ['data', 'query', 'pages']);
-					if (typeof pages !== 'object') {
-						await failed(new Error());
-						return;
-					}
-
-					const wikitext = get(Object.values(pages), [0, 'extract']);
-					if (typeof wikitext !== 'string' || wikitext.length === 0) {
-						await failed(new Error());
-						return;
-					}
-
-					console.log(wikitext);
-
-					let meaning = null;
-					const lines = wikitext.split('\n').filter((line) => line.trim().length !== 0);
-
-					if (lines.length !== 1) {
-						meaning = lines[1];
-					} else {
-						meaning = wikitext.replace(/\(.+?\)/g, '');
-						meaning = meaning.replace(/（.+?）/g, '');
-						if (meaning.includes('とは、')) {
-							meaning = meaning.replace(/^.+?とは、/, '');
-						} else if (meaning.includes('は、')) {
-							meaning = meaning.replace(/^.+?は、/, '');
-						} else if (meaning.includes('とは')) {
-							meaning = meaning.replace(/^.+?とは/, '');
-						} else if (meaning.includes('、')) {
-							meaning = meaning.replace(/^.+?、/, '');
-						} else {
-							meaning = meaning.replace(/^.+?は/, '');
-						}
-						meaning = meaning.replace(/^.+?は、/, '');
-						meaning = meaning.replace(/であり、.+$/, '');
-						meaning = meaning.replace(/で、.+$/, '');
-						meaning = meaning.replace(/(のこと|をいう|である|。)+$/, '');
-					}
+					const meaning = await getMeaning(word);
 
 					await setState({theme: {word, ruby, meaning}});
 
@@ -348,7 +371,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					});
 					await setState({bettings: state.bettings});
 
-					await postMessage(`<@${message.user}> さんが「${state.shuffledMeanings[betMeaning].text}」に${betCoins}枚BETしたよ:moneybag:`);
+					await postMessage(`<@${message.user}> さんが「${state.shuffledMeanings[betMeaning - 1].text}」に${betCoins}枚BETしたよ:moneybag:`);
 
 					if (state.bettings.size === state.meanings.size) {
 						clearTimeout(timeoutId);
