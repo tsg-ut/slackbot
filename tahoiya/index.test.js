@@ -1,28 +1,22 @@
 /* eslint-env node, jest */
 
-const {RTM_EVENTS: {MESSAGE}} = require('@slack/client');
-const sushi = require('./index.js');
+const tahoiya = require('./index.js');
 const Slack = require('../lib/slackMock.js');
 
 let slack = null;
 
-beforeEach(() => {
+beforeEach(async () => {
 	slack = new Slack();
-	sushi(slack);
+	process.env.CHANNEL_SANDBOX = slack.fakeChannel;
+	await tahoiya(slack);
 });
 
-it('reacts to "おすし"', () => new Promise((resolve) => {
-	slack.on('reactions.add', (emoji, {channel, timestamp}) => {
-		expect(emoji).toBe('sushi');
-		expect(channel).toBe(slack.fakeChannel);
-		expect(timestamp).toBe(slack.fakeTimestamp);
-		resolve();
-	});
+describe('tahoiya', () => {
+	it('responds to "たほいや"', async () => {
+		const {username, text, attachments} = await slack.getResponseTo('たほいや');
 
-	slack.rtmClient.emit(MESSAGE, {
-		channel: slack.fakeChannel,
-		text: 'おすし',
-		user: slack.fakeUser,
-		ts: slack.fakeTimestamp,
+		expect(username).toBe('tahoiya');
+		expect(text).toContain('たほいや');
+		expect(attachments).toHaveLength(10);
 	});
-}));
+});

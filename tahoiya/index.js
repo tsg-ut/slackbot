@@ -52,7 +52,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 	const setState = async (newState) => {
 		Object.assign(state, newState);
-		console.log(newState, state);
 
 		const savedState = {};
 		for (const [key, value] of Object.entries(state)) {
