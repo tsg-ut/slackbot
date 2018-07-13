@@ -6,6 +6,7 @@ const assert = require('assert');
 const get = require('lodash/get');
 const sample = require('lodash/sample');
 const sampleSize = require('lodash/sampleSize');
+const sum = require('lodash/sum');
 const shuffle = require('lodash/shuffle');
 const path = require('path');
 const fs = require('fs');
@@ -16,7 +17,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		phase: 'waiting',
 		candidates: [],
 		meanings: new Map(),
+		shuffledMeanings: [],
+		bettings: new Map(),
 		theme: null,
+		ratings: new Map(),
+		timeoutId: null,
 	};
 
 	const databaseText = await (async () => {
@@ -75,6 +80,78 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		postMessage(error.stack)
 	);
 
+	const onFinishBettings = async () => {
+		assert(state.phase === 'collect_bettings');
+		state.phase = 'waiting';
+
+		const correctMeaningIndex = state.shuffledMeanings.findIndex(({user}) => user === null);
+		const correctMeaning = state.shuffledMeanings[correctMeaningIndex];
+		const correctBetters = [...state.bettings.entries()].filter(([, {meaning}]) => meaning === correctMeaningIndex);
+
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+
+		await postMessage(stripIndent`
+			集計が終了したよ～:raised_hands::raised_hands::raised_hands:
+
+			*${state.theme.ruby}* の正しい意味は⋯⋯
+			*${correctMeaningIndex + 1}. ${correctMeaning.text}*
+
+			正解者: ${correctBetters.length === 0 ? 'なし' : correctBetters.map(([better]) => `<@${better}>`).join(' ')}
+
+			https://ja.wikipedia.org/wiki/${encodeURIComponent(state.theme.word)}
+		`);
+
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+
+		await postMessage('今回の対戦結果～', state.shuffledMeanings.map((meaning, index) => ({
+			title: `${index + 1}. ${meaning.text} ${meaning.user ? `by <@${meaning.user}>` : ':o:'}`,
+			text: [...state.bettings.entries()].filter(([, {meaning}]) => meaning === index).map(([better]) => `<@${better}>`).join(' ') || '-',
+			color: colors[index],
+		})));
+
+		const newRatings = new Map([...state.meanings.keys()].map((user) => [user, 0]));
+
+		for (const user of state.meanings.keys()) {
+			const betting = state.bettings.get(user) || {meaning: null, coins: 1};
+
+			if (betting.meaning === correctMeaningIndex) {
+				newRatings.set(user, newRatings.get(user) + betting.coins);
+			} else {
+				const misdirectedUser = state.shuffledMeanings[betting.meaning].user;
+				newRatings.set(user, newRatings.get(user) - betting.coins - 1);
+				newRatings.set(misdirectedUser, newRatings.get(misdirectedUser) + betting.coins);
+			}
+		}
+
+		for (const [user, newRating] of newRatings.entries()) {
+			if (!state.ratings.has(user)) {
+				state.ratings.set(user, []);
+			}
+
+			const oldRatings = state.ratings.get(user);
+			oldRatings.push(newRating);
+
+			while (oldRatings.length > 5) {
+				oldRatings.shift();
+			}
+		}
+
+		const ranking = [...state.ratings.entries()].sort(([, a], [, b]) => sum(b) - sum(a));
+		const formatNumber = (number) => number >= 0 ? `+${number}` : `${number}`;
+
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+
+		await postMessage('ランキング更新～', ranking.map(([user, ratings], index) => ({
+			text: `#${index + 1} <@${user}>: ${sum(ratings)} (${ratings.map(formatNumber).join(', ')})`,
+			color: colors[index % colors.length],
+		})));
+
+		state.theme = null;
+		state.shuffledMeanings = [];
+		state.meanings.clear();
+		state.bettings.clear();
+	};
+
 	rtm.on(MESSAGE, async (message) => {
 		if (!message.text || message.subtype !== undefined) {
 			return;
@@ -82,7 +159,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		try {
 			const {text} = message;
-			let match = null;
+			let matches = null;
 
 			if (message.channel === process.env.CHANNEL_SANDBOX) {
 				if (text === 'たほいや') {
@@ -91,7 +168,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						state.candidates = candidates;
 						console.log(candidates);
 						await postMessage(stripIndent`
-							楽しい“たほいや”を始めるよ～:clap::clap::clap:
+							たのしい“たほいや”を始めるよ～:clap::clap::clap:
 							下のリストの中からお題にする単語を選んでタイプしてね:wink:
 						`, candidates.map(([, ruby], index) => ({
 							text: ruby,
@@ -114,21 +191,25 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						state.phase = 'collect_bettings';
 
 						const shuffledMeanings = shuffle([{
-							player: null,
+							user: null,
 							text: state.theme.meaning,
-						}, ...[...state.meanings.entries()].map(([player, text]) => ({
-							player,
+						}, ...[...state.meanings.entries()].map(([user, text]) => ({
+							user,
 							text,
 						}))]);
 
+						state.shuffledMeanings = shuffledMeanings;
+
 						await postMessage(stripIndent`
-							ベッティングタイムが始まるよ～:clap::clap::clap:
-							下のリストから *${state.theme.ruby}* の正しい意味だと思うものを選んで、
-							「nにm枚」とタイプしてね:wink:
+							ベッティングタイムが始まるよ～:open_hands::open_hands::open_hands:
+							下のリストから *${state.theme.ruby}* の正しい意味だと思うものを選んで「nにm枚」とタイプしてね:wink:
+							全員ぶん出揃うか3分が経過すると結果発表だよ:sunglasses:
 						`, shuffledMeanings.map((meaning, index) => ({
 							text: `${index + 1}. ${meaning.text}`,
 							color: colors[index],
 						})));
+
+						state.timeoutId = setTimeout(onFinishBettings, 3 * 60 * 1000);
 						return;
 					}
 				}
@@ -203,6 +284,39 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						参加者はこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
 						全員ぶん揃ったらこのチャンネルでもう一度「たほいや」とタイプしてね:+1:
 					`);
+					return;
+				}
+
+				if ((matches = text.match(/^(\d+)に(\d+)枚$/)) && state.phase === 'collect_bettings') {
+					if (!state.meanings.has(message.user)) {
+						await postMessage(`<@${message.user}> は参加登録していないのでベッティングできないよ:innocent:`);
+						return;
+					}
+
+					const betMeaning = parseInt(matches[1]);
+					const betCoins = parseInt(matches[2]);
+
+					if (betMeaning <= 0 || betMeaning > state.shuffledMeanings.length) {
+						await postMessage(`<@${message.user}> 意味番号がおかしいよ:open_mouth:`);
+						return;
+					}
+
+					if (![1, 2, 3].includes(betCoins)) {
+						await postMessage(`<@${message.user}> BETする枚数は1枚から3枚だよ:pouting_cat:`);
+						return;
+					}
+
+					state.bettings.set(message.user, {
+						meaning: betMeaning - 1,
+						coins: betCoins,
+					});
+
+					await postMessage(`<@${message.user}> さんが「${state.shuffledMeanings[betMeaning].text}」に${betCoins}枚BETしたよ:moneybag:`);
+
+					if (state.bettings.size === state.meanings.size) {
+						clearTimeout(state.timeoutId);
+						onFinishBettings();
+					}
 
 					return;
 				}
@@ -210,7 +324,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 			// DM
 			if (message.channel.startsWith('D')) {
-				if (state.phase === 'collect_meanings') {
+				if (state.phase === 'collect_meanings' && text.length <= 256) {
 					state.meanings.set(message.user, text);
 
 					await slack.chat.postMessage(message.channel, ':+1:', {
