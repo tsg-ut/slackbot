@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon --exitcrash --watch .restart-trigger index.js",
-    "dev": "nodemon index.js",
+    "dev": "nodemon index.js -i *.json",
     "lint": "cd mahjong && eslint .",
     "test": "jest --verbose --coverage"
   },

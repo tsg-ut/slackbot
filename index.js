@@ -7,7 +7,6 @@ process.on('unhandledRejection', (error) => {
 const {RtmClient, WebClient, CLIENT_EVENTS} = require('@slack/client');
 
 const plugins = [
-	/*
 	require('./mahjong'),
 	require('./pocky'),
 	require('./emoji-notifier'),
@@ -17,7 +16,6 @@ const plugins = [
 	require('./tiobot'),
 	require('./math'),
 	require('./checkin'),
-	*/
 	require('./tahoiya'),
 ];
 
