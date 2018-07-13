@@ -166,18 +166,63 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		'#E65100',
 	];
 
-	const postMessage = (text, attachments) => (
+	const postMessage = (text, attachments, options) => (
 		slack.chat.postMessage(process.env.CHANNEL_SANDBOX, text, {
 			username: 'tahoiya',
 			// eslint-disable-next-line camelcase
 			icon_emoji: ':open_book:',
 			...(attachments ? {attachments} : {}),
+			...(options ? options : {}),
 		})
 	);
 
 	const failed = (error) => (
 		postMessage(error.stack)
 	);
+
+	const onFinishMeanings = async () => {
+		if (state.meanings.size === 0) {
+			await postMessage('参加者がいないのでキャンセルされたよ:face_with_rolling_eyes:');
+			await setState({phase: 'waiting', theme: null});
+			return;
+		}
+
+		await setState({phase: 'collect_bettings'});
+
+		const dummyMeanings = [];
+		for (const i of Array(Math.max(0, 4 - state.meanings.size))) {
+			const word = sample(candidateWords);
+			const meaning = await getMeaning(word[0]);
+			dummyMeanings.push({
+				user: null,
+				dummy: word,
+				text: meaning,
+			});
+		}
+
+		const shuffledMeanings = shuffle([{
+			user: null,
+			dummy: null,
+			text: state.theme.meaning,
+		}, ...[...state.meanings.entries()].map(([user, text]) => ({
+			user,
+			dummy: null,
+			text,
+		})), ...dummyMeanings]);
+
+		await setState({shuffledMeanings});
+
+		await postMessage(stripIndent`
+			ベッティングタイムが始まるよ～:open_hands::open_hands::open_hands:
+			下のリストから *${state.theme.ruby}* の正しい意味だと思うものを選んで「nにm枚」とタイプしてね:wink:
+			全員ぶん出揃うか3分が経過すると結果発表だよ:sunglasses:
+		`, shuffledMeanings.map((meaning, index) => ({
+			text: `${index + 1}. ${meaning.text}`,
+			color: colors[index],
+		})));
+
+		timeoutId = setTimeout(onFinishBettings, 3 * 60 * 1000);
+	};
 
 	const onFinishBettings = async () => {
 		assert(state.phase === 'collect_bettings');
@@ -197,7 +242,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			正解者: ${correctBetters.length === 0 ? 'なし' : correctBetters.map(([better]) => `<@${better}>`).join(' ')}
 
 			https://ja.wikipedia.org/wiki/${encodeURIComponent(state.theme.word)}
-		`);
+		`, [], {unfurl_links: true});
 
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -267,63 +312,22 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 			if (message.channel === process.env.CHANNEL_SANDBOX) {
 				if (text === 'たほいや') {
-					if (state.phase === 'waiting') {
-						const candidates = sampleSize(candidateWords, 10);
-						await setState({candidates});
-						console.log(candidates);
-						await postMessage(stripIndent`
-							たのしい“たほいや”を始めるよ～:clap::clap::clap:
-							下のリストの中からお題にする単語を選んでタイプしてね:wink:
-						`, candidates.map(([, ruby], index) => ({
-							text: ruby,
-							color: colors[index],
-						})));
+					if (!state.phase === 'waiting') {
+						await postMessage('今たほいや中だよ:imp:');
 						return;
 					}
 
-					if (state.phase === 'collect_meanings') {
-						if (state.meanings.size === 0) {
-							await postMessage('参加者がいないので始められないよ:face_with_rolling_eyes:');
-							return;
-						}
-
-						await setState({phase: 'collect_bettings'});
-
-						const dummyMeanings = [];
-						for (const i of Array(Math.max(0, 4 - state.meanings.size))) {
-							const word = sample(candidateWords);
-							const meaning = await getMeaning(word[0]);
-							dummyMeanings.push({
-								user: null,
-								dummy: word,
-								text: meaning,
-							});
-						}
-
-						const shuffledMeanings = shuffle([{
-							user: null,
-							dummy: null,
-							text: state.theme.meaning,
-						}, ...[...state.meanings.entries()].map(([user, text]) => ({
-							user,
-							dummy: null,
-							text,
-						})), ...dummyMeanings]);
-
-						await setState({shuffledMeanings});
-
-						await postMessage(stripIndent`
-							ベッティングタイムが始まるよ～:open_hands::open_hands::open_hands:
-							下のリストから *${state.theme.ruby}* の正しい意味だと思うものを選んで「nにm枚」とタイプしてね:wink:
-							全員ぶん出揃うか3分が経過すると結果発表だよ:sunglasses:
-						`, shuffledMeanings.map((meaning, index) => ({
-							text: `${index + 1}. ${meaning.text}`,
-							color: colors[index],
-						})));
-
-						timeoutId = setTimeout(onFinishBettings, 3 * 60 * 1000);
-						return;
-					}
+					const candidates = sampleSize(candidateWords, 10);
+					await setState({candidates});
+					console.log(candidates);
+					await postMessage(stripIndent`
+						たのしい“たほいや”を始めるよ～:clap::clap::clap:
+						下のリストの中からお題にする単語を選んでタイプしてね:wink:
+					`, candidates.map(([, ruby], index) => ({
+						text: ruby,
+						color: colors[index],
+					})));
+					return;
 				}
 
 				if (state.candidates.some(([, ruby]) => ruby === text)) {
@@ -339,9 +343,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 					await postMessage(stripIndent`
 						お題を *「${ruby}」* にセットしたよ:v:
-						参加者はこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
-						全員ぶん揃ったらこのチャンネルでもう一度「たほいや」とタイプしてね:+1:
+						参加者は3分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
 					`);
+
+					setTimeout(onFinishMeanings, 3 * 60 * 1000);
 					return;
 				}
 
