@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 process.on('unhandledRejection', (error) => {
-	console.error(error);
+	console.error(error.stack);
 });
 
 const {RtmClient, WebClient, CLIENT_EVENTS} = require('@slack/client');
