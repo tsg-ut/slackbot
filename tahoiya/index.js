@@ -246,7 +246,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
-		await postMessage('今回の対戦結果～', state.shuffledMeanings.map((meaning, index) => ({
+		await postMessage('今回の対戦結果', state.shuffledMeanings.map((meaning, index) => ({
 			title: `${index + 1}. ${meaning.text} ${meaning.dummy ? `(${meaning.dummy[0]})` : (meaning.user ? `by <@${meaning.user}>` : ':o:')}`,
 			text: [...state.bettings.entries()].filter(([, {meaning}]) => meaning === index).map(([better]) => `<@${better}>`).join(' ') || '-',
 			color: colors[index],
@@ -287,7 +287,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
-		await postMessage('ランキング更新～', ranking.map(([user, ratings], index) => ({
+		await postMessage('現在のランキング', ranking.map(([user, ratings], index) => ({
 			text: `#${index + 1} <@${user}>: ${sum(ratings)} (${ratings.map(formatNumber).join(', ')})`,
 			color: colors[index % colors.length],
 		})));
