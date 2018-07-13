@@ -12,17 +12,58 @@ const path = require('path');
 const fs = require('fs');
 const {promisify} = require('util');
 
+const state = (() => {
+	try {
+		// eslint-disable-next-line global-require
+		const savedState = require('./state.json');
+		return {
+			phase: savedState.phase,
+			candidates: savedState.candidates,
+			meanings: new Map(Object.entries(savedState.meanings)),
+			shuffledMeanings: savedState.shuffledMeanings,
+			bettings: new Map(Object.entries(savedState.bettings)),
+			theme: savedState.theme,
+			ratings: new Map(Object.entries(savedState.ratings)),
+		};
+	} catch (e) {
+		return {
+			phase: 'waiting',
+			candidates: [],
+			meanings: new Map(),
+			shuffledMeanings: [],
+			bettings: new Map(),
+			theme: null,
+			ratings: new Map(),
+		};
+	}
+})();
+
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
-	const state = {
-		phase: 'waiting',
-		candidates: [],
-		meanings: new Map(),
-		shuffledMeanings: [],
-		bettings: new Map(),
-		theme: null,
-		ratings: new Map(),
-		timeoutId: null,
+	const mapToObject = (map) => {
+		const object = {};
+		for (const [key, value] of map.entries()) {
+			object[key.toString()] = value;
+		}
+		return object;
 	};
+
+	const setState = async (newState) => {
+		Object.assign(state, newState);
+		console.log(newState, state);
+
+		const savedState = {};
+		for (const [key, value] of Object.entries(state)) {
+			if (value instanceof Map) {
+				savedState[key] = mapToObject(value);
+			} else {
+				savedState[key] = value;
+			}
+		}
+
+		await promisify(fs.writeFile)(path.join(__dirname, 'state.json'), JSON.stringify(savedState));
+	};
+
+	let timeoutId = null;
 
 	const databaseText = await (async () => {
 		const dataPath = path.join(__dirname, 'data.txt');
@@ -82,7 +123,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 	const onFinishBettings = async () => {
 		assert(state.phase === 'collect_bettings');
-		state.phase = 'waiting';
 
 		const correctMeaningIndex = state.shuffledMeanings.findIndex(({user}) => user === null);
 		const correctMeaning = state.shuffledMeanings[correctMeaningIndex];
@@ -135,6 +175,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				oldRatings.shift();
 			}
 		}
+		await setState({ratings: state.ratings})
 
 		const ranking = [...state.ratings.entries()].sort(([, a], [, b]) => sum(b) - sum(a));
 		const formatNumber = (number) => number >= 0 ? `+${number}` : `${number}`;
@@ -146,10 +187,13 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			color: colors[index % colors.length],
 		})));
 
-		state.theme = null;
-		state.shuffledMeanings = [];
-		state.meanings.clear();
-		state.bettings.clear();
+		await setState({
+			phase: 'waiting',
+			theme: null,
+			shuffledMeanings: [],
+			meanings: new Map(),
+			bettings: new Map(),
+		});
 	};
 
 	rtm.on(MESSAGE, async (message) => {
@@ -165,7 +209,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				if (text === 'たほいや') {
 					if (state.phase === 'waiting') {
 						const candidates = sampleSize(candidateWords, 10);
-						state.candidates = candidates;
+						await setState({candidates});
 						console.log(candidates);
 						await postMessage(stripIndent`
 							たのしい“たほいや”を始めるよ～:clap::clap::clap:
@@ -183,12 +227,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 							return;
 						}
 
-						if (process.env.NODE_ENV !== 'development' && state.meanings.size === 1) {
-							await postMessage('参加者が1人じゃ始められないよ:unamused:');
-							return;
-						}
-
-						state.phase = 'collect_bettings';
+						await setState({phase: 'collect_bettings'});
 
 						const shuffledMeanings = shuffle([{
 							user: null,
@@ -198,7 +237,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 							text,
 						}))]);
 
-						state.shuffledMeanings = shuffledMeanings;
+						await setState({shuffledMeanings});
 
 						await postMessage(stripIndent`
 							ベッティングタイムが始まるよ～:open_hands::open_hands::open_hands:
@@ -209,17 +248,17 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 							color: colors[index],
 						})));
 
-						state.timeoutId = setTimeout(onFinishBettings, 3 * 60 * 1000);
+						timeoutId = setTimeout(onFinishBettings, 3 * 60 * 1000);
 						return;
 					}
 				}
 
 				if (state.candidates.some(([, ruby]) => ruby === text)) {
 					assert(state.phase === 'waiting');
-					state.phase = 'collect_meanings';
+					await setState({phase: 'collect_meanings'});
 
 					const [word, ruby] = state.candidates.find(([, ruby]) => ruby === text);
-					state.candidates = [];
+					await setState({candidates: []});
 
 					const response = await axios.get('https://ja.wikipedia.org/w/api.php', {
 						params: {
@@ -246,6 +285,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						await failed(new Error());
 						return;
 					}
+
 					console.log(wikitext);
 
 					let meaning = null;
@@ -273,11 +313,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						meaning = meaning.replace(/(のこと|をいう|である|。)+$/, '');
 					}
 
-					state.theme = {
-						word,
-						ruby,
-						meaning,
-					};
+					await setState({theme: {word, ruby, meaning}});
 
 					await postMessage(stripIndent`
 						お題を *「${ruby}」* にセットしたよ:v:
@@ -310,11 +346,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						meaning: betMeaning - 1,
 						coins: betCoins,
 					});
+					await setState({bettings: state.bettings});
 
 					await postMessage(`<@${message.user}> さんが「${state.shuffledMeanings[betMeaning].text}」に${betCoins}枚BETしたよ:moneybag:`);
 
 					if (state.bettings.size === state.meanings.size) {
-						clearTimeout(state.timeoutId);
+						clearTimeout(timeoutId);
 						onFinishBettings();
 					}
 
@@ -326,6 +363,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			if (message.channel.startsWith('D')) {
 				if (state.phase === 'collect_meanings' && text.length <= 256) {
 					state.meanings.set(message.user, text);
+					await setState({meanings: state.meanings});
 
 					await slack.chat.postMessage(message.channel, ':+1:', {
 						username: 'tahoiya',
