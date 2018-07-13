@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon --exitcrash --watch .restart-trigger index.js",
-    "dev": "nodemon index.js",
+    "dev": "nodemon index.js -i *.json",
     "lint": "cd mahjong && eslint .",
     "test": "jest --verbose --coverage"
   },
@@ -33,6 +33,7 @@
     "cubejs": "^1.0.3",
     "dockerode": "^2.5.2",
     "dotenv": "^4.0.0",
+    "download": "^7.1.0",
     "jsdom": "^11.6.1",
     "lodash": "^4.17.4",
     "node-emoji": "^1.8.1",

@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 process.on('unhandledRejection', (error) => {
-	console.error(error);
+	console.error(error.stack);
 });
 
 const {RtmClient, WebClient, CLIENT_EVENTS} = require('@slack/client');
@@ -16,6 +16,7 @@ const plugins = [
 	require('./tiobot'),
 	require('./math'),
 	require('./checkin'),
+	require('./tahoiya'),
 ];
 
 const rtmClient = new RtmClient(process.env.SLACK_TOKEN);
