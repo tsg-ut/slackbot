@@ -288,7 +288,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
 		await postMessage('現在のランキング', ranking.map(([user, ratings], index) => ({
-			text: `#${index + 1} <@${user}>: ${sum(ratings)} (${ratings.map(formatNumber).join(', ')})`,
+			text: `#${index + 1} ${state.meanings.has(user) ? `<@${user}>` : user}: ${sum(ratings)} (${ratings.map(formatNumber).join(', ')})`,
 			color: colors[index % colors.length],
 		})));
 
