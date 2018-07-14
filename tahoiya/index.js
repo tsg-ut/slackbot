@@ -213,8 +213,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		await setState({shuffledMeanings});
 
 		await postMessage(stripIndent`
+			${[...state.meanings.keys()].map((user) => `<@${user}>`).join(' ')}
 			ベッティングタイムが始まるよ～:open_hands::open_hands::open_hands:
-			下のリストから *${state.theme.ruby}* の正しい意味だと思うものを選んで「nにm枚」とタイプしてね:wink:
+			下のリストから *${state.theme.ruby}* の正しい意味だと思うものを選んで、 <@${process.env.USER_TSGBOT}> に「nにm枚」とDMしてね:wink:
 			全員ぶん出揃うか3分が経過すると結果発表だよ:sunglasses:
 		`, shuffledMeanings.map((meaning, index) => ({
 			text: `${index + 1}. ${meaning.text}`,
@@ -349,10 +350,35 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					setTimeout(onFinishMeanings, 3 * 60 * 1000);
 					return;
 				}
+			}
+
+			// DM
+			if (message.channel.startsWith('D')) {
+				const postDM = (text, attachments, options) => (
+					slack.chat.postMessage(message.channel, text, {
+						username: 'tahoiya',
+						// eslint-disable-next-line camelcase
+						icon_emoji: ':open_book:',
+						...(attachments ? {attachments} : {}),
+						...(options ? options : {}),
+					})
+				);
+
+				if (state.phase === 'collect_meanings' && text.length <= 256) {
+					state.meanings.set(message.user, text);
+					await setState({meanings: state.meanings});
+
+					await postDM(':+1:');
+					await postMessage(stripIndent`
+						<@${message.user}> が意味を登録したよ:muscle:
+						現在の参加者: ${state.meanings.size}人
+					`);
+					return;
+				}
 
 				if ((matches = text.match(/^(\d+)に(\d+)枚$/)) && state.phase === 'collect_bettings') {
 					if (!state.meanings.has(message.user)) {
-						await postMessage(`<@${message.user}> は参加登録していないのでベッティングできないよ:innocent:`);
+						await postDM(`<@${message.user}> は参加登録していないのでベッティングできないよ:innocent:`);
 						return;
 					}
 
@@ -360,12 +386,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					const betCoins = parseInt(matches[2]);
 
 					if (betMeaning <= 0 || betMeaning > state.shuffledMeanings.length) {
-						await postMessage(`<@${message.user}> 意味番号がおかしいよ:open_mouth:`);
+						await postDM('意味番号がおかしいよ:open_mouth:');
 						return;
 					}
 
 					if (![1, 2, 3].includes(betCoins)) {
-						await postMessage(`<@${message.user}> BETする枚数は1枚から3枚だよ:pouting_cat:`);
+						await postDM('BETする枚数は1枚から3枚だよ:pouting_cat:');
 						return;
 					}
 
@@ -375,33 +401,14 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					});
 					await setState({bettings: state.bettings});
 
-					await postMessage(`<@${message.user}> さんが「${state.shuffledMeanings[betMeaning - 1].text}」に${betCoins}枚BETしたよ:moneybag:`);
+					await postDM(':+1:');
+					await postMessage(`<@${message.user}> さんがBETしたよ:moneybag:`);
 
 					if (state.bettings.size === state.meanings.size) {
 						clearTimeout(timeoutId);
 						onFinishBettings();
 					}
 
-					return;
-				}
-			}
-
-			// DM
-			if (message.channel.startsWith('D')) {
-				if (state.phase === 'collect_meanings' && text.length <= 256) {
-					state.meanings.set(message.user, text);
-					await setState({meanings: state.meanings});
-
-					await slack.chat.postMessage(message.channel, ':+1:', {
-						username: 'tahoiya',
-						// eslint-disable-next-line camelcase
-						icon_emoji: ':open_book:',
-					});
-
-					await postMessage(stripIndent`
-						<@${message.user}> が意味を登録したよ:muscle:
-						現在の参加者: ${state.meanings.size}人
-					`);
 					return;
 				}
 			}
