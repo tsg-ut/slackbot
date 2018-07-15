@@ -249,7 +249,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		await postMessage('今回の対戦結果', state.shuffledMeanings.map((meaning, index) => ({
 			title: `${index + 1}. ${meaning.text} ${meaning.dummy ? `(${meaning.dummy[0]})` : (meaning.user ? `by <@${meaning.user}>` : ':o:')}`,
-			text: [...state.bettings.entries()].filter(([, {meaning}]) => meaning === index).map(([better]) => `<@${better}>`).join(' ') || '-',
+			text: [...state.bettings.entries()].filter(([, {meaning}]) => meaning === index).map(([better, {coins}]) => `<@${better}> (${coins}枚)`).join(' ') || '-',
 			color: colors[index],
 		})));
 
@@ -261,10 +261,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			if (betting.meaning === correctMeaningIndex) {
 				newRatings.set(user, newRatings.get(user) + betting.coins);
 			} else {
-				const misdirectedUser = state.shuffledMeanings[betting.meaning].user;
 				newRatings.set(user, newRatings.get(user) - betting.coins - 1);
-				if (misdirectedUser !== null) {
-					newRatings.set(misdirectedUser, newRatings.get(misdirectedUser) + betting.coins);
+				if (betting.meaning !== null) {
+					const misdirectedUser = state.shuffledMeanings[betting.meaning].user;
+					if (misdirectedUser !== null) {
+						newRatings.set(misdirectedUser, newRatings.get(misdirectedUser) + betting.coins);
+					}
 				}
 			}
 		}
@@ -289,7 +291,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
 		await postMessage('現在のランキング', ranking.map(([user, ratings], index) => ({
-			text: `#${index + 1} ${state.meanings.has(user) ? `<@${user}>` : user}: ${sum(ratings)} (${ratings.map(formatNumber).join(', ')})`,
+			text: `#${index + 1} ${state.meanings.has(user) ? `<@${user}>` : user}: ${formatNumber(sum(ratings))} (${ratings.map(formatNumber).join(', ')})`,
 			color: colors[index % colors.length],
 		})));
 
