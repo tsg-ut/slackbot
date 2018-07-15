@@ -1,10 +1,9 @@
-const {RTM_EVENTS: {MESSAGE}} = require('@slack/client');
 const {stripIndent} = require('common-tags');
 const zlib = require('zlib');
 const {promisify} = require('util');
 
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
-	rtm.on(MESSAGE, async (message) => {
+	rtm.on('message', async (message) => {
 		if (!message.text) {
 			return;
 		}
@@ -31,9 +30,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 			const formattedText = (code.includes('\n') || code.includes('`')) ? `\`\`\`\n${code.toString()}\n\`\`\`` : `\n\`${code.toString()}\``;
 
-			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, stripIndent`
-				*${language.toString()}, ${codeData.length} bytes* ${formattedText}
-			`, {
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: stripIndent`
+					*${language.toString()}, ${codeData.length} bytes* ${formattedText}
+				`,
 				username: 'tiobot',
 				icon_url: 'https://i.imgur.com/2mB02ZI.png',
 			});

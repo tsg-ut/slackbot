@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 const {JSDOM, VirtualConsole} = require('jsdom');
-const {RTM_EVENTS: {MESSAGE}} = require('@slack/client');
 const {mean, shuffle, range, random} = require('lodash');
 const Cube = require('cubejs');
 require('cubejs/lib/solve');
@@ -104,7 +103,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 	const faceColors = ['#fefe00', '#ffffff', '#ffa100', '#ee0000', '#00d800', '#0000f2'];
 
-	rtm.on(MESSAGE, async (message) => {
+	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
@@ -138,7 +137,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				const minIndex = times.indexOf(Math.min(...times));
 				const fixedTimes = times.map((time, index) => index !== minIndex ? `(${getTimeText(time)})` : getTimeText(time));
 
-				slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `*${getTimeText(Math.min(...times))}*${labelText}: ${fixedTimes.join(' ')}`, {
+				slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					text: `*${getTimeText(Math.min(...times))}*${labelText}: ${fixedTimes.join(' ')}`,
 					username: 'cubebot',
 					icon_url: 'https://i.imgur.com/YyCc0mc.png',
 					thread_ts: message.thread_ts,
@@ -146,7 +147,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			} else if (times.length < 5) {
 				const timeTexts = times.map((time) => getTimeText(time));
 
-				slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `*${getTimeText(mean(times))}*${labelText}: ${timeTexts.join(' ')}`, {
+				slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					text: `*${getTimeText(mean(times))}*${labelText}: ${timeTexts.join(' ')}`,
 					username: 'cubebot',
 					icon_url: 'https://i.imgur.com/YyCc0mc.png',
 					thread_ts: message.thread_ts,
@@ -157,7 +160,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				const average = mean(times.filter((time, index) => index !== maxIndex && index !== minIndex));
 				const fixedTimes = times.map((time, index) => (index === maxIndex || index === minIndex) ? `(${getTimeText(time)})` : getTimeText(time));
 
-				slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `*${getTimeText(average)}*${labelText}: ${fixedTimes.join(' ')}`, {
+				slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					text: `*${getTimeText(average)}*${labelText}: ${fixedTimes.join(' ')}`,
 					username: 'cubebot',
 					icon_url: 'https://i.imgur.com/YyCc0mc.png',
 					thread_ts: message.thread_ts,
@@ -242,7 +247,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			});
 			state.scrambles = scrambles;
 
-			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, '', {
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: '',
 				username: 'cubebot',
 				icon_url: 'https://i.imgur.com/YyCc0mc.png',
 				attachments: scrambles.map((scramble) => getAttachment(scramble, count > 1 ? 80 : 200, !text.match(/^(スクランブル|エッジ|コーナー)/))),
@@ -269,7 +276,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					xcrosses.push(solve);
 				}
 
-				await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, '', {
+				await slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					text: '',
 					username: 'cubebot',
 					icon_url: 'https://i.imgur.com/YyCc0mc.png',
 					attachments: [

@@ -1,4 +1,3 @@
-const {RTM_EVENTS: {MESSAGE}} = require('@slack/client');
 const {default: Shogi} = require('shogi9.js');
 const {default: Color} = require('shogi9.js/lib/Color.js');
 const {default: Piece} = require('shogi9.js/lib/Piece.js');
@@ -57,15 +56,17 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	let match = null;
 
 	const perdon = async (description = '') => {
-		await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, ':ha:', {
+		await slack.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			text: ':ha:',
 			username: 'shogi',
 			icon_url: iconUrl,
 		});
 		if (description !== '') {
 			await slack.chat.postMessage(
-				process.env.CHANNEL_SANDBOX,
-				`${description}:korosuzo:`,
 				{
+					channel: process.env.CHANNEL_SANDBOX,
+					text: `${description}:korosuzo:`,
 					username: 'shogi',
 					icon_url: iconUrl,
 				}
@@ -75,7 +76,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 	const post = async (message) => {
 		const imageUrl = await upload(state.board);
-		await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, message, {
+		await slack.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			text: message,
 			username: 'shogi',
 			icon_url: iconUrl,
 			attachments: [
@@ -104,16 +107,18 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			reason ? `(${reason})` : ''
 		}`;
 
-		await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, message, {
+		await slack.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			text: message,
 			username: 'shogi',
 			icon_url: iconUrl,
 		});
 
 		if (log.length === state.previousTurns) {
 			await slack.chat.postMessage(
-				process.env.CHANNEL_SANDBOX,
-				'最短勝利:tada:',
 				{
+					channel: process.env.CHANNEL_SANDBOX,
+					text: '最短勝利:tada:',
 					username: 'shogi',
 					icon_url: iconUrl,
 				}
@@ -222,7 +227,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 	};
 
-	rtm.on(MESSAGE, async (message) => {
+	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
@@ -393,7 +398,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				}
 			}
 
-			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, '正着手', {
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: '正着手',
 				username: 'shogi',
 				icon_url: iconUrl,
 				attachments: [

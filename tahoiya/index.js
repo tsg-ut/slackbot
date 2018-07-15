@@ -1,4 +1,3 @@
-const {RTM_EVENTS: {MESSAGE}} = require("@slack/client")
 const {stripIndent} = require('common-tags');
 const axios = require('axios');
 const download = require('download');
@@ -167,7 +166,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	];
 
 	const postMessage = (text, attachments, options) => (
-		slack.chat.postMessage(process.env.CHANNEL_SANDBOX, text, {
+		slack.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			text,
 			username: 'tahoiya',
 			// eslint-disable-next-line camelcase
 			icon_emoji: ':open_book:',
@@ -304,7 +305,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		});
 	};
 
-	rtm.on(MESSAGE, async (message) => {
+	rtm.on('message', async (message) => {
 		if (!message.text || message.subtype !== undefined) {
 			return;
 		}
@@ -357,7 +358,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			// DM
 			if (message.channel.startsWith('D')) {
 				const postDM = (text, attachments, options) => (
-					slack.chat.postMessage(message.channel, text, {
+					slack.chat.postMessage({
+						channel: message.channel,
+						text,
 						username: 'tahoiya',
 						// eslint-disable-next-line camelcase
 						icon_emoji: ':open_book:',

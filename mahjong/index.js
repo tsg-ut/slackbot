@@ -1,4 +1,3 @@
-const {RTM_EVENTS} = require('@slack/client');
 const {stripIndent} = require('common-tags');
 const fs = require('fs');
 const qs = require('querystring');
@@ -139,9 +138,11 @@ const saveState = async () => {
 module.exports = (clients) => {
 	const {rtmClient: rtm, webClient: slack} = clients;
 
-	rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
+	rtm.on('message', async (message) => {
 		const postMessage = (text, {手牌 = null, 王牌 = null, 王牌Status = 'normal'} = {}) => {
-			slack.chat.postMessage(message.channel, text, {
+			slack.chat.postMessage({
+				channel: message.channel,
+				text,
 				username: 'mahjong',
 				// eslint-disable-next-line camelcase
 				icon_emoji: ':mahjong:',

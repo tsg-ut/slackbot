@@ -1,8 +1,6 @@
 const axios = require("axios");
 const emoji = require("node-emoji");
 
-const { RTM_EVENTS } = require("@slack/client")
-
 const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，．…・?!：；:;\s]+$/g;
 
 const ignoreRe = /( 英語| 韓国語| 中国語|の?意味|meaning|とは)+$/i;
@@ -101,13 +99,15 @@ module.exports = (clients) => {
 	const { rtmClient: rtm, webClient: slack } = clients;
 
 	function postMessage(message, channel) {
-		slack.chat.postMessage(channel, message, {
+		slack.chat.postMessage({
+			channel,
+			text: message,
 			as_user: false,
 			username: "pocky",
 			icon_emoji: ":google:",
 		});
 	}
-	rtm.on(RTM_EVENTS.MESSAGE, async (message) => {
+	rtm.on('message', async (message) => {
 		if (message.subtype) {
 			return;
 		}

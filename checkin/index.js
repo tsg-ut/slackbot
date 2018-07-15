@@ -1,4 +1,3 @@
-const {RTM_EVENTS: {MESSAGE}} = require('@slack/client');
 const {stripIndent} = require('common-tags');
 const schedule = require('node-schedule');
 const axios = require('axios');
@@ -37,10 +36,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				));
 
 				for (const {user, shout} of newUsers) {
-					await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, stripIndent`
-						:bee: \`${user.firstName} ${user.lastName}\` が${place.name}にチェックインしました
-						${shout ? `「${shout}」` : ''}
-					`, {
+					await slack.chat.postMessage({
+						channel: process.env.CHANNEL_SANDBOX,
+						text: stripIndent`
+							:bee: \`${user.firstName} ${user.lastName}\` が${place.name}にチェックインしました
+							${shout ? `「${shout}」` : ''}
+						`,
 						username: 'checkin',
 						icon_url: `${user.photo.prefix}110x110${user.photo.suffix}`,
 					});
@@ -53,7 +54,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 	schedule.scheduleJob('*/3 * * * *', job);
 
-	rtm.on(MESSAGE, (message) => {
+	rtm.on('message', (message) => {
 		if (message.text === 'checkin-check' && message.channel === process.env.CHANNEL_SANDBOX) {
 			job();
 		}
