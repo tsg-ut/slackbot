@@ -1,6 +1,5 @@
 /* eslint-env node, jest */
 
-const {RTM_EVENTS: {EMOJI_CHANGED}} = require('@slack/client');
 const emojiNotifier = require('./index.js');
 const Slack = require('../lib/slackMock.js');
 
@@ -13,7 +12,7 @@ beforeEach(() => {
 });
 
 it('responds to emoji addition', () => new Promise((resolve) => {
-	slack.on('chat.postMessage', (channel, text, {username, icon_emoji: icon}) => {
+	slack.on('chat.postMessage', ({channel, text, username, icon_emoji: icon}) => {
 		expect(channel).toBe(slack.fakeChannel);
 		expect(username).toBe('emoji-notifier');
 		expect(text).toContain(':hoge:');
@@ -22,14 +21,14 @@ it('responds to emoji addition', () => new Promise((resolve) => {
 		resolve();
 	});
 
-	slack.rtmClient.emit(EMOJI_CHANGED, {
+	slack.rtmClient.emit('emoji_changed', {
 		subtype: 'add',
 		name: 'hoge',
 	});
 }));
 
 it('responds to emoji removal', () => new Promise((resolve) => {
-	slack.on('chat.postMessage', (channel, text, {username, icon_emoji: icon}) => {
+	slack.on('chat.postMessage', ({channel, text, username, icon_emoji: icon}) => {
 		expect(channel).toBe(slack.fakeChannel);
 		expect(username).toBe('emoji-notifier');
 		expect(text).toContain(':hoge:');
@@ -38,7 +37,7 @@ it('responds to emoji removal', () => new Promise((resolve) => {
 		resolve();
 	});
 
-	slack.rtmClient.emit(EMOJI_CHANGED, {
+	slack.rtmClient.emit('emoji_changed', {
 		subtype: 'remove',
 		names: ['hoge'],
 	});

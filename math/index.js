@@ -1,6 +1,5 @@
 const Docker = require('dockerode');
 const concatStream = require('concat-stream');
-const {RTM_EVENTS: {MESSAGE}} = require('@slack/client');
 const cloudinary = require('cloudinary');
 
 const docker = new Docker();
@@ -10,7 +9,7 @@ class TimeoutError extends Error { }
 module.exports = (clients) => {
 	const {rtmClient: rtm, webClient: slack} = clients;
 
-	rtm.on(MESSAGE, async (message) => {
+	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
@@ -92,15 +91,15 @@ module.exports = (clients) => {
 			if (stderr && stderr.length > 0) {
 				const error = stderr.toString();
 				if (error.startsWith('Syntax error')) {
-					slack.reactions.add('ce', {channel: message.channel, timestamp: message.ts});
+					slack.reactions.add({name: 'ce', channel: message.channel, timestamp: message.ts});
 					return;
 				}
 				if (error.startsWith('Runtime error')) {
-					slack.reactions.add('re', {channel: message.channel, timestamp: message.ts});
+					slack.reactions.add({name: 're', channel: message.channel, timestamp: message.ts});
 					return;
 				}
 				if (error.startsWith('Result is identical')) {
-					slack.reactions.add('tautology', {channel: message.channel, timestamp: message.ts});
+					slack.reactions.add({name: 'tautology', channel: message.channel, timestamp: message.ts});
 					return;
 				}
 				console.error('stderr:', stderr.toString());
@@ -118,7 +117,9 @@ module.exports = (clients) => {
 			});
 
 			const url = result.secure_url;
-			await slack.chat.postMessage(process.env.CHANNEL_SANDBOX, `${message.text} =`, {
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: `${message.text} =`,
 				username: 'math',
 				icon_emoji: ':computer:',
 				attachments: [

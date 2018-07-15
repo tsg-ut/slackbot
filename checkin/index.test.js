@@ -3,7 +3,6 @@
 jest.mock('axios');
 
 const axios = require('axios');
-const {RTM_EVENTS: {MESSAGE}} = require('@slack/client');
 const checkin = require('./index.js');
 const Slack = require('../lib/slackMock.js');
 
@@ -28,7 +27,7 @@ describe('tiobot', () => {
 			},
 		};
 
-		slack.rtmClient.emit(MESSAGE, {
+		slack.rtmClient.emit('message', {
 			channel: slack.fakeChannel,
 			text: 'checkin-check',
 			user: slack.fakeUser,
