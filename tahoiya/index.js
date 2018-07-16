@@ -191,7 +191,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		await setState({phase: 'collect_bettings'});
 
 		const dummyMeanings = [];
-		for (const i of Array(Math.max(0, 4 - state.meanings.size))) {
+		for (const i of Array(Math.max(2, 4 - state.meanings.size))) {
 			const word = sample(candidateWords);
 			const meaning = await getMeaning(word[0]);
 			dummyMeanings.push({
