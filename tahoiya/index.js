@@ -370,14 +370,17 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				);
 
 				if (state.phase === 'collect_meanings' && text.length <= 256) {
+					const isUpdate = state.meanings.has(message.user);
 					state.meanings.set(message.user, text);
 					await setState({meanings: state.meanings});
 
 					await postDM(':+1:');
-					await postMessage(stripIndent`
-						<@${message.user}> が意味を登録したよ:muscle:
-						現在の参加者: ${state.meanings.size}人
-					`);
+					if (!isUpdate) {
+						await postMessage(stripIndent`
+							<@${message.user}> が意味を登録したよ:muscle:
+							現在の参加者: ${state.meanings.size}人
+						`);
+					}
 					return;
 				}
 
@@ -400,6 +403,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						return;
 					}
 
+					const isUpdate = state.bettings.has(message.user);
+
 					state.bettings.set(message.user, {
 						meaning: betMeaning - 1,
 						coins: betCoins,
@@ -407,7 +412,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					await setState({bettings: state.bettings});
 
 					await postDM(':+1:');
-					await postMessage(`<@${message.user}> さんがBETしたよ:moneybag:`);
+					if (!isUpdate) {
+						await postMessage(`<@${message.user}> さんがBETしたよ:moneybag:`);
+					}
 
 					if (state.bettings.size === state.meanings.size) {
 						clearTimeout(timeoutId);
