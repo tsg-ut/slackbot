@@ -7,6 +7,7 @@ const sample = require('lodash/sample');
 const sampleSize = require('lodash/sampleSize');
 const sum = require('lodash/sum');
 const shuffle = require('lodash/shuffle');
+const last = require('lodash/last');
 const path = require('path');
 const fs = require('fs');
 const {promisify} = require('util');
@@ -64,20 +65,23 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		await promisify(fs.writeFile)(path.join(__dirname, 'state.json'), JSON.stringify(savedState));
 	};
 
-	const getMeaning = async (word) => {
-		const response = await axios.get('https://ja.wikipedia.org/w/api.php', {
-			params: {
-				action: 'query',
-				prop: 'extracts',
-				titles: word,
-				exlimit: 1,
-				exintro: true,
-				explaintext: true,
-				exsentences: 1,
-				format: 'json',
+	const getMeaning = async ([word, , source]) => {
+		const response = await axios.get(
+			source === 'wikipedia' ? 'https://ja.wikipedia.org/w/api.php' : 'https://ja.wiktionary.org/w/api.php',
+			{
+				params: {
+					action: 'query',
+					prop: 'extracts',
+					titles: word,
+					exlimit: 1,
+					...(source === 'wikipedia' ? {exintro: true} : {}),
+					explaintext: true,
+					exsentences: 1,
+					format: 'json',
+				},
+				responseType: 'json',
 			},
-			responseType: 'json',
-		});
+		);
 
 		const pages = get(response, ['data', 'query', 'pages']);
 		if (typeof pages !== 'object') {
@@ -97,10 +101,15 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const lines = wikitext.split('\n').filter((line) => line.trim().length !== 0);
 
 		if (lines.length !== 1) {
-			meaning = lines[1];
+			meaning = source === 'wikipedia' ? lines[1] : last(lines);
+			meaning = meaning.replace(/\(.+?\)/g, '');
+			meaning = meaning.replace(/（.+?）/g, '');
+			meaning = meaning.replace(/【.+?】/g, '');
+			meaning = meaning.replace(/(のこと|をいう|である|。)+$/, '');
 		} else {
 			meaning = wikitext.replace(/\(.+?\)/g, '');
 			meaning = meaning.replace(/（.+?）/g, '');
+			meaning = meaning.replace(/【.+?】/g, '');
 			if (meaning.includes('とは、')) {
 				meaning = meaning.replace(/^.+?とは、/, '');
 			} else if (meaning.includes('は、')) {
@@ -143,7 +152,37 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 	})();
 
-	const database = databaseText.split('\n').filter((line) => line.length !== 0).map((line) => line.split('\t'));
+	const wiktionaryText = await (async () => {
+		const dataPath = path.join(__dirname, 'wiktionary.txt');
+
+		const dataExists = await new Promise((resolve) => {
+			fs.access(dataPath, fs.constants.F_OK, (error) => {
+				resolve(!Boolean(error));
+			});
+		});
+
+		if (dataExists) {
+			const databaseBuffer = await promisify(fs.readFile)(dataPath);
+			return databaseBuffer.toString();
+		}
+
+		{
+			const databaseBuffer = await download('https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/wiktionary.txt');
+			await promisify(fs.writeFile)(dataPath, databaseBuffer);
+			return databaseBuffer.toString();
+		}
+	})();
+
+	const database = [
+		...databaseText.split('\n').filter((line) => line.length !== 0).map((line) => [
+			...line.split('\t'),
+			'wikipedia',
+		]),
+		...wiktionaryText.split('\n').filter((line) => line.length !== 0).map((line) => [
+			...line.split('\t'),
+			'wiktionary',
+		]),
+	];
 	const candidateWords = database.filter(([word, ruby]) => 3 <= ruby.length && ruby.length <= 6);
 
 	const colors = [
@@ -164,6 +203,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		'#827717',
 		'#E65100',
 	];
+
+	const {members} = await slack.users.list();
 
 	const postMessage = (text, attachments, options) => (
 		slack.chat.postMessage({
@@ -193,7 +234,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const dummyMeanings = [];
 		for (const i of Array(Math.max(2, 4 - state.meanings.size))) {
 			const word = sample(candidateWords);
-			const meaning = await getMeaning(word[0]);
+			const meaning = await getMeaning(word);
 			dummyMeanings.push({
 				user: null,
 				dummy: word,
@@ -243,13 +284,13 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 			正解者: ${correctBetters.length === 0 ? 'なし' : correctBetters.map(([better]) => `<@${better}>`).join(' ')}
 
-			https://ja.wikipedia.org/wiki/${encodeURIComponent(state.theme.word)}
+			https://${state.theme.source === 'wikipedia' ? 'ja.wikipedia.org' : 'ja.wiktionary.org'}/wiki/${encodeURIComponent(state.theme.word)}
 		`, [], {unfurl_links: true});
 
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
 		await postMessage('今回の対戦結果', state.shuffledMeanings.map((meaning, index) => ({
-			title: `${index + 1}. ${meaning.text} ${meaning.dummy ? `(${meaning.dummy[0]})` : (meaning.user ? `by <@${meaning.user}>` : ':o:')}`,
+			title: `${index + 1}. ${meaning.text} ${meaning.dummy ? `(${meaning.dummy[2]}: ${meaning.dummy[0]})` : (meaning.user ? `by <@${meaning.user}>` : ':o:')}`,
 			text: [...state.bettings.entries()].filter(([, {meaning}]) => meaning === index).map(([better, {coins}]) => `<@${better}> (${coins}枚)`).join(' ') || '-',
 			color: index === correctMeaningIndex ? colors[0] : '#CCCCCC',
 		})));
@@ -292,7 +333,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
 		await postMessage('現在のランキング', ranking.map(([user, ratings], index) => ({
-			text: `#${index + 1} ${state.meanings.has(user) ? `<@${user}>` : user}: ${formatNumber(sum(ratings))} (${ratings.map((rating, index) => ratings.length - 1 === index ? `*${formatNumber(rating)}*` : formatNumber(rating)).join(', ')})`,
+			text: `#${index + 1} ${members.find(({id}) => id === user).name}: ${formatNumber(sum(ratings))} (${ratings.map((rating, index) => ratings.length - 1 === index && state.meanings.has(user) ? `*${formatNumber(rating)}*` : formatNumber(rating)).join(', ')})`,
 			color: colors[index % colors.length],
 		})));
 
@@ -338,12 +379,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					assert(state.phase === 'waiting');
 					await setState({phase: 'collect_meanings'});
 
-					const [word, ruby] = state.candidates.find(([, ruby]) => ruby === text);
+					const [word, ruby, source] = state.candidates.find(([, ruby]) => ruby === text);
 					await setState({candidates: []});
 
-					const meaning = await getMeaning(word);
+					const meaning = await getMeaning([word, ruby, source]);
 
-					await setState({theme: {word, ruby, meaning}});
+					await setState({theme: {word, ruby, meaning, source}});
 
 					await postMessage(stripIndent`
 						お題を *「${ruby}」* にセットしたよ:v:
@@ -374,7 +415,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					state.meanings.set(message.user, text);
 					await setState({meanings: state.meanings});
 
-					await postDM(':+1:');
+					await slack.reactions.add({name: '+1', channel: message.channel, timestamp: message.ts});
 					if (!isUpdate) {
 						await postMessage(stripIndent`
 							<@${message.user}> が意味を登録したよ:muscle:
@@ -398,6 +439,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						return;
 					}
 
+					if (state.shuffledMeanings[betMeaning - 1].user === message.user) {
+						await postDM('自分自身には投票できないよ:angry:');
+						return;
+					}
+
 					if (![1, 2, 3].includes(betCoins)) {
 						await postDM('BETする枚数は1枚から3枚だよ:pouting_cat:');
 						return;
@@ -411,7 +457,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					});
 					await setState({bettings: state.bettings});
 
-					await postDM(':+1:');
+					await slack.reactions.add({name: '+1', channel: message.channel, timestamp: message.ts});
 					if (!isUpdate) {
 						await postMessage(`<@${message.user}> さんがBETしたよ:moneybag:`);
 					}
