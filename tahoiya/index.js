@@ -105,6 +105,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			meaning = meaning.replace(/\(.+?\)/g, '');
 			meaning = meaning.replace(/（.+?）/g, '');
 			meaning = meaning.replace(/【.+?】/g, '');
+			meaning = meaning.replace(/.+?-$/, '');
 			meaning = meaning.replace(/(のこと|をいう|である|。)+$/, '');
 		} else {
 			meaning = wikitext.replace(/\(.+?\)/g, '');
@@ -125,6 +126,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			meaning = meaning.replace(/で、.+$/, '');
 			meaning = meaning.replace(/(のこと|をいう|である|。)+$/, '');
 		}
+
+		meaning = meaning.trim();
 
 		return meaning;
 	}
