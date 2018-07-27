@@ -1,4 +1,5 @@
 const {stripIndent} = require('common-tags');
+const moment = require('moment');
 const axios = require('axios');
 const download = require('download');
 const assert = require('assert');
@@ -210,6 +211,100 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 	const {members} = await slack.users.list();
 
+	const getMemberName = (user) => members.find(({id}) => id === user).name;
+
+	const updateGist = async () => {
+		const newBattle = {
+			timestamp: new Date().toISOString(),
+			theme: state.theme.ruby,
+			url: `https://${state.theme.source === 'wikipedia' ? 'ja.wikipedia.org' : 'ja.wiktionary.org'}/wiki/${encodeURIComponent(state.theme.word)}`,
+			meanings: state.shuffledMeanings.map((meaning, index) => {
+				const type = meaning.dummy ? 'dummy' : (meaning.user ? 'user' : 'correct');
+				return {
+					text: meaning.text,
+					type,
+					...(type === 'dummy' ? {source: meaning.dummy[2], title: meaning.dummy[0]} : {}),
+					...(type === 'user' ? {user: meaning.user} : {}),
+					betters: [...state.bettings.entries()].filter(([, {meaning}]) => meaning === index).map(([user, {coins}]) => ({user, coins})),
+				};
+			}),
+		};
+
+		const gist = await axios.get('https://api.github.com/gists/37085656670aec5093cc83360c189e7e');
+		const json = get(gist, ['data', 'files', 'tahoiya-data.json', 'content']);
+
+		if (!json) {
+			return;
+		}
+
+		const battles = JSON.parse(json);
+		battles.push(newBattle);
+
+		const entries = [];
+
+		postMessage(`対戦ログ: <https://gist.github.com/hakatashi/37085656670aec5093cc83360c189e7e#${encodeURIComponent(`第${battles.length}回-${newBattle.theme}`)}>`);
+
+		for (const [i, {timestamp, theme, meanings, url}] of battles.entries()) {
+			const users = meanings.filter(({type}) => type === 'user').map(({user}) => user);
+			const urlTitle = decodeURI(url.match(/([^/]+)$/)[1]);
+			const urlSource = url.startsWith('https://ja.wikipedia.org') ? 'Wikipedia' : 'ウィクショナリー日本語版'
+
+			entries.push(`
+				# 第${i + 1}回 「**${theme}**」
+
+				* **日時** ${moment(timestamp).utcOffset('+0900').format('YYYY-MM-DD HH:mm:ss')}
+				* **参加者** ${users.map((user) => `@${getMemberName(user)}`).join(' ')} (${users.length}人)
+
+				${meanings.map((meaning, i) => `${i + 1}. ${meaning.text}`).join('\n')}
+
+				<details>
+
+				<summary>答え</summary>
+
+				${meanings.map((meaning, i) => {
+					let text = '';
+					if (meaning.type === 'user') {
+						text = `${i + 1}. ${meaning.text} (@${getMemberName(meaning.user)})`;
+					} else if (meaning.type === 'dummy') {
+						text = `${i + 1}. ${meaning.text} (${meaning.source}: ${meaning.title})`;
+					} else if (meaning.type === 'correct') {
+						text = `${i + 1}. ⭕️**${meaning.text}**`;
+					}
+
+					const betters = meaning.betters.map(({user, coins}) => `@${getMemberName(user)} (${coins}枚)`).join(' ');
+
+					if (betters.length > 0) {
+						return `${text}\n    * ${betters}`;
+					}
+
+					return text;
+				}).join('\n')}
+
+				出典: [${urlTitle} - ${urlSource}](${url})
+
+				</details>
+			`.replace(/^\t+/gm, ''));
+		}
+
+		const markdown = entries.join('\n');
+
+		await axios.patch('https://api.github.com/gists/37085656670aec5093cc83360c189e7e', {
+			description: 'TSG内「たほいや」対戦ログ',
+			files: {
+				'tahoiya-data.json': {
+					content: JSON.stringify(battles),
+				},
+				'tahoiya-logs.md': {
+					content: markdown,
+				},
+			},
+		}, {
+			headers: {
+				Authorization: `token ${process.env.GITHUB_TOKEN}`,
+			},
+		});
+	};
+
 	const postMessage = (text, attachments, options) => (
 		slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
@@ -340,6 +435,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			text: `#${index + 1} ${members.find(({id}) => id === user).name}: ${formatNumber(sum(ratings))} (${ratings.map((rating, index) => ratings.length - 1 === index && state.meanings.has(user) ? `*${formatNumber(rating)}*` : formatNumber(rating)).join(', ')})`,
 			color: colors[index % colors.length],
 		})));
+
+		updateGist();
 
 		await setState({
 			phase: 'waiting',
