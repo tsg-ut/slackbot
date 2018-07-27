@@ -211,7 +211,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 	const {members} = await slack.users.list();
 
-	const getMemberName = (user) => members.find(({id}) => id === user).profile.display_name;
+	const getMemberName = (user) => {
+		const member = members.find(({id}) => id === user);
+		return member.profile.display_name || member.name;
+	};
 
 	const updateGist = async () => {
 		const newBattle = {
