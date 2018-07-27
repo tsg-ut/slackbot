@@ -211,7 +211,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 	const {members} = await slack.users.list();
 
-	const getMemberName = (user) => members.find(({id}) => id === user).name;
+	const getMemberName = (user) => members.find(({id}) => id === user).profile.display_name;
 
 	const updateGist = async () => {
 		const newBattle = {
@@ -432,7 +432,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
 		await postMessage('現在のランキング', ranking.map(([user, ratings], index) => ({
-			text: `#${index + 1} ${members.find(({id}) => id === user).name}: ${formatNumber(sum(ratings))} (${ratings.map((rating, index) => ratings.length - 1 === index && state.meanings.has(user) ? `*${formatNumber(rating)}*` : formatNumber(rating)).join(', ')})`,
+			text: `#${index + 1} ${getMemberName(user)}: ${formatNumber(sum(ratings))} (${ratings.map((rating, index) => ratings.length - 1 === index && state.meanings.has(user) ? `*${formatNumber(rating)}*` : formatNumber(rating)).join(', ')})`,
 			color: colors[index % colors.length],
 		})));
 
