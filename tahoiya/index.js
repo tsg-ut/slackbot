@@ -39,6 +39,17 @@ const state = (() => {
 	}
 })();
 
+const normalizeMeaning = (input) => {
+	meaning = input;
+	meaning = meaning.replace(/\(.+?\)/g, '');
+	meaning = meaning.replace(/（.+?）/g, '');
+	meaning = meaning.replace(/【.+?】/g, '');
+	meaning = meaning.replace(/。.*$/, '');
+	meaning = meaning.replace(/^.+? -/, '');
+	meaning = meaning.replace(/(のこと|をいう|である)+$/, '');
+	return meaning;
+};
+
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const mapToObject = (map) => {
 		const object = {};
@@ -67,32 +78,37 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	};
 
 	const getMeaning = async ([word, , source]) => {
-		const response = await axios.get(
-			source === 'wikipedia' ? 'https://ja.wikipedia.org/w/api.php' : 'https://ja.wiktionary.org/w/api.php',
-			{
-				params: {
-					action: 'query',
-					prop: 'extracts',
-					titles: word,
-					exlimit: 1,
-					...(source === 'wikipedia' ? {exintro: true} : {}),
-					explaintext: true,
-					exsentences: 1,
-					format: 'json',
+		let wikitext = null;
+		let exsentences = 0;
+
+		do {
+			exsentences++;
+
+			const response = await axios.get(
+				source === 'wikipedia' ? 'https://ja.wikipedia.org/w/api.php' : 'https://ja.wiktionary.org/w/api.php',
+				{
+					params: {
+						action: 'query',
+						prop: 'extracts',
+						titles: word,
+						exlimit: 1,
+						...(source === 'wikipedia' ? {exintro: true} : {}),
+						explaintext: true,
+						exsentences,
+						format: 'json',
+					},
+					responseType: 'json',
 				},
-				responseType: 'json',
-			},
-		);
+			);
 
-		const pages = get(response, ['data', 'query', 'pages']);
-		if (typeof pages !== 'object') {
-			await failed(new Error());
-			return;
-		}
+			const pages = get(response, ['data', 'query', 'pages']);
+			if (typeof pages === 'object') {
+				wikitext = get(Object.values(pages), [0, 'extract'], null);
+			}
+		} while (exsentences < 3 && (wikitext === null || wikitext.endsWith('?')));
 
-		const wikitext = get(Object.values(pages), [0, 'extract']);
-		if (typeof wikitext !== 'string' || wikitext.length === 0) {
-			await failed(new Error());
+		if (!wikitext) {
+			await failed(new Error(`Couldn\'t find article for ${word}`));
 			return;
 		}
 
@@ -103,15 +119,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		if (lines.length !== 1) {
 			meaning = source === 'wikipedia' ? lines[1] : last(lines);
-			meaning = meaning.replace(/\(.+?\)/g, '');
-			meaning = meaning.replace(/（.+?）/g, '');
-			meaning = meaning.replace(/【.+?】/g, '');
-			meaning = meaning.replace(/^.+? -/, '');
-			meaning = meaning.replace(/(のこと|をいう|である|。)+$/, '');
+			meaning = normalizeMeaning(meaning);
 		} else {
-			meaning = wikitext.replace(/\(.+?\)/g, '');
-			meaning = meaning.replace(/（.+?）/g, '');
-			meaning = meaning.replace(/【.+?】/g, '');
+			meaning = normalizeMeaning(wikitext);
 			if (meaning.includes('とは、')) {
 				meaning = meaning.replace(/^.+?とは、/, '');
 			} else if (meaning.includes('は、')) {
@@ -125,8 +135,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			}
 			meaning = meaning.replace(/であり、.+$/, '');
 			meaning = meaning.replace(/で、.+$/, '');
-			meaning = meaning.replace(/(のこと|をいう|である|。)+$/, '');
-			meaning = meaning.replace(/^.+? -/, '');
 		}
 
 		meaning = meaning.trim();
@@ -516,7 +524,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 				if (state.phase === 'collect_meanings' && text.length <= 256) {
 					const isUpdate = state.meanings.has(message.user);
-					state.meanings.set(message.user, text);
+					state.meanings.set(message.user, normalizeMeaning(text));
 					await setState({meanings: state.meanings});
 
 					await slack.reactions.add({name: '+1', channel: message.channel, timestamp: message.ts});
