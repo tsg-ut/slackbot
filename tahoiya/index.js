@@ -561,8 +561,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						return;
 					}
 
-					if (![1, 2, 3].includes(betCoins)) {
-						await postDM('BETする枚数は1枚から3枚だよ:pouting_cat:');
+					if (![1, 2, 3, 4, 5].includes(betCoins)) {
+						await postDM('BETする枚数は1枚から5枚だよ:pouting_cat:');
 						return;
 					}
 
