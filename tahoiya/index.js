@@ -556,6 +556,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						return;
 					}
 
+					if (betCoins > state.meanings.size) {
+						await postDM(`参加者の人数 (${state.meanings.size}人) より多い枚数はBETできないよ:white_frowning_face:`);
+						return;
+					}
+
 					if (![1, 2, 3].includes(betCoins)) {
 						await postDM('BETする枚数は1枚から3枚だよ:pouting_cat:');
 						return;
