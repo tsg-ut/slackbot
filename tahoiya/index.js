@@ -41,6 +41,7 @@ const state = (() => {
 
 const normalizeMeaning = (input) => {
 	meaning = input;
+	meaning = meaning.replace(/^== (.+?) ==$/g, '$1');
 	meaning = meaning.replace(/\(.+?\)/g, '');
 	meaning = meaning.replace(/（.+?）/g, '');
 	meaning = meaning.replace(/【.+?】/g, '');
