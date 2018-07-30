@@ -9,6 +9,7 @@ const sampleSize = require('lodash/sampleSize');
 const sum = require('lodash/sum');
 const shuffle = require('lodash/shuffle');
 const last = require('lodash/last');
+const {hiraganize} = require('japanese');
 const path = require('path');
 const fs = require('fs');
 const {promisify} = require('util');
@@ -40,15 +41,15 @@ const state = (() => {
 })();
 
 const normalizeMeaning = (input) => {
-	meaning = input;
-	meaning = meaning.replace(/^== (.+?) ==$/g, '$1');
+	let meaning = input;
+	meaning = meaning.replace(/== (.+?) ==/g, '$1');
 	meaning = meaning.replace(/\(.+?\)/g, '');
 	meaning = meaning.replace(/（.+?）/g, '');
 	meaning = meaning.replace(/【.+?】/g, '');
 	meaning = meaning.replace(/。.*$/, '');
 	meaning = meaning.replace(/^.+? -/, '');
 	meaning = meaning.replace(/(のこと|をいう|である)+$/, '');
-	return meaning;
+	return meaning.trim();
 };
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
@@ -78,7 +79,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		await promisify(fs.writeFile)(path.join(__dirname, 'state.json'), JSON.stringify(savedState));
 	};
 
-	const getMeaning = async ([word, , source]) => {
+	const getMeaning = async ([word, , source, rawMeaning]) => {
+		if (source === 'nicopedia') {
+			return rawMeaning;
+		}
+
 		let wikitext = null;
 		let exsentences = 0;
 
@@ -145,8 +150,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 	let timeoutId = null;
 
-	const databaseText = await (async () => {
-		const dataPath = path.join(__dirname, 'data.txt');
+	const [databaseText, wiktionaryText, nicopediaText] = await Promise.all([
+		['data.txt', 'https://john-smith.github.io/kana.tsv'],
+		['wiktionary.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/wiktionary.txt'],
+		['nicopedia.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/nicopedia.txt'],
+	].map(async ([filename, url]) => {
+		const dataPath = path.join(__dirname, filename);
 
 		const dataExists = await new Promise((resolve) => {
 			fs.access(dataPath, fs.constants.F_OK, (error) => {
@@ -160,32 +169,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		{
-			const databaseBuffer = await download('https://john-smith.github.io/kana.tsv');
+			const databaseBuffer = await download(url);
 			await promisify(fs.writeFile)(dataPath, databaseBuffer);
 			return databaseBuffer.toString();
 		}
-	})();
-
-	const wiktionaryText = await (async () => {
-		const dataPath = path.join(__dirname, 'wiktionary.txt');
-
-		const dataExists = await new Promise((resolve) => {
-			fs.access(dataPath, fs.constants.F_OK, (error) => {
-				resolve(!Boolean(error));
-			});
-		});
-
-		if (dataExists) {
-			const databaseBuffer = await promisify(fs.readFile)(dataPath);
-			return databaseBuffer.toString();
-		}
-
-		{
-			const databaseBuffer = await download('https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/wiktionary.txt');
-			await promisify(fs.writeFile)(dataPath, databaseBuffer);
-			return databaseBuffer.toString();
-		}
-	})();
+	}))
 
 	const database = [
 		...databaseText.split('\n').filter((line) => line.length !== 0).map((line) => [
@@ -196,8 +184,14 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			...line.split('\t'),
 			'wiktionary',
 		]),
+		...nicopediaText.split('\n').filter((line) => line.length !== 0).map((line) => [
+			...line.split('\t').slice(0, 2),
+			'nicopedia',
+			line.split('\t')[2],
+		]),
 	];
-	const candidateWords = database.filter(([word, ruby]) => 3 <= ruby.length && ruby.length <= 6);
+
+	const candidateWords = database.filter(([word, ruby]) => 3 <= ruby.length && ruby.length <= 7);
 
 	const colors = [
 		'#F44336',
@@ -225,11 +219,26 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		return member.profile.display_name || member.name;
 	};
 
+	const getWordUrl = (word, source) => {
+		if (source === 'wikipedia') {
+			return `https://ja.wikipedia.org/wiki/${encodeURIComponent(word)}`;
+		}
+
+		if (source === 'wiktionary') {
+			return `https://ja.wiktionary.org/wiki/${encodeURIComponent(word)}`;
+		}
+
+		{
+			assert(source === 'nicopedia');
+			return `http://dic.nicovideo.jp/a/${encodeURIComponent(word)}`;
+		}
+	}
+
 	const updateGist = async () => {
 		const newBattle = {
 			timestamp: new Date().toISOString(),
 			theme: state.theme.ruby,
-			url: `https://${state.theme.source === 'wikipedia' ? 'ja.wikipedia.org' : 'ja.wiktionary.org'}/wiki/${encodeURIComponent(state.theme.word)}`,
+			url: getWordUrl(state.theme.word, state.theme.source),
 			meanings: state.shuffledMeanings.map((meaning, index) => {
 				const type = meaning.dummy ? 'dummy' : (meaning.user ? 'user' : 'correct');
 				return {
@@ -259,7 +268,15 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		for (const [i, {timestamp, theme, meanings, url}] of battles.entries()) {
 			const users = meanings.filter(({type}) => type === 'user').map(({user}) => user);
 			const urlTitle = decodeURI(url.match(/([^/]+)$/)[1]);
-			const urlSource = url.startsWith('https://ja.wikipedia.org') ? 'Wikipedia' : 'ウィクショナリー日本語版'
+			let urlSource = '';
+			if (url.startsWith('https://ja.wikipedia.org')) {
+				urlSource = 'Wikipedia';
+			} else if (url.startsWith('https://ja.wiktionary.org')) {
+				urlSource = 'ウィクショナリー日本語版';
+			} else {
+				assert(url.startsWith('http://dic.nicovideo.jp'));
+				urlSource = 'ニコニコ大百科';
+			}
 
 			entries.push(`
 				# 第${i + 1}回 「**${theme}**」
@@ -395,7 +412,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 			正解者: ${correctBetters.length === 0 ? 'なし' : correctBetters.map(([better]) => `<@${better}>`).join(' ')}
 
-			https://${state.theme.source === 'wikipedia' ? 'ja.wikipedia.org' : 'ja.wiktionary.org'}/wiki/${encodeURIComponent(state.theme.word)}
+			${getWordUrl(state.theme.word, state.theme.source)}
 		`, [], {unfurl_links: true});
 
 		await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -475,7 +492,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						return;
 					}
 
-					const candidates = sampleSize(candidateWords, 10);
+					const candidates = sampleSize(candidateWords, 10).map(([word, ruby, source, meaning]) => [word, hiraganize(ruby), source, meaning]);
 					await setState({candidates});
 					console.log(candidates);
 					await postMessage(stripIndent`
@@ -492,10 +509,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					assert(state.phase === 'waiting');
 					await setState({phase: 'collect_meanings'});
 
-					const [word, ruby, source] = state.candidates.find(([, ruby]) => ruby === text);
+					const [word, ruby, source, rawMeaning] = state.candidates.find(([, ruby]) => ruby === text);
 					await setState({candidates: []});
 
-					const meaning = await getMeaning([word, ruby, source]);
+					const meaning = await getMeaning([word, ruby, source, rawMeaning]);
 
 					await setState({theme: {word, ruby, meaning, source}});
 
