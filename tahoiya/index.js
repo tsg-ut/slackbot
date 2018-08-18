@@ -318,7 +318,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const markdown = entries.join('\n');
 
 		await axios.patch(`https://api.github.com/gists/${process.env.TAHOIYA_GIST_ID}`, {
-			description: 'TSG内「たほいや」対戦ログ',
+			description: `${process.env.TEAMNAME}内「たほいや」対戦ログ`,
 			files: {
 				'tahoiya-data.json': {
 					content: JSON.stringify(battles),
