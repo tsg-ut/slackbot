@@ -251,7 +251,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			}),
 		};
 
-		const gist = await axios.get('https://api.github.com/gists/37085656670aec5093cc83360c189e7e');
+		const gist = await axios.get(`https://api.github.com/gists/${process.env.TAHOIYA_GIST_ID}`);
 		const json = get(gist, ['data', 'files', 'tahoiya-data.json', 'content']);
 
 		if (!json) {
@@ -263,7 +263,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		const entries = [];
 
-		postMessage(`対戦ログ: <https://gist.github.com/hakatashi/37085656670aec5093cc83360c189e7e#${encodeURIComponent(`第${battles.length}回-${newBattle.theme}`)}>`);
+		postMessage(`対戦ログ: <https://gist.github.com/hakatashi/${process.env.TAHOIYA_GIST_ID}#${encodeURIComponent(`第${battles.length}回-${newBattle.theme}`)}>`);
 
 		for (const [i, {timestamp, theme, meanings, url}] of battles.entries()) {
 			const users = meanings.filter(({type}) => type === 'user').map(({user}) => user);
@@ -317,7 +317,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		const markdown = entries.join('\n');
 
-		await axios.patch('https://api.github.com/gists/37085656670aec5093cc83360c189e7e', {
+		await axios.patch(`https://api.github.com/gists/${process.env.TAHOIYA_GIST_ID}`, {
 			description: 'TSG内「たほいや」対戦ログ',
 			files: {
 				'tahoiya-data.json': {
