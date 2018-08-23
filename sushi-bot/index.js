@@ -40,16 +40,16 @@ class Counter {
     async load() {
         const filePath = path.join(__dirname, `${this.name}.json`);
 
-		const exists = await new Promise((resolve) => {
-			fs.access(filePath, fs.constants.F_OK, (error) => {
-				resolve(!Boolean(error));
-			});
-		});
+        const exists = await new Promise((resolve) => {
+            fs.access(filePath, fs.constants.F_OK, (error) => {
+                resolve(!Boolean(error));
+            });
+        });
 
-		if (exists) {
-			const data = await promisify(fs.readFile)(filePath);
+        if (exists) {
+            const data = await promisify(fs.readFile)(filePath);
             this.map = new Map(JSON.parse(data));
-		} else {
+        } else {
             this.map = new Map();
         }
     }
