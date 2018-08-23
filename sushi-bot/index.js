@@ -23,6 +23,7 @@ class Counter {
 
     clear() {
         this.map = new Map();
+        this.save();
     }
 
     entries() {
@@ -100,7 +101,7 @@ module.exports = (clients) => {
         }
     });
 
-	schedule.scheduleJob('0 19 * * 0', async () => {
+    schedule.scheduleJob('0 19 * * 0', async () => {
         const {members} = await slack.users.list();
 
         await slack.chat.postMessage({
