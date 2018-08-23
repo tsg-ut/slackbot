@@ -114,7 +114,7 @@ module.exports = (clients) => {
                 const name = member.profile.display_name || member.name;
 
                 return {
-                    author_name: `${index + 1}位: ${name} (${count + 1}回)`,
+                    author_name: `${index + 1}位: ${name} (${count}回)`,
                     author_icon: member.profile.image_24,
                 };
             })
