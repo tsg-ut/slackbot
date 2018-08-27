@@ -253,7 +253,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		};
 
 		const {data: gists} = await axios.get(`https://api.github.com/users/hakatashi/gists`);
-		const latestGist = maxBy(gists.filter(({description}) => description.startsWith(`[${process.env.TEAMNAME}] `)), 'created_at');
+		let latestGist = maxBy(gists.filter(({description}) => description.startsWith(`[${process.env.TEAMNAME}] `)), 'created_at');
 		const gist = await axios.get(`https://api.github.com/gists/${latestGist.id}`);
 		const json = get(gist, ['data', 'files', 'tahoiya-1-data.json', 'content']);
 
@@ -261,7 +261,31 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		const {battles, offset} = JSON.parse(json);
+		let {battles, offset} = JSON.parse(json);
+
+		if (battles.length >= 100) {
+			const {data: newGist} = await axios.post(`https://api.github.com/gists`, {
+				description: '',
+				files: {
+					'tahoiya-0-logs.md': {
+						content: '# temp',
+					},
+					'tahoiya-1-data.json': {
+						content: JSON.stringify({battles: [], offset: offset + 100}),
+					},
+				},
+				public: true,
+			}, {
+				headers: {
+					Authorization: `token ${process.env.GITHUB_TOKEN}`,
+				},
+			});
+
+			latestGist = newGist;
+			battles = [];
+			offset += 100;
+		}
+
 		battles.push(newBattle);
 
 		const entries = [];
@@ -321,7 +345,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const markdown = entries.join('\n');
 
 		await axios.patch(`https://api.github.com/gists/${latestGist.id}`, {
-			description: `[${process.env.TEAMNAME}] たほいや対戦ログ`,
+			description: `[${process.env.TEAMNAME}] たほいや対戦ログ 第${offset + 1}回～第${offset + 100}回`,
 			files: {
 				'tahoiya-0-logs.md': {
 					content: markdown,
@@ -490,7 +514,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 			if (message.channel === process.env.CHANNEL_SANDBOX) {
 				if (text === 'たほいや') {
-					if (!state.phase === 'waiting') {
+					if (state.phase !== 'waiting') {
 						await postMessage('今たほいや中だよ:imp:');
 						return;
 					}
