@@ -271,9 +271,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 	};
 
-	const updateGist = async () => {
+	const updateGist = async (battleTimestamp) => {
 		const newBattle = {
-			timestamp: new Date().toISOString(),
+			timestamp: battleTimestamp,
 			theme: state.theme.ruby,
 			url: getWordUrl(state.theme.word, state.theme.source),
 			meanings: state.shuffledMeanings.map((meaning, index) => {
@@ -451,6 +451,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const onFinishBettings = async () => {
 		assert(state.phase === 'collect_bettings');
 
+		const timestamp = new Date().toISOString();
+
 		const correctMeaningIndex = state.shuffledMeanings.findIndex(({user, dummy}) => user === null && dummy === null);
 		const correctMeaning = state.shuffledMeanings[correctMeaningIndex];
 		const correctBetters = [...state.bettings.entries()].filter(([, {meaning}]) => meaning === correctMeaningIndex);
@@ -541,7 +543,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			const oldRatings = state.ratings.get(user);
-			oldRatings.push(newRating);
+			oldRatings.push({timestamp, rating: newRating});
 
 			while (oldRatings.length > 5) {
 				oldRatings.shift();
@@ -549,17 +551,38 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 		await setState({ratings: state.ratings})
 
-		const ranking = [...state.ratings.entries()].sort(([, a], [, b]) => sum(b) - sum(a));
-		const formatNumber = (number) => number >= 0 ? `+${number}` : `${number}`;
+		const currentScores = [...state.ratings.entries()].map(([user, ratings]) => ([
+			user,
+			ratings.map(({timestamp: rateTimestamp, rating}) => {
+				if (rating <= -10) {
+					return rating;
+				}
+
+				const duration = new Date(timestamp).getTime() - new Date(rateTimestamp).getTime();
+				const days = duration / 1000 / 60 / 60 / 24;
+				const degeneratedRating = Math.ceil((rating - days) * 10) / 10;
+				return Math.max(-10, degeneratedRating);
+			}),
+		]));
+
+		const sumScores = (scores) => (
+			sum([...scores, ...Array(5 - scores.length).fill(-10)])
+		);
+
+		const ranking = currentScores.sort(([, a], [, b]) => sumScores(b) - sumScores(a));
+		const formatNumber = (number) => number >= 0 ? `+${number.toFixed(1)}` : `${number.toFixed(1)}`;
 
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
 		await postMessage('現在のランキング', ranking.map(([user, ratings], index) => ({
-			text: `#${index + 1} ${getMemberName(user)}: ${formatNumber(sum(ratings))} (${ratings.map((rating, index) => ratings.length - 1 === index && state.meanings.has(user) ? `*${formatNumber(rating)}*` : formatNumber(rating)).join(', ')})`,
+			author_name: `#${index + 1}: @${getMemberName(user)} (${formatNumber(sumScores(ratings))}点)`,
+			author_link: `https://${team.domain}.slack.com/team/${user}`,
+			author_icon: getMemberIcon(user),
+			text: ratings.map((rating, index) => ratings.length - 1 === index && state.meanings.has(user) ? `*${formatNumber(rating)}*` : formatNumber(rating)).join(', '),
 			color: colors[index % colors.length],
 		})));
 
-		updateGist();
+		updateGist(timestamp);
 
 		await setState({
 			phase: 'waiting',
