@@ -214,10 +214,16 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	];
 
 	const {members} = await slack.users.list();
+	const {team} = await slack.team.info();
 
 	const getMemberName = (user) => {
 		const member = members.find(({id}) => id === user);
 		return member.profile.display_name || member.name;
+	};
+
+	const getMemberIcon = (user) => {
+		const member = members.find(({id}) => id === user);
+		return member.profile.image_24;
 	};
 
 	const getWordUrl = (word, source) => {
@@ -233,7 +239,37 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			assert(source === 'nicopedia');
 			return `http://dic.nicovideo.jp/a/${encodeURIComponent(word)}`;
 		}
-	}
+	};
+
+	const getPageTitle = (url) => {
+		const urlTitle = decodeURI(url.match(/([^/]+)$/)[1]);
+
+		if (url.startsWith('https://ja.wikipedia.org')) {
+			return `${urlTitle} - Wikipedia`;
+		}
+
+		if (url.startsWith('https://ja.wiktionary.org')) {
+			return `${urlTitle} - ウィクショナリー日本語版`;
+		}
+
+		assert(url.startsWith('http://dic.nicovideo.jp'));
+		return `${urlTitle} - ニコニコ大百科`;
+	};
+
+	const getIconUrl = (source) => {
+		if (source === 'wikipedia') {
+			return `https://ja.wikipedia.org/static/favicon/wikipedia.ico`;
+		}
+
+		if (source === 'wiktionary') {
+			return `https://ja.wiktionary.org/static/favicon/piece.ico`;
+		}
+
+		{
+			assert(source === 'nicopedia');
+			return `http://dic.nicovideo.jp/favicon.ico`;
+		}
+	};
 
 	const updateGist = async () => {
 		const newBattle = {
@@ -294,16 +330,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		for (const [i, {timestamp, theme, meanings, url}] of battles.entries()) {
 			const users = meanings.filter(({type}) => type === 'user').map(({user}) => user);
-			const urlTitle = decodeURI(url.match(/([^/]+)$/)[1]);
-			let urlSource = '';
-			if (url.startsWith('https://ja.wikipedia.org')) {
-				urlSource = 'Wikipedia';
-			} else if (url.startsWith('https://ja.wiktionary.org')) {
-				urlSource = 'ウィクショナリー日本語版';
-			} else {
-				assert(url.startsWith('http://dic.nicovideo.jp'));
-				urlSource = 'ニコニコ大百科';
-			}
 
 			entries.push(`
 				# 第${offset + i + 1}回 「**${theme}**」
@@ -336,7 +362,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					return text;
 				}).join('\n')}
 
-				出典: [${urlTitle} - ${urlSource}](${url})
+				出典: [${getPageTitle(url)}](${url})
 
 				</details>
 			`.replace(/^\t+/gm, ''));
@@ -444,11 +470,52 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
-		await postMessage('今回の対戦結果', state.shuffledMeanings.map((meaning, index) => ({
-			title: `${index + 1}. ${meaning.text} ${meaning.dummy ? `(${meaning.dummy[2]}: ${meaning.dummy[0]})` : (meaning.user ? `by <@${meaning.user}>` : ':o:')}`,
-			text: [...state.bettings.entries()].filter(([, {meaning}]) => meaning === index).map(([better, {coins}]) => `<@${better}> (${coins}枚)`).join(' ') || '-',
-			color: index === correctMeaningIndex ? colors[0] : '#CCCCCC',
-		})));
+		await postMessage('今回の対戦結果', state.shuffledMeanings.map((meaning, index) => {
+			const url = (() => {
+				if (meaning.dummy) {
+					return getWordUrl(meaning.dummy[0], meaning.dummy[2]);
+				}
+
+				if (meaning.user) {
+					return `https://${team.domain}.slack.com/team/${meaning.user}`;
+				}
+
+				return getWordUrl(state.theme.word, state.theme.source);
+			})();
+
+			const title = (() => {
+				if (meaning.dummy) {
+					return getPageTitle(url);
+				}
+
+				if (meaning.user) {
+					return `@${getMemberName(meaning.user)}`;
+				}
+
+				return getPageTitle(url);
+			})();
+
+			const icon = (() => {
+				if (meaning.dummy) {
+					return getIconUrl(meaning.dummy[2]);
+				}
+
+				if (meaning.user) {
+					return getMemberIcon(meaning.user);
+				}
+
+				return getIconUrl(state.theme.source);
+			})();
+
+			return {
+				author_name: title,
+				author_link: url,
+				author_icon: icon,
+				title: `${index + 1}. ${meaning.text}`,
+				text: [...state.bettings.entries()].filter(([, {meaning}]) => meaning === index).map(([better, {coins}]) => `<@${better}> (${coins}枚)`).join(' ') || '-',
+				color: index === correctMeaningIndex ? colors[0] : '#CCCCCC',
+			};
+		}));
 
 		const newRatings = new Map([...state.meanings.keys()].map((user) => [user, 0]));
 
