@@ -554,24 +554,24 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const currentScores = [...state.ratings.entries()].map(([user, ratings]) => ([
 			user,
 			ratings.map(({timestamp: rateTimestamp, rating}) => {
-				if (rating <= -10) {
+				if (rating <= -6) {
 					return rating;
 				}
 
 				const duration = new Date(timestamp).getTime() - new Date(rateTimestamp).getTime();
 				const days = duration / 1000 / 60 / 60 / 24;
 				const degeneratedRating = Math.ceil((rating - days) * 10) / 10;
-				return Math.max(-10, degeneratedRating);
+				return Math.max(-6, degeneratedRating);
 			}),
 		]));
 
 		const sumScores = (scores) => (
-			sum([...scores, ...Array(5 - scores.length).fill(-10)])
+			sum([...scores, ...Array(5 - scores.length).fill(-6)])
 		);
 
 		const ranking = currentScores.sort(([, a], [, b]) => sumScores(b) - sumScores(a));
-		const hiRanking = ranking.filter(([, ratings]) => sumScores(ratings) > -50);
-		const loRanking = ranking.filter(([, ratings]) => sumScores(ratings) <= -50);
+		const hiRanking = ranking.filter(([, ratings]) => sumScores(ratings) > -30);
+		const loRanking = ranking.filter(([, ratings]) => sumScores(ratings) <= -30);
 
 		const formatNumber = (number) => number >= 0 ? `+${number.toFixed(1)}` : `${number.toFixed(1)}`;
 
