@@ -570,17 +570,26 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		);
 
 		const ranking = currentScores.sort(([, a], [, b]) => sumScores(b) - sumScores(a));
+		const hiRanking = ranking.filter(([, ratings]) => sumScores(ratings) > -50);
+		const loRanking = ranking.filter(([, ratings]) => sumScores(ratings) <= -50);
+
 		const formatNumber = (number) => number >= 0 ? `+${number.toFixed(1)}` : `${number.toFixed(1)}`;
 
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
-		await postMessage('現在のランキング', ranking.map(([user, ratings], index) => ({
-			author_name: `#${index + 1}: @${getMemberName(user)} (${formatNumber(sumScores(ratings))}点)`,
-			author_link: `https://${team.domain}.slack.com/team/${user}`,
-			author_icon: getMemberIcon(user),
-			text: ratings.map((rating, index) => ratings.length - 1 === index && state.meanings.has(user) ? `*${formatNumber(rating)}*` : formatNumber(rating)).join(', '),
-			color: colors[index % colors.length],
-		})));
+		await postMessage('現在のランキング', [
+			...hiRanking.map(([user, ratings], index) => ({
+				author_name: `#${index + 1}: @${getMemberName(user)} (${formatNumber(sumScores(ratings))}点)`,
+				author_link: `https://${team.domain}.slack.com/team/${user}`,
+				author_icon: getMemberIcon(user),
+				text: ratings.map((rating, index) => ratings.length - 1 === index && state.meanings.has(user) ? `*${formatNumber(rating)}*` : formatNumber(rating)).join(', '),
+				color: colors[index % colors.length],
+			})),
+			{
+				author_name: `#${hiRanking.length + 1}: ${loRanking.map(([user]) => `@${getMemberName(user)}`).join(', ')} (-50.0点)`,
+				color: '#CCCCCC',
+			},
+		]);
 
 		updateGist(timestamp);
 
