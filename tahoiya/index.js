@@ -9,6 +9,7 @@ const sampleSize = require('lodash/sampleSize');
 const sum = require('lodash/sum');
 const shuffle = require('lodash/shuffle');
 const last = require('lodash/last');
+const maxBy = require('lodash/maxBy');
 const {hiraganize} = require('japanese');
 const path = require('path');
 const fs = require('fs');
@@ -251,19 +252,21 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			}),
 		};
 
-		const gist = await axios.get(`https://api.github.com/gists/${process.env.TAHOIYA_GIST_ID}`);
-		const json = get(gist, ['data', 'files', 'tahoiya-data.json', 'content']);
+		const {data: gists} = await axios.get(`https://api.github.com/users/hakatashi/gists`);
+		const latestGist = maxBy(gists.filter(({description}) => description.startsWith(`[${process.env.TEAMNAME}] `)), 'created_at');
+		const gist = await axios.get(`https://api.github.com/gists/${latestGist.id}`);
+		const json = get(gist, ['data', 'files', 'tahoiya-1-data.json', 'content']);
 
 		if (!json) {
 			return;
 		}
 
-		const battles = JSON.parse(json);
+		const {battles, offset} = JSON.parse(json);
 		battles.push(newBattle);
 
 		const entries = [];
 
-		postMessage(`対戦ログ: <https://gist.github.com/hakatashi/${process.env.TAHOIYA_GIST_ID}#${encodeURIComponent(`第${battles.length}回-${newBattle.theme}`)}>`);
+		postMessage(`対戦ログ: <https://gist.github.com/hakatashi/${latestGist.id}#${encodeURIComponent(`第${offset + battles.length}回-${newBattle.theme}`)}>`);
 
 		for (const [i, {timestamp, theme, meanings, url}] of battles.entries()) {
 			const users = meanings.filter(({type}) => type === 'user').map(({user}) => user);
@@ -279,7 +282,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			entries.push(`
-				# 第${i + 1}回 「**${theme}**」
+				# 第${offset + i + 1}回 「**${theme}**」
 
 				* **日時** ${moment(timestamp).utcOffset('+0900').format('YYYY-MM-DD HH:mm:ss')}
 				* **参加者** ${users.map((user) => `@${getMemberName(user)}`).join(' ')} (${users.length}人)
@@ -317,14 +320,14 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		const markdown = entries.join('\n');
 
-		await axios.patch(`https://api.github.com/gists/${process.env.TAHOIYA_GIST_ID}`, {
-			description: `${process.env.TEAMNAME}内「たほいや」対戦ログ`,
+		await axios.patch(`https://api.github.com/gists/${latestGist.id}`, {
+			description: `[${process.env.TEAMNAME}] たほいや対戦ログ`,
 			files: {
-				'tahoiya-data.json': {
-					content: JSON.stringify(battles),
-				},
-				'tahoiya-logs.md': {
+				'tahoiya-0-logs.md': {
 					content: markdown,
+				},
+				'tahoiya-1-data.json': {
+					content: JSON.stringify({battles, offset}),
 				},
 			},
 		}, {
