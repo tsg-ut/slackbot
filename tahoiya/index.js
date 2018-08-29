@@ -560,7 +560,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 				const duration = new Date(timestamp).getTime() - new Date(rateTimestamp).getTime();
 				const days = duration / 1000 / 60 / 60 / 24;
-				const degeneratedRating = Math.ceil((rating - days) * 10) / 10;
+				const degeneratedRating = Math.ceil((rating - days * 0.2) * 10) / 10;
 				return Math.max(-6, degeneratedRating);
 			}),
 		]));
@@ -586,7 +586,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				color: colors[index % colors.length],
 			})),
 			{
-				author_name: `#${hiRanking.length + 1}: ${loRanking.map(([user]) => `@${getMemberName(user)}`).join(', ')} (-50.0点)`,
+				author_name: `#${hiRanking.length + 1}: ${loRanking.map(([user]) => `@${getMemberName(user)}`).join(', ')} (-30.0点)`,
 				color: '#CCCCCC',
 			},
 		]);
