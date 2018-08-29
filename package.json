@@ -34,6 +34,7 @@
     "dockerode": "^2.5.5",
     "dotenv": "^6.0.0",
     "download": "^7.1.0",
+    "fast-levenshtein": "^2.0.6",
     "japanese": "^1.2.0",
     "jsdom": "^11.11.0",
     "lodash": "^4.17.10",

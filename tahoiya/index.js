@@ -1,5 +1,6 @@
 const {stripIndent} = require('common-tags');
 const moment = require('moment');
+const levenshtein = require('fast-levenshtein');
 const axios = require('axios');
 const download = require('download');
 const assert = require('assert');
@@ -7,9 +8,9 @@ const get = require('lodash/get');
 const sample = require('lodash/sample');
 const sampleSize = require('lodash/sampleSize');
 const sum = require('lodash/sum');
-const shuffle = require('lodash/shuffle');
 const last = require('lodash/last');
 const maxBy = require('lodash/maxBy');
+const shuffle = require('lodash/shuffle');
 const {hiraganize} = require('japanese');
 const path = require('path');
 const fs = require('fs');
@@ -115,7 +116,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		} while (exsentences < 3 && (wikitext === null || wikitext.endsWith('?')));
 
 		if (!wikitext) {
-			await failed(new Error(`Couldn\'t find article for ${word}`));
+			await failed(new Error(`Couldn't find article for ${word}`));
 			return;
 		}
 
@@ -147,7 +148,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		meaning = meaning.trim();
 
 		return meaning;
-	}
+	};
 
 	let timeoutId = null;
 
@@ -160,7 +161,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		const dataExists = await new Promise((resolve) => {
 			fs.access(dataPath, fs.constants.F_OK, (error) => {
-				resolve(!Boolean(error));
+				resolve(!error);
 			});
 		});
 
@@ -174,7 +175,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			await promisify(fs.writeFile)(dataPath, databaseBuffer);
 			return databaseBuffer.toString();
 		}
-	}))
+	}));
 
 	const database = [
 		...databaseText.split('\n').filter((line) => line.length !== 0).map((line) => [
@@ -186,13 +187,14 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			'wiktionary',
 		]),
 		...nicopediaText.split('\n').filter((line) => line.length !== 0).map((line) => [
-			...line.split('\t').slice(0, 2),
+			line.split('\t')[0],
+			hiraganize(line.split('\t')[1]),
 			'nicopedia',
 			line.split('\t')[2],
 		]),
 	];
 
-	const candidateWords = database.filter(([word, ruby]) => 3 <= ruby.length && ruby.length <= 7);
+	const candidateWords = shuffle(database.filter(([word, ruby]) => ruby.length >= 3 && ruby.length <= 7));
 
 	const colors = [
 		'#F44336',
@@ -258,17 +260,15 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 	const getIconUrl = (source) => {
 		if (source === 'wikipedia') {
-			return `https://ja.wikipedia.org/static/favicon/wikipedia.ico`;
+			return 'https://ja.wikipedia.org/static/favicon/wikipedia.ico';
 		}
 
 		if (source === 'wiktionary') {
-			return `https://ja.wiktionary.org/static/favicon/piece.ico`;
+			return 'https://ja.wiktionary.org/static/favicon/piece.ico';
 		}
 
-		{
-			assert(source === 'nicopedia');
-			return `http://dic.nicovideo.jp/favicon.ico`;
-		}
+		assert(source === 'nicopedia');
+		return 'http://dic.nicovideo.jp/favicon.ico';
 	};
 
 	const updateGist = async (battleTimestamp) => {
@@ -288,7 +288,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			}),
 		};
 
-		const {data: gists} = await axios.get(`https://api.github.com/users/hakatashi/gists`);
+		const {data: gists} = await axios.get('https://api.github.com/users/hakatashi/gists');
 		let latestGist = maxBy(gists.filter(({description}) => description.startsWith(`[${process.env.TEAMNAME}] `)), 'created_at');
 		const gist = await axios.get(`https://api.github.com/gists/${latestGist.id}`);
 		const json = get(gist, ['data', 'files', 'tahoiya-1-data.json', 'content']);
@@ -300,7 +300,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		let {battles, offset} = JSON.parse(json);
 
 		if (battles.length >= 100) {
-			const {data: newGist} = await axios.post(`https://api.github.com/gists`, {
+			const {data: newGist} = await axios.post('https://api.github.com/gists', {
 				description: '',
 				files: {
 					'tahoiya-0-logs.md': {
@@ -344,23 +344,23 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				<summary>答え</summary>
 
 				${meanings.map((meaning, i) => {
-					let text = '';
-					if (meaning.type === 'user') {
-						text = `${i + 1}. ${meaning.text} (@${getMemberName(meaning.user)})`;
-					} else if (meaning.type === 'dummy') {
-						text = `${i + 1}. ${meaning.text} (${meaning.source}: ${meaning.title})`;
-					} else if (meaning.type === 'correct') {
-						text = `${i + 1}. ⭕️**${meaning.text}**`;
-					}
+		let text = '';
+		if (meaning.type === 'user') {
+			text = `${i + 1}. ${meaning.text} (@${getMemberName(meaning.user)})`;
+		} else if (meaning.type === 'dummy') {
+			text = `${i + 1}. ${meaning.text} (${meaning.source}: ${meaning.title})`;
+		} else if (meaning.type === 'correct') {
+			text = `${i + 1}. ⭕️**${meaning.text}**`;
+		}
 
-					const betters = meaning.betters.map(({user, coins}) => `@${getMemberName(user)} (${coins}枚)`).join(' ');
+		const betters = meaning.betters.map(({user, coins}) => `@${getMemberName(user)} (${coins}枚)`).join(' ');
 
-					if (betters.length > 0) {
-						return `${text}\n    * ${betters}`;
-					}
+		if (betters.length > 0) {
+			return `${text}\n    * ${betters}`;
+		}
 
-					return text;
-				}).join('\n')}
+		return text;
+	}).join('\n')}
 
 				出典: [${getPageTitle(url)}](${url})
 
@@ -411,17 +411,22 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		await setState({phase: 'collect_bettings'});
+		const dummySize = Math.max(2, 4 - state.meanings.size);
+		const ambiguateDummy = candidateWords.find(([word, ruby]) => {
+			const distance = levenshtein.get(state.theme.ruby, ruby);
+			return distance <= 1 && distance !== 0 && state.theme.word !== word;
+		});
 
-		const dummyMeanings = [];
-		for (const i of Array(Math.max(2, 4 - state.meanings.size))) {
-			const word = sample(candidateWords);
+		const dummyMeanings = await Promise.all(Array(dummySize).fill().map(async (_, i) => {
+			const word = (i === 0 && ambiguateDummy !== undefined) ? ambiguateDummy : sample(candidateWords);
 			const meaning = await getMeaning(word);
-			dummyMeanings.push({
+
+			return {
 				user: null,
 				dummy: word,
 				text: meaning,
-			});
-		}
+			};
+		}));
 
 		const shuffledMeanings = shuffle([{
 			user: null,
@@ -549,7 +554,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				oldRatings.shift();
 			}
 		}
-		await setState({ratings: state.ratings})
+		await setState({ratings: state.ratings});
 
 		const currentScores = [...state.ratings.entries()].map(([user, ratings]) => ([
 			user,
@@ -618,7 +623,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						return;
 					}
 
-					const candidates = sampleSize(candidateWords, 10).map(([word, ruby, source, meaning]) => [word, hiraganize(ruby), source, meaning]);
+					const candidates = sampleSize(candidateWords, 10).map(([word, ruby, source, meaning]) => [word, ruby, source, meaning]);
 					await setState({candidates});
 					console.log(candidates);
 					await postMessage(stripIndent`
