@@ -10,6 +10,7 @@ const sampleSize = require('lodash/sampleSize');
 const sum = require('lodash/sum');
 const last = require('lodash/last');
 const maxBy = require('lodash/maxBy');
+const minBy = require('lodash/minBy');
 const shuffle = require('lodash/shuffle');
 const {hiraganize} = require('japanese');
 const path = require('path');
@@ -412,9 +413,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		await setState({phase: 'collect_bettings'});
 		const dummySize = Math.max(2, 4 - state.meanings.size);
-		const ambiguateDummy = candidateWords.find(([word, ruby]) => {
+		const ambiguateDummy = minBy(candidateWords, ([word, ruby]) => {
 			const distance = levenshtein.get(state.theme.ruby, ruby);
-			return distance <= 1 && distance !== 0 && state.theme.word !== word;
+			if (distance === 0 || state.theme.word === word) {
+				return Infinity;
+			}
+			return distance;
 		});
 
 		const dummyMeanings = await Promise.all(Array(dummySize).fill().map(async (_, i) => {
