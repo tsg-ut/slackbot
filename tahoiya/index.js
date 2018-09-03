@@ -29,6 +29,7 @@ const state = (() => {
 			bettings: new Map(Object.entries(savedState.bettings)),
 			theme: savedState.theme,
 			ratings: new Map(Object.entries(savedState.ratings)),
+			comments: savedState.comments || [],
 		};
 	} catch (e) {
 		return {
@@ -39,6 +40,7 @@ const state = (() => {
 			bettings: new Map(),
 			theme: null,
 			ratings: new Map(),
+			comments: [],
 		};
 	}
 })();
@@ -287,6 +289,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					betters: [...state.bettings.entries()].filter(([, {meaning}]) => meaning === index).map(([user, {coins}]) => ({user, coins})),
 				};
 			}),
+			comments: state.comments,
 		};
 
 		const {data: gists} = await axios.get('https://api.github.com/users/hakatashi/gists');
@@ -584,6 +587,18 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		const formatNumber = (number) => number >= 0 ? `+${number.toFixed(1)}` : `${number.toFixed(1)}`;
 
+		if (state.comments.length > 0) {
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+			await postMessage('コメント', [
+				...state.comments.map(({user, text, date}) => ({
+					author_name: text,
+					author_link: `https://${team.domain}.slack.com/team/${user}`,
+					author_icon: getMemberIcon(user),
+					ts: Math.floor(date / 1000),
+				})),
+			]);
+		}
+
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
 		await postMessage('現在のランキング', [
@@ -608,6 +623,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			shuffledMeanings: [],
 			meanings: new Map(),
 			bettings: new Map(),
+			comments: [],
 		});
 	};
 
@@ -674,6 +690,19 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						...(options ? options : {}),
 					})
 				);
+
+				if (text.startsWith('コメント')) {
+					const comment = text.slice(4).trim();
+					await setState({
+						comments: state.comments.concat([{
+							text: comment,
+							date: Date.now(),
+							user: message.user,
+						}]),
+					});
+					await slack.reactions.add({name: 'speech_balloon', channel: message.channel, timestamp: message.ts});
+					return;
+				}
 
 				if (state.phase === 'collect_meanings' && text.length <= 256) {
 					const isUpdate = state.meanings.has(message.user);
