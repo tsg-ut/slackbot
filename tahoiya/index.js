@@ -469,68 +469,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const correctMeaning = state.shuffledMeanings[correctMeaningIndex];
 		const correctBetters = [...state.bettings.entries()].filter(([, {meaning}]) => meaning === correctMeaningIndex);
 
-		await new Promise((resolve) => setTimeout(resolve, 1000));
-
-		await postMessage(stripIndent`
-			集計が終了したよ～:raised_hands::raised_hands::raised_hands:
-
-			*${state.theme.ruby}* の正しい意味は⋯⋯
-			*${correctMeaningIndex + 1}. ${correctMeaning.text}*
-
-			正解者: ${correctBetters.length === 0 ? 'なし' : correctBetters.map(([better]) => `<@${better}>`).join(' ')}
-
-			${getWordUrl(state.theme.word, state.theme.source)}
-		`, [], {unfurl_links: true});
-
-		await new Promise((resolve) => setTimeout(resolve, 1000));
-
-		await postMessage('今回の対戦結果', state.shuffledMeanings.map((meaning, index) => {
-			const url = (() => {
-				if (meaning.dummy) {
-					return getWordUrl(meaning.dummy[0], meaning.dummy[2]);
-				}
-
-				if (meaning.user) {
-					return `https://${team.domain}.slack.com/team/${meaning.user}`;
-				}
-
-				return getWordUrl(state.theme.word, state.theme.source);
-			})();
-
-			const title = (() => {
-				if (meaning.dummy) {
-					return getPageTitle(url);
-				}
-
-				if (meaning.user) {
-					return `@${getMemberName(meaning.user)}`;
-				}
-
-				return getPageTitle(url);
-			})();
-
-			const icon = (() => {
-				if (meaning.dummy) {
-					return getIconUrl(meaning.dummy[2]);
-				}
-
-				if (meaning.user) {
-					return getMemberIcon(meaning.user);
-				}
-
-				return getIconUrl(state.theme.source);
-			})();
-
-			return {
-				author_name: title,
-				author_link: url,
-				author_icon: icon,
-				title: `${index + 1}. ${meaning.text}`,
-				text: [...state.bettings.entries()].filter(([, {meaning}]) => meaning === index).map(([better, {coins}]) => `<@${better}> (${coins}枚)`).join(' ') || '-',
-				color: index === correctMeaningIndex ? colors[0] : '#CCCCCC',
-			};
-		}));
-
 		const newRatings = new Map([...state.meanings.keys()].map((user) => [user, 0]));
 
 		for (const user of state.meanings.keys()) {
@@ -587,20 +525,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		const formatNumber = (number) => number >= 0 ? `+${number.toFixed(1)}` : `${number.toFixed(1)}`;
 
-		if (state.comments.length > 0) {
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-			await postMessage('コメント', [
-				...state.comments.map(({user, text, date}) => ({
-					author_name: text,
-					author_link: `https://${team.domain}.slack.com/team/${user}`,
-					author_icon: getMemberIcon(user),
-					ts: Math.floor(date / 1000),
-				})),
-			]);
-		}
-
-		await new Promise((resolve) => setTimeout(resolve, 1000));
-
 		await postMessage('現在のランキング', [
 			...hiRanking.map(([user, ratings], index) => ({
 				author_name: `#${index + 1}: @${getMemberName(user)} (${formatNumber(sumScores(ratings))}点)`,
@@ -614,6 +538,75 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				color: '#CCCCCC',
 			},
 		]);
+
+		await postMessage(stripIndent`
+			集計が終了したよ～:raised_hands::raised_hands::raised_hands:
+
+			*${state.theme.ruby}* の正しい意味は⋯⋯
+			*${correctMeaningIndex + 1}. ${correctMeaning.text}*
+
+			正解者: ${correctBetters.length === 0 ? 'なし' : correctBetters.map(([better]) => `<@${better}>`).join(' ')}
+
+			${getWordUrl(state.theme.word, state.theme.source)}
+		`, [], {unfurl_links: true});
+
+		await postMessage('今回の対戦結果', state.shuffledMeanings.map((meaning, index) => {
+			const url = (() => {
+				if (meaning.dummy) {
+					return getWordUrl(meaning.dummy[0], meaning.dummy[2]);
+				}
+
+				if (meaning.user) {
+					return `https://${team.domain}.slack.com/team/${meaning.user}`;
+				}
+
+				return getWordUrl(state.theme.word, state.theme.source);
+			})();
+
+			const title = (() => {
+				if (meaning.dummy) {
+					return getPageTitle(url);
+				}
+
+				if (meaning.user) {
+					return `@${getMemberName(meaning.user)}`;
+				}
+
+				return getPageTitle(url);
+			})();
+
+			const icon = (() => {
+				if (meaning.dummy) {
+					return getIconUrl(meaning.dummy[2]);
+				}
+
+				if (meaning.user) {
+					return getMemberIcon(meaning.user);
+				}
+
+				return getIconUrl(state.theme.source);
+			})();
+
+			return {
+				author_name: title,
+				author_link: url,
+				author_icon: icon,
+				title: `${index + 1}. ${meaning.text}`,
+				text: [...state.bettings.entries()].filter(([, {meaning}]) => meaning === index).map(([better, {coins}]) => `<@${better}> (${coins}枚)`).join(' ') || '-',
+				color: index === correctMeaningIndex ? colors[0] : '#CCCCCC',
+			};
+		}));
+
+		if (state.comments.length > 0) {
+			await postMessage('コメント', [
+				...state.comments.map(({user, text, date}) => ({
+					author_name: text,
+					author_link: `https://${team.domain}.slack.com/team/${user}`,
+					author_icon: getMemberIcon(user),
+					ts: Math.floor(date / 1000),
+				})),
+			]);
+		}
 
 		updateGist(timestamp);
 
