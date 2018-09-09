@@ -1,5 +1,6 @@
 const {stripIndent} = require('common-tags');
 const moment = require('moment');
+const querystring = require('querystring');
 const levenshtein = require('fast-levenshtein');
 const axios = require('axios');
 const download = require('download');
@@ -92,6 +93,17 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		let wikitext = null;
 		let exsentences = 0;
 
+		const res = await axios.post(
+			(source === 'wikipedia' ? 'https://ja.wikipedia.org/w/api.php?' : 'https://ja.wiktionary.org/w/api.php?') + querystring.stringify({
+				action: 'purge',
+				titles: word,
+				format: 'json',
+			}),
+			{
+				responseType: 'json',
+			},
+		);
+
 		do {
 			exsentences++;
 
@@ -106,6 +118,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						...(source === 'wikipedia' ? {exintro: true} : {}),
 						explaintext: true,
 						exsentences,
+						redirects: 1,
 						format: 'json',
 					},
 					responseType: 'json',
@@ -235,7 +248,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		]),
 	];
 
-	const candidateWords = shuffle(database.filter(([, ruby, source]) => ruby.length >= 3 && ruby.length <= 7 && source !== 'wikipedia' && source !== 'wiktionary'));
+	const candidateWords = shuffle(database.filter(([, ruby]) => ruby.length >= 3 && ruby.length <= 7));
 
 	const colors = [
 		'#F44336',
