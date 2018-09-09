@@ -85,7 +85,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	};
 
 	const getMeaning = async ([word, , source, rawMeaning]) => {
-		if (source === 'nicopedia') {
+		if (source !== 'wikipedia' && source !== 'wiktionary') {
 			return rawMeaning;
 		}
 
@@ -128,7 +128,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		let meaning = null;
 		const lines = wikitext.split('\n').filter((line) => line.trim().length !== 0);
 
-		if (lines.length !== 1) {
+		if (lines.length > 1) {
 			meaning = source === 'wikipedia' ? lines[1] : last(lines);
 			meaning = normalizeMeaning(meaning);
 		} else {
@@ -155,10 +155,22 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 	let timeoutId = null;
 
-	const [databaseText, wiktionaryText, nicopediaText] = await Promise.all([
-		['data.txt', 'https://john-smith.github.io/kana.tsv'],
+	const [
+		wikipediaText,
+		wiktionaryText,
+		nicopediaText,
+		asciiText,
+		binaryText,
+		ewordsText,
+		fideliText,
+	] = await Promise.all([
+		['wikipedia.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/wikipedia.txt'],
 		['wiktionary.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/wiktionary.txt'],
 		['nicopedia.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/nicopedia.txt'],
+		['ascii.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/ascii.txt'],
+		['binary.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/binary.txt'],
+		['ewords.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/ewords.txt'],
+		['fideli.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/fideli.txt'],
 	].map(async ([filename, url]) => {
 		const dataPath = path.join(__dirname, filename);
 
@@ -181,12 +193,13 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	}));
 
 	const database = [
-		...databaseText.split('\n').filter((line) => line.length !== 0).map((line) => [
+		...wikipediaText.split('\n').filter((line) => line.length !== 0).map((line) => [
 			...line.split('\t'),
 			'wikipedia',
 		]),
 		...wiktionaryText.split('\n').filter((line) => line.length !== 0).map((line) => [
-			...line.split('\t'),
+			line.split('\t')[0],
+			hiraganize(line.split('\t')[1]),
 			'wiktionary',
 		]),
 		...nicopediaText.split('\n').filter((line) => line.length !== 0).map((line) => [
@@ -195,9 +208,34 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			'nicopedia',
 			line.split('\t')[2],
 		]),
+		...asciiText.split('\n').filter((line) => line.length !== 0).map((line) => [
+			line.split('\t')[0],
+			line.split('\t')[1],
+			'ascii',
+			line.split('\t')[2],
+		]),
+		...binaryText.split('\n').filter((line) => line.length !== 0).map((line) => [
+			line.split('\t')[0],
+			line.split('\t')[1],
+			'binary',
+			line.split('\t')[2],
+		]),
+		...ewordsText.split('\n').filter((line) => line.length !== 0).map((line) => [
+			line.split('\t')[0],
+			line.split('\t')[1],
+			'ewords',
+			line.split('\t')[2],
+		]),
+		...fideliText.split('\n').filter((line) => line.length !== 0).map((line) => [
+			line.split('\t')[0],
+			line.split('\t')[1],
+			'fideli',
+			line.split('\t')[2],
+			line.split('\t')[3],
+		]),
 	];
 
-	const candidateWords = shuffle(database.filter(([word, ruby]) => ruby.length >= 3 && ruby.length <= 7));
+	const candidateWords = shuffle(database.filter(([, ruby, source]) => ruby.length >= 3 && ruby.length <= 7 && source !== 'wikipedia' && source !== 'wiktionary'));
 
 	const colors = [
 		'#F44336',
@@ -231,7 +269,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		return member.profile.image_24;
 	};
 
-	const getWordUrl = (word, source) => {
+	const getWordUrl = (word, source, id) => {
 		if (source === 'wikipedia') {
 			return `https://ja.wikipedia.org/wiki/${encodeURIComponent(word)}`;
 		}
@@ -240,10 +278,24 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return `https://ja.wiktionary.org/wiki/${encodeURIComponent(word)}`;
 		}
 
-		{
-			assert(source === 'nicopedia');
-			return `http://dic.nicovideo.jp/a/${encodeURIComponent(word)}`;
+		if (source === 'ascii') {
+			return `http://yougo.ascii.jp/caltar/${encodeURIComponent(word)}`;
 		}
+
+		if (source === 'binary') {
+			return `http://www.sophia-it.com/content/${encodeURIComponent(word)}`;
+		}
+
+		if (source === 'ewords') {
+			return `http://e-words.jp/w/${encodeURIComponent(word)}.html`;
+		}
+
+		if (source === 'fideli') {
+			return `http://dic-it.fideli.com/dictionary/m/word/w/${encodeURIComponent(id)}/index.html`;
+		}
+
+		assert(source === 'nicopedia');
+		return `http://dic.nicovideo.jp/a/${encodeURIComponent(word)}`;
 	};
 
 	const getPageTitle = (url) => {
@@ -255,6 +307,23 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		if (url.startsWith('https://ja.wiktionary.org')) {
 			return `${urlTitle} - ウィクショナリー日本語版`;
+		}
+
+		if (url.startsWith('http://yougo.ascii.jp')) {
+			return `${urlTitle} - 意味・説明・解説 : ASCII.jpデジタル用語辞典`;
+		}
+
+		if (url.startsWith('http://www.sophia-it.com')) {
+			return `${urlTitle} - IT用語辞典バイナリ`;
+		}
+
+		if (url.startsWith('http://e-words.jp')) {
+			const rawUrlTitle = urlTitle.replace(/\.html$/, '');
+			return `${rawUrlTitle} - IT用語辞典`;
+		}
+
+		if (url.startsWith('http://dic-it.fideli.com/')) {
+			return 'フィデリ IT用語辞典';
 		}
 
 		assert(url.startsWith('http://dic.nicovideo.jp'));
@@ -270,6 +339,22 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return 'https://ja.wiktionary.org/static/favicon/piece.ico';
 		}
 
+		if (source === 'ascii') {
+			return 'http://ascii.jp/img/favicon.ico';
+		}
+
+		if (source === 'binary') {
+			return 'http://www.sophia-it.com/favicon.ico';
+		}
+
+		if (source === 'ewords') {
+			return 'http://p.e-words.jp/favicon.png';
+		}
+
+		if (source === 'fideli') {
+			return 'http://dic-it.fideli.com/image/favicon.ico';
+		}
+
 		assert(source === 'nicopedia');
 		return 'http://dic.nicovideo.jp/favicon.ico';
 	};
@@ -278,7 +363,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const newBattle = {
 			timestamp: battleTimestamp,
 			theme: state.theme.ruby,
-			url: getWordUrl(state.theme.word, state.theme.source),
+			url: getWordUrl(state.theme.word, state.theme.source, state.theme.id),
 			meanings: state.shuffledMeanings.map((meaning, index) => {
 				const type = meaning.dummy ? 'dummy' : (meaning.user ? 'user' : 'correct');
 				return {
@@ -636,7 +721,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						return;
 					}
 
-					const candidates = sampleSize(candidateWords, 10).map(([word, ruby, source, meaning]) => [word, ruby, source, meaning]);
+					const candidates = sampleSize(candidateWords, 10);
 					await setState({candidates});
 					console.log(candidates);
 					await postMessage(stripIndent`
@@ -653,12 +738,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					assert(state.phase === 'waiting');
 					await setState({phase: 'collect_meanings'});
 
-					const [word, ruby, source, rawMeaning] = state.candidates.find(([, ruby]) => ruby === text);
+					const [word, ruby, source, rawMeaning, id] = state.candidates.find(([, ruby]) => ruby === text);
 					await setState({candidates: []});
 
-					const meaning = await getMeaning([word, ruby, source, rawMeaning]);
+					const meaning = await getMeaning([word, ruby, source, rawMeaning, id]);
 
-					await setState({theme: {word, ruby, meaning, source}});
+					await setState({theme: {word, ruby, meaning, source, id}});
 
 					await postMessage(stripIndent`
 						お題を *「${ruby}」* にセットしたよ:v:
