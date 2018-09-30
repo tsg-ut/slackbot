@@ -1,2 +1,3 @@
 *.txt
+*.sqlite3
 state.json

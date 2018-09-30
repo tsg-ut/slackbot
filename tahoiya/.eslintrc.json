@@ -9,6 +9,8 @@
         "sourceType": "module"
     },
     "rules": {
-        "no-console": "off"
+        "no-console": "off",
+        "no-div-regex": "off",
+        "no-use-before-define": "off"
     }
 }

@@ -17,6 +17,8 @@ const {hiraganize} = require('japanese');
 const path = require('path');
 const fs = require('fs');
 const {promisify} = require('util');
+const schedule = require('node-schedule');
+const sqlite = require('sqlite');
 
 const state = (() => {
 	try {
@@ -24,6 +26,8 @@ const state = (() => {
 		const savedState = require('./state.json');
 		return {
 			phase: savedState.phase,
+			author: savedState.author || null,
+			isWaitingDaily: savedState.isWaitingDaily || false,
 			candidates: savedState.candidates,
 			meanings: new Map(Object.entries(savedState.meanings)),
 			shuffledMeanings: savedState.shuffledMeanings,
@@ -35,6 +39,8 @@ const state = (() => {
 	} catch (e) {
 		return {
 			phase: 'waiting',
+			isWaitingDaily: false,
+			author: null,
 			candidates: [],
 			meanings: new Map(),
 			shuffledMeanings: [],
@@ -59,6 +65,8 @@ const normalizeMeaning = (input) => {
 };
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
+	const db = await sqlite.open(path.join(__dirname, 'themes.sqlite3'));
+
 	const mapToObject = (map) => {
 		const object = {};
 		for (const [key, value] of map.entries()) {
@@ -93,7 +101,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		let wikitext = null;
 		let exsentences = 0;
 
-		const res = await axios.post(
+		await axios.post(
 			(source === 'wikipedia' ? 'https://ja.wikipedia.org/w/api.php?' : 'https://ja.wiktionary.org/w/api.php?') + querystring.stringify({
 				action: 'purge',
 				titles: word,
@@ -133,7 +141,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		if (!wikitext) {
 			await failed(new Error(`Couldn't find article for ${word}`));
-			return;
+			return '';
 		}
 
 		console.log(wikitext);
@@ -205,7 +213,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 	}));
 
-	const database = [
+	const databaseWords = [
 		...wikipediaText.split('\n').filter((line) => line.length !== 0).map((line) => [
 			...line.split('\t'),
 			'wikipedia',
@@ -248,7 +256,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		]),
 	];
 
-	const candidateWords = shuffle(database.filter(([, ruby]) => ruby.length >= 3 && ruby.length <= 7));
+	const candidateWords = shuffle(databaseWords.filter(([, ruby]) => ruby.length >= 3 && ruby.length <= 7));
 
 	const colors = [
 		'#F44336',
@@ -376,7 +384,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const newBattle = {
 			timestamp: battleTimestamp,
 			theme: state.theme.ruby,
-			url: getWordUrl(state.theme.word, state.theme.source, state.theme.id),
+			word: state.theme.word,
+			sourceString: state.theme.sourceString,
+			url: state.author === null ? getWordUrl(state.theme.word, state.theme.source, state.theme.id) : state.theme.url,
 			meanings: state.shuffledMeanings.map((meaning, index) => {
 				const type = meaning.dummy ? 'dummy' : (meaning.user ? 'user' : 'correct');
 				return {
@@ -388,6 +398,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				};
 			}),
 			comments: state.comments,
+			author: state.author,
 		};
 
 		const {data: gists} = await axios.get('https://api.github.com/users/hakatashi/gists');
@@ -430,7 +441,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		postMessage(`対戦ログ: <https://gist.github.com/hakatashi/${latestGist.id}#${encodeURIComponent(`第${offset + battles.length}回-${newBattle.theme}`)}>`);
 
-		for (const [i, {timestamp, theme, meanings, url}] of battles.entries()) {
+		for (const [i, {timestamp, theme, word, meanings, url, author, sourceString}] of battles.entries()) {
 			const users = meanings.filter(({type}) => type === 'user').map(({user}) => user);
 
 			entries.push(`
@@ -438,6 +449,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 				* **日時** ${moment(timestamp).utcOffset('+0900').format('YYYY-MM-DD HH:mm:ss')}
 				* **参加者** ${users.map((user) => `@${getMemberName(user)}`).join(' ')} (${users.length}人)
+				${author ? `* **出題者**: ${getMemberName(author)}` : ''}
 
 				${meanings.map((meaning, i) => `${i + 1}. ${meaning.text}`).join('\n')}
 
@@ -464,7 +476,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		return text;
 	}).join('\n')}
 
-				出典: [${getPageTitle(url)}](${url})
+				出典: [${sourceString ? `${word} - ${sourceString}` : getPageTitle(url)}](${url})
 
 				</details>
 			`.replace(/^\t+/gm, ''));
@@ -549,13 +561,13 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			${[...state.meanings.keys()].map((user) => `<@${user}>`).join(' ')}
 			ベッティングタイムが始まるよ～:open_hands::open_hands::open_hands:
 			下のリストから *${state.theme.ruby}* の正しい意味だと思うものを選んで、 <@${process.env.USER_TSGBOT}> に「nにm枚」とDMしてね:wink:
-			全員ぶん出揃うか3分が経過すると結果発表だよ:sunglasses:
+			全員ぶん出揃うか${state.author === null ? '3' : '30'}分が経過すると結果発表だよ:sunglasses:
 		`, shuffledMeanings.map((meaning, index) => ({
 			text: `${index + 1}. ${meaning.text}`,
 			color: colors[index],
 		})));
 
-		timeoutId = setTimeout(onFinishBettings, 3 * 60 * 1000);
+		timeoutId = setTimeout(onFinishBettings, (state.author === null ? 3 : 30) * 60 * 1000);
 	};
 
 	const onFinishBettings = async () => {
@@ -645,7 +657,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 			正解者: ${correctBetters.length === 0 ? 'なし' : correctBetters.map(([better]) => `<@${better}>`).join(' ')}
 
-			${getWordUrl(state.theme.word, state.theme.source)}
+			${state.author === null ? getWordUrl(state.theme.word, state.theme.source) : state.theme.url}
 		`, [], {unfurl_links: true});
 
 		await postMessage('今回の対戦結果', state.shuffledMeanings.map((meaning, index) => {
@@ -658,7 +670,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					return `https://${team.domain}.slack.com/team/${meaning.user}`;
 				}
 
-				return getWordUrl(state.theme.word, state.theme.source);
+				if (state.author === null) {
+					return getWordUrl(state.theme.word, state.theme.source);
+				}
+
+				return state.theme.url;
 			})();
 
 			const title = (() => {
@@ -670,7 +686,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					return `@${getMemberName(meaning.user)}`;
 				}
 
-				return getPageTitle(url);
+				if (state.author === null) {
+					return getPageTitle(url);
+				}
+
+				return `${state.theme.word} - ${state.theme.sourceString}`;
 			})();
 
 			const icon = (() => {
@@ -682,7 +702,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					return getMemberIcon(meaning.user);
 				}
 
-				return getIconUrl(state.theme.source);
+				if (state.author === null) {
+					return getIconUrl(state.theme.source);
+				}
+
+				return getMemberIcon(state.author);
 			})();
 
 			return {
@@ -716,7 +740,50 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			bettings: new Map(),
 			comments: [],
 		});
+
+		if (state.isWaitingDaily) {
+			startDaily();
+		}
 	};
+
+	const startDaily = async () => {
+		assert(state.phase === 'waiting');
+
+		await setState({
+			phase: 'collect_meanings',
+			isWaitingDaily: false,
+		});
+
+		// TODO: 最近選ばれてないユーザーを選ぶ
+		const theme = await db.get('SELECT * FROM themes ORDER BY RANDOM() LIMIT 1');
+
+		await setState({
+			candidates: [],
+			theme: {
+				word: theme.word,
+				ruby: theme.ruby,
+				meaning: theme.meaning,
+				source: null,
+				sourceString: theme.source,
+				url: theme.url,
+				id: null,
+			},
+			author: theme.user,
+		});
+
+		// TODO: 終了予定時刻を書く
+		await postMessage(stripIndent`
+			<!channel> 今日のデイリーたほいやが始まるよ:checkered_flag::checkered_flag::checkered_flag:
+			出題者: <@${theme.user}>
+
+			今日のお題は *「${state.theme.ruby}」* だよ:v:
+			参加者は30分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
+		`);
+
+		setTimeout(onFinishMeanings, 30 * 60 * 1000);
+	};
+
+	setTimeout(startDaily, 1000);
 
 	rtm.on('message', async (message) => {
 		if (!message.text || message.subtype !== undefined) {
@@ -751,7 +818,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					assert(state.phase === 'waiting');
 					await setState({phase: 'collect_meanings'});
 
-					const [word, ruby, source, rawMeaning, id] = state.candidates.find(([, ruby]) => ruby === text);
+					const [word, ruby, source, rawMeaning, id] = state.candidates.find(([, r]) => r === text);
 					await setState({candidates: []});
 
 					const meaning = await getMeaning([word, ruby, source, rawMeaning, id]);
@@ -796,6 +863,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				}
 
 				if (state.phase === 'collect_meanings' && text.length <= 256) {
+					if (state.author === message.user) {
+						await postDM('出題者はたほいやに参加できないよ:fearful:');
+						return;
+					}
+
 					const isUpdate = state.meanings.has(message.user);
 					state.meanings.set(message.user, normalizeMeaning(text));
 					await setState({meanings: state.meanings});
@@ -862,6 +934,16 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			}
 		} catch (error) {
 			failed(error);
+		}
+	});
+
+	schedule.scheduleJob('0 22 * * *', () => {
+		if (state.phase === 'waiting') {
+			startDaily();
+		} else {
+			setState({
+				isWaitingDaily: true,
+			});
 		}
 	});
 };
