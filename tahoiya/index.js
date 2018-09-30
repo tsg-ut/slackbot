@@ -783,8 +783,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		setTimeout(onFinishMeanings, 30 * 60 * 1000);
 	};
 
-	setTimeout(startDaily, 1000);
-
 	rtm.on('message', async (message) => {
 		if (!message.text || message.subtype !== undefined) {
 			return;
