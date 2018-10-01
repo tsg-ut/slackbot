@@ -19,6 +19,7 @@ const fs = require('fs');
 const {promisify} = require('util');
 const schedule = require('node-schedule');
 const sqlite = require('sqlite');
+const sql = require('sql-template-strings');
 
 const state = (() => {
 	try {
@@ -27,6 +28,7 @@ const state = (() => {
 		return {
 			phase: savedState.phase,
 			author: savedState.author || null,
+			authorHistory: savedState.authorHistory || [],
 			isWaitingDaily: savedState.isWaitingDaily || false,
 			candidates: savedState.candidates,
 			meanings: new Map(Object.entries(savedState.meanings)),
@@ -41,6 +43,7 @@ const state = (() => {
 			phase: 'waiting',
 			isWaitingDaily: false,
 			author: null,
+			authorHistory: [],
 			candidates: [],
 			meanings: new Map(),
 			shuffledMeanings: [],
@@ -449,7 +452,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 				* **日時** ${moment(timestamp).utcOffset('+0900').format('YYYY-MM-DD HH:mm:ss')}
 				* **参加者** ${users.map((user) => `@${getMemberName(user)}`).join(' ')} (${users.length}人)
-				${author ? `* **出題者**: ${getMemberName(author)}` : ''}
+				${author ? `* **出題者**: @${getMemberName(author)}` : ''}
 
 				${meanings.map((meaning, i) => `${i + 1}. ${meaning.text}`).join('\n')}
 
@@ -519,8 +522,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 	const onFinishMeanings = async () => {
 		if (state.meanings.size === 0) {
+			await setState({phase: 'waiting', theme: null, author: null});
 			await postMessage('参加者がいないのでキャンセルされたよ:face_with_rolling_eyes:');
-			await setState({phase: 'waiting', theme: null});
 			return;
 		}
 
@@ -579,7 +582,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const correctMeaning = state.shuffledMeanings[correctMeaningIndex];
 		const correctBetters = [...state.bettings.entries()].filter(([, {meaning}]) => meaning === correctMeaningIndex);
 
-		const newRatings = new Map([...state.meanings.keys()].map((user) => [user, 0]));
+		const newRatings = new Map([
+			...state.meanings.keys(),
+			...(state.author ? [state.author] : []),
+		].map((user) => [user, 0]));
 
 		for (const user of state.meanings.keys()) {
 			const betting = state.bettings.get(user) || {meaning: null, coins: 1};
@@ -595,6 +601,13 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					}
 				}
 			}
+		}
+
+		if (state.author) {
+			const correctCount = correctBetters.length;
+			const wrongCount = state.meanings.size - correctCount;
+
+			newRatings.set(state.author, newRatings.get(state.author) + wrongCount - correctCount);
 		}
 
 		for (const [user, newRating] of newRatings.entries()) {
@@ -640,7 +653,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				author_name: `#${index + 1}: @${getMemberName(user)} (${formatNumber(sumScores(ratings))}点)`,
 				author_link: `https://${team.domain}.slack.com/team/${user}`,
 				author_icon: getMemberIcon(user),
-				text: ratings.map((rating, index) => ratings.length - 1 === index && state.meanings.has(user) ? `*${formatNumber(rating)}*` : formatNumber(rating)).join(', '),
+				text: ratings.map((rating, i) => ratings.length - 1 === i && state.meanings.has(user) ? `*${formatNumber(rating)}*` : formatNumber(rating)).join(', '),
 				color: colors[index % colors.length],
 			})),
 			{
@@ -730,10 +743,24 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			]);
 		}
 
+		if (state.author) {
+			await db.run(sql`
+				UPDATE themes
+				SET done = 1
+				WHERE ruby = ${state.theme.ruby}
+			`);
+		}
+
 		updateGist(timestamp);
 
 		await setState({
 			phase: 'waiting',
+			author: null,
+			...(state.author ? {
+				authorHistory: state.authorHistory
+					.filter((author) => author !== state.author)
+					.concat([state.author]),
+			} : {}),
 			theme: null,
 			shuffledMeanings: [],
 			meanings: new Map(),
@@ -754,8 +781,50 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			isWaitingDaily: false,
 		});
 
-		// TODO: 最近選ばれてないユーザーを選ぶ
-		const theme = await db.get('SELECT * FROM themes ORDER BY RANDOM() LIMIT 1');
+		// 最近選ばれてないユーザーを選ぶ
+		let theme = null;
+
+		if (state.authorHistory.length > 0) {
+			theme = await db.get(sql`
+				SELECT *
+				FROM themes
+				WHERE user NOT IN (${state.authorHistory})
+					AND done = 0
+				ORDER BY RANDOM()
+				LIMIT 1
+			`);
+		} else {
+			theme = await db.get(sql`
+				SELECT *
+				FROM themes
+				WHERE done = 0
+				ORDER BY RANDOM()
+				LIMIT 1
+			`);
+		}
+
+		if (!theme) {
+			for (const author of state.authorHistory) {
+				theme = await db.get(sql`
+					SELECT *
+					FROM themes
+					WHERE user = ${author}
+						AND done = 0
+					ORDER BY RANDOM()
+					LIMIT 1
+				`);
+
+				if (theme) {
+					break;
+				}
+			}
+		}
+
+		if (!theme) {
+			await setState({phase: 'waiting'});
+			await postMessage('お題ストックが無いのでデイリーたほいやはキャンセルされたよ:cry:');
+			return;
+		}
 
 		await setState({
 			candidates: [],
@@ -771,7 +840,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			author: theme.user,
 		});
 
-		// TODO: 終了予定時刻を書く
 		await postMessage(stripIndent`
 			<!channel> 今日のデイリーたほいやが始まるよ:checkered_flag::checkered_flag::checkered_flag:
 			出題者: <@${theme.user}>
@@ -831,6 +899,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					setTimeout(onFinishMeanings, 3 * 60 * 1000);
 					return;
 				}
+
+				if (text === 'デイリーたほいや') {
+					await postMessage('ヘルプ: https://github.com/tsg-ut/slackbot/wiki/%E3%83%87%E3%82%A4%E3%83%AA%E3%83%BC%E3%81%9F%E3%81%BB%E3%81%84%E3%82%84');
+					return;
+				}
 			}
 
 			// DM
@@ -846,6 +919,123 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						...(options ? options : {}),
 					})
 				);
+
+				const tokens = text.trim().split(/\s+/);
+
+				if (tokens[0] === 'デイリーたほいや') {
+					if (tokens[1] === '一覧') {
+						const themes = await db.all(sql`
+							SELECT *
+							FROM themes
+							WHERE user = ${message.user}
+								AND done = 0
+						`);
+						const attachments = themes.map(({word, ruby, meaning, source, url}) => ({
+							author_name: `${word} (${ruby}) - ${source}`,
+							author_link: url,
+							text: meaning,
+						}));
+						await postDM('あなたが登録したお題一覧', attachments);
+						return;
+					}
+
+					if (tokens[1] === '登録') {
+						const themeTokens = text.split('登録')[1].trim().split('\n');
+
+						if (themeTokens.length !== 5) {
+							await postDM('行数がおかしいよ:gorilla:');
+							return;
+						}
+
+						const [word, ruby, meaning, source, url] = themeTokens;
+
+						const existingRecord = await db.get(sql`
+							SELECT 1
+							FROM themes
+							WHERE ruby = ${hiraganize(ruby)}
+							LIMIT 1
+						`);
+
+						if (existingRecord !== undefined) {
+							await postDM(`「${ruby}」はすでに登録されているよ:innocent:`);
+							return;
+						}
+
+						if (word === '') {
+							await postDM('単語が空だよ:thinking_face:');
+							return;
+						}
+
+						if (ruby === '' || !hiraganize(ruby).match(/^\p{Script=Hiragana}+$/u)) {
+							await postDM('読み仮名は平仮名でないといけないよ:pouting_cat:');
+							return;
+						}
+
+						if (meaning === '' || meaning.length > 256) {
+							await postDM('意味が空だよ:dizzy_face:');
+							return;
+						}
+
+						if (source === '') {
+							await postDM('ソースが空だよ:scream:');
+							return;
+						}
+
+						if (!url.match(/^<.+>$/)) {
+							await postDM('URLがおかしいよ:nauseated_face:');
+							return;
+						}
+
+						await db.run(sql`
+							INSERT INTO themes (
+								user,
+								word,
+								ruby,
+								meaning,
+								source,
+								url,
+								ts,
+								done
+							) VALUES (
+								${message.user},
+								${word},
+								${hiraganize(ruby)},
+								${meaning},
+								${source},
+								${url.replace(/^</, '').replace(/>$/, '')},
+								${Math.floor(Date.now() / 1000)},
+								0
+							)
+						`);
+					}
+
+					if (tokens[1] === '削除') {
+						const ruby = tokens[2];
+
+						if (!ruby) {
+							await postDM('削除するお題の読み仮名を指定してね:face_with_monocle:');
+							return;
+						}
+
+						const result = await db.run(sql`
+							DELETE FROM themes
+							WHERE user = ${message.user}
+								AND done = 0
+								AND ruby = ${ruby}
+						`);
+
+						if (result.stmt.changes > 0) {
+							await postDM(`「${ruby}」を削除したよ:x:`);
+						} else {
+							await postDM(`「${ruby}」は見つからなかったよ:hankey:`);
+						}
+
+						return;
+					}
+
+					await postDM('ヘルプ: https://github.com/tsg-ut/slackbot/wiki/%E3%83%87%E3%82%A4%E3%83%AA%E3%83%BC%E3%81%9F%E3%81%BB%E3%81%84%E3%82%84');
+					return;
+				}
 
 				if (text.startsWith('コメント')) {
 					const comment = text.slice(4).trim();

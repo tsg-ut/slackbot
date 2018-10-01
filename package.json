@@ -45,7 +45,8 @@
     "prettier-eslint-cli": "^4.7.1",
     "sharp": "^0.20.5",
     "shogi9.js": "^1.0.2",
-    "sqlite": "^2.9.3",
+    "sql-template-strings": "^2.2.2",
+    "sqlite": "^3.0.0",
     "sqlite3": "^4.0.2",
     "tmp": "0.0.33"
   },
