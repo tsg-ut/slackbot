@@ -177,6 +177,18 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		return meaning;
 	};
 
+	const getTimeLink = (time) => {
+		const text = moment(time).utcOffset('+0900').format('HH:mm:ss');
+		const url = `https://www.timeanddate.com/countdown/generic?${querystring.stringify({
+			iso: moment(time).utcOffset('+0900').format('YYYYMMDDTHHmmss'),
+			p0: 248,
+			msg: 'たほいや登録終了まで',
+			font: 'sansserif',
+			csz: 1,
+		})}`;
+		return `<${url}|${text}>`;
+	};
+
 	let timeoutId = null;
 
 	const [
@@ -840,15 +852,17 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			author: theme.user,
 		});
 
+		const end = Date.now() + 90 * 60 * 1000;
+		setTimeout(onFinishMeanings, 90 * 60 * 1000);
+
 		await postMessage(stripIndent`
 			<!channel> 今日のデイリーたほいやが始まるよ:checkered_flag::checkered_flag::checkered_flag:
 			出題者: <@${theme.user}>
 
 			今日のお題は *「${state.theme.ruby}」* だよ:v:
-			参加者は30分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
+			参加者は90分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
+			終了予定時刻: ${getTimeLink(end)}
 		`);
-
-		setTimeout(onFinishMeanings, 30 * 60 * 1000);
 	};
 
 	rtm.on('message', async (message) => {
@@ -891,12 +905,14 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 					await setState({theme: {word, ruby, meaning, source, id}});
 
+					const end = Date.now() + 3 * 60 * 1000;
+					setTimeout(onFinishMeanings, 3 * 60 * 1000);
+
 					await postMessage(stripIndent`
 						お題を *「${ruby}」* にセットしたよ:v:
 						参加者は3分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
+						終了予定時刻: ${getTimeLink(end)}
 					`);
-
-					setTimeout(onFinishMeanings, 3 * 60 * 1000);
 					return;
 				}
 
