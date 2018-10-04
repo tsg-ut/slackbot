@@ -797,14 +797,14 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		let theme = null;
 
 		if (state.authorHistory.length > 0) {
-			theme = await db.get(sql`
+			theme = await db.get(`
 				SELECT *
 				FROM themes
-				WHERE user NOT IN (${state.authorHistory})
+				WHERE user NOT IN (${state.authorHistory.map(() => '?').join(',')})
 					AND done = 0
 				ORDER BY RANDOM()
 				LIMIT 1
-			`);
+			`, [...state.authorHistory]);
 		} else {
 			theme = await db.get(sql`
 				SELECT *
