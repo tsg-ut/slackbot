@@ -1023,6 +1023,25 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 								0
 							)
 						`);
+
+						await slack.reactions.add({name: '+1', channel: message.channel, timestamp: message.ts});
+
+						const stocks = await db.all(`
+							SELECT user, count(user) as cnt
+							FROM themes
+							WHERE done = 0
+							GROUP BY user
+							ORDER BY cnt DESC
+						`);
+
+						await postMessage(stripIndent`
+							<@${message.user}> がデイリーたほいやのお題を登録したよ:muscle:
+							現在のお題ストック
+						`, stocks.map(({user, cnt: count}, index) => ({
+							text: `<@${user}>: ${count}個`,
+							color: colors[index],
+						})));
+						return;
 					}
 
 					if (tokens[1] === '削除') {
