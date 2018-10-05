@@ -982,7 +982,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 							return;
 						}
 
-						if (ruby === '' || !hiraganize(ruby).match(/^\p{Script=Hiragana}+$/u)) {
+						if (ruby === '' || !hiraganize(ruby).match(/^\p{Script_Extensions=Hiragana}+$/u)) {
 							await postDM('読み仮名は平仮名でないといけないよ:pouting_cat:');
 							return;
 						}
