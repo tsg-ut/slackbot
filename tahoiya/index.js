@@ -1038,7 +1038,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 							<@${message.user}> がデイリーたほいやのお題を登録したよ:muscle:
 							現在のお題ストック
 						`, stocks.map(({user, cnt: count}, index) => ({
-							text: `<@${user}>: ${count}個`,
+							text: `@${getMemberName(user)}: ${count}個`,
 							color: colors[index],
 						})));
 						return;
