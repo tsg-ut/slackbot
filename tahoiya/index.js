@@ -843,7 +843,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			theme: {
 				word: theme.word,
 				ruby: theme.ruby,
-				meaning: theme.meaning,
+				meaning: normalizeMeaning(theme.meaning),
 				source: null,
 				sourceString: theme.source,
 				url: theme.url,
@@ -963,7 +963,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 							return;
 						}
 
-						const [word, ruby, meaning, source, url] = themeTokens;
+						const [word, ruby, rawMeaning, source, url] = themeTokens;
+						const meaning = normalizeMeaning(rawMeaning);
 
 						const existingRecord = await db.get(sql`
 							SELECT 1
