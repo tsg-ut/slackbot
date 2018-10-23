@@ -539,6 +539,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
+		if (state.author !== null && state.meanings.size < 3) {
+			await setState({phase: 'waiting', theme: null, author: null});
+			await postMessage('参加者が最少催行人数 (3人) より少ないので今日のデイリーたほいやはキャンセルされたよ:face_with_rolling_eyes:');
+			return;
+		}
+
 		await setState({phase: 'collect_bettings'});
 		const dummySize = Math.max(2, 4 - state.meanings.size);
 		const ambiguateDummy = minBy(candidateWords, ([word, ruby]) => {
@@ -550,7 +556,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		});
 
 		const dummyMeanings = await Promise.all(Array(dummySize).fill().map(async (_, i) => {
-			const word = (i === 0 && ambiguateDummy !== undefined) ? ambiguateDummy : sample(candidateWords);
+			const word = (i === 0 && state.author === null && ambiguateDummy !== undefined) ? ambiguateDummy : sample(candidateWords);
 			const meaning = await getMeaning(word);
 
 			return {
@@ -665,7 +671,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				author_name: `#${index + 1}: @${getMemberName(user)} (${formatNumber(sumScores(ratings))}点)`,
 				author_link: `https://${team.domain}.slack.com/team/${user}`,
 				author_icon: getMemberIcon(user),
-				text: ratings.map((rating, i) => ratings.length - 1 === i && state.meanings.has(user) ? `*${formatNumber(rating)}*` : formatNumber(rating)).join(', '),
+				text: ratings.map((rating, i) => ratings.length - 1 === i && (state.meanings.has(user) || state.author === user) ? `*${formatNumber(rating)}*` : formatNumber(rating)).join(', '),
 				color: colors[index % colors.length],
 			})),
 			{
@@ -856,7 +862,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		setTimeout(onFinishMeanings, 90 * 60 * 1000);
 
 		await postMessage(stripIndent`
-			<!channel> 今日のデイリーたほいやが始まるよ:checkered_flag::checkered_flag::checkered_flag:
+			@tahoist 今日のデイリーたほいやが始まるよ:checkered_flag::checkered_flag::checkered_flag:
 			出題者: <@${theme.user}>
 
 			今日のお題は *「${state.theme.ruby}」* だよ:v:
