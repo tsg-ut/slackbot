@@ -868,7 +868,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			今日のお題は *「${state.theme.ruby}」* だよ:v:
 			参加者は90分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
 			終了予定時刻: ${getTimeLink(end)}
-		`);
+		`, [], {as_user: true, unfurl_links: false});
 	};
 
 	rtm.on('message', async (message) => {
