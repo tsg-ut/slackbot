@@ -535,12 +535,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	);
 
 	const onFinishMeanings = async () => {
-		if (state.meanings.size === 0) {
-			await setState({phase: 'waiting', theme: null, author: null});
-			await postMessage('参加者がいないのでキャンセルされたよ:face_with_rolling_eyes:');
-			return;
-		}
-
 		if (state.author !== null && state.meanings.size < 3) {
 			await setState({
 				phase: 'waiting',
@@ -559,6 +553,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				},
 			});
 			await postMessage('参加者が最少催行人数 (3人) より少ないので今日のデイリーたほいやはキャンセルされたよ:face_with_rolling_eyes:');
+			return;
+		}
+
+		if (state.meanings.size === 0) {
+			await setState({phase: 'waiting', theme: null, author: null});
+			await postMessage('参加者がいないのでキャンセルされたよ:face_with_rolling_eyes:');
 			return;
 		}
 
