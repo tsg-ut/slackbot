@@ -861,14 +861,23 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const end = Date.now() + 90 * 60 * 1000;
 		setTimeout(onFinishMeanings, 90 * 60 * 1000);
 
+		axios.post('https://slack.com/api/chat.postMessage', {
+			channel: process.env.CHANNEL_SANDBOX,
+			text: '@tahoist',
+		}, {
+			headers: {
+				Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
+			},
+		});
+
 		await postMessage(stripIndent`
-			@tahoist 今日のデイリーたほいやが始まるよ:checkered_flag::checkered_flag::checkered_flag:
+			今日のデイリーたほいやが始まるよ:checkered_flag::checkered_flag::checkered_flag:
 			出題者: <@${theme.user}>
 
 			今日のお題は *「${state.theme.ruby}」* だよ:v:
 			参加者は90分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
 			終了予定時刻: ${getTimeLink(end)}
-		`, [], {as_user: true, unfurl_links: false});
+		`);
 	};
 
 	rtm.on('message', async (message) => {
@@ -1104,9 +1113,15 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 					await slack.reactions.add({name: '+1', channel: message.channel, timestamp: message.ts});
 					if (!isUpdate) {
+						const remainingText = state.author === null ? '' : (
+							state.meanings.size > 3 ? '' : (
+								state.meanengs.size === 3 ? '(決行決定:tada:)'
+									: `(決行まであと${3 - state.meanings.size}人)`
+							)
+						);
 						await postMessage(stripIndent`
 							<@${message.user}> が意味を登録したよ:muscle:
-							現在の参加者: ${state.meanings.size}人
+							現在の参加者: ${state.meanings.size}人 ${remainingText}
 						`);
 					}
 					return;

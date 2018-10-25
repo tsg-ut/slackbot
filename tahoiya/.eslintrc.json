@@ -11,6 +11,7 @@
     "rules": {
         "no-console": "off",
         "no-div-regex": "off",
+        "no-nested-ternary": "off",
         "no-use-before-define": "off"
     }
 }
