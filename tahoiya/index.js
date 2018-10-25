@@ -37,6 +37,7 @@ const state = (() => {
 			theme: savedState.theme,
 			ratings: new Map(Object.entries(savedState.ratings)),
 			comments: savedState.comments || [],
+			stashedDaily: savedState.stashedDaily || null,
 		};
 	} catch (e) {
 		return {
@@ -51,6 +52,7 @@ const state = (() => {
 			theme: null,
 			ratings: new Map(),
 			comments: [],
+			stashedDaily: null,
 		};
 	}
 })();
@@ -540,7 +542,22 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if (state.author !== null && state.meanings.size < 3) {
-			await setState({phase: 'waiting', theme: null, author: null});
+			await setState({
+				phase: 'waiting',
+				theme: null,
+				author: null,
+				stashedDaily: {
+					theme: {
+						word: state.theme.word,
+						ruby: state.theme.ruby,
+						meaning: state.theme.meaning,
+						source: state.theme.sourceString,
+						url: state.theme.url,
+						user: state.author,
+					},
+					meanings: [...state.meanings.entries()],
+				},
+			});
 			await postMessage('参加者が最少催行人数 (3人) より少ないので今日のデイリーたほいやはキャンセルされたよ:face_with_rolling_eyes:');
 			return;
 		}
@@ -802,7 +819,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		// 最近選ばれてないユーザーを選ぶ
 		let theme = null;
 
-		if (state.authorHistory.length > 0) {
+		if (state.stashedDaily !== null) {
+			theme = state.stashedDaily.theme;
+		} else if (state.authorHistory.length > 0) {
 			theme = await db.get(`
 				SELECT *
 				FROM themes
@@ -844,6 +863,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
+		const meanings = new Map(state.stashedDaily === null ? [] : state.stashedDaily.meanings);
+
 		await setState({
 			candidates: [],
 			theme: {
@@ -856,6 +877,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				id: null,
 			},
 			author: theme.user,
+			stashedDaily: null,
+			meanings,
 		});
 
 		const end = Date.now() + 90 * 60 * 1000;
@@ -877,6 +900,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			今日のお題は *「${state.theme.ruby}」* だよ:v:
 			参加者は90分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
 			終了予定時刻: ${getTimeLink(end)}
+			${meanings.size === 0 ? '' : `登録済み: ${[...meanings.keys()].map((user) => `<@${user}>`).join(', ')}`}
 		`);
 	};
 
@@ -1115,7 +1139,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					if (!isUpdate) {
 						const remainingText = state.author === null ? '' : (
 							state.meanings.size > 3 ? '' : (
-								state.meanengs.size === 3 ? '(決行決定:tada:)'
+								state.meanings.size === 3 ? '(決行決定:tada:)'
 									: `(決行まであと${3 - state.meanings.size}人)`
 							)
 						);
