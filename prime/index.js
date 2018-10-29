@@ -17,6 +17,7 @@ const state = (() => {
 			hand: savedState.hand || [],
 			stock: savedState.stock || [],
 			pile: savedState.pile || [],
+			isDrew: savedState.isDrew || false,
 			boardCards: savedState.boardCards || [],
 			boardNumber: savedState.boardNumber || null,
 		};
@@ -26,6 +27,7 @@ const state = (() => {
 			hand: [],
 			stock: [], // 山札
 			pile: [], // 捨て札
+			isDrew: false,
 			boardCards: [],
 			boardNumber: null,
 		};
@@ -224,8 +226,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		})
 	);
 
-	const perdon = () => postMessage(':ha:');
-
 	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
@@ -313,8 +313,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const frequency = prime.getFrequency(number);
 
 			if (frequency.length !== 1 || frequency[0].times !== 1) {
-				const drew = await draw(decomposition.length);
+				const drewCards = await draw(decomposition.length);
 				await setState({
+					isDrew: false,
 					boardCards: [],
 					boardNumber: null,
 				});
@@ -322,13 +323,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					:no_entry_sign: *${numberText}* は素数ではありません!!!
 					${numberText} = ${frequencyToString(frequency)}
 
-					:warning:ペナルティ +${decomposition.length}枚 (${cardsToString(drew)})
+					:warning:ペナルティ +${decomposition.length}枚 (${cardsToString(drewCards)})
 					*手札* ${cardsToString(state.hand)}
 				`);
 				return;
 			}
 
 			await setState({
+				isDrew: false,
 				boardCards: decomposition,
 				boardNumber: number,
 			});
@@ -339,6 +341,51 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				*手札* ${cardsToString(state.hand)}
 			`);
 			return;
+		}
+
+		if (text === 'ドロー') {
+			if (state.phase !== 'playing') {
+				return;
+			}
+
+			if (state.isDrew) {
+				await postMessage(':warning: ドローは連続1回のみです');
+				return;
+			}
+
+			const drewCards = await draw(1);
+			await setState({
+				isDrew: true,
+			});
+			await postMessage(stripIndent`
+				ドロー +1枚 (${cardsToString(drewCards)})
+				*手札* ${cardsToString(state.hand)}
+			`);
+			return;
+		}
+
+		if (text === 'パス') {
+			if (state.phase !== 'playing') {
+				return;
+			}
+
+			if (state.boardNumber === null) {
+				await postMessage(':warning: 場に何も出ていません');
+				return;
+			}
+
+			const drewCards = await draw(state.boardCards.length);
+			await setState({
+				isDrew: false,
+				boardCards: [],
+				boardNumber: null,
+			});
+			await postMessage(stripIndent`
+				パスしました。
+
+				:warning:ペナルティ +${drewCards.length}枚 (${cardsToString(drewCards)})
+				*手札* ${cardsToString(state.hand)}
+			`);
 		}
 	});
 };
