@@ -17,6 +17,7 @@ const plugins = [
 	require('./math'),
 	require('./checkin'),
 	require('./tahoiya'),
+	require('./prime'),
 ];
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
