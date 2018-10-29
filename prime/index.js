@@ -288,6 +288,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					if (match !== null) {
 						const [numberMatch] = match;
 						decomposition = numberMatch;
+						break;
 					}
 				}
 			} else {
@@ -310,9 +311,25 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
+			if (number === 57) {
+				await discard(decomposition);
+				await setState({
+					isDrew: false,
+					boardCards: [],
+					boardNumber: null,
+				});
+				await postMessage(stripIndent`
+					:boom:グロタンカット!:boom:
+
+					場が流れました
+					*手札* ${cardsToString(state.hand)}
+				`);
+				return;
+			}
+
 			const frequency = prime.getFrequency(number);
 
-			if (frequency.length !== 1 || frequency[0].times !== 1) {
+			if (frequency.length !== 1 || frequency[0].times !== 1 || number < 2) {
 				const drewCards = await draw(decomposition.length);
 				await setState({
 					isDrew: false,
