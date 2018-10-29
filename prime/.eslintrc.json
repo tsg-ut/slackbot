@@ -12,6 +12,7 @@
         "no-console": "off",
         "camelcase": "off",
         "max-len": "off",
-        "max-depth": "off"
+        "max-depth": "off",
+        "array-plural/array-plural": "off"
     }
 }

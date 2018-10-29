@@ -4,6 +4,7 @@ const assert = require('assert');
 const {promisify} = require('util');
 const {constant, times, flatten, range, shuffle, uniq} = require('lodash');
 const {stripIndent} = require('common-tags');
+const prime = require('primes-and-factors');
 
 const cardSet = range(1, 14);
 
@@ -59,6 +60,20 @@ const cardsToString = (cards) => {
 	}).join(' / ');
 };
 
+const toSuperscript = (number) => (
+	number.toString().split('').map((digit) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[digit]).join('')
+);
+
+const frequencyToString = (frequency) => (
+	frequency.map(({factor, times: factorTimes}) => {
+		if (factorTimes === 1) {
+			return factor.toString();
+		}
+
+		return `${factor}${toSuperscript(factorTimes)}`;
+	}).join(' × ')
+);
+
 // ([1, 2, 3, 3, 5], 3) => [1, 2, 3, 5]
 const drop = (array, value) => {
 	const clone = array.slice();
@@ -88,7 +103,7 @@ const matchByCards = (number, factors, cards, count) => {
 	const complements = cardSet.filter((card) => !candidates.includes(card));
 
 	if (candidates.includes('X')) {
-		candidates.push(...complements);
+		candidates.push(...complements, 0);
 	}
 
 	if (candidates.length === 0) {
@@ -171,6 +186,31 @@ const discard = (cards) => {
 	});
 };
 
+const draw = async (count) => {
+	let newStock = state.stock.slice();
+	let newPile = state.pile.slice();
+	let newHand = state.hand.slice();
+
+	if (state.stock.length < count) {
+		newStock.push(...shuffle(newPile));
+		newPile = [];
+	}
+
+	assert(newStock.length >= count);
+
+	const drewCards = newStock.slice(0, count);
+	newHand = sort(newHand.concat(drewCards));
+	newStock = newStock.slice(count);
+
+	await setState({
+		stock: newStock,
+		pile: newPile,
+		hand: newHand,
+	});
+
+	return drewCards;
+};
+
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const postMessage = (text, attachments, options) => (
 		slack.chat.postMessage({
@@ -203,7 +243,18 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		if (text === '素数大富豪') {
 			if (state.phase !== 'waiting') {
-				await perdon();
+				if (state.boardNumber === null) {
+					await postMessage(stripIndent`
+						現在の状態
+						*手札* ${cardsToString(state.hand)}
+					`);
+				} else {
+					await postMessage(stripIndent`
+						現在の状態
+						場数: ${state.boardNumber} (${cardsToString(state.boardCards)})
+						*手札* ${cardsToString(state.hand)}
+					`);
+				}
 				return;
 			}
 
@@ -217,7 +268,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				phase: 'playing',
 			});
 
-			await postMessage(`手札: ${cardsToString(state.hand)}`);
+			await postMessage(`*手札* ${cardsToString(state.hand)}`);
 			return;
 		}
 
@@ -229,9 +280,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const number = parseInt(text);
 			const numberText = number.toString();
 
-			if (state.boardNumber === null) {
-				let decomposition = null;
+			let decomposition = null;
 
+			if (state.boardNumber === null) {
 				for (const count of range(13, 0)) {
 					const match = matchByCards(numberText, [], state.hand, count);
 					if (match !== null) {
@@ -239,18 +290,55 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						decomposition = numberMatch;
 					}
 				}
+			} else {
+				assert(typeof state.boardNumber === 'number');
 
-				if (decomposition === null) {
-					await postMessage(`:warning: ${numberText} は出せません`);
+				if (state.boardNumber >= number) {
+					await postMessage(`:warning: 場数 (${state.boardNumber}) 以下の数字を出すことはできません`);
 					return;
 				}
 
-				await discard(decomposition);
-				await postMessage(stripIndent`
-					場数: ${number} (${cardsToString(decomposition)})
-					手札: ${cardsToString(state.hand)}
-				`);
+				const match = matchByCards(numberText, [], state.hand, state.boardCards.length);
+				if (match !== null) {
+					const [numberMatch] = match;
+					decomposition = numberMatch;
+				}
 			}
+
+			if (decomposition === null) {
+				await postMessage(`:warning: ${numberText} は手元のカードから出せません`);
+				return;
+			}
+
+			const frequency = prime.getFrequency(number);
+
+			if (frequency.length !== 1 || frequency[0].times !== 1) {
+				const drew = await draw(decomposition.length);
+				await setState({
+					boardCards: [],
+					boardNumber: null,
+				});
+				await postMessage(stripIndent`
+					:no_entry_sign: *${numberText}* は素数ではありません!!!
+					${numberText} = ${frequencyToString(frequency)}
+
+					:warning:ペナルティ +${decomposition.length}枚 (${cardsToString(drew)})
+					*手札* ${cardsToString(state.hand)}
+				`);
+				return;
+			}
+
+			await setState({
+				boardCards: decomposition,
+				boardNumber: number,
+			});
+
+			await discard(decomposition);
+			await postMessage(stripIndent`
+				*場数* ${state.boardNumber} (${cardsToString(state.boardCards)})
+				*手札* ${cardsToString(state.hand)}
+			`);
+			return;
 		}
 	});
 };
