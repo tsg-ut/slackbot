@@ -121,7 +121,8 @@ module.exports = (clients) => {
 			return;
 		}
 		const result = await reply(match[1], match[2].length - 1);
-		const response = (result === null) ? ":wakarazu:" : result;
-		postMessage(`<@${user}> ` + htmlEscape(response), channel);
+		if (result !== null) {
+			postMessage(`<@${user}> ` + htmlEscape(response), channel);
+		}
 	});
 };
