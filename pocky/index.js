@@ -111,7 +111,7 @@ module.exports = (clients) => {
 		if (message.subtype) {
 			return;
 		}
-		const { channel, text, user, ts: timestamp } = message;
+		const { channel, text } = message;
 		if (channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
@@ -122,7 +122,7 @@ module.exports = (clients) => {
 		}
 		const result = await reply(match[1], match[2].length - 1);
 		if (result !== null) {
-			postMessage(`<@${user}> ` + htmlEscape(response), channel);
+			postMessage(htmlEscape(response), channel);
 		}
 	});
 };
