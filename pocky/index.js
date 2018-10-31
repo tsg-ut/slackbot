@@ -122,7 +122,7 @@ module.exports = (clients) => {
 		}
 		const result = await reply(match[1], match[2].length - 1);
 		if (result !== null) {
-			postMessage(htmlEscape(response), channel);
+			postMessage(htmlEscape(result), channel);
 		}
 	});
 };
