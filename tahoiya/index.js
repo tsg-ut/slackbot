@@ -540,7 +540,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				phase: 'waiting',
 				theme: null,
 				author: null,
-				meanings: new Map(),
 				stashedDaily: {
 					theme: {
 						word: state.theme.word,
