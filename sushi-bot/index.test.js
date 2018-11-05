@@ -25,3 +25,19 @@ it('reacts to "おすし"', () => new Promise((resolve) => {
 		ts: slack.fakeTimestamp,
 	});
 }));
+
+it('reacts to "\u3059\u0328"', () => new Promise((resolve) => {
+	slack.on('reactions.add', ({name, channel, timestamp}) => {
+		expect(name).toBe('sushi');
+		expect(channel).toBe(slack.fakeChannel);
+		expect(timestamp).toBe(slack.fakeTimestamp);
+		resolve();
+	});
+
+	slack.rtmClient.emit('message', {
+		channel: slack.fakeChannel,
+		text: '\u3059\u0328',
+		user: slack.fakeUser,
+		ts: slack.fakeTimestamp,
+	});
+}));

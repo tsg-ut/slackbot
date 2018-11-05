@@ -71,7 +71,7 @@ module.exports = (clients) => {
         rtext = rtext.
             replace(/鮨/g, 'すし').
             replace(/(su|zu|ス|ズ|ず|寿|壽)/gi, 'す').
-            replace(/(sh?i|ci|し|シ|司|\u{0328})/gi, 'し');
+            replace(/(sh?i|ci|し|シ|司|\u{0328})/giu, 'し');
 
         rtext = rtext.
             replace(/(ca|(ke|け|ケ)(i|ぃ|い|ｨ|ィ|ｲ|イ|e|ぇ|え|ｪ|ェ|ｴ|エ|-|ー))(ki|ke|き|キ)/gi, 'ケーキ');
