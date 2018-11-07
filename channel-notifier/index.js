@@ -1,10 +1,19 @@
 const {stripIndent} = require('common-tags');
+const axios = require('axios');
 
 module.exports = (clients) => {
 	const {rtmClient: rtm, webClient: slack} = clients;
 
 	rtm.on('channel_created', async (data) => {
-		await slack.channels.join({name: `#${data.channel.name}`});
+		await axios.post('https://slack.com/api/channels.invite', {
+			channel: data.channel.id,
+			user: process.env.USER_TSGBOT,
+		}, {
+			headers: {
+				Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
+			},
+		});
+
 		await slack.chat.postMessage({
 			channel: process.env.CHANNEL_RANDOM,
 			text: stripIndent`
