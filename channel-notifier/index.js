@@ -4,7 +4,7 @@ module.exports = (clients) => {
 	const {rtmClient: rtm, webClient: slack} = clients;
 
 	rtm.on('channel_created', async (data) => {
-		await slack.channels.join(`#${data.channel.name}`);
+		await slack.channels.join({name: `#${data.channel.name}`});
 		await slack.chat.postMessage({
 			channel: process.env.CHANNEL_RANDOM,
 			text: stripIndent`

@@ -14,8 +14,8 @@ beforeEach(() => {
 it('responds to channel creation', () => new Promise((resolve) => {
 	Promise.all([
 		new Promise((resolve) => {
-			slack.on('channels.join', (channel) => {
-				expect(channel).toBe('#fun');
+			slack.on('channels.join', ({name}) => {
+				expect(name).toBe('#fun');
 				resolve();
 			});
 		}),
