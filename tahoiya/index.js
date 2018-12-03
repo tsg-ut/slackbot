@@ -888,6 +888,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		axios.post('https://slack.com/api/chat.postMessage', {
 			channel: process.env.CHANNEL_SANDBOX,
 			text: '@tahoist',
+			as_user: true,
 		}, {
 			headers: {
 				Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
