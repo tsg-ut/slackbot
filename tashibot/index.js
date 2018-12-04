@@ -1,5 +1,6 @@
 const {promisify} = require('util');
 const {tokenize} = require('kuromojin');
+const {katakanize} = require('japanese');
 const fs = require('fs');
 const path = require('path');
 const qs = require('querystring');
@@ -41,7 +42,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		const {text} = message;
 		const tokens = await tokenize(text);
-		const reading = tokens.map(({reading, surface_form}) => reading || surface_form).join('');
+		const reading = katakanize(tokens.map(({reading, surface_form}) => reading || surface_form || '').join(''));
 
 		const matches = text.match(citiesRegex) || reading.match(citiesRegex);
 
