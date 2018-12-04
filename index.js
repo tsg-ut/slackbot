@@ -18,6 +18,7 @@ const plugins = [
 	require('./checkin'),
 	require('./tahoiya'),
 	require('./channel-notifier'),
+	require('./tashibot'),
 ];
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
