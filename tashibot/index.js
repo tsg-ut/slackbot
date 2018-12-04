@@ -26,7 +26,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if (message.text.length > 100 || !message.text.match(/(し|市|死|氏|町|まち|ちょう|村|むら|そん|都|道|府|県|と|どう|ふ|けん)$/)) {
+		if (
+			message.text.length > 100 ||
+			!message.text.match(
+				/(し|シ|市|死|氏|師|歯|町|まち|マチ|ちょう|チョウ|村|むら|ムラ|そん|ソン|都|道|府|県|と|ト|どう|ドウ|ふ|フ|けん|ケン)$/
+			)
+		) {
 			return;
 		}
 
@@ -36,9 +41,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		const {text} = message;
 		const tokens = await tokenize(text);
-		const reading = tokens.map(({reading}) => reading).join('');
+		const reading = tokens.map(({reading, surface_form}) => reading || surface_form).join('');
 
 		const matches = text.match(citiesRegex) || reading.match(citiesRegex);
+		console.log(text, reading, matches, tokens);
 
 		if (matches === null) {
 			return;
