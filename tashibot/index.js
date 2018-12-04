@@ -44,7 +44,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const reading = tokens.map(({reading, surface_form}) => reading || surface_form).join('');
 
 		const matches = text.match(citiesRegex) || reading.match(citiesRegex);
-		console.log(text, reading, matches, tokens);
 
 		if (matches === null) {
 			return;
