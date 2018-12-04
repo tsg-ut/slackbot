@@ -14,8 +14,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		.map(([prefecture, name, reading]) => ({prefecture, name, reading}))
 		.sort((a, b) => b.reading.length - a.reading.length);
 
-	const citiesRegex = new RegExp(`(${cities.map(({reading}) => reading).join('|')})$`);
-	const citiesMap = new Map(cities.map((city) => [city.reading, city]));
+	const citiesRegex = new RegExp(`(${cities.map(({name}) => name).join('|')}|${cities.map(({reading}) => reading).join('|')})$`);
+	const citiesMap = new Map([...cities.map((city) => [city.reading, city]), ...cities.map((city) => [city.name, city])]);
 
 	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
@@ -26,7 +26,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if (message.text.length > 100 || !message.text.match(/(し|市|死|氏|町|村)$/)) {
+		if (message.text.length > 100 || !message.text.match(/(し|市|死|氏|町|まち|ちょう|村|むら|そん|都|道|府|県|と|どう|ふ|けん)$/)) {
 			return;
 		}
 
@@ -38,7 +38,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const tokens = await tokenize(text);
 		const reading = tokens.map(({reading}) => reading).join('');
 
-		const matches = reading.match(citiesRegex);
+		const matches = text.match(citiesRegex) || reading.match(citiesRegex);
 
 		if (matches === null) {
 			return;
