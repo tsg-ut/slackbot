@@ -4,6 +4,9 @@ const {katakanize} = require('japanese');
 const fs = require('fs');
 const path = require('path');
 const qs = require('querystring');
+const storage = require('node-persist');
+const download = require('download');
+const cloudinary = require('cloudinary');
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const citiesData = await promisify(fs.readFile)(path.resolve(__dirname, 'cities.csv'));
@@ -17,6 +20,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 	const citiesRegex = new RegExp(`(${cities.map(({name}) => name).join('|')}|${cities.map(({reading}) => reading).join('|')})$`);
 	const citiesMap = new Map([...cities.map((city) => [city.reading, city]), ...cities.map((city) => [city.name, city])]);
+
+	await storage.init({
+		dir: path.resolve(__dirname, '__cache__'),
+	});
 
 	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
@@ -63,6 +70,22 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			markers: `size:mid|color:0xfb724a|label:|${city.name},${city.prefecture}`,
 		})}`;
 
+		let cloudinaryData = await storage.getItem(imageUrl);
+
+		if (!cloudinaryData) {
+			const imageData = await download(imageUrl);
+			cloudinaryData = await new Promise((resolve, reject) => {
+				cloudinary.v2.uploader.upload_stream({resource_type: 'image'}, (error, data) => {
+					if (error) {
+						reject(error);
+					} else {
+						resolve(data);
+					}
+				}).end(imageData);
+			});
+			await storage.setItem(imageUrl, cloudinaryData);
+		}
+
 		await slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			text: `${city.prefecture}${city.name}`,
@@ -70,7 +93,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			icon_emoji: ':japan:',
 			attachments: [
 				{
-					image_url: imageUrl,
+					image_url: cloudinaryData.secure_url,
 					fallback: `${city.prefecture}${city.name}`,
 				},
 			],
