@@ -15,11 +15,13 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		.split('\n')
 		.filter((line) => line)
 		.map((line) => line.split(','))
-		.map(([prefecture, name, reading]) => ({prefecture, name, reading}))
+		.map(([prefecture, name, reading, year]) => ({prefecture, name, reading, year: year === '' ? null : parseInt(year)}))
 		.sort((a, b) => b.reading.length - a.reading.length);
 
+	const yearSortedCities = cities.slice().sort((a, b) => (a.year || 10000) - (b.year || 10000));
+
 	const citiesRegex = new RegExp(`(${cities.map(({name}) => name).join('|')}|${cities.map(({reading}) => reading).join('|')})$`);
-	const citiesMap = new Map([...cities.map((city) => [city.reading, city]), ...cities.map((city) => [city.name, city])]);
+	const citiesMap = new Map([...yearSortedCities.map((city) => [city.reading, city]), ...yearSortedCities.map((city) => [city.name, city])]);
 
 	await storage.init({
 		dir: path.resolve(__dirname, '__cache__'),
@@ -37,7 +39,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		if (
 			message.text.length > 100 ||
 			!message.text.match(
-				/(し|シ|市|死|氏|師|歯|町|まち|マチ|ちょう|チョウ|村|むら|ムラ|そん|ソン|都|道|府|県|と|ト|どう|ドウ|ふ|フ|けん|ケン)$/
+				/(し|シ|市|死|氏|師|歯|区|ク|く|町|まち|マチ|ちょう|チョウ|村|むら|ムラ|そん|ソン|都|道|府|県|と|ト|どう|ドウ|ふ|フ|けん|ケン)$/
 			)
 		) {
 			return;
@@ -88,7 +90,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		await slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
-			text: `${city.prefecture}${city.name}`,
+			text: `${city.prefecture}${city.name} ${city.year === null ? '' : `(${city.year}年消滅)`}`,
 			username: 'tashibot',
 			icon_emoji: ':japan:',
 			attachments: [
