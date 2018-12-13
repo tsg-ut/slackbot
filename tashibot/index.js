@@ -72,9 +72,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		const text = message.text.slice(-20);
 		const tokens = await tokenize(text);
-		const reading = katakanize(tokens.map(({reading, surface_form}) => reading || surface_form || '').join(''));
+		const reading = Array.from(katakanize(tokens.map(({reading, surface_form}) => reading || surface_form || '').join(''))).filter((c) => c.match(/^\p{Script_Extensions=Katakana}+$/u)).join('');
 
-		const matches = text.match(citiesRegex) || reading.match(citiesRegex);
+		const matches = katakanize(text).match(citiesRegex) || reading.match(citiesRegex);
 
 		if (matches === null) {
 			return;
