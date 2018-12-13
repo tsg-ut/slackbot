@@ -10,23 +10,40 @@ const cloudinary = require('cloudinary');
 const {escapeRegExp} = require('lodash');
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
-	const cities = (await promisify(fs.readFile)(path.resolve(__dirname, 'cities.csv')))
+	const cities = (await promisify(fs.readFile)(
+		path.resolve(__dirname, 'cities.csv')
+	))
 		.toString()
 		.split('\n')
 		.filter((line) => line)
 		.map((line) => line.split(','))
-		.map(([prefecture, name, reading, year]) => ({type: 'city', prefecture, name, reading, year: year === '' ? null : parseInt(year)}));
+		.map(([prefecture, name, reading, year]) => ({
+			type: 'city',
+			prefecture,
+			name,
+			reading,
+			year: year === '' ? null : parseInt(year),
+		}));
 
-	const stations = (await promisify(fs.readFile)(path.resolve(__dirname, 'stations.csv')))
+	const stations = (await promisify(fs.readFile)(
+		path.resolve(__dirname, 'stations.csv')
+	))
 		.toString()
 		.split('\n')
 		.filter((line) => line)
 		.map((line) => line.split(','))
-		.map(([name, reading, description]) => ({type: 'station', name, reading, description}));
+		.map(([name, reading, description]) => ({
+			type: 'station',
+			name,
+			reading,
+			description,
+		}));
 
 	const readings = [
 		...cities.map(({reading}) => reading),
-		...stations.map(({reading}) => reading).filter((reading) => reading.length >= 4),
+		...stations
+			.map(({reading}) => reading)
+			.filter((reading) => reading.length >= 4),
 	].sort((a, b) => b.length - a.length);
 
 	const names = [
@@ -34,13 +51,15 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		...stations.map(({name}) => name).filter((reading) => reading.length >= 3),
 	].sort((a, b) => b.length - a.length);
 
-	const yearSortedCities = cities.slice().sort((a, b) => (a.year || 10000) - (b.year || 10000));
+	const yearSortedCities = cities
+		.slice()
+		.sort((a, b) => (a.year || 10000) - (b.year || 10000));
 
-	const citiesRegex = new RegExp(`(${
-		names.map((name) => escapeRegExp(name)).join('|')
-	}|${
-		readings.map((reading) => escapeRegExp(reading)).join('|')
-	})$`);
+	const citiesRegex = new RegExp(
+		`(${names.map((name) => escapeRegExp(name)).join('|')}|${readings
+			.map((reading) => escapeRegExp(reading))
+			.join('|')})$`
+	);
 
 	const citiesMap = new Map([
 		...stations.map((station) => [station.reading, station]),
@@ -72,27 +91,41 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		const text = message.text.slice(-20);
 		const tokens = await tokenize(text);
-		const reading = Array.from(katakanize(tokens.map(({reading, surface_form}) => reading || surface_form || '').join(''))).filter((c) => c.match(/^\p{Script_Extensions=Katakana}+$/u)).join('');
+		const reading = Array.from(
+			katakanize(
+				tokens
+					.map(({reading, surface_form}) => reading || surface_form || '')
+					.join('')
+			)
+		)
+			.filter((c) => c.match(/^\p{Script_Extensions=Katakana}+$/u))
+			.join('');
 
-		const matches = katakanize(text).match(citiesRegex) || reading.match(citiesRegex);
+		const matches =
+      katakanize(text).match(citiesRegex) || reading.match(citiesRegex);
 
 		if (matches === null) {
 			return;
 		}
 
 		const city = citiesMap.get(matches[1]);
-		const placeText = city.type === 'city' ? `${city.name},${city.prefecture}` : `${city.name},${city.description}`;
-		const imageUrl = `https://maps.googleapis.com/maps/api/staticmap?${qs.encode({
-			center: placeText,
-			zoom: city.type === 'city' ? 9 : 15,
-			scale: 1,
-			size: '600x300',
-			maptype: 'roadmap',
-			key: process.env.GOOGLEMAP_TOKEN,
-			format: 'png',
-			visual_refresh: true,
-			markers: `size:mid|color:0xfb724a|label:|${placeText}`,
-		})}`;
+		const placeText =
+city.type === 'city'
+	? `${city.name},${city.prefecture}`
+	: `${city.name},${city.description}`;
+		const imageUrl = `https://maps.googleapis.com/maps/api/staticmap?${qs.encode(
+			{
+				center: placeText,
+				zoom: city.type === 'city' ? 9 : 15,
+				scale: 1,
+				size: '600x300',
+				maptype: 'roadmap',
+				key: process.env.GOOGLEMAP_TOKEN,
+				format: 'png',
+				visual_refresh: true,
+				markers: `size:mid|color:0xfb724a|label:|${placeText}`,
+			}
+		)}`;
 
 		let cloudinaryData = await storage.getItem(imageUrl);
 
