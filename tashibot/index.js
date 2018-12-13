@@ -101,7 +101,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			.join('');
 
 		const matches =
-      katakanize(text).match(citiesRegex) || reading.match(citiesRegex);
+			katakanize(text).match(citiesRegex) || reading.match(citiesRegex);
 
 		if (matches === null) {
 			return;
