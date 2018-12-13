@@ -55,11 +55,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		.slice()
 		.sort((a, b) => (a.year || 10000) - (b.year || 10000));
 
-	const citiesRegex = new RegExp(
-		`(${names.map((name) => escapeRegExp(name)).join('|')}|${readings
-			.map((reading) => escapeRegExp(reading))
-			.join('|')})$`
-	);
+	const citiesRegex = new RegExp(`(${[
+		...names.map((name) => escapeRegExp(name)),
+		...readings.map((reading) => escapeRegExp(reading)),
+	].join('|')})$`);
 
 	const citiesMap = new Map([
 		...stations.map((station) => [station.reading, station]),
@@ -94,7 +93,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const reading = Array.from(
 			katakanize(
 				tokens
-					.map(({reading, surface_form}) => reading || surface_form || '')
+					.map(({reading: read, surface_form}) => read || surface_form || '')
 					.join('')
 			)
 		)
@@ -110,9 +109,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		const city = citiesMap.get(matches[1]);
 		const placeText =
-city.type === 'city'
-	? `${city.name},${city.prefecture}`
-	: `${city.name},${city.description}`;
+			city.type === 'city'
+				? `${city.name},${city.prefecture}`
+				: `${city.name},${city.description}`;
 		const imageUrl = `https://maps.googleapis.com/maps/api/staticmap?${qs.encode(
 			{
 				center: placeText,
