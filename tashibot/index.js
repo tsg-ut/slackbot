@@ -7,7 +7,7 @@ const qs = require('querystring');
 const storage = require('node-persist');
 const download = require('download');
 const cloudinary = require('cloudinary');
-const {escapeRegExp} = require('lodash');
+const {escapeRegExp, uniq} = require('lodash');
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const cities = (await promisify(fs.readFile)(
@@ -32,28 +32,33 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		.split('\n')
 		.filter((line) => line)
 		.map((line) => line.split(','))
-		.map(([name, reading, description]) => ({
+		.map(([name, reading, description, year]) => ({
 			type: 'station',
 			name,
 			reading,
 			description,
+			year,
 		}));
 
-	const readings = [
+	const readings = uniq([
 		...cities.map(({reading}) => reading),
 		...stations
 			.map(({reading}) => reading)
 			.filter((reading) => reading.length >= 4),
-	].sort((a, b) => b.length - a.length);
+	]).sort((a, b) => b.length - a.length);
 
-	const names = [
+	const names = uniq([
 		...cities.map(({name}) => name),
 		...stations.map(({name}) => name).filter((reading) => reading.length >= 3),
-	].sort((a, b) => b.length - a.length);
+	]).sort((a, b) => b.length - a.length);
 
 	const yearSortedCities = cities
 		.slice()
 		.sort((a, b) => (a.year || 10000) - (b.year || 10000));
+
+	const yearSortedStations = stations
+		.slice()
+		.sort((a, b) => (a.year ? 0 : 1) - (b.year ? 0 : 1));
 
 	const citiesRegex = new RegExp(`(${[
 		...names.map((name) => escapeRegExp(name)),
@@ -61,8 +66,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	].join('|')})$`);
 
 	const citiesMap = new Map([
-		...stations.map((station) => [station.reading, station]),
-		...stations.map((station) => [station.name, station]),
+		...yearSortedStations.map((station) => [station.reading, station]),
+		...yearSortedStations.map((station) => [station.name, station]),
 		...yearSortedCities.map((city) => [city.reading, city]),
 		...yearSortedCities.map((city) => [city.name, city]),
 	]);
@@ -97,8 +102,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					.join('')
 			)
 		)
-			.filter((c) => c.match(/^\p{Script_Extensions=Katakana}+$/u))
-			.join('');
+			.join('')
+			.replace(/\P{Script_Extensions=Katakana}/gu, '');
 
 		const matches =
 			katakanize(text).match(citiesRegex) || reading.match(citiesRegex);
@@ -150,9 +155,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				return `${city.prefecture}${city.name} ${yearText}`;
 			}
 
-			const descriptionText = city.description ? `(${city.description})` : '';
+			const descriptionText = (city.description || city.year) ? `(${[
+				...city.description ? [city.description] : [],
+				...city.year ? [city.year] : [],
+			].join('、')})` : '';
 			return `${city.name} ${descriptionText}`;
-		})();
+		})().trim();
 
 		await slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
