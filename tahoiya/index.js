@@ -636,7 +636,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					await setState({theme: {word, ruby, meaning, source, id}});
 
 					const end = Date.now() + 3 * 60 * 1000;
-					setTimeout(onFinishMeanings, 3 * 1000);
+					setTimeout(onFinishMeanings, 3 * 60 * 1000);
 
 					await postMessage(stripIndent`
 						お題を *「${ruby}」* にセットしたよ:v:
