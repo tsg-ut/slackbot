@@ -1,6 +1,6 @@
 const {promisify} = require('util');
 const {tokenize} = require('kuromojin');
-const {katakanize} = require('japanese');
+const {katakanize, hiraganize} = require('japanese');
 const fs = require('fs');
 const path = require('path');
 const qs = require('querystring');
@@ -76,12 +76,37 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		dir: path.resolve(__dirname, '__cache__'),
 	});
 
+	const getReading = async (text) => {
+		const tokens = await tokenize(text);
+		const reading = Array.from(
+			katakanize(
+				tokens
+					.map(({reading: read, surface_form}) => read || surface_form || '')
+					.join('')
+			)
+		)
+			.join('')
+			.replace(/\P{Script_Extensions=Katakana}/gu, '');
+		return reading;
+	};
+
 	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
 
 		if (!message.text) {
+			return;
+		}
+
+		if (message.text && message.text.startsWith('@tashibot')) {
+			const reading = hiraganize(await getReading(message.text.replace(/^@tashibot/, '')));
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: reading,
+				username: 'tashibot',
+				icon_emoji: ':japan:',
+			});
 			return;
 		}
 
@@ -94,16 +119,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		const text = message.text.slice(-20);
-		const tokens = await tokenize(text);
-		const reading = Array.from(
-			katakanize(
-				tokens
-					.map(({reading: read, surface_form}) => read || surface_form || '')
-					.join('')
-			)
-		)
-			.join('')
-			.replace(/\P{Script_Extensions=Katakana}/gu, '');
+		const reading = await getReading(text);
 
 		const matches =
 			katakanize(text).match(citiesRegex) || reading.match(citiesRegex);
