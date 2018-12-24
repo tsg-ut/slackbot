@@ -36,6 +36,7 @@
     "download": "^7.1.0",
     "fast-levenshtein": "^2.0.6",
     "japanese": "^1.2.0",
+    "jp-num": "^0.1.0",
     "jsdom": "^13.0.0",
     "kuromojin": "^1.4.0",
     "lodash": "^4.17.11",

@@ -8,6 +8,7 @@ const storage = require('node-persist');
 const download = require('download');
 const cloudinary = require('cloudinary');
 const {escapeRegExp, uniq} = require('lodash');
+const toJapanese = require('jp-num/toJapanese');
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const cities = (await promisify(fs.readFile)(
@@ -77,7 +78,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	});
 
 	const getReading = async (text) => {
-		const tokens = await tokenize(text);
+		const tokens = await tokenize(text.replace(/\d+/g, (number) => toJapanese(number)));
 		const reading = Array.from(
 			katakanize(
 				tokens
