@@ -78,7 +78,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	});
 
 	const getReading = async (text) => {
-		const tokens = await tokenize(text.replace(/\d+/g, (number) => toJapanese(number)));
+		const tokens = await tokenize(text.replace(/[\d,]+/g, (number) => toJapanese(number.replace(/,/g, ''))));
 		const reading = Array.from(
 			katakanize(
 				tokens
