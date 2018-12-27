@@ -1,5 +1,16 @@
 # slackbot
 
+[![Build Status][travis-image]][travis-url]
+[![Coverage Status][codecov-image]][codecov-url]
+
+[![Coverage Graph][codecov-graph]][codecov-url]
+
+[travis-url]: https://travis-ci.org/tsg-ut/slackbot
+[travis-image]: https://travis-ci.org/tsg-ut/slackbot.svg?branch=master
+[codecov-url]: https://codecov.io/gh/tsg-ut/slackbot
+[codecov-image]: https://codecov.io/gh/tsg-ut/slackbot/branch/master/graph/badge.svg
+[codecov-graph]: https://codecov.io/gh/tsg-ut/slackbot/branch/master/graphs/tree.svg?width=888&height=150
+
 TSGのSlackで動くSlackbotたち
 
 自分がOWNERのコードの変更は直接masterにpushして構いません。 ([CODEOWNERS](CODEOWNERS)参照)
