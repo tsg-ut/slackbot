@@ -30,6 +30,11 @@ for (const plugin of plugins) {
 
 rtmClient.on('authenticated', (data) => {
 	console.log(`Logged in as ${data.self.name} of team ${data.team.name}`);
+	webClient.chat.postMessage({
+		channel: process.env.CHANNEL_SANDBOX,
+		text: 'ｼｭｯｼｭｯ (起動音)',
+		username: 'slackbot',
+	});
 });
 
 rtmClient.start();
