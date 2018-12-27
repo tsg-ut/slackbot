@@ -122,6 +122,8 @@ const normalizeMeaning = (input) => {
 	meaning = meaning.replace(/。.*$/, '');
 	meaning = meaning.replace(/^.+? -/, '');
 	meaning = meaning.replace(/(のこと|をいう|である)+$/, '');
+	meaning = meaning.replace(/，/g, '、');
+	meaning = meaning.replace(/．/g, '。');
 	return meaning.trim();
 };
 
