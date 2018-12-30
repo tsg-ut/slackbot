@@ -608,10 +608,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const body = text.replace(/^@primebot/, '').trim();
 
 			if (state.phase === 'playing') {
-				if (!user) {
-					return;
-				}
-
 				if (body === 'reset') {
 					await setState({
 						phase: 'waiting',
