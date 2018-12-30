@@ -1,3 +1,4 @@
+const logger = require('./lib/logger.js');
 require('dotenv').config();
 
 process.on('unhandledRejection', (error) => {
