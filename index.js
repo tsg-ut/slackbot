@@ -14,7 +14,6 @@ const plugins = [
 	require('./cubebot'),
 	require('./shogi'),
 	require('./tiobot'),
-	require('./math'),
 	require('./checkin'),
 	require('./tahoiya'),
 	require('./prime'),
