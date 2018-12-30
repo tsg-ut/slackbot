@@ -6,4 +6,8 @@ axios.post = axios;
 
 axios.response = '';
 
+axios.default = {
+	defaults: {},
+};
+
 module.exports = axios;
