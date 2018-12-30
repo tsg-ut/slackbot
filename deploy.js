@@ -23,5 +23,5 @@ const slack = new WebClient(process.env.SLACK_TOKEN);
 		icon_emoji: ':muscle:',
 	});
 })().catch((error) => {
-	console.error(error);
+	logger.error(error);
 });

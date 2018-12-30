@@ -16,7 +16,7 @@ async function reply(text, index) {
 		});
 		return generateReply(text, response.data[1], index);
 	} catch (e) {
-		console.error(e);
+		logger.error(e);
 		return "エラーΩ＼ζ°)ﾁｰﾝ";
 	}
 }

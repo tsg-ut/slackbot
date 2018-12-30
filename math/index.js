@@ -102,7 +102,7 @@ module.exports = (clients) => {
 					slack.reactions.add({name: 'tautology', channel: message.channel, timestamp: message.ts});
 					return;
 				}
-				console.error('stderr:', stderr.toString());
+				logger.error('stderr:', stderr.toString());
 				return;
 			}
 

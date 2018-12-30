@@ -177,7 +177,7 @@ module.exports.getMeaning = async ([word, , source, rawMeaning]) => {
 	} while (exsentences < 3 && (wikitext === null || wikitext.endsWith('?')));
 
 	if (!wikitext) {
-		console.error(`Couldn't find article for ${word}`);
+		logger.error(`Couldn't find article for ${word}`);
 		return '';
 	}
 
