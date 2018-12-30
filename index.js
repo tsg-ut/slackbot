@@ -2,7 +2,7 @@ const logger = require('./lib/logger.js');
 require('dotenv').config();
 
 process.on('unhandledRejection', (error) => {
-	console.error(error.stack);
+	logger.error(error);
 });
 
 const {RTMClient, WebClient} = require('@slack/client');
@@ -36,13 +36,17 @@ webClient.chat.postMessage({
 	username: 'slackbot',
 });
 
+let firstLogin = true;
 rtmClient.on('authenticated', (data) => {
 	logger.info(`Logged in as ${data.self.name} of team ${data.team.name}`);
-	webClient.chat.postMessage({
-		channel: process.env.CHANNEL_SANDBOX,
-		text: '再接続しました',
-		username: 'slackbot',
-	});
+	if (!firstLogin) {
+		webClient.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			text: '再接続しました',
+			username: 'slackbot',
+		});
+	}
+	firstLogin = false;
 });
 
 rtmClient.start();
