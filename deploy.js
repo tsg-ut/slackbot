@@ -8,12 +8,12 @@ const {promisify} = require('util');
 const slack = new WebClient(process.env.SLACK_TOKEN);
 
 (async () => {
-	console.log('$ git pull');
+	logger.info('$ git pull');
 	const {stdout, stderr} = await promisify(exec)('git pull');
-	console.log(stdout, stderr);
+	logger.info(stdout, stderr);
 
-	console.log('$ touch .restart-trigger');
-	console.log((await promisify(exec)('touch .restart-trigger')).stdout);
+	logger.info('$ touch .restart-trigger');
+	logger.info((await promisify(exec)('touch .restart-trigger')).stdout);
 
 	const rawHash = await promisify(fs.readFile)('.git/refs/heads/master');
 	const hash = rawHash.toString().trim();

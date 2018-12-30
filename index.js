@@ -28,11 +28,17 @@ for (const plugin of plugins) {
 	plugin({rtmClient, webClient});
 }
 
+webClient.chat.postMessage({
+	channel: process.env.CHANNEL_SANDBOX,
+	text: 'ｼｭｯｼｭｯ (起動音)',
+	username: 'slackbot',
+});
+
 rtmClient.on('authenticated', (data) => {
-	console.log(`Logged in as ${data.self.name} of team ${data.team.name}`);
+	logger.info(`Logged in as ${data.self.name} of team ${data.team.name}`);
 	webClient.chat.postMessage({
 		channel: process.env.CHANNEL_SANDBOX,
-		text: 'ｼｭｯｼｭｯ (起動音)',
+		text: '再接続しました',
 		username: 'slackbot',
 	});
 });

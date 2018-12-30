@@ -27,6 +27,7 @@ const {
 	normalizeMeaning,
 } = require('./lib.js');
 const gist = require('./gist.js');
+const logger = require('../lib/logger.js');
 
 const state = (() => {
 	try {
@@ -613,7 +614,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 					const candidates = sampleSize(candidateWords, 10);
 					await setState({candidates});
-					console.log(candidates);
+					logger.info(candidates);
 					await postMessage(stripIndent`
 						たのしい“たほいや”を始めるよ～:clap::clap::clap:
 						下のリストの中からお題にする単語を選んでタイプしてね:wink:

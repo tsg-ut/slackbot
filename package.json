@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/tsg-ut/slackbot#readme",
   "dependencies": {
+    "@google-cloud/logging-winston": "^0.10.2",
     "@hakatashi/riichi-core": "^1.0.3",
     "@slack/client": "^4.8.0",
     "axios": "^0.18.0",
@@ -51,7 +52,8 @@
     "sql-template-strings": "^2.2.2",
     "sqlite": "^3.0.0",
     "sqlite3": "^4.0.4",
-    "tmp": "0.0.33"
+    "tmp": "0.0.33",
+    "winston": "^3.1.0"
   },
   "devDependencies": {
     "@hakatashi/eslint-config": "^1.8.4",

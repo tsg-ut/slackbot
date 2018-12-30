@@ -10,6 +10,7 @@ const assert = require('assert');
 const last = require('lodash/last');
 const shuffle = require('lodash/shuffle');
 const get = require('lodash/get');
+const logger = require('../lib/logger.js');
 
 module.exports.getPageTitle = (url) => {
 	const urlTitle = decodeURI(url.match(/([^/]+)$/)[1]);
@@ -180,7 +181,7 @@ module.exports.getMeaning = async ([word, , source, rawMeaning]) => {
 		return '';
 	}
 
-	console.log(wikitext);
+	logger.info(wikitext);
 
 	let meaning = null;
 	const lines = wikitext.split('\n').filter((line) => line.trim().length !== 0);
