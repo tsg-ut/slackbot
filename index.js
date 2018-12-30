@@ -1,7 +1,8 @@
+const logger = require('./lib/logger.js');
 require('dotenv').config();
 
 process.on('unhandledRejection', (error) => {
-	console.error(error.stack);
+	logger.error(error);
 });
 
 const {RTMClient, WebClient} = require('@slack/client');
@@ -16,6 +17,8 @@ const plugins = [
 	require('./tiobot'),
 	require('./checkin'),
 	require('./tahoiya'),
+	require('./channel-notifier'),
+	require('./tashibot'),
 	require('./prime'),
 ];
 
@@ -26,8 +29,24 @@ for (const plugin of plugins) {
 	plugin({rtmClient, webClient});
 }
 
+logger.info('Launched');
+webClient.chat.postMessage({
+	channel: process.env.CHANNEL_SANDBOX,
+	text: 'ｼｭｯｼｭｯ (起動音)',
+	username: 'slackbot',
+});
+
+let firstLogin = true;
 rtmClient.on('authenticated', (data) => {
-	console.log(`Logged in as ${data.self.name} of team ${data.team.name}`);
+	logger.info(`Logged in as ${data.self.name} of team ${data.team.name}`);
+	if (!firstLogin) {
+		webClient.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			text: '再接続しました',
+			username: 'slackbot',
+		});
+	}
+	firstLogin = false;
 });
 
 rtmClient.start();

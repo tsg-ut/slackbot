@@ -1,6 +1,6 @@
 language: node_js
 node_js:
-  - 9
+  - 10
 before_install:
   - mkdir -p shogi/boards
   - touch shogi/boards/temp.sqlite3

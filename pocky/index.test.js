@@ -20,6 +20,6 @@ describe('pocky', () => {
 		const {username, text} = await slack.getResponseTo('ほげ?');
 
 		expect(username).toBe('pocky');
-		expect(text).toBe(`<@${slack.fakeUser}> ふが`);
+		expect(text).toBe('ふが');
 	});
 });

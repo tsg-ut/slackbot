@@ -1,7 +1,7 @@
 {
     "extends": "@hakatashi",
     "parserOptions": {
-        "ecmaVersion": 2017,
+        "ecmaVersion": 2018,
         "ecmaFeatures": {
             "experimentalObjectRestSpread": true,
             "jsx": true
@@ -12,6 +12,18 @@
         "no-console": "off",
         "no-div-regex": "off",
         "no-nested-ternary": "off",
-        "no-use-before-define": "off"
+        "no-use-before-define": "off",
+        "prefer-destructuring": ["error", {
+            "VariableDeclarator": {
+                "array": true,
+                "object": true
+            },
+            "AssignmentExpression": {
+                "array": true,
+                "object": false
+            }
+        }, {
+            "enforceForRenamedProperties": false
+        }]
     }
 }

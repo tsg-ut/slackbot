@@ -22,7 +22,7 @@ async function reply(text, index) {
 }
 
 function generateReply(text, words, index) {
-	// console.log(text, words, index);
+	// logger.info(text, words, index);
 	const strippedText = text.replace(stripRe, "");
 	const normalizedText = normalize(strippedText);
 	const isAlphabet = /[a-z]$/.test(normalizedText);
@@ -51,7 +51,7 @@ function generateReply(text, words, index) {
 		});
 		sortedTrailers = trailersNospaced.concat(trailersSpaced);
 	}
-	// console.log(sortedTrailers);
+	// logger.info(sortedTrailers);
 	if (sortedTrailers.length <= index) {
 		return null;
 	}
@@ -111,7 +111,7 @@ module.exports = (clients) => {
 		if (message.subtype) {
 			return;
 		}
-		const { channel, text, user, ts: timestamp } = message;
+		const { channel, text } = message;
 		if (channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
@@ -121,7 +121,8 @@ module.exports = (clients) => {
 			return;
 		}
 		const result = await reply(match[1], match[2].length - 1);
-		const response = (result === null) ? ":wakarazu:" : result;
-		postMessage(`<@${user}> ` + htmlEscape(response), channel);
+		if (result !== null) {
+			postMessage(htmlEscape(result), channel);
+		}
 	});
 };
