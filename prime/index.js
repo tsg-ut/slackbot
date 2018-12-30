@@ -274,7 +274,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				} else {
 					await postMessage(stripIndent`
 						現在の状態
-						場数: ${state.boardNumber} (${cardsToString(state.boardCards)})
+						*場数* ${state.boardNumber} (${cardsToString(state.boardCards)})
 						*手札* ${cardsToString(state.hand)}
 					`);
 				}
@@ -405,6 +405,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 			if (factors.length === 1 && factors[0].exponent === 1) {
 				await postMessage(`:warning: 合成数出しは因数が1つ以上必要です。`);
+				return;
+			}
+
+			if (factorComponents.includes('1')) {
+				await postMessage(`:warning: 合成数出しで「1」は使えません。`);
 				return;
 			}
 
@@ -591,7 +596,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
-			await postMessage(`*${number}* = ${frequencyToString(frequency)}`);
+			await postMessage(`*${number}* = ${number === 1 ? '1' : frequencyToString(frequency)}`);
 		}
 	});
 };
