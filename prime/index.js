@@ -549,6 +549,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
+			await postMessage(stripIndent`
+				ギブアップしました。
+				*ターン数* ${state.turns}ターン
+			`);
 			await setState({
 				phase: 'waiting',
 				hand: [],
@@ -559,10 +563,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				boardNumber: null,
 				turns: 0,
 			});
-			await postMessage(stripIndent`
-				ギブアップしました。
-				*ターン数* ${state.turns}ターン
-			`);
 			return;
 		}
 
