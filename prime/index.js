@@ -20,6 +20,7 @@ const state = (() => {
 			isDrew: savedState.isDrew || false,
 			boardCards: savedState.boardCards || [],
 			boardNumber: savedState.boardNumber || null,
+			turns: savedState.turns || 0,
 		};
 	} catch (e) {
 		return {
@@ -30,6 +31,7 @@ const state = (() => {
 			isDrew: false,
 			boardCards: [],
 			boardNumber: null,
+			turns: 0,
 		};
 	}
 })();
@@ -226,6 +228,25 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		})
 	);
 
+	const afterDiscard = async () => {
+		if (state.hand.length === 0) {
+			await postMessage(stripIndent`
+				クリアしました:tada:
+				*ターン数* ${state.turns}
+			`);
+			await setState({
+				phase: 'waiting',
+				hand: [],
+				stock: [],
+				pile: [],
+				isDrew: false,
+				boardCards: [],
+				boardNumber: null,
+				turns: 0,
+			});
+		}
+	};
+
 	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
@@ -268,6 +289,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				hand: sort(hand),
 				stock,
 				phase: 'playing',
+				turns: 0,
 			});
 
 			await postMessage(`*手札* ${cardsToString(state.hand)}`);
@@ -319,6 +341,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					isDrew: false,
 					boardCards: [],
 					boardNumber: null,
+					turns: state.turns + 1,
 				});
 				await postMessage(stripIndent`
 					:boom:グロタンカット!:boom:
@@ -326,6 +349,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					場が流れました
 					*手札* ${cardsToString(state.hand)}
 				`);
+				await afterDiscard();
 				return;
 			}
 
@@ -337,6 +361,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					isDrew: false,
 					boardCards: [],
 					boardNumber: null,
+					turns: state.turns + 1,
 				});
 				await postMessage(stripIndent`
 					:no_entry_sign: *${numberText}* は素数ではありません!!!
@@ -352,6 +377,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				isDrew: false,
 				boardCards: decomposition,
 				boardNumber: number,
+				turns: state.turns + 1,
 			});
 
 			await discard(decomposition);
@@ -359,6 +385,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				*場数* ${state.boardNumber} (${cardsToString(state.boardCards)})
 				*手札* ${cardsToString(state.hand)}
 			`);
+			await afterDiscard();
 			return;
 		}
 
@@ -421,6 +448,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					isDrew: false,
 					boardCards: [],
 					boardNumber: null,
+					turns: state.turns + 1,
 				});
 				await postMessage(stripIndents`
 					:no_entry_sign: *${notPrimeMantissas.map(({mantissa}) => mantissa).join(', ')}* は素数ではありません!!!
@@ -440,6 +468,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					isDrew: false,
 					boardCards: [],
 					boardNumber: null,
+					turns: state.turns + 1,
 				});
 				await postMessage(stripIndent`
 					:no_entry_sign: 素因数分解が正しくありません!!!
@@ -455,6 +484,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				isDrew: false,
 				boardCards: numberDecomposition,
 				boardNumber: number,
+				turns: state.turns + 1,
 			});
 
 			await discard(decompositionCards);
@@ -463,6 +493,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				→ *素因数分解* ${frequencyToString(factors.map(({mantissa, exponent}) => ({factor: mantissa, times: exponent})))} (${cardsToString(flatten(factorDecompositions))})
 				*手札* ${cardsToString(state.hand)}
 			`);
+			await afterDiscard();
 			return;
 		}
 
@@ -502,6 +533,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				isDrew: false,
 				boardCards: [],
 				boardNumber: null,
+				turns: state.turns + 1,
 			});
 			await postMessage(stripIndent`
 				パスしました。
@@ -509,6 +541,52 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				:warning:ペナルティ +${drewCards.length}枚 (${cardsToString(drewCards)})
 				*手札* ${cardsToString(state.hand)}
 			`);
+			return;
+		}
+
+		if (text === 'ギブアップ') {
+			if (state.phase !== 'playing') {
+				return;
+			}
+
+			await setState({
+				phase: 'waiting',
+				hand: [],
+				stock: [],
+				pile: [],
+				isDrew: false,
+				boardCards: [],
+				boardNumber: null,
+				turns: 0,
+			});
+			await postMessage(stripIndent`
+				ギブアップしました。
+				*ターン数* ${state.turns}ターン
+			`);
+			return;
+		}
+
+		if (text.startsWith('@primebot')) {
+			if (state.phase === 'playing') {
+				await postMessage('カンニング禁止! :imp:');
+				return;
+			}
+
+			const number = parseInt(text.replace(/^@primebot/, ''));
+			if (!Number.isFinite(number) || Number.isNaN(number) || number < 1) {
+				await postMessage(':ha:');
+				return;
+			}
+
+			const frequency = prime.getFrequency(number);
+			const isPrime = frequency.length === 1 && frequency[0].times === 1 && number >= 2;
+
+			if (isPrime) {
+				await postMessage(`*${number}* は素数です!`);
+				return;
+			}
+
+			await postMessage(`*${number}* = ${frequencyToString(frequency)}`);
 		}
 	});
 };
