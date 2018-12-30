@@ -319,7 +319,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				assert(typeof state.boardNumber === 'number');
 
 				if (state.boardNumber >= number) {
-					await postMessage(`:warning: 場数 (${state.boardNumber}) 以下の数字を出すことはできません`);
+					await postMessage(`:warning: 場数 (${state.boardNumber}) 以下の数字を出すことはできません。`);
 					return;
 				}
 
@@ -331,7 +331,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			if (decomposition === null) {
-				await postMessage(`:warning: ${numberText} は手元のカードから出せません`);
+				await postMessage(`:warning: ${numberText} は手元のカードから出せません。`);
 				return;
 			}
 
@@ -346,7 +346,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				await postMessage(stripIndent`
 					:boom:グロタンカット!:boom:
 
-					場が流れました
+					場が流れました。
 					*手札* ${cardsToString(state.hand)}
 				`);
 				await afterDiscard();
@@ -389,7 +389,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if ((matches = text.replace(/\s/g, '').match(/^(\d+)=((?:\d+(?:\^\d+)?\*)+\d+(?:\^\d+)?)$/))) {
+		if ((matches = text.replace(/\s/g, '').match(/^(\d+)=((?:\d+(?:\^\d+)?\*)*\d+(?:\^\d+)?)$/))) {
 			if (state.phase !== 'playing') {
 				return;
 			}
@@ -402,6 +402,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const number = parseInt(rawNumberText);
 
 			const numberText = number.toString();
+
+			if (factors.length === 1 && factors[0].exponent === 1) {
+				await postMessage(`:warning: 合成数出しは因数が1つ以上必要です。`);
+				return;
+			}
 
 			let decompositions = null;
 
@@ -417,7 +422,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				assert(typeof state.boardNumber === 'number');
 
 				if (state.boardNumber >= number) {
-					await postMessage(`:warning: 場数 (${state.boardNumber}) 以下の数字を出すことはできません`);
+					await postMessage(`:warning: 場数 (${state.boardNumber}) 以下の数字を出すことはできません。`);
 					return;
 				}
 
@@ -428,7 +433,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			if (decompositions === null) {
-				await postMessage(`:warning: ${numberText} = ${factorsText} は手元のカードから出せません`);
+				await postMessage(`:warning: ${numberText} = ${factorsText} は手元のカードから出せません。`);
 				return;
 			}
 
@@ -503,7 +508,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			if (state.isDrew) {
-				await postMessage(':warning: ドローは連続1回のみです');
+				await postMessage(':warning: ドローは連続1回のみです。');
 				return;
 			}
 
@@ -524,7 +529,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			if (state.boardNumber === null) {
-				await postMessage(':warning: 場に何も出ていません');
+				await postMessage(':warning: 場に何も出ていません。');
 				return;
 			}
 
