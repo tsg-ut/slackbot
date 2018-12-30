@@ -28,6 +28,7 @@ for (const plugin of plugins) {
 	plugin({rtmClient, webClient});
 }
 
+logger.info('Launched');
 webClient.chat.postMessage({
 	channel: process.env.CHANNEL_SANDBOX,
 	text: 'ｼｭｯｼｭｯ (起動音)',
