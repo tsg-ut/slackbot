@@ -15,11 +15,11 @@ const plugins = [
 	require('./cubebot'),
 	require('./shogi'),
 	require('./tiobot'),
-	require('./math'),
 	require('./checkin'),
 	require('./tahoiya'),
 	require('./channel-notifier'),
 	require('./tashibot'),
+	require('./prime'),
 ];
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
