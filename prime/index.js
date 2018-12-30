@@ -200,8 +200,6 @@ const draw = async (count) => {
 		newPile = [];
 	}
 
-	assert(newStock.length >= count);
-
 	const drewCards = newStock.slice(0, count);
 	newHand = sort(newHand.concat(drewCards));
 	newStock = newStock.slice(count);
