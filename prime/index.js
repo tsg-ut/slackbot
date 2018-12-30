@@ -14,6 +14,7 @@ const state = (() => {
 		const savedState = require('./state.json');
 		return {
 			phase: savedState.phase,
+			challenger: savedState.challenger || null,
 			hand: savedState.hand || [],
 			stock: savedState.stock || [],
 			pile: savedState.pile || [],
@@ -25,6 +26,7 @@ const state = (() => {
 	} catch (e) {
 		return {
 			phase: 'waiting',
+			challenger: null,
 			hand: [],
 			stock: [], // 山札
 			pile: [], // 捨て札
@@ -234,6 +236,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			`);
 			await setState({
 				phase: 'waiting',
+				challenger: null,
 				hand: [],
 				stock: [],
 				pile: [],
@@ -258,7 +261,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		const {text} = message;
+		if (!message.user) {
+			return;
+		}
+
+		const {text, user} = message;
 
 		let matches = null;
 
@@ -285,6 +292,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 			await setState({
 				hand: sort(hand),
+				challenger: user,
 				stock,
 				phase: 'playing',
 				turns: 0,
@@ -296,6 +304,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		if (text.match(/^\d+$/)) {
 			if (state.phase !== 'playing') {
+				return;
+			}
+
+			if (state.challenger !== user) {
 				return;
 			}
 
@@ -391,6 +403,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			if (state.phase !== 'playing') {
 				return;
 			}
+
+			if (state.challenger !== user) {
+				return;
+			}
+
 			const [, rawNumberText, factorsText] = matches;
 			const factorComponents = factorsText.split(/[\^*]/).map((component) => parseInt(component).toString());
 			const factors = factorsText.split('*').map((factorText) => {
@@ -510,6 +527,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
+			if (state.challenger !== user) {
+				return;
+			}
+
 			if (state.isDrew) {
 				await postMessage(':warning: ドローは連続1回のみです。');
 				return;
@@ -528,6 +549,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		if (text === 'パス') {
 			if (state.phase !== 'playing') {
+				return;
+			}
+
+			if (state.challenger !== user) {
 				return;
 			}
 
@@ -557,12 +582,17 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
+			if (state.challenger !== user) {
+				return;
+			}
+
 			await postMessage(stripIndent`
 				ギブアップしました。
 				*ターン数* ${state.turns}ターン
 			`);
 			await setState({
 				phase: 'waiting',
+				challenger: null,
 				hand: [],
 				stock: [],
 				pile: [],
@@ -575,12 +605,30 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if (text.startsWith('@primebot')) {
+			const body = text.replace(/^@primebot/, '').trim();
+
 			if (state.phase === 'playing') {
+				if (body === 'reset') {
+					await setState({
+						phase: 'waiting',
+						challenger: null,
+						hand: [],
+						stock: [],
+						pile: [],
+						isDrew: false,
+						boardCards: [],
+						boardNumber: null,
+						turns: 0,
+					});
+					await postMessage(`<@${user}>によってリセットされました :wave:`);
+					return;
+				}
+
 				await postMessage('カンニング禁止! :imp:');
 				return;
 			}
 
-			const number = parseInt(text.replace(/^@primebot/, ''));
+			const number = parseInt(body);
 			if (!Number.isFinite(number) || Number.isNaN(number) || number < 1) {
 				await postMessage(':ha:');
 				return;
