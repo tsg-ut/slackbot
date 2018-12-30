@@ -2,8 +2,8 @@ const path = require('path');
 const fs = require('fs');
 const assert = require('assert');
 const {promisify} = require('util');
-const {constant, times, flatten, range, shuffle, uniq} = require('lodash');
-const {stripIndent} = require('common-tags');
+const {constant, times, flatten, range, shuffle, uniq, sumBy} = require('lodash');
+const {stripIndent, stripIndents} = require('common-tags');
 const prime = require('primes-and-factors');
 
 const cardSet = range(1, 14);
@@ -241,6 +241,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		const {text} = message;
 
+		let matches = null;
+
 		if (text === '素数大富豪') {
 			if (state.phase !== 'waiting') {
 				if (state.boardNumber === null) {
@@ -355,6 +357,110 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await discard(decomposition);
 			await postMessage(stripIndent`
 				*場数* ${state.boardNumber} (${cardsToString(state.boardCards)})
+				*手札* ${cardsToString(state.hand)}
+			`);
+			return;
+		}
+
+		if ((matches = text.replace(/\s/g, '').match(/^(\d+)=((?:\d+(?:\^\d+)?\*)+\d+(?:\^\d+)?)$/))) {
+			if (state.phase !== 'playing') {
+				return;
+			}
+			const [, rawNumberText, factorsText] = matches;
+			const factorComponents = factorsText.split(/[\^*]/).map((component) => parseInt(component).toString());
+			const factors = factorsText.split('*').map((factorText) => {
+				const [mantissa, exponent = 1] = factorText.split('^');
+				return {mantissa: parseInt(mantissa), exponent: parseInt(exponent)};
+			});
+			const number = parseInt(rawNumberText);
+
+			const numberText = number.toString();
+
+			let decompositions = null;
+
+			if (state.boardNumber === null) {
+				for (const count of range(20, 0)) {
+					const match = matchByCards(numberText, factorComponents, state.hand, count);
+					if (match !== null) {
+						decompositions = match;
+						break;
+					}
+				}
+			} else {
+				assert(typeof state.boardNumber === 'number');
+
+				if (state.boardNumber >= number) {
+					await postMessage(`:warning: 場数 (${state.boardNumber}) 以下の数字を出すことはできません`);
+					return;
+				}
+
+				const match = matchByCards(numberText, factorComponents, state.hand, state.boardCards.length);
+				if (match !== null) {
+					decompositions = match;
+				}
+			}
+
+			if (decompositions === null) {
+				await postMessage(`:warning: ${numberText} = ${factorsText} は手元のカードから出せません`);
+				return;
+			}
+
+			const [numberDecomposition, factorDecompositions] = decompositions;
+			const decompositionCards = flatten([numberDecomposition, ...factorDecompositions]);
+
+			const notPrimeMantissas = factors.map(({mantissa}) => {
+				const frequency = prime.getFrequency(mantissa);
+				return {mantissa, frequency};
+			}).filter(({frequency}) => (
+				frequency.length !== 1 || frequency[0].times !== 1 || number < 2
+			));
+
+			if (notPrimeMantissas.length !== 0) {
+				const drewCards = await draw(decompositionCards.length);
+				await setState({
+					isDrew: false,
+					boardCards: [],
+					boardNumber: null,
+				});
+				await postMessage(stripIndents`
+					:no_entry_sign: *${notPrimeMantissas.map(({mantissa}) => mantissa).join(', ')}* は素数ではありません!!!
+					${notPrimeMantissas.map(({mantissa, frequency}) => `${mantissa} = ${frequencyToString(frequency)}`).join('\n')}
+
+					:warning:ペナルティ +${decompositionCards.length}枚 (${cardsToString(drewCards)})
+					*手札* ${cardsToString(state.hand)}
+				`);
+				return;
+			}
+
+			const correctCalculation = factors.map(({mantissa, exponent}) => mantissa ** exponent).reduce((a, b) => a * b);
+
+			if (correctCalculation !== number) {
+				const drewCards = await draw(decompositionCards.length);
+				await setState({
+					isDrew: false,
+					boardCards: [],
+					boardNumber: null,
+				});
+				await postMessage(stripIndent`
+					:no_entry_sign: 素因数分解が正しくありません!!!
+					${frequencyToString(factors.map(({mantissa, exponent}) => ({factor: mantissa, times: exponent})))} = ${correctCalculation}
+
+					:warning:ペナルティ +${decompositionCards.length}枚 (${cardsToString(drewCards)})
+					*手札* ${cardsToString(state.hand)}
+				`);
+				return;
+			}
+
+			await setState({
+				isDrew: false,
+				boardCards: numberDecomposition,
+				boardNumber: number,
+			});
+
+			await discard(decompositionCards);
+			await postMessage(stripIndent`
+				*場数* ${state.boardNumber} (${cardsToString(state.boardCards)})
+				→ *素因数分解* ${frequencyToString(factors.map(({mantissa, exponent}) => ({factor: mantissa, times: exponent})))} (${cardsToString(flatten(factorDecompositions))})
 				*手札* ${cardsToString(state.hand)}
 			`);
 			return;
