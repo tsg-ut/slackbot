@@ -15,7 +15,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 	const job = async () => {
 		if (!process.env.SWARM_TOKEN) {
-			console.log('Skipping checkin job because SWARM_TOKEN is not set');
+			logger.info('Skipping checkin job because SWARM_TOKEN is not set');
 			return;
 		}
 

@@ -11,11 +11,11 @@ class Counter {
         this.load();
     }
 
-    increment(key) {
+    add(key, cnt = 1) {
         if (this.map.has(key)) {
-            this.map.set(key, this.map.get(key) + 1);
+            this.map.set(key, this.map.get(key) + cnt);
         } else {
-            this.map.set(key, 1);
+            this.map.set(key, cnt);
         }
 
         this.save();
@@ -55,6 +55,39 @@ class Counter {
     }
 }
 
+function count(haystack, needle) {
+    return haystack.split(needle).length - 1;
+}
+
+function numToEmoji(num) {
+    switch(num) {
+        case 0:
+            return 'zero';
+        case 1:
+            return 'one';
+        case 2:
+            return 'two';
+        case 3:
+            return 'three';
+        case 4:
+            return 'four';
+        case 5:
+            return 'five';
+        case 6:
+            return 'six';
+        case 7:
+            return 'seven';
+        case 8:
+            return 'eight';
+        case 9:
+            return 'nine';
+        case 10:
+            return 'keycap_ten';
+        default:
+            return 'vsonline';
+    }
+}
+
 module.exports = (clients) => {
     const { rtmClient: rtm, webClient: slack } = clients;
 
@@ -83,17 +116,27 @@ module.exports = (clients) => {
             replace(/rr/gi, 'r').
             replace(/y/gi, 'yy');
 
-        if (rtext.includes("すし")) {
-            slack.reactions.add({name: 'sushi', channel, timestamp});
-            sushiCounter.increment(user);
+        if (count(rtext, 'すし')) {
+            const cnt = count(rtext, 'すし');
+            await slack.reactions.add({name: 'sushi', channel, timestamp});
+            if(cnt >= 2) {
+                await slack.reactions.add({name: 'x', channel, timestamp});
+                await slack.reactions.add({name: numToEmoji(cnt), channel, timestamp});
+            }
+            sushiCounter.add(user, cnt);
         }
         if (rtext.includes("ケーキ")) {
             slack.reactions.add({name: 'cake', channel, timestamp});
         }
         if (rtext.includes("殺") || rtext.includes("死")) {
-            slack.reactions.add({name: 'no_good', channel, timestamp});
-            slack.reactions.add({name: 'shaved_ice', channel, timestamp});
-            suspendCounter.increment(user);
+            const cnt = count(rtext, '殺') + count(rtext, '死');
+            await slack.reactions.add({name: 'no_good', channel, timestamp});
+            await slack.reactions.add({name: 'shaved_ice', channel, timestamp});
+            if(cnt >= 2) {
+                await slack.reactions.add({name: 'x', channel, timestamp});
+                await slack.reactions.add({name: numToEmoji(cnt), channel, timestamp});
+            }
+            suspendCounter.add(user, cnt);
         }
         if (rtext.includes("akouryy")) {
             slack.reactions.add({name: 'no_good', channel, timestamp});

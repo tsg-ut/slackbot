@@ -16,13 +16,13 @@ async function reply(text, index) {
 		});
 		return generateReply(text, response.data[1], index);
 	} catch (e) {
-		console.error(e);
+		logger.error(e);
 		return "エラーΩ＼ζ°)ﾁｰﾝ";
 	}
 }
 
 function generateReply(text, words, index) {
-	// console.log(text, words, index);
+	// logger.info(text, words, index);
 	const strippedText = text.replace(stripRe, "");
 	const normalizedText = normalize(strippedText);
 	const isAlphabet = /[a-z]$/.test(normalizedText);
@@ -51,7 +51,7 @@ function generateReply(text, words, index) {
 		});
 		sortedTrailers = trailersNospaced.concat(trailersSpaced);
 	}
-	// console.log(sortedTrailers);
+	// logger.info(sortedTrailers);
 	if (sortedTrailers.length <= index) {
 		return null;
 	}

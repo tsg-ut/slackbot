@@ -40,7 +40,7 @@
     "kuromojin": "^1.4.0",
     "lodash": "^4.17.11",
     "lodash-math": "0.0.7",
-    "moment": "^2.22.2",
+    "moment": "^2.23.0",
     "node-emoji": "^1.8.1",
     "node-persist": "^3.0.2",
     "node-schedule": "^1.3.1",
@@ -53,12 +53,12 @@
     "sqlite": "^3.0.0",
     "sqlite3": "^4.0.4",
     "tmp": "0.0.33",
-    "word2vec": "file:../node-word2vec"
+    "word2vec": "^1.1.4"
   },
   "devDependencies": {
     "@hakatashi/eslint-config": "^1.8.4",
     "byline": "^5.0.0",
-    "eslint": "^5.9.0",
+    "eslint": "^5.11.1",
     "eslint-plugin-react": "^7.11.1",
     "jest": "^23.6.0"
   }

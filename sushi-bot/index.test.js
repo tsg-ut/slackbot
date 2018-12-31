@@ -26,6 +26,26 @@ it('reacts to "おすし"', () => new Promise((resolve) => {
 	});
 }));
 
+it('marks :x::four: to "sushi"x4', () => new Promise((resolve) => {
+	const table = {sushi: false, x: false, four: false};
+	slack.on('reactions.add', ({name, channel, timestamp}) => {
+		expect(Object.keys(table)).toContain(name); // FIXME
+		expect(channel).toBe(slack.fakeChannel);
+		expect(timestamp).toBe(slack.fakeTimestamp);
+		table[name] = true;
+		if(Object.values(table).every(x=>x)) {
+			resolve();
+		}
+	});
+
+	slack.rtmClient.emit('message', {
+		channel: slack.fakeChannel,
+		text: 'sushisushisushisushi',
+		user: slack.fakeUser,
+		ts: slack.fakeTimestamp,
+	});
+}));
+
 it('reacts to "\u3059\u0328"', () => new Promise((resolve) => {
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
 		expect(name).toBe('sushi');
