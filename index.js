@@ -2,7 +2,7 @@ const logger = require('./lib/logger.js');
 require('dotenv').config();
 
 process.on('unhandledRejection', (error) => {
-	logger.error(error);
+	logger.error(error.stack);
 });
 
 const {RTMClient, WebClient} = require('@slack/client');
