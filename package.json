@@ -34,6 +34,7 @@
     "dotenv": "^6.2.0",
     "download": "^7.1.0",
     "fast-levenshtein": "^2.0.6",
+    "iconv-lite": "^0.4.24",
     "jaconv": "^1.0.4",
     "japanese": "^1.2.0",
     "jp-num": "^0.1.0",
