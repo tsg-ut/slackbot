@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const assert = require('assert');
 const {promisify} = require('util');
-const {constant, times, flatten, range, shuffle, uniq, sumBy} = require('lodash');
+const {constant, times, flatten, range, shuffle, uniq} = require('lodash');
 const {stripIndent, stripIndents} = require('common-tags');
 const prime = require('primes-and-factors');
 
@@ -19,6 +19,7 @@ const state = (() => {
 			stock: savedState.stock || [],
 			pile: savedState.pile || [],
 			isDrew: savedState.isDrew || false,
+			isRevolution: savedState.isRevolution || false,
 			boardCards: savedState.boardCards || [],
 			boardNumber: savedState.boardNumber || null,
 			turns: savedState.turns || 0,
@@ -31,6 +32,7 @@ const state = (() => {
 			stock: [], // 山札
 			pile: [], // 捨て札
 			isDrew: false,
+			isRevolution: false,
 			boardCards: [],
 			boardNumber: null,
 			turns: 0,
@@ -38,47 +40,49 @@ const state = (() => {
 	}
 })();
 
-const sort = (cards) => (
-	cards.slice().sort((a, b) => {
-		if (a === 'X') {
-			return 1;
-		}
+const sort = (cards) => cards.slice().sort((a, b) => {
+	if (a === 'X') {
+		return 1;
+	}
 
-		if (b === 'X') {
-			return -1;
-		}
+	if (b === 'X') {
+		return -1;
+	}
 
-		return a - b;
-	})
-);
+	return a - b;
+});
 
 const cardsToString = (cards) => {
 	if (cards.length === 0) {
 		return 'なし';
 	}
 
-	return cards.map((card) => {
-		if (typeof card === 'number') {
-			return card.toString();
-		}
+	return cards
+		.map((card) => {
+			if (typeof card === 'number') {
+				return card.toString();
+			}
 
-		return card;
-	}).join(' / ');
+			return card;
+		})
+		.join(' / ');
 };
 
-const toSuperscript = (number) => (
-	number.toString().split('').map((digit) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[digit]).join('')
-);
+const toSuperscript = (number) => number
+	.toString()
+	.split('')
+	.map((digit) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[digit])
+	.join('');
 
-const frequencyToString = (frequency) => (
-	frequency.map(({factor, times: factorTimes}) => {
+const frequencyToString = (frequency) => frequency
+	.map(({factor, times: factorTimes}) => {
 		if (factorTimes === 1) {
 			return factor.toString();
 		}
 
 		return `${factor}${toSuperscript(factorTimes)}`;
-	}).join(' × ')
-);
+	})
+	.join(' × ');
 
 // ([1, 2, 3, 3, 5], 3) => [1, 2, 3, 5]
 const drop = (array, value) => {
@@ -132,7 +136,12 @@ const matchByCards = (number, factors, cards, count) => {
 			const remnant = factors[factorIndex].slice(cardString.length);
 			const nextFactors = factors.slice();
 			nextFactors[factorIndex] = remnant;
-			const match = matchByCards('', nextFactors, drop(cards, cards.includes(card) ? card : 'X'), 0);
+			const match = matchByCards(
+				'',
+				nextFactors,
+				drop(cards, cards.includes(card) ? card : 'X'),
+				0
+			);
 
 			if (match !== null) {
 				const [numberMatch, factorMatches] = match;
@@ -154,7 +163,12 @@ const matchByCards = (number, factors, cards, count) => {
 			}
 
 			const remnant = number.slice(cardString.length);
-			const match = matchByCards(remnant, factors, drop(cards, cards.includes(card) ? card : 'X'), count - 1);
+			const match = matchByCards(
+				remnant,
+				factors,
+				drop(cards, cards.includes(card) ? card : 'X'),
+				count - 1
+			);
 
 			if (match !== null) {
 				const [numberMatch, factorMatches] = match;
@@ -178,7 +192,10 @@ const setState = async (newState) => {
 		savedState[key] = value;
 	}
 
-	await promisify(fs.writeFile)(path.join(__dirname, 'state.json'), JSON.stringify(savedState));
+	await promisify(fs.writeFile)(
+		path.join(__dirname, 'state.json'),
+		JSON.stringify(savedState)
+	);
 };
 
 const discard = (cards) => {
@@ -204,7 +221,7 @@ const draw = async (count) => {
 
 	const drewCards = newStock.slice(0, count);
 	newHand = sort(newHand.concat(drewCards));
-	newStock = newStock.slice(count);
+	newStock = newStock.slice(drewCards.length);
 
 	await setState({
 		stock: newStock,
@@ -216,17 +233,15 @@ const draw = async (count) => {
 };
 
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
-	const postMessage = (text, attachments, options) => (
-		slack.chat.postMessage({
-			channel: process.env.CHANNEL_SANDBOX,
-			text,
-			username: 'primebot',
-			// eslint-disable-next-line camelcase
-			icon_emoji: ':1234:',
-			...(attachments ? {attachments} : {}),
-			...(options ? options : {}),
-		})
-	);
+	const postMessage = (text, attachments, options) => slack.chat.postMessage({
+		channel: process.env.CHANNEL_SANDBOX,
+		text,
+		username: 'primebot',
+		// eslint-disable-next-line camelcase
+		icon_emoji: ':1234:',
+		...(attachments ? {attachments} : {}),
+		...(options ? options : {}),
+	});
 
 	const afterDiscard = async () => {
 		if (state.hand.length === 0) {
@@ -274,11 +289,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				if (state.boardNumber === null) {
 					await postMessage(stripIndent`
 						現在の状態
+						${state.isRevolution ? ':hammer_and_wrench:革命中:hammer_and_wrench:' : ''}
 						*手札* ${cardsToString(state.hand)}
 					`);
 				} else {
 					await postMessage(stripIndent`
 						現在の状態
+						${state.isRevolution ? ':hammer_and_wrench:革命中:hammer_and_wrench:' : ''}
 						*場数* ${state.boardNumber} (${cardsToString(state.boardCards)})
 						*手札* ${cardsToString(state.hand)}
 					`);
@@ -286,7 +303,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
-			const deck = shuffle([...flatten(times(4, constant(range(1, 14)))), 'X', 'X']);
+			const deck = shuffle([
+				...flatten(times(4, constant(range(1, 14)))),
+				'X',
+				'X',
+			]);
 			const hand = deck.slice(0, 11);
 			const stock = deck.slice(11);
 
@@ -317,7 +338,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			let decomposition = null;
 
 			if (state.boardNumber === null) {
-				for (const count of range(13, 0)) {
+				for (const count of range(0, 13)) {
 					const match = matchByCards(numberText, [], state.hand, count);
 					if (match !== null) {
 						const [numberMatch] = match;
@@ -328,12 +349,30 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			} else {
 				assert(typeof state.boardNumber === 'number');
 
-				if (state.boardNumber >= number) {
-					await postMessage(`:warning: 場数 (${state.boardNumber}) 以下の数字を出すことはできません。`);
+				if (!state.isRevolution && state.boardNumber >= number) {
+					await postMessage(
+						`:warning: 場数 (${
+							state.boardNumber
+						}) 以下の数字を出すことはできません。`
+					);
 					return;
 				}
 
-				const match = matchByCards(numberText, [], state.hand, state.boardCards.length);
+				if (state.isRevolution && state.boardNumber <= number) {
+					await postMessage(
+						`:warning: 場数 (${
+							state.boardNumber
+						}) 以上の数字を出すことはできません:hammer_and_wrench:`
+					);
+					return;
+				}
+
+				const match = matchByCards(
+					numberText,
+					[],
+					state.hand,
+					state.boardCards.length
+				);
 				if (match !== null) {
 					const [numberMatch] = match;
 					decomposition = numberMatch;
@@ -341,7 +380,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			if (decomposition === null) {
-				await postMessage(`:warning: ${numberText} は手元のカードから出せません。`);
+				await postMessage(
+					`:warning: ${numberText} は手元のカードから出せません。`
+				);
 				return;
 			}
 
@@ -354,9 +395,28 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					turns: state.turns + 1,
 				});
 				await postMessage(stripIndent`
-					:boom:グロタンカット!:boom:
+					:boom:グロタンカット！:boom:
 
 					場が流れました。
+					*手札* ${cardsToString(state.hand)}
+				`);
+				await afterDiscard();
+				return;
+			}
+
+			if (number === 1729) {
+				await discard(decomposition);
+				await setState({
+					isDrew: false,
+					isRevolution: !state.isRevolution,
+					boardCards: decomposition,
+					boardNumber: number,
+					turns: state.turns + 1,
+				});
+				await postMessage(stripIndent`
+					:hammer_and_wrench:ラマヌジャン革命！:hammer_and_wrench:
+
+					${state.isRevolution ? '革命状態になりました。' : '革命状態でなくなりました。'}
 					*手札* ${cardsToString(state.hand)}
 				`);
 				await afterDiscard();
@@ -399,7 +459,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if ((matches = text.replace(/\s/g, '').match(/^(\d+)=((?:\d+(?:\^\d+)?\*)*\d+(?:\^\d+)?)$/))) {
+		if (
+			(matches = text
+				.replace(/\s/g, '')
+				.match(/^(\d+)=((?:\d+(?:\^\d+)?\*)*\d+(?:\^\d+)?)$/))
+		) {
 			if (state.phase !== 'playing') {
 				return;
 			}
@@ -409,7 +473,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			const [, rawNumberText, factorsText] = matches;
-			const factorComponents = factorsText.split(/[\^*]/).map((component) => parseInt(component).toString());
+			const factorComponents = factorsText
+				.split(/[\^*]/)
+				.map((component) => parseInt(component).toString());
 			const factors = factorsText.split('*').map((factorText) => {
 				const [mantissa, exponent = 1] = factorText.split('^');
 				return {mantissa: parseInt(mantissa), exponent: parseInt(exponent)};
@@ -419,12 +485,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const numberText = number.toString();
 
 			if (factors.length === 1 && factors[0].exponent === 1) {
-				await postMessage(`:warning: 合成数出しは因数が1つ以上必要です。`);
+				await postMessage(':warning: 合成数出しは因数が1つ以上必要です。');
 				return;
 			}
 
 			if (factorComponents.includes('1')) {
-				await postMessage(`:warning: 合成数出しで「1」は使えません。`);
+				await postMessage(':warning: 合成数出しで「1」は使えません。');
 				return;
 			}
 
@@ -432,7 +498,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 			if (state.boardNumber === null) {
 				for (const count of range(20, 0)) {
-					const match = matchByCards(numberText, factorComponents, state.hand, count);
+					const match = matchByCards(
+						numberText,
+						factorComponents,
+						state.hand,
+						count
+					);
 					if (match !== null) {
 						decompositions = match;
 						break;
@@ -442,30 +513,46 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				assert(typeof state.boardNumber === 'number');
 
 				if (state.boardNumber >= number) {
-					await postMessage(`:warning: 場数 (${state.boardNumber}) 以下の数字を出すことはできません。`);
+					await postMessage(
+						`:warning: 場数 (${
+							state.boardNumber
+						}) 以下の数字を出すことはできません。`
+					);
 					return;
 				}
 
-				const match = matchByCards(numberText, factorComponents, state.hand, state.boardCards.length);
+				const match = matchByCards(
+					numberText,
+					factorComponents,
+					state.hand,
+					state.boardCards.length
+				);
 				if (match !== null) {
 					decompositions = match;
 				}
 			}
 
 			if (decompositions === null) {
-				await postMessage(`:warning: ${numberText} = ${factorsText} は手元のカードから出せません。`);
+				await postMessage(
+					`:warning: ${numberText} = ${factorsText} は手元のカードから出せません。`
+				);
 				return;
 			}
 
 			const [numberDecomposition, factorDecompositions] = decompositions;
-			const decompositionCards = flatten([numberDecomposition, ...factorDecompositions]);
+			const decompositionCards = flatten([
+				numberDecomposition,
+				...factorDecompositions,
+			]);
 
-			const notPrimeMantissas = factors.map(({mantissa}) => {
-				const frequency = prime.getFrequency(mantissa);
-				return {mantissa, frequency};
-			}).filter(({frequency}) => (
-				frequency.length !== 1 || frequency[0].times !== 1 || number < 2
-			));
+			const notPrimeMantissas = factors
+				.map(({mantissa}) => {
+					const frequency = prime.getFrequency(mantissa);
+					return {mantissa, frequency};
+				})
+				.filter(
+					({frequency}) => frequency.length !== 1 || frequency[0].times !== 1 || number < 2
+				);
 
 			if (notPrimeMantissas.length !== 0) {
 				const drewCards = await draw(decompositionCards.length);
@@ -485,7 +572,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
-			const correctCalculation = factors.map(({mantissa, exponent}) => mantissa ** exponent).reduce((a, b) => a * b);
+			const correctCalculation = factors
+				.map(({mantissa, exponent}) => mantissa ** exponent)
+				.reduce((a, b) => a * b);
 
 			if (correctCalculation !== number) {
 				const drewCards = await draw(decompositionCards.length);
@@ -635,14 +724,17 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			const frequency = prime.getFrequency(number);
-			const isPrime = frequency.length === 1 && frequency[0].times === 1 && number >= 2;
+			const isPrime =
+				frequency.length === 1 && frequency[0].times === 1 && number >= 2;
 
 			if (isPrime) {
 				await postMessage(`*${number}* は素数です!`);
 				return;
 			}
 
-			await postMessage(`*${number}* = ${number === 1 ? '1' : frequencyToString(frequency)}`);
+			await postMessage(
+				`*${number}* = ${number === 1 ? '1' : frequencyToString(frequency)}`
+			);
 		}
 	});
 };

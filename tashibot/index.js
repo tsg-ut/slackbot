@@ -125,7 +125,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			.join('|')})\\b`,
 		'gi'
 	);
-	console.log(englishDictRegex);
 
 	const getReading = async (text) => {
 		const tokens = await tokenize(text.replace(/[\d,]+/g, (number) => toJapanese(number.replace(/,/g, ''))));
