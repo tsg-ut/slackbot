@@ -80,10 +80,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	}
 
 	const englishDictBuffer = await promisify(fs.readFile)(englishDictPath);
-	const englishDictText = iconv.decode(englishDictBuffer, 'sjis');
+	const englishDictText = iconv.decode(englishDictBuffer, englishDictBuffer.toString().match(/-\*-\s*coding:\s*(.+?)\s+-\*-/)[1] || 'sjis');
 	const englishDict = new Map([
 		...englishDictText
 			.split('\n')
+			.slice(1)
 			.map((line) => {
 				const [english, japanese] = line.split(' ');
 				if (!japanese) {
