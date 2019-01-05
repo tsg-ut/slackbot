@@ -5,8 +5,13 @@ const {promisify} = require('util');
 const {constant, times, flatten, range, shuffle, uniq} = require('lodash');
 const {stripIndent, stripIndents} = require('common-tags');
 const prime = require('primes-and-factors');
+const {spawn} = require('child_process');
+const concat = require('concat-stream');
+const MillerRabin = require('miller-rabin');
+const BN = require('bn.js');
 
 const cardSet = range(1, 14);
+const millerRabin = new MillerRabin();
 
 const state = (() => {
 	try {
@@ -74,10 +79,37 @@ const toSuperscript = (number) => number
 	.map((digit) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[digit])
 	.join('');
 
+const getFrequency = async (numberString) => {
+	assert(numberString.match(/^\d+$/));
+
+	if (parseInt(numberString) < Number.MAX_SAFE_INTEGER) {
+		return prime.getFrequency(parseInt(numberString));
+	}
+
+	if (numberString.length <= 35) {
+		const command = spawn('factor', [numberString]);
+		const result = await new Promise((resolve) => {
+			command.stdout.pipe(concat((stdout) => resolve(stdout)));
+		});
+		const factors = (result.toString().split(':')[1] || '').trim().split(' ');
+		const frequencies = Array.from(new Set(factors)).sort((a, b) => parseInt(a) - parseInt(b)).map((factor) => ({
+			factor,
+			times: factors.filter((f) => f === factor).length,
+		}));
+		return frequencies;
+	}
+
+	if (numberString.length <= 200) {
+		return millerRabin.test(new BN(numberString));
+	}
+
+	return false;
+};
+
 const frequencyToString = (frequency) => frequency
 	.map(({factor, times: factorTimes}) => {
 		if (factorTimes === 1) {
-			return factor.toString();
+			return factor;
 		}
 
 		return `${factor}${toSuperscript(factorTimes)}`;
@@ -314,6 +346,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await setState({
 				hand: sort(hand),
 				challenger: user,
+				isRevolution: false,
+				isDrew: false,
 				stock,
 				phase: 'playing',
 				turns: 0,
@@ -333,12 +367,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			const number = parseInt(text);
-			const numberText = number.toString();
+			const numberText = text.replace(/^0+/, '');
 
 			let decomposition = null;
 
 			if (state.boardNumber === null) {
-				for (const count of range(0, 13)) {
+				for (const count of range(0, 54)) {
 					const match = matchByCards(numberText, [], state.hand, count);
 					if (match !== null) {
 						const [numberMatch] = match;
@@ -347,9 +381,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					}
 				}
 			} else {
-				assert(typeof state.boardNumber === 'number');
+				assert(typeof state.boardNumber === 'string');
 
-				if (!state.isRevolution && state.boardNumber >= number) {
+				if (!state.isRevolution && parseInt(state.boardNumber) >= number) {
 					await postMessage(
 						`:warning: 場数 (${
 							state.boardNumber
@@ -358,7 +392,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					return;
 				}
 
-				if (state.isRevolution && state.boardNumber <= number) {
+				if (state.isRevolution && parseInt(state.boardNumber) <= number) {
 					await postMessage(
 						`:warning: 場数 (${
 							state.boardNumber
@@ -410,7 +444,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					isDrew: false,
 					isRevolution: !state.isRevolution,
 					boardCards: decomposition,
-					boardNumber: number,
+					boardNumber: numberText,
 					turns: state.turns + 1,
 				});
 				await postMessage(stripIndent`
@@ -423,9 +457,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
-			const frequency = prime.getFrequency(number);
+			const frequency = await getFrequency(numberText);
 
-			if (frequency.length !== 1 || frequency[0].times !== 1 || number < 2) {
+			if (frequency === false || (typeof frequency !== 'boolean' && (frequency.length !== 1 || frequency[0].times !== 1)) || number < 2) {
 				const drewCards = await draw(decomposition.length);
 				await setState({
 					isDrew: false,
@@ -435,7 +469,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				});
 				await postMessage(stripIndent`
 					:no_entry_sign: *${numberText}* は素数ではありません!!!
-					${numberText} = ${frequencyToString(frequency)}
+					${frequency === false ? '' : `${numberText} = ${frequencyToString(frequency)}`}
 
 					:warning:ペナルティ +${decomposition.length}枚 (${cardsToString(drewCards)})
 					*手札* ${cardsToString(state.hand)}
@@ -446,7 +480,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await setState({
 				isDrew: false,
 				boardCards: decomposition,
-				boardNumber: number,
+				boardNumber: numberText,
 				turns: state.turns + 1,
 			});
 
@@ -497,7 +531,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			let decompositions = null;
 
 			if (state.boardNumber === null) {
-				for (const count of range(20, 0)) {
+				for (const count of range(0, 54)) {
 					const match = matchByCards(
 						numberText,
 						factorComponents,
@@ -510,13 +544,22 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					}
 				}
 			} else {
-				assert(typeof state.boardNumber === 'number');
+				assert(typeof state.boardNumber === 'string');
 
-				if (state.boardNumber >= number) {
+				if (!state.isRevolution && parseInt(state.boardNumber) >= number) {
 					await postMessage(
 						`:warning: 場数 (${
 							state.boardNumber
 						}) 以下の数字を出すことはできません。`
+					);
+					return;
+				}
+
+				if (state.isRevolution && parseInt(state.boardNumber) <= number) {
+					await postMessage(
+						`:warning: 場数 (${
+							state.boardNumber
+						}) 以上の数字を出すことはできません:hammer_and_wrench:`
 					);
 					return;
 				}
@@ -545,13 +588,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				...factorDecompositions,
 			]);
 
-			const notPrimeMantissas = factors
-				.map(({mantissa}) => {
-					const frequency = prime.getFrequency(mantissa);
+			const notPrimeMantissas = (await Promise.all(factors
+				.map(async ({mantissa}) => {
+					const frequency = await getFrequency(mantissa);
 					return {mantissa, frequency};
-				})
+				})))
 				.filter(
-					({frequency}) => frequency.length !== 1 || frequency[0].times !== 1 || number < 2
+					({frequency}) => frequency === false || (typeof frequency !== 'boolean' && (frequency.length !== 1 || frequency[0].times !== 1)) || number < 2
 				);
 
 			if (notPrimeMantissas.length !== 0) {
@@ -564,7 +607,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				});
 				await postMessage(stripIndents`
 					:no_entry_sign: *${notPrimeMantissas.map(({mantissa}) => mantissa).join(', ')}* は素数ではありません!!!
-					${notPrimeMantissas.map(({mantissa, frequency}) => `${mantissa} = ${frequencyToString(frequency)}`).join('\n')}
+					${notPrimeMantissas.map(({mantissa, frequency}) => frequency === false ? '' : `${mantissa} = ${frequencyToString(frequency)}`).join('\n')}
 
 					:warning:ペナルティ +${decompositionCards.length}枚 (${cardsToString(drewCards)})
 					*手札* ${cardsToString(state.hand)}
@@ -717,23 +760,33 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
-			const number = parseInt(body);
-			if (!Number.isFinite(number) || Number.isNaN(number) || number < 1) {
+			if (!body.match(/^\d+$/)) {
 				await postMessage(':ha:');
 				return;
 			}
 
-			const frequency = prime.getFrequency(number);
+			const frequency = await getFrequency(body);
+
+			if (frequency === true) {
+				await postMessage(`*${body}* は素数です!`);
+				return;
+			}
+
+			if (frequency === false) {
+				await postMessage(`*${body}* は合成数です!`);
+				return;
+			}
+
 			const isPrime =
-				frequency.length === 1 && frequency[0].times === 1 && number >= 2;
+				frequency.length === 1 && frequency[0].times === 1 && parseInt(body) >= 2;
 
 			if (isPrime) {
-				await postMessage(`*${number}* は素数です!`);
+				await postMessage(`*${body}* は素数です!`);
 				return;
 			}
 
 			await postMessage(
-				`*${number}* = ${number === 1 ? '1' : frequencyToString(frequency)}`
+				`*${body}* = ${parseInt(body) === 1 ? '1' : frequencyToString(frequency)}`
 			);
 		}
 	});
