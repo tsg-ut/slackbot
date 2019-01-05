@@ -67,6 +67,25 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		dir: path.resolve(__dirname, '__cache__'),
 	});
 
+	const getEncoding = (filepath) => (new Promise((resolve, reject) => {
+		const rs = fs.createReadStream(filepath);
+		let line = '';
+		rs.on('data', (chunk) => {
+			rs.close();
+			line += chunk.toString().split('\n')[0];
+			if (chunk.indexOf('\n') === -1) {
+				rs.close();
+			}
+		})
+			.on('close', () => {
+				const match = line.match(/-\*-\s*coding:\s*(.+?)\s+-\*-/);
+				resolve(match ? [match[1], Buffer.byteLength(line) + 1] : [null, 0]);
+			})
+			.on('error', (err) => {
+				reject(err);
+			});
+	}));
+
 	const englishDictPath = path.resolve(__dirname, 'bep-ss-2.3', 'bep-eng.dic');
 
 	const englishDictExists = await new Promise((resolve) => {
@@ -78,12 +97,13 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	if (!englishDictExists) {
 		await download('http://www.argv.org/bep/files/linux/beta/bep-ss-2.3.tar.gz', __dirname, {extract: true});
 	}
-
-	const englishDictBuffer = await promisify(fs.readFile)(englishDictPath);
-	const englishDictText = iconv.decode(englishDictBuffer, 'sjis');
+	const [encoding, offset] = await getEncoding(englishDictPath);
+	const englishDictBuffer = await promisify(fs.readFile)(englishDictPath, {start: offset});
+	const englishDictText = iconv.decode(englishDictBuffer, encoding || 'sjis');
 	const englishDict = new Map([
 		...englishDictText
 			.split('\n')
+			.slice(encoding !== null)
 			.map((line) => {
 				const [english, japanese] = line.split(' ');
 				if (!japanese) {
