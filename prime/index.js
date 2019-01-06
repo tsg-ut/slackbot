@@ -509,14 +509,16 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const [, rawNumberText, factorsText] = matches;
 			const factorComponents = factorsText
 				.split(/[\^*]/)
-				.map((component) => parseInt(component).toString());
+				.map((component) => component.replace(/[^\d]/g, '').replace(/^0+/, ''));
 			const factors = factorsText.split('*').map((factorText) => {
-				const [mantissa, exponent = 1] = factorText.split('^');
-				return {mantissa: parseInt(mantissa), exponent: parseInt(exponent)};
+				const [mantissa, exponent = '1'] = factorText.split('^');
+				return {
+					mantissa: mantissa.replace(/[^\d]/g, '').replace(/^0+/, ''),
+					exponent: parseInt(exponent),
+				};
 			});
 			const number = parseInt(rawNumberText);
-
-			const numberText = number.toString();
+			const numberText = rawNumberText.replace(/^0+/, '');
 
 			if (factors.length === 1 && factors[0].exponent === 1) {
 				await postMessage(':warning: 合成数出しは因数が1つ以上必要です。');
@@ -594,7 +596,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					return {mantissa, frequency};
 				})))
 				.filter(
-					({frequency}) => frequency === false || (typeof frequency !== 'boolean' && (frequency.length !== 1 || frequency[0].times !== 1)) || number < 2
+					({mantissa, frequency}) => frequency === false || (typeof frequency !== 'boolean' && (frequency.length !== 1 || frequency[0].times !== 1)) || mantissa < 2
 				);
 
 			if (notPrimeMantissas.length !== 0) {
@@ -616,10 +618,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			const correctCalculation = factors
-				.map(({mantissa, exponent}) => mantissa ** exponent)
-				.reduce((a, b) => a * b);
+				.map(({mantissa, exponent}) => new BN(mantissa).pow(new BN(exponent)))
+				.reduce((a, b) => a.mul(b))
+				.toString();
 
-			if (correctCalculation !== number) {
+			if (correctCalculation !== numberText) {
 				const drewCards = await draw(decompositionCards.length);
 				await setState({
 					isDrew: false,
@@ -640,7 +643,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await setState({
 				isDrew: false,
 				boardCards: numberDecomposition,
-				boardNumber: number,
+				boardNumber: numberText,
 				turns: state.turns + 1,
 			});
 
