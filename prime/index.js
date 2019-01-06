@@ -372,7 +372,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			let decomposition = null;
 
 			if (state.boardNumber === null) {
-				for (const count of range(0, 54)) {
+				for (const count of range(0, 55)) {
 					const match = matchByCards(numberText, [], state.hand, count);
 					if (match !== null) {
 						const [numberMatch] = match;
@@ -533,7 +533,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			let decompositions = null;
 
 			if (state.boardNumber === null) {
-				for (const count of range(0, 54)) {
+				for (const count of range(0, 55)) {
 					const match = matchByCards(
 						numberText,
 						factorComponents,
