@@ -2,7 +2,7 @@ export VOCAB_SOURCE=${HOME}/model/entries.src.vocab.txt
 export VOCAB_TARGET=${HOME}/model/entries.dst.tok.bpe.32000.vocab.txt
 export SOURCES=/tmp/input.src.txt
 export MODEL_DIR=${HOME}/model
-export MODEL_CHECKPOINT=${HOME}/model/model.ckpt-427758
+export MODEL_CHECKPOINT=${HOME}/model/$2
 
 echo "$1" > $SOURCES
 
