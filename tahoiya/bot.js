@@ -41,7 +41,7 @@ module.exports.getResult = async (rawInput) => {
 			OpenStdin: false,
 			StdinOnce: false,
 			Env: null,
-			Cmd: ['bash', '/root/run.sh', Array.from(input).join(' '), 'model.ckpt-427758'],
+			Cmd: ['bash', '/root/run.sh', Array.from(input).join(' '), 'model.ckpt-455758'],
 			Image: 'hakatashi/tahoiyabot',
 			Volumes: {
 				'/root/model': {},
