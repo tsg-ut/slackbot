@@ -7,8 +7,12 @@ module.exports.serialize = ({battles, offset}, members) => {
 	const entries = [];
 
 	const getMemberName = (user) => {
+		if (user === 'tahoiyabot-01') {
+			return 'たほいやAIくん1号 (仮)';
+		}
+
 		const member = members.find(({id}) => id === user);
-		return member.profile.display_name || member.name;
+		return `@${member.profile.display_name || member.name}`;
 	};
 
 	for (const [index, {timestamp, theme, word, meanings, url, author, sourceString, comments = []}] of battles.entries()) {
@@ -16,14 +20,14 @@ module.exports.serialize = ({battles, offset}, members) => {
 		const meaningsText = meanings.map((meaning, i) => {
 			let text = '';
 			if (meaning.type === 'user') {
-				text = `${i + 1}. ${meaning.text} (@${getMemberName(meaning.user)})`;
+				text = `${i + 1}. ${meaning.text} (${getMemberName(meaning.user)})`;
 			} else if (meaning.type === 'dummy') {
 				text = `${i + 1}. ${meaning.text} (${meaning.source}: ${meaning.title})`;
 			} else if (meaning.type === 'correct') {
 				text = `${i + 1}. ⭕️**${meaning.text}**`;
 			}
 
-			const betters = meaning.betters.map(({user, coins}) => `@${getMemberName(user)} (${coins}枚)`).join(' ');
+			const betters = meaning.betters.map(({user, coins}) => `${getMemberName(user)} (${coins}枚)`).join(' ');
 
 			if (betters.length > 0) {
 				return `${text}\n    * ${betters}`;
@@ -32,15 +36,15 @@ module.exports.serialize = ({battles, offset}, members) => {
 			return text;
 		}).join('\n');
 		const commentsText = comments.map((comment) => (
-			`* [${moment(comment.date).utcOffset('+0900').format('HH:mm:ss')}] **@${getMemberName(comment.user)}** ${comment.text}`
+			`* [${moment(comment.date).utcOffset('+0900').format('HH:mm:ss')}] **${getMemberName(comment.user)}** ${comment.text}`
 		)).join('\n');
 
 		entries.push(`
 			# 第${offset + index + 1}回 「**${theme}**」
 
 			* **日時** ${moment(timestamp).utcOffset('+0900').format('YYYY-MM-DD HH:mm:ss')}
-			* **参加者** ${users.map((user) => `@${getMemberName(user)}`).join(' ')} (${users.length}人)
-			${author ? `* **出題者** @${getMemberName(author)}` : ''}
+			* **参加者** ${users.map((user) => `${getMemberName(user)}`).join(' ')} (${users.length}人)
+			${author ? `* **出題者** ${getMemberName(author)}` : ''}
 
 			${meanings.map((meaning, i) => `${i + 1}. ${meaning.text}`).join('\n')}
 
