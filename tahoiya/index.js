@@ -315,10 +315,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		})));
 
 		if (state.meanings.has('tahoiyabot-01')) {
-			const {index: betMeaning} = sample(
+			const {index: betMeaning} = minBy(
 				shuffledMeanings
 					.map((meaning, index) => ({...meaning, index}))
-					.filter(({user}) => user !== 'tahoiyabot-01')
+					.filter(({user}) => user !== 'tahoiyabot-01'),
+				({meaning}) => levenshtein.get(meaning, state.meanings.get('tahoiyabot-01').meaning)
 			);
 			state.bettings.set('tahoiyabot-01', {
 				meaning: betMeaning,
