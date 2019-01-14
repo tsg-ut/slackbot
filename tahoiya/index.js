@@ -319,7 +319,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				shuffledMeanings
 					.map((meaning, index) => ({...meaning, index}))
 					.filter(({user}) => user !== 'tahoiyabot-01'),
-				({text}) => levenshtein.get(text, state.meanings.get('tahoiyabot-01').text)
+				({text}) => levenshtein.get(text, state.meanings.get('tahoiyabot-01'))
 			);
 			state.bettings.set('tahoiyabot-01', {
 				meaning: betMeaning,
