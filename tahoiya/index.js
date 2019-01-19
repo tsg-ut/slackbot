@@ -644,7 +644,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			${meanings.size === 0 ? '' : `登録済み: ${[...meanings.keys()].map((user) => getMention(user)).join(', ')}`}
 		`);
 
-		bot.getResult(state.theme.ruby).then(onBotResult);
+		if (!state.meanings.has('tahoiyabot-01')) {
+			bot.getResult(state.theme.ruby).then(onBotResult);
+		}
 	};
 
 	rtm.on('message', async (message) => {
