@@ -12,6 +12,8 @@ const toJapanese = require('jp-num/toJapanese');
 const iconv = require('iconv-lite');
 const {toZenKana} = require('jaconv');
 
+const histories = [];
+
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const cities = (await promisify(fs.readFile)(path.resolve(__dirname, 'cities.csv')))
 		.toString()
@@ -176,6 +178,13 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		const city = citiesMap.get(matches[1]);
+
+		if (histories.filter((history) => history.cityName === city.name && history.date >= Date.now() - 10 * 1000).length >= 3) {
+			await slack.reactions.add({name: 'bomb', channel: message.channel, timestamp: message.timestamp});
+			return;
+		}
+
+		histories.push({cityName: city.name, date: Date.now()});
 		const placeText = city.type === 'city' ? `${city.name},${city.prefecture}` : `${city.name},${city.description}`;
 		const imageUrl = `https://maps.googleapis.com/maps/api/staticmap?${qs.encode({
 			center: placeText,
