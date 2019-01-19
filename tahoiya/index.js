@@ -9,6 +9,7 @@ const sum = require('lodash/sum');
 const maxBy = require('lodash/maxBy');
 const minBy = require('lodash/minBy');
 const shuffle = require('lodash/shuffle');
+const random = require('lodash/random');
 const {hiraganize} = require('japanese');
 const path = require('path');
 const fs = require('fs');
@@ -16,6 +17,8 @@ const {promisify} = require('util');
 const schedule = require('node-schedule');
 const sqlite = require('sqlite');
 const sql = require('sql-template-strings');
+const Queue = require('p-queue');
+const storage = require('node-persist');
 
 const {
 	getPageTitle,
@@ -66,8 +69,16 @@ const state = (() => {
 	}
 })();
 
+const queue = new Queue({concurrency: 1});
+
+const transaction = (func) => queue.add(func);
+
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const db = await sqlite.open(path.join(__dirname, 'themes.sqlite3'));
+
+	await storage.init({
+		dir: path.resolve(__dirname, '__cache__'),
+	});
 
 	const mapToObject = (map) => {
 		const object = {};
@@ -703,9 +714,47 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				}
 
 				if (text === 'デイリーたほいや') {
-					await postMessage('ヘルプ: https://github.com/tsg-ut/slackbot/wiki/%E3%83%87%E3%82%A4%E3%83%AA%E3%83%BC%E3%81%9F%E3%81%BB%E3%81%84%E3%82%84');
+					postMessage('ヘルプ: https://github.com/tsg-ut/slackbot/wiki/%E3%83%87%E3%82%A4%E3%83%AA%E3%83%BC%E3%81%9F%E3%81%BB%E3%81%84%E3%82%84');
 					return;
 				}
+
+				console.log({text});
+				if (text.startsWith('@tahoiya')) {
+					const body = text.replace(/^@tahoiya/, '').trim();
+					const ruby = hiraganize(body).replace(/[^\p{Script=Hiragana}ー]/gu, '');
+
+					if (ruby.length > 0 && ruby.length <= 20) {
+						if (state.phase !== 'waiting') {
+							postMessage('今たほいや中だよ:imp:');
+							return;
+						}
+
+						if (queue.size >= 2) {
+							postMessage(`今忙しいから *${ruby}* は後で:upside_down_face:`);
+							return;
+						}
+
+						transaction(async () => {
+							const key = JSON.stringify(['tahoiyabot-01', 'model.ckpt-455758', body]);
+							let data = await storage.getItem(key);
+							if (!data) {
+								rtm.sendTyping(message.channel);
+								data = await bot.getResult(ruby);
+								await storage.setItem(key, data);
+							}
+							await postMessage(stripIndent`
+								*${ruby}* の正しい意味は⋯⋯
+								*${random(1, 5)}. ${data.result}*
+							`, null, {username: getMemberName('tahoiyabot-01')});
+						});
+						return;
+					}
+
+					postMessage(':ha:');
+					return;
+				}
+
+				return;
 			}
 
 			// DM
