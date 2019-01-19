@@ -115,7 +115,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		const {text} = message;
 		let match = null;
 
-		if (message.subtype === undefined && (match = text.match(/^\s*(.+?:\s*)?(([\d:.,]+|DNF)\s*)+$/i))) {
+		if (message.subtype === undefined && (match = text.match(/^\s*(.+?:\s*)?(([\d:.,]{1,8}|DNF)\s*)+$/i))) {
 			const label = match[1] ? match[1].trim().slice(0, -1) : null;
 			const labelText = label ? ` (${label})` : '';
 			const timeText = match[1] ? text.slice(match[1].length) : text;
