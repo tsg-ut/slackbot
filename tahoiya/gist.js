@@ -11,6 +11,10 @@ module.exports.serialize = ({battles, offset}, members) => {
 			return 'たほいやAIくん1号 (仮)';
 		}
 
+		if (user === 'tahoiyabot-02') {
+			return 'たほいやAIくん2号 (仮)';
+		}
+
 		const member = members.find(({id}) => id === user);
 		return `@${member.profile.display_name || member.name}`;
 	};

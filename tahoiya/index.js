@@ -137,12 +137,16 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return 'たほいやAIくん1号 (仮)';
 		}
 
+		if (user === 'tahoiyabot-02') {
+			return 'たほいやAIくん2号 (仮)';
+		}
+
 		const member = members.find(({id}) => id === user);
 		return member.profile.display_name || member.name;
 	};
 
 	const getMemberIcon = (user) => {
-		if (user === 'tahoiyabot-01') {
+		if (user === 'tahoiyabot-01' || user === 'tahoiyabot-02') {
 			return 'https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/apple/155/robot-face_1f916.png';
 		}
 
@@ -153,6 +157,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const getMention = (user) => {
 		if (user === 'tahoiyabot-01') {
 			return 'たほいやAIくん1号 (仮)';
+		}
+
+		if (user === 'tahoiyabot-02') {
+			return 'たほいやAIくん2号 (仮)';
 		}
 
 		return `<@${user}>`;
@@ -277,13 +285,13 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if (humanCount === 0) {
-			await setState({phase: 'waiting', theme: null, author: null});
+			await setState({phase: 'waiting', theme: null, author: null, meanings: new Map()});
 			await postMessage('参加者がいないのでキャンセルされたよ:face_with_rolling_eyes:');
 			return;
 		}
 
 		await setState({phase: 'collect_bettings'});
-		const dummySize = Math.max(2, 4 - state.meanings.size);
+		const dummySize = Math.max(1, 4 - state.meanings.size);
 		const ambiguateDummy = minBy(candidateWords, ([word, ruby]) => {
 			const distance = levenshtein.get(state.theme.ruby, ruby);
 			if (distance === 0 || state.theme.word === word) {
@@ -325,19 +333,21 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			color: colors[index],
 		})));
 
-		if (state.meanings.has('tahoiyabot-01')) {
-			const {index: betMeaning} = minBy(
-				shuffledMeanings
-					.map((meaning, index) => ({...meaning, index}))
-					.filter(({user}) => user !== 'tahoiyabot-01'),
-				({text}) => levenshtein.get(text, state.meanings.get('tahoiyabot-01'))
-			);
-			state.bettings.set('tahoiyabot-01', {
-				meaning: betMeaning,
-				coins: 1,
-			});
-			await setState({bettings: state.bettings});
-			await postMessage(`${getMention('tahoiyabot-01')} がBETしたよ:moneybag:`);
+		for (const better of ['tahoiyabot-01', 'tahoiyabot-02']) {
+			if (state.meanings.has(better)) {
+				const {index: betMeaning} = minBy(
+					shuffledMeanings
+						.map((meaning, index) => ({...meaning, index}))
+						.filter(({user}) => user !== better),
+					({text}) => levenshtein.get(text, state.meanings.get(better))
+				);
+				state.bettings.set(better, {
+					meaning: betMeaning,
+					coins: 1,
+				});
+				await setState({bettings: state.bettings});
+				await postMessage(`${getMention(better)} がBETしたよ:moneybag:`);
+			}
 		}
 
 		timeoutId = setTimeout(onFinishBettings, (state.author === null ? 3 : 30) * 60 * 1000);
@@ -543,7 +553,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 	};
 
-	const onBotResult = async ({result}) => {
+	const onBotResult = async ({result, modelName}) => {
 		assert(state.phase === 'collect_meanings');
 
 		const distance = levenshtein.get(state.theme.meaning, result);
@@ -552,10 +562,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		state.meanings.set('tahoiyabot-01', normalizeMeaning(result));
+		state.meanings.set(modelName, normalizeMeaning(result));
 		await setState({meanings: state.meanings});
 		await postMessage(stripIndent`
-			たほいやAIくん1号 (仮) が意味を登録したよ:robot_face:
+			${getMemberName(modelName)} が意味を登録したよ:robot_face:
 		`);
 	};
 
@@ -656,7 +666,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		`);
 
 		if (!state.meanings.has('tahoiyabot-01')) {
-			bot.getResult(state.theme.ruby).then(onBotResult);
+			await bot.getResult(state.theme.ruby, 'tahoiyabot-01').then(onBotResult);
+		}
+
+		if (!state.meanings.has('tahoiyabot-02')) {
+			await bot.getResult(state.theme.ruby, 'tahoiyabot-02').then(onBotResult);
 		}
 	};
 
@@ -709,7 +723,15 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						終了予定時刻: ${getTimeLink(end)}
 					`);
 
-					bot.getResult(ruby).then(onBotResult);
+
+					if (!state.meanings.has('tahoiyabot-01')) {
+						await bot.getResult(ruby, 'tahoiyabot-01').then(onBotResult);
+					}
+
+					if (!state.meanings.has('tahoiyabot-02')) {
+						await bot.getResult(ruby, 'tahoiyabot-02').then(onBotResult);
+					}
+
 					return;
 				}
 
@@ -718,14 +740,29 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					return;
 				}
 
-				console.log({text});
 				if (text.startsWith('@tahoiya')) {
-					const body = text.replace(/^@tahoiya/, '').trim();
+					const body = text.replace(/^@\w+/, '').trim();
 					const ruby = hiraganize(body).replace(/[^\p{Script=Hiragana}ー]/gu, '');
+					const modelData = text.startsWith('@tahoiya2') ? (
+						['tahoiyabot-02', 'model.ckpt-600000']
+					) : (
+						['tahoiyabot-01', 'model.ckpt-455758']
+					);
 
 					if (ruby.length > 0 && ruby.length <= 20) {
 						if (state.phase !== 'waiting') {
 							postMessage('今たほいや中だよ:imp:');
+							return;
+						}
+
+						const key = JSON.stringify([...modelData, body]);
+						const tempData = await storage.getItem(key);
+
+						if (tempData) {
+							await postMessage(stripIndent`
+								*${ruby}* の正しい意味は⋯⋯
+								*${random(1, 5)}. ${tempData.result}*
+							`, null, {username: getMemberName(modelData[0])});
 							return;
 						}
 
@@ -735,17 +772,16 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						}
 
 						transaction(async () => {
-							const key = JSON.stringify(['tahoiyabot-01', 'model.ckpt-455758', body]);
 							let data = await storage.getItem(key);
 							if (!data) {
 								rtm.sendTyping(message.channel);
-								data = await bot.getResult(ruby);
+								data = await bot.getResult(ruby, modelData[0]);
 								await storage.setItem(key, data);
 							}
 							await postMessage(stripIndent`
 								*${ruby}* の正しい意味は⋯⋯
 								*${random(1, 5)}. ${data.result}*
-							`, null, {username: getMemberName('tahoiyabot-01')});
+							`, null, {username: getMemberName(modelData[0])});
 						});
 						return;
 					}
@@ -753,8 +789,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					postMessage(':ha:');
 					return;
 				}
-
-				return;
 			}
 
 			// DM

@@ -2,12 +2,14 @@ const Docker = require('dockerode');
 const concatStream = require('concat-stream');
 const {hiraganize} = require('japanese');
 const path = require('path');
+const assert = require('assert');
 
 const docker = new Docker();
 
 class TimeoutError extends Error { }
 
-module.exports.getResult = async (rawInput) => {
+module.exports.getResult = async (rawInput, modelName) => {
+	assert(modelName === 'tahoiyabot-01' || modelName === 'tahoiyabot-02')
 	let stdoutWriter = null;
 	const input = hiraganize(rawInput).replace(/[^\p{Script=Hiragana}ー]/gu, '');
 
@@ -25,7 +27,7 @@ module.exports.getResult = async (rawInput) => {
 		});
 	});
 
-	const modelPath = path.join(__dirname, 'model');
+	const modelPath = path.join(__dirname, 'models', modelName);
 	const dockerVolumePath = path.sep === '\\' ? modelPath.replace('C:\\', '/c/').replace(/\\/g, '/') : modelPath;
 
 	let container = null;
@@ -41,7 +43,7 @@ module.exports.getResult = async (rawInput) => {
 			OpenStdin: false,
 			StdinOnce: false,
 			Env: null,
-			Cmd: ['bash', '/root/run.sh', Array.from(input).join(' '), 'model.ckpt-455758'],
+			Cmd: ['bash', '/root/run.sh', Array.from(input).join(' '), 'model.ckpt'],
 			Image: 'hakatashi/tahoiyabot',
 			Volumes: {
 				'/root/model': {},
@@ -116,6 +118,7 @@ module.exports.getResult = async (rawInput) => {
 
 	return {
 		result,
+		modelName,
 		stdout: stdout ? stdout.toString() : '',
 		stderr: stderr ? stderr.toString() : '',
 	};
