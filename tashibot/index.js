@@ -11,8 +11,11 @@ const {escapeRegExp, uniq} = require('lodash');
 const toJapanese = require('jp-num/toJapanese');
 const iconv = require('iconv-lite');
 const {toZenKana} = require('jaconv');
+const Queue = require('p-queue');
 
 const histories = [];
+const queue = new Queue({concurrency: 1});
+const transaction = (func) => queue.add(func);
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const cities = (await promisify(fs.readFile)(path.resolve(__dirname, 'cities.csv')))
@@ -45,6 +48,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		...cities.map(({reading}) => reading),
 		...stations.map(({reading}) => reading).filter((reading) => reading.length >= 4),
 	]).sort((a, b) => b.length - a.length);
+
+	const uniqueCitiesCount = new Set(cities.map(({reading}) => reading)).size;
+	const uniqueStationsCount = new Set(stations.map(({reading}) => reading).filter((reading) => reading.length >= 4)).size;
 
 	const names = uniq([...cities.map(({name}) => name), ...stations.map(({name}) => name).filter((reading) => reading.length >= 3)]).sort(
 		(a, b) => b.length - a.length
@@ -198,11 +204,27 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			markers: `size:mid|color:0xfb724a|label:|${placeText}`,
 		})}`;
 
-		let cloudinaryData = await storage.getItem(imageUrl);
+		// append area image if station
+		const imageUrls = city.type === 'city' ? [imageUrl] : [imageUrl, `https://maps.googleapis.com/maps/api/staticmap?${qs.encode({
+			center: '38.5,137.0',
+			zoom: 4,
+			scale: 1,
+			size: '250x250',
+			maptype: 'roadmap',
+			key: process.env.GOOGLEMAP_TOKEN,
+			format: 'png',
+			visual_refresh: true,
+			markers: `size:tiny|color:0xfb724a|label:|${placeText}`,
+		})}`];
 
-		if (!cloudinaryData) {
-			const imageData = await download(imageUrl);
-			cloudinaryData = await new Promise((resolve, reject) => {
+		const cloudinaryData = await Promise.all(imageUrls.map(async (url) => {
+			const cacheData = await storage.getItem(url);
+			if (cacheData) {
+				return cacheData;
+			}
+
+			const imageData = await download(url);
+			const cloudinaryDatum = await new Promise((resolve, reject) => {
 				cloudinary.v2.uploader
 					.upload_stream({resource_type: 'image'}, (error, data) => {
 						if (error) {
@@ -213,8 +235,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					})
 					.end(imageData);
 			});
-			await storage.setItem(imageUrl, cloudinaryData);
-		}
+			await storage.setItem(url, cloudinaryDatum);
+			return cloudinaryDatum;
+		}));
 
 		const response = (() => {
 			if (city.type === 'city') {
@@ -229,17 +252,58 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return `${city.name} ${descriptionText}`;
 		})().trim();
 
+		let isNew = false;
+		let achievementsCount = 0;
+
+		await transaction(async () => {
+			if (!matches[1].match(/^[\p{Script=Katakana}ー]+$/u)) {
+				return;
+			}
+			const achievements = (await storage.getItem('achievements')) || {stations: [], cities: []};
+			if (city.type === 'city') {
+				if (!achievements.cities.includes(matches[1])) {
+					isNew = true;
+					achievements.cities.push(matches[1]);
+				}
+				achievementsCount = achievements.cities.length;
+			}
+			if (city.type === 'station') {
+				if (!achievements.stations.includes(matches[1])) {
+					isNew = true;
+					achievements.stations.push(matches[1]);
+				}
+				achievementsCount = achievements.stations.length;
+			}
+			await storage.setItem('achievements', achievements);
+		});
+
 		await slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			text: response,
 			username: 'tashibot',
 			icon_emoji: ':japan:',
-			attachments: [
-				{
-					image_url: cloudinaryData.secure_url,
-					fallback: response,
-				},
-			],
+			attachments: cloudinaryData.map((datum) => ({
+				image_url: datum.secure_url,
+				fallback: response,
+			})),
 		});
+
+		if (city.type === 'city' && isNew) {
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: `:new:新市町村発見！ ${achievementsCount}/${uniqueCitiesCount}市町村達成:tada:`,
+				username: 'tashibot',
+				icon_emoji: ':japan:',
+			});
+		}
+
+		if (city.type === 'station' && isNew) {
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: `:new:新駅発見！ ${achievementsCount}/${uniqueStationsCount}駅達成:tada:`,
+				username: 'tashibot',
+				icon_emoji: ':japan:',
+			});
+		}
 	});
 };
