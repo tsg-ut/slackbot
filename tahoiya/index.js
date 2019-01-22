@@ -19,6 +19,7 @@ const sqlite = require('sqlite');
 const sql = require('sql-template-strings');
 const Queue = require('p-queue');
 const storage = require('node-persist');
+const getReading = require('../lib/getReading.js');
 
 const {
 	getPageTitle,
@@ -740,9 +741,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					return;
 				}
 
-				if (text.startsWith('@tahoiya')) {
-					const body = text.replace(/^@\w+/, '').trim();
-					const ruby = hiraganize(body).replace(/[^\p{Script=Hiragana}ー]/gu, '');
+				if (text.startsWith('@tahoiya') || text.match(/(って(なに|何)|とは)[？?]?$/)) {
+					const isMention = text.startsWith('@tahoiya');
+					const body = text.replace(/^@\w+/, '').replace(/(って(なに|何)|とは)[？?]?$/, '').trim();
+					const ruby = hiraganize(await getReading(body)).replace(/[^\p{Script=Hiragana}ー]/gu, '');
 					const modelData = text.startsWith('@tahoiya2') ? (
 						['tahoiyabot-02', 'model.ckpt-600000']
 					) : (
@@ -751,7 +753,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 					if (ruby.length > 0 && ruby.length <= 20) {
 						if (state.phase !== 'waiting') {
-							postMessage('今たほいや中だよ:imp:');
+							isMention && postMessage('今たほいや中だよ:imp:');
 							return;
 						}
 
@@ -767,26 +769,41 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						}
 
 						if (queue.size >= 2) {
-							postMessage(`今忙しいから *${ruby}* は後で:upside_down_face:`);
+							isMention && postMessage(`今忙しいから *${ruby}* は後で:upside_down_face:`);
 							return;
 						}
 
 						transaction(async () => {
 							let data = await storage.getItem(key);
 							if (!data) {
-								rtm.sendTyping(message.channel);
+								let thinking = true;
+								const sendTyping = () => {
+									rtm.sendTyping(message.channel);
+									setTimeout(() => {
+										if (thinking) {
+											sendTyping();
+										}
+									}, 3000);
+								};
+
+								sendTyping();
 								data = await bot.getResult(ruby, modelData[0]);
+								thinking = false;
 								await storage.setItem(key, data);
 							}
 							await postMessage(stripIndent`
 								*${ruby}* の正しい意味は⋯⋯
 								*${random(1, 5)}. ${data.result}*
-							`, null, {username: getMemberName(modelData[0])});
+							`, null, {
+								username: getMemberName(modelData[0]),
+								thread_ts: message.ts,
+								reply_broadcast: true,
+							});
 						});
 						return;
 					}
 
-					postMessage(':ha:');
+					isMention && postMessage(':ha:');
 					return;
 				}
 			}
