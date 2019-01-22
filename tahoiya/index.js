@@ -747,8 +747,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					const ruby = hiraganize(await getReading(body)).replace(/[^\p{Script=Hiragana}ー]/gu, '');
 					const modelData = text.startsWith('@tahoiya2') ? (
 						['tahoiyabot-02', 'model.ckpt-600000']
-					) : (
+					) : text.startsWith('@tahoiya') ? (
 						['tahoiyabot-01', 'model.ckpt-455758']
+					) : (
+						['tahoiyabot-02', 'model.ckpt-600000']
 					);
 
 					if (ruby.length > 0 && ruby.length <= 20) {
@@ -764,7 +766,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 							await postMessage(stripIndent`
 								*${ruby}* の正しい意味は⋯⋯
 								*${random(1, 5)}. ${tempData.result}*
-							`, null, {username: getMemberName(modelData[0])});
+							`, null, {
+								username: getMemberName(modelData[0]),
+								thread_ts: message.ts,
+								reply_broadcast: true,
+							});
 							return;
 						}
 
