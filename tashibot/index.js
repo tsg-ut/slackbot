@@ -75,25 +75,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		dir: path.resolve(__dirname, '__cache__'),
 	});
 
-	const getEncoding = (filepath) => new Promise((resolve, reject) => {
-		const rs = fs.createReadStream(filepath);
-		let line = '';
-		rs.on('data', (chunk) => {
-			rs.close();
-			line += chunk.toString().split('\n')[0];
-			if (chunk.indexOf('\n') === -1) {
-				rs.close();
-			}
-		})
-			.on('close', () => {
-				const match = line.match(/-\*-\s*coding:\s*(.+?)\s+-\*-/);
-				resolve(match ? [match[1], Buffer.byteLength(line) + 1] : [null, 0]);
-			})
-			.on('error', (err) => {
-				reject(err);
-			});
-	});
-
 	const englishDictPath = path.resolve(__dirname, 'bep-ss-2.3', 'bep-eng.dic');
 
 	const englishDictExists = await new Promise((resolve) => {
@@ -103,15 +84,18 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	});
 
 	if (!englishDictExists) {
-		await download('http://www.argv.org/bep/files/linux/beta/bep-ss-2.3.tar.gz', __dirname, {extract: true});
+		await download(
+			'http://www.argv.org/bep/files/linux/beta/bep-ss-2.3.tar.gz',
+			__dirname,
+			{extract: true},
+		);
 	}
-	const [encoding, offset] = await getEncoding(englishDictPath);
-	const englishDictBuffer = await promisify(fs.readFile)(englishDictPath, {start: offset});
-	const englishDictText = iconv.decode(englishDictBuffer, encoding || 'sjis');
+	const englishDictBuffer = await promisify(fs.readFile)(englishDictPath);
+	const englishDictText = iconv.decode(englishDictBuffer, 'sjis');
 	const englishDict = new Map([
 		...englishDictText
 			.split('\n')
-			.slice(encoding !== null)
+			.slice(1) // skip encoding line
 			.map((line) => {
 				const [english, japanese] = line.split(' ');
 				if (!japanese) {
@@ -147,12 +131,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		['y', 'わい'],
 		['z', 'ずぃー'],
 	]);
-	const englishDictRegex = new RegExp(
-		`\\b(${Array.from(englishDict.keys())
-			.map((word) => escapeRegExp(word))
-			.join('|')})\\b`,
-		'gi'
-	);
 
 	const getReading = async (text) => {
 		const tokens = await tokenize(text.replace(/[\d,]+/g, (number) => toJapanese(number.replace(/,/g, ''))));
@@ -164,7 +142,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 	const kanizeEnglish = (word_) => {
 		const genLattice = (word) => {
-			const dp = new Array(word.length).fill().map(() => new Array(word.length));
+			// eslint-disable-next-line array-plural/array-plural
+			const dp = Array(word.length).fill().map(() => Array(word.length).fill());
 			const rec = (a, b) => {
 				if (b === word.length) {
 					return {to: [], range: [a, b], eos: true};
@@ -187,17 +166,17 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return rec(0, 0);
 		};
 		const findShortestPath = (word) => {
-			const q = [{words: [], node: genLattice(word)}];
-			while (q) {
-				const p = q.shift();
-				if (p.node.eos) {
-					return p.words.concat([p.node.range]);
+			// eslint-disable-next-line array-plural/array-plural
+			const nodeQueue = [{words: [], node: genLattice(word)}];
+			while (true) {
+				const {node, words} = nodeQueue.shift();
+				if (node.eos) {
+					return words.concat([node.range]);
 				}
-				for (const n of p.node.to) {
-					q.push({words: p.words.concat([p.node.range]), node: n});
+				for (const n of node.to) {
+					nodeQueue.push({words: words.concat([node.range]), node: n});
 				}
 			}
-			return [];
 		};
 
 		return findShortestPath(word_.toLowerCase())
@@ -218,7 +197,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		if (message.text && message.text.startsWith('@tashibot')) {
 			const reading = hiraganize(
 				await getReading(
-					message.text.replace(/^@tashibot/, '').replace(englishDictRegex, (english) => kanizeEnglish(english.toLowerCase()) || english)
+					message.text.replace(/^@tashibot/, '').replace(/\b[a-zA-Z]+\b/, (english) => kanizeEnglish(english.toLowerCase()) || english)
 				)
 			);
 			await slack.chat.postMessage({
@@ -238,7 +217,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		const text = message.text.replace(englishDictRegex, (english) => kanizeEnglish(english.toLowerCase()) || english).slice(-20);
+		const text = message.text.replace(/\b[a-zA-Z]+\b/, (english) => kanizeEnglish(english.toLowerCase()) || english).slice(-20);
 		const reading = await getReading(text);
 
 		const matches = katakanize(text).match(citiesRegex) || reading.match(citiesRegex);
