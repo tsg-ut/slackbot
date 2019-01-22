@@ -757,7 +757,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 							return;
 						}
 
-						const key = JSON.stringify([...modelData, body]);
+						const key = JSON.stringify([...modelData, ruby]);
 						const tempData = await storage.getItem(key);
 
 						if (tempData) {
