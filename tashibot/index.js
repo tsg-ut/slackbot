@@ -162,6 +162,47 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		return toZenKana(reading);
 	};
 
+	const kanizeEnglish = (word_) => {
+		const genLattice = (word) => {
+			const dp = new Array(word.length).fill().map(() => new Array(word.length));
+			const rec = (a, b) => {
+				if (b === word.length) {
+					return {to: [], range: [a, b], eos: true};
+				}
+				if (dp[a][b]) {
+					return dp[a][b];
+				}
+				const node = {to: [], range: [a, b], eos: false};
+				for (let i = 0; i < word.length - b; ++i) {
+					if (englishDict.has(word.substring(b, b + i + 1))) {
+						const node2 = rec(b, b + i + 1);
+						if (node2.to || node2.eos) {
+							node.to.push(node2);
+						}
+					}
+				}
+				dp[a][b] = node;
+				return node;
+			};
+			return rec(0, 0);
+		};
+		const findShortestPath = (word) => {
+			const q = [{words: [], node: genLattice(word)}];
+			while (q) {
+				const p = q.shift();
+				if (p.node.eos) {
+					return p.words.concat([p.node.range]);
+				}
+				for (const n of p.node.to) {
+					q.push({words: p.words.concat([p.node.range]), node: n});
+				}
+			}
+			return [];
+		};
+
+		return findShortestPath(word_.toLowerCase()).slice(1).map(([a, b]) => (englishDict.get(word_.toLowerCase().substring(a, b)))).join('');
+	};
+
 	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
@@ -174,7 +215,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		if (message.text && message.text.startsWith('@tashibot')) {
 			const reading = hiraganize(
 				await getReading(
-					message.text.replace(/^@tashibot/, '').replace(englishDictRegex, (english) => englishDict.get(english.toLowerCase()) || english)
+					message.text.replace(/^@tashibot/, '').replace(englishDictRegex, (english) => kanizeEnglish(english.toLowerCase()) || english)
 				)
 			);
 			await slack.chat.postMessage({
@@ -194,7 +235,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		const text = message.text.replace(englishDictRegex, (english) => englishDict.get(english.toLowerCase()) || english).slice(-20);
+		const text = message.text.replace(englishDictRegex, (english) => kanizeEnglish(english.toLowerCase()) || english).slice(-20);
 		const reading = await getReading(text);
 
 		const matches = katakanize(text).match(citiesRegex) || reading.match(citiesRegex);
