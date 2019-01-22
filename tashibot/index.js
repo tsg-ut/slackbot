@@ -75,7 +75,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		dir: path.resolve(__dirname, '__cache__'),
 	});
 
-	const getEncoding = (filepath) => (new Promise((resolve, reject) => {
+	const getEncoding = (filepath) => new Promise((resolve, reject) => {
 		const rs = fs.createReadStream(filepath);
 		let line = '';
 		rs.on('data', (chunk) => {
@@ -92,7 +92,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			.on('error', (err) => {
 				reject(err);
 			});
-	}));
+	});
 
 	const englishDictPath = path.resolve(__dirname, 'bep-ss-2.3', 'bep-eng.dic');
 
@@ -200,7 +200,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return [];
 		};
 
-		return findShortestPath(word_.toLowerCase()).slice(1).map(([a, b]) => (englishDict.get(word_.toLowerCase().substring(a, b)))).join('');
+		return findShortestPath(word_.toLowerCase())
+			.slice(1)
+			.map(([a, b]) => englishDict.get(word_.toLowerCase().substring(a, b)))
+			.join('');
 	};
 
 	rtm.on('message', async (message) => {
@@ -266,39 +269,47 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		})}`;
 
 		// append area image if station
-		const imageUrls = city.type === 'city' ? [imageUrl] : [imageUrl, `https://maps.googleapis.com/maps/api/staticmap?${qs.encode({
-			center: '38.5,137.0',
-			zoom: 4,
-			scale: 1,
-			size: '250x250',
-			maptype: 'roadmap',
-			key: process.env.GOOGLEMAP_TOKEN,
-			format: 'png',
-			visual_refresh: true,
-			markers: `size:tiny|color:0xfb724a|label:|${placeText}`,
-		})}`];
+		const imageUrls =
+			city.type === 'city'
+				? [imageUrl]
+				: [
+					imageUrl,
+					`https://maps.googleapis.com/maps/api/staticmap?${qs.encode({
+						center: '38.5,137.0',
+						zoom: 4,
+						scale: 1,
+						size: '250x250',
+						maptype: 'roadmap',
+						key: process.env.GOOGLEMAP_TOKEN,
+						format: 'png',
+						visual_refresh: true,
+						markers: `size:tiny|color:0xfb724a|label:|${placeText}`,
+					})}`,
+				  ];
 
-		const cloudinaryData = await Promise.all(imageUrls.map(async (url) => {
-			const cacheData = await storage.getItem(url);
-			if (cacheData) {
-				return cacheData;
-			}
+		const cloudinaryData = await Promise.all(
+			imageUrls.map(async (url) => {
+				const cacheData = await storage.getItem(url);
+				if (cacheData) {
+					return cacheData;
+				}
 
-			const imageData = await download(url);
-			const cloudinaryDatum = await new Promise((resolve, reject) => {
-				cloudinary.v2.uploader
-					.upload_stream({resource_type: 'image'}, (error, data) => {
-						if (error) {
-							reject(error);
-						} else {
-							resolve(data);
-						}
-					})
-					.end(imageData);
-			});
-			await storage.setItem(url, cloudinaryDatum);
-			return cloudinaryDatum;
-		}));
+				const imageData = await download(url);
+				const cloudinaryDatum = await new Promise((resolve, reject) => {
+					cloudinary.v2.uploader
+						.upload_stream({resource_type: 'image'}, (error, data) => {
+							if (error) {
+								reject(error);
+							} else {
+								resolve(data);
+							}
+						})
+						.end(imageData);
+				});
+				await storage.setItem(url, cloudinaryDatum);
+				return cloudinaryDatum;
+			})
+		);
 
 		const response = (() => {
 			if (city.type === 'city') {
