@@ -754,8 +754,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					);
 
 					if (ruby.length > 0 && ruby.length <= 20) {
-						if (state.phase !== 'waiting') {
-							isMention && postMessage('今たほいや中だよ:imp:');
+						if (state.theme && levenshtein.get(state.theme.ruby, ruby) <= 2) {
+							isMention && postMessage('カンニング禁止！:imp:');
 							return;
 						}
 

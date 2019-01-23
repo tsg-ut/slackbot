@@ -3,13 +3,58 @@ const concatStream = require('concat-stream');
 const {hiraganize} = require('japanese');
 const path = require('path');
 const assert = require('assert');
+const download = require('download');
 
 const docker = new Docker();
 
 class TimeoutError extends Error { }
 
+const downloadBracketsPromise = download('https://www.unicode.org/Public/UCD/latest/ucd/BidiBrackets.txt');
+
+const normalizeBrackets = async (text) => {
+	const bracketData = await downloadBracketsPromise;
+	const bracketEntries = bracketData.toString().split('\n').filter((line) => line.length > 0 && !line.startsWith('#'));
+	const bracketMap = new Map(bracketEntries.map((line) => {
+		const [from, to, type] = line.split(/[;#]/);
+		return [String.fromCodePoint(parseInt(from.trim(), 16)), {
+			pair: String.fromCodePoint(parseInt(to.trim(), 16)),
+			type: type.trim() === 'c' ? 'close' : 'open',
+		}];
+	}));
+	const chars = Array.from(text);
+	const stack = [];
+	const newChars = chars.map((char, index) => {
+		if (!bracketMap.has(char)) {
+			return char;
+		}
+
+		const {pair, type} = bracketMap.get(char);
+		if (type === 'open') {
+			stack.push({index, char, pair});
+			return char;
+		}
+
+		if (type === 'close') {
+			if (stack.length === 0) {
+				return '';
+			}
+
+			const pop = stack.pop();
+			return pop.pair;
+		}
+
+		return '';
+	});
+
+	for (const {index} of stack) {
+		newChars[index] = '';
+	}
+
+	return stack.join('');
+};
+
 module.exports.getResult = async (rawInput, modelName) => {
-	assert(modelName === 'tahoiyabot-01' || modelName === 'tahoiyabot-02')
+	assert(modelName === 'tahoiyabot-01' || modelName === 'tahoiyabot-02');
 	let stdoutWriter = null;
 	const input = hiraganize(rawInput).replace(/[^\p{Script=Hiragana}ー]/gu, '');
 
@@ -117,7 +162,7 @@ module.exports.getResult = async (rawInput, modelName) => {
 	}, '');
 
 	return {
-		result,
+		result: normalizeBrackets(result),
 		modelName,
 		stdout: stdout ? stdout.toString() : '',
 		stderr: stderr ? stderr.toString() : '',
