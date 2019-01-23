@@ -50,7 +50,7 @@ const normalizeBrackets = async (text) => {
 		newChars[index] = '';
 	}
 
-	return stack.join('');
+	return newChars.join('');
 };
 
 module.exports.getResult = async (rawInput, modelName) => {
