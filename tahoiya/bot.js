@@ -162,7 +162,7 @@ module.exports.getResult = async (rawInput, modelName) => {
 	}, '');
 
 	return {
-		result: normalizeBrackets(result),
+		result: await normalizeBrackets(result),
 		modelName,
 		stdout: stdout ? stdout.toString() : '',
 		stderr: stderr ? stderr.toString() : '',
