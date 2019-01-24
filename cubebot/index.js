@@ -172,7 +172,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if ((match = text.match(/^(スクランブル|F2L|PLL|LL|ZBLL|CMLL|L6E|エッジ|コーナー)/))) {
+		if ((match = text.match(/^(:?スクランブル|F2L|PLL|LL|ZBLL|CMLL|L6E|エッジ|コーナー)/))) {
+			if (text.match(/^(:?LLVM|LLD|LLL)/)) {
+				return;
+			}
+
 			const countMatch = text.slice(match[1].length).match(/\d+/);
 			const count = countMatch ? Math.min(12, parseInt(countMatch[0])) : 1;
 
