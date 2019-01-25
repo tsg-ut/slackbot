@@ -117,6 +117,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
+		const isRepetitive = histories.find((history) => history.cityName === city.name && history.date >= Date.now() - 10 * 6000 * 1000) !== undefined;
+
 		histories.push({cityName: city.name, date: Date.now()});
 		const placeText = city.type === 'city' ? `${city.name},${city.prefecture}` : `${city.name},${city.description}`;
 		const imageUrl = `https://maps.googleapis.com/maps/api/staticmap?${qs.encode({
@@ -217,7 +219,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			text: response,
 			username: 'tashibot',
 			icon_emoji: ':japan:',
-			attachments: cloudinaryData.map((datum) => ({
+			attachments: isRepetitive ? [] : cloudinaryData.map((datum) => ({
 				image_url: datum.secure_url,
 				fallback: response,
 			})),
