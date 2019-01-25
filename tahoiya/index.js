@@ -224,9 +224,14 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		battles.push(newBattle);
 
-		postMessage(`対戦ログ: <https://gist.github.com/hakatashi/${latestGist.id}#${encodeURIComponent(`第${offset + battles.length}回-${newBattle.theme}`)}>`);
-
 		const markdown = gist.serialize({battles, offset}, members);
+
+		if (process.env.NODE_ENV !== 'production') {
+			await promisify(fs.writeFile)(path.join(__dirname, 'tahoiya-0-logs.md'), markdown);
+			return;
+		}
+
+		postMessage(`対戦ログ: <https://gist.github.com/hakatashi/${latestGist.id}#${encodeURIComponent(`第${offset + battles.length}回-${newBattle.theme}`)}>`);
 
 		await axios.patch(`https://api.github.com/gists/${latestGist.id}`, {
 			description: `[${process.env.TEAMNAME}] たほいや対戦ログ 第${offset + 1}回～第${offset + 100}回`,
