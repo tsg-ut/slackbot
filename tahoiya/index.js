@@ -269,6 +269,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				theme: null,
 				author: null,
 				meanings: new Map(),
+				comments: [],
 				stashedDaily: {
 					theme: {
 						word: state.theme.word,
@@ -279,6 +280,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						user: state.author,
 					},
 					meanings: [...state.meanings.entries()],
+					comments: state.comments,
 				},
 			});
 			await postMessage('参加者が最少催行人数 (3人) より少ないので今日のデイリーたほいやはキャンセルされたよ:face_with_rolling_eyes:');
@@ -626,6 +628,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		const meanings = new Map(state.stashedDaily === null ? [] : state.stashedDaily.meanings);
+		const comments = state.stashedDaily === null ? [] : state.stashedDaily.comments;
 
 		await setState({
 			candidates: [],
@@ -641,6 +644,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			author: theme.user,
 			stashedDaily: null,
 			meanings,
+			comments,
 		});
 
 		const end = Date.now() + 90 * 60 * 1000;
