@@ -19,6 +19,7 @@ const sqlite = require('sqlite');
 const sql = require('sql-template-strings');
 const Queue = require('p-queue');
 const storage = require('node-persist');
+const rouge = require('rouge');
 const getReading = require('../lib/getReading.js');
 
 const {
@@ -343,11 +344,18 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		for (const better of ['tahoiyabot-01', 'tahoiyabot-02']) {
 			if (state.meanings.has(better)) {
-				const {index: betMeaning} = minBy(
+				const {index: betMeaning} = maxBy(
 					shuffledMeanings
 						.map((meaning, index) => ({...meaning, index}))
 						.filter(({user}) => user !== better),
-					({text}) => levenshtein.get(text, state.meanings.get(better))
+					({text}) => sum([1, 2, 3].map((n) => (
+						Math.min(text.length, state.meanings.get(better).length) < n
+							? 0
+							: rouge.n(text, state.meanings.get(better), {
+								n,
+								tokenizer: (s) => Array.from(s),
+							}) * (10 ** n)
+					))),
 				);
 				state.bettings.set(better, {
 					meaning: betMeaning,

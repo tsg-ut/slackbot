@@ -53,6 +53,7 @@
     "p-queue": "^3.0.0",
     "prettier-eslint-cli": "^4.7.1",
     "primes-and-factors": "^1.2.0",
+    "rouge": "github:kenlimmj/rouge",
     "sharp": "^0.21.1",
     "shogi9.js": "^1.0.2",
     "sql-template-strings": "^2.2.2",
