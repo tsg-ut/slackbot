@@ -75,7 +75,14 @@ const pages = [
 			names: rows.filter((row, index) => heads[index].includes('市郡') || heads[index].includes('区町村')),
 			ruby: rows.find((row, index) => heads[index] === 'ふりがな'),
 			changes: rows.filter((row, index) => heads[index] === '変更'),
-		})).filter(({status, changes}) => (['削除', '変更'].includes(status) || ['改称', '町制', '市制', '村制', '合併', '編入'].includes(changes[1])) && changes[0].length > 0);
+		})).filter(({status, names, changes}) => (
+			(
+				(
+					['削除', '変更'].includes(status) ||
+					['改称', '町制', '市制', '村制', '合併', '編入'].includes(changes[1])
+				) && changes[0].length > 0
+			) || last(names.filter((name) => name)).endsWith('郡')
+		));
 
 		for (const {names, ruby, changes} of cities) {
 			console.log([
