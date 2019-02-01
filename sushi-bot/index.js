@@ -131,7 +131,7 @@ module.exports = (clients) => {
         if (rtext.includes("殺") || rtext.includes("死")) {
             const cnt = count(rtext, '殺') + count(rtext, '死');
             await slack.reactions.add({name: 'no_good', channel, timestamp});
-            await slack.reactions.add({name: 'shaved_ice', channel, timestamp});
+            await slack.reactions.add({name: 'cookies146', channel, timestamp});
             if(cnt >= 2) {
                 await slack.reactions.add({name: 'x', channel, timestamp});
                 await slack.reactions.add({name: numToEmoji(cnt), channel, timestamp});
@@ -151,7 +151,7 @@ module.exports = (clients) => {
             channel: process.env.CHANNEL_SANDBOX,
             username: 'sushi-bot',
             text: '今週の凍結ランキング',
-            icon_emoji: ':shaved_ice:',
+            icon_emoji: ':cookies146:',
             attachments: suspendCounter.entries().map(([user, count], index) => {
                 const member = members.find(({id}) => id === user);
                 if (!member) {
