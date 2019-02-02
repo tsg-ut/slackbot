@@ -355,7 +355,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 								n,
 								tokenizer: (s) => Array.from(s),
 							}) * (10 ** n)
-					))),
+					))) + Math.random() * 1e-10,
 				);
 				state.bettings.set(better, {
 					meaning: betMeaning,
