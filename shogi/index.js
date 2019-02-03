@@ -261,9 +261,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const databases = await promisify(fs.readdir)(
 				path.resolve(__dirname, 'boards')
 			);
-			state.previousDatabase = sample(databases);
+			const database = sample(databases);
 			await sqlite.open(
-				path.resolve(__dirname, 'boards', state.previousDatabase)
+				path.resolve(__dirname, 'boards', database)
 			);
 			const data = await sqlite.get(oneLine`
 				SELECT *
@@ -273,9 +273,15 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				LIMIT 1
 			`);
 			if (data === undefined) {
-				post(':thinking_face:')
+				await slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					text: ':thinking_face:',
+					username: 'shogi',
+					icon_url: iconUrl,
+				});
 				return;
 			}
+			state.previousDatabase = database;
 			state.board = deserialize(data.board);
 			state.previousBoard = state.board.clone();
 			state.previousTurns = data.depth - 1;
