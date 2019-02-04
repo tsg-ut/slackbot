@@ -402,8 +402,7 @@ module.exports = (clients) => {
 				return;
 			}
 
-			const isTenpai = calculator.tenpai(state.手牌);
-			if (!isTenpai) {
+			if (!calculator.tenpai(state.手牌)) {
 				perdon();
 				return;
 			}
