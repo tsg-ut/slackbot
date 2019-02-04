@@ -764,11 +764,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					const body = text.replace(/^@\w+/, '').replace(/(って(なに|何)|とは)[？?⋯…・]*$/, '').trim();
 					const ruby = hiraganize(await getReading(body)).replace(/[^\p{Script=Hiragana}ー]/gu, '');
 					const modelData = text.startsWith('@tahoiya2') ? (
-						['tahoiyabot-02', 'model.ckpt-1000000-ver2']
+						['tahoiyabot-02', 'model.ckpt-600000-ver2']
 					) : text.startsWith('@tahoiya') ? (
 						['tahoiyabot-01', 'model.ckpt-455758']
 					) : (
-						['tahoiyabot-02', 'model.ckpt-1000000-ver2']
+						['tahoiyabot-02', 'model.ckpt-600000-ver2']
 					);
 
 					if (ruby.length > 0 && ruby.length <= 20) {

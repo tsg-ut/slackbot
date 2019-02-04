@@ -402,6 +402,12 @@ module.exports = (clients) => {
 				return;
 			}
 
+			const isTenpai = calculator.tenpai(state.手牌);
+			if (!isTenpai) {
+				perdon();
+				return;
+			}
+
 			if (instruction === 'ツモ切り') {
 				state.手牌 = state.手牌.slice(0, -1);
 			} else {
