@@ -20,6 +20,7 @@ const plugins = [
 	require('./channel-notifier'),
 	require('./tashibot'),
 	require('./prime'),
+	require('./dajare'),
 ];
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
