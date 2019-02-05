@@ -771,7 +771,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						['tahoiyabot-02', 'model.ckpt-600000-ver2']
 					);
 
-					if (ruby.length > 0 && ruby.length <= 20) {
+					if (ruby.length > 0 && ruby.length <= 25) {
 						if (state.theme && levenshtein.get(state.theme.ruby, ruby) <= 2) {
 							isMention && postMessage('カンニング禁止！:imp:');
 							return;
