@@ -109,7 +109,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					}
 					return token.surface_form;
 				}).join('');
-			console.log(`${reading}\n${surface}`);
 			return `${reading}\n${surface}`;
 		})).size === 1) {
 			return true;
