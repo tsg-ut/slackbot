@@ -1,85 +1,12 @@
 const {stripIndent} = require('common-tags');
-const {promisify} = require('util');
-const {tokenize} = require('kuromojin');
-const {katakanize, romanizationTable, defaultRomanizationConfig} = require('japanese');
-const fs = require('fs');
-const path = require('path');
-const {escapeRegExp, flatten, maxBy} = require('lodash');
-const iconv = require('iconv-lite');
 const {toZenKana} = require('jaconv');
-const toJapanese = require('jp-num/toJapanese');
-const getReading = require('../lib/getReading');
+const {katakanize} = require('japanese');
+const {flatten, maxBy} = require('lodash');
+
+const tokenize = require('./tokenize');
 const {findDajare, listAlternativeReadings} = require('./dajare');
 
-module.exports = async ({rtmClient: rtm, webClient: slack}) => {
-	// ensure the dictionary file is downloaded (:ha:)
-	await getReading('sushi');
-
-	const englishDictPath = path.resolve(__dirname, '..', 'lib', 'bep-ss-2.3', 'bep-eng.dic');
-	const englishDictBuffer = await promisify(fs.readFile)(englishDictPath);
-	const englishDictText = iconv.decode(englishDictBuffer, 'sjis');
-	const englishDict = new Map([
-		...[
-			...Object.entries(romanizationTable),
-			...Object.entries(defaultRomanizationConfig),
-		].reverse().map(([kana, romaji]) => [romaji, katakanize(kana)]),
-		...englishDictText
-			.split('\n')
-			.map((line) => {
-				const [english, japanese] = line.split(' ');
-				if (!english || !japanese) {
-					return null;
-				}
-				return [english.toLowerCase(), toZenKana(japanese).replace(/([トド])ゥ$/, '$1')];
-			})
-			.filter((entry) => entry),
-
-		['dajare', 'だじゃれ'],
-		['tahoiya', 'たほいや'],
-		['pocky', 'ぽっきー'],
-
-		['a', 'エー'],
-		['b', 'ビー'],
-		['c', 'シー'],
-		['d', 'ディー'],
-		['e', 'イー'],
-		['f', 'エフ'],
-		['g', 'ジー'],
-		['h', 'エイチ'],
-		['i', 'アイ'],
-		['j', 'ジェー'],
-		['k', 'ケー'],
-		['l', 'エル'],
-		['m', 'エム'],
-		['n', 'エヌ'],
-		['o', 'オー'],
-		['p', 'ピー'],
-		['q', 'キュー'],
-		['r', 'アール'],
-		['s', 'エス'],
-		['t', 'ティー'],
-		['u', 'ユー'],
-		['v', 'ブイ'],
-		['w', 'ダブリュー'],
-		['x', 'エックス'],
-		['y', 'ワイ'],
-		['z', 'ズィー'],
-	]);
-	const englishDictRegex = new RegExp(
-		`(${Array.from(englishDict.keys())
-			.sort((a, b) => b.length - a.length)
-			.map((word) => escapeRegExp(word))
-			.join('|')})`,
-		'gi'
-	);
-
-	const numberToJapanese = (number) => {
-		if ((/^0\d/).test(number)) {
-			return number.split('').map((num) => toJapanese(num)).join('');
-		}
-		return toJapanese(number);
-	};
-
+module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const slackDecode = (text) => text
 		.replace(/<[^>]+>/g, (link) => {
 			const matches = (/^(.+)\|(.+)$/).exec(link);
@@ -93,13 +20,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			lt: '<',
 			gt: '>',
 		}[str1]));
-
-	const preprocessText = (text) => text
-		.replace(englishDictRegex, (english) => ` ${englishDict.get(english.toLowerCase()) || english} `)
-		.replace(/\s{2,}/gu, ' ')
-		.replace(/\d+/g, (number) => (number.length <= 8 ? numberToJapanese(number) : number))
-		.replace(/〜/g, 'ー')
-		.trim();
 
 	const getTokenReading = (token) => {
 		const {reading, surface_form, pronunciation} = token;
@@ -236,7 +156,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if ((/^@dajare\s+/).test(message.text)) {
-			const text = preprocessText(slackDecode(message.text).replace(/^@dajare\s+/, ''));
+			const text = slackDecode(message.text.replace(/^@dajare\s+/, ''));
 			if (!text || text.length > 300) {
 				await slack.chat.postMessage({
 					channel: message.channel,
@@ -290,7 +210,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		const text = preprocessText(slackDecode(message.text));
+		const text = slackDecode(message.text);
 		const tokens = await tokenize(text);
 		const dajare = getDajare(tokens.map(getTokenReading), tokens);
 		if (dajare === null) {
