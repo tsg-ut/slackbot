@@ -1,0 +1,16 @@
+{
+    "extends": "@hakatashi",
+    "parserOptions": {
+        "ecmaVersion": 2019,
+        "ecmaFeatures": {
+            "experimentalObjectRestSpread": true,
+            "jsx": true
+        },
+        "sourceType": "module"
+    },
+    "rules": {
+        "no-console": "off",
+        "max-len": "off",
+        "max-depth": "off"
+    }
+}
