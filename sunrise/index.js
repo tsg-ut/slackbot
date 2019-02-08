@@ -215,7 +215,7 @@ module.exports = async ({webClient: slack}) => {
 				icon_emoji: ':sunrise:',
 				attachments: [{
 					color: '#FFA726',
-					title: '本日の天気',
+					title: `本日の天気: ${weatherName}`,
 					image_url: cloudinaryData.secure_url,
 					fallback: weatherName,
 				}, {
