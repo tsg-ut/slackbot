@@ -21,6 +21,7 @@ const plugins = [
 	require('./tashibot'),
 	require('./prime'),
 	require('./dajare'),
+	require('./sunrise'),
 ];
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
