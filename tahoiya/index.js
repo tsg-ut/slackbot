@@ -810,10 +810,15 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 									}, 3000);
 								};
 
-								sendTyping();
-								data = await bot.getResult(ruby, modelData[0]);
-								thinking = false;
-								await storage.setItem(key, data);
+								try {
+									sendTyping();
+									data = await bot.getResult(ruby, modelData[0]);
+									thinking = false;
+									await storage.setItem(key, data);
+								} catch (error) {
+									thinking = false;
+									failed(error);
+								}
 							}
 							await postMessage(stripIndent`
 								*${ruby}* の正しい意味は⋯⋯
