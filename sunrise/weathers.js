@@ -1,6 +1,6 @@
 const とても暑い = {temperature: 3};
 const 暑い = {temperature: 2};
-const 温かい = {temperature: 1};
+const 暖かい = {temperature: 1};
 const 涼しい = {temperature: 0};
 const 寒い = {temperature: -1};
 const とても寒い = {temperature: -2};
@@ -8,7 +8,6 @@ const 高湿 = {humidity: 1};
 const くもり = {condition: 'cloud'};
 const 快晴 = {condition: 'clear'};
 const 晴れ = {condition: 'sunny'};
-const 微雲 = {condition: 'few clouds'};
 const 雨 = {condition: 'rain'};
 const 霧雨 = {condition: 'drizzle'};
 const 雷雨 = {condition: 'thunderstorm'};
@@ -34,7 +33,7 @@ const 西風 = {winddeg: 270};
 const 寒くなる = {temperatureChange: -1};
 const 暖かくなる = {temperatureChange: 1};
 const 一月 = {month: [1]};
-const ニ月 = {month: [2]};
+const 二月 = {month: [2]};
 const 三月 = {month: [3]};
 const 四月 = {month: [4]};
 const 五月 = {month: [5]};
@@ -44,7 +43,7 @@ const 八月 = {month: [8]};
 const 九月 = {month: [9]};
 const 十月 = {month: [10]};
 const 十一月 = {month: [11]};
-const 十ニ月 = {month: [12]};
+const 十二月 = {month: [12]};
 const 春 = {month: [3, 4, 5]};
 const 夏 = {month: [6, 7, 8]};
 const 秋 = {month: [9, 10, 11]};
@@ -182,7 +181,6 @@ module.exports = {
 	凍雲: [寒い, くもり],
 	凍曇: [寒い, くもり],
 	寒凪: [寒い, 無風],
-	寒の雨: [寒い, 雨],
 	寒風: [寒い, 晴れ, 風],
 	冷風: [寒い, 晴れ, 風],
 	寒雷雨: [寒い, 雷雨],
@@ -212,7 +210,6 @@ module.exports = {
 	養花天: [春, くもり],
 	春雨: [春, 小雨],
 	軽雨: [春, 小雨],
-	小糠雨: [春, 小雨],
 	紅雨: [春, 雨],
 	紅梅の雨: [春, 雨],
 	春時雨: [春, 晴雨],
@@ -289,11 +286,9 @@ module.exports = {
 	伊勢清めの雨: [{date: [10, 16]}, 雨],
 	いなさ: [十月, 晴れ, 風],
 	神渡し: [十一月, 晴れ, 風],
-	菊日和: [十一月, 晴れ],
 	小春空: [十一月, 晴れ],
 	木枯らし: [十一月, 風, 寒い],
 	小春日和: [十一月, 暖かくなる],
-	冷雨: [十一月, 小雨, 寒い],
 	解霜雨: [十二月, 雨],
 	村時雨: [冬, 晴雨],
 	冬晴れ: [冬, 晴れ],
