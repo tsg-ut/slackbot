@@ -18,7 +18,7 @@ const schedule = require('node-schedule');
 const sqlite = require('sqlite');
 const sql = require('sql-template-strings');
 const Queue = require('p-queue');
-const storage = require('node-persist');
+const nodePersist = require('node-persist');
 const rouge = require('rouge');
 const getReading = require('../lib/getReading.js');
 
@@ -78,9 +78,10 @@ const transaction = (func) => queue.add(func);
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const db = await sqlite.open(path.join(__dirname, 'themes.sqlite3'));
 
-	await storage.init({
+	const storage = nodePersist.create({
 		dir: path.resolve(__dirname, '__cache__'),
 	});
+	await storage.init();
 
 	const mapToObject = (map) => {
 		const object = {};

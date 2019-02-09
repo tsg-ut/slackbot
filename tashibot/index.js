@@ -3,7 +3,7 @@ const {katakanize, hiraganize} = require('japanese');
 const fs = require('fs');
 const path = require('path');
 const qs = require('querystring');
-const storage = require('node-persist');
+const nodePersist = require('node-persist');
 const download = require('download');
 const cloudinary = require('cloudinary');
 const {escapeRegExp, uniq} = require('lodash');
@@ -68,9 +68,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		...yearSortedCities.map((city) => [city.name, city]),
 	]);
 
-	await storage.init({
+	const storage = nodePersist.create({
 		dir: path.resolve(__dirname, '__cache__'),
 	});
+	await storage.init();
 
 	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {

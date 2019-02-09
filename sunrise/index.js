@@ -1,7 +1,7 @@
 const path = require('path');
 const qs = require('querystring');
 const suncalc = require('suncalc');
-const storage = require('node-persist');
+const nodePersist = require('node-persist');
 const Queue = require('p-queue');
 const moment = require('moment');
 const {stripIndent} = require('common-tags');
@@ -32,9 +32,10 @@ const FtoC = (F) => (F - 32) * 5 / 9;
 const miphToMps = (miph) => miph * 0.447;
 
 module.exports = async ({webClient: slack}) => {
-	await storage.init({
+	const storage = nodePersist.create({
 		dir: path.resolve(__dirname, '__state__'),
 	});
+	await storage.init();
 
 	const tick = async () => {
 		const lastSunrise = await storage.getItem('lastSunrise') || moment().subtract(1, 'day');
