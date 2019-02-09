@@ -1,5 +1,6 @@
 const path = require('path');
 const qs = require('querystring');
+const assert = require('assert');
 const suncalc = require('suncalc');
 const nodePersist = require('node-persist');
 const Queue = require('p-queue');
@@ -7,7 +8,7 @@ const moment = require('moment');
 const {stripIndent} = require('common-tags');
 const cloudinary = require('cloudinary');
 const axios = require('axios');
-const {get, sample} = require('lodash');
+const {get, maxBy} = require('lodash');
 
 const render = require('./render.js');
 const weathers = require('./weathers.js');
@@ -27,6 +28,24 @@ const moonEmojis = [
 	':last_quarter_moon:',
 	':waning_crescent_moon:',
 ];
+
+// https://developer.accuweather.com/weather-icons
+const conditionIds = {
+	clear: [1, 2],
+	sunny: [1, 2, 3, 4, 30, 31, 32],
+	haze: [5],
+	cloud: [6, 7, 8],
+	mist: [11],
+	sunshower: [14, 17, 21],
+	thunderstorm: [15, 16],
+	rain: [18, 26],
+	shower: [12, 13],
+	changing: [19, 20],
+	snow: [22, 23, 24],
+	sleet: [25, 29],
+	drizzle: [],
+	dust: [],
+};
 
 const FtoC = (F) => (F - 32) * 5 / 9;
 const miphToMps = (miph) => miph * 0.447;
@@ -53,6 +72,9 @@ module.exports = async ({webClient: slack}) => {
 				apikey: process.env.ACCUWEATHER_KEY,
 				details: 'true',
 			})}`);
+
+			const lastWeather = await storage.getItem('lastWeather') || null;
+			const weatherHistories = await storage.getItem('weatherHistories') || [];
 
 			const month = moment().utcOffset(9).month() + 1;
 			const date = moment().utcOffset(9).date();
@@ -99,13 +121,17 @@ module.exports = async ({webClient: slack}) => {
 				windLevel = 0;
 			} else if (wind < 8) {
 				windLevel = 1;
-			} else if (wind < 20) {
+			} else if (wind < 15) {
 				windLevel = 2;
-			} else {
+			} else if (wind < 25) {
 				windLevel = 3;
+			} else {
+				windLevel = 4;
 			}
 
-			const matchingWeathers = Object.entries(weathers).filter(([, conditions]) => {
+			const normalizedWeathers = Object.entries(weathers).map(([name, conditions]) => ({name, conditions}));
+
+			const matchingWeathers = normalizedWeathers.filter(({conditions}) => {
 				const condition = Object.assign({}, ...conditions);
 
 				if (condition.temperature !== undefined && condition.temperature !== temperatureLevel) {
@@ -120,68 +146,53 @@ module.exports = async ({webClient: slack}) => {
 					return false;
 				}
 
-				if (condition.winddeg !== undefined && !(windLevel >= 1 && condition.winddeg - 45 <= winddeg && winddeg <= condition.winddeg + 45)) {
-					return false;
+				if (condition.winddeg !== undefined) {
+					if (condition.winddeg === 0) {
+						if (!(windLevel >= 1 && (winddeg <= 45 || 315 <= winddeg))) {
+							return false;
+						}
+					} else {
+						if (!(windLevel >= 1 && condition.winddeg - 45 <= winddeg && winddeg <= condition.winddeg + 45)) {
+							return false;
+						}
+					}
 				}
 
+				// TODO: fix
 				if (condition.humidity !== undefined) {
 					return false;
 				}
 
 				if (condition.continuingCondition !== undefined) {
-					return false;
+					assert(Array.isArray(conditionIds[condition.continuingCondition]));
+					if (
+						!lastWeather ||
+						!conditionIds[condition.continuingCondition].includes(lastWeather.weatherId) ||
+						!conditionIds[condition.continuingCondition].includes(weatherId)
+					) {
+						return false;
+					}
 				}
 
 				if (condition.temperatureChange !== undefined) {
-					return false;
+					if (!lastWeather) {
+						return false;
+					}
+
+					if (condition.temperatureChange === 1 && !(lastWeather.temperature - temperature >= 5)) {
+						return false;
+					}
+
+					if (condition.temperatureChange === -1 && !(lastWeather.temperature - temperature <= -5)) {
+						return false;
+					}
 				}
 
-				if (condition.condition === 'clear' && ![1, 2].includes(weatherId)) {
-					return false;
-				}
-
-				if (condition.condition === 'sunny' && ![1, 2, 3, 4, 30, 31, 32].includes(weatherId)) {
-					return false;
-				}
-
-				if (condition.condition === 'haze' && ![5].includes(weatherId)) {
-					return false;
-				}
-
-				if (condition.condition === 'cloud' && ![6, 7, 8].includes(weatherId)) {
-					return false;
-				}
-
-				if (condition.condition === 'mist' && ![11].includes(weatherId)) {
-					return false;
-				}
-
-				if (condition.condition === 'sunshower' && ![14, 17, 21].includes(weatherId)) {
-					return false;
-				}
-
-				if (condition.condition === 'thunderstorm' && ![15, 16].includes(weatherId)) {
-					return false;
-				}
-
-				if (condition.condition === 'rain' && ![18, 26].includes(weatherId)) {
-					return false;
-				}
-
-				if (condition.condition === 'shower' && ![12, 13].includes(weatherId)) {
-					return false;
-				}
-
-				if (condition.condition === 'changing' && ![19, 20].includes(weatherId)) {
-					return false;
-				}
-
-				if (condition.condition === 'snow' && ![22, 23, 24].includes(weatherId)) {
-					return false;
-				}
-
-				if (condition.condition === 'sleet' && ![25, 29].includes(weatherId)) {
-					return false;
+				if (condition.condition !== undefined) {
+					assert(Array.isArray(conditionIds[condition.condition]));
+					if (!conditionIds[condition.condition].includes(weatherId)) {
+						return false;
+					}
 				}
 
 				if (condition.month !== undefined && !condition.month.includes(month)) {
@@ -194,16 +205,71 @@ module.exports = async ({webClient: slack}) => {
 
 				return true;
 			});
-			const weatherName = sample(matchingWeathers)[0];
 
-			const imageData = await render(weatherName);
+			assert(matchingWeathers.length > 0);
+
+			const matchingWeather = maxBy(matchingWeathers, ({name, conditions}) => {
+				const condition = Object.assign({}, ...conditions);
+				let score = 0;
+
+				if (condition.temperature !== undefined) {
+					score += 2;
+				}
+
+				if (condition.rain !== undefined) {
+					score += 2;
+				}
+
+				if (condition.wind !== undefined) {
+					score += 2;
+				}
+
+				if (condition.winddeg !== undefined) {
+					score += 4;
+				}
+
+				if (condition.continuingCondition !== undefined) {
+					score += 4;
+				}
+
+				if (condition.temperatureChange !== undefined) {
+					score += 3;
+				}
+
+				if (condition.condition !== undefined) {
+					score += 3;
+				}
+
+				if (condition.month !== undefined) {
+					score += 6 / condition.month.length;
+				}
+
+				if (condition.date !== undefined) {
+					score += 30;
+				}
+
+				const latestAnnounce = weatherHistories.findIndex(({weather}) => weather.name === name);
+				if (latestAnnounce !== -1) {
+					score -= 30 / (latestAnnounce + 1);
+				}
+
+				return score;
+			});
+
+			await storage.setItem('lastWeather', {weatherId, temperature});
+			await storage.setItem('weatherHistories', [
+				{date: Date.now(), weather: matchingWeather},
+				...weatherHistories,
+			]);
+
+			const imageData = await render(matchingWeather.name);
 			const cloudinaryData = await new Promise((resolve, reject) => {
 				cloudinary.v2.uploader
-					.upload_stream({resource_type: 'image'}, (error, data) => {
+					.upload_stream({resource_type: 'image'}, (error, response) => {
 						if (error) {
 							reject(error);
 						} else {
-							resolve(data);
+							resolve(response);
 						}
 					})
 					.end(imageData);
@@ -216,16 +282,15 @@ module.exports = async ({webClient: slack}) => {
 				icon_emoji: ':sunrise:',
 				attachments: [{
 					color: '#FFA726',
-					title: `本日の天気: ${weatherName}`,
+					title: `本日の天気: ${matchingWeather.name}`,
 					image_url: cloudinaryData.secure_url,
-					fallback: weatherName,
+					fallback: matchingWeather.name,
 				}, {
 					color: '#1976D2',
 					title: '本日のこよみ',
 					text: stripIndent`
 						:sun_with_face: *日の出* ${moment(sunrise).format('HH:mm')} ～ *日の入* ${moment(sunset).format('HH:mm')}
-						:new_moon_with_face: *月の出* ${moment(moonrise).format('HH:mm')} ～ *月の入* ${moment(moonset).format('HH:mm')}
-						${moonEmoji} *月齢* ${(moonphase * 30).toFixed(1)}
+						${moonEmoji} *月の出* ${moment(moonrise).format('HH:mm')} ～ *月の入* ${moment(moonset).format('HH:mm')}
 					`,
 				}],
 			});
