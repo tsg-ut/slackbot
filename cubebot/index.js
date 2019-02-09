@@ -55,7 +55,13 @@ Cube.initSolver();
 const virtualConsole = new VirtualConsole();
 virtualConsole.sendTo(console);
 
-const {window} = new JSDOM('<div id="touch"></div>', {runScripts: 'outside-only', virtualConsole});
+const {window} = new JSDOM('<div id="touch"></div>', {
+	url: 'http://cubebot/',
+	runScripts: 'outside-only',
+	virtualConsole,
+	storageQuota: 1000000,
+	contentType: 'text/html',
+});
 
 window.localStorage = {}; // dummy
 
