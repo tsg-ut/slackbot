@@ -128,18 +128,15 @@ module.exports = async ({webClient: slack}) => {
 				temperatureLevel = 5;
 			}
 
-			const rain = get(data, ['DailyForecasts', 0, 'Day', 'Rain', 'Value']);
-			const snow = get(data, ['DailyForecasts', 0, 'Day', 'Snow', 'Value']);
-			const ice = get(data, ['DailyForecasts', 0, 'Day', 'Ice', 'Value']);
-			const totalRain = inchToMm(rain + snow + ice);
+			const totalLiquid = inchToMm(get(data, ['DailyForecasts', 0, 'Day', 'TotalLiquid', 'Value']));
 			let rainLevel = null;
-			if (totalRain < 0.01) {
+			if (totalLiquid < 0.01) {
 				rainLevel = 0;
-			} else if (totalRain < 3) {
+			} else if (totalLiquid < 3) {
 				rainLevel = 1;
-			} else if (totalRain < 10) {
+			} else if (totalLiquid < 10) {
 				rainLevel = 2;
-			} else if (totalRain < 20) {
+			} else if (totalLiquid < 20) {
 				rainLevel = 3;
 			} else {
 				rainLevel = 4;
@@ -248,7 +245,7 @@ module.exports = async ({webClient: slack}) => {
 				}
 
 				if (condition.rain !== undefined) {
-					score += 2;
+					score += 3;
 				}
 
 				if (condition.wind !== undefined) {
