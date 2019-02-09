@@ -46,6 +46,36 @@ const conditionIds = {
 	drizzle: [],
 	dust: [],
 };
+const weatherEmojis = {
+	1: ':sunny:',
+	2: ':sunny:',
+	3: ':mostly_sunny:',
+	4: ':partly_sunny:',
+	5: ':fog:',
+	6: ':barely_sunny:',
+	7: ':cloud:',
+	8: ':cloud:',
+	11: ':fog:',
+	12: ':umbrella_with_rain_drops:',
+	13: ':umbrella_with_rain_drops:',
+	14: ':partly_sunny_rain:',
+	15: ':thunder_cloud_and_rain:',
+	16: ':thunder_cloud_and_rain:',
+	17: ':thunder_cloud_and_rain:',
+	18: ':umbrella_with_rain_drops:',
+	19: ':cloud:',
+	20: ':barely_sunny:',
+	21: ':barely_sunny:',
+	22: ':snowman:',
+	23: ':snowman:',
+	24: ':ice_skate:',
+	25: ':umbrella_with_rain_drops:',
+	26: ':umbrella_with_rain_drops:',
+	29: ':umbrella_with_rain_drops:',
+	30: ':sunny:',
+	31: ':sunny:',
+	32: ':sunny:',
+};
 
 const FtoC = (F) => (F - 32) * 5 / 9;
 const miphToMps = (miph) => miph * 0.447;
@@ -282,14 +312,15 @@ module.exports = async ({webClient: slack}) => {
 				icon_emoji: ':sunrise:',
 				attachments: [{
 					color: '#FFA726',
-					title: `本日の天気: ${matchingWeather.name}`,
+					title: `本日の天気${weatherEmojis[weatherId]}「${matchingWeather.name}」`,
+					title_link: 'https://www.accuweather.com/ja/jp/tokyo/226396/daily-weather-forecast/226396',
 					image_url: cloudinaryData.secure_url,
 					fallback: matchingWeather.name,
 				}, {
 					color: '#1976D2',
 					title: '本日のこよみ',
 					text: stripIndent`
-						:sun_with_face: *日の出* ${moment(sunrise).format('HH:mm')} ～ *日の入* ${moment(sunset).format('HH:mm')}
+						:sunrise_over_mountains: *日の出* ${moment(sunrise).format('HH:mm')} ～ *日の入* ${moment(sunset).format('HH:mm')}
 						${moonEmoji} *月の出* ${moment(moonrise).format('HH:mm')} ～ *月の入* ${moment(moonset).format('HH:mm')}
 					`,
 				}],
