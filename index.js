@@ -22,6 +22,7 @@ const plugins = [
 	require('./prime'),
 	require('./dajare'),
 	require('./sunrise'),
+	require('./ahokusa'),
 ];
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
