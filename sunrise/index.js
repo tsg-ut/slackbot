@@ -79,6 +79,7 @@ const weatherEmojis = {
 
 const FtoC = (F) => (F - 32) * 5 / 9;
 const miphToMps = (miph) => miph * 0.447;
+const inchToMm = (inch) => inch * 25.4;
 
 module.exports = async ({webClient: slack}) => {
 	const storage = nodePersist.create({
@@ -130,15 +131,15 @@ module.exports = async ({webClient: slack}) => {
 			const rain = get(data, ['DailyForecasts', 0, 'Day', 'Rain', 'Value']);
 			const snow = get(data, ['DailyForecasts', 0, 'Day', 'Snow', 'Value']);
 			const ice = get(data, ['DailyForecasts', 0, 'Day', 'Ice', 'Value']);
-			const totalRain = rain + snow + ice;
+			const totalRain = inchToMm(rain + snow + ice);
 			let rainLevel = null;
 			if (totalRain < 0.01) {
 				rainLevel = 0;
-			} else if (totalRain < 2) {
+			} else if (totalRain < 3) {
 				rainLevel = 1;
-			} else if (totalRain < 5) {
-				rainLevel = 2;
 			} else if (totalRain < 10) {
+				rainLevel = 2;
+			} else if (totalRain < 20) {
 				rainLevel = 3;
 			} else {
 				rainLevel = 4;
