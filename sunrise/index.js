@@ -120,9 +120,9 @@ module.exports = async ({webClient: slack}) => {
 				temperatureLevel = 1;
 			} else if (temperature < 18) {
 				temperatureLevel = 2;
-			} else if (temperature < 24) {
+			} else if (temperature < 26) {
 				temperatureLevel = 3;
-			} else if (temperature < 30) {
+			} else if (temperature < 32) {
 				temperatureLevel = 4;
 			} else {
 				temperatureLevel = 5;
