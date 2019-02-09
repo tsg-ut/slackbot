@@ -9,6 +9,8 @@ const {stripIndent} = require('common-tags');
 const cloudinary = require('cloudinary');
 const axios = require('axios');
 const {get, maxBy} = require('lodash');
+const scrapeIt = require('scrape-it');
+const {URL} = require('url');
 
 const render = require('./render.js');
 const weathers = require('./weathers.js');
@@ -81,6 +83,25 @@ const FtoC = (F) => (F - 32) * 5 / 9;
 const miphToMps = (miph) => miph * 0.447;
 const inchToMm = (inch) => inch * 25.4;
 
+const getTenkijpEntries = async () => {
+	const {data} = await scrapeIt('https://tenki.jp/suppl/entries/1/', {
+		articles: {
+			listItem: '.recent-entries > ul > li',
+			data: {
+				title: {
+					selector: '.recent-entries-title',
+				},
+				link: {
+					selector: 'a',
+					attr: 'href',
+				},
+			},
+		},
+	});
+
+	return data.articles;
+};
+
 module.exports = async ({webClient: slack}) => {
 	const storage = nodePersist.create({
 		dir: path.resolve(__dirname, '__state__'),
@@ -99,10 +120,12 @@ module.exports = async ({webClient: slack}) => {
 			const {phase: moonphase} = suncalc.getMoonIllumination(now, ...position);
 			const moonEmoji = moonEmojis[Math.round(moonphase * 8) % 8];
 
-			const {data} = await axios.get(`http://dataservice.accuweather.com/forecasts/v1/daily/1day/226396?${qs.encode({
+			const {data} = await axios.get(`http://dataservice.accuweather.com/forecasts/v1/daily/5day/226396?${qs.encode({
 				apikey: process.env.ACCUWEATHER_KEY,
 				details: 'true',
 			})}`);
+			const today = moment().utcOffset(9).startOf('day').toDate();
+			const forecast = data.DailyForecasts.find((cast) => new Date(cast.Date) >= today);
 
 			const lastWeather = await storage.getItem('lastWeather') || null;
 			const weatherHistories = await storage.getItem('weatherHistories') || [];
@@ -110,9 +133,9 @@ module.exports = async ({webClient: slack}) => {
 			const month = moment().utcOffset(9).month() + 1;
 			const date = moment().utcOffset(9).date();
 
-			const weatherId = get(data, ['DailyForecasts', 0, 'Day', 'Icon']);
+			const weatherId = get(forecast, ['Day', 'Icon']);
 
-			const temperature = FtoC(get(data, ['DailyForecasts', 0, 'Temperature', 'Maximum', 'Value']));
+			const temperature = FtoC(get(forecast, ['Temperature', 'Maximum', 'Value']));
 			let temperatureLevel = null;
 			if (temperature < 5) {
 				temperatureLevel = 0;
@@ -128,7 +151,7 @@ module.exports = async ({webClient: slack}) => {
 				temperatureLevel = 5;
 			}
 
-			const totalLiquid = inchToMm(get(data, ['DailyForecasts', 0, 'Day', 'TotalLiquid', 'Value']));
+			const totalLiquid = inchToMm(get(forecast, ['Day', 'TotalLiquid', 'Value']));
 			let rainLevel = null;
 			if (totalLiquid < 0.01) {
 				rainLevel = 0;
@@ -142,8 +165,8 @@ module.exports = async ({webClient: slack}) => {
 				rainLevel = 4;
 			}
 
-			const wind = miphToMps(get(data, ['DailyForecasts', 0, 'Day', 'Wind', 'Speed', 'Value']));
-			const winddeg = get(data, ['DailyForecasts', 0, 'Day', 'Wind', 'Direction', 'Degrees']);
+			const wind = miphToMps(get(forecast, ['Day', 'Wind', 'Speed', 'Value']));
+			const winddeg = get(forecast, ['Day', 'Wind', 'Direction', 'Degrees']);
 			let windLevel = null;
 			if (wind < 3) {
 				windLevel = 0;
@@ -303,7 +326,10 @@ module.exports = async ({webClient: slack}) => {
 					.end(imageData);
 			});
 
-			slack.chat.postMessage({
+			const lastTenkiEntryUrl = await storage.getItem('lastTenkiEntryUrl');
+			const tenkiEntries = await getTenkijpEntries();
+
+			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: ':ahokusa-top-right::ahokusa-bottom-left::heavy_exclamation_mark:',
 				username: 'sunrise',
@@ -321,8 +347,16 @@ module.exports = async ({webClient: slack}) => {
 						:sunrise_over_mountains: *日の出* ${moment(sunrise).format('HH:mm')} ～ *日の入* ${moment(sunset).format('HH:mm')}
 						${moonEmoji} *月の出* ${moment(moonrise).format('HH:mm')} ～ *月の入* ${moment(moonset).format('HH:mm')}
 					`,
-				}],
+				}, ...((tenkiEntries[0] && tenkiEntries[0].link !== lastTenkiEntryUrl) ? [{
+					color: '#4DB6AC',
+					title: tenkiEntries[0].title,
+					title_link: new URL(tenkiEntries[0].link, 'https://tenki.jp/suppl/entries/1/').href,
+				}] : [])],
 			});
+
+			if (tenkiEntries[0]) {
+				await storage.setItem('lastTenkiEntryUrl', tenkiEntries[0].link);
+			}
 		}
 	};
 
