@@ -10,6 +10,8 @@ const cloudinary = require('cloudinary');
 const axios = require('axios');
 const {get, maxBy, flatten, sortBy} = require('lodash');
 const scrapeIt = require('scrape-it');
+const iconv = require('iconv-lite');
+const cheerio = require('cheerio');
 
 const render = require('./render.js');
 const weathers = require('./weathers.js');
@@ -168,6 +170,17 @@ const getEntries = () => (
 		getTenkijpEntries(),
 	])
 );
+
+const getHaiku = async () => {
+	const {data} = await axios.get('http://sendan.kaisya.co.jp/index3.html', {
+		responseType: 'arraybuffer',
+	});
+	const $ = cheerio.load(iconv.decode(data, 'sjis'));
+	const text = $('td[rowspan=7][width=590] center font').text();
+	const author = $('td[rowspan=7][width=590] center b').text();
+
+	return {text, author};
+};
 
 module.exports = async ({webClient: slack}) => {
 	const storage = nodePersist.create({
@@ -414,6 +427,8 @@ module.exports = async ({webClient: slack}) => {
 				};
 			}
 
+			const haiku = await getHaiku();
+
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: ':ahokusa-top-right::ahokusa-bottom-left::heavy_exclamation_mark:',
@@ -436,7 +451,13 @@ module.exports = async ({webClient: slack}) => {
 					color: '#4DB6AC',
 					title: entry.title,
 					title_link: entry.link,
-				}] : [])],
+				}] : []), {
+					color: '#6D4C41',
+					title: '本日の一句',
+					title_link: 'http://sendan.kaisya.co.jp/',
+					text: haiku.text,
+					footer: haiku.author,
+				}],
 			});
 
 			await storage.setItem('lastEntryUrl', {
