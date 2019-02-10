@@ -8,9 +8,8 @@ const moment = require('moment');
 const {stripIndent} = require('common-tags');
 const cloudinary = require('cloudinary');
 const axios = require('axios');
-const {get, maxBy} = require('lodash');
+const {get, maxBy, flatten, sortBy} = require('lodash');
 const scrapeIt = require('scrape-it');
-const {URL} = require('url');
 
 const render = require('./render.js');
 const weathers = require('./weathers.js');
@@ -83,6 +82,66 @@ const FtoC = (F) => (F - 32) * 5 / 9;
 const miphToMps = (miph) => miph * 0.447;
 const inchToMm = (inch) => inch * 25.4;
 
+const getTayoriEntries = async () => {
+	const {data} = await scrapeIt('http://www.i-nekko.jp/hibinotayori/', {
+		articles: {
+			listItem: 'section.blog-panel',
+			data: {
+				date: {
+					selector: '.blog-date',
+				},
+				title: {
+					selector: '.blog-title',
+				},
+				link: {
+					selector: '.blog-title > a',
+					attr: 'href',
+				},
+			},
+		},
+	});
+
+	return data.articles;
+};
+
+const getSaijikiEntries = async () => {
+	const {data} = await scrapeIt('http://www.i-nekko.jp/category.html', {
+		archives: {
+			listItem: '.archive-list',
+			data: {
+				category: {
+					selector: '.archive-list-title > img',
+					attr: 'alt',
+				},
+				articles: {
+					listItem: '.archive-list-box',
+					data: {
+						date: {
+							selector: '.date',
+						},
+						title: {
+							selector: '.date + p',
+						},
+						link: {
+							selector: 'a',
+							attr: 'href',
+						},
+					},
+				},
+			},
+		},
+	});
+
+	return sortBy(flatten(
+		data.archives.map(({category, articles}) => (
+			articles.map((article) => ({category, ...article}))
+		))
+	), [({date}) => {
+		const [year, month, day, time] = date.split(/[年月日]/).map((token) => token.trim());
+		return new Date(`${year}-${month}-${day} ${time}`);
+	}]).reverse();
+};
+
 const getTenkijpEntries = async () => {
 	const {data} = await scrapeIt('https://tenki.jp/suppl/entries/1/', {
 		articles: {
@@ -101,6 +160,14 @@ const getTenkijpEntries = async () => {
 
 	return data.articles;
 };
+
+const getEntries = () => (
+	Promise.all([
+		getTayoriEntries(),
+		getSaijikiEntries(),
+		getTenkijpEntries(),
+	])
+);
 
 module.exports = async ({webClient: slack}) => {
 	const storage = nodePersist.create({
@@ -326,8 +393,26 @@ module.exports = async ({webClient: slack}) => {
 					.end(imageData);
 			});
 
-			const lastTenkiEntryUrl = await storage.getItem('lastTenkiEntryUrl');
-			const tenkiEntries = await getTenkijpEntries();
+			const lastEntryUrl = await storage.getItem('lastEntryUrl');
+			const [tayori, saijiki, tenkijp] = await getEntries();
+
+			let entry = null;
+			if (!lastEntryUrl || lastEntryUrl.tayori !== tayori[0].link) {
+				entry = {
+					title: tayori[0].title,
+					link: tayori[0].link,
+				};
+			} else if (lastEntryUrl.saijiki !== saijiki[0].link) {
+				entry = {
+					title: `${saijiki[0].category}「${saijiki[0].title}」`,
+					link: saijiki[0].link,
+				};
+			} else if (lastEntryUrl.tenkijp !== tenkijp[0].link) {
+				entry = {
+					title: tenkijp[0].title,
+					link: tenkijp[0].link,
+				};
+			}
 
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
@@ -347,16 +432,18 @@ module.exports = async ({webClient: slack}) => {
 						:sunrise_over_mountains: *日の出* ${moment(sunrise).format('HH:mm')} ～ *日の入* ${moment(sunset).format('HH:mm')}
 						${moonEmoji} *月の出* ${moment(moonrise).format('HH:mm')} ～ *月の入* ${moment(moonset).format('HH:mm')}
 					`,
-				}, ...((tenkiEntries[0] && tenkiEntries[0].link !== lastTenkiEntryUrl) ? [{
+				}, ...(entry ? [{
 					color: '#4DB6AC',
-					title: tenkiEntries[0].title,
-					title_link: new URL(tenkiEntries[0].link, 'https://tenki.jp/suppl/entries/1/').href,
+					title: entry.title,
+					title_link: entry.link,
 				}] : [])],
 			});
 
-			if (tenkiEntries[0]) {
-				await storage.setItem('lastTenkiEntryUrl', tenkiEntries[0].link);
-			}
+			await storage.setItem('lastEntryUrl', {
+				tayori: tayori[0].link,
+				saijiki: saijiki[0].link,
+				tenkijp: tenkijp[0].link,
+			});
 		}
 	};
 
