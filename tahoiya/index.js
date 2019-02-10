@@ -402,7 +402,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		if (state.author) {
 			const humanCount = Array.from(state.meanings.keys()).filter((user) => user.startsWith('U')).length;
-			const correctCount = correctBetters.length;
+			const correctCount = correctBetters.filter((user) => user.startsWith('U')).length;
 			const wrongCount = humanCount - correctCount;
 
 			newRatings.set(state.author, newRatings.get(state.author) + wrongCount - correctCount);
