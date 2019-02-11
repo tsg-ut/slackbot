@@ -45,6 +45,7 @@
     "jsdom": "^13.1.0",
     "kuromojin": "^1.4.0",
     "lodash": "^4.17.11",
+    "lodash-math": "0.0.7",
     "miller-rabin": "^4.0.1",
     "moment": "^2.23.0",
     "node-emoji": "^1.8.1",
@@ -64,10 +65,12 @@
     "sqlite3": "^4.0.4",
     "suncalc": "^1.8.0",
     "tmp": "0.0.33",
-    "winston": "^3.1.0"
+    "winston": "^3.2.1",
+    "word2vec": "github:pizzacat83/node-word2vec"
   },
   "devDependencies": {
     "@hakatashi/eslint-config": "^1.8.4",
+    "byline": "^5.0.0",
     "eslint": "^5.11.1",
     "eslint-plugin-react": "^7.12.1",
     "jest": "^23.6.0"

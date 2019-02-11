@@ -22,6 +22,7 @@ const plugins = [
 	require('./prime'),
 	require('./dajare'),
 	require('./sunrise'),
+	require('./vocabwar'),
 ];
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
@@ -50,5 +51,4 @@ rtmClient.on('authenticated', (data) => {
 	}
 	firstLogin = false;
 });
-
 rtmClient.start();
