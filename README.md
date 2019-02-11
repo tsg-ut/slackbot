@@ -32,7 +32,20 @@ cp .env.example .env
 # .envをいい感じに編集する
 ```
 
-`SLACK_TOKEN`はSlackの [Legacy tokens](https://api.slack.com/custom-integrations/legacy-tokens) を使用し、`CHANNEL_XXX`系は全部自分宛のDMを指定するのがオススメ。
+`CHANNEL_XXX`系は全部自分宛のDMを指定するのがオススメ。
+
+`SLACK_TOKEN` は [@tsgbot の OAuth & Permissions](https://api.slack.com/apps/ADMCWEP5X/oauth) から必要な権限のみに絞ったTokenを発行するのをオススメ。
+
+必要なスコープ
+
+* `channels:history`
+* `channels:write`
+* `chat:write:bot`
+* `chat:write:user`
+* `incoming-webhook`
+* `bot`
+* `commands`
+* `users:read`
 
 `IMAGEBIN_KEY`はshogiを開発する時以外は必要ない。必要な場合は https://imagebin.ca/tools.php からAPIキーを取得。
 

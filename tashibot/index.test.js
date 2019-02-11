@@ -1,7 +1,20 @@
 /* eslint-env node, jest */
 
+jest.mock('cloudinary');
+jest.mock('download');
+jest.mock('../lib/getReading.js');
+
 const tashibot = require('./index.js');
 const Slack = require('../lib/slackMock.js');
+const getReading = require('../lib/getReading.js');
+
+const download = require('download');
+
+download.response = Buffer.alloc(0x100);
+
+getReading.virtualReadings = {
+	飽きたし: 'アキタシ',
+};
 
 let slack = null;
 

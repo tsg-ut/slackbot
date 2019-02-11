@@ -2,7 +2,7 @@ const logger = require('./lib/logger.js');
 require('dotenv').config();
 
 process.on('unhandledRejection', (error) => {
-	logger.error(error);
+	logger.error(error.stack);
 });
 
 const {RTMClient, WebClient} = require('@slack/client');
@@ -20,6 +20,8 @@ const plugins = [
 	require('./channel-notifier'),
 	require('./tashibot'),
 	require('./prime'),
+	require('./dajare'),
+	require('./sunrise'),
 ];
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);

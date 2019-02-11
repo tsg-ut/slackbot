@@ -60,4 +60,5 @@ typings/
 mahjong/current-point.json
 .restart-trigger
 __cache__
+__state__
 google_application_credentials.json

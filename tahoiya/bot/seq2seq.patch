@@ -1,0 +1,48 @@
+diff --git a/seq2seq/contrib/seq2seq/helper.py b/seq2seq/contrib/seq2seq/helper.py
+index 977d0ab..59a8a26 100644
+--- a/seq2seq/contrib/seq2seq/helper.py
++++ b/seq2seq/contrib/seq2seq/helper.py
+@@ -32,8 +32,8 @@ import abc
+ 
+ import six
+ 
+-from tensorflow.contrib.distributions.python.ops import bernoulli
+-from tensorflow.contrib.distributions.python.ops import categorical
++from tensorflow.contrib.distributions import Bernoulli
++from tensorflow.contrib.distributions import Categorical
+ from tensorflow.python.framework import dtypes
+ from tensorflow.python.framework import ops
+ from tensorflow.python.layers import base as layers_base
+@@ -264,7 +264,7 @@ class ScheduledEmbeddingTrainingHelper(TrainingHelper):
+       select_sample_noise = random_ops.random_uniform(
+           [self.batch_size], seed=self._scheduling_seed)
+       select_sample = (self._sampling_probability > select_sample_noise)
+-      sample_id_sampler = categorical.Categorical(logits=outputs)
++      sample_id_sampler = Categorical(logits=outputs)
+       return array_ops.where(
+           select_sample,
+           sample_id_sampler.sample(seed=self._seed),
+@@ -384,7 +384,7 @@ class ScheduledOutputTrainingHelper(TrainingHelper):
+   def sample(self, time, outputs, state, name=None):
+     with ops.name_scope(name, "ScheduledOutputTrainingHelperSample",
+                         [time, outputs, state]):
+-      sampler = bernoulli.Bernoulli(probs=self._sampling_probability)
++      sampler = Bernoulli(probs=self._sampling_probability)
+       return math_ops.cast(
+           sampler.sample(sample_shape=self.batch_size, seed=self._seed),
+           dtypes.bool)
+diff --git a/seq2seq/test/pipeline_test.py b/seq2seq/test/pipeline_test.py
+index 8456997..17ce9fb 100644
+--- a/seq2seq/test/pipeline_test.py
++++ b/seq2seq/test/pipeline_test.py
+@@ -41,7 +41,9 @@ BIN_FOLDER = os.path.abspath(
+ def _clear_flags():
+   """Resets Tensorflow's FLAG values"""
+   #pylint: disable=W0212
+-  tf.app.flags.FLAGS = tf.app.flags._FlagValues()
++  for flag_key in dir(tf.app.flags.FLAGS):
++      delattr(tf.app.flags.FLAGS, flag_key)
++  #tf.app.flags.FLAGS = tf.app.flags._FlagValues()
+   tf.app.flags._global_parser = argparse.ArgumentParser()
+ 
+ 

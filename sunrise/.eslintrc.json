@@ -1,7 +1,7 @@
 {
     "extends": "@hakatashi",
     "parserOptions": {
-        "ecmaVersion": 2018,
+        "ecmaVersion": 2019,
         "ecmaFeatures": {
             "experimentalObjectRestSpread": true,
             "jsx": true
@@ -10,7 +10,6 @@
     },
     "rules": {
         "no-console": "off",
-        "camelcase": "off",
         "max-len": "off",
         "max-depth": "off",
         "array-plural/array-plural": "off"

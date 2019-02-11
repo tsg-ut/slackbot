@@ -242,26 +242,46 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		const {text} = message;
 
-		if (text === '将棋') {
+		if (text === '将棋' || text.match(/^(\d+)手(:?詰め|必勝将棋)$/) || text.match(/^(\d+)手以上(:?詰め|必勝将棋)$/)) {
 			if (state.board !== null || state.isLocked) {
 				perdon();
 				return;
 			}
 
+			let matches = null;
+			let condition = '';
+			if ((matches = text.match(/^(\d+)手(:?詰め|必勝将棋)$/))) {
+				condition = `depth = ${(parseInt(matches[1].replace(/^0+/, '')) || 0) + 1}`;
+			} else if ((matches = text.match(/^(\d+)手以上(:?詰め|必勝将棋)$/))) {
+				condition = `depth > ${parseInt(matches[1].replace(/^0+/, '')) || 0}`;
+			} else {
+				condition = 'depth > 5';
+			}
+
 			const databases = await promisify(fs.readdir)(
 				path.resolve(__dirname, 'boards')
 			);
-			state.previousDatabase = sample(databases);
+			const database = sample(databases);
 			await sqlite.open(
-				path.resolve(__dirname, 'boards', state.previousDatabase)
+				path.resolve(__dirname, 'boards', database)
 			);
 			const data = await sqlite.get(oneLine`
 				SELECT *
 				FROM boards
-				WHERE result = 1 AND depth > 5 AND is_good = 1
-				ORDER BY RANDOM()
+				WHERE result = 1 AND ${condition}
+				ORDER BY is_good DESC, RANDOM()
 				LIMIT 1
 			`);
+			if (data === undefined) {
+				await slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					text: ':thinking_face:',
+					username: 'shogi',
+					icon_url: iconUrl,
+				});
+				return;
+			}
+			state.previousDatabase = database;
 			state.board = deserialize(data.board);
 			state.previousBoard = state.board.clone();
 			state.previousTurns = data.depth - 1;

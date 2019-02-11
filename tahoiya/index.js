@@ -9,6 +9,7 @@ const sum = require('lodash/sum');
 const maxBy = require('lodash/maxBy');
 const minBy = require('lodash/minBy');
 const shuffle = require('lodash/shuffle');
+const random = require('lodash/random');
 const {hiraganize} = require('japanese');
 const path = require('path');
 const fs = require('fs');
@@ -16,6 +17,10 @@ const {promisify} = require('util');
 const schedule = require('node-schedule');
 const sqlite = require('sqlite');
 const sql = require('sql-template-strings');
+const Queue = require('p-queue');
+const nodePersist = require('node-persist');
+const rouge = require('rouge');
+const getReading = require('../lib/getReading.js');
 
 const {
 	getPageTitle,
@@ -28,6 +33,7 @@ const {
 } = require('./lib.js');
 const gist = require('./gist.js');
 const logger = require('../lib/logger.js');
+const bot = require('./bot.js');
 
 const state = (() => {
 	try {
@@ -65,8 +71,17 @@ const state = (() => {
 	}
 })();
 
+const queue = new Queue({concurrency: 1});
+
+const transaction = (func) => queue.add(func);
+
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const db = await sqlite.open(path.join(__dirname, 'themes.sqlite3'));
+
+	const storage = nodePersist.create({
+		dir: path.resolve(__dirname, '__cache__'),
+	});
+	await storage.init();
 
 	const mapToObject = (map) => {
 		const object = {};
@@ -121,13 +136,37 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const {team} = await slack.team.info();
 
 	const getMemberName = (user) => {
+		if (user === 'tahoiyabot-01') {
+			return 'たほいやAIくん1号 (仮)';
+		}
+
+		if (user === 'tahoiyabot-02') {
+			return 'たほいやAIくん2号 (仮)';
+		}
+
 		const member = members.find(({id}) => id === user);
 		return member.profile.display_name || member.name;
 	};
 
 	const getMemberIcon = (user) => {
+		if (user === 'tahoiyabot-01' || user === 'tahoiyabot-02') {
+			return 'https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/apple/155/robot-face_1f916.png';
+		}
+
 		const member = members.find(({id}) => id === user);
 		return member.profile.image_24;
+	};
+
+	const getMention = (user) => {
+		if (user === 'tahoiyabot-01') {
+			return 'たほいやAIくん1号 (仮)';
+		}
+
+		if (user === 'tahoiyabot-02') {
+			return 'たほいやAIくん2号 (仮)';
+		}
+
+		return `<@${user}>`;
 	};
 
 	const updateGist = async (battleTimestamp) => {
@@ -187,9 +226,14 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		battles.push(newBattle);
 
-		postMessage(`対戦ログ: <https://gist.github.com/hakatashi/${latestGist.id}#${encodeURIComponent(`第${offset + battles.length}回-${newBattle.theme}`)}>`);
-
 		const markdown = gist.serialize({battles, offset}, members);
+
+		if (process.env.NODE_ENV !== 'production') {
+			await promisify(fs.writeFile)(path.join(__dirname, 'tahoiya-0-logs.md'), markdown);
+			return;
+		}
+
+		postMessage(`対戦ログ: <https://gist.github.com/hakatashi/${latestGist.id}#${encodeURIComponent(`第${offset + battles.length}回-${newBattle.theme}`)}>`);
 
 		await axios.patch(`https://api.github.com/gists/${latestGist.id}`, {
 			description: `[${process.env.TEAMNAME}] たほいや対戦ログ 第${offset + 1}回～第${offset + 100}回`,
@@ -225,12 +269,14 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	);
 
 	const onFinishMeanings = async () => {
-		if (state.author !== null && state.meanings.size < 3) {
+		const humanCount = Array.from(state.meanings.keys()).filter((user) => user.startsWith('U')).length;
+		if (state.author !== null && humanCount < 3) {
 			await setState({
 				phase: 'waiting',
 				theme: null,
 				author: null,
 				meanings: new Map(),
+				comments: [],
 				stashedDaily: {
 					theme: {
 						word: state.theme.word,
@@ -241,20 +287,21 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						user: state.author,
 					},
 					meanings: [...state.meanings.entries()],
+					comments: state.comments,
 				},
 			});
 			await postMessage('参加者が最少催行人数 (3人) より少ないので今日のデイリーたほいやはキャンセルされたよ:face_with_rolling_eyes:');
 			return;
 		}
 
-		if (state.meanings.size === 0) {
-			await setState({phase: 'waiting', theme: null, author: null});
+		if (humanCount === 0) {
+			await setState({phase: 'waiting', theme: null, author: null, meanings: new Map()});
 			await postMessage('参加者がいないのでキャンセルされたよ:face_with_rolling_eyes:');
 			return;
 		}
 
 		await setState({phase: 'collect_bettings'});
-		const dummySize = Math.max(2, 4 - state.meanings.size);
+		const dummySize = Math.max(1, 4 - state.meanings.size);
 		const ambiguateDummy = minBy(candidateWords, ([word, ruby]) => {
 			const distance = levenshtein.get(state.theme.ruby, ruby);
 			if (distance === 0 || state.theme.word === word) {
@@ -287,7 +334,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		await setState({shuffledMeanings});
 
 		await postMessage(stripIndent`
-			${[...state.meanings.keys()].map((user) => `<@${user}>`).join(' ')}
+			${[...state.meanings.keys()].filter((user) => user.startsWith('U')).map((user) => getMention(user)).join(' ')}
 			ベッティングタイムが始まるよ～:open_hands::open_hands::open_hands:
 			下のリストから *${state.theme.ruby}* の正しい意味だと思うものを選んで、 <@${process.env.USER_TSGBOT}> に「nにm枚」とDMしてね:wink:
 			全員ぶん出揃うか${state.author === null ? '3' : '30'}分が経過すると結果発表だよ:sunglasses:
@@ -295,6 +342,30 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			text: `${index + 1}. ${meaning.text}`,
 			color: colors[index],
 		})));
+
+		for (const better of ['tahoiyabot-01', 'tahoiyabot-02']) {
+			if (state.meanings.has(better)) {
+				const {index: betMeaning} = maxBy(
+					shuffledMeanings
+						.map((meaning, index) => ({...meaning, index}))
+						.filter(({user}) => user !== better),
+					({text}) => sum([1, 2, 3].map((n) => (
+						Math.min(text.length, state.meanings.get(better).length) < n
+							? 0
+							: rouge.n(text, state.meanings.get(better), {
+								n,
+								tokenizer: (s) => Array.from(s),
+							}) * (10 ** n)
+					))) + Math.random() * 1e-10,
+				);
+				state.bettings.set(better, {
+					meaning: betMeaning,
+					coins: 1,
+				});
+				await setState({bettings: state.bettings});
+				await postMessage(`${getMention(better)} がBETしたよ:moneybag:`);
+			}
+		}
 
 		timeoutId = setTimeout(onFinishBettings, (state.author === null ? 3 : 30) * 60 * 1000);
 	};
@@ -330,8 +401,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if (state.author) {
-			const correctCount = correctBetters.length;
-			const wrongCount = state.meanings.size - correctCount;
+			const humanCount = Array.from(state.meanings.keys()).filter((user) => user.startsWith('U')).length;
+			const correctCount = correctBetters.filter((user) => user.startsWith('U')).length;
+			const wrongCount = humanCount - correctCount;
 
 			newRatings.set(state.author, newRatings.get(state.author) + wrongCount - correctCount);
 		}
@@ -394,7 +466,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			*${state.theme.ruby}* の正しい意味は⋯⋯
 			*${correctMeaningIndex + 1}. ${correctMeaning.text}*
 
-			正解者: ${correctBetters.length === 0 ? 'なし' : correctBetters.map(([better]) => `<@${better}>`).join(' ')}
+			正解者: ${correctBetters.length === 0 ? 'なし' : correctBetters.map(([better]) => getMention(better)).join(' ')}
 
 			${state.author === null ? getWordUrl(state.theme.word, state.theme.source) : state.theme.url}
 		`, [], {unfurl_links: true});
@@ -453,7 +525,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				author_link: url,
 				author_icon: icon,
 				title: `${index + 1}. ${meaning.text}`,
-				text: [...state.bettings.entries()].filter(([, {meaning}]) => meaning === index).map(([better, {coins}]) => `<@${better}> (${coins}枚)`).join(' ') || '-',
+				text: [...state.bettings.entries()].filter(([, {meaning}]) => meaning === index).map(([better, {coins}]) => `${getMention(better)} (${coins}枚)`).join(' ') || '-',
 				color: index === correctMeaningIndex ? colors[0] : '#CCCCCC',
 			};
 		}));
@@ -497,6 +569,22 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		if (state.isWaitingDaily) {
 			startDaily();
 		}
+	};
+
+	const onBotResult = async ({result, modelName}) => {
+		assert(state.phase === 'collect_meanings');
+
+		const distance = levenshtein.get(state.theme.meaning, result);
+		logger.info({result, distance});
+		if (distance <= Math.max(state.theme.meaning.length, result.length) / 2) {
+			return;
+		}
+
+		state.meanings.set(modelName, normalizeMeaning(result));
+		await setState({meanings: state.meanings});
+		await postMessage(stripIndent`
+			${getMemberName(modelName)} が意味を登録したよ:robot_face:
+		`);
 	};
 
 	const startDaily = async () => {
@@ -555,6 +643,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		const meanings = new Map(state.stashedDaily === null ? [] : state.stashedDaily.meanings);
+		const comments = state.stashedDaily === null ? [] : state.stashedDaily.comments;
 
 		await setState({
 			candidates: [],
@@ -570,6 +659,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			author: theme.user,
 			stashedDaily: null,
 			meanings,
+			comments,
 		});
 
 		const end = Date.now() + 90 * 60 * 1000;
@@ -587,13 +677,21 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		await postMessage(stripIndent`
 			今日のデイリーたほいやが始まるよ:checkered_flag::checkered_flag::checkered_flag:
-			出題者: <@${theme.user}>
+			出題者: ${getMention(theme.user)}
 
 			今日のお題は *「${state.theme.ruby}」* だよ:v:
 			参加者は90分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
 			終了予定時刻: ${getTimeLink(end)}
-			${meanings.size === 0 ? '' : `登録済み: ${[...meanings.keys()].map((user) => `<@${user}>`).join(', ')}`}
+			${meanings.size === 0 ? '' : `登録済み: ${[...meanings.keys()].map((user) => getMention(user)).join(', ')}`}
 		`);
+
+		if (!state.meanings.has('tahoiyabot-01')) {
+			await bot.getResult(state.theme.ruby, 'tahoiyabot-01').then(onBotResult);
+		}
+
+		if (!state.meanings.has('tahoiyabot-02')) {
+			await bot.getResult(state.theme.ruby, 'tahoiyabot-02').then(onBotResult);
+		}
 	};
 
 	rtm.on('message', async (message) => {
@@ -644,11 +742,98 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						参加者は3分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
 						終了予定時刻: ${getTimeLink(end)}
 					`);
+
+
+					if (!state.meanings.has('tahoiyabot-01')) {
+						await bot.getResult(ruby, 'tahoiyabot-01').then(onBotResult);
+					}
+
+					if (!state.meanings.has('tahoiyabot-02')) {
+						await bot.getResult(ruby, 'tahoiyabot-02').then(onBotResult);
+					}
+
 					return;
 				}
 
 				if (text === 'デイリーたほいや') {
-					await postMessage('ヘルプ: https://github.com/tsg-ut/slackbot/wiki/%E3%83%87%E3%82%A4%E3%83%AA%E3%83%BC%E3%81%9F%E3%81%BB%E3%81%84%E3%82%84');
+					postMessage('ヘルプ: https://github.com/tsg-ut/slackbot/wiki/%E3%83%87%E3%82%A4%E3%83%AA%E3%83%BC%E3%81%9F%E3%81%BB%E3%81%84%E3%82%84');
+					return;
+				}
+
+				if (text.startsWith('@tahoiya') || text.match(/(って(なに|何)|とは)[？?⋯…・]*$/)) {
+					const isMention = text.startsWith('@tahoiya');
+					const body = text.replace(/^@\w+/, '').replace(/(って(なに|何)|とは)[？?⋯…・]*$/, '').trim();
+					const ruby = hiraganize(await getReading(body)).replace(/[^\p{Script=Hiragana}ー]/gu, '');
+					const modelData = text.startsWith('@tahoiya2') ? (
+						['tahoiyabot-02', 'model.ckpt-600000-ver2']
+					) : text.startsWith('@tahoiya') ? (
+						['tahoiyabot-01', 'model.ckpt-455758']
+					) : (
+						['tahoiyabot-02', 'model.ckpt-600000-ver2']
+					);
+
+					if (ruby.length > 0 && ruby.length <= 25) {
+						if (state.theme && levenshtein.get(state.theme.ruby, ruby) <= 2) {
+							isMention && postMessage('カンニング禁止！:imp:');
+							return;
+						}
+
+						const key = JSON.stringify([...modelData, ruby]);
+						const tempData = await storage.getItem(key);
+
+						if (tempData) {
+							await postMessage(stripIndent`
+								*${ruby}* の正しい意味は⋯⋯
+								*${random(1, 5)}. ${tempData.result}*
+							`, null, {
+								username: getMemberName(modelData[0]),
+								thread_ts: message.ts,
+								reply_broadcast: true,
+							});
+							return;
+						}
+
+						if (queue.size >= 2) {
+							isMention && postMessage(`今忙しいから *${ruby}* は後で:upside_down_face:`);
+							return;
+						}
+
+						transaction(async () => {
+							let data = await storage.getItem(key);
+							if (!data) {
+								let thinking = true;
+								const sendTyping = () => {
+									rtm.sendTyping(message.channel);
+									setTimeout(() => {
+										if (thinking) {
+											sendTyping();
+										}
+									}, 3000);
+								};
+
+								try {
+									sendTyping();
+									data = await bot.getResult(ruby, modelData[0]);
+									thinking = false;
+									await storage.setItem(key, data);
+								} catch (error) {
+									thinking = false;
+									failed(error);
+								}
+							}
+							await postMessage(stripIndent`
+								*${ruby}* の正しい意味は⋯⋯
+								*${random(1, 5)}. ${data.result}*
+							`, null, {
+								username: getMemberName(modelData[0]),
+								thread_ts: message.ts,
+								reply_broadcast: true,
+							});
+						});
+						return;
+					}
+
+					isMention && postMessage(':ha:');
 					return;
 				}
 			}
@@ -767,7 +952,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						`);
 
 						await postMessage(stripIndent`
-							<@${message.user}> がデイリーたほいやのお題を登録したよ:muscle:
+							${getMention(message.user)} がデイリーたほいやのお題を登録したよ:muscle:
 							現在のお題ストック
 						`, stocks.map(({user, cnt: count}, index) => ({
 							text: `@${getMemberName(user)}: ${count}個`,
@@ -829,15 +1014,16 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 					await slack.reactions.add({name: '+1', channel: message.channel, timestamp: message.ts});
 					if (!isUpdate) {
+						const humanCount = Array.from(state.meanings.keys()).filter((user) => user.startsWith('U')).length;
 						const remainingText = state.author === null ? '' : (
-							state.meanings.size > 3 ? '' : (
-								state.meanings.size === 3 ? '(決行決定:tada:)'
-									: `(決行まであと${3 - state.meanings.size}人)`
+							humanCount > 3 ? '' : (
+								humanCount === 3 ? '(決行決定:tada:)'
+									: `(決行まであと${3 - humanCount}人)`
 							)
 						);
 						await postMessage(stripIndent`
-							<@${message.user}> が意味を登録したよ:muscle:
-							現在の参加者: ${state.meanings.size}人 ${remainingText}
+							${getMention(message.user)} が意味を登録したよ:muscle:
+							現在の参加者: ${humanCount}人 ${remainingText}
 						`);
 					}
 					return;
@@ -845,7 +1031,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 				if ((matches = text.match(/^(\d+)に(\d+)枚$/)) && state.phase === 'collect_bettings') {
 					if (!state.meanings.has(message.user)) {
-						await postDM(`<@${message.user}> は参加登録していないのでベッティングできないよ:innocent:`);
+						await postDM(`${getMention(message.user)} は参加登録していないのでベッティングできないよ:innocent:`);
 						return;
 					}
 
@@ -862,8 +1048,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						return;
 					}
 
-					if (betCoins > state.meanings.size) {
-						await postDM(`参加者の人数 (${state.meanings.size}人) より多い枚数はBETできないよ:white_frowning_face:`);
+					const humanCount = Array.from(state.meanings.keys()).filter((user) => user.startsWith('U')).length;
+					if (betCoins > humanCount) {
+						await postDM(`参加者の人数 (${humanCount}人) より多い枚数はBETできないよ:white_frowning_face:`);
 						return;
 					}
 
@@ -882,7 +1069,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 					await slack.reactions.add({name: '+1', channel: message.channel, timestamp: message.ts});
 					if (!isUpdate) {
-						await postMessage(`<@${message.user}> さんがBETしたよ:moneybag:`);
+						await postMessage(`${getMention(message.user)} さんがBETしたよ:moneybag:`);
 					}
 
 					if (state.bettings.size === state.meanings.size) {

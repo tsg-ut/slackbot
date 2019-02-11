@@ -1,6 +1,7 @@
 /* eslint-env node, jest */
 
 jest.mock('download');
+jest.mock('../lib/getReading.js');
 
 const download = require('download');
 

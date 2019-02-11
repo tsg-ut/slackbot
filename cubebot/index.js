@@ -55,7 +55,13 @@ Cube.initSolver();
 const virtualConsole = new VirtualConsole();
 virtualConsole.sendTo(console);
 
-const {window} = new JSDOM('<div id="touch"></div>', {runScripts: 'outside-only', virtualConsole});
+const {window} = new JSDOM('<div id="touch"></div>', {
+	url: 'http://cubebot/',
+	runScripts: 'outside-only',
+	virtualConsole,
+	storageQuota: 1000000,
+	contentType: 'text/html',
+});
 
 window.localStorage = {}; // dummy
 
@@ -115,7 +121,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		const {text} = message;
 		let match = null;
 
-		if (message.subtype === undefined && (match = text.match(/^\s*(.+?:\s*)?(([\d:.,]+|DNF)\s*)+$/i))) {
+		if (message.subtype === undefined && (match = text.match(/^\s*(.+?:\s*)?(([\d:.,]{1,8}|DNF)\s*)+$/i))) {
 			const label = match[1] ? match[1].trim().slice(0, -1) : null;
 			const labelText = label ? ` (${label})` : '';
 			const timeText = match[1] ? text.slice(match[1].length) : text;
@@ -172,7 +178,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if ((match = text.match(/^(スクランブル|F2L|PLL|LL|ZBLL|CMLL|L6E|エッジ|コーナー)/))) {
+		if ((match = text.match(/^(:?スクランブル|F2L|PLL|LL|ZBLL|CMLL|L6E|エッジ|コーナー)/))) {
+			if (text.match(/^(:?LLVM|LLD|LLL)/)) {
+				return;
+			}
+
 			const countMatch = text.slice(match[1].length).match(/\d+/);
 			const count = countMatch ? Math.min(12, parseInt(countMatch[0])) : 1;
 
