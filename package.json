@@ -65,7 +65,8 @@
     "sqlite3": "^4.0.4",
     "suncalc": "^1.8.0",
     "tmp": "0.0.33",
-    "word2vec": "^1.1.4"
+    "winston": "^3.2.1",
+    "word2vec": "github:pizzacat83/node-word2vec"
   },
   "devDependencies": {
     "@hakatashi/eslint-config": "^1.8.4",
