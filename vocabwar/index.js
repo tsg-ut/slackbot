@@ -3,6 +3,7 @@ const path = require('path');
 const assert = require('assert');
 const {promisify} = require('util');
 const querystring = require('querystring');
+const request = require('request');
 const {stripIndent} = require('common-tags');
 const {JSDOM} = require('jsdom');
 const axios = require('axios');
@@ -209,7 +210,35 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		});
 	});
 
+	if (!await new Promise((resolve) => {
+		fs.access(path.join(__dirname, 'data'), fs.constants.F_OK, (error) => {
+			resolve(!error);
+		});
+	})) {
+		await promisify(fs.mkdir)(path.join(__dirname, 'data'));
+	}
 
+	await Promise.all(
+		[
+			['ad.txt', 'https://drive.google.com/uc?id=1hlIeHy-ilaAfCicjaH0x5bjU_8rjx-Ju'],
+			['frequency.txt', 'https://drive.google.com/uc?id=1dtkJPTbH7xVRov77h8OBJ3wLsBaNPMNV'],
+			['wiki_wakati.wv', 'https://dl.dropboxusercontent.com/s/7laifmbdq4oqks9/wiki_wakati.wv'],
+		].map(async ([filename, url]) => {
+			const dataPath = path.join(__dirname, 'data', filename);
+			const dataExists = await new Promise((resolve) => {
+				fs.access(dataPath, fs.constants.F_OK, (error) => {
+					resolve(!error);
+				});
+			});
+			return dataExists ? undefined : new Promise((resolve, reject) => {
+				request(url).pipe(fs.createWriteStream(dataPath))
+					.on('finish', () => {
+						resolve();
+					})
+					.on('error', reject);
+			});
+		})
+	);
 	const freq = await loadFrqData(path.join(__dirname, 'data', 'frequency.txt'));
 	const ad = await loadFrqData(path.join(__dirname, 'data', 'ad.txt'));
 	const model = await promisify(w2v.loadModel)({file: path.join(__dirname, 'data', 'wiki_wakati.wv'), is_binary: true});
