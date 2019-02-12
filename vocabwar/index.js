@@ -63,10 +63,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const {team} = await slack.team.info();
 
 	const getMemberIcon = (user) => {
-		if (user === 'tahoiyabot-01' || user === 'tahoiyabot-02') {
-			return 'https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/apple/155/robot-face_1f916.png';
-		}
-
 		const member = members.find(({id}) => id === user);
 		return member.profile.image_24;
 	};
