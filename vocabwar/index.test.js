@@ -17,7 +17,7 @@ const deleteState = async () => {
 		await promisify(fs.unlink)(path.join(__dirname, 'state.json'));
 	}
 };
-/*
+
 describe('vocabwar', () => {
 	beforeEach(async () => {
 		jest.setTimeout(1000 * 60 * 10);
@@ -63,7 +63,7 @@ describe('vocabwar', () => {
 		expect(text).not.toContain('決定');
 	});
 });
-*/
+
 describe('vocabwar', () => {
 	beforeAll(async () => {
 		jest.setTimeout(1000 * 60 * 10);
