@@ -62,3 +62,5 @@ mahjong/current-point.json
 __cache__
 __state__
 google_application_credentials.json
+vocabwar/state.json
+vocabwar/data
