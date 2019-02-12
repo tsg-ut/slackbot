@@ -12,27 +12,28 @@ const {sampleSize} = require('lodash');
 const byline = require('byline');
 const w2v = require('word2vec');
 
-const state = (() => {
-	try {
-		// eslint-disable-next-line global-require
-		const savedState = require('./state.json');
-		return {
-			phase: savedState.phase,
-			theme: savedState.theme || null,
-			candidates: savedState.candidates || [],
-			ans: new Map(Object.entries(savedState.ans)) || new Map(),
-		};
-	} catch (e) {
-		return {
-			phase: 'waiting', // waiting, collecting,
-			theme: null,
-			candidates: [],
-			ans: new Map(),
-		};
-	}
-})();
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
+	const state = (() => {
+		try {
+			// eslint-disable-next-line global-require
+			const savedState = require('./state.json');
+			return {
+				phase: savedState.phase,
+				theme: savedState.theme || null,
+				candidates: savedState.candidates || [],
+				ans: new Map(Object.entries(savedState.ans)) || new Map(),
+			};
+		} catch (e) {
+			return {
+				phase: 'waiting', // waiting, collecting,
+				theme: null,
+				candidates: [],
+				ans: new Map(),
+			};
+		}
+	})();
+
 	const mapToObject = (map) => {
 		const object = {};
 		for (const [key, value] of map.entries()) {
