@@ -17,7 +17,7 @@ const deleteState = async () => {
 		await promisify(fs.unlink)(path.join(__dirname, 'state.json'));
 	}
 };
-
+/*
 describe('vocabwar', () => {
 	beforeEach(async () => {
 		jest.setTimeout(1000 * 60 * 10);
@@ -63,7 +63,7 @@ describe('vocabwar', () => {
 		expect(text).not.toContain('決定');
 	});
 });
-
+*/
 describe('vocabwar', () => {
 	beforeAll(async () => {
 		jest.setTimeout(1000 * 60 * 10);
@@ -103,4 +103,27 @@ describe('vocabwar', () => {
 			ts: slack.fakeTimestamp,
 		});
 	}));
+
+	it('rejects duplicate answer', () => new Promise((resolve, reject) => {
+		slack.on('chat.postMessage', ({text}) => {
+			expect(text).toContain('パク');
+			resolve();
+		});
+
+		slack.rtmClient.emit('message', {
+			channel: slack.fakeChannel,
+			text: '鋭い',
+			user: `${slack.fakeUser}hoge`,
+			ts: slack.fakeTimestamp,
+		});
+	}));
+
+	/* currently unavailable because of slackMock.handleWebcall
+	it('posts result', () => new Promise((resolve, reject) => {
+		slack.on('chat.postMessage', ({text}) => {
+			expect(text).toContain('結果');
+			resolve();
+		});
+	}));
+	*/
 });
