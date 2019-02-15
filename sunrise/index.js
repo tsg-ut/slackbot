@@ -202,7 +202,6 @@ module.exports = async ({webClient: slack}) => {
 		const sunrises = range(-5, 5).map((days) => suncalc.getTimes(moment().add(days, 'day').toDate(), ...location).sunrise);
 		const lastSunrise = await storage.getItem('lastSunrise');
 		const nextSunrise = sunrises.find((sunrise) => sunrise > lastSunrise);
-		console.log({now, nextSunrise});
 
 		if (now >= nextSunrise) {
 			const noon = moment().utcOffset(9).startOf('day').add(12, 'hour').toDate();
@@ -483,7 +482,6 @@ module.exports = async ({webClient: slack}) => {
 		const sunsets = range(-5, 5).map((days) => suncalc.getTimes(moment().add(days, 'day').toDate(), ...location).sunset);
 		const lastSunset = await storage.getItem('lastSunset');
 		const nextSunset = sunsets.find((sunset) => sunset > lastSunset);
-		console.log({now, nextSunset});
 
 		if (now >= nextSunset) {
 			await storage.setItem('lastSunrise', now.getTime());
