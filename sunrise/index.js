@@ -484,7 +484,7 @@ module.exports = async ({webClient: slack}) => {
 		const nextSunset = sunsets.find((sunset) => sunset > lastSunset);
 
 		if (now >= nextSunset) {
-			await storage.setItem('lastSunrise', now.getTime());
+			await storage.setItem('lastSunset', now.getTime());
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: ':wave:',
