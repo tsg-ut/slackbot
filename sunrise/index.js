@@ -8,7 +8,7 @@ const moment = require('moment');
 const {stripIndent} = require('common-tags');
 const cloudinary = require('cloudinary');
 const axios = require('axios');
-const {get, maxBy, flatten, sortBy} = require('lodash');
+const {get, maxBy, flatten, sortBy, range} = require('lodash');
 const scrapeIt = require('scrape-it');
 const iconv = require('iconv-lite');
 const cheerio = require('cheerio');
@@ -19,7 +19,7 @@ const weathers = require('./weathers.js');
 const queue = new Queue({concurrency: 1});
 
 // eslint-disable-next-line array-plural/array-plural
-const position = [35.659, 139.685]; // 駒場東大前駅
+const location = [35.659, 139.685]; // 駒場東大前駅
 
 const moonEmojis = [
 	':new_moon:',
@@ -188,16 +188,29 @@ module.exports = async ({webClient: slack}) => {
 	});
 	await storage.init();
 
-	const tick = async () => {
-		const lastSunrise = await storage.getItem('lastSunrise') || moment().subtract(1, 'day');
-		const now = new Date();
-		const tomorrow = moment(lastSunrise).utcOffset(9).endOf('day').add(12, 'hour').toDate();
-		const {sunrise, sunset} = suncalc.getTimes(tomorrow, ...position);
+	if (await storage.getItem('lastSunrise') === undefined) {
+		await storage.setItem('lastSunrise', Date.now);
+	}
 
-		if (sunrise <= now) {
-			await storage.setItem('lastSunrise', sunrise.getTime());
-			const {rise: moonrise, set: moonset} = suncalc.getMoonTimes(tomorrow, ...position);
-			const {phase: moonphase} = suncalc.getMoonIllumination(now, ...position);
+	if (await storage.getItem('lastSunset') === undefined) {
+		await storage.setItem('lastSunset', Date.now());
+	}
+
+	const tick = async () => {
+		const now = new Date();
+
+		const sunrises = range(-5, 5).map((days) => suncalc.getTimes(moment().add(days, 'day').toDate(), ...location).sunrise);
+		const lastSunrise = await storage.getItem('lastSunrise');
+		const nextSunrise = sunrises.find((sunrise) => sunrise > lastSunrise);
+		console.log({now, nextSunrise});
+
+		if (now >= nextSunrise) {
+			const noon = moment().utcOffset(9).startOf('day').add(12, 'hour').toDate();
+			const {sunrise, sunset} = suncalc.getTimes(noon, ...location);
+
+			await storage.setItem('lastSunrise', now.getTime());
+			const {rise: moonrise, set: moonset} = suncalc.getMoonTimes(noon, ...location);
+			const {phase: moonphase} = suncalc.getMoonIllumination(now, ...location);
 			const moonEmoji = moonEmojis[Math.round(moonphase * 8) % 8];
 
 			const {data} = await axios.get(`http://dataservice.accuweather.com/forecasts/v1/daily/5day/226396?${qs.encode({
@@ -464,6 +477,21 @@ module.exports = async ({webClient: slack}) => {
 				tayori: tayori[0].link,
 				saijiki: saijiki[0].link,
 				tenkijp: tenkijp[0].link,
+			});
+		}
+
+		const sunsets = range(-5, 5).map((days) => suncalc.getTimes(moment().add(days, 'day').toDate(), ...location).sunset);
+		const lastSunset = await storage.getItem('lastSunset');
+		const nextSunset = sunsets.find((sunset) => sunset > lastSunset);
+		console.log({now, nextSunset});
+
+		if (now >= nextSunset) {
+			await storage.setItem('lastSunrise', now.getTime());
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: ':wave:',
+				username: 'sunset',
+				icon_emoji: ':city_sunset:',
 			});
 		}
 	};
