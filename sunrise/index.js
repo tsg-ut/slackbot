@@ -160,7 +160,10 @@ const getTenkijpEntries = async () => {
 		},
 	});
 
-	return data.articles;
+	return data.articles.map(({title, link}) => ({
+		title,
+		link: new URL(link, 'https://tenki.jp/').href,
+	}));
 };
 
 const getEntries = () => (
@@ -189,7 +192,7 @@ module.exports = async ({webClient: slack}) => {
 	await storage.init();
 
 	if (await storage.getItem('lastSunrise') === undefined) {
-		await storage.setItem('lastSunrise', Date.now);
+		await storage.setItem('lastSunrise', Date.now());
 	}
 
 	if (await storage.getItem('lastSunset') === undefined) {
@@ -212,12 +215,20 @@ module.exports = async ({webClient: slack}) => {
 			const {phase: moonphase} = suncalc.getMoonIllumination(now, ...location);
 			const moonEmoji = moonEmojis[Math.round(moonphase * 8) % 8];
 
-			const {data} = await axios.get(`http://dataservice.accuweather.com/forecasts/v1/daily/5day/226396?${qs.encode({
+			// Fetch location id of target location
+			const {data: locationData} = await axios.get(`http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?${qs.encode({
+				apikey: process.env.ACCUWEATHER_KEY,
+				q: location.join(','),
+				details: 'true',
+			})}`);
+			const locationId = locationData.Key;
+
+			const {data: weatherData} = await axios.get(`http://dataservice.accuweather.com/forecasts/v1/daily/5day/${locationId}?${qs.encode({
 				apikey: process.env.ACCUWEATHER_KEY,
 				details: 'true',
 			})}`);
 			const today = moment().utcOffset(9).startOf('day').toDate();
-			const forecast = data.DailyForecasts.find((cast) => new Date(cast.Date) >= today);
+			const forecast = weatherData.DailyForecasts.find((cast) => new Date(cast.Date) >= today);
 
 			const lastWeather = await storage.getItem('lastWeather') || null;
 			const weatherHistories = await storage.getItem('weatherHistories') || [];
@@ -449,7 +460,7 @@ module.exports = async ({webClient: slack}) => {
 				attachments: [{
 					color: '#FFA726',
 					title: `本日の天気${weatherEmojis[weatherId]}「${matchingWeather.name}」`,
-					title_link: 'https://www.accuweather.com/ja/jp/tokyo/226396/daily-weather-forecast/226396',
+					title_link: `https://www.accuweather.com/ja/jp/tokyo/${locationId}/daily-weather-forecast/${locationId}`,
 					image_url: cloudinaryData.secure_url,
 					fallback: matchingWeather.name,
 				}, {
