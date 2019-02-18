@@ -546,9 +546,13 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			const prefixText = prefixes[hour];
 
 			const hourNumber = 漢数字s[[6, 5, 4, 9, 8, 7, 6][hour]];
-			const hourText = minute === 0 ? `${hourNumber}ツ` : `${hourNumber}時`;
+			const hourText = (minute === 0 || minute === 5) ? `${hourNumber}ツ` : `${hourNumber}時`;
 
-			const minuteText = minute === 0 ? '' : `${漢数字s[minute]}分`;
+			const minuteText =
+			// eslint-disable-next-line no-nested-ternary
+				minute === 0 ? ''
+					: minute === 5 ? '半'
+						: `${漢数字s[minute]}分`;
 
 			const timeText = `${prefixText}${hourText}${minuteText}`;
 
