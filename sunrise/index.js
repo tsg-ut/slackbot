@@ -8,7 +8,7 @@ const moment = require('moment');
 const {stripIndent} = require('common-tags');
 const cloudinary = require('cloudinary');
 const axios = require('axios');
-const {get, maxBy, flatten, sortBy, range} = require('lodash');
+const {get, maxBy, flatten, sortBy, range, map} = require('lodash');
 const scrapeIt = require('scrape-it');
 const iconv = require('iconv-lite');
 const cheerio = require('cheerio');
@@ -17,6 +17,9 @@ const render = require('./render.js');
 const weathers = require('./weathers.js');
 
 const queue = new Queue({concurrency: 1});
+
+// https://eco.mtk.nao.ac.jp/koyomi/wiki/C7F6CCC02FCCEBCCC0A4C8C6FCCAEB.html
+suncalc.addTime(-(7 + 21 / 60 + 40 / 3600), '夜明', '日暮');
 
 // eslint-disable-next-line array-plural/array-plural
 const location = [35.659, 139.685]; // 駒場東大前駅
@@ -79,6 +82,8 @@ const weatherEmojis = {
 	31: ':sunny:',
 	32: ':sunny:',
 };
+
+const 漢数字s = ['〇', '一', 'ニ', '三', '四', '五', '六', '七', '八', '九', '十'];
 
 const FtoC = (F) => (F - 32) * 5 / 9;
 const miphToMps = (miph) => miph * 0.447;
@@ -185,7 +190,7 @@ const getHaiku = async () => {
 	return {text, author};
 };
 
-module.exports = async ({webClient: slack}) => {
+module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const storage = nodePersist.create({
 		dir: path.resolve(__dirname, '__state__'),
 	});
@@ -202,7 +207,8 @@ module.exports = async ({webClient: slack}) => {
 	const tick = async () => {
 		const now = new Date();
 
-		const sunrises = range(-5, 5).map((days) => suncalc.getTimes(moment().add(days, 'day').toDate(), ...location).sunrise);
+		const times = range(-5, 5).map((days) => suncalc.getTimes(moment().add(days, 'day').toDate(), ...location));
+		const sunrises = map(times, 'sunrise');
 		const lastSunrise = await storage.getItem('lastSunrise');
 		const nextSunrise = sunrises.find((sunrise) => sunrise > lastSunrise);
 
@@ -490,7 +496,7 @@ module.exports = async ({webClient: slack}) => {
 			});
 		}
 
-		const sunsets = range(-5, 5).map((days) => suncalc.getTimes(moment().add(days, 'day').toDate(), ...location).sunset);
+		const sunsets = map(times, 'sunset');
 		const lastSunset = await storage.getItem('lastSunset');
 		const nextSunset = sunsets.find((sunset) => sunset > lastSunset);
 
@@ -509,4 +515,49 @@ module.exports = async ({webClient: slack}) => {
 	setInterval(() => {
 		queue.add(tick);
 	}, 10 * 1000);
+
+	rtm.on('message', async (message) => {
+		if (message.channel !== process.env.CHANNEL_SANDBOX) {
+			return;
+		}
+
+		if (message.text && message.text.match(/(いま|今)(なんじ|なんどき|何時)/)) {
+			const now = Date.now();
+			const times = range(-5, 5).map((days) => suncalc.getTimes(moment().add(days, 'day').toDate(), ...location));
+			const 夜明s = map(times, '夜明');
+			const 日暮s = map(times, '日暮');
+
+			const 夜明and日暮 = [
+				...夜明s.map((time) => ({time: time.getTime(), type: '夜明'})),
+				...日暮s.map((time) => ({time: time.getTime(), type: '日暮'})),
+			];
+			const previousTime = 夜明and日暮.slice().reverse().find(({time}) => time < now);
+			const nextTime = 夜明and日暮.find(({time}) => time > now);
+
+			const totalMinutes = Math.round((now - previousTime.time) / (nextTime.time - previousTime.time) * 60);
+			const hour = Math.floor(totalMinutes / 10);
+			const minute = totalMinutes % 10;
+
+			const prefixes = previousTime.type === '夜明' ? [
+				'明', '朝', '朝', '昼', '昼', '夕', '暮',
+			] : [
+				'暮', '夜', '夜', '暁', '暁', '暁', '明',
+			];
+			const prefixText = prefixes[hour];
+
+			const hourNumber = 漢数字s[[6, 5, 4, 9, 8, 7, 6][hour]];
+			const hourText = minute === 0 ? `${hourNumber}ツ` : `${hourNumber}時`;
+
+			const minuteText = minute === 0 ? '' : `${漢数字s[minute]}分`;
+
+			const timeText = `${prefixText}${hourText}${minuteText}`;
+
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: timeText,
+				username: 'sunrise',
+				icon_emoji: ':sunrise:',
+			});
+		}
+	});
 };
