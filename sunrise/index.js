@@ -83,7 +83,7 @@ const weatherEmojis = {
 	32: ':sunny:',
 };
 
-const 漢数字s = ['〇', '一', 'ニ', '三', '四', '五', '六', '七', '八', '九', '十'];
+const 漢数字s = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
 
 const FtoC = (F) => (F - 32) * 5 / 9;
 const miphToMps = (miph) => miph * 0.447;
