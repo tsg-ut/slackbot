@@ -8,6 +8,7 @@ process.on('unhandledRejection', (error) => {
 const {RTMClient, WebClient} = require('@slack/client');
 
 const plugins = [
+/*
 	require('./mahjong'),
 	require('./pocky'),
 	require('./emoji-notifier'),
@@ -22,6 +23,8 @@ const plugins = [
 	require('./prime'),
 	require('./dajare'),
 	require('./sunrise'),
+*/
+	require('./ricochet-robots'),
 ];
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
