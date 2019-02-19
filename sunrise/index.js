@@ -213,12 +213,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const nextSunrise = sunrises.find((sunrise) => sunrise > lastSunrise);
 
 		if (now >= nextSunrise) {
-			const noon = moment().utcOffset(9).startOf('day').add(12, 'hour').toDate();
+			const noon = moment(now).utcOffset(9).startOf('day').add(12, 'hour').toDate();
 			const {sunrise, sunset} = suncalc.getTimes(noon, ...location);
 
 			await storage.setItem('lastSunrise', now.getTime());
 			const {rise: moonrise, set: moonset} = suncalc.getMoonTimes(noon, ...location);
-			const {phase: moonphase} = suncalc.getMoonIllumination(now, ...location);
+			const {phase: moonphase} = suncalc.getMoonIllumination(noon, ...location);
 			const moonEmoji = moonEmojis[Math.round(moonphase * 8) % 8];
 
 			// Fetch location id of target location
@@ -458,6 +458,15 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 			const haiku = await getHaiku();
 
+			const moonAge = moonphase * 29.5;
+
+			// https://eco.mtk.nao.ac.jp/koyomi/wiki/B7EEA4CECBFEA4C1B7E7A4B12FB7EECEF0A4C8CBFEA4C1B7E7A4B1.html#t10ca351
+			const moonStateText =
+			// eslint-disable-next-line no-nested-ternary
+				(moonAge <= 0.5 || moonAge >= 29.0) ? ':new_moon_with_face:新月:new_moon_with_face:'
+					: Math.round(moonAge) === 14 ? ':full_moon_with_face:満月:full_moon_with_face:'
+						: '';
+
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: ':ahokusa-top-right::ahokusa-bottom-left::heavy_exclamation_mark:',
@@ -475,6 +484,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					text: stripIndent`
 						:sunrise_over_mountains: *日の出* ${moment(sunrise).format('HH:mm')} ～ *日の入* ${moment(sunset).format('HH:mm')}
 						${moonEmoji} *月の出* ${moment(moonrise).format('HH:mm')} ～ *月の入* ${moment(moonset).format('HH:mm')}
+						${moonStateText}
 					`,
 				}, ...(entry ? [{
 					color: '#4DB6AC',
