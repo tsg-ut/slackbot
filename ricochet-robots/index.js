@@ -24,12 +24,18 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 	
 	rtm.on('message', async (message) => {
-	
-		const {members} = await slack.users.list();
-		const getMemberName = (user) => {
+		
+		/*
+		async function getMemberName(user){
+			const {members} = await slack.users.list();
 			const member = members.find(({id}) => id === user);
 			return member.profile.display_name || member.name;
 		};
+		*/
+		
+		function toMention(user){
+			return `<@${user}>`;
+		}
 		
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
@@ -39,7 +45,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 
 		async function postmessage(comment,url){
-			console.log(comment,url);
+			//console.log(comment,url);
 			if(!url){
 				await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
@@ -69,7 +75,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		
 		async function chainbids(){
 			if(!state.battles.firstplayer){
-				await postmessage(`@${getMemberName(state.battles.orderedbids[0].user)} さんは間に合わなかったみたいだね。残念:cry:`);
+				await postmessage(`${toMention(state.battles.orderedbids[0].user)}さんは間に合わなかったみたいだね。残念:cry:`);
 				state.battles.orderedbids.shift();
 			}
 			state.battles.firstplayer = false;
@@ -77,7 +83,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			if(state.battles.orderedbids.length > 0){
 				const nextbid = state.battles.orderedbids[0];
 				const endtime = Date.now() + answeringminutes * 60 * 1000;
-				await postmessage(`@${getMemberName(nextbid.user)} さんの解答ターンだよ。\n${nextbid.decl}手以下の手順を${getTimeLink(endtime)}までに解答してね。`);
+				await postmessage(`${toMention(nextbid.user)}さんの解答ターンだよ。\n${nextbid.decl}手以下の手順を${getTimeLink(endtime)}までに解答してね。`);
 				timeoutId = setTimeout(chainbids, answeringminutes * 60 * 1000);
 			}
 			else{
@@ -103,7 +109,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 			state.battles.orderedbids.sort((a,b) => (a.decl !== b.decl ? (a.decl-b.decl) : (a.time-b.time)));
 			state.battles.bids = {};
-			console.log(state.battles.orderedbids);
+			//console.log(state.battles.orderedbids);
 			state.battles.firstplayer = true;
 			await chainbids();
 		}
@@ -157,26 +163,23 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 		
 		try{
-			if(text === 'ハイパーロボット' || text === 'ハイパーロボットバトル' || text.match(/^ハイパーロボット (\d+)手以上$/)){
-				let matches = null;
-				let depth = 6;
-				if ((matches = text.match(/^ハイパーロボット (\d+)手以上$/))) {
-					depth = parseInt(matches[1]);
+			if(text === 'ハイパーロボット' || text === 'ハイパーロボットバトル' || text.match(/^ハイパーロボット (\d+)手$/)){
+				let depth = undefined;
+				{
+					let matches = null;
+					if ((matches = text.match(/^ハイパーロボット (\d+)手$/))) {
+						depth = parseInt(matches[1]);
+					}
 				}
+				const isbattle = (text === 'ハイパーロボットバトル');
 				
-				const waittime = 1;
-				if(!state || state.answer.length < depth){
-					let flag = true;
-					setTimeout(() => { 
-						flag = false; 
-						console.log('timeout');
-					}, 1000 * waittime);
-					while(flag){
-						process.nextTick(()=>{});
-						console.log(flag);
+				const waittime = 10;
+				if(!state || (depth && state.answer.length !== depth) || (isbattle && !state.battles.isbattle)){
+					const endtime = Date.now() + 1000 * waittime;
+					while(Date.now() <= endtime){
 						const bo = board.getRandomBoard();
-						const ans = board.solver(bo);
-						if(ans.length < depth){
+						const ans = board.getlongergoal(bo,depth);
+						if(!ans){
 							continue;
 						}
 						state = {
@@ -184,40 +187,43 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 							answer: ans,
 							battles: {
 								bids: {},
-								isbattle: (text === 'ハイパーロボットバトル'),
-								isbedding: (text === 'ハイパーロボットバトル'),
+								isbattle: isbattle,
+								isbedding: isbattle,
 								startbedding: false,
 							},
 						};
 						break;
 					}
-					console.log(flag);
 					if(!state || state.answer.length < depth){
-						await postmessage(`${waittime}秒では${depth}手以上の問題が見つけられなかったよ:cry:`);
+						await postmessage(`${waittime}秒では${depth}手かかる問題が見つけられなかったよ:cry:`);
 						return;
 					}
 				}
-				console.log(state);
+				//console.log(state);
 				await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,await image.upload(state.board));
 			}
-			else if(text.match(/^([赤青黄緑]([上下左右]+))+$/)){
+			else if(board.iscommand(text)){
 				if(!state){
 					await postmessage("まだ出題していませんよ:thinking_face:\nもし問題が欲しければ「ハイパーロボット」と言ってください");
 					return;
 				}
 				
 				const cmd = board.str2command(text);
-				console.log(cmd);
+				//console.log(cmd);
 				if(state.battles.isbattle){
+					if(state.battles.isbedding){
+						await postmessage("今は宣言中だよ:cry:");
+						return;
+					}
 					const nowplayer = state.battles.orderedbids[0].user;
-					console.log(message.user,nowplayer);
+					//console.log(message.user,nowplayer);
 					if(message.user !== nowplayer){
-						await postmessage(`今は @${getMemberName(nowplayer)} さんの解答時間だよ。`);
+						await postmessage(`今は${toMention(nowplayer)}さんの解答時間だよ。`);
 						return;
 					}
 					const nowdecl = state.battles.orderedbids[0].decl;
 					if(cmd.length > nowdecl){
-						await postmessage(`@${getMemberName(nowplayer)} さんの宣言手数は${nowdecl}手だよ:cry:\nその手は${cmd.length}手かかってるよ。`);
+						await postmessage(`${toMention(nowplayer)}さんの宣言手数は${nowdecl}手だよ:cry:\nその手は${cmd.length}手かかってるよ。`);
 						return;
 					}
 					
@@ -232,26 +238,29 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					}
 				}
 			}
-			else if(text.match(/^(\d+)手$/)){
-				if(!state){
-					await postmessage("まだ出題していませんよ:thinking_face:\nもし問題が欲しければ「ハイパーロボット」と言ってください");
-					return;
-				}
-				else if((!state.battles.isbattle) || (!state.battles.isbedding)){
+			else if(state && state.battles.isbattle && state.battles.isbedding && text.match(/^(\d+)手?$/)){
+				//console.log(text,message.ts,message.user,(state ? state.battles : ""));
+				/*
+				if(!state.battles.isbedding){
 					await postmessage("今は宣言中じゃないよ");
 					return;
 				}
-				else{
+				*/
+				{
 					let bid = 100;
 					let matches;
-					if(matches = text.match(/^(\d+)手$/)) {
+					if(matches = text.match(/^(\d+)手?$/)) {
 						bid = parseInt(matches[1]);
 					}
+					const time = parseFloat(message.ts)
+					if(!(message.user in state.battles.bids) || state.battles.bids[message.user].time < time){
+						state.battles.bids[message.user] = {
+							decl: bid,
+							time: time,
+						};
+					}
 					await slack.reactions.add({name: 'ok_hand', channel: message.channel, timestamp: message.ts});
-					state.battles.bids[message.user] = {
-						decl: bid,
-						time: Date.now(),
-					};
+					
 					
 					if(!state.battles.startbedding){
 						state.battles.startbedding = true;
@@ -263,8 +272,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 		}
 		catch(e){
-			console.log('error',e);
-			await postmessage('内部errorです:cry:\n:satos:宅のDNSが弱くてでたぶんそのせいなので、複数回ためしてください:bow:\n以下エラー内容です\n' + String(e));
+			//console.log('error',e);
+			await postmessage('内部errorです:cry:\n' + String(e));
 			restore_state();
 		}
 	});

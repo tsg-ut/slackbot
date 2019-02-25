@@ -17,23 +17,49 @@ const directionnames = [
 	'下','右','上','左'
 ];
 
+function arrays2idxs(arrs){
+	let res = {};
+	for(const v of arrs){
+		for(const k of v.entries()){
+			res[k[1]]=k[0];
+		}
+	}
+	//console.log(res);
+	return res;
+}
 
-function samep(p,q){
-	return p.x === q.x && p.y === q.y;
+const colourname2idx = arrays2idxs([
+	colournames,
+	["r","g","b","y"],
+]);
+
+const directionname2idx = arrays2idxs([
+	directionnames,
+	["s","d","w","a"],
+	['j','l','k','h'],
+]);
+
+module.exports.iscommand = (str) => {
+	return str.match(/^([赤青黄緑rgby]([上下左右wasdhjkl]+))+$/);
 }
 
 module.exports.str2command = (str) => {
 	const res = [];
-	for (let matchArray, re = /([赤青黄緑])([上下左右]+)/g; (matchArray = re.exec(str));) {
+	for (let matchArray, re = /([赤青黄緑rgby])([上下左右wasdhjkl]+)/g; (matchArray = re.exec(str));) {
 		//console.log(matchArray);
 		for(const d of matchArray[2]){
 			res.push({
-				c: colournames.indexOf(matchArray[1]),
-				d: directionnames.indexOf(d),
+				c: colourname2idx[matchArray[1]],
+				d: directionname2idx[d],
 			});
 		}
 	}
+	//console.log('str2command',str,res);
 	return res;
+}
+
+function samep(p,q){
+	return p.x === q.x && p.y === q.y;
 }
 
 class Board{
@@ -119,6 +145,8 @@ class Board{
 			{x:-1, y: 0},
 		];
 		
+		this.logs = [];
+		
 		this.walls.forEach(v => {
 			if(v.d===0){
 				this.board[v.y-1][v.x].haswall[0] = true;
@@ -137,7 +165,34 @@ class Board{
 			this.board[0][x].haswall[2] = this.board[this.h-1][x].haswall[0] = true;
 		}));
 		
-		this.logs = [];
+		//マップの全マスが連結か確認
+		{
+			const gone = Array(this.h).fill().map(_ => Array(this.w).fill());
+			rep(this.h,(y => {
+				rep(this.w,(x => {
+					gone[y][x]=false;
+				}));
+			}));
+			const dfs = (p)=>{
+				let res = 1;
+				gone[p.y][p.x] = true;
+				rep(4,(i)=>{
+					if(this.board[p.y][p.x].haswall[i])return;
+					const tp = {
+						y: p.y + this.directions[i].y,
+						x: p.x + this.directions[i].x,
+					};
+					if(this.isinside(tp) && !gone[tp.y][tp.x]){
+						res += dfs(tp);
+					}
+				});
+				return res;
+			}
+			
+			if(dfs({y: 0, x: 0}) !== this.h * this.w){
+				throw new Error('disconnected board');
+			}
+		}
 	}
 	
 	iscleared(){
@@ -149,6 +204,7 @@ class Board{
 		return 0 <= p.y && p.y < this.h && 0 <= p.x && p.x < this.w;
 	}
 	
+
 	isstuck(c,d){
 		const p = this.robots[c];
 		const tp = {
@@ -217,6 +273,35 @@ class Board{
 }
 
 
+class Queue{
+	constructor(){
+		this.hd = undefined;
+		this.tl = undefined;
+	}
+	push(d){
+		const node = {
+			data: d,
+			next: undefined,
+		};
+		if(!this.hd){
+			this.hd = this.tl = node;
+			return;
+		}
+		this.tl.next = node;
+		this.tl = node;
+	}
+	shift(){
+		if(!this.hd)return undefined;
+		const res = this.hd.data;
+		this.hd = this.hd.next;
+		return res;
+	}
+	isempty(){
+		return (!this.hd);
+	}
+}
+
+
 //最短手数を返す
 module.exports.solver = (board) => {
 	let moves = undefined;
@@ -224,7 +309,8 @@ module.exports.solver = (board) => {
 	const initialstate = board.dumpstate();
 	const mem = new Set();
 	
-	const queue = [[0,board.hashstate(),initialstate]];
+	const queue = new Queue();
+	queue.push([0,board.hashstate(),initialstate]);
 	mem.add(board.hashstate());
 	
 	for(;;){
@@ -256,6 +342,113 @@ module.exports.solver = (board) => {
 	//console.log(mem);
 	board.loadstate(initialstate);
 	return moves;
+}
+
+
+
+function cp2str(cp){
+	//console.log(cp);
+	return cp[0] + ',' + cp[1].y + ',' + cp[1].x;
+}
+
+function str2cp(str){
+	const d = str.split(',').map(v => parseInt(v));
+	return [d[0],{
+		y: d[1], x: d[2],
+	}];
+}
+
+//n手かかるゴールから乱択する
+module.exports.getlongergoal = (board,sup) => {
+	let moves = undefined;
+	const colournum = board.robots.length;
+	const initialstate = board.dumpstate();
+	const mem = new Set();
+	const goals = [...board.robots.entries()].map(d => {
+		const res = {};
+		res[cp2str(d)] = {
+			len: 0,
+			log: [],
+		};
+		return res;
+	});
+	
+	const queue = new Queue();
+	queue.push([0,board.hashstate(),initialstate]);
+	mem.add(board.hashstate());
+	
+	let memdepth = 0;
+	let sn = 1;
+	let dgn = 4;
+	for(;;){
+		if(queue.isempty()){
+			break;
+		}
+		//console.log(queue);
+		const top = queue.shift();
+		const depth = top[0], hash = top[1], state = top[2];
+		if(memdepth<depth){
+			//console.log(depth,sn,dgn);
+			memdepth = depth;
+		}
+		//console.log(i,depth,hash);
+		board.loadstate(state);
+		//await image.upload(board,'ds/' + depth + '_' + i + '.png');
+		
+		{
+			let isbreak = false;
+			for(const cp of board.robots.entries()){
+				const ps = cp2str(cp);
+				if(!(ps in goals)){
+					const d = {
+						len: depth,
+						log: ((!sup || depth >= sup) ? deepcopy(state.logs) : undefined),
+					};
+					goals[ps] = d;
+					dgn += 1;
+					if(dgn >= colournum * board.h * board.w){
+						isbreak = true;
+					}
+				}
+			}
+			if(isbreak)break;	
+		}
+		
+		if(depth>=sup)continue;
+		
+		rep(colournum,(c => {
+			rep(4,(dir => {
+				if(board.isstuck(c,dir))return;
+				board.move(c,dir);
+				const hash = board.hashstate();
+				if(!mem.has(hash)){
+					mem.add(hash);
+					sn += 1;
+					queue.push([depth+1,hash,board.dumpstate()]);
+				}
+				board.undo();
+			}));
+		}));
+	}
+	
+	//console.log('bfsed');
+	sup = memdepth;
+	
+	//console.log(mem);
+	board.loadstate(initialstate);
+	
+	const goodgoals = Object.entries(goals).filter((d) => d[1].len === sup);
+	const goal = goodgoals[Math.floor(Math.random() * goodgoals.length)];
+	//console.log(goal);
+	if(!goal)return undefined;
+	const d = str2cp(goal[0]);
+	board.goal = {
+		y: d[1].y,
+		x: d[1].x,
+		colour: d[0],
+	};
+	
+	return goal[1].log;
 }
 
 module.exports.logstringfy = (log) => {

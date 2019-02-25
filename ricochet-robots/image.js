@@ -149,7 +149,7 @@ async function data2buffer(data){
   			h = tk; 
    			w = Math.abs(v.from.x-v.to.x) * size.grid.w + tk; 
 	 		}
-	 		console.log(v.c,h,w);
+	 		//console.log(v.c,h,w);
   		svgstr += `<rect y="${p.y}" x="${p.x}" width="${w}" height="${h}" ${colourstr}/>`;
   		
   		robotpos[v.c] = v.from;
@@ -158,7 +158,7 @@ async function data2buffer(data){
 		//svgstr = '<rect y="10" x="30" width="70" height="70" fill="rgb(0,255,0)"/>';
 		//svgstr = '<rect y="100" x="100" width="150" height="150" fill="rgb(0,255,0)"/>';
 		svgstr =  `<svg height="${rawsharp.raw.height}" width="${rawsharp.raw.width}">` + svgstr + '</svg>';
-  	console.log(svgstr);
+  	//console.log(svgstr);
 		board = await composite(board,Buffer.from(svgstr),{y: 0, x: 0});
 		
 		for(const [i,rp] of robotpos.entries()){
@@ -175,12 +175,7 @@ module.exports.data2dump = async (data,filename) => {
 };
 
 
-async function upload(data){
-	let image = await data2buffer(data);
-	image = await sharp(image, data2rawsharp(data))
-		.jpeg()
-		.toBuffer();
-	
+async function uploadbuffer(image){
 	const result = await new Promise((resolve, reject) => {
 		cloudinary.v2.uploader.upload_stream({resource_type: 'image'}, (error, data) => {
 			//if(!error && Math.random() > 0.5)error = "randerror";
@@ -195,14 +190,19 @@ async function upload(data){
 }
 
 module.exports.upload = async (data) => {
+	let image = await data2buffer(data);
+	image = await sharp(image, data2rawsharp(data))
+		.jpeg()
+		.toBuffer();
 	for(const _ of Array(20).fill()){
 		try{
-			return await upload(data);
+			return await uploadbuffer(image);
 		}
 		catch(e){
+			//console.log('upload failed',e);
 		}
 	}
-	return await upload(data);
+	return await uploadbuffer(data);
 };
 
 
