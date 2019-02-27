@@ -402,13 +402,9 @@ module.exports = (clients) => {
 				return;
 			}
 
-			if (!calculator.tenpai(state.手牌)) {
-				perdon();
-				return;
-			}
-
+			let new手牌 = null;
 			if (instruction === 'ツモ切り') {
-				state.手牌 = state.手牌.slice(0, -1);
+				new手牌 = state.手牌.slice(0, -1);
 			} else {
 				const 牌Name = instruction.slice(1);
 				if (!牌Names.includes(牌Name)) {
@@ -423,10 +419,15 @@ module.exports = (clients) => {
 					return;
 				}
 
-				state.手牌.splice(state.手牌.indexOf(打牌), 1);
+				new手牌 = state.手牌.slice().splice(state.手牌.indexOf(打牌), 1);
 			}
 
-			state.手牌 = sort(state.手牌);
+			if (!calculator.tenpai(new手牌)) {
+				perdon();
+				return;
+			}
+
+			state.手牌 = sort(new手牌);
 			state.phase = 'リーチ';
 			state.リーチTurn = state.remaining自摸;
 

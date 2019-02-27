@@ -22,6 +22,7 @@ const plugins = [
 	require('./prime'),
 	require('./dajare'),
 	require('./sunrise'),
+	require('./vocabwar'),
 	require('./ricochet-robots'),
 ];
 
@@ -51,5 +52,4 @@ rtmClient.on('authenticated', (data) => {
 	}
 	firstLogin = false;
 });
-
 rtmClient.start();
