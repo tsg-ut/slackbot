@@ -23,6 +23,7 @@ const plugins = [
 	require('./dajare'),
 	require('./sunrise'),
 	require('./vocabwar'),
+	require('./ricochet-robots'),
 ];
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
