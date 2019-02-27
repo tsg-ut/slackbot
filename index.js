@@ -37,18 +37,18 @@ const webClient = new WebClient(process.env.SLACK_TOKEN);
 		text: 'ｼｭｯｼｭｯ (起動音)',
 		username: 'slackbot',
 	});
-
-	let firstLogin = true;
-	rtmClient.on('authenticated', (data) => {
-		logger.info(`Logged in as ${data.self.name} of team ${data.team.name}`);
-		if (!firstLogin) {
-			webClient.chat.postMessage({
-				channel: process.env.CHANNEL_SANDBOX,
-				text: '再接続しました',
-				username: 'slackbot',
-			});
-		}
-		firstLogin = false;
-	});
-	rtmClient.start();
 })();
+
+let firstLogin = true;
+rtmClient.on('authenticated', (data) => {
+	logger.info(`Logged in as ${data.self.name} of team ${data.team.name}`);
+	if (!firstLogin) {
+		webClient.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			text: '再接続しました',
+			username: 'slackbot',
+		});
+	}
+	firstLogin = false;
+});
+rtmClient.start();
