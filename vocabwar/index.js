@@ -3,6 +3,7 @@ const path = require('path');
 const assert = require('assert');
 const {promisify} = require('util');
 const querystring = require('querystring');
+const request = require('request');
 const {stripIndent} = require('common-tags');
 const {JSDOM} = require('jsdom');
 const axios = require('axios');
@@ -11,27 +12,28 @@ const {sampleSize} = require('lodash');
 const byline = require('byline');
 const w2v = require('word2vec');
 
-const state = (() => {
-	try {
-		// eslint-disable-next-line global-require
-		const savedState = require('./state.json');
-		return {
-			phase: savedState.phase,
-			theme: savedState.theme || null,
-			candidates: savedState.candidates || [],
-			ans: new Map(Object.entries(savedState.ans)) || new Map(),
-		};
-	} catch (e) {
-		return {
-			phase: 'waiting', // waiting, collecting,
-			theme: null,
-			candidates: [],
-			ans: new Map(),
-		};
-	}
-})();
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
+	const state = (() => {
+		try {
+			// eslint-disable-next-line global-require
+			const savedState = require('./state.json');
+			return {
+				phase: savedState.phase,
+				theme: savedState.theme || null,
+				candidates: savedState.candidates || [],
+				ans: new Map(Object.entries(savedState.ans)) || new Map(),
+			};
+		} catch (e) {
+			return {
+				phase: 'waiting', // waiting, collecting,
+				theme: null,
+				candidates: [],
+				ans: new Map(),
+			};
+		}
+	})();
+
 	const mapToObject = (map) => {
 		const object = {};
 		for (const [key, value] of map.entries()) {
@@ -61,10 +63,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const {team} = await slack.team.info();
 
 	const getMemberIcon = (user) => {
-		if (user === 'tahoiyabot-01' || user === 'tahoiyabot-02') {
-			return 'https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/apple/155/robot-face_1f916.png';
-		}
-
 		const member = members.find(({id}) => id === user);
 		return member.profile.image_24;
 	};
@@ -209,7 +207,35 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		});
 	});
 
+	if (!await new Promise((resolve) => {
+		fs.access(path.join(__dirname, 'data'), fs.constants.F_OK, (error) => {
+			resolve(!error);
+		});
+	})) {
+		await promisify(fs.mkdir)(path.join(__dirname, 'data'));
+	}
 
+	await Promise.all(
+		[
+			['ad.txt', 'https://drive.google.com/uc?id=1hlIeHy-ilaAfCicjaH0x5bjU_8rjx-Ju'],
+			['frequency.txt', 'https://drive.google.com/uc?id=1dtkJPTbH7xVRov77h8OBJ3wLsBaNPMNV'],
+			['wiki_wakati.wv', 'https://dl.dropboxusercontent.com/s/7laifmbdq4oqks9/wiki_wakati.wv'],
+		].map(async ([filename, url]) => {
+			const dataPath = path.join(__dirname, 'data', filename);
+			const dataExists = await new Promise((resolve) => {
+				fs.access(dataPath, fs.constants.F_OK, (error) => {
+					resolve(!error);
+				});
+			});
+			return dataExists ? undefined : new Promise((resolve, reject) => {
+				request(url).pipe(fs.createWriteStream(dataPath))
+					.on('finish', () => {
+						resolve();
+					})
+					.on('error', reject);
+			});
+		})
+	);
 	const freq = await loadFrqData(path.join(__dirname, 'data', 'frequency.txt'));
 	const ad = await loadFrqData(path.join(__dirname, 'data', 'ad.txt'));
 	const model = await promisify(w2v.loadModel)({file: path.join(__dirname, 'data', 'wiki_wakati.wv'), is_binary: true});

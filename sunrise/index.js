@@ -8,7 +8,7 @@ const moment = require('moment');
 const {stripIndent} = require('common-tags');
 const cloudinary = require('cloudinary');
 const axios = require('axios');
-const {get, maxBy, flatten, sortBy} = require('lodash');
+const {get, maxBy, flatten, sortBy, range, map} = require('lodash');
 const scrapeIt = require('scrape-it');
 const iconv = require('iconv-lite');
 const cheerio = require('cheerio');
@@ -18,8 +18,11 @@ const weathers = require('./weathers.js');
 
 const queue = new Queue({concurrency: 1});
 
+// https://eco.mtk.nao.ac.jp/koyomi/wiki/C7F6CCC02FCCEBCCC0A4C8C6FCCAEB.html
+suncalc.addTime(-(7 + 21 / 60 + 40 / 3600), '夜明', '日暮');
+
 // eslint-disable-next-line array-plural/array-plural
-const position = [35.659, 139.685]; // 駒場東大前駅
+const location = [35.659, 139.685]; // 駒場東大前駅
 
 const moonEmojis = [
 	':new_moon:',
@@ -79,6 +82,8 @@ const weatherEmojis = {
 	31: ':sunny:',
 	32: ':sunny:',
 };
+
+const 漢数字s = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
 
 const FtoC = (F) => (F - 32) * 5 / 9;
 const miphToMps = (miph) => miph * 0.447;
@@ -160,7 +165,10 @@ const getTenkijpEntries = async () => {
 		},
 	});
 
-	return data.articles;
+	return data.articles.map(({title, link}) => ({
+		title,
+		link: new URL(link, 'https://tenki.jp/').href,
+	}));
 };
 
 const getEntries = () => (
@@ -182,30 +190,51 @@ const getHaiku = async () => {
 	return {text, author};
 };
 
-module.exports = async ({webClient: slack}) => {
+module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const storage = nodePersist.create({
 		dir: path.resolve(__dirname, '__state__'),
 	});
 	await storage.init();
 
-	const tick = async () => {
-		const lastSunrise = await storage.getItem('lastSunrise') || moment().subtract(1, 'day');
-		const now = new Date();
-		const tomorrow = moment(lastSunrise).utcOffset(9).endOf('day').add(12, 'hour').toDate();
-		const {sunrise, sunset} = suncalc.getTimes(tomorrow, ...position);
+	if (await storage.getItem('lastSunrise') === undefined) {
+		await storage.setItem('lastSunrise', Date.now());
+	}
 
-		if (sunrise <= now) {
-			await storage.setItem('lastSunrise', sunrise.getTime());
-			const {rise: moonrise, set: moonset} = suncalc.getMoonTimes(tomorrow, ...position);
-			const {phase: moonphase} = suncalc.getMoonIllumination(now, ...position);
+	if (await storage.getItem('lastSunset') === undefined) {
+		await storage.setItem('lastSunset', Date.now());
+	}
+
+	const tick = async () => {
+		const now = new Date();
+
+		const times = range(-5, 5).map((days) => suncalc.getTimes(moment().add(days, 'day').toDate(), ...location));
+		const sunrises = map(times, 'sunrise');
+		const lastSunrise = await storage.getItem('lastSunrise');
+		const nextSunrise = sunrises.find((sunrise) => sunrise > lastSunrise);
+
+		if (now >= nextSunrise) {
+			const noon = moment(now).utcOffset(9).startOf('day').add(12, 'hour').toDate();
+			const {sunrise, sunset} = suncalc.getTimes(noon, ...location);
+
+			await storage.setItem('lastSunrise', now.getTime());
+			const {rise: moonrise, set: moonset} = suncalc.getMoonTimes(noon, ...location);
+			const {phase: moonphase} = suncalc.getMoonIllumination(noon, ...location);
 			const moonEmoji = moonEmojis[Math.round(moonphase * 8) % 8];
 
-			const {data} = await axios.get(`http://dataservice.accuweather.com/forecasts/v1/daily/5day/226396?${qs.encode({
+			// Fetch location id of target location
+			const {data: locationData} = await axios.get(`http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?${qs.encode({
+				apikey: process.env.ACCUWEATHER_KEY,
+				q: location.join(','),
+				details: 'true',
+			})}`);
+			const locationId = locationData.Key;
+
+			const {data: weatherData} = await axios.get(`http://dataservice.accuweather.com/forecasts/v1/daily/5day/${locationId}?${qs.encode({
 				apikey: process.env.ACCUWEATHER_KEY,
 				details: 'true',
 			})}`);
 			const today = moment().utcOffset(9).startOf('day').toDate();
-			const forecast = data.DailyForecasts.find((cast) => new Date(cast.Date) >= today);
+			const forecast = weatherData.DailyForecasts.find((cast) => new Date(cast.Date) >= today);
 
 			const lastWeather = await storage.getItem('lastWeather') || null;
 			const weatherHistories = await storage.getItem('weatherHistories') || [];
@@ -429,6 +458,15 @@ module.exports = async ({webClient: slack}) => {
 
 			const haiku = await getHaiku();
 
+			const moonAge = moonphase * 29.5;
+
+			// https://eco.mtk.nao.ac.jp/koyomi/wiki/B7EEA4CECBFEA4C1B7E7A4B12FB7EECEF0A4C8CBFEA4C1B7E7A4B1.html#t10ca351
+			const moonStateText =
+			// eslint-disable-next-line no-nested-ternary
+				(moonAge <= 0.5 || moonAge >= 29.0) ? ':new_moon_with_face:新月:new_moon_with_face:'
+					: Math.round(moonAge) === 14 ? ':full_moon_with_face:満月:full_moon_with_face:'
+						: '';
+
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: ':ahokusa-top-right::ahokusa-bottom-left::heavy_exclamation_mark:',
@@ -437,7 +475,7 @@ module.exports = async ({webClient: slack}) => {
 				attachments: [{
 					color: '#FFA726',
 					title: `本日の天気${weatherEmojis[weatherId]}「${matchingWeather.name}」`,
-					title_link: 'https://www.accuweather.com/ja/jp/tokyo/226396/daily-weather-forecast/226396',
+					title_link: `https://www.accuweather.com/ja/jp/tokyo/${locationId}/daily-weather-forecast/${locationId}`,
 					image_url: cloudinaryData.secure_url,
 					fallback: matchingWeather.name,
 				}, {
@@ -446,6 +484,7 @@ module.exports = async ({webClient: slack}) => {
 					text: stripIndent`
 						:sunrise_over_mountains: *日の出* ${moment(sunrise).format('HH:mm')} ～ *日の入* ${moment(sunset).format('HH:mm')}
 						${moonEmoji} *月の出* ${moment(moonrise).format('HH:mm')} ～ *月の入* ${moment(moonset).format('HH:mm')}
+						${moonStateText}
 					`,
 				}, ...(entry ? [{
 					color: '#4DB6AC',
@@ -466,10 +505,73 @@ module.exports = async ({webClient: slack}) => {
 				tenkijp: tenkijp[0].link,
 			});
 		}
+
+		const sunsets = map(times, 'sunset');
+		const lastSunset = await storage.getItem('lastSunset');
+		const nextSunset = sunsets.find((sunset) => sunset > lastSunset);
+
+		if (now >= nextSunset) {
+			await storage.setItem('lastSunset', now.getTime());
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: ':wave:',
+				username: 'sunset',
+				icon_emoji: ':city_sunset:',
+			});
+		}
 	};
 
 	queue.add(tick);
 	setInterval(() => {
 		queue.add(tick);
 	}, 10 * 1000);
+
+	rtm.on('message', async (message) => {
+		if (message.channel !== process.env.CHANNEL_SANDBOX) {
+			return;
+		}
+
+		if (message.text && message.text.match(/(いま|今)(なんじ|なんどき|何時)/)) {
+			const now = Date.now();
+			const times = range(-5, 5).map((days) => suncalc.getTimes(moment().add(days, 'day').toDate(), ...location));
+			const 夜明s = map(times, '夜明');
+			const 日暮s = map(times, '日暮');
+
+			const 夜明and日暮 = [
+				...夜明s.map((time) => ({time: time.getTime(), type: '夜明'})),
+				...日暮s.map((time) => ({time: time.getTime(), type: '日暮'})),
+			];
+			const previousTime = 夜明and日暮.slice().reverse().find(({time}) => time < now);
+			const nextTime = 夜明and日暮.find(({time}) => time > now);
+
+			const totalMinutes = Math.round((now - previousTime.time) / (nextTime.time - previousTime.time) * 60);
+			const hour = Math.floor(totalMinutes / 10);
+			const minute = totalMinutes % 10;
+
+			const prefixes = previousTime.type === '夜明' ? [
+				'明', '朝', '朝', '昼', '昼', '夕', '暮',
+			] : [
+				'暮', '夜', '夜', '暁', '暁', '暁', '明',
+			];
+			const prefixText = prefixes[hour];
+
+			const hourNumber = 漢数字s[[6, 5, 4, 9, 8, 7, 6][hour]];
+			const hourText = (minute === 0 || minute === 5) ? `${hourNumber}ツ` : `${hourNumber}時`;
+
+			const minuteText =
+			// eslint-disable-next-line no-nested-ternary
+				minute === 0 ? ''
+					: minute === 5 ? '半'
+						: `${漢数字s[minute]}分`;
+
+			const timeText = `${prefixText}${hourText}${minuteText}`;
+
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: timeText,
+				username: 'sunrise',
+				icon_emoji: ':sunrise:',
+			});
+		}
+	});
 };

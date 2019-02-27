@@ -8,23 +8,24 @@
 
 	const {RTMClient, WebClient} = require('@slack/client');
 
-	const plugins = [
-		require('./mahjong'),
-		require('./pocky'),
-		require('./emoji-notifier'),
-		require('./sushi-bot'),
-		require('./cubebot'),
-		require('./shogi'),
-		require('./tiobot'),
-		require('./checkin'),
-		require('./tahoiya'),
-		require('./channel-notifier'),
-		require('./tashibot'),
-		require('./prime'),
-		require('./dajare'),
-		require('./sunrise'),
-		require('./vocabwar'),
-	];
+const plugins = [
+	require('./mahjong'),
+	require('./pocky'),
+	require('./emoji-notifier'),
+	require('./sushi-bot'),
+	require('./cubebot'),
+	require('./shogi'),
+	require('./tiobot'),
+	require('./checkin'),
+	require('./tahoiya'),
+	require('./channel-notifier'),
+	require('./tashibot'),
+	require('./prime'),
+	require('./dajare'),
+	require('./sunrise'),
+	require('./vocabwar'),
+	require('./ricochet-robots'),
+];
 
 	const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
 	const webClient = new WebClient(process.env.SLACK_TOKEN);
