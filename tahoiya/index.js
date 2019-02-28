@@ -402,7 +402,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		if (state.author) {
 			const humanCount = Array.from(state.meanings.keys()).filter((user) => user.startsWith('U')).length;
-			const correctCount = correctBetters.length;
+			const correctCount = correctBetters.filter(([user]) => user.startsWith('U')).length;
 			const wrongCount = humanCount - correctCount;
 
 			newRatings.set(state.author, newRatings.get(state.author) + wrongCount - correctCount);
@@ -765,11 +765,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					const body = text.replace(/^@\w+/, '').replace(/(って(なに|何)|とは)[？?⋯…・]*$/, '').trim();
 					const ruby = hiraganize(await getReading(body)).replace(/[^\p{Script=Hiragana}ー]/gu, '');
 					const modelData = text.startsWith('@tahoiya2') ? (
-						['tahoiyabot-02', 'model.ckpt-600000-ver2']
+						['tahoiyabot-02', 'model.ckpt-600001-ver2']
 					) : text.startsWith('@tahoiya') ? (
 						['tahoiyabot-01', 'model.ckpt-455758']
 					) : (
-						['tahoiyabot-02', 'model.ckpt-600000-ver2']
+						['tahoiyabot-02', 'model.ckpt-600001-ver2']
 					);
 
 					if (ruby.length > 0 && ruby.length <= 25) {
