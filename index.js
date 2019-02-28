@@ -28,17 +28,16 @@ const plugins = [
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
 const webClient = new WebClient(process.env.SLACK_TOKEN);
+(async () => {
+	await Promise.all(plugins.map((plugin) => plugin({rtmClient, webClient})));
 
-for (const plugin of plugins) {
-	plugin({rtmClient, webClient});
-}
-
-logger.info('Launched');
-webClient.chat.postMessage({
-	channel: process.env.CHANNEL_SANDBOX,
-	text: 'ｼｭｯｼｭｯ (起動音)',
-	username: 'slackbot',
-});
+	logger.info('Launched');
+	webClient.chat.postMessage({
+		channel: process.env.CHANNEL_SANDBOX,
+		text: 'ｼｭｯｼｭｯ (起動音)',
+		username: 'slackbot',
+	});
+})();
 
 let firstLogin = true;
 rtmClient.on('authenticated', (data) => {
