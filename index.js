@@ -22,6 +22,7 @@ const plugins = [
 	require('./prime'),
 	require('./dajare'),
 	require('./sunrise'),
+	require('./ahokusa'),
 	require('./vocabwar'),
 	require('./ricochet-robots'),
 ];
