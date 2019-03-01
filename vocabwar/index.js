@@ -191,7 +191,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const res = {};
 
 		stream.on('data', (line) => {
-			const tmp = line.split(' ');
+			const tmp = line.toString().split(' ');
 			res[tmp[0]] = parseFloat(tmp[1]);
 		});
 
