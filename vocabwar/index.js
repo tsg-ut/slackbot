@@ -3,7 +3,6 @@ const path = require('path');
 const assert = require('assert');
 const {promisify} = require('util');
 const querystring = require('querystring');
-const request = require('request');
 const {stripIndent} = require('common-tags');
 const {JSDOM} = require('jsdom');
 const axios = require('axios');
@@ -11,7 +10,6 @@ const moment = require('moment');
 const {sampleSize} = require('lodash');
 const byline = require('byline');
 const w2v = require('word2vec');
-
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const state = (() => {
@@ -193,7 +191,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		const res = {};
 
 		stream.on('data', (line) => {
-			const tmp = line.split(' ');
+			const tmp = line.toString().split(' ');
 			res[tmp[0]] = parseFloat(tmp[1]);
 		});
 
@@ -227,8 +225,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					resolve(!error);
 				});
 			});
-			return dataExists ? undefined : new Promise((resolve, reject) => {
-				request(url).pipe(fs.createWriteStream(dataPath))
+			return dataExists ? undefined : new Promise(async (resolve, reject) => {
+				const response = await axios({url, responseType: 'stream'});
+				response.data.pipe(fs.createWriteStream(dataPath))
 					.on('finish', () => {
 						resolve();
 					})
@@ -312,9 +311,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					const end = Date.now() + 0.5 * 60 * 1000;
 					setTimeout(onFinish, 0.5 * 60 * 1000);
 					await postMessage(stripIndent`
-                        語彙力の戦い:fire:*弓箭*:fire:を始めるよ:bow_and_arrow: 
+                        語彙力の戦い:fire:*弓箭*:fire:を始めるよ:bow_and_arrow:
                         お題は「 *${state.theme}* 」:muscle:
-                        参加者は30秒以内にこの単語に“近い”単語を<#${process.env.CHANNEL_SANDBOX}|sandbox>に書き込んでね:crossed_swords: 
+                        参加者は30秒以内にこの単語に“近い”単語を<#${process.env.CHANNEL_SANDBOX}|sandbox>に書き込んでね:crossed_swords:
                         終了予定時刻: ${getTimeLink(end)}
                     `);
 					return;
@@ -328,7 +327,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					const candidates = genTheme(10);
 					await setState({candidates});
 					await postMessage(stripIndent`
-                        語彙力の戦い:fire:*弓箭*:fire:を始めるよ:bow_and_arrow: 
+                        語彙力の戦い:fire:*弓箭*:fire:を始めるよ:bow_and_arrow:
                         :point_down:お題を選んでね:point_down:
                     `, candidates.map((ruby, index) => ({
 						text: ruby,
@@ -353,9 +352,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					const end = Date.now() + 0.5 * 60 * 1000;
 					setTimeout(onFinish, 0.5 * 60 * 1000);
 					await postMessage(stripIndent`
-                        語彙力の戦い:fire:*弓箭*:fire:を始めるよ:bow_and_arrow: 
+                        語彙力の戦い:fire:*弓箭*:fire:を始めるよ:bow_and_arrow:
                         お題は「 *${state.theme}* 」:muscle:
-                        参加者は30秒以内にこの単語に“近い”単語を<#${process.env.CHANNEL_SANDBOX}|sandbox>に書き込んでね:crossed_swords: 
+                        参加者は30秒以内にこの単語に“近い”単語を<#${process.env.CHANNEL_SANDBOX}|sandbox>に書き込んでね:crossed_swords:
                         終了予定時刻: ${getTimeLink(end)}
                     `);
 					return;
@@ -373,8 +372,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					setTimeout(onFinish, 0.5 * 60 * 1000);
 
 					await postMessage(stripIndent`
-                        お題 *「${word}」* に決定:bow_and_arrow: 
-                        参加者は30秒以内にこの単語に“近い”単語を<#${process.env.CHANNEL_SANDBOX}|sandbox>に書き込んでね:crossed_swords: 
+                        お題 *「${word}」* に決定:bow_and_arrow:
+                        参加者は30秒以内にこの単語に“近い”単語を<#${process.env.CHANNEL_SANDBOX}|sandbox>に書き込んでね:crossed_swords:
                         終了予定時刻: ${getTimeLink(end)}
                     `);
 					return;

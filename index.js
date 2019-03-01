@@ -7,6 +7,13 @@ process.on('unhandledRejection', (error) => {
 
 const {RTMClient, WebClient} = require('@slack/client');
 
+let word2vecInstalled = true;
+try {
+	require.resolve('word2vec');
+} catch (e) {
+	word2vecInstalled = false;
+}
+
 const plugins = [
 	require('./mahjong'),
 	require('./pocky'),
@@ -23,7 +30,7 @@ const plugins = [
 	require('./dajare'),
 	require('./sunrise'),
 	require('./ahokusa'),
-	require('./vocabwar'),
+	...(word2vecInstalled ? [require('./vocabwar')] : []),
 	require('./ricochet-robots'),
 ];
 

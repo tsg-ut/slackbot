@@ -1,34 +1,39 @@
 /* eslint-env node, jest */
 
+jest.mock('axios');
+jest.mock('fs');
+jest.mock('word2vec');
+
+jest.mock('./state.json', () => ({}), {virtual: true});
+
 const vocabwar = require('./index.js');
 const Slack = require('../lib/slackMock.js');
 const {promisify} = require('util');
 const path = require('path');
 const fs = require('fs');
 
-let slack = null;
-
-const deleteState = async () => {
-	if (await new Promise((resolve) => {
-		fs.access(path.join(__dirname, 'state.json'), fs.constants.F_OK, (error) => {
-			resolve(!error);
-		});
-	})) {
-		await promisify(fs.unlink)(path.join(__dirname, 'state.json'));
-	}
+fs.virtualFiles = {
+	[path.join(__dirname, 'data')]: '',
+	[path.join(__dirname, 'data', 'ad.txt')]: [
+		'丸い 1',
+		'鋭い 1',
+		...Array(100).fill().map((...[, i]) => `${i} 1`),
+	].join('\n'),
+	[path.join(__dirname, 'data', 'frequency.txt')]: [
+		'丸い 1',
+		'鋭い 1',
+		...Array(100).fill().map((...[, i]) => `${i} 1`),
+	].join('\n'),
+	[path.join(__dirname, 'data', 'wiki_wakati.wv')]: '',
 };
+
+let slack = null;
 
 describe('vocabwar', () => {
 	beforeEach(async () => {
-		jest.setTimeout(1000 * 60 * 10);
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
-		await deleteState();
 		await vocabwar(slack);
-	});
-
-	afterEach(async () => {
-		await deleteState();
 	});
 
 	it('responds to "弓箭"', async () => {
@@ -66,16 +71,10 @@ describe('vocabwar', () => {
 
 describe('vocabwar', () => {
 	beforeAll(async () => {
-		jest.setTimeout(1000 * 60 * 10);
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
-		await deleteState();
 		await vocabwar(slack);
 		await slack.getResponseTo('弓箭 丸い');
-	});
-
-	afterAll(async () => {
-		await deleteState();
 	});
 
 	it('rejects the same word as theme', async () => {
