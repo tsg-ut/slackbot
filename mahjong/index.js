@@ -419,7 +419,8 @@ module.exports = (clients) => {
 					return;
 				}
 
-				new手牌 = state.手牌.slice().splice(state.手牌.indexOf(打牌), 1);
+				new手牌 = state.手牌.slice();
+				new手牌.splice(new手牌.indexOf(打牌), 1);
 			}
 
 			if (!calculator.tenpai(new手牌)) {
