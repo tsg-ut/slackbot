@@ -246,7 +246,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			const i = sim.findIndex((x) => x[2] === word);
 			if (i < state.ans.size) {
 				// 正の得点
-				return [(sim[i][0] ** 3) * (freq[word] ** 3) / 3 / 4, sim[i][0], freq[word]];
+				return [(sim[i][0] ** 3) * (freq[word] ** 3) / 3 / 4, freq[word]];
 			}
 			return [-1 / sim[i][0], freq[word]];
 		};
