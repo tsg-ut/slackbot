@@ -1,7 +1,6 @@
 /* eslint-env node, jest */
 
 jest.mock('cloudinary');
-jest.mock('axios');
 jest.mock('node-persist');
 jest.mock('./render.js');
 jest.mock('./fetch.js');

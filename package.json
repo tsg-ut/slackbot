@@ -65,15 +65,18 @@
     "sqlite3": "^4.0.6",
     "suncalc": "^1.8.0",
     "tmp": "^0.0.33",
+    "ts-node": "^8.0.2",
     "winston": "^3.2.1"
   },
   "devDependencies": {
     "@hakatashi/eslint-config": "^1.8.4",
+    "@types/jest": "^24.0.9",
     "byline": "^5.0.0",
     "eslint": "^5.14.1",
     "eslint-plugin-react": "^7.12.4",
     "jest": "^24.1.0",
-    "lolex": "^3.1.0"
+    "lolex": "^3.1.0",
+    "ts-jest": "^24.0.0"
   },
   "optionalDependencies": {
     "word2vec": "github:pizzacat83/node-word2vec"
