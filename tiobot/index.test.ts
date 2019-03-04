@@ -1,9 +1,8 @@
-/* eslint-env node, jest */
+import cubebot from './index';
+// @ts-ignore
+import Slack from '../lib/slackMock.js';
 
-const cubebot = require('./index.js');
-const Slack = require('../lib/slackMock.js');
-
-let slack = null;
+let slack: Slack = null;
 
 beforeEach(() => {
 	slack = new Slack();

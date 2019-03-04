@@ -1,20 +1,34 @@
-const {stripIndent} = require('common-tags');
-const zlib = require('zlib');
-const {promisify} = require('util');
+// @ts-ignore
+import {stripIndent} from 'common-tags';
+import * as zlib from 'zlib';
+import {WebClient, RTMClient} from '@slack/client';
 
-module.exports = ({rtmClient: rtm, webClient: slack}) => {
+interface SlackInterface {
+	rtmClient: RTMClient,
+	webClient: WebClient,
+}
+
+export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	rtm.on('message', async (message) => {
 		if (!message.text) {
 			return;
 		}
 
 		const {text} = message;
-		let matches = null;
+		let matches: String[] = null;
 
 		if ((matches = text.match(/https:\/\/tio.run\/##([\w@/]+)/))) {
 			const [, data] = matches;
 			const buffer = Buffer.from(data.replace(/@/g, '+'), 'base64');
-			const rawData = await promisify(zlib.inflateRaw)(buffer);
+			const rawData = await new Promise<Buffer>((resolve, reject) => {
+				zlib.inflateRaw(buffer, (error, result) => {
+					if (error) {
+						reject(error);
+					} else {
+						resolve(result);
+					}
+				});
+			});
 
 			const segments = [];
 			let pointer = -Infinity;
