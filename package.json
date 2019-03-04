@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon --exitcrash --watch .restart-trigger index.js",
-    "dev": "nodemon index.js -i \"*.json\"",
+    "start": "nodemon --exitcrash --watch .restart-trigger -x ts-node index.js",
+    "dev": "nodemon -x ts-node index.js -i \"*.json\"",
     "lint": "cd mahjong && eslint .",
     "test": "jest --verbose --coverage"
   },
