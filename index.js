@@ -1,4 +1,3 @@
-const logger = require('./lib/logger.js');
 require('dotenv').config();
 
 process.on('unhandledRejection', (error) => {
@@ -6,6 +5,8 @@ process.on('unhandledRejection', (error) => {
 });
 
 const {RTMClient, WebClient} = require('@slack/client');
+const fastify = require('fastify')({logger: true});
+const logger = require('./lib/logger.js');
 
 let word2vecInstalled = true;
 try {
@@ -15,29 +16,23 @@ try {
 }
 
 const plugins = [
-	require('./mahjong'),
-	require('./pocky'),
-	require('./emoji-notifier'),
-	require('./sushi-bot'),
-	require('./cubebot'),
-	require('./shogi'),
-	require('./tiobot').default,
-	require('./checkin'),
-	require('./tahoiya'),
-	require('./channel-notifier'),
-	require('./tashibot'),
-	require('./prime'),
-	require('./dajare'),
-	require('./sunrise'),
-	require('./ahokusa'),
-	...(word2vecInstalled ? [require('./vocabwar')] : []),
-	require('./ricochet-robots'),
+	require('./scrapbox'),
 ];
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
 const webClient = new WebClient(process.env.SLACK_TOKEN);
 (async () => {
-	await Promise.all(plugins.map((plugin) => plugin({rtmClient, webClient})));
+	await Promise.all(plugins.map(async (plugin) => {
+		if (typeof plugin === 'function') {
+			await plugin({rtmClient, webClient});
+		}
+		if (typeof plugin.default === 'function') {
+			await plugin.default({rtmClient, webClient});
+		}
+		if (typeof plugin.server === 'function') {
+			await fastify.register(plugin.server({rtmClient, webClient}));
+		}
+	}));
 
 	logger.info('Launched');
 	webClient.chat.postMessage({
@@ -46,6 +41,8 @@ const webClient = new WebClient(process.env.SLACK_TOKEN);
 		username: 'slackbot',
 	});
 })();
+
+fastify.listen(process.env.PORT || 21864);
 
 let firstLogin = true;
 rtmClient.on('authenticated', (data) => {

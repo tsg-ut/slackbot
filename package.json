@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon --exitcrash --watch .restart-trigger -x ts-node index.js",
-    "dev": "nodemon -x ts-node index.js -i \"*.json\"",
+    "dev": "nodemon -x ts-node -e js,ts index.js -i \"*.json\"",
     "lint": "cd mahjong && eslint .",
     "test": "jest --verbose --coverage"
   },
@@ -39,6 +39,7 @@
     "dotenv": "^6.2.0",
     "download": "^7.1.0",
     "fast-levenshtein": "^2.0.6",
+    "fastify": "^2.0.0",
     "iconv-lite": "^0.4.24",
     "jaconv": "^1.0.4",
     "japanese": "^1.2.0",
