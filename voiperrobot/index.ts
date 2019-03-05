@@ -1,10 +1,23 @@
-const {sample} = require('lodash');
-const tts = require('google-tts-api');
-const moment = require('moment');
-const querystring = require('querystring');
-const assert = require('assert');
+import { sample } from 'lodash';
+// @ts-ignore
+import tts from 'google-tts-api';
+import moment from 'moment';
+import { stringify } from 'querystring';
+import assert from 'assert';
+import {RTMClient, WebClient} from '@slack/client';
 
-const state = {
+type VoiperPhase = 'waiting' | 'answering'
+
+interface State {
+	phase: VoiperPhase,
+	ts: string | null,
+	answer: string | null,
+	users: string[],
+	userIdx: number,
+	answerDeadline: Date,
+}
+
+const state: Readonly<State> = {
 	phase: 'waiting',
 	ts: null,
 	answer: null,
@@ -13,28 +26,24 @@ const state = {
 	answerDeadline: null,
 };
 
-const setState = (newState) => {
-	Object.assign(state, newState);
+const setState = (newState: Partial<State>) => {
+	Object.assign(state as State, newState);
 };
 
-/**
- * @param {string} text text
- * @return {string[]} phrases
- */
-const getPhrasesOf = (text) => text.match(/../g) || [];
+const getPhrasesOf = (text: string): string[] => text.match(/../g) || [];
 
 const phrases = getPhrasesOf('はっつくパンツかひっつくパンツかくっつくパンツかむかつくパンツか');
 
-const voiper = (num = 8) => Array(num).fill().map(() => sample(phrases)).join('');
+const voiper = (num = 8) => Array(num).fill(null).map(() => sample(phrases)).join('');
 
-const getTtsLink = async (text) => {
-	const link = await tts(text, 'ja', 1);
+const getTtsLink = async (text: string) => {
+	const link: string = await tts(text, 'ja', 1);
 	return (`<${link}|${text}>`);
 };
 
-const getTimeLink = (time, title = '宣言締切') => {
+const getTimeLink = (time: Date, title = '宣言締切') => {
 	const text = moment(time).utcOffset('+0900').format('HH:mm:ss');
-	const url = `https://www.timeanddate.com/countdown/generic?${querystring.stringify({
+	const url = `https://www.timeanddate.com/countdown/generic?${stringify({
 		iso: moment(time).utcOffset('+0900').format('YYYYMMDDTHHmmss'),
 		p0: 248,
 		msg: title,
@@ -44,21 +53,21 @@ const getTimeLink = (time, title = '宣言締切') => {
 	return `<!date^${moment(time).valueOf() / 1000 | 0}^{time_secs}^${url}|${text}>`;
 };
 
-const sleepUntil = (time) => new Promise((resolve) => setTimeout(resolve, time - Date.now()));
+const sleepUntil = (time: Date) => new Promise((resolve) => setTimeout(resolve, time.valueOf() - Date.now()));
 
-const hitblow = (seq1, seq2) => {
+const hitblow = (seq1: string[], seq2: string[]) => {
 	assert(seq1.length === seq2.length);
-	const hits = [];
-	const nohits = [];
-	Array(seq1.length).fill().forEach((_, i) => {
+	const hits: number[] = [];
+	const nohits: number[] = [];
+	Array(seq1.length).fill(null).forEach((_, i) => {
 		if (seq1[i] === seq2[i]) {
 			hits.push(i);
 		} else {
 			nohits.push(i);
 		}
 	});
-	const nohitCount1 = new Map();
-	const nohitCount2 = new Map();
+	const nohitCount1 = new Map<string, number>();
+	const nohitCount2 = new Map<string, number>();
 	for (const i of nohits) {
 		const word1 = seq1[i];
 		const word2 = seq2[i];
@@ -77,12 +86,13 @@ const hitblow = (seq1, seq2) => {
 	};
 };
 
-module.exports = (/** @type {{
-	rtmClient: import('@slack/client').RTMClient,
-	webClient: import('@slack/client').WebClient,
-}} */{rtmClient: rtm, webClient: slack}
-) => {
-	rtm.on('message', async (message) => {
+interface SlackInterface {
+	rtmClient: RTMClient;
+	webClient: WebClient;
+}
+
+export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+	rtm.on('message', async (message: any) => {
 		// if (message.channel !== process.env.CHANNEL_SANDBOX) {
 		// if (!message.channel.startsWith('D')) {
 		if (message.channel !== process.env.CHANNEL_SANDBOX && !message.channel.startsWith('D')) {
@@ -97,7 +107,7 @@ module.exports = (/** @type {{
 			return;
 		}
 
-		const postMessage = (text) => slack.chat.postMessage({
+		const postMessage = (text: string) => slack.chat.postMessage({
 			channel: message.channel,
 			text,
 			username: 'voiperrobot',
@@ -137,9 +147,9 @@ module.exports = (/** @type {{
 					answerDeadline: new Date(Date.now() + 3 * 60 * 1000),
 				});
 				await postMessage(`${state.answer.length}文字のボイパーを${getTimeLink(state.answerDeadline, '解答締切')}までに解答してね。`);
-				postMessage(`<@${state.users[state.userIdx]}>さんの解答ターンだよ。\n残り${(state.answerDeadline - Date.now()) / 1000 | 0}秒だよ。`);
+				postMessage(`<@${state.users[state.userIdx]}>さんの解答ターンだよ。\n残り${(state.answerDeadline.valueOf() - Date.now()) / 1000 | 0}秒だよ。`);
 				await sleepUntil(state.answerDeadline);
-				if (state.phase !== 'answering' || message.ts !== state.ts) {
+				if (state.phase as VoiperPhase !== 'answering' || message.ts !== state.ts) {
 					return;
 				}
 				postMessage(`だれも正解できなかったよ:cry:\n正解は ${await getTtsLink(state.answer)} だよ。`);
@@ -158,7 +168,7 @@ module.exports = (/** @type {{
 					setState({
 						userIdx: (state.userIdx + 1) % state.users.length,
 					});
-					postMessage(`<@${state.users[state.userIdx]}>さんの解答ターンだよ。\n残り${(state.answerDeadline - Date.now()) / 1000 | 0}秒だよ。`);
+					postMessage(`<@${state.users[state.userIdx]}>さんの解答ターンだよ。\n残り${(state.answerDeadline.valueOf() - Date.now()) / 1000 | 0}秒だよ。`);
 				}
 			}
 		}
