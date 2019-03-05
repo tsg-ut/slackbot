@@ -51,11 +51,6 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 				}
 				if (Object.values(unfurls).length > 0) {
 					try {
-						console.log({
-							ts: req.body.event.message_ts,
-							channel: req.body.event.channel,
-							unfurls,
-						})
 						const data = await slack.chat.unfurl({
 							ts: req.body.event.message_ts,
 							channel: req.body.event.channel,
