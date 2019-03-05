@@ -6,6 +6,8 @@ import { stringify } from 'querystring';
 import assert from 'assert';
 import {RTMClient, WebClient} from '@slack/client';
 
+import Mutex from './mutex';
+
 type VoiperPhase = 'waiting' | 'answering'
 
 interface State {
@@ -29,6 +31,8 @@ const state: Readonly<State> = {
 const setState = (newState: Partial<State>) => {
 	Object.assign(state as State, newState);
 };
+
+const battleMutex = new Mutex();
 
 const getPhrasesOf = (text: string): string[] => text.match(/../g) || [];
 
@@ -115,12 +119,12 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 
 		if (message.text === 'ボイパーロボット' || message.text.match(/^@voiperrobot\b/)) {
-			postMessage(await getTtsLink(voiper()));
+			await postMessage(await getTtsLink(voiper()));
 			return;
 		}
 		if (message.text === 'ボイパーロボットバトル') {
 			if (state.phase !== 'waiting' || state.users.includes(message.user)) {
-				postMessage(':ha:');
+				await postMessage(':ha:');
 				return;
 			}
 			slack.reactions.add({
@@ -130,9 +134,12 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			});
 			if (state.ts) {
 				state.users.push(message.user);
-			} else {
-				const registerDeadline = new Date(Date.now() + 60 * 1000);
-				// const registerDeadline = new Date(Date.now() + 1 * 1000);
+				return;
+			}
+
+			const registerDeadline = new Date(Date.now() + 60 * 1000);
+			// const registerDeadline = new Date(Date.now() + 1 * 1000);
+			await battleMutex.exec(async () => {
 				setState({
 					ts: message.ts,
 					answer: voiper(4),
@@ -140,37 +147,45 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					userIdx: 0,
 				});
 				console.log(state.answer);
-				postMessage(`ボイパーロボットバトルをはじめるよ〜:raised_hand_with_fingers_splayed::sunglasses:\nほかのみんなも${getTimeLink(registerDeadline)}までに「ボイパーロボットバトル」と宣言して参加登録してね。`);
-				await sleepUntil(registerDeadline);
+				await postMessage(`ボイパーロボットバトルをはじめるよ〜:raised_hand_with_fingers_splayed::sunglasses:\nほかのみんなも${getTimeLink(registerDeadline)}までに「ボイパーロボットバトル」と宣言して参加登録してね。`);
+			});
+			await sleepUntil(registerDeadline);
+
+			await battleMutex.exec(async () => {
 				setState({
 					phase: 'answering',
 					answerDeadline: new Date(Date.now() + 3 * 60 * 1000),
 				});
 				await postMessage(`${state.answer.length}文字のボイパーを${getTimeLink(state.answerDeadline, '解答締切')}までに解答してね。`);
-				postMessage(`<@${state.users[state.userIdx]}>さんの解答ターンだよ。\n残り${(state.answerDeadline.valueOf() - Date.now()) / 1000 | 0}秒だよ。`);
-				await sleepUntil(state.answerDeadline);
+				await postMessage(`<@${state.users[state.userIdx]}>さんの解答ターンだよ。\n残り${(state.answerDeadline.valueOf() - Date.now()) / 1000 | 0}秒だよ。`);
+			});
+			await sleepUntil(state.answerDeadline);
+
+			await battleMutex.exec(async () => {
 				if (state.phase as VoiperPhase !== 'answering' || message.ts !== state.ts) {
 					return;
 				}
-				postMessage(`だれも正解できなかったよ:cry:\n正解は ${await getTtsLink(state.answer)} だよ。`);
+				await postMessage(`だれも正解できなかったよ:cry:\n正解は ${await getTtsLink(state.answer)} だよ。`);
 				setState({phase: 'waiting', answer: null, users: [], ts: null});
-			}
+			});
 			return;
 		}
-		if (state.phase === 'answering' && message.user === state.users[state.userIdx] && message.text.length === state.answer.length) {
-			if (message.text === state.answer) {
-				postMessage(`正解です!:tada:\n${await getTtsLink(state.answer)}`);
-				setState({phase: 'waiting', answer: null, users: [], ts: null});
-			} else {
-				const {hit, blow} = hitblow(getPhrasesOf(state.answer), getPhrasesOf(message.text));
-				await postMessage(`「${message.text}」は違うよ:thinking_face:(${hit}H${blow}B)`);
-				if (state.users.length > 1) {
-					setState({
-						userIdx: (state.userIdx + 1) % state.users.length,
-					});
-					postMessage(`<@${state.users[state.userIdx]}>さんの解答ターンだよ。\n残り${(state.answerDeadline.valueOf() - Date.now()) / 1000 | 0}秒だよ。`);
+		await battleMutex.exec(async () => {
+			if (state.phase === 'answering' && message.user === state.users[state.userIdx] && message.text.length === state.answer.length) {
+				if (message.text === state.answer) {
+					await postMessage(`正解です!:tada:\n${await getTtsLink(state.answer)}`);
+					setState({phase: 'waiting', answer: null, users: [], ts: null});
+				} else {
+					const {hit, blow} = hitblow(getPhrasesOf(state.answer), getPhrasesOf(message.text));
+					await postMessage(`「${message.text}」は違うよ:thinking_face:(${hit}H${blow}B)`);
+					if (state.users.length > 1) {
+						setState({
+							userIdx: (state.userIdx + 1) % state.users.length,
+						});
+						await postMessage(`<@${state.users[state.userIdx]}>さんの解答ターンだよ。\n残り${(state.answerDeadline.valueOf() - Date.now()) / 1000 | 0}秒だよ。`);
+					}
 				}
 			}
-		}
+		});
 	});
 };
