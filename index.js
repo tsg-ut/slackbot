@@ -22,7 +22,7 @@ const plugins = [
 	require('./sushi-bot'),
 	require('./cubebot'),
 	require('./shogi'),
-	require('./tiobot').default,
+	require('./tiobot'),
 	require('./checkin'),
 	require('./tahoiya'),
 	require('./channel-notifier'),
