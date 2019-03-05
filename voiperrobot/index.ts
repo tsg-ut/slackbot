@@ -162,7 +162,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			await sleepUntil(state.answerDeadline);
 
 			await battleMutex.exec(async () => {
-				if (state.phase as VoiperPhase !== 'answering' || message.ts !== state.ts) {
+				if (state.phase !== 'answering' || message.ts !== state.ts) {
 					return;
 				}
 				await postMessage(`だれも正解できなかったよ:cry:\n正解は ${await getTtsLink(state.answer)} だよ。`);
