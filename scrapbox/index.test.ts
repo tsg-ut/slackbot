@@ -3,7 +3,7 @@ jest.mock('axios');
 import * as scrapbox from './index';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
-import Fastify from 'Fastify';
+import Fastify from 'fastify';
 import axios from 'axios';
 
 // @ts-ignore
