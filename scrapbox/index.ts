@@ -55,6 +55,7 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 							ts: req.body.event.message_ts,
 							channel: req.body.event.channel,
 							unfurls,
+							token: process.env.HAKATASHI_TOKEN,
 						}, {
 							headers: {
 								Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
