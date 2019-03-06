@@ -26,10 +26,16 @@ afterEach(() => {
 describe('scrapbox', () => {
 	it('respond to slack hook of scrapbox unfurling', async () => {
 		const done = new Promise((resolve) => {
-			slack.on('chat.unfurl', ({unfurls}: any) => {
-				expect(unfurls['https://scrapbox.io/tsg/hoge']).toBeTruthy();
-				expect(unfurls['https://scrapbox.io/tsg/hoge'].text).toBe('fuga\npiyo');
-				resolve();
+			// @ts-ignore
+			axios.mockImplementation((url: string, data: any) => {
+				if (url === 'https://slack.com/api/chat.unfurl') {
+					expect(data.unfurls['https://scrapbox.io/tsg/hoge']).toBeTruthy();
+					expect(data.unfurls['https://scrapbox.io/tsg/hoge'].text).toBe('fuga\npiyo');
+					resolve();
+					return Promise.resolve({data: {ok: true}});
+				}
+				// @ts-ignore
+				return Promise.resolve(axios.response);
 			});
 		});
 

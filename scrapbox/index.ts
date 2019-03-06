@@ -51,11 +51,15 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 				}
 				if (Object.values(unfurls).length > 0) {
 					try {
-						const data = await slack.chat.unfurl({
+						const {data} = await axios.post('https://slack.com/api/chat.unfurl', {
 							ts: req.body.event.message_ts,
 							channel: req.body.event.channel,
 							unfurls,
-						})
+						}, {
+							headers: {
+								Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
+							},
+						});
 						if (data.ok) {
 							logger.info('✓ chat.unfurl >', data);
 						} else {
