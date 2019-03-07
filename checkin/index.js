@@ -52,7 +52,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 	};
 
-	schedule.scheduleJob('*/3 * * * *', job);
+	if (process.env.NODE_ENV === 'production') {
+		schedule.scheduleJob('*/3 * * * *', job);
+	}
 
 	rtm.on('message', (message) => {
 		if (message.text === 'checkin-check' && message.channel === process.env.CHANNEL_SANDBOX) {
