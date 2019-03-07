@@ -2,16 +2,11 @@ import axios from 'axios';
 // @ts-ignore
 import logger from '../lib/logger.js';
 import {FastifyInstance} from 'fastify';
-import {WebClient, RTMClient, LinkUnfurls} from '@slack/client';
-
-interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-}
+import {LinkUnfurls} from '@slack/client';
 
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
 
-export const server = ({webClient: slack}: SlackInterface) => async (fastify: FastifyInstance) => {
+export const server = () => async (fastify: FastifyInstance) => {
 	fastify.post('/unfurl/scrapbox', async (req) => {
 		if (!req.body) {
 			return 'Not Implemented.';
