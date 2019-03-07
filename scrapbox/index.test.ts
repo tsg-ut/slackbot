@@ -5,6 +5,7 @@ import * as scrapbox from './index';
 import Slack from '../lib/slackMock.js';
 import Fastify from 'fastify';
 import axios from 'axios';
+import qs from 'querystring';
 
 // @ts-ignore
 axios.response = {data: {title: 'hoge', descriptions: ['fuga', 'piyo']}};
@@ -16,7 +17,7 @@ beforeEach(() => {
 	slack = new Slack();
 	process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 	fastify = Fastify();
-	scrapbox.server(slack)(fastify);
+	scrapbox.server()(fastify);
 });
 
 afterEach(() => {
@@ -27,10 +28,12 @@ describe('scrapbox', () => {
 	it('respond to slack hook of scrapbox unfurling', async () => {
 		const done = new Promise((resolve) => {
 			// @ts-ignore
-			axios.mockImplementation((url: string, data: any) => {
+			axios.mockImplementation(({url, data}: {url: string}) => {
 				if (url === 'https://slack.com/api/chat.unfurl') {
-					expect(data.unfurls['https://scrapbox.io/tsg/hoge']).toBeTruthy();
-					expect(data.unfurls['https://scrapbox.io/tsg/hoge'].text).toBe('fuga\npiyo');
+					const parsed = qs.parse(data);
+					const unfurls = JSON.parse(Array.isArray(parsed.unfurls) ? parsed.unfurls[0] : parsed.unfurls);
+					expect(unfurls['https://scrapbox.io/tsg/hoge']).toBeTruthy();
+					expect(unfurls['https://scrapbox.io/tsg/hoge'].text).toBe('fuga\npiyo');
 					resolve();
 					return Promise.resolve({data: {ok: true}});
 				}

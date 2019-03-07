@@ -3,6 +3,7 @@ import axios from 'axios';
 import logger from '../lib/logger.js';
 import {FastifyInstance} from 'fastify';
 import {LinkUnfurls} from '@slack/client';
+import qs from 'querystring';
 
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
 
@@ -46,14 +47,17 @@ export const server = () => async (fastify: FastifyInstance) => {
 				}
 				if (Object.values(unfurls).length > 0) {
 					try {
-						const {data} = await axios.post('https://slack.com/api/chat.unfurl', {
-							ts: req.body.event.message_ts,
-							channel: req.body.event.channel,
-							unfurls,
-							token: process.env.HAKATASHI_TOKEN,
-						}, {
+						const {data} = await axios({
+							method: 'POST',
+							url: 'https://slack.com/api/chat.unfurl',
+							data: qs.stringify({
+								ts: req.body.event.message_ts,
+								channel: req.body.event.channel,
+								unfurls: JSON.stringify(unfurls),
+								token: process.env.HAKATASHI_TOKEN,
+							}),
 							headers: {
-								Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
+								'content-type': 'application/x-www-form-urlencoded',
 							},
 						});
 						if (data.ok) {
