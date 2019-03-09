@@ -11,6 +11,7 @@ import {PassThrough} from 'stream';
 const commands = [
 	['git', 'checkout', '--', 'package.json', 'package-lock.json'],
 	['git', 'pull'],
+	['git', 'submodule', 'update', '--init', '--recursive'],
 	['npm', 'install', '--production'],
 ];
 
