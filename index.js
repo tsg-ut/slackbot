@@ -34,6 +34,7 @@ const plugins = [
 	...(word2vecInstalled ? [require('./vocabwar')] : []),
 	require('./ricochet-robots'),
 	require('./scrapbox'),
+	require('./deploy'),
 ];
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);

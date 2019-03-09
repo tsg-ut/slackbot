@@ -11,7 +11,7 @@ import {PassThrough} from 'stream';
 const commands = [
 	['git', 'checkout', '--', 'package.json', 'package-lock.json'],
 	['git', 'pull'],
-	['npm.cmd', 'install'],
+	['npm', 'install', '--production'],
 ];
 
 export const server = ({webClient: slack}: {webClient: WebClient}) => async (fastify: FastifyInstance) => {
@@ -64,9 +64,15 @@ export const server = ({webClient: slack}: {webClient: WebClient}) => async (fas
 					}));
 				});
 
-				const text = `\`\`\`\n$ ${[command, ...args].join(' ')}\n${output.toString()}\n\`\`\``;
+				const text = `\`\`\`\n$ ${[command, ...args].join(' ')}\n${output.toString().slice(0, 3500)}\`\`\``;
 				await postMessage(text);
 			}
+
+			await postMessage('死にます:wave:');
+
+			setTimeout(() => {
+				process.exit(0);
+			}, 2000);
 
 			return 'ok';
 		}
