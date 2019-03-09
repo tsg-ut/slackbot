@@ -61,11 +61,7 @@ npm run dev
 
 ## デプロイ
 
-1. TSG鯖にSSHで入る
-2. `$ sudo -u slackbot bash`
-3. `$ cd ~/slackbot`
-4. `$ git pull`
-5. `$ touch .restart-trigger`
+自動デプロイです。[deploy](deploy)参照。
 
 # Licenses
 
