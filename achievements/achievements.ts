@@ -147,8 +147,32 @@ const achievements: Achievement[] = [
 	{
 		id: 'tahoiya-over10',
 		difficulty: 'hard',
-		title: '大漁',
+		title: '一攫千金',
 		condition: 'たほいやで一度にプラス10点以上獲得する',
+	},
+	{
+		id: 'tahoiya-down10',
+		difficulty: 'medium',
+		title: '悪銭身につかず',
+		condition: 'たほいやで前回より10点以上低い点数を獲得する',
+	},
+	{
+		id: 'tahoiya-deceive',
+		difficulty: 'medium',
+		title: '嘘も方便',
+		condition: 'たほいやで他の人をひっかける',
+	},
+	{
+		id: 'tahoiya-deceive3',
+		difficulty: 'hard',
+		title: '海老で鯛を釣る',
+		condition: 'たほいやで1度に3人以上をひっかける',
+	},
+	{
+		id: 'tahoiya-turing',
+		difficulty: 'medium',
+		title: 'チューリングテスト成功',
+		condition: 'たほいやでAIに振り込んでしまう',
 	},
 	{
 		id: 'achievements',
