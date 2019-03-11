@@ -213,7 +213,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'mahjong-ikeda',
 		difficulty: 'medium',
-		title: 'イケダァ！',
+		title: '池田ァ！',
 		condition: '麻雀BOTで七筒を切る',
 	},
 	{
@@ -221,6 +221,66 @@ const achievements: Achievement[] = [
 		difficulty: 'medium',
 		title: '後の三巡',
 		condition: '麻雀BOTで不聴立直をする',
+	},
+	{
+		id: 'shogi',
+		difficulty: 'easy',
+		title: '勝ち将棋鬼の如し',
+		condition: '将棋BOTで勝利する',
+	},
+	{
+		id: 'shogi-shortest',
+		difficulty: 'medium',
+		title: '長い詰みより短い必至',
+		condition: '将棋BOTで最短勝利する',
+	},
+	{
+		id: 'shogi-over11',
+		difficulty: 'hard',
+		title: '勝ち将棋を勝て',
+		condition: '将棋BOTで11手必勝以上の盤面で最短勝利する',
+	},
+	{
+		id: 'shogi-over19',
+		difficulty: 'professional',
+		title: '名人に定跡なし',
+		condition: '将棋BOTで19手必勝以上の盤面で最短勝利する',
+	},
+	{
+		id: 'shogi-銀不成',
+		difficulty: 'hard',
+		title: '銀は不成に好手あり',
+		condition: '将棋BOTで銀不成を含む手順で最短勝利する',
+	},
+	{
+		id: 'shogi-自陣飛車',
+		difficulty: 'hard',
+		title: '自陣飛車に好手あり',
+		condition: '将棋BOTで自陣への飛車打を含む手順で最短勝利する',
+	},
+	{
+		id: 'shogi-自陣角',
+		difficulty: 'hard',
+		title: '遠見の角に好手あり',
+		condition: '将棋BOTで自陣への角打を含む手順で最短勝利する',
+	},
+	{
+		id: 'shogi-歩成',
+		difficulty: 'hard',
+		title: 'マムシのと金',
+		condition: '将棋BOTで歩成を含む手順で最短勝利する',
+	},
+	{
+		id: 'shogi-三桂',
+		difficulty: 'hard',
+		title: '三桂あって詰まぬことなし',
+		condition: '将棋BOTで桂馬を3つ以上所持した初期盤面で最短勝利する',
+	},
+	{
+		id: 'shogi-打ち歩詰め',
+		difficulty: 'hard',
+		title: '打ち歩詰めに詰みの余地あり',
+		condition: '将棋BOTで打ち歩詰めで敗北する',
 	},
 	{
 		id: 'achievements',
