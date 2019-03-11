@@ -15,7 +15,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'chat-10times',
 		difficulty: 'easy',
-		title: 'おしゃべりしよう',
+		title: 'ｽｯｺｺｺ',
 		condition: 'publicなチャンネルで10回以上発言する',
 	},
 	{
@@ -129,13 +129,13 @@ const achievements: Achievement[] = [
 	{
 		id: 'tahoiya',
 		difficulty: 'easy',
-		title: 'たほいやーへの道',
+		title: '千里の道も一歩から',
 		condition: 'たほいやに参加する',
 	},
 	{
 		id: 'daily-tahoiya-theme',
 		difficulty: 'medium',
-		title: 'ゲームマスター',
+		title: '大智は愚の如し',
 		condition: 'デイリーたほいやにお題を登録する',
 	},
 	{
@@ -171,13 +171,61 @@ const achievements: Achievement[] = [
 	{
 		id: 'tahoiya-turing',
 		difficulty: 'medium',
-		title: 'チューリングテスト成功',
+		title: 'チューリングテスト大成功',
 		condition: 'たほいやでAIに振り込んでしまう',
+	},
+	{
+		id: 'mahjong',
+		difficulty: 'easy',
+		title: 'みっつずつ、みっつずつ⋯⋯',
+		condition: '麻雀BOTで和了する',
+	},
+	{
+		id: 'mahjong-七対子',
+		difficulty: 'medium',
+		title: 'ふたつずつ、ふたつずつ⋯⋯',
+		condition: '麻雀BOTで七対子を和了する',
+	},
+	{
+		id: 'mahjong-12000',
+		difficulty: 'easy',
+		title: 'ザンクを三回刻むより',
+		condition: '麻雀BOTで満貫以上を和了する',
+	},
+	{
+		id: 'mahjong-24000',
+		difficulty: 'medium',
+		title: '来たぜぬるりと⋯⋯',
+		condition: '麻雀BOTで倍満以上を和了する',
+	},
+	{
+		id: 'mahjong-36000',
+		difficulty: 'hard',
+		title: '御無礼',
+		condition: '麻雀BOTで三倍満以上を和了する',
+	},
+	{
+		id: 'mahjong-48000',
+		difficulty: 'professional',
+		title: '麻雀って楽しいね！',
+		condition: '麻雀BOTで役満を和了する',
+	},
+	{
+		id: 'mahjong-ikeda',
+		difficulty: 'medium',
+		title: 'イケダァ！',
+		condition: '麻雀BOTで七筒を切る',
+	},
+	{
+		id: 'mahjong-不聴立直',
+		difficulty: 'medium',
+		title: '後の三巡',
+		condition: '麻雀BOTで不聴立直をする',
 	},
 	{
 		id: 'achievements',
 		difficulty: 'easy',
-		title: '解除',
+		title: '実績解除',
 		condition: '初めて実績解除する',
 	},
 	{
