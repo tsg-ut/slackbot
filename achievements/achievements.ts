@@ -3,6 +3,7 @@ interface Achievement {
 	difficulty: 'baby' | 'easy' | 'medium' | 'hard' | 'professional',
 	title: string,
 	condition: string,
+	manual?: true,
 }
 
 const achievements: Achievement[] = [
@@ -42,6 +43,9 @@ const achievements: Achievement[] = [
 		title: 'TSGの主',
 		condition: 'publicなチャンネルでのべ1000日間発言する',
 	},
+
+	// sushi-bot
+
 	{
 		id: 'get-sushi',
 		difficulty: 'baby',
@@ -84,6 +88,9 @@ const achievements: Achievement[] = [
 		title: '凍結の使い手',
 		condition: '週間凍結ランキングで1位を獲得する',
 	},
+
+	// tashibot
+
 	{
 		id: 'place',
 		difficulty: 'easy',
@@ -96,6 +103,9 @@ const achievements: Achievement[] = [
 		title: '開拓者',
 		condition: 'tashibotで新しい地名を獲得する',
 	},
+
+	// dajare
+
 	{
 		id: 'zabuton',
 		difficulty: 'easy',
@@ -114,6 +124,9 @@ const achievements: Achievement[] = [
 		title: '座布団がぶっ飛んだ',
 		condition: 'dajareボットから:flying-zabuton:をもらう',
 	},
+
+	// pocky
+
 	{
 		id: 'pocky',
 		difficulty: 'baby',
@@ -126,6 +139,9 @@ const achievements: Achievement[] = [
 		title: 'スーモ',
 		condition: 'pockyから20文字以上の返答を得る',
 	},
+
+	// tahoiya
+
 	{
 		id: 'tahoiya',
 		difficulty: 'easy',
@@ -174,6 +190,9 @@ const achievements: Achievement[] = [
 		title: 'チューリングテスト大成功',
 		condition: 'たほいやでAIに振り込んでしまう',
 	},
+
+	// mahjong
+
 	{
 		id: 'mahjong',
 		difficulty: 'easy',
@@ -222,6 +241,9 @@ const achievements: Achievement[] = [
 		title: '後の三巡',
 		condition: '麻雀BOTで不聴立直をする',
 	},
+
+	// shogi
+
 	{
 		id: 'shogi',
 		difficulty: 'easy',
@@ -282,6 +304,78 @@ const achievements: Achievement[] = [
 		title: '打ち歩詰めに詰みの余地あり',
 		condition: '将棋BOTで打ち歩詰めで敗北する',
 	},
+
+	// prime
+
+	{
+		id: 'prime',
+		difficulty: 'baby',
+		title: 'ピタゴラス',
+		condition: '素数大富豪で遊ぶ',
+	},
+	{
+		id: 'prime-clear',
+		difficulty: 'medium',
+		title: 'ディオファントス',
+		condition: '素数大富豪をクリアする',
+	},
+	{
+		id: 'prime-fast-clear',
+		difficulty: 'hard',
+		title: 'レオンハルト・オイラー',
+		condition: '素数大富豪を4ターン以内でクリアする',
+	},
+	{
+		id: 'prime-fast-clear-wo-draw',
+		difficulty: 'hard',
+		title: 'カール・フリードリヒ・ガウス',
+		condition: '素数大富豪をドローせずに4ターン以内でクリアする',
+	},
+	{
+		id: 'prime-composition-8',
+		difficulty: 'hard',
+		title: 'ジョゼフ＝ルイ・ラグランジュ',
+		condition: '素数大富豪で合成数出しによって8枚以上を同時に捨てる',
+	},
+	{
+		id: 'prime-grothendieck',
+		difficulty: 'medium',
+		title: 'アレクサンドル・グロタンディーク',
+		condition: '素数大富豪でグロタンカットを発生させる',
+	},
+	{
+		id: 'prime-ramanujan',
+		difficulty: 'hard',
+		title: 'シュリニヴァーサ・ラマヌジャン',
+		condition: '素数大富豪でラマヌジャン革命を発生させる',
+	},
+	{
+		id: 'prime-mersenne',
+		difficulty: 'medium',
+		title: 'マラン・メルセンヌ',
+		condition: '素数大富豪で3桁以上のメルセンヌ素数を捨てる',
+	},
+	{
+		id: 'prime-fermat',
+		difficulty: 'medium',
+		title: 'ピエール・ド・フェルマー',
+		condition: '素数大富豪で3桁以上のフェルマー素数を捨てる',
+	},
+	{
+		id: 'prime-fibonacci',
+		difficulty: 'medium',
+		title: 'レオナルド・フィボナッチ',
+		condition: '素数大富豪で3桁以上のフィボナッチ素数を捨てる',
+	},
+	{
+		id: 'prime-lucas',
+		difficulty: 'medium',
+		title: 'エドゥアール・リュカ',
+		condition: '素数大富豪で3桁以上のリュカ素数を捨てる',
+	},
+
+	// achievements
+
 	{
 		id: 'achievements',
 		difficulty: 'easy',
@@ -305,6 +399,65 @@ const achievements: Achievement[] = [
 		difficulty: 'medium',
 		title: '実績マスター',
 		condition: '難易度medium以上の実績を10個解除する',
+	},
+
+	// manual
+
+	{
+		id: 'sig',
+		difficulty: 'medium',
+		title: 'TSG初心者',
+		condition: '分科会に参加する',
+		manual: true,
+	},
+	{
+		id: 'sig-3times',
+		difficulty: 'hard',
+		title: 'TSG中級者',
+		condition: '分科会に3回以上参加する',
+		manual: true,
+	},
+	{
+		id: 'sig-5times',
+		difficulty: 'hard',
+		title: 'TSG上級者',
+		condition: '分科会に5回以上参加する',
+		manual: true,
+	},
+	{
+		id: 'clubroom',
+		difficulty: 'medium',
+		title: '足跡',
+		condition: 'TSGの部室を訪問する',
+		manual: true,
+	},
+	{
+		id: 'heiankyo-alien',
+		difficulty: 'hard',
+		title: '歴史との邂逅',
+		condition: 'TSGの部室で平安京エイリアンをプレイする',
+		manual: true,
+	},
+	{
+		id: 'scrapbox',
+		difficulty: 'medium',
+		title: '切り抜き箱',
+		condition: 'scrapboxに自分の名前の記事を作成する',
+		manual: true,
+	},
+	{
+		id: 'github',
+		difficulty: 'hard',
+		title: 'コントリビューター',
+		condition: 'GitHubのtsg-ut下のリポジトリにコミットする',
+		manual: true,
+	},
+	{
+		id: 'github-slackbot',
+		difficulty: 'hard',
+		title: 'BOT駆動開発',
+		condition: 'GitHubのtsg-ut/slackbotにコミットする',
+		manual: true,
 	},
 ];
 
