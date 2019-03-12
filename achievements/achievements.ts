@@ -11,37 +11,37 @@ const achievements: Achievement[] = [
 		id: 'chat',
 		difficulty: 'baby',
 		title: 'はじめまして!',
-		condition: 'publicなチャンネルで初めて発言する',
+		condition: 'パブリックなチャンネルで初めて発言する',
 	},
 	{
 		id: 'chat-10times',
 		difficulty: 'easy',
 		title: 'ｽｯｺｺｺ',
-		condition: 'publicなチャンネルで10回以上発言する',
+		condition: 'パブリックなチャンネルで10回以上発言する',
 	},
 	{
 		id: 'chat-1000times',
 		difficulty: 'hard',
 		title: '話のタネ',
-		condition: 'publicなチャンネルで1000回以上発言する',
+		condition: 'パブリックなチャンネルで1000回以上発言する',
 	},
 	{
 		id: 'chat-10days',
 		difficulty: 'medium',
 		title: '常連',
-		condition: 'publicなチャンネルでのべ10日間発言する',
+		condition: 'パブリックなチャンネルでのべ10日間発言する',
 	},
 	{
 		id: 'chat-100days',
 		difficulty: 'hard',
 		title: 'いつものメンバー',
-		condition: 'publicなチャンネルでのべ100日間発言する',
+		condition: 'パブリックなチャンネルでのべ100日間発言する',
 	},
 	{
 		id: 'chat-1000days',
 		difficulty: 'professional',
 		title: 'TSGの主',
-		condition: 'publicなチャンネルでのべ1000日間発言する',
+		condition: 'パブリックなチャンネルでのべ1000日間発言する',
 	},
 
 	// sushi-bot
@@ -288,7 +288,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'shogi-歩成',
-		difficulty: 'hard',
+		difficulty: 'medium',
 		title: 'マムシのと金',
 		condition: '将棋BOTで歩成を含む手順で最短勝利する',
 	},
