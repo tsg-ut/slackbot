@@ -34,7 +34,6 @@ const plugins = [
 	...(word2vecInstalled ? [require('./vocabwar')] : []),
 	require('./ricochet-robots'),
 	require('./scrapbox'),
-	require('./slacklog-unfurl'),
 	require('./deploy'),
 ];
 
