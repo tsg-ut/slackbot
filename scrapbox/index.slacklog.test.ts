@@ -50,7 +50,7 @@ describe('slacklog-unfurl', () => {
 
 		const response = await fastify.inject({
 			method: 'POST',
-			url: '/unfurl/slacklog',
+			url: '/unfurl/scrapbox',
 			payload: {
 				token: 'XXYYZZ',
 				team_id: 'TXXXXXXXX',
@@ -85,7 +85,7 @@ describe('slacklog-unfurl', () => {
 	it('respond to slack hook url verification', async () => {
 		const response = await fastify.inject({
 			method: 'POST',
-			url: '/unfurl/slacklog',
+			url: '/unfurl/scrapbox',
 			payload: {
 				type: 'url_verification',
 				challenge: 'hogefugapiyofoobar',

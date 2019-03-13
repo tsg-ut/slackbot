@@ -1,8 +1,0 @@
-{
-    "extends": "@hakatashi",
-    "parser": "@typescript-eslint/parser",
-    "rules": {
-        "no-console": "off",
-        "camelcase": "off"
-    }
-}
