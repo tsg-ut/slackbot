@@ -175,19 +175,26 @@ const achievements: Achievement[] = [
 	{
 		id: 'tahoiya-deceive',
 		difficulty: 'medium',
-		title: '嘘も方便',
+		title: '笑中に刀あり',
 		condition: 'たほいやで他の人をひっかける',
 	},
 	{
 		id: 'tahoiya-deceive3',
 		difficulty: 'hard',
-		title: '海老で鯛を釣る',
+		title: '麦飯で鯉を釣る',
 		condition: 'たほいやで1度に3人以上をひっかける',
 	},
 	{
+		id: 'tahoiya-5bet',
+		difficulty: 'medium',
+		title: '乾坤一擲',
+		condition: 'たほいやで5枚BETする',
+	},
+
+	{
 		id: 'tahoiya-turing',
 		difficulty: 'medium',
-		title: 'チューリングテスト大成功',
+		title: 'シンギュラリティ',
 		condition: 'たほいやでAIに振り込んでしまう',
 	},
 
