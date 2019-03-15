@@ -56,7 +56,6 @@ const webClient = new WebClient(process.env.SLACK_TOKEN);
 	webClient.chat.postMessage({
 		channel: process.env.CHANNEL_SANDBOX,
 		text: 'ｼｭｯｼｭｯ (起動音)',
-		username: 'slackbot',
 	});
 })();
 
@@ -69,7 +68,6 @@ rtmClient.on('authenticated', (data) => {
 		webClient.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			text: '再接続しました',
-			username: 'slackbot',
 		});
 	}
 	firstLogin = false;
