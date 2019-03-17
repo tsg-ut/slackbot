@@ -41,7 +41,7 @@ const plugins = [
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
 const webClient = new WebClient(process.env.SLACK_TOKEN);
-const eventClient = createEventAdapter(process.env.SIGN_SEC);
+const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 (async () => {
 	await Promise.all(plugins.map(async (plugin) => {
 		if (typeof plugin === 'function') {
