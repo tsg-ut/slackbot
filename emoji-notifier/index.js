@@ -5,14 +5,19 @@ module.exports = (clients) => {
 
 	rtm.on('emoji_changed', async (data) => {
 		if (data.subtype === 'add') {
-			await slack.chat.postMessage({
+			const message = await slack.chat.postMessage({
 				channel: process.env.CHANNEL_RANDOM,
 				text: stripIndent`
 					絵文字 \`:${data.name}:\` が追加されました :+1::tada::muscle::raised_hands::innocent:
 				`,
-				username: 'emoji-notifier',
+				username: `emoji-notifier (${data.name})`,
 				// eslint-disable-next-line camelcase
 				icon_emoji: `:${data.name}:`,
+			});
+			slack.reactions.add({
+				name: data.name,
+				channel: message.channel,
+				timestamp: message.ts,
 			});
 		}
 
