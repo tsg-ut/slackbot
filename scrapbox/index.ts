@@ -12,8 +12,8 @@ import {SlackEventAdapter} from '@slack/events-api';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
-		webClient: WebClient,
-		eventClient: SlackEventAdapter,
+	webClient: WebClient,
+	eventClient: SlackEventAdapter,
 }
 
 export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
@@ -75,6 +75,5 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 		} else {
 			logger.info('No valid urls, skip.');
 		}
-		return 'Done.';
 	});
 };
