@@ -9,24 +9,20 @@ const slacklogURLRegexp = RegExp('^https?://slack-log.tsg.ne.jp/([A-Z0-9]+)/([0-
 const getAroundMessagesUrl = (channel: string) => `http://${slacklogAPIDomain}/around_messages/${channel}.json`;
 
 import {WebClient, RTMClient} from '@slack/client';
-// @ts-ignore
-import {SlackEventAdapter} from '@slack/events-api';
 
 interface SlackInterface {
     rtmClient: RTMClient,
     webClient: WebClient,
-    eventClient: SlackEventAdapter,
+    eventClient: any,
 }
 
 export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
     const users = await axios.get(`http://${slacklogAPIDomain}/users.json`).then(({data}) => data);
     const channels = await axios.get(`http://${slacklogAPIDomain}/channels.json`).then(({data}) => data);
 
-    // @ts-ignore
-    event.on('link_shared', async (e) => {
+    event.on('link_shared', async (e: any) => {
         logger.info('Incoming unfurl request >');
-        // @ts-ignore
-        const links = e.links.filter(({domain}) => domain === 'slack-log.tsg.ne.jp');
+        const links = e.links.filter(({domain}: {domain: string}) => domain === 'slack-log.tsg.ne.jp');
         links.map((link: string) => logger.info('-', link));
 
         const unfurls: LinkUnfurls = {};
@@ -40,8 +36,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 
             const aroundMessagesUrl = getAroundMessagesUrl(chanid);
             const response = await axios.post(aroundMessagesUrl, qs.stringify({ts}));
-            // @ts-ignore
-            const message = response.data.messages.find((m) => m.ts === ts);
+            const message = response.data.messages.find((m: {ts: string}) => m.ts === ts);
             if (!message) {
                 continue;
             }

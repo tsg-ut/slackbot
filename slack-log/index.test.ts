@@ -1,6 +1,5 @@
 jest.mock('axios');
 
-// @ts-ignore
 import slacklog from './index';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
@@ -27,8 +26,7 @@ describe('slacklog', () => {
 	it('respond to slack hook of slacklog unfurling', async () => {
 		const done = new Promise((resolve) => {
 			// @ts-ignore
-			axios.mockImplementation(({url, data}: {url: string}) => {
-				console.log(url);
+			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
 				if (url === 'https://slack.com/api/chat.unfurl') {
 					const parsed = qs.parse(data);
 					const unfurls = JSON.parse(Array.isArray(parsed.unfurls) ? parsed.unfurls[0] : parsed.unfurls);

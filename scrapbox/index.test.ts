@@ -21,7 +21,7 @@ describe('scrapbox', () => {
 	it('respond to slack hook of scrapbox unfurling', async () => {
 		const done = new Promise((resolve) => {
 			// @ts-ignore
-			axios.mockImplementation(({url, data}: {url: string}) => {
+			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
 				if (url === 'https://slack.com/api/chat.unfurl') {
 					const parsed = qs.parse(data);
 					const unfurls = JSON.parse(Array.isArray(parsed.unfurls) ? parsed.unfurls[0] : parsed.unfurls);

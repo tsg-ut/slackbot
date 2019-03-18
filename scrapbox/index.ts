@@ -7,22 +7,18 @@ import qs from 'querystring';
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
 
 import {WebClient, RTMClient} from '@slack/client';
-// @ts-ignore
-import {SlackEventAdapter} from '@slack/events-api';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
 	webClient: WebClient,
-	eventClient: SlackEventAdapter,
+	eventClient: any,
 }
 
 export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
-	// @ts-ignore
-	event.on('link_shared', async (e) => {
+	event.on('link_shared', async (e: any) => {
 		logger.info('Incoming unfurl request >');
 		e.links.map((link: string) => logger.info('-', link));
-		// @ts-ignore
-		const links = e.links.filter(({domain}) => domain === 'scrapbox.io');
+		const links = e.links.filter(({domain}: {domain: string}) => domain === 'scrapbox.io');
 		const unfurls: LinkUnfurls = {};
 		for (const link of links) {
 			const {url} = link;
