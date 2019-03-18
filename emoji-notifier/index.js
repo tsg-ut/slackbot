@@ -10,7 +10,7 @@ module.exports = (clients) => {
 				text: stripIndent`
 					絵文字 \`:${data.name}:\` が追加されました :+1::tada::muscle::raised_hands::innocent:
 				`,
-				username: 'emoji-notifier',
+				username: `emoji-notifier (${data.name})`,
 				// eslint-disable-next-line camelcase
 				icon_emoji: `:${data.name}:`,
 			});

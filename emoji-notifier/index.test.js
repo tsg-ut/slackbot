@@ -14,7 +14,8 @@ beforeEach(() => {
 it('responds to emoji addition', () => new Promise((resolve) => {
 	slack.on('chat.postMessage', ({channel, text, username, icon_emoji: icon}) => {
 		expect(channel).toBe(slack.fakeChannel);
-		expect(username).toBe('emoji-notifier');
+		expect(username).toContain('emoji-notifier');
+		expect(username).toContain('hoge');
 		expect(text).toContain(':hoge:');
 		expect(text).toContain('追加');
 		expect(icon).toBe(':hoge:');
