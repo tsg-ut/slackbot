@@ -5,6 +5,7 @@ process.on('unhandledRejection', (error) => {
 });
 
 const {RTMClient, WebClient} = require('@slack/client');
+const {createEventAdapter} = require('@slack/events-api');
 const fastify = require('fastify')({logger: true});
 const logger = require('./lib/logger.js');
 
@@ -34,21 +35,23 @@ const plugins = [
 	...(word2vecInstalled ? [require('./vocabwar')] : []),
 	require('./ricochet-robots'),
 	require('./scrapbox'),
+	require('./slack-log'),
 	require('./deploy'),
 ];
 
 const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
 const webClient = new WebClient(process.env.SLACK_TOKEN);
+const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 (async () => {
 	await Promise.all(plugins.map(async (plugin) => {
 		if (typeof plugin === 'function') {
-			await plugin({rtmClient, webClient});
+			await plugin({rtmClient, webClient, eventClient});
 		}
 		if (typeof plugin.default === 'function') {
-			await plugin.default({rtmClient, webClient});
+			await plugin.default({rtmClient, webClient, eventClient});
 		}
 		if (typeof plugin.server === 'function') {
-			await fastify.register(plugin.server({rtmClient, webClient}));
+			await fastify.register(plugin.server({rtmClient, webClient, eventClient}));
 		}
 	}));
 
@@ -59,6 +62,7 @@ const webClient = new WebClient(process.env.SLACK_TOKEN);
 	});
 })();
 
+fastify.use('/slack-event', eventClient.expressMiddleware());
 fastify.listen(process.env.PORT || 21864);
 
 let firstLogin = true;
