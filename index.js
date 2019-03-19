@@ -36,6 +36,7 @@ const plugins = [
 	require('./ricochet-robots'),
 	require('./scrapbox'),
 	require('./slack-log'),
+	require('./welcome'),
 	require('./deploy'),
 ];
 
