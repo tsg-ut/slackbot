@@ -20,6 +20,13 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
     const users = await axios.get(`http://${slacklogAPIDomain}/users.json`).then(({data}) => data);
     const channels = await axios.get(`http://${slacklogAPIDomain}/channels.json`).then(({data}) => data);
 
+    rtm.on('message', async ({channel, text}) => {
+        if (text.trim() === 'slacklog' || text.trim() === 'slack-log') {
+            const here = `https://slack-log.tsg.ne.jp/${channel}`;
+            slack.chat.postMessage({icon_emoji: 'slack', channel, text: here});
+        }
+    });
+
     event.on('link_shared', async (e: any) => {
         logger.info('Incoming unfurl request >');
         const links = e.links.filter(({domain}: {domain: string}) => domain === 'slack-log.tsg.ne.jp');
@@ -40,6 +47,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
             if (!message) {
                 continue;
             }
+
             const {text, user: userid} = message;
             const user = userid && users[userid];
             const username = user && user.name;
@@ -71,10 +79,9 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
                         'content-type': 'application/x-www-form-urlencoded',
                     },
                 });
-                if (data.ok) {
-                    logger.info('✓ chat.unfurl >', data);
-                } else {
-                    logger.info('✗ chat.unfurl >', data);
+
+                if (!data.ok) {
+                    throw data;
                 }
             } catch (error) {
                 logger.error('✗ chat.unfurl >', error);

@@ -23,6 +23,14 @@ beforeEach(async () => {
 });
 
 describe('slacklog', () => {
+	it('respond to slacklog url request', async () => {
+		const {channel, text}: {channel: string, text: string} = await slack.getResponseTo('slacklog');
+
+		expect(channel).toBe(slack.fakeChannel);
+		expect(text).toMatch('slack-log.tsg.ne.jp');
+		expect(text).toMatch(slack.fakeChannel);
+	});
+
 	it('respond to slack hook of slacklog unfurling', async () => {
 		const done = new Promise((resolve) => {
 			// @ts-ignore
