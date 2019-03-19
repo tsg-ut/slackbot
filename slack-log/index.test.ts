@@ -23,22 +23,13 @@ beforeEach(async () => {
 });
 
 describe('slacklog', () => {
-	it('respond to slacklog url request', async () => new Promise((resolve) => {
-		slack.on('chat.postEphemeral', ({user, channel, text}: {user: string, channel: string, text: string}) => {
-			expect(channel).toBe(slack.fakeChannel);
-			expect(user).toBe(slack.fakeUser);
-			expect(text).toMatch('slack-log.tsg.ne.jp');
-			expect(text).toMatch(slack.fakeChannel);
-			resolve();
-		});
+	it('respond to slacklog url request', async () => {
+		const {channel, text}: {channel: string, text: string} = await slack.getResponseTo('slacklog');
 
-		slack.rtmClient.emit('message', {
-			channel: slack.fakeChannel,
-			user: slack.fakeUser,
-			text: 'slacklog',
-			ts: slack.fakeTimestamp,
-		});
-	}));
+		expect(channel).toBe(slack.fakeChannel);
+		expect(text).toMatch('slack-log.tsg.ne.jp');
+		expect(text).toMatch(slack.fakeChannel);
+	});
 
 	it('respond to slack hook of slacklog unfurling', async () => {
 		const done = new Promise((resolve) => {

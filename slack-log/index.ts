@@ -20,10 +20,10 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
     const users = await axios.get(`http://${slacklogAPIDomain}/users.json`).then(({data}) => data);
     const channels = await axios.get(`http://${slacklogAPIDomain}/channels.json`).then(({data}) => data);
 
-    rtm.on('message', async ({ts, channel, user, text}) => {
+    rtm.on('message', async ({channel, text}) => {
         if (text.trim() === 'slacklog' || text.trim() === 'slack-log') {
             const here = `https://slack-log.tsg.ne.jp/${channel}`;
-            slack.chat.postEphemeral({user, channel, text: here});
+            slack.chat.postMessage({icon_emoji: 'slack', channel, text: here});
         }
     });
 
