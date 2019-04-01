@@ -20,6 +20,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		const {data} = await axios.get(welcomeScrapboxUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
 		const text = [`<@${event.user}>`, ...data.lines.map(({text}: {text: string}) => text).slice(1)].join('\n');
-		slack.chat.postMessage({channel: general, text, link_names: true});
+		slack.chat.postMessage({
+			channel: general,
+			text,
+			link_names: true,
+			icon_emoji: ':jp3bgy:',
+			username: 'JP3BGY',
+		});
 	});
 };
