@@ -155,30 +155,48 @@ export const unlock = async (user: string, name: string) => {
 	if (!achievement) {
 		throw new Error(`Unknown achievement name ${name}`);
 	}
+
+	if (!user || !user.startsWith('U') || user === 'USLACKBOT') {
+		return;
+	}
+
 	if (state.achievements.get(user).some(({id}) => id === name)) {
 		return;
 	}
+
 	stateChanged = true;
 	state.achievements.get(user).push({
 		id: name,
 		date: Date.now(),
 	});
 
-	const slack: WebClient = await loadDeferred.promise;
-	slack.chat.postMessage({
-		channel: process.env.CHANNEL_SANDBOX,
-		username: 'achievements',
-		icon_emoji: ':unlock:',
-		text: stripIndent`
-			<@${user}>が実績「${achievement.title}」を解除しました。
-			_${achievement.condition}_
-		`,
-	});
+	if (achievement.difficulty !== 'baby') {
+		const slack: WebClient = await loadDeferred.promise;
+		slack.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			username: 'achievements',
+			icon_emoji: ':unlock:',
+			text: stripIndent`
+				<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada:
+				_${achievement.condition}_
+				難易度${{
+					easy: '★★☆☆☆',
+					medium: '★★★☆☆',
+					hard: '★★★★☆',
+					professional: '★★★★★',
+				}[achievement.difficulty]} (${achievement.difficulty})
+			`,
+		});
+	}
 };
 
 export const increment = (user: string, name: string, value: number = 1) => {
 	if (!state.counters[name]) {
 		throw new Error(`Unknown counter name ${name}`);
+	}
+
+	if (!user || !user.startsWith('U') || user === 'USLACKBOT') {
+		return;
 	}
 
 	stateChanged = true;
@@ -196,6 +214,11 @@ export const get = (user: string, name: string) => {
 	if (!state.variables[name]) {
 		throw new Error(`Unknown variable name ${name}`);
 	}
+
+	if (!user || !user.startsWith('U') || user === 'USLACKBOT') {
+		return;
+	}
+
 	stateChanged = true;
 	return state.variables[name].get(user);
 };
@@ -204,6 +227,11 @@ export const set = (user: string, name: string, value: any) => {
 	if (!state.variables[name]) {
 		throw new Error(`Unknown variable name ${name}`);
 	}
+
+	if (!user || !user.startsWith('U') || user === 'USLACKBOT') {
+		return;
+	}
+
 	stateChanged = true;
 	return state.variables[name].set(user, value);
 };
