@@ -3,6 +3,8 @@ interface Achievement {
 	difficulty: 'baby' | 'easy' | 'medium' | 'hard' | 'professional',
 	title: string,
 	condition: string,
+	counter?: string,
+	value?: number,
 	manual?: true,
 }
 
@@ -12,36 +14,48 @@ const achievements: Achievement[] = [
 		difficulty: 'baby',
 		title: 'はじめまして!',
 		condition: 'パブリックなチャンネルで初めて発言する',
+		counter: 'chats',
+		value: 1,
 	},
 	{
 		id: 'chat-10times',
 		difficulty: 'easy',
 		title: 'ｽｯｺｺｺ',
 		condition: 'パブリックなチャンネルで10回以上発言する',
+		counter: 'chats',
+		value: 10,
 	},
 	{
 		id: 'chat-1000times',
 		difficulty: 'hard',
 		title: '話のタネ',
 		condition: 'パブリックなチャンネルで1000回以上発言する',
+		counter: 'chats',
+		value: 1000,
 	},
 	{
 		id: 'chat-10days',
 		difficulty: 'medium',
 		title: '常連',
 		condition: 'パブリックなチャンネルでのべ10日間発言する',
+		counter: 'chatDays',
+		value: 10,
 	},
 	{
 		id: 'chat-100days',
 		difficulty: 'hard',
 		title: 'いつものメンバー',
 		condition: 'パブリックなチャンネルでのべ100日間発言する',
+		counter: 'chatDays',
+		value: 100,
 	},
 	{
 		id: 'chat-1000days',
 		difficulty: 'professional',
 		title: 'TSGの主',
 		condition: 'パブリックなチャンネルでのべ1000日間発言する',
+		counter: 'chatDays',
+		value: 1000,
 	},
 
 	// sushi-bot
@@ -56,19 +70,13 @@ const achievements: Achievement[] = [
 		id: 'get-multiple-sushi',
 		difficulty: 'easy',
 		title: 'マグロ',
-		condition: 'sushi-botから2個以上の寿司をもらう',
+		condition: 'sushi-botから一度に2個以上の寿司をもらう',
 	},
 	{
 		id: 'get-infinite-sushi',
 		difficulty: 'easy',
 		title: 'ハマチ',
-		condition: 'sushi-botから無限個の寿司をもらう',
-	},
-	{
-		id: 'dosushi',
-		difficulty: 'hard',
-		title: 'DoSushi',
-		condition: 'sushi-botから1週間に10万個以上の寿司をもらう',
+		condition: 'sushi-botから一度に無限個の寿司をもらう',
 	},
 	{
 		id: 'wednesday-sushi',
@@ -85,7 +93,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'freezing-master',
 		difficulty: 'hard',
-		title: '凍結の使い手',
+		title: '氷属性',
 		condition: '週間凍結ランキングで1位を獲得する',
 	},
 
