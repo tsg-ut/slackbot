@@ -11,6 +11,19 @@ interface SlackInterface {
 	webClient: WebClient,
 }
 
+async function postWelcomeMessage(slack: WebClient, channel: string) {
+	const {data} = await axios.get(welcomeScrapboxUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
+	const text = data.lines.map(({text}: {text: string}) => text).slice(1).join('\n');
+
+	return slack.chat.postMessage({
+		channel,
+		text,
+		link_names: true,
+		icon_emoji: ':jp3bgy:',
+		username: 'JP3BGY',
+	});
+}
+
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const general = await slack.conversations.list({exclude_archived: true, limit: 1000})
 		.then((list: any) => list.channels.find(({is_general}: {is_general: boolean}) => is_general).id);
@@ -25,16 +38,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}
 
 		try {
-			const {data} = await axios.get(welcomeScrapboxUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
-			const text = data.lines.map(({text}: {text: string}) => text).slice(1).join('\n');
-
-			await slack.chat.postMessage({
-				channel: user,
-				text,
-				link_names: true,
-				icon_emoji: ':jp3bgy:',
-				username: 'JP3BGY',
-			});
+			await postWelcomeMessage(slack, user);
 
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
@@ -51,6 +55,18 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				icon_emoji: ':exclamation:',
 				username: 'welcome',
 			});
+		}
+	});
+
+	rtm.on('message', async ({channel, text}) => {
+		// preview mode
+
+		if (!channel || !text) {
+			return;
+		}
+
+		if (channel.startsWith('D') && text.trim() === 'welcome') {
+			postWelcomeMessage(slack, channel);
 		}
 	});
 };
