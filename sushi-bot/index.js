@@ -3,6 +3,8 @@ const path = require('path');
 const {promisify} = require('util');
 const schedule = require('node-schedule');
 const {sortBy} = require('lodash');
+const moment = require('moment');
+const {unlock} = require('../achievements');
 
 class Counter {
     constructor(name) {
@@ -119,7 +121,19 @@ module.exports = (clients) => {
         if (count(rtext, 'すし')) {
             const cnt = count(rtext, 'すし');
             await slack.reactions.add({name: 'sushi', channel, timestamp});
+            if (channel.startsWith('C')) {
+                unlock(user, 'get-sushi');
+                if (moment().utcOffset(9).date() === 3) {
+                    unlock(user, 'wednesday-sushi');
+                }
+            }
             if(cnt >= 2) {
+                if (channel.startsWith('C')) {
+                    unlock(user, 'get-multiple-sushi');
+                    if (cnt > 10) {
+                        unlock(user, 'get-infinite-sushi');
+                    }
+                }
                 await slack.reactions.add({name: 'x', channel, timestamp});
                 await slack.reactions.add({name: numToEmoji(cnt), channel, timestamp});
             }
@@ -130,6 +144,9 @@ module.exports = (clients) => {
         }
         if (rtext.includes("殺") || rtext.includes("死")) {
             const cnt = count(rtext, '殺') + count(rtext, '死');
+            if (channel.startsWith('C')) {
+                unlock(user, 'freezing');
+            }
             await slack.reactions.add({name: 'no_good', channel, timestamp});
             await slack.reactions.add({name: 'cookies146', channel, timestamp});
             if(cnt >= 2) {
@@ -166,6 +183,9 @@ module.exports = (clients) => {
                     return null;
                 }
                 const name = member.profile.display_name || member.name;
+                if (index === 0) {
+                    unlock(user, 'freezing-master');
+                }
 
                 return {
                     author_name: `${index + 1}位: ${name} (${count}回)`,
