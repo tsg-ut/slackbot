@@ -5,6 +5,7 @@ process.on('unhandledRejection', (error) => {
 });
 
 const {rtmClient, webClient} = require('./lib/slack.ts');
+const {createEventAdapter} = require('@slack/events-api');
 const fastify = require('fastify')({logger: true});
 const logger = require('./lib/logger.js');
 
@@ -34,20 +35,23 @@ const plugins = [
 	...(word2vecInstalled ? [require('./vocabwar')] : []),
 	require('./ricochet-robots'),
 	require('./scrapbox'),
+	require('./slack-log'),
+	require('./welcome'),
 	require('./deploy'),
 	require('./achievements'),
 ];
 
+const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 (async () => {
 	await Promise.all(plugins.map(async (plugin) => {
 		if (typeof plugin === 'function') {
-			await plugin({rtmClient, webClient});
+			await plugin({rtmClient, webClient, eventClient});
 		}
 		if (typeof plugin.default === 'function') {
-			await plugin.default({rtmClient, webClient});
+			await plugin.default({rtmClient, webClient, eventClient});
 		}
 		if (typeof plugin.server === 'function') {
-			await fastify.register(plugin.server({rtmClient, webClient}));
+			await fastify.register(plugin.server({rtmClient, webClient, eventClient}));
 		}
 	}));
 
@@ -55,10 +59,10 @@ const plugins = [
 	webClient.chat.postMessage({
 		channel: process.env.CHANNEL_SANDBOX,
 		text: 'ｼｭｯｼｭｯ (起動音)',
-		username: 'slackbot',
 	});
 })();
 
+fastify.use('/slack-event', eventClient.expressMiddleware());
 fastify.listen(process.env.PORT || 21864);
 
 let firstLogin = true;
@@ -68,7 +72,6 @@ rtmClient.on('authenticated', (data) => {
 		webClient.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			text: '再接続しました',
-			username: 'slackbot',
 		});
 	}
 	firstLogin = false;

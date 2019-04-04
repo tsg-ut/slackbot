@@ -159,6 +159,14 @@ module.exports = (clients) => {
             slack.reactions.add({name: 'no_good', channel, timestamp});
             slack.reactions.add({name: 'akouryy', channel, timestamp});
         }
+
+        const stars = ["欲し", "干し", "ほし", "星", "★", "☆"];
+        for(const star of stars) {
+            if (text.includes(star)) {
+                slack.reactions.add({name: 'grapes', channel, timestamp});
+                break;
+            }
+        }
     });
 
     schedule.scheduleJob('0 19 * * 0', async () => {
