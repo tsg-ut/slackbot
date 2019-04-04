@@ -1,5 +1,7 @@
 /* eslint-env node, jest */
 
+jest.mock('../achievements');
+
 const sushi = require('./index.js');
 const Slack = require('../lib/slackMock.js');
 
