@@ -1,5 +1,6 @@
 const axios = require("axios");
 const emoji = require("node-emoji");
+const {unlock} = require("../achievements/index.ts");
 
 const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，．…・?!：；:;\s]+$/g;
 
@@ -123,6 +124,10 @@ module.exports = (clients) => {
 		const result = await reply(match[1], match[2].length - 1);
 		if (result !== null) {
 			postMessage(htmlEscape(result), channel);
+			unlock(message.user, "pocky");
+			if (Array.from(result) >= 20) {
+				unlock(message.user, "long-pocky");
+			}
 		}
 	});
 };

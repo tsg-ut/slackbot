@@ -21,6 +21,7 @@ const Queue = require('p-queue');
 const nodePersist = require('node-persist');
 const rouge = require('rouge');
 const getReading = require('../lib/getReading.js');
+const {unlock} = require('../achievements/index.ts');
 
 const {
 	getPageTitle,
@@ -551,6 +552,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		updateGist(timestamp);
 
+		const oldBettings = state.bettings;
+		const oldMeanings = state.shuffledMeanings;
+
 		await setState({
 			phase: 'waiting',
 			author: null,
@@ -568,6 +572,48 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		if (state.isWaitingDaily) {
 			startDaily();
+		}
+
+		for (const [user, rating] of newRatings.entries()) {
+			if (rating >= 6) {
+				await unlock(user, 'tahoiya-over6');
+			}
+			if (rating >= 10) {
+				await unlock(user, 'tahoiya-over10');
+			}
+			const ratings = state.ratings.get(user).reverse();
+			if (ratings.length >= 2 && ratings[1].rating - ratings[0].rating >= 10) {
+				await unlock(user, 'tahoiya-down10');
+			}
+		}
+
+		const deceiveCounter = new Map();
+		for (const [user, {coins, meaning}] of oldBettings.entries()) {
+			if (user.startsWith('tahoiyabot')) {
+				continue;
+			}
+			const misdirectedUser = oldMeanings[meaning].user;
+			if (misdirectedUser !== null) {
+				deceiveCounter.set(misdirectedUser, (deceiveCounter.get(misdirectedUser) || 0) + 1);
+				if (misdirectedUser.startsWith('tahoiyabot')) {
+					await unlock(user, 'tahoiya-singularity');
+				}
+			}
+			if (coins >= 5) {
+				await unlock(user, 'tahoiya-5bet');
+			}
+		}
+
+		for (const [user, count] of deceiveCounter.entries()) {
+			if (user.startsWith('tahoiyabot')) {
+				continue;
+			}
+			if (count >= 1) {
+				await unlock(user, 'tahoiya-deceive');
+			}
+			if (count >= 3) {
+				await unlock(user, 'tahoiya-deceive3');
+			}
 		}
 	};
 
@@ -958,6 +1004,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 							text: `@${getMemberName(user)}: ${count}個`,
 							color: colors[index],
 						})));
+
+						await unlock(message.user, 'daily-tahoiya-theme');
+
 						return;
 					}
 
@@ -1025,6 +1074,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 							${getMention(message.user)} が意味を登録したよ:muscle:
 							現在の参加者: ${humanCount}人 ${remainingText}
 						`);
+						await unlock(message.user, 'tahoiya');
 					}
 					return;
 				}

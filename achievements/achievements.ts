@@ -200,9 +200,8 @@ const achievements: Achievement[] = [
 		title: '乾坤一擲',
 		condition: 'たほいやで5枚BETする',
 	},
-
 	{
-		id: 'tahoiya-turing',
+		id: 'tahoiya-singularity',
 		difficulty: 'medium',
 		title: 'シンギュラリティ',
 		condition: 'たほいやでAIに振り込んでしまう',
