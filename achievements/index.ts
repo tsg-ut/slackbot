@@ -1,9 +1,13 @@
+import fs from 'fs';
+import {promisify} from 'util';
+import path from 'path';
 import {WebClient, RTMClient} from '@slack/client';
 import axios from 'axios';
 import {get as getter, throttle, groupBy} from 'lodash';
 import moment from 'moment';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
+import Queue from 'p-queue';
 import achievements, {Difficulty} from './achievements';
 import {Deferred, getMemberName} from '../lib/utils';
 
@@ -43,8 +47,6 @@ const state: State = {
 	achievements: new Map(),
 };
 
-let stateChanged = false;
-
 const mapToObject = (map: Map<any, any>) => (
 	Object.assign({}, ...[...map.entries()].map(([key, value]) => ({[key]: value})))
 );
@@ -59,15 +61,26 @@ const difficultyToStars = (difficulty: Difficulty) => (
 	}[difficulty]
 );
 
+const queue = new Queue({concurrency: 1});
+
 const loadDeferred = new Deferred();
 
+const saveState = () => {
+	queue.add(async () => {
+		await promisify(fs.writeFile)(path.resolve(__dirname, 'state.json'), JSON.stringify({
+			counters: {
+				chats: mapToObject(state.counters.chats),
+				chatDays: mapToObject(state.counters.chatDays),
+			},
+			variables: {
+				lastChatDay: mapToObject(state.variables.lastChatDay),
+			},
+			achievements: mapToObject(state.achievements),
+		}));
+	});
+};
+
 const updateGist = throttle(async () => {
-	if (!stateChanged) {
-		return;
-	}
-
-	stateChanged = false;
-
 	const memberTexts = await Promise.all(Array.from(state.achievements.entries()).map(async ([user, achievementEntries]) => {
 		if (achievementEntries.length === 0) {
 			return '';
@@ -99,20 +112,8 @@ const updateGist = throttle(async () => {
 	await axios.patch('https://api.github.com/gists/d5f284cf3a3433d01df081e8019176a1', {
 		description: 'TSG実績一覧',
 		files: {
-			'achievements-0-overview.md': {
+			'achievements.md': {
 				content: markdown,
-			},
-			'achievements-1-data.json': {
-				content: JSON.stringify({
-					counters: {
-						chats: mapToObject(state.counters.chats),
-						chatDays: mapToObject(state.counters.chatDays),
-					},
-					variables: {
-						lastChatDay: mapToObject(state.variables.lastChatDay),
-					},
-					achievements: mapToObject(state.achievements),
-				}),
 			},
 		},
 	}, {
@@ -136,23 +137,24 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}
 	}
 
-	const gistData = await axios.get('https://api.github.com/gists/d5f284cf3a3433d01df081e8019176a1');
-	const json = getter(gistData, ['data', 'files', 'achievements-1-data.json', 'content']);
-	const data: State = JSON.parse(json);
+	const stateData: Buffer = await promisify(fs.readFile)(path.resolve(__dirname, 'state.json')).catch(() => null);
+	if (stateData !== null) {
+		const data: State = JSON.parse(stateData.toString());
 
-	for (const [user, achievements] of Object.entries(data.achievements)) {
-		state.achievements.set(user, achievements);
-	}
-
-	for (const [counterName, counter] of Object.entries(data.counters)) {
-		for (const [user, value] of Object.entries(counter)) {
-			state.counters[counterName].set(user, value);
+		for (const [user, achievements] of Object.entries(data.achievements)) {
+			state.achievements.set(user, achievements);
 		}
-	}
 
-	for (const [variableName, variable] of Object.entries(data.variables)) {
-		for (const [user, value] of Object.entries(variable)) {
-			state.variables[variableName].set(user, value);
+		for (const [counterName, counter] of Object.entries(data.counters)) {
+			for (const [user, value] of Object.entries(counter)) {
+				state.counters[counterName].set(user, value);
+			}
+		}
+
+		for (const [variableName, variable] of Object.entries(data.variables)) {
+			for (const [user, value] of Object.entries(variable)) {
+				state.variables[variableName].set(user, value);
+			}
 		}
 	}
 
@@ -184,11 +186,11 @@ export const unlock = async (user: string, name: string) => {
 		return;
 	}
 
-	stateChanged = true;
 	state.achievements.get(user).push({
 		id: name,
 		date: Date.now(),
 	});
+	saveState();
 
 	if (achievement.difficulty !== 'baby') {
 		const slack: WebClient = await loadDeferred.promise;
@@ -216,10 +218,9 @@ export const increment = (user: string, name: string, value: number = 1) => {
 		return;
 	}
 
-	stateChanged = true;
-
 	const newValue = state.counters[name].get(user) + value;
 	state.counters[name].set(user, newValue);
+	saveState();
 
 	const unlocked = Array.from(achievements.values()).find((achievement) => achievement.counter === name && achievement.value === newValue);
 	if (unlocked !== undefined) {
@@ -236,7 +237,6 @@ export const get = (user: string, name: string) => {
 		return;
 	}
 
-	stateChanged = true;
 	return state.variables[name].get(user);
 };
 
@@ -249,6 +249,6 @@ export const set = (user: string, name: string, value: any) => {
 		return;
 	}
 
-	stateChanged = true;
-	return state.variables[name].set(user, value);
+	state.variables[name].set(user, value);
+	saveState();
 };
