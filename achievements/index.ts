@@ -242,6 +242,31 @@ export const unlock = async (user: string, name: string) => {
 	});
 
 	await updateGist();
+
+	const newAchievements = [];
+	if (holdingAchievements.length === 1) {
+		newAchievements.push('achievements');
+	}
+	if (achievement.difficulty !== 'baby') {
+		if (holdingAchievements.filter(({id}) => achievements.get(id).difficulty !== 'baby').length === 3) {
+			newAchievements.push('achievements-3');
+		}
+		if (holdingAchievements.filter(({id}) => achievements.get(id).difficulty !== 'baby').length === 10) {
+			newAchievements.push('achievements-10');
+		}
+	}
+	if (achievement.difficulty !== 'baby' && achievement.difficulty !== 'easy') {
+		if (holdingAchievements.filter(({id}) => (
+			achievements.get(id).difficulty !== 'baby'
+			&& achievements.get(id).difficulty !== 'easy'
+		)).length === 10) {
+			newAchievements.push('achievements-master');
+		}
+	}
+
+	for (const newAchievement of newAchievements) {
+		await unlock(user, newAchievement);
+	}
 };
 
 export const increment = (user: string, name: string, value: number = 1) => {

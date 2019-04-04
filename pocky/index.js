@@ -125,7 +125,7 @@ module.exports = (clients) => {
 		if (result !== null) {
 			postMessage(htmlEscape(result), channel);
 			unlock(message.user, "pocky");
-			if (Array.from(result) >= 20) {
+			if (Array.from(result).length >= 20) {
 				unlock(message.user, "long-pocky");
 			}
 		}

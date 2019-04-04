@@ -412,7 +412,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'achievements-master',
-		difficulty: 'medium',
+		difficulty: 'hard',
 		title: '実績マスター',
 		condition: '難易度medium以上の実績を10個解除する',
 	},
