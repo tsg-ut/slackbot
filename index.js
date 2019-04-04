@@ -35,6 +35,7 @@ const plugins = [
 	require('./ricochet-robots'),
 	require('./scrapbox'),
 	require('./deploy'),
+	require('./achievements'),
 ];
 
 (async () => {

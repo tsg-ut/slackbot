@@ -1,9 +1,9 @@
 import fs from 'fs';
 import {promisify} from 'util';
 import path from 'path';
-import {WebClient, RTMClient} from '@slack/client';
+import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
 import axios from 'axios';
-import {get as getter, throttle, groupBy} from 'lodash';
+import {throttle, groupBy, flatten} from 'lodash';
 import moment from 'moment';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
@@ -58,6 +58,16 @@ const difficultyToStars = (difficulty: Difficulty) => (
 		medium: '★★★☆☆',
 		hard: '★★★★☆',
 		professional: '★★★★★',
+	}[difficulty]
+);
+
+const difficultyToColor = (difficulty: Difficulty) => (
+	{
+		baby: '#03A9F4',
+		easy: '#2E7D32',
+		medium: '#F57C00',
+		hard: '#D50000',
+		professional: '#D500F9',
 	}[difficulty]
 );
 
@@ -186,6 +196,8 @@ export const unlock = async (user: string, name: string) => {
 		return;
 	}
 
+	const isFirst = flatten(Array.from(state.achievements.values())).every(({id}) => id !== name);
+
 	state.achievements.get(user).push({
 		id: name,
 		date: Date.now(),
@@ -194,15 +206,29 @@ export const unlock = async (user: string, name: string) => {
 
 	if (achievement.difficulty !== 'baby') {
 		const slack: WebClient = await loadDeferred.promise;
+		const name = await getMemberName(user);
+		const holdingAchievements = state.achievements.get(user);
+		const gistUrl = `https://gist.github.com/hakatashi/d5f284cf3a3433d01df081e8019176a1#${encodeURIComponent(name)}`;
 		slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			username: 'achievements',
 			icon_emoji: ':unlock:',
 			text: stripIndent`
-				<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada:
+				<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada: <${gistUrl}|[実績一覧]>
 				_${achievement.condition}_
-				難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty})
+				難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty}) ${isFirst ? '*初達成者!!:ojigineko-superfast:*' : ''}
 			`,
+			attachments: ['professional', 'hard', 'medium', 'easy', 'baby'].map((difficulty: Difficulty) => {
+				const entries = holdingAchievements.filter(({id}) => achievements.get(id).difficulty === difficulty);
+				if (entries.length === 0) {
+					return null;
+				}
+				const attachment: MessageAttachment = {
+					color: difficultyToColor(difficulty),
+					text: entries.map(({id}) => achievements.get(id).title).join(' '),
+				};
+				return attachment;
+			}),
 		});
 	}
 
