@@ -9,6 +9,7 @@ const cloudinary = require('cloudinary');
 const {escapeRegExp, uniq} = require('lodash');
 const Queue = require('p-queue');
 const getReading = require('../lib/getReading.js');
+const {unlock} = require('../achievements/index.ts');
 
 const histories = [];
 const queue = new Queue({concurrency: 1});
@@ -226,6 +227,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			})),
 		});
 
+		await unlock(message.user, 'place');
+
 		if (city.type === 'city' && isNew) {
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
@@ -233,6 +236,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				username: 'tashibot',
 				icon_emoji: ':japan:',
 			});
+			await unlock(message.user, 'new-place');
 		}
 
 		if (city.type === 'station' && isNew) {
@@ -242,6 +246,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				username: 'tashibot',
 				icon_emoji: ':japan:',
 			});
+			await unlock(message.user, 'new-place');
 		}
 	});
 };

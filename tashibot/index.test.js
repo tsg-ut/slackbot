@@ -3,6 +3,7 @@
 jest.mock('cloudinary');
 jest.mock('download');
 jest.mock('../lib/getReading.js');
+jest.mock('../achievements/index.ts');
 
 const tashibot = require('./index.js');
 const Slack = require('../lib/slackMock.js');

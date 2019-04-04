@@ -5,6 +5,7 @@ const {flatten, maxBy} = require('lodash');
 
 const tokenize = require('./tokenize');
 const {findDajare, listAlternativeReadings} = require('./dajare');
+const {unlock} = require('../achievements/index.ts');
 
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const slackDecode = (text) => text
@@ -232,5 +233,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			channel: message.channel,
 			timestamp: message.ts,
 		});
+		if (icon_emoji === ':zabuton:') {
+			await unlock(message.user, 'zabuton');
+		}
+		if (icon_emoji === ':zabutons:') {
+			await unlock(message.user, 'zabutons');
+		}
+		if (icon_emoji === ':flying-zabuton:') {
+			await unlock(message.user, 'flying-zabuton');
+		}
 	});
 };

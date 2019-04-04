@@ -180,6 +180,17 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 		}
 	});
+
+	rtm.on('team_join', (event) => {
+		state.achievements.set(event.user.id, []);
+		for (const counter of Object.values(state.counters)) {
+			counter.set(event.user.id, 0);
+		}
+		for (const variable of Object.values(state.variables)) {
+			variable.set(event.user.id, 0);
+		}
+		saveState();
+	});
 };
 
 export const unlock = async (user: string, name: string) => {
