@@ -204,33 +204,31 @@ export const unlock = async (user: string, name: string) => {
 	});
 	saveState();
 
-	if (achievement.difficulty !== 'baby') {
-		const slack: WebClient = await loadDeferred.promise;
-		const name = await getMemberName(user);
-		const holdingAchievements = state.achievements.get(user);
-		const gistUrl = `https://gist.github.com/hakatashi/d5f284cf3a3433d01df081e8019176a1#${encodeURIComponent(name)}`;
-		slack.chat.postMessage({
-			channel: process.env.CHANNEL_SANDBOX,
-			username: 'achievements',
-			icon_emoji: ':unlock:',
-			text: stripIndent`
-				<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada: <${gistUrl}|[実績一覧]>
-				_${achievement.condition}_
-				難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty}) ${isFirst ? '*初達成者!!:ojigineko-superfast:*' : ''}
-			`,
-			attachments: ['professional', 'hard', 'medium', 'easy', 'baby'].map((difficulty: Difficulty) => {
-				const entries = holdingAchievements.filter(({id}) => achievements.get(id).difficulty === difficulty);
-				if (entries.length === 0) {
-					return null;
-				}
-				const attachment: MessageAttachment = {
-					color: difficultyToColor(difficulty),
-					text: entries.map(({id}) => achievements.get(id).title).join(' '),
-				};
-				return attachment;
-			}),
-		});
-	}
+	const slack: WebClient = await loadDeferred.promise;
+	const memberName = await getMemberName(user);
+	const holdingAchievements = state.achievements.get(user);
+	const gistUrl = `https://gist.github.com/hakatashi/d5f284cf3a3433d01df081e8019176a1#${encodeURIComponent(memberName.toLowerCase())}`;
+	slack.chat.postMessage({
+		channel: process.env.CHANNEL_SANDBOX,
+		username: 'achievements',
+		icon_emoji: ':unlock:',
+		text: stripIndent`
+			<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada: <${gistUrl}|[実績一覧]>
+			_${achievement.condition}_
+			難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty}) ${isFirst ? '*初達成者!!:ojigineko-superfast:*' : ''}
+		`,
+		attachments: ['professional', 'hard', 'medium', 'easy', 'baby'].map((difficulty: Difficulty) => {
+			const entries = holdingAchievements.filter(({id}) => achievements.get(id).difficulty === difficulty);
+			if (entries.length === 0) {
+				return null;
+			}
+			const attachment: MessageAttachment = {
+				color: difficultyToColor(difficulty),
+				text: entries.map(({id}) => achievements.get(id).title).join(' '),
+			};
+			return attachment;
+		}),
+	});
 
 	await updateGist();
 };

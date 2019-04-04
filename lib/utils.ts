@@ -29,7 +29,7 @@ const additionalMembers: any[] = [];
 rtmClient.on('team_join', (event) => {
 	additionalMembers.push(event.user);
 });
-export const getMemberName = async (user: string) => {
+export const getMemberName = async (user: string): Promise<string> => {
 	const members = [
 		...(await loadMembersDeferred.promise),
 		...additionalMembers,
@@ -37,7 +37,7 @@ export const getMemberName = async (user: string) => {
 	const member = members.find(({id}: any) => id === user);
 	return member.profile.display_name || member.name;
 };
-export const getMemberIcon = async (user: string) => {
+export const getMemberIcon = async (user: string): Promise<string> => {
 	const members = [
 		...(await loadMembersDeferred.promise),
 		...additionalMembers,
