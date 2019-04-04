@@ -1,10 +1,11 @@
 import {WebClient, RTMClient} from '@slack/client';
 import axios from 'axios';
-import {get as getter} from 'lodash';
+import {get as getter, throttle, groupBy} from 'lodash';
 import moment from 'moment';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
-import achievements from './achievements';
+import achievements, {Difficulty} from './achievements';
+import {Deferred, getMemberName} from '../lib/utils';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -44,32 +45,82 @@ const state: State = {
 
 let stateChanged = false;
 
-class Deferred {
-	promise: Promise<any>;
-	nativeReject: (...args: any[]) => any;
-	nativeResolve: (...args: any[]) => any;
-
-	constructor() {
-		this.promise = new Promise((resolve, reject) => {
-			this.nativeReject = reject;
-			this.nativeResolve = resolve;
-		});
-	}
-
-	resolve(...args: any[]) {
-		this.nativeResolve(...args);
-	}
-
-	reject(...args: any[]) {
-		this.nativeReject(...args);
-	}
-}
-
 const mapToObject = (map: Map<any, any>) => (
 	Object.assign({}, ...[...map.entries()].map(([key, value]) => ({[key]: value})))
 );
 
+const difficultyToStars = (difficulty: Difficulty) => (
+	{
+		baby: '★☆☆☆☆',
+		easy: '★★☆☆☆',
+		medium: '★★★☆☆',
+		hard: '★★★★☆',
+		professional: '★★★★★',
+	}[difficulty]
+);
+
 const loadDeferred = new Deferred();
+
+const updateGist = throttle(async () => {
+	if (!stateChanged) {
+		return;
+	}
+
+	stateChanged = false;
+
+	const memberTexts = await Promise.all(Array.from(state.achievements.entries()).map(async ([user, achievementEntries]) => {
+		if (achievementEntries.length === 0) {
+			return '';
+		}
+		const difficultyGroups = groupBy(achievementEntries, ({id}) => achievements.get(id).difficulty);
+		const difficultyTexts = Object.entries(difficultyGroups).map(([difficulty, achievementGroup]: [Difficulty, Achievement[]]) => {
+			const achievementTexts = achievementGroup.map(({id, date}) => {
+				const achievement = achievements.get(id);
+				return stripIndent`
+					* **${achievement.title}** (${moment(date).utcOffset(9).format('YYYY年MM月DD日')})
+						* ${achievement.condition}
+				`;
+			});
+			return [
+				`### 難易度${difficultyToStars(difficulty)} (${difficulty})`,
+				...achievementTexts,
+			].join('\n');
+		});
+		return [
+			`## @${await getMemberName(user)}`,
+			...difficultyTexts,
+		].join('\n');
+	}));
+	const markdown = [
+		'# TSG実績一覧',
+		...memberTexts.filter((text) => text !== ''),
+	].join('\n');
+
+	await axios.patch('https://api.github.com/gists/d5f284cf3a3433d01df081e8019176a1', {
+		description: 'TSG実績一覧',
+		files: {
+			'achievements-0-overview.md': {
+				content: markdown,
+			},
+			'achievements-1-data.json': {
+				content: JSON.stringify({
+					counters: {
+						chats: mapToObject(state.counters.chats),
+						chatDays: mapToObject(state.counters.chatDays),
+					},
+					variables: {
+						lastChatDay: mapToObject(state.variables.lastChatDay),
+					},
+					achievements: mapToObject(state.achievements),
+				}),
+			},
+		},
+	}, {
+		headers: {
+			Authorization: `token ${process.env.GITHUB_TOKEN}`,
+		},
+	});
+}, 30 * 1000);
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	loadDeferred.resolve(slack);
@@ -105,38 +156,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}
 	}
 
-	setInterval(async () => {
-		if (!stateChanged) {
-			return;
-		}
-
-		stateChanged = false;
-
-		await axios.patch('https://api.github.com/gists/d5f284cf3a3433d01df081e8019176a1', {
-			description: 'TSG実績一覧',
-			files: {
-				'achievements-0-overview.md': {
-					content: '# temp',
-				},
-				'achievements-1-data.json': {
-					content: JSON.stringify({
-						counters: {
-							chats: mapToObject(state.counters.chats),
-							chatDays: mapToObject(state.counters.chatDays),
-						},
-						variables: {
-							lastChatDay: mapToObject(state.variables.lastChatDay),
-						},
-						achievements: mapToObject(state.achievements),
-					}),
-				},
-			},
-		}, {
-			headers: {
-				Authorization: `token ${process.env.GITHUB_TOKEN}`,
-			},
-		});
-	}, 10 * 60 * 1000);
+	setInterval(updateGist, 10 * 60 * 1000);
 
 	rtm.on('message', async (message) => {
 		if (message.text && message.user && !message.bot_id && message.channel.startsWith('C')) {
@@ -151,7 +171,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 };
 
 export const unlock = async (user: string, name: string) => {
-	const achievement = achievements.find(({id}) => id === name);
+	const achievement = achievements.get(name);
 	if (!achievement) {
 		throw new Error(`Unknown achievement name ${name}`);
 	}
@@ -179,15 +199,12 @@ export const unlock = async (user: string, name: string) => {
 			text: stripIndent`
 				<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada:
 				_${achievement.condition}_
-				難易度${{
-					easy: '★★☆☆☆',
-					medium: '★★★☆☆',
-					hard: '★★★★☆',
-					professional: '★★★★★',
-				}[achievement.difficulty]} (${achievement.difficulty})
+				難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty})
 			`,
 		});
 	}
+
+	await updateGist();
 };
 
 export const increment = (user: string, name: string, value: number = 1) => {
@@ -204,7 +221,7 @@ export const increment = (user: string, name: string, value: number = 1) => {
 	const newValue = state.counters[name].get(user) + value;
 	state.counters[name].set(user, newValue);
 
-	const unlocked = achievements.find((achievement) => achievement.counter === name && achievement.value === newValue);
+	const unlocked = Array.from(achievements.values()).find((achievement) => achievement.counter === name && achievement.value === newValue);
 	if (unlocked !== undefined) {
 		unlock(user, unlocked.id);
 	}

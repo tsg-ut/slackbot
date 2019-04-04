@@ -1,6 +1,8 @@
+export type Difficulty = 'baby' | 'easy' | 'medium' | 'hard' | 'professional';
+
 interface Achievement {
 	id: string,
-	difficulty: 'baby' | 'easy' | 'medium' | 'hard' | 'professional',
+	difficulty: Difficulty,
 	title: string,
 	condition: string,
 	counter?: string,
@@ -476,4 +478,6 @@ const achievements: Achievement[] = [
 	},
 ];
 
-export default achievements;
+const achievementMap = new Map(achievements.map((achievement) => [achievement.id, achievement]));
+
+export default achievementMap;

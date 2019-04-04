@@ -4,7 +4,7 @@ process.on('unhandledRejection', (error) => {
 	logger.error(error.stack);
 });
 
-const {RTMClient, WebClient} = require('@slack/client');
+const {rtmClient, webClient} = require('./lib/slack.ts');
 const fastify = require('fastify')({logger: true});
 const logger = require('./lib/logger.js');
 
@@ -37,8 +37,6 @@ const plugins = [
 	require('./deploy'),
 ];
 
-const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
-const webClient = new WebClient(process.env.SLACK_TOKEN);
 (async () => {
 	await Promise.all(plugins.map(async (plugin) => {
 		if (typeof plugin === 'function') {
