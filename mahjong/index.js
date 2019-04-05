@@ -5,6 +5,7 @@ const {promisify} = require('util');
 const {chunk, shuffle} = require('lodash');
 const path = require('path');
 const assert = require('assert');
+const {unlock} = require('../achievements/index.ts');
 
 const calculator = require('./calculator.js');
 const savedState = (() => {
@@ -310,6 +311,10 @@ module.exports = (clients) => {
 			}
 
 			if (text === 'ツモ切り') {
+				if (state.mode === '四人' && state.手牌[state.手牌.length - 1] === '🀟') {
+					await unlock(message.user, 'mahjong-ikeda');
+				}
+
 				state.手牌 = state.手牌.slice(0, -1);
 			} else {
 				const 牌Name = text.slice(1);
@@ -326,6 +331,10 @@ module.exports = (clients) => {
 				}
 
 				state.手牌.splice(state.手牌.indexOf(打牌), 1);
+
+				if (state.mode === '四人' && 打牌 === '🀟') {
+					await unlock(message.user, 'mahjong-ikeda');
+				}
 			}
 
 			if (state.remaining自摸 === 0) {
@@ -480,6 +489,39 @@ module.exports = (clients) => {
 					});
 					await checkPoints();
 					state.phase = 'waiting';
+
+					if (state.mode === '四人') {
+						await unlock(message.user, 'mahjong');
+						if (役s.includes('七対子')) {
+							await unlock(message.user, 'mahjong-七対子');
+						}
+						if (agari.delta[0] >= 12000) {
+							await unlock(message.user, 'mahjong-12000');
+						}
+						if (agari.delta[0] >= 24000) {
+							await unlock(message.user, 'mahjong-24000');
+						}
+						if (agari.delta[0] >= 36000) {
+							await unlock(message.user, 'mahjong-36000');
+						}
+						if (agari.delta[0] >= 48000) {
+							await unlock(message.user, 'mahjong-48000');
+						}
+
+						const 待ち牌s = Array(34).fill(0).map((_, index) => (
+							String.fromCodePoint(0x1F000 + index)
+						)).filter((牌) => {
+							const result = calculator.agari(state.手牌.concat([牌]), {isRiichi: false});
+							return result.agari.isAgari;
+						});
+						if (待ち牌s.length === 1 && 待ち牌s[0] === '🀂') {
+							await unlock(message.user, 'mahjong-西単騎');
+						}
+						if (待ち牌s.includes('🀐') && 待ち牌s.includes('🀓') && state.リーチTurn <= 6) {
+							await unlock(message.user, 'mahjong-一四索');
+						}
+					}
+
 					return;
 				}
 
@@ -511,6 +553,9 @@ module.exports = (clients) => {
 					流局 不聴立直 -12000点
 					現在の得点: ${state.points}点
 				`);
+				if (state.mode === '四人') {
+					await unlock(message.user, 'mahjong-不聴立直');
+				}
 			}
 
 			await checkPoints();
