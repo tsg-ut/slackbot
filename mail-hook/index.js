@@ -1,3 +1,5 @@
+const isValidUTF8 = require('utf-8-validate');
+
 const sanitizeCode = (input) => ["`", input.replace("`", "'"), "`"].join('');
 const sanitizePreformatted = (input) => ["```", input.replace("`", "'"), "```"].join("\n");
 
@@ -9,6 +11,15 @@ module.exports.server = ({webClient: slack}) => async (fastify) => {
 
             const {addresses, subject, body} = req.body;
 
+            let text = body.text;
+            {
+                const buf = Buffer.from(text, 'base64');
+                if (isValidUTF8(buf)) {
+                    text = buf.toString();
+                }
+            }
+
+
             await slack.chat.postMessage({
                 channel: process.env.CHANNEL_SANDBOX,
                 username: 'Email Notifier',
@@ -19,7 +30,7 @@ module.exports.server = ({webClient: slack}) => async (fastify) => {
                     `FROM: ${sanitizeCode(addresses.from)}`,
                     `SUBJECT: ${sanitizeCode(subject)}`,
                     'BODY:',
-                    sanitizePreformatted(body.text),
+                    sanitizePreformatted(text),
                 ].join("\n"),
             });
 
