@@ -63,14 +63,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			icon_url: iconUrl,
 		});
 		if (description !== '') {
-			await slack.chat.postMessage(
-				{
-					channel: process.env.CHANNEL_SANDBOX,
-					text: `${description}:korosuzo:`,
-					username: 'shogi',
-					icon_url: iconUrl,
-				}
-			);
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: `${description}:korosuzo:`,
+				username: 'shogi',
+				icon_url: iconUrl,
+			});
 		}
 	};
 
@@ -115,14 +113,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		});
 
 		if (log.length === state.previousTurns) {
-			await slack.chat.postMessage(
-				{
-					channel: process.env.CHANNEL_SANDBOX,
-					text: '最短勝利:tada:',
-					username: 'shogi',
-					icon_url: iconUrl,
-				}
-			);
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: '最短勝利:tada:',
+				username: 'shogi',
+				icon_url: iconUrl,
+			});
 		}
 	};
 
@@ -181,8 +177,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		if (loseResults.length > 0) {
 			const transitionResult = minBy(loseResults, 'depth');
 			const transition = transitions.find(
-				({board}) =>
-					Buffer.compare(serialize(board), transitionResult.board) === 0
+				({board}) => Buffer.compare(serialize(board), transitionResult.board) === 0
 			);
 			state.board = deserialize(transitionResult.board);
 			state.turn = Color.Black;
@@ -208,8 +203,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					? sample(unknownResults)
 					: maxBy(winResults, 'depth');
 			const transition = transitions.find(
-				({board}) =>
-					Buffer.compare(serialize(board), transitionResult.board) === 0
+				({board}) => Buffer.compare(serialize(board), transitionResult.board) === 0
 			);
 			state.board = deserialize(transitionResult.board);
 			state.turn = Color.Black;
@@ -242,7 +236,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		const {text} = message;
 
-		if (text === '将棋' || text.match(/^(\d+)手(:?詰め|必勝将棋)$/) || text.match(/^(\d+)手以上(:?詰め|必勝将棋)$/)) {
+		if (
+			text === '将棋' ||
+			text.match(/^(\d+)手(:?詰め|必勝将棋)$/) ||
+			text.match(/^(\d+)手以上(:?詰め|必勝将棋)$/)
+		) {
 			if (state.board !== null || state.isLocked) {
 				perdon();
 				return;
@@ -251,7 +249,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			let matches = null;
 			let condition = '';
 			if ((matches = text.match(/^(\d+)手(:?詰め|必勝将棋)$/))) {
-				condition = `depth = ${(parseInt(matches[1].replace(/^0+/, '')) || 0) + 1}`;
+				condition = `depth = ${(parseInt(matches[1].replace(/^0+/, '')) || 0) +
+					1}`;
 			} else if ((matches = text.match(/^(\d+)手以上(:?詰め|必勝将棋)$/))) {
 				condition = `depth > ${parseInt(matches[1].replace(/^0+/, '')) || 0}`;
 			} else {
@@ -262,9 +261,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				path.resolve(__dirname, 'boards')
 			);
 			const database = sample(databases);
-			await sqlite.open(
-				path.resolve(__dirname, 'boards', database)
-			);
+			await sqlite.open(path.resolve(__dirname, 'boards', database));
 			const data = await sqlite.get(oneLine`
 				SELECT *
 				FROM boards
@@ -353,8 +350,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						'depth'
 					);
 					const transition = transitions.find(
-						({board: b}) =>
-							Buffer.compare(serialize(b), transitionResult.board) === 0
+						({board: b}) => Buffer.compare(serialize(b), transitionResult.board) === 0
 					);
 					board = deserialize(transitionResult.board);
 					const logText = transitionToText(
@@ -395,8 +391,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						'depth'
 					);
 					const transition = transitions.find(
-						({board: b}) =>
-							Buffer.compare(serialize(b), transitionResult.board) === 0
+						({board: b}) => Buffer.compare(serialize(b), transitionResult.board) === 0
 					);
 					board = deserialize(transitionResult.board);
 
@@ -474,13 +469,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const x =
 				position === '同'
 					? state.previousPosition.x
-					: ['1１一', '2２二', '3３三'].findIndex((chars) =>
-						chars.includes(position.charAt(0))) + 1;
+					: ['1１一', '2２二', '3３三'].findIndex((chars) => chars.includes(position.charAt(0))) + 1;
 			const y =
 				position === '同'
 					? state.previousPosition.y
-					: ['1１一', '2２二', '3３三'].findIndex((chars) =>
-						chars.includes(position.charAt(1))) + 1;
+					: ['1１一', '2２二', '3３三'].findIndex((chars) => chars.includes(position.charAt(1))) + 1;
 
 			const newPosition =
 				state.previousPosition &&
