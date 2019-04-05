@@ -19,9 +19,8 @@ module.exports.server = ({webClient: slack}) => async (fastify) => {
                 }
             }
 
-
             await slack.chat.postMessage({
-                channel: process.env.CHANNEL_SANDBOX,
+                channel: process.env.CHANNEL_PRLOG,
                 username: 'Email Notifier',
                 icon_emoji: ':email:',
                 text: [
@@ -42,6 +41,7 @@ module.exports.server = ({webClient: slack}) => async (fastify) => {
                 icon_emoji: ':email:',
                 text: 'sorry :cry:\n an error occured while processing email.',
             });
+
             return res.code(500);
         }
     });
