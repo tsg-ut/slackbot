@@ -171,7 +171,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	setInterval(updateGist, 10 * 60 * 1000);
 
 	rtm.on('message', async (message) => {
-		if (message.text && message.user && !message.bot_id && message.channel.startsWith('C')) {
+		if (message.text && message.user && !message.bot_id && !message.subtype && message.channel.startsWith('C')) {
 			const day = moment(parseFloat(message.ts) * 1000).utcOffset(9).format('YYYY-MM-DD');
 			increment(message.user, 'chats');
 			if (get(message.user, 'lastChatDay') !== day) {
@@ -244,7 +244,7 @@ export const unlock = async (user: string, name: string) => {
 	await updateGist();
 
 	const newAchievements = [];
-	if (holdingAchievements.length === 1) {
+	if (holdingAchievements.length >= 1) {
 		newAchievements.push('achievements');
 	}
 	if (holdingAchievements.filter(({id}) => achievements.get(id).difficulty !== 'baby').length >= 3) {
