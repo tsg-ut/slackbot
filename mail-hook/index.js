@@ -1,7 +1,7 @@
 const isValidUTF8 = require('utf-8-validate');
 
-const sanitizeCode = (input) => ["`", input.replace("`", "'"), "`"].join('');
-const sanitizePreformatted = (input) => ["```", input.replace("`", "'"), "```"].join("\n");
+const sanitizeCode = (input) => ["`", input.replace(/`/g, "'"), "`"].join('');
+const sanitizePreformatted = (input) => ["```", input.replace(/`/g, "'"), "```"].join("\n");
 
 module.exports.server = ({webClient: slack}) => async (fastify) => {
     fastify.post('/api/smtp-hook', async (req, res) => {
