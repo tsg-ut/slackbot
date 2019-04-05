@@ -9,6 +9,8 @@ const {createEventAdapter} = require('@slack/events-api');
 const fastify = require('fastify')({logger: true});
 const logger = require('./lib/logger.js');
 
+fastify.register(require('fastify-formbody'));
+
 let word2vecInstalled = true;
 try {
 	require.resolve('word2vec');
@@ -39,6 +41,7 @@ const plugins = [
 	require('./welcome'),
 	require('./deploy'),
 	require('./achievements'),
+	require('./mail-hook'),
 ];
 
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
