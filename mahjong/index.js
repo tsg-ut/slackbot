@@ -517,7 +517,7 @@ module.exports = (clients) => {
 						if (待ち牌s.length === 1 && 待ち牌s[0] === '🀂') {
 							await unlock(message.user, 'mahjong-西単騎');
 						}
-						if (待ち牌s.includes('🀐') && 待ち牌s.includes('🀓') && state.リーチTurn <= 6) {
+						if (待ち牌s.includes('🀐') && 待ち牌s.includes('🀓') && state.リーチTurn >= 11) {
 							await unlock(message.user, 'mahjong-一四索');
 						}
 					}
