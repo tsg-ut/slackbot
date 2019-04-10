@@ -28,6 +28,7 @@
     "@hakatashi/riichi-core": "^1.0.3",
     "@slack/client": "^4.10.0",
     "@slack/events-api": "^2.2.0",
+    "@slack/interactive-messages": "^1.1.1",
     "axios": "^0.18.0",
     "bn.js": "^4.11.8",
     "cheerio": "^1.0.0-rc.2",

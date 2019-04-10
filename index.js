@@ -6,6 +6,7 @@ process.on('unhandledRejection', (error) => {
 
 const {rtmClient, webClient} = require('./lib/slack.ts');
 const {createEventAdapter} = require('@slack/events-api');
+const {createMessageAdapter} = require('@slack/interactive-messages');
 const fastify = require('fastify')({logger: true});
 const logger = require('./lib/logger.js');
 
@@ -45,16 +46,17 @@ const plugins = [
 ];
 
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
+const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 (async () => {
 	await Promise.all(plugins.map(async (plugin) => {
 		if (typeof plugin === 'function') {
-			await plugin({rtmClient, webClient, eventClient});
+			await plugin({rtmClient, webClient, eventClient, messageClient});
 		}
 		if (typeof plugin.default === 'function') {
-			await plugin.default({rtmClient, webClient, eventClient});
+			await plugin.default({rtmClient, webClient, eventClient, messageClient});
 		}
 		if (typeof plugin.server === 'function') {
-			await fastify.register(plugin.server({rtmClient, webClient, eventClient}));
+			await fastify.register(plugin.server({rtmClient, webClient, eventClient, messageClient}));
 		}
 	}));
 
@@ -66,6 +68,7 @@ const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 })();
 
 fastify.use('/slack-event', eventClient.expressMiddleware());
+fastify.use('/slack-message', messageClient.requestListener());
 fastify.listen(process.env.PORT || 21864);
 
 let firstLogin = true;

@@ -3,7 +3,7 @@ import {promisify} from 'util';
 import path from 'path';
 import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
 import axios from 'axios';
-import {throttle, groupBy, flatten, get as getter} from 'lodash';
+import {throttle, groupBy, flatten, get as getter, chunk} from 'lodash';
 import moment from 'moment';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
@@ -14,6 +14,7 @@ import {Deferred, getMemberName} from '../lib/utils';
 interface SlackInterface {
 	rtmClient: RTMClient,
 	webClient: WebClient,
+	messageClient: any,
 }
 
 type Counter = Map<string, number>;
@@ -133,7 +134,7 @@ const updateGist = throttle(async () => {
 	});
 }, 30 * 1000);
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
 	loadDeferred.resolve(slack);
 
 	const {members}: any = await slack.users.list();
@@ -179,6 +180,39 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				set(message.user, 'lastChatDay', day);
 			}
 		}
+
+		if (message.channel.startsWith('D') && message.text === '実績解除') {
+			const manualAchievements = Array.from(achievements.values()).filter((achievement) => (
+				achievement.manual === true &&
+				state.achievements.has(message.user) &&
+				state.achievements.get(message.user).every(({id}) => id !== achievement.id)
+			));
+			const button: 'button' = 'button';
+			await slack.chat.postMessage({
+				channel: message.channel,
+				text: '未解除の実績一覧',
+				attachments: manualAchievements.map((achievement) => ({
+					text: achievement.condition,
+					fallback: achievement.condition,
+					color: 'good',
+				})),
+			})
+			await slack.chat.postMessage({
+				channel: message.channel,
+				text: '',
+				attachments: chunk(manualAchievements, 5).map((achievementChunk, index) => ({
+					text: index === 0 ? '解除した実績を選んでね！' : '',
+					fallback: index === 0 ? '解除した実績を選んでね！' : '',
+					callback_id: 'achievements',
+					actions: achievementChunk.map((achievement) => ({
+						name: 'unlock',
+						text: achievement.condition,
+						type: button,
+						value: achievement.id,
+					})),
+				})),
+			});
+		}
 	});
 
 	rtm.on('reaction_added', async (event) => {
@@ -213,6 +247,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			variable.set(event.user.id, 0);
 		}
 		saveState();
+	});
+
+	slackInteractions.action({type: 'button', callbackId: 'achievements'}, (payload: any, respond: any) => {
+		console.log({payload, respond});
+		unlock(payload.user, payload.actions[0].value);
+		respond('ok!');
 	});
 };
 
