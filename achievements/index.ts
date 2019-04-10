@@ -251,8 +251,9 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 
 	slackInteractions.action({type: 'button', callbackId: 'achievements'}, (payload: any, respond: any) => {
 		console.log({payload, respond});
-		unlock(payload.user, payload.actions[0].value);
-		respond('ok!');
+		console.log(payload.actions);
+		unlock(payload.user.id, payload.actions[0].value);
+		respond({text: 'おめでとう!:tada:'});
 	});
 };
 
