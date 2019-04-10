@@ -59,6 +59,24 @@ const achievements: Achievement[] = [
 		counter: 'chatDays',
 		value: 1000,
 	},
+	{
+		id: 'reaction-ha-5',
+		difficulty: 'hard',
+		title: '支離滅裂',
+		condition: '1つのメッセージに5人以上から:ha:リアクションをもらう',
+	},
+	{
+		id: 'reaction-wakari-5',
+		difficulty: 'hard',
+		title: 'デビルマン',
+		condition: '1つのメッセージに5人以上から:wakari:リアクションをもらう',
+	},
+	{
+		id: 'reaction-koresuki-5',
+		difficulty: 'hard',
+		title: 'ジャガーマン',
+		condition: '1つのメッセージに対し5人以上から:koresuki:リアクションをもらう',
+	},
 
 	// sushi-bot
 

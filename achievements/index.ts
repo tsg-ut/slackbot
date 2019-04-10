@@ -3,7 +3,7 @@ import {promisify} from 'util';
 import path from 'path';
 import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
 import axios from 'axios';
-import {throttle, groupBy, flatten} from 'lodash';
+import {throttle, groupBy, flatten, get as getter} from 'lodash';
 import moment from 'moment';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
@@ -177,6 +177,29 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			if (get(message.user, 'lastChatDay') !== day) {
 				increment(message.user, 'chatDays');
 				set(message.user, 'lastChatDay', day);
+			}
+		}
+	});
+
+	rtm.on('reaction_added', async (event) => {
+		if (event.user && event.item && event.item.channel.startsWith('C') && event.item_user && state.achievements.has(event.item_user)) {
+			for (const reaction of ['ha', 'wakari', 'koresuki']) {
+				if (event.reaction === reaction) {
+					const data: any = await slack.channels.history({
+						channel: event.item.channel,
+						latest: event.item.ts,
+						count: 1,
+						inclusive: true,
+					});
+					const reactions = getter(data, ['messages', 0, 'reactions'], []);
+					const targetReaction = reactions.find(({name}: any) => name === reaction);
+					if (!targetReaction) {
+						return;
+					}
+					if (targetReaction.count >= 5) {
+						await unlock(event.item_user, `reaction-${reaction}-5`);
+					}
+				}
 			}
 		}
 	});
