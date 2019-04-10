@@ -77,6 +77,12 @@ const achievements: Achievement[] = [
 		title: 'ジャガーマン',
 		condition: '1つのメッセージに対し5人以上から:koresuki:リアクションをもらう',
 	},
+	{
+		id: 'reaction-yakuza-5',
+		difficulty: 'hard',
+		title: '今日からやの付く自由業',
+		condition: '1つのメッセージに対し5人以上から:yakuza:リアクションをもらう',
+	},
 
 	// sushi-bot
 
