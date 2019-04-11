@@ -232,7 +232,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				channel: process.env.CHANNEL_SANDBOX,
 				text: stripIndent`
 					WordHeroを始めるよ～
-					この画像から同じ場所を通らずタテ・ヨコ・ナナメにたどって見つけた単語を
+					この画像から同じ場所を通らずタテ・ヨコ・ナナメにたどって見つけた3文字以上の単語を
 					60秒以内に *スレッドで* 返信してね!
 				`,
 				username: 'wordhero',
@@ -241,6 +241,14 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					title: 'WordHero',
 					image_url: cloudinaryData.secure_url,
 				}],
+			});
+
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: '回答はこちらへどうぞ',
+				thread_ts: message.ts,
+				username: 'wordhero',
+				icon_emoji: ':capital_abcd:',
 			});
 
 			state.thread = message.ts;
