@@ -253,6 +253,14 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			state.thread = message.ts;
 
 			setTimeout(async () => {
+				await slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					text: '～～～～～～～～～～おわり～～～～～～～～～～',
+					thread_ts: message.ts,
+					username: 'wordhero',
+					icon_emoji: ':capital_abcd:',
+				});
+
 				if (Object.keys(state.users).length !== 0) {
 					const ranking = Object.entries(state.users).map(([user, words]) => ({
 						user,
