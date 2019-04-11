@@ -3,7 +3,7 @@ import {promisify} from 'util';
 import path from 'path';
 import assert from 'assert';
 import {WebClient, RTMClient} from '@slack/client';
-import {flatten, maxBy, sample, random} from 'lodash';
+import {flatten, maxBy, sample, random, sortBy} from 'lodash';
 // @ts-ignore
 import trie from 'trie-prefix-tree';
 
@@ -11,6 +11,8 @@ interface SlackInterface {
 	rtmClient: RTMClient,
 	webClient: WebClient,
 }
+
+const hiraganaLetters = 'ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろわをんー'.split('');
 
 const getPrecedings = (index: number) => {
 	const ret = [];
@@ -98,7 +100,36 @@ const generateBoard = (tree: any, seed: string) => {
 			board = tempBoard;
 		}
 	}
-	console.log(seed, board);
+
+	while (board.some((letter) => letter === null)) {
+		const [targetCellIndex] = sample([...board.entries()].filter(([, letter]) => letter === null));
+		const prefixes = [];
+		for (const preceding of precedingsList[targetCellIndex]) {
+		    if (board[preceding] === null) {
+				continue;
+			}
+			prefixes.push(board[preceding]);
+			for (const preceding2 of precedingsList[preceding]) {
+			    if (board[preceding2] === null || preceding === preceding2) {
+					continue;
+				}
+				prefixes.push(board[preceding2] + board[preceding]);
+			}
+		}
+		if (prefixes.length <= 4) {
+			continue;
+		}
+		const counter = new Map(hiraganaLetters.map((letter) => [letter, 0]));
+		for (const prefix of prefixes) {
+		    for (const nextLetter of hiraganaLetters) {
+		        counter.set(nextLetter, counter.get(nextLetter) + tree.countPrefix(prefix + nextLetter));
+		    }
+		}
+		const topLetters = sortBy(Array.from(counter.entries()), ([, count]) => count).reverse().slice(0, 3);
+		const [nextLetter] = sample(topLetters);
+		board[targetCellIndex] = nextLetter;
+	}
+
 	return board;
 };
 
@@ -117,13 +148,14 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		typeof s === 'string' && 2 <= s.length && s.length <= 16
 	));
 	const seedWords = dictionary.filter((word) => 8 <= word.length && word.length <= 10);
-	console.time('tree');
 	const tree = trie(dictionary);
-	console.timeEnd('tree');
-	console.time('lightTree');
 	const lightTree = trie(dictionary.filter((word) => word.length <= 5));
-	console.timeEnd('lightTree');
 	const board = generateBoard(lightTree, sample(seedWords));
-	const words = getWords(tree, 'んかううういんかいんいうんいかか'.split(''))
-	console.log(maxBy(words, (word) => word.length))
+	console.log(board.slice(0, 4))
+	console.log(board.slice(4, 8))
+	console.log(board.slice(8, 12))
+	console.log(board.slice(12, 16))
+	const words = getWords(tree, board);
+	console.log(words.length)
+	console.log(sortBy(words, (word) => word.length).reverse().slice(0, 10))
 };
