@@ -172,12 +172,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	};
 
 	rtm.on('message', async (message) => {
-		if (!message.text || message.subtype) {
+		if (!message.text || message.subtype || message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
 
 		if (message.thread_ts && message.thread_ts === state.thread) {
-			console.log()
 			const word = hiraganize(message.text);
 			if (!state.words.includes(word)) {
 				await slack.reactions.add({
