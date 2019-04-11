@@ -180,7 +180,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const word = hiraganize(message.text);
 			if (!state.words.includes(word)) {
 				await slack.reactions.add({
-					name: '-1',
+					name: 'no_good',
 					channel: message.channel,
 					timestamp: message.ts,
 				});
@@ -232,7 +232,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				text: stripIndent`
 					WordHeroを始めるよ～
 					この画像から同じ場所を通らずタテ・ヨコ・ナナメにたどって見つけた3文字以上の単語を
-					60秒以内に *スレッドで* 返信してね!
+					90秒以内に *スレッドで* 返信してね!
 				`,
 				username: 'wordhero',
 				icon_emoji: ':capital_abcd:',
@@ -287,7 +287,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				state.isHolding = false;
 				state.thread = null;
 				state.users = {};
-			}, 60 * 1000);
+			}, 90 * 1000);
 			return;
 		}
 	});
