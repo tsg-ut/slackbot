@@ -3,9 +3,16 @@ import {promisify} from 'util';
 import path from 'path';
 import assert from 'assert';
 import {WebClient, RTMClient} from '@slack/client';
-import {flatten, maxBy, sample, random, sortBy} from 'lodash';
+import {flatten, sum, sample, random, sortBy} from 'lodash';
 // @ts-ignore
 import trie from 'trie-prefix-tree';
+// @ts-ignore
+import cloudinary from 'cloudinary';
+// @ts-ignore
+import {stripIndent} from 'common-tags';
+// @ts-ignore
+import {hiraganize} from 'japanese';
+import render from './render';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -137,6 +144,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const data = await Promise.all([
 		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'wikipedia.txt')),
 		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'nicopedia.txt')),
+		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'wiktionary.txt')),
 		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'ascii.txt')),
 		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'binary.txt')),
 		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'ewords.txt')),
@@ -147,15 +155,133 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	))))).filter((s) => (
 		typeof s === 'string' && 2 <= s.length && s.length <= 16
 	));
-	const seedWords = dictionary.filter((word) => 8 <= word.length && word.length <= 10);
+	const seedWords = dictionary.filter((word) => 7 <= word.length && word.length <= 8);
 	const tree = trie(dictionary);
 	const lightTree = trie(dictionary.filter((word) => word.length <= 5));
-	const board = generateBoard(lightTree, sample(seedWords));
-	console.log(board.slice(0, 4))
-	console.log(board.slice(4, 8))
-	console.log(board.slice(8, 12))
-	console.log(board.slice(12, 16))
-	const words = getWords(tree, board);
-	console.log(words.length)
-	console.log(sortBy(words, (word) => word.length).reverse().slice(0, 10))
+
+	const state: {
+		thread: string,
+		isHolding: boolean,
+		words: string[],
+		users: {[user: string]: string[]},
+	} = {
+		thread: null,
+		isHolding: false,
+		words: [],
+		users: {},
+	};
+
+	rtm.on('message', async (message) => {
+		if (!message.text || message.subtype) {
+			return;
+		}
+
+		if (message.thread_ts && message.thread_ts === state.thread) {
+			console.log()
+			const word = hiraganize(message.text);
+			if (!state.words.includes(word)) {
+				await slack.reactions.add({
+					name: '-1',
+					channel: message.channel,
+					timestamp: message.ts,
+				});
+				return;
+			}
+			if (Object.values(state.users).some((words) => words.includes(word))) {
+				await slack.reactions.add({
+					name: 'innocent',
+					channel: message.channel,
+					timestamp: message.ts,
+				});
+				return;
+			}
+			if (!state.users[message.user]) {
+				state.users[message.user] = [];
+			}
+			state.users[message.user].push(word);
+			await slack.reactions.add({
+				name: '+1',
+				channel: message.channel,
+				timestamp: message.ts,
+			});
+			return;
+		}
+
+		if (message.text.match(/^wordhero$/i)) {
+			if (state.isHolding) {
+				return;
+			}
+			state.isHolding = true;
+			const board = generateBoard(lightTree, sample(seedWords));
+			state.words = getWords(tree, board).filter((word) => word.length >= 3);
+
+			const imageData = await render(board);
+			const cloudinaryData: any = await new Promise((resolve, reject) => {
+				cloudinary.v2.uploader
+					.upload_stream({resource_type: 'image'}, (error: any, response: any) => {
+						if (error) {
+							reject(error);
+						} else {
+							resolve(response);
+						}
+					})
+					.end(imageData);
+			});
+
+			const message: any = await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: stripIndent`
+					WordHeroを始めるよ～
+					この画像から同じ場所を通らずタテ・ヨコ・ナナメにたどって見つけた単語を
+					60秒以内に *スレッドで* 返信してね!
+				`,
+				username: 'wordhero',
+				icon_emoji: ':capital_abcd:',
+				attachments: [{
+					title: 'WordHero',
+					image_url: cloudinaryData.secure_url,
+				}],
+			});
+
+			state.thread = message.ts;
+
+			setTimeout(async () => {
+				if (Object.keys(state.users).length !== 0) {
+					const ranking = Object.entries(state.users).map(([user, words]) => ({
+						user,
+						words,
+						point: sum(words.map((word) => word.length ** 2)),
+					})).sort((a, b) => b.point - a.point);
+					const appearedWords = new Set(flatten(Object.values(state.users)));
+					await slack.chat.postMessage({
+						channel: process.env.CHANNEL_SANDBOX,
+						text: stripIndent`
+							結果発表～
+						`,
+						username: 'wordhero',
+						icon_emoji: ':capital_abcd:',
+						attachments: [
+							...ranking.map(({user, words, point}, index) => ({
+								text: `${index + 1}位. <@${user}> ${point}点 (${words.join('、')})`,
+								color: index === 0 ? 'danger' : '#EEEEEE',
+							})),
+							{
+								title: `単語一覧 (計${state.words.length}個)`,
+								text: sortBy(state.words, (word) => word.length).reverse().map((word) => {
+									if (appearedWords.has(word)) {
+										return `*${word}*`
+									}
+									return word;
+								}).join('\n'),
+							},
+						],
+					});
+				}
+				state.isHolding = false;
+				state.thread = null;
+				state.users = {};
+			}, 60 * 1000);
+			return;
+		}
+	});
 };
