@@ -252,10 +252,20 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					.end(imageData);
 			});
 
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: '今から30秒後にWordHeroを始めるよ～ 準備はいいかな～?',
+				username: 'wordhero',
+				icon_emoji: ':capital_abcd:',
+			});
+
+			await new Promise((resolve) => {
+				setTimeout(resolve, 30 * 1000);
+			});
+
 			const message: any = await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: stripIndent`
-					WordHeroを始めるよ～
 					この画像から同じ場所を通らずタテ・ヨコ・ナナメにたどって見つけた3文字以上の単語を
 					90秒以内に *スレッドで* 返信してね!
 				`,
@@ -286,10 +296,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					})).sort((a, b) => b.point - a.point);
 					const appearedWords = new Set(flatten(Object.values(state.users)));
 					const wordList = [];
-					for (const [index, word] of sortBy(state.words.reverse(), (word) => word.length).reverse().entries()) {
+					for (const word of sortBy(state.words.reverse(), (word) => word.length).reverse()) {
 						const entry = appearedWords.has(word) ? `*${word}*` : word;
 						const data = await db.get('SELECT * FROM words WHERE ruby = ?', word);
-						if (index < 10) {
+						if (word.length >= 5) {
 							if (data.description) {
 								wordList.push(`${entry} (${data.word}): _${data.description}_`);
 							} else {
