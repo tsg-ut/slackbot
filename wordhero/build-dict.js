@@ -54,21 +54,25 @@ const {hiraganize} = require('japanese');
 		parser.on('end', () => {
 			console.log(dictionary.size);
 			const writer = fs.createWriteStream('dict/naistdic.sql');
+			const wordsWriter = fs.createWriteStream('words.txt');
 			writer.write('CREATE TABLE words (word TEXT, ruby TEXT UNIQUE, description TEXT);\n')
 			writer.write('BEGIN TRANSACTION;\n');
 			for (const [ruby, {word, description}] of dictionary.entries()) {
 				if (ruby.length > 16) {
 					continue;
 				}
+				wordsWriter.write(ruby + '\n');
 				writer.write(`INSERT INTO words VALUES ('${
-					word.replace(/\t/g, '').replace(/'/g, '\'')
+					word.replace(/\t/g, '').replace(/(['])/g, '\'$1')
 				}', '${
-					description.replace(/'/g, '\'')
+					description.replace(/(['])/g, '\'$1')
 				}', '${
-					ruby.replace(/'/g, '\'')
+					ruby.replace(/(['])/g, '\'$1')
 				}');\n`)
 			}
 			writer.write('COMMIT;');
+			writer.end();
+			wordsWriter.end();
 		});
 
 		reader.pipe(parser);

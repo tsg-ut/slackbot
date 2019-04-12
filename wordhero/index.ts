@@ -12,7 +12,10 @@ import cloudinary from 'cloudinary';
 import {stripIndent} from 'common-tags';
 // @ts-ignore
 import {hiraganize} from 'japanese';
+// @ts-ignore
+import download from 'download';
 import render from './render';
+import {Deferred} from '../lib/utils';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -140,25 +143,41 @@ const generateBoard = (tree: any, seed: string) => {
 	return board;
 };
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
-	const data = await Promise.all([
-		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'wikipedia.txt')),
-		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'nicopedia.txt')),
-		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'wiktionary.txt')),
-		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'ascii.txt')),
-		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'binary.txt')),
-		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'ewords.txt')),
-		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'fideli.txt')),
-	]);
-	const dictionary = Array.from(new Set(flatten(data.map((datum) => (
-		datum.toString().split('\n').map((line) => line.split('\t')[1])
-	))))).filter((s) => (
+const loadDeferred = new Deferred();
+
+const load = async () => {
+	if (loadDeferred.isResolved) {
+		return loadDeferred.promise;
+	}
+
+	for (const file of ['words.txt', 'dictionary.sqlite3']) {
+		const filePath = path.resolve(__dirname, file);
+
+		const exists = await new Promise((resolve) => {
+			fs.access(filePath, fs.constants.F_OK, (error) => {
+				resolve(!error);
+			});
+		});
+
+		if (!exists) {
+			await download(`https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/${file}`, __dirname, {
+				filename: file,
+			});
+		}
+	}
+
+	const data = await promisify(fs.readFile)(path.join(__dirname, 'words.txt'));
+	const dictionary = data.toString().split('\n').filter((s) => (
 		typeof s === 'string' && 2 <= s.length && s.length <= 16
 	));
 	const seedWords = dictionary.filter((word) => 7 <= word.length && word.length <= 8);
 	const tree = trie(dictionary);
 	const lightTree = trie(dictionary.filter((word) => word.length <= 5));
 
+	return loadDeferred.resolve({dictionary, seedWords, tree, lightTree});
+};
+
+export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const state: {
 		thread: string,
 		isHolding: boolean,
@@ -210,6 +229,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			if (state.isHolding) {
 				return;
 			}
+
+			const {seedWords, tree, lightTree} = await load();
+
 			state.isHolding = true;
 			const board = generateBoard(lightTree, sample(seedWords));
 			state.words = getWords(tree, board).filter((word) => word.length >= 3);
