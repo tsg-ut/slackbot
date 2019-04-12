@@ -2,6 +2,8 @@ import {rtmClient, webClient} from './slack';
 
 export class Deferred {
 	promise: Promise<any>;
+	isResolved: boolean;
+	isRejected: boolean;
 	private nativeReject: (...args: any[]) => any;
 	private nativeResolve: (...args: any[]) => any;
 
@@ -10,14 +12,20 @@ export class Deferred {
 			this.nativeReject = reject;
 			this.nativeResolve = resolve;
 		});
+		this.isResolved = false;
+		this.isRejected = false;
 	}
 
 	resolve(...args: any[]) {
 		this.nativeResolve(...args);
+		this.isResolved = true;
+		return this.promise;
 	}
 
 	reject(...args: any[]) {
 		this.nativeReject(...args);
+		this.isRejected = true;
+		return this.promise;
 	}
 }
 

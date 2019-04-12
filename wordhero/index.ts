@@ -14,6 +14,7 @@ import {stripIndent} from 'common-tags';
 import {hiraganize} from 'japanese';
 // @ts-ignore
 import download from 'download';
+import sqlite from 'sqlite';
 import render from './render';
 import {Deferred} from '../lib/utils';
 
@@ -174,7 +175,9 @@ const load = async () => {
 	const tree = trie(dictionary);
 	const lightTree = trie(dictionary.filter((word) => word.length <= 5));
 
-	return loadDeferred.resolve({dictionary, seedWords, tree, lightTree});
+	const db = await sqlite.open(path.join(__dirname, 'dictionary.sqlite3'));
+
+	return loadDeferred.resolve({seedWords, tree, lightTree, db});
 };
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
@@ -230,7 +233,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				return;
 			}
 
-			const {seedWords, tree, lightTree} = await load();
+			const {seedWords, tree, lightTree, db} = await load();
 
 			state.isHolding = true;
 			const board = generateBoard(lightTree, sample(seedWords));
@@ -296,12 +299,24 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 							})),
 							{
 								title: `単語一覧 (計${state.words.length}個)`,
-								text: sortBy(state.words, (word) => word.length).reverse().map((word) => {
-									if (appearedWords.has(word)) {
-										return `*${word}*`
-									}
-									return word;
-								}).join('\n'),
+								text: (
+									await Promise.all(
+										sortBy(state.words.reverse(), (word) => word.length)
+										.reverse()
+										.map(async (word, index) => {
+											const entry = appearedWords.has(word) ? `*${word}*` : word;
+											if (index < 10) {
+												const data = await db.get('SELECT * FROM words WHERE ruby = ?', word);
+												if (data.description) {
+													return `${entry} (${data.word}): _${data.description}_`
+												} else {
+													return `${entry} (${data.word})`
+												}
+											}
+											return entry;
+										})
+									)
+								).join('\n'),
 							},
 						],
 					});
