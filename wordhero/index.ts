@@ -12,7 +12,11 @@ import cloudinary from 'cloudinary';
 import {stripIndent} from 'common-tags';
 // @ts-ignore
 import {hiraganize} from 'japanese';
+// @ts-ignore
+import download from 'download';
+import sqlite from 'sqlite';
 import render from './render';
+import {Deferred} from '../lib/utils';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -140,25 +144,43 @@ const generateBoard = (tree: any, seed: string) => {
 	return board;
 };
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
-	const data = await Promise.all([
-		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'wikipedia.txt')),
-		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'nicopedia.txt')),
-		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'wiktionary.txt')),
-		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'ascii.txt')),
-		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'binary.txt')),
-		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'ewords.txt')),
-		promisify(fs.readFile)(path.join(__dirname, '..', 'tahoiya', 'fideli.txt')),
-	]);
-	const dictionary = Array.from(new Set(flatten(data.map((datum) => (
-		datum.toString().split('\n').map((line) => line.split('\t')[1])
-	))))).filter((s) => (
+const loadDeferred = new Deferred();
+
+const load = async () => {
+	if (loadDeferred.isResolved) {
+		return loadDeferred.promise;
+	}
+
+	for (const file of ['words.txt', 'dictionary.sqlite3']) {
+		const filePath = path.resolve(__dirname, file);
+
+		const exists = await new Promise((resolve) => {
+			fs.access(filePath, fs.constants.F_OK, (error) => {
+				resolve(!error);
+			});
+		});
+
+		if (!exists) {
+			await download(`https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/${file}`, __dirname, {
+				filename: file,
+			});
+		}
+	}
+
+	const data = await promisify(fs.readFile)(path.join(__dirname, 'words.txt'));
+	const dictionary = data.toString().split('\n').filter((s) => (
 		typeof s === 'string' && 2 <= s.length && s.length <= 16
 	));
 	const seedWords = dictionary.filter((word) => 7 <= word.length && word.length <= 8);
 	const tree = trie(dictionary);
 	const lightTree = trie(dictionary.filter((word) => word.length <= 5));
 
+	const db = await sqlite.open(path.join(__dirname, 'dictionary.sqlite3'));
+
+	return loadDeferred.resolve({seedWords, tree, lightTree, db});
+};
+
+export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const state: {
 		thread: string,
 		isHolding: boolean,
@@ -210,6 +232,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			if (state.isHolding) {
 				return;
 			}
+
+			const {seedWords, tree, lightTree, db} = await load();
+
 			state.isHolding = true;
 			const board = generateBoard(lightTree, sample(seedWords));
 			state.words = getWords(tree, board).filter((word) => word.length >= 3);
@@ -227,10 +252,20 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					.end(imageData);
 			});
 
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: '今から30秒後にWordHeroを始めるよ～ 準備はいいかな～?',
+				username: 'wordhero',
+				icon_emoji: ':capital_abcd:',
+			});
+
+			await new Promise((resolve) => {
+				setTimeout(resolve, 30 * 1000);
+			});
+
 			const message: any = await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: stripIndent`
-					WordHeroを始めるよ～
 					この画像から同じ場所を通らずタテ・ヨコ・ナナメにたどって見つけた3文字以上の単語を
 					90秒以内に *スレッドで* 返信してね!
 				`,
@@ -268,6 +303,20 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						point: sum(words.map((word) => word.length ** 2)),
 					})).sort((a, b) => b.point - a.point);
 					const appearedWords = new Set(flatten(Object.values(state.users)));
+					const wordList = [];
+					for (const word of sortBy(state.words.reverse(), (word) => word.length).reverse()) {
+						const entry = appearedWords.has(word) ? `*${word}*` : word;
+						const data = await db.get('SELECT * FROM words WHERE ruby = ?', word);
+						if (word.length >= 5) {
+							if (data.description) {
+								wordList.push(`${entry} (${data.word}): _${data.description}_`);
+							} else {
+								wordList.push(`${entry} (${data.word})`);
+							}
+						} else {
+							wordList.push(`${entry} (${data.word})`);
+						}
+					}
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
 						text: stripIndent`
@@ -282,12 +331,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 							})),
 							{
 								title: `単語一覧 (計${state.words.length}個)`,
-								text: sortBy(state.words, (word) => word.length).reverse().map((word) => {
-									if (appearedWords.has(word)) {
-										return `*${word}*`
-									}
-									return word;
-								}).join('\n'),
+								text: wordList.join('\n'),
 							},
 						],
 					});
