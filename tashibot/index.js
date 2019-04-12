@@ -225,6 +225,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				image_url: datum.secure_url,
 				fallback: response,
 			})),
+			...(message.thread_ts ? {
+				thread_ts: message.thread_ts,
+			} : {}),
 		});
 
 		await unlock(message.user, 'place');
@@ -235,6 +238,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				text: `:new:新市町村発見！ ${achievementsCount}/${uniqueCitiesCount}市町村達成:tada:`,
 				username: 'tashibot',
 				icon_emoji: ':japan:',
+				...(message.thread_ts ? {
+					thread_ts: message.thread_ts,
+				} : {}),
 			});
 			await unlock(message.user, 'new-place');
 		}
@@ -245,6 +251,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				text: `:new:新駅発見！ ${achievementsCount}/${uniqueStationsCount}駅達成:tada:`,
 				username: 'tashibot',
 				icon_emoji: ':japan:',
+				...(message.thread_ts ? {
+					thread_ts: message.thread_ts,
+				} : {}),
 			});
 			await unlock(message.user, 'new-place');
 		}
