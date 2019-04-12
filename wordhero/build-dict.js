@@ -28,22 +28,50 @@ const {hiraganize} = require('japanese');
 
 	parser.on('data', ([表層形, , , , 品詞1, 品詞2, 品詞3, 品詞4, 活用, 活用形, 基本形, 読み, 発音]) => {
 		if (品詞1 === '名詞') {
-			dictionary.set(hiraganize(読み), 表層形);
+			dictionary.set(hiraganize(読み), {word: 表層形, description: ''});
 		}
-		if (品詞1 === '動詞' && 活用形 !== '基本形') {
-			dictionary.set(hiraganize(読み), 表層形);
+		if (品詞1 === '動詞' && 活用形 === '基本形') {
+			dictionary.set(hiraganize(読み), {word: 表層形, description: ''});
 		}
-		if (品詞1 === '形容詞' && 活用形 !== '基本形') {
-			dictionary.set(hiraganize(読み), 表層形);
+		if (品詞1 === '形容詞' && 活用形 === '基本形') {
+			dictionary.set(hiraganize(読み), {word: 表層形, description: ''});
 		}
 	});
 
 	parser.on('end', () => {
 		console.log(dictionary.size);
-		const writer = fs.createWriteStream('dict/naistdic.tsv');
-		for (const [表層形, 読み] of dictionary.entries()) {
-			writer.write(`${表層形.replace(/\t/g, '')}\t${読み.replace()}\n`)
-		}
+		const reader = fs.createReadStream('dict/entries-all.tsv');
+		const parser = parse({
+			delimiter: '\t',
+			quote: null,
+			skip_lines_with_error: true,
+		});
+
+		parser.on('data', ([word, ruby, description]) => {
+			dictionary.set(hiraganize(ruby), {word, description});
+		})
+
+		parser.on('end', () => {
+			console.log(dictionary.size);
+			const writer = fs.createWriteStream('dict/naistdic.sql');
+			writer.write('CREATE TABLE words (word TEXT, ruby TEXT UNIQUE, description TEXT);\n')
+			writer.write('BEGIN TRANSACTION;\n');
+			for (const [ruby, {word, description}] of dictionary.entries()) {
+				if (ruby.length > 16) {
+					continue;
+				}
+				writer.write(`INSERT INTO words VALUES ('${
+					word.replace(/\t/g, '').replace(/'/g, '\'')
+				}', '${
+					description.replace(/'/g, '\'')
+				}', '${
+					ruby.replace(/'/g, '\'')
+				}');\n`)
+			}
+			writer.write('COMMIT;');
+		});
+
+		reader.pipe(parser);
 	});
 
 	reader.pipe(decoder).pipe(encoder).pipe(parser);
