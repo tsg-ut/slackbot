@@ -285,6 +285,20 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						point: sum(words.map((word) => word.length ** 2)),
 					})).sort((a, b) => b.point - a.point);
 					const appearedWords = new Set(flatten(Object.values(state.users)));
+					const wordList = [];
+					for (const [index, word] of sortBy(state.words.reverse(), (word) => word.length).reverse().entries()) {
+						const entry = appearedWords.has(word) ? `*${word}*` : word;
+						const data = await db.get('SELECT * FROM words WHERE ruby = ?', word);
+						if (index < 10) {
+							if (data.description) {
+								wordList.push(`${entry} (${data.word}): _${data.description}_`);
+							} else {
+								wordList.push(`${entry} (${data.word})`);
+							}
+						} else {
+							wordList.push(`${entry} (${data.word})`);
+						}
+					}
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
 						text: stripIndent`
@@ -299,24 +313,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 							})),
 							{
 								title: `単語一覧 (計${state.words.length}個)`,
-								text: (
-									await Promise.all(
-										sortBy(state.words.reverse(), (word) => word.length)
-										.reverse()
-										.map(async (word, index) => {
-											const entry = appearedWords.has(word) ? `*${word}*` : word;
-											if (index < 10) {
-												const data = await db.get('SELECT * FROM words WHERE ruby = ?', word);
-												if (data.description) {
-													return `${entry} (${data.word}): _${data.description}_`
-												} else {
-													return `${entry} (${data.word})`
-												}
-											}
-											return entry;
-										})
-									)
-								).join('\n'),
+								text: wordList.join('\n'),
 							},
 						],
 					});
