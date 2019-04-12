@@ -219,10 +219,10 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		if (event.user && event.item && event.item.channel.startsWith('C') && event.item_user && state.achievements.has(event.item_user)) {
 			for (const reaction of ['ha', 'wakari', 'koresuki', 'yakuza']) {
 				if (event.reaction === reaction) {
-					const data: any = await slack.channels.history({
+					const data: any = await slack.conversations.history({
 						channel: event.item.channel,
 						latest: event.item.ts,
-						count: 1,
+						limit: 1,
 						inclusive: true,
 					});
 					const reactions = getter(data, ['messages', 0, 'reactions'], []);
