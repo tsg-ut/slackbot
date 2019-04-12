@@ -1,6 +1,7 @@
 import fs from 'fs';
 import {promisify} from 'util';
 import path from 'path';
+import qs from 'querystring';
 import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
 import axios from 'axios';
 import {throttle, groupBy, flatten, get as getter, chunk} from 'lodash';
@@ -219,11 +220,15 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		if (event.user && event.item && event.item.channel.startsWith('C') && event.item_user && state.achievements.has(event.item_user)) {
 			for (const reaction of ['ha', 'wakari', 'koresuki', 'yakuza']) {
 				if (event.reaction === reaction) {
-					const data: any = await slack.conversations.history({
+					const {data}: any = await axios.get(`https://slack.com/api/conversations.history?${qs.stringify({
 						channel: event.item.channel,
 						latest: event.item.ts,
 						limit: 1,
 						inclusive: true,
+					})}`, {
+						headers: {
+							Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
+						},
 					});
 					const reactions = getter(data, ['messages', 0, 'reactions'], []);
 					const targetReaction = reactions.find(({name}: any) => name === reaction);
