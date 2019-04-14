@@ -1,0 +1,18 @@
+linter:
+  eslint:
+    npm_install: true
+    dir:
+      - achievements
+      - channel-notifier
+      - checkin
+      - cubebot
+      - deploy
+      - emoji-notifier
+      - mahjong
+      - prime
+      - scrapbox
+      - shogi
+      - sunrise
+      - tahoiya
+      - tashibot
+      - tiobot
