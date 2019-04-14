@@ -7,7 +7,7 @@ let slack = null;
 
 beforeEach(() => {
 	slack = new Slack();
-	process.env.CHANNEL_RANDOM = slack.fakeChannel;
+	process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 	emojiNotifier(slack);
 });
 
