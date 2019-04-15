@@ -170,8 +170,6 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		}
 	}
 
-	setInterval(updateGist, 10 * 60 * 1000);
-
 	rtm.on('message', async (message) => {
 		if (message.text && message.user && !message.bot_id && !message.subtype && message.channel.startsWith('C')) {
 			const day = moment(parseFloat(message.ts) * 1000).utcOffset(9).format('YYYY-MM-DD');
