@@ -3,7 +3,7 @@ import {promisify} from 'util';
 import path from 'path';
 import assert from 'assert';
 import {WebClient, RTMClient} from '@slack/client';
-import {flatten, sum, sample, random, sortBy} from 'lodash';
+import {flatten, sum, sample, random, sortBy, maxBy, shuffle} from 'lodash';
 // @ts-ignore
 import trie from 'trie-prefix-tree';
 // @ts-ignore
@@ -70,6 +70,9 @@ const getPrefixedWords = (tree: any, letters: string[], prefix: string, bitmask:
 			continue;
 		}
 		const letter = letters[preceding];
+		if (letter === null) {
+			continue;
+		}
 		if (!tree.isPrefix(prefix + letter)) {
 			continue;
 		}
@@ -81,9 +84,12 @@ const getPrefixedWords = (tree: any, letters: string[], prefix: string, bitmask:
 const getWords = (tree: any, letters: string[]) => {
 	const set = new Set<string>();
 	for (const index of letters.keys()) {
-	    const words = getPrefixedWords(tree, letters, '', 0, index);
+		if (letters[index] === null) {
+			continue;
+		}
+		const words = getPrefixedWords(tree, letters, letters[index], 1 << index, index);
 		for (const word of words) {
-		    set.add(word);
+			set.add(word);
 		}
 	}
 	return Array.from(set);
@@ -94,10 +100,10 @@ const generateBoard = (tree: any, seed: string) => {
 	let board = null;
 	while (board === null) {
 		const tempBoard = Array(16).fill(null);
-	    let pointer = random(0, 15);
+		let pointer = random(0, 15);
 		let failed = false;
 		for (const index of Array(seed.length).keys()) {
-		    tempBoard[pointer] = seed[index];
+			tempBoard[pointer] = seed[index];
 			if (index !== seed.length - 1) {
 				const precedings = precedingsList[pointer].filter((cell) => tempBoard[cell] === null);
 				if (precedings.length === 0) {
@@ -116,12 +122,12 @@ const generateBoard = (tree: any, seed: string) => {
 		const [targetCellIndex] = sample([...board.entries()].filter(([, letter]) => letter === null));
 		const prefixes = [];
 		for (const preceding of precedingsList[targetCellIndex]) {
-		    if (board[preceding] === null) {
+			if (board[preceding] === null) {
 				continue;
 			}
 			prefixes.push(board[preceding]);
 			for (const preceding2 of precedingsList[preceding]) {
-			    if (board[preceding2] === null || preceding === preceding2) {
+				if (board[preceding2] === null || preceding === preceding2) {
 					continue;
 				}
 				prefixes.push(board[preceding2] + board[preceding]);
@@ -132,12 +138,49 @@ const generateBoard = (tree: any, seed: string) => {
 		}
 		const counter = new Map(hiraganaLetters.map((letter) => [letter, 0]));
 		for (const prefix of prefixes) {
-		    for (const nextLetter of hiraganaLetters) {
-		        counter.set(nextLetter, counter.get(nextLetter) + tree.countPrefix(prefix + nextLetter));
-		    }
+			for (const nextLetter of hiraganaLetters) {
+				counter.set(nextLetter, counter.get(nextLetter) + tree.countPrefix(prefix + nextLetter));
+			}
 		}
 		const topLetters = sortBy(Array.from(counter.entries()), ([, count]) => count).reverse().slice(0, 3);
 		const [nextLetter] = sample(topLetters);
+		board[targetCellIndex] = nextLetter;
+	}
+
+	return board;
+};
+
+const generateHardBoard = (tree: any, seed: string) => {
+	assert(seed.length <= 12);
+	let board: string[] = null;
+	while (board === null) {
+		const tempBoard: string[] = Array(16).fill(null);
+		let pointer = random(0, 15);
+		let failed = false;
+		for (const index of Array(seed.length).keys()) {
+			tempBoard[pointer] = seed[index];
+			if (index !== seed.length - 1) {
+				const precedings = precedingsList[pointer].filter((cell) => tempBoard[cell] === null);
+				if (precedings.length === 0) {
+					failed = true;
+					break;
+				}
+				pointer = sample(precedings);
+			}
+		}
+		if (!failed) {
+			board = tempBoard;
+		}
+	}
+
+	while (board.some((letter) => letter === null)) {
+		const [targetCellIndex] = sample([...board.entries()].filter(([, letter]) => letter === null));
+		const counter = new Map(hiraganaLetters.map((letter) => {
+			const newBoard = board.slice();
+			newBoard[targetCellIndex] = letter;
+			return [letter, getWords(tree, newBoard).length];
+		}));
+		const [nextLetter] = maxBy(shuffle(Array.from(counter.entries())), ([, count]) => count);
 		board[targetCellIndex] = nextLetter;
 	}
 
@@ -172,12 +215,14 @@ const load = async () => {
 		typeof s === 'string' && 2 <= s.length && s.length <= 16
 	));
 	const seedWords = dictionary.filter((word) => 7 <= word.length && word.length <= 8);
+	const hardSeedWords = dictionary.filter((word) => 9 <= word.length && word.length <= 10);
 	const tree = trie(dictionary);
 	const lightTree = trie(dictionary.filter((word) => word.length <= 5));
+	const hardTree = trie(dictionary.filter((word) => word.length >= 5));
 
 	const db = await sqlite.open(path.join(__dirname, 'dictionary.sqlite3'));
 
-	return loadDeferred.resolve({seedWords, tree, lightTree, db});
+	return loadDeferred.resolve({seedWords, hardSeedWords, tree, lightTree, hardTree, db});
 };
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
@@ -228,18 +273,19 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
-		if (message.text.match(/^wordhero$/i)) {
+		if (message.text.match(/^wordhero$/i) || message.text.match(/^hardhero$/i)) {
 			if (state.isHolding) {
 				return;
 			}
 
-			const {seedWords, tree, lightTree, db} = await load();
+			const isHard = Boolean(message.text.match(/^hardhero$/i));
+			const {seedWords, hardSeedWords, tree, lightTree, hardTree, db} = await load();
 
 			state.isHolding = true;
-			const board = generateBoard(lightTree, sample(seedWords));
-			state.words = getWords(tree, board).filter((word) => word.length >= 3);
+			const board = isHard ? generateHardBoard(hardTree, sample(hardSeedWords)) : generateBoard(lightTree, sample(seedWords));
+			state.words = (isHard ? getWords(hardTree, board) : getWords(tree, board)).filter((word) => word.length >= 3);
 
-			const imageData = await render(board);
+			const imageData = await render(board, {color: isHard ? '#D50000' : 'black'});
 			const cloudinaryData: any = await new Promise((resolve, reject) => {
 				cloudinary.v2.uploader
 					.upload_stream({resource_type: 'image'}, (error: any, response: any) => {
@@ -252,7 +298,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					.end(imageData);
 			});
 
-			const message: any =  await slack.chat.postMessage({
+			const {ts}: any =  await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: '今から30秒後にWordHeroを始めるよ～ 準備はいいかな～?',
 				username: 'wordhero',
@@ -268,10 +314,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				text: stripIndent`
 					この画像から同じ場所を通らずタテ・ヨコ・ナナメにたどって見つけた3文字以上の単語を
 					90秒以内に *スレッドで* 返信してね!
+					${isHard ? ':face_with_symbols_on_mouth: *HARD MODE: 5文字以上限定!*' : ''}
 				`,
 				username: 'wordhero',
 				icon_emoji: ':capital_abcd:',
-				thread_ts: message.ts,
+				thread_ts: ts,
 				reply_broadcast: true,
 				attachments: [{
 					title: 'WordHero',
@@ -279,57 +326,55 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}],
 			});
 
-			state.thread = message.ts;
+			state.thread = ts;
 
 			setTimeout(async () => {
 				state.thread = null;
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: '～～～～～～～～～～おわり～～～～～～～～～～',
-					thread_ts: message.ts,
+					thread_ts: ts,
 					username: 'wordhero',
 					icon_emoji: ':capital_abcd:',
 				});
-				if (Object.keys(state.users).length !== 0) {
-					const ranking = Object.entries(state.users).map(([user, words]) => ({
-						user,
-						words,
-						point: sum(words.map((word) => word.length ** 2)),
-					})).sort((a, b) => b.point - a.point);
-					const appearedWords = new Set(flatten(Object.values(state.users)));
-					const wordList = [];
-					for (const word of sortBy(state.words.reverse(), (word) => word.length).reverse()) {
-						const entry = appearedWords.has(word) ? `*${word}*` : word;
-						const data = await db.get('SELECT * FROM words WHERE ruby = ?', word);
-						if (word.length >= 5) {
-							if (data.description) {
-								wordList.push(`${entry} (${data.word}): _${data.description}_`);
-							} else {
-								wordList.push(`${entry} (${data.word})`);
-							}
+				const ranking = Object.entries(state.users).map(([user, words]) => ({
+					user,
+					words,
+					point: sum(words.map((word) => word.length ** 2)),
+				})).sort((a, b) => b.point - a.point);
+				const appearedWords = new Set(flatten(Object.values(state.users)));
+				const wordList = [];
+				for (const word of sortBy(state.words.reverse(), (word) => word.length).reverse()) {
+					const entry = appearedWords.has(word) ? `*${word}*` : word;
+					const data = await db.get('SELECT * FROM words WHERE ruby = ?', word);
+					if (word.length >= 5) {
+						if (data.description) {
+							wordList.push(`${entry} (${data.word}): _${data.description}_`);
 						} else {
 							wordList.push(`${entry} (${data.word})`);
 						}
+					} else {
+						wordList.push(`${entry} (${data.word})`);
 					}
-					await slack.chat.postMessage({
-						channel: process.env.CHANNEL_SANDBOX,
-						text: stripIndent`
-							結果発表～
-						`,
-						username: 'wordhero',
-						icon_emoji: ':capital_abcd:',
-						attachments: [
-							...ranking.map(({user, words, point}, index) => ({
-								text: `${index + 1}位. <@${user}> ${point}点 (${words.join('、')})`,
-								color: index === 0 ? 'danger' : '#EEEEEE',
-							})),
-							{
-								title: `単語一覧 (計${state.words.length}個)`,
-								text: wordList.join('\n'),
-							},
-						],
-					});
 				}
+				await slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					text: stripIndent`
+						結果発表～
+					`,
+					username: 'wordhero',
+					icon_emoji: ':capital_abcd:',
+					attachments: [
+						...ranking.map(({user, words, point}, index) => ({
+							text: `${index + 1}位. <@${user}> ${point}点 (${words.join('、')})`,
+							color: index === 0 ? 'danger' : '#EEEEEE',
+						})),
+						{
+							title: `単語一覧 (計${state.words.length}個)`,
+							text: wordList.join('\n'),
+						},
+					],
+				});
 				state.isHolding = false;
 				state.users = {};
 			}, 90 * 1000);
