@@ -1135,7 +1135,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 	});
 
-	schedule.scheduleJob('0 22 * * *', () => {
+	schedule.scheduleJob('0 21 * * *', () => {
 		if (state.phase === 'waiting') {
 			startDaily();
 		} else {
