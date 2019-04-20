@@ -174,9 +174,10 @@ const shuffleBoard = async () => {
 };
 
 const isValidBoard = (board) => {
-	const givenPieces = uniq(flatten(board));
+	const givenPieces = flatten(board);
 	const okPieces = flatten(completeBoard);
 	return givenPieces.length === okPieces.length &&
+		givenPieces.length === uniq(givenPieces).length &&
 		givenPieces.filter((piece) => piece === ':void:').length === 1 &&
 		givenPieces.filter((piece) => piece !== ':void:').every((piece) => okPieces.includes(piece));
 };
@@ -262,7 +263,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
-			if ((/([あほくさ_#.]\s*)+/).test(command)) {
+			if ((/^([あほくさ_#.]\s*)+$/).test(command)) {
 				const board = chunk(command.match(/[あほくさ_#.]/g).map((c) => ({
 					あ: ':ahokusa-top-right:',
 					ほ: ':ahokusa-bottom-right:',
