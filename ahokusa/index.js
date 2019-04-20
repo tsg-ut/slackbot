@@ -88,7 +88,7 @@ const move = async (text) => {
 	for (let matchArray, re = /([上下左右])(\d*)/g; (matchArray = re.exec(text));) {
 		const dir = matchArray[1];
 		const amount = parseInt(matchArray[2] || '1');
-		if (!Number.isFinite(amount) || amount === 0) {
+		if (amount === 0 || (amount >= width && amount >= height)) {
 			throw new Error(':ha:');
 		}
 		for (let i = 0; i < amount; i++) {
