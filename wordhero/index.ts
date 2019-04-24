@@ -3,7 +3,7 @@ import {promisify} from 'util';
 import path from 'path';
 import assert from 'assert';
 import {WebClient, RTMClient} from '@slack/client';
-import {flatten, sum, sample, random, sortBy, maxBy, shuffle} from 'lodash';
+import {flatten, sum, sample, random, sortBy, maxBy, sumBy, shuffle} from 'lodash';
 // @ts-ignore
 import trie from 'trie-prefix-tree';
 // @ts-ignore
@@ -178,7 +178,7 @@ const generateHardBoard = (tree: any, seed: string) => {
 		const counter = new Map(hiraganaLetters.map((letter) => {
 			const newBoard = board.slice();
 			newBoard[targetCellIndex] = letter;
-			return [letter, getWords(tree, newBoard).length];
+			return [letter, sumBy(getWords(tree, newBoard), (word) => word.length ** 2)];
 		}));
 		const [nextLetter] = maxBy(shuffle(Array.from(counter.entries())), ([, count]) => count);
 		board[targetCellIndex] = nextLetter;
