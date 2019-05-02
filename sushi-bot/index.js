@@ -123,7 +123,7 @@ module.exports = (clients) => {
             await slack.reactions.add({name: 'sushi', channel, timestamp});
             if (channel.startsWith('C')) {
                 unlock(user, 'get-sushi');
-                if (moment().utcOffset(9).date() === 3) {
+                if (moment().utcOffset(9).day() === 3) {
                     unlock(user, 'wednesday-sushi');
                 }
             }
