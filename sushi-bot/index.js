@@ -142,8 +142,8 @@ module.exports = (clients) => {
         if (rtext.includes("ケーキ")) {
             slack.reactions.add({name: 'cake', channel, timestamp});
         }
-        if (rtext.includes("殺") || rtext.includes("死")|| rtext.includes(":korosuzo:")) {
-            const cnt = count(rtext, '殺') + count(rtext, '死') + count(rtext, ':korosuzo:');
+        if (rtext.includes("殺") || rtext.includes("死")|| rtext.includes(":koroすzo:")) {
+            const cnt = count(rtext, '殺') + count(rtext, '死') + count(rtext, ':koroすzo:');
             if (channel.startsWith('C')) {
                 unlock(user, 'freezing');
             }
