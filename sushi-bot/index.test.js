@@ -28,7 +28,7 @@ it('reacts to "おすし"', () => new Promise((resolve) => {
 	});
 }));
 
-it('reacts to :korosuzo:', () => new Promise((resolve) => {
+it('reacts to ":korosuzo:"', () => new Promise((resolve) => {
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
 		expect(name).toBe('no_good');
 		expect(channel).toBe(slack.fakeChannel);
