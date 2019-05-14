@@ -31,7 +31,6 @@ it('reacts to "おすし"', () => new Promise((resolve) => {
 it('reacts to :korosuzo:', () => new Promise((resolve) => {
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
 		expect(name).toBe('no_good');
-		expect(name).toBe('cookies146');
 		expect(channel).toBe(slack.fakeChannel);
 		expect(timestamp).toBe(slack.fakeTimestamp);
 		resolve();
