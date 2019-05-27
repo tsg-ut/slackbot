@@ -51,6 +51,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		board: null,
 		turn: null,
 		log: [],
+		thread: null,
 	};
 
 	let match = null;
@@ -72,9 +73,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 	};
 
-	const post = async (message) => {
+	const post = async (message, {mode = 'thread'} = {}) => {
 		const imageUrl = await upload(state.board);
-		await slack.chat.postMessage({
+		return slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			text: message,
 			username: 'shogi',
@@ -85,6 +86,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					fallback: state.board.toSFENString(),
 				},
 			],
+			...(mode === 'initial' ? {} : {thread_ts: state.thread}),
+			...(mode === 'broadcast' ? {reply_broadcast: true} : {}),
 		});
 	};
 
@@ -110,6 +113,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			text: message,
 			username: 'shogi',
 			icon_url: iconUrl,
+			thread_ts: state.thread,
+			reply_broadcast: true,
 		});
 
 		if (log.length === state.previousTurns) {
@@ -118,6 +123,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				text: '最短勝利:tada:',
 				username: 'shogi',
 				icon_url: iconUrl,
+				thread_ts: state.thread,
+				reply_broadcast: true,
 			});
 		}
 	};
@@ -286,11 +293,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			state.turn = Color.Black;
 			state.player = message.user;
 
-			await post(`${data.depth - 1}手必勝`);
+			const {ts} = await post(`${data.depth - 1}手必勝\n\n手順をスレッドで打ち込んでください。`, {mode: 'initial'});
+			state.thread = ts;
 			return;
 		}
 
-		if (text === 'もう一回') {
+		if (message.thread_ts && state.thread === message.thread_ts && text === 'もう一回') {
 			if (state.previousBoard === null || state.isLocked) {
 				perdon();
 				return;
@@ -313,7 +321,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if (text === '正着手') {
+		if (message.thread_ts && state.thread === message.thread_ts && text === '正着手') {
 			if (
 				state.board !== null ||
 				state.isLocked ||
@@ -432,6 +440,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if (
+			message.thread_ts && state.thread === message.thread_ts &&
 			(match = text.match(
 				/^([123１２３一二三][123１２３一二三]|同)(歩|歩兵|香|香車|桂|桂馬|銀|銀将|金|金将|飛|飛車|角|角行|王|王将|玉|玉将|と|と金|成香|杏|成桂|圭|成銀|全|龍|竜|龍王|竜王|馬|龍馬|竜馬)(?:([右左直]?)([寄引上]?)(成|不成)?|(打))?$/
 			))
@@ -598,7 +607,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if (['負けました', '投げます', 'ありません', '投了'].includes(text)) {
+		if (message.thread_ts && state.thread === message.thread_ts && ['負けました', '投げます', 'ありません', '投了'].includes(text)) {
 			if (state.board === null || state.turn !== Color.Black) {
 				perdon();
 				return;
@@ -608,7 +617,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if (text === '盤面') {
+		if (message.thread_ts && state.thread === message.thread_ts && text === '盤面') {
 			if (state.board === null || state.turn !== Color.Black) {
 				perdon();
 				return;
