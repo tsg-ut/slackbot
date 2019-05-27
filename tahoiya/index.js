@@ -581,7 +581,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			if (rating >= 10) {
 				await unlock(user, 'tahoiya-over10');
 			}
-			const ratings = state.ratings.get(user).reverse();
+			const ratings = state.ratings.get(user).slice().reverse();
 			if (ratings.length >= 2 && ratings[1].rating - ratings[0].rating >= 10) {
 				await unlock(user, 'tahoiya-down10');
 			}
