@@ -44,6 +44,7 @@ const plugins = [
 	require('./achievements'),
 	require('./mail-hook'),
 	require('./wordhero'),
+	require('./wordhero/crossword'),
 ];
 
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
