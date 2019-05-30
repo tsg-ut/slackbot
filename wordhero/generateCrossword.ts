@@ -129,7 +129,7 @@ export default async () => {
 
 	const db = await sqlite.open(path.join(__dirname, 'crossword.sqlite3'));
 	const descriptions = await Promise.all(words.map((word) => (
-		db.get('SELECT * FROM words WHERE ruby = ?', word)
+		db.get('SELECT * FROM words WHERE ruby = ? ORDER BY RANDOM() LIMIT 1', word)
 	)));
 	return {words, descriptions, board: [
 		letter11, letter12, letter13, letter14,
