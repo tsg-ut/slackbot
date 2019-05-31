@@ -8,7 +8,7 @@ const {hiraganize} = require('japanese');
 
 (async () => {
 	const dictionary = [];
-	const reader = fs.createReadStream('entries.filtered2.scrambled.tsv');
+	const reader = fs.createReadStream('dict/entries.tsv');
 	const parser = parse({
 		delimiter: '\t',
 		quote: null,
@@ -21,15 +21,15 @@ const {hiraganize} = require('japanese');
 
 	parser.on('end', () => {
 		console.log(dictionary.length);
-		const writer = fs.createWriteStream('query.sql');
-		const wordsWriter = fs.createWriteStream('words.txt');
+		const writer = fs.createWriteStream('dict/query.sql');
+		const words = new Set();
 		writer.write('CREATE TABLE words (word TEXT, ruby TEXT, description TEXT);\n')
 		writer.write('BEGIN TRANSACTION;\n');
 		for (const {ruby, word, description} of dictionary) {
 			if (ruby.length !== 4) {
 				continue;
 			}
-			wordsWriter.write(ruby + '\n');
+			words.add(ruby);
 			writer.write(`INSERT INTO words VALUES ('${
 				word.replace(/\t/g, '').replace(/(['])/g, '\'$1')
 			}', '${
@@ -40,6 +40,11 @@ const {hiraganize} = require('japanese');
 		}
 		writer.write('COMMIT;');
 		writer.end();
+		console.log(words.size);
+		const wordsWriter = fs.createWriteStream('crossword.txt');
+		for (const ruby of words) {
+			wordsWriter.write(ruby + '\n');
+		}
 		wordsWriter.end();
 	});
 
