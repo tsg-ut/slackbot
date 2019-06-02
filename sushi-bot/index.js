@@ -102,38 +102,38 @@ module.exports = (clients) => {
             return;
         }
 
-				if (message.channel.startsWith('D')) {
-					const postDM = (text) => (
-						slack.chat.postMessage({
-							channel: message.channel,
-							text,
-							username: 'sushi-bot',
-							// eslint-disable-next-line camelcase
-							icon_emoji: ':sushi:',
-						})
-					);
+        if (message.channel.startsWith('D')) {
+            const postDM = (text) => (
+                slack.chat.postMessage({
+                    channel: message.channel,
+                    text,
+                    username: 'sushi-bot',
+                    // eslint-disable-next-line camelcase
+                    icon_emoji: ':sushi:',
+                })
+            );
 
-					const tokens = text.trim().split(/\s+/);
+            const tokens = text.trim().split(/\s+/);
 
-					if (tokens[0] === '寿司ランキング') {
-						if (tokens[1] === '確認') {
-							const count = sushiCounter.entries().map(([user, count], index) => {
-								return postDM(`あなたのすし数は${count}個、現在の順位は${index + 1}位`);
-							});
-						}
-					}
-				}
+            if (tokens[0] === '寿司ランキング' && tokens[1] === '確認') {
+                let currentRank = 1;
+                for (let entry of entries()) {
+                    if (entry.user !== user) continue;
+                    return postDM(`あなたのすし数は${entry.count}個、現在の順位は${currentRank}位`);
+                    currentRank++;
+                }
+            }
 
-			let rtext = text;
-        rtext = rtext.
-            replace(/鮨/g, 'すし').
-            replace(/(su|zu|ス|ズ|ず|寿|壽)/gi, 'す').
-            replace(/(sh?i|ci|し|シ|司|\u{0328})/giu, 'し');
+            let rtext = text;
+            rtext = rtext.
+                replace(/鮨/g, 'すし').
+                replace(/(su|zu|ス|ズ|ず|寿|壽)/gi, 'す').
+                replace(/(sh?i|ci|し|シ|司|\u{0328})/giu, 'し');
 
-        rtext = rtext.
-            replace(/(ca|(ke|け|ケ)(i|ぃ|い|ｨ|ィ|ｲ|イ|e|ぇ|え|ｪ|ェ|ｴ|エ|-|ー))(ki|ke|き|キ)/gi, 'ケーキ');
+            rtext = rtext.
+                replace(/(ca|(ke|け|ケ)(i|ぃ|い|ｨ|ィ|ｲ|イ|e|ぇ|え|ｪ|ェ|ｴ|エ|-|ー))(ki|ke|き|キ)/gi, 'ケーキ');
 
-        rtext = rtext.
+            rtext = rtext.
             replace(/akouryyy/gi, 'akkoury').
             replace(/akouryy/gi, '').
             replace(/kk/gi, 'k').
