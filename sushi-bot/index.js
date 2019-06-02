@@ -119,7 +119,7 @@ module.exports = (clients) => {
 						if (tokens[1] === '確認') {
 							const count = sushiCounter.entries().map(([user, count], index) => {
 								return postDM(`あなたのすし数は${count}個、現在の順位は${index + 1}位`);
-							};
+							});
 						}
 					}
 				}
