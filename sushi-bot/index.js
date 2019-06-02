@@ -124,11 +124,12 @@ module.exports = (clients) => {
                     currentRank++;
                 }
             }
+
             if (tokens[0] === '凍結ランキング' && tokens[1] === '確認') {
                 let currentRank = 1;
                 for (let entry of suspendCounter.entries()) {
                     if (entry[0] === user) {
-                        return postDM(`あなたの凍結回数は${entry[1]}個、現在の順位は${currentRank}位`);
+                        return postDM(`あなたの凍結回数は${entry[1]}回、現在の順位は${currentRank}位`);
                     }
                     currentRank++;
                 }
