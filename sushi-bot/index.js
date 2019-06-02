@@ -102,6 +102,30 @@ module.exports = (clients) => {
             return;
         }
 
+        if (message.channel.startsWith('D')) {
+            const postDM = (text) => (
+                slack.chat.postMessage({
+                    channel: message.channel,
+                    text,
+                    username: 'sushi-bot',
+                    // eslint-disable-next-line camelcase
+                    icon_emoji: ':sushi:',
+                })
+            );
+
+            const tokens = text.trim().split(/\s+/);
+
+            if (tokens[0] === '寿司ランキング' && tokens[1] === '確認') {
+                let currentRank = 1;
+                for (let entry of sushiCounter.entries()) {
+                    if (entry[0] === user) {
+                        return postDM(`あなたのすし数は${entry[1]}個、現在の順位は${currentRank}位`);
+                    }
+                    currentRank++;
+                }
+            }
+        }
+
         let rtext = text;
         rtext = rtext.
             replace(/鮨/g, 'すし').
