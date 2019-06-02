@@ -117,12 +117,13 @@ module.exports = (clients) => {
 
             if (tokens[0] === '寿司ランキング' && tokens[1] === '確認') {
                 let currentRank = 1;
-                for (let entry of entries()) {
+                for (let entry of sushiCounter.entries()) {
                     if (entry.user !== user) continue;
                     return postDM(`あなたのすし数は${entry.count}個、現在の順位は${currentRank}位`);
                     currentRank++;
                 }
             }
+        }
 
             let rtext = text;
             rtext = rtext.
