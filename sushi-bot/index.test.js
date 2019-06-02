@@ -86,27 +86,40 @@ it('reacts to "\u3059\u0328"', () => new Promise((resolve) => {
 }));
 
 it('reacts to "寿司ランキング 確認"', () => new Promise((resolve) => {
-	slack.on('chat.postMessage', ({as_user, channel, text, timestamp}) => {
-		expect(as_user).toBe('sushi-bot');
-		expect(channel).toBe(slack.fakeChannel);
-		expect(text).toBe('あなたのすし数は1個');
-		expect(text).toBe('現在の順位は');
-		expect(timestamp).toBe(slack.fakeTimestamp);
+	slack.on('chat.postMessage', ({username, channel, text}) => {
+		expect(username).toBe('sushi-bot');
+		expect(channel).toBe("D00000000");
+		expect(text).toContain('あなたのすし数は1個');
+		expect(text).toContain('現在の順位は');
 		resolve();
 	});
 
-	slack.rtmClient.emit('message', {
-		channel: slack.fakeChannel,
-		text: 'sushi',
-		user: slack.fakeUser,
-		ts: slack.fakeTimestamp,
-	});
+	(async () => {
+		const promise = (function(){
+			return new Promise(resolve => {
+				slack.on('reactions.add', ({name, channel}) => {
+					if (name === 'sushi' && channel === 'D00000000') {
+						resolve();
+					}
+				});
+			});
+		})();
 
-	slack.rtmClient.emit('message', {
-		channel: slack.fakeChannel,
-		text: '寿司ランキング 確認',
-		user: slack.fakeUser,
-		ts: slack.fakeTimestamp,
-	});
+		slack.rtmClient.emit('message', {
+			channel: "D00000000",
+			text: 'sushi',
+			user: slack.fakeUser,
+			ts: slack.fakeTimestamp,
+		});
+
+		await promise;
+
+		slack.rtmClient.emit('message', {
+			channel: "D00000000",
+			text: '寿司ランキング 確認',
+			user: slack.fakeUser,
+			ts: slack.fakeTimestamp,
+		});
+	})();
 }));
 
