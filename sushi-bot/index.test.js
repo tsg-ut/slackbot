@@ -121,3 +121,43 @@ it('reacts to "寿司ランキング 確認"', () => new Promise((resolve) => {
 	})();
 }));
 
+it('reacts to "凍結ランキング 確認"', () => new Promise((resolve) => {
+	slack.on('chat.postMessage', ({username, channel, text}) => {
+		expect(username).toBe('sushi-bot');
+		expect(channel).toBe("D00000000");
+		expect(text).toContain('あなたの凍結回数は1回');
+		expect(text).toContain('現在の順位は');
+		resolve();
+	});
+
+	(async () => {
+		const promise = new Promise(resolve => {
+			const table = {no_good: false, cookies146: false};
+			slack.on('reactions.add', ({name, channel, timestamp}) => {
+				if(channel === "D00000000" && timestamp === slack.fakeTimestamp) {
+					table[name] = true;
+				}
+				if(Object.values(table).every(x=>x)) {
+					resolve();
+				}
+			});
+		});
+
+		slack.rtmClient.emit('message', {
+			channel: "D00000000",
+			text: '死',
+			user: slack.fakeUser,
+			ts: slack.fakeTimestamp,
+		});
+
+		await promise;
+
+		slack.rtmClient.emit('message', {
+			channel: "D00000000",
+			text: '凍結ランキング 確認',
+			user: slack.fakeUser,
+			ts: slack.fakeTimestamp,
+		});
+	})();
+}));
+
