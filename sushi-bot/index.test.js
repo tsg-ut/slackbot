@@ -130,27 +130,27 @@ it('reacts to "凍結ランキング 確認"', () => new Promise((resolve) => {
 		resolve();
 	});
 
-	(async () => {
-		const promise = new Promise(resolve => {
-			const table = {no_good: false, cookies146: false};
-			slack.on('reactions.add', ({name, channel, timestamp}) => {
-				if(channel === "D00000000" && timestamp === slack.fakeTimestamp) {
-					table[name] = true;
-				}
-				if(Object.values(table).every(x=>x)) {
-					resolve();
-				}
-			});
-		});
+  (async () => {
+    const promise = new Promise(resolve => {
+      const table = {no_good: false, cookies146: false};
+      slack.on('reactions.add', ({name, channel, timestamp}) => {
+        if(channel === "D00000000" && timestamp === slack.fakeTimestamp) {
+          table[name] = true;
+        }
+        if(Object.values(table).every(x=>x)) {
+          resolve();
+        }
+      });
+    });
 
-		slack.rtmClient.emit('message', {
-			channel: "D00000000",
-			text: '死',
-			user: slack.fakeUser,
-			ts: slack.fakeTimestamp,
-		});
+    slack.rtmClient.emit('message', {
+      channel: "D00000000",
+      text: '死',
+      user: slack.fakeUser,
+      ts: slack.fakeTimestamp,
+    });
 
-		await promise;
+    await promise;
 
     slack.rtmClient.emit('message', {
       channel: "D00000000",
