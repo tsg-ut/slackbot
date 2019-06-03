@@ -1,5 +1,5 @@
 import fs from 'fs';
-import {shuffle} from 'lodash';
+import {shuffle, sample} from 'lodash';
 // @ts-ignore
 import trie from 'trie-prefix-tree';
 import sqlite from 'sqlite';
@@ -138,3 +138,13 @@ export default async () => {
 		letter41, letter42, letter43, letter44,
 	]};
 };
+
+if (process.argv.includes('--bench')) {
+	console.log(wordTrie.getPrefix('すし'));
+	const hiraganas = Array.from(hiraganaLetters);
+	console.time('js-trie');
+	for (const i of Array(100000)) {
+		wordTrie.getPrefix(sample(hiraganas) + sample(hiraganas));
+	}
+	console.timeEnd('js-trie');
+}
