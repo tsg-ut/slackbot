@@ -136,7 +136,7 @@ module.exports = (clients) => {
             }
         }
 
-      let rtext = text;
+        let rtext = text;
         rtext = rtext.
             replace(/鮨/g, 'すし').
             replace(/(su|zu|ス|ズ|ず|寿|壽)/gi, 'す').
@@ -181,13 +181,13 @@ module.exports = (clients) => {
             if (channel.startsWith('C')) {
                 unlock(user, 'freezing');
             }
+            suspendCounter.add(user, cnt);
             await slack.reactions.add({name: 'no_good', channel, timestamp});
             await slack.reactions.add({name: 'cookies146', channel, timestamp});
             if(cnt >= 2) {
                 await slack.reactions.add({name: 'x', channel, timestamp});
                 await slack.reactions.add({name: numToEmoji(cnt), channel, timestamp});
             }
-            suspendCounter.add(user, cnt);
         }
         if (rtext.includes("akouryy")) {
             slack.reactions.add({name: 'no_good', channel, timestamp});

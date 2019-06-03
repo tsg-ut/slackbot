@@ -132,8 +132,12 @@ it('reacts to "凍結ランキング 確認"', () => new Promise((resolve) => {
 
 	(async () => {
 		const promise = new Promise(resolve => {
-			slack.on('reactions.add', ({name, channel}) => {
-				if (name === 'no_good' && channel === 'D00000000') {
+			const table = {no_good: false, cookies146: false};
+			slack.on('reactions.add', ({name, channel, timestamp}) => {
+				if(channel === "D00000000" && timestamp === slack.fakeTimestamp) {
+					table[name] = true;
+				}
+				if(Object.values(table).every(x=>x)) {
 					resolve();
 				}
 			});
@@ -148,12 +152,12 @@ it('reacts to "凍結ランキング 確認"', () => new Promise((resolve) => {
 
 		await promise;
 
-		slack.rtmClient.emit('message', {
-			channel: "D00000000",
-			text: '凍結ランキング 確認',
-			user: slack.fakeUser,
-			ts: slack.fakeTimestamp,
-		});
-	})();
+    slack.rtmClient.emit('message', {
+      channel: "D00000000",
+      text: '凍結ランキング 確認',
+      user: slack.fakeUser,
+      ts: slack.fakeTimestamp,
+    });
+  })();
 }));
 
