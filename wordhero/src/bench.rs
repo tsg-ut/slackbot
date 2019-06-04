@@ -1,7 +1,6 @@
 use std::{io, fs};
 use std::io::BufRead;
 use std::time::Instant;
-use std::iter::FromIterator;
 use trie_rs::TrieBuilder;
 use panoradix::RadixSet;
 use fst::{IntoStreamer, Streamer, Set};
@@ -119,6 +118,7 @@ fn main() {
         }
         words.sort();
         let set = Set::from_iter(words).unwrap();
+
         let start = Instant::now();
         for _i in 0..10_000 {
             let mut stream = set.range().ge([24, 22]).lt([24, 23]).into_stream();
@@ -126,5 +126,12 @@ fn main() {
         }
         let end = start.elapsed();
         println!("fst (indices, range): {}.{:03}s", end.as_secs(), end.subsec_nanos() / 1_000_000);
+
+        let start = Instant::now();
+        for _i in 0..10_000 {
+            set.range().ge([24]).lt([25]).into_stream().into_strs().unwrap().len();
+        }
+        let end = start.elapsed();
+        println!("fst (indices, range, count): {}.{:03}s", end.as_secs(), end.subsec_nanos() / 1_000_000);
     }
 }
