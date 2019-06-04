@@ -23,10 +23,21 @@ lazy_static! {
     };
 }
 
+#[derive(PartialEq)]
+enum Direction {
+    Horizontal,
+    Diagonal,
+    Vertical,
+}
+
+struct Constraint {
+    direction: Direction,
+    cells: Vec<usize>,
+}
+
 struct Context {
-    constraints: Vec<Vec<usize>>,
+    constraints: Vec<Constraint>,
     set: Set,
-    one_gram_counter: HashMap<[u8; 1], usize>,
     two_gram_counter: HashMap<[u8; 2], usize>,
 }
 
@@ -63,46 +74,144 @@ fn count_prefix(set: &Set, prefix: Vec<u8>) -> usize {
 }
 
 fn get_board(context: &Context, board: [u8; 16]) -> Option<[u8; 16]> {
-    let mut new_values: Vec<u8> = (1..(HIRAGANAS.len() as u8 + 1)).collect();
-    let mut rng = thread_rng();
-    new_values.shuffle(&mut rng);
     if board.iter().all(|&c| c != 0) {
         return Some(board);
     }
 
-    let index = board.iter().enumerate().min_by_key(|(i, &c)| {
-        if c != 0 {
-            return std::u8::MAX;
-        }
-        let x = *i as u8 % 4;
-        let y = *i as u8 / 4;
-        return x + y;
-    }).unwrap().0;
+    let mut rng = thread_rng();
 
-    'values: for new_value in new_values {
-        if is_non_initial(new_value) {
+    // Strategy 1: if the board is empty, put random character into upperleft cell
+    if board.iter().all(|&c| c == 0) {
+        let mut new_values: Vec<u8> = (1..(HIRAGANAS.len() as u8 + 1)).collect();
+        new_values.shuffle(&mut rng);
+        'values: for new_value in new_values {
+            if is_non_initial(new_value) {
+                continue;
+            }
+
+            let mut cloned_board = board.clone();
+            cloned_board[0] = new_value;
+
+            // no need to check constraints
+
+            let result = get_board(context, cloned_board);
+            if let Some(board) = result {
+                return Some(board);
+            }
+        }
+
+        return None;
+    }
+
+    let vertical_constraints = context.constraints.iter().filter(|&c| c.direction == Direction::Vertical);
+    let vertical_prefixes = vertical_constraints.map(|c| {
+        (c.cells.iter().map(|&c| board[c]).take_while(|&c| c != 0).collect::<Vec<u8>>(), c)
+    });
+
+    let horizontal_constraints = context.constraints.iter().filter(|&c| c.direction == Direction::Horizontal);
+    let horizontal_prefixes = horizontal_constraints.map(|c| {
+        (c.cells.iter().map(|&c| board[c]).take_while(|&c| c != 0).collect::<Vec<u8>>(), c)
+    });
+
+    for (index, (vertical_constraint, horizontal_constraint)) in vertical_prefixes.zip(horizontal_prefixes).enumerate() {
+        let constraints = vec![vertical_constraint, horizontal_constraint];
+        let (prefix, constraint) = constraints.iter().min_by_key(|(c, _)| c.len()).unwrap();
+
+        if prefix.len() == 4 {
             continue;
         }
 
-        let mut cloned_board = board.clone();
-        cloned_board[index] = new_value;
+        if index == 0 && prefix.len() == 1 {
+            let mut new_values: Vec<u8> = (1..(HIRAGANAS.len() as u8 + 1)).collect();
+            new_values.shuffle(&mut rng);
+            for new_value in new_values {
+                if is_non_initial(new_value) {
+                    continue;
+                }
 
-        // check if constraints are met
-        for constraint in context.constraints.iter() {
-            let prefix: Vec<u8> = constraint.iter().map(|&c| board[c]).take_while(|&c| c != 0).collect();
-            if prefix.len() == 0 {
-                continue;
+                if let Some(&count) = context.two_gram_counter.get(&[prefix[0], new_value]) {
+                    if count < 1 {
+                        continue;
+                    }
+                }
+
+                let mut cloned_board = board.clone();
+                cloned_board[constraint.cells[1]] = new_value;
+
+                // no need to check constraints
+
+                let result = get_board(context, cloned_board);
+                if let Some(board) = result {
+                    return Some(board);
+                }
             }
-            if !has_prefix(&context.set, prefix) {
-                continue 'values;
+            break;
+        }
+
+        if index == 0 && prefix.len() == 2 && board[5] == 0 { // fmm...
+            continue;
+        }
+
+        if index == 1 && prefix.len() == 1 {
+            let mut new_values: Vec<u8> = (1..(HIRAGANAS.len() as u8 + 1)).collect();
+            new_values.shuffle(&mut rng);
+            'second_values: for new_value in new_values {
+                let mut cloned_board = board.clone();
+                cloned_board[constraint.cells[1]] = new_value;
+
+                // check if constraints are met
+                for constraint in context.constraints.iter() {
+                    let prefix: Vec<u8> = constraint.cells.iter().map(|&c| cloned_board[c]).take_while(|&c| c != 0).collect();
+                    if prefix.len() == 0 {
+                        continue;
+                    }
+                    if !has_prefix(&context.set, prefix) {
+                        continue 'second_values;
+                    }
+                }
+
+                let result = get_board(context, cloned_board);
+                if let Some(board) = result {
+                    return Some(board);
+                }
+            }
+            break;
+        }
+
+        let mut words = get_prefix(&context.set, prefix.to_vec());
+        words.shuffle(&mut rng);
+        'words: for word in words {
+            if index == 0 {
+                if word.iter().any(|&c| is_non_initial(c)) {
+                    continue;
+                }
+            }
+
+            let mut cloned_board = board.clone();
+            for (&cell, &letter) in constraint.cells.iter().zip(word.iter()) {
+                cloned_board[cell] = letter;
+            }
+
+            // check if constraints are met
+            for constraint in context.constraints.iter() {
+                let prefix: Vec<u8> = constraint.cells.iter().map(|&c| cloned_board[c]).take_while(|&c| c != 0).collect();
+                if prefix.len() == 0 {
+                    continue;
+                }
+                if !has_prefix(&context.set, prefix) {
+                    continue 'words;
+                }
+            }
+
+            let result = get_board(context, cloned_board);
+            if let Some(board) = result {
+                return Some(board);
             }
         }
 
-        let result = get_board(context, cloned_board);
-        if let Some(board) = result {
-            return Some(board);
-        }
+        break;
     }
+
     None
 }
 
@@ -126,36 +235,37 @@ fn main() -> Result<(), Box<dyn Error>> {
     words.sort();
     let set = Set::from_iter(words)?;
 
-    let mut one_gram_counter: HashMap<[u8; 1], usize> = HashMap::new();
     let mut two_gram_counter: HashMap<[u8; 2], usize> = HashMap::new();
 
     for i in 0..HIRAGANAS.len() {
-        one_gram_counter.insert([i as u8], count_prefix(&set, vec![i as u8]));
         for j in 0..HIRAGANAS.len() {
             two_gram_counter.insert([i as u8, j as u8], count_prefix(&set, vec![i as u8, j as u8]));
         }
     }
 
-    let constraints: Vec<Vec<usize>> = vec![
-        vec![0, 1, 2, 3],
-        vec![4, 5, 6, 7],
-        vec![8, 9, 10, 11],
-        vec![12, 13, 14, 15],
-        vec![0, 5, 10, 15],
-        vec![3, 7, 11, 15],
-        vec![2, 6, 10, 14],
-        vec![1, 5, 9, 13],
-        vec![0, 4, 8, 12],
+    let constraints: Vec<Constraint> = vec![
+        Constraint {cells: vec![0, 1, 2, 3], direction: Direction::Horizontal},
+        Constraint {cells: vec![4, 5, 6, 7], direction: Direction::Horizontal},
+        Constraint {cells: vec![8, 9, 10, 11], direction: Direction::Horizontal},
+        Constraint {cells: vec![12, 13, 14, 15], direction: Direction::Horizontal},
+        Constraint {cells: vec![0, 5, 10, 15], direction: Direction::Diagonal},
+        Constraint {cells: vec![0, 4, 8, 12], direction: Direction::Vertical},
+        Constraint {cells: vec![1, 5, 9, 13], direction: Direction::Vertical},
+        Constraint {cells: vec![2, 6, 10, 14], direction: Direction::Vertical},
+        Constraint {cells: vec![3, 7, 11, 15], direction: Direction::Vertical},
     ];
 
-    let board = get_board(&Context {
+    let context = Context {
         set: set,
         constraints: constraints,
-        one_gram_counter: one_gram_counter,
         two_gram_counter: two_gram_counter,
-    }, [0; 16]);
-    if let Some(board) = board {
-        println!("{:?}", bytes_to_string(board.to_vec()));
+    };
+
+    for _i in 0..100 {
+        let board = get_board(&context, [0; 16]);
+        if let Some(board) = board {
+            println!("{}", bytes_to_string(board.to_vec()));
+        }
     }
 
     Ok(())

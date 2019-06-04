@@ -109,7 +109,7 @@ const getBoard = () => {
 	}
 };
 
-export default async () => {
+const generate = async () => {
 	const {
 		letter11, letter12, letter13, letter14,
 		letter21, letter22, letter23, letter24,
@@ -148,3 +148,14 @@ if (process.argv.includes('--bench')) {
 	}
 	console.timeEnd('js-trie');
 }
+
+if (process.argv.includes('--bench-generate')) {
+	(async () => {
+		for (const i of Array(100)) {
+			const {board} = await generate();
+			console.log(board.join(''));
+		}
+	})();
+}
+
+export default generate;
