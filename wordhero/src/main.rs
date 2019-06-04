@@ -8,7 +8,11 @@ use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use fst::{IntoStreamer, Streamer, Set};
 use rand::thread_rng;
+use rand::Rng;
 use rand::seq::SliceRandom;
+use serde_derive::{Deserialize};
+use serde_json;
+use serde_repr::Deserialize_repr;
 
 const HIRAGANAS: [char; 81] = ['ぁ', 'あ', 'ぃ', 'い', 'ぅ', 'う', 'ぇ', 'え', 'ぉ', 'お', 'か', 'が', 'き', 'ぎ', 'く', 'ぐ', 'け', 'げ', 'こ', 'ご', 'さ', 'ざ', 'し', 'じ', 'す', 'ず', 'せ', 'ぜ', 'そ', 'ぞ', 'た', 'だ', 'ち', 'ぢ', 'っ', 'つ', 'づ', 'て', 'で', 'と', 'ど', 'な', 'に', 'ぬ', 'ね', 'の', 'は', 'ば', 'ぱ', 'ひ', 'び', 'ぴ', 'ふ', 'ぶ', 'ぷ', 'へ', 'べ', 'ぺ', 'ほ', 'ぼ', 'ぽ', 'ま', 'み', 'む', 'め', 'も', 'ゃ', 'や', 'ゅ', 'ゆ', 'ょ', 'よ', 'ら', 'り', 'る', 'れ', 'ろ', 'わ', 'を', 'ん', 'ー'];
 lazy_static! {
@@ -23,23 +27,25 @@ lazy_static! {
     };
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Deserialize_repr, Debug, Clone)]
+#[repr(u8)]
 enum Direction {
-    Horizontal,
-    Diagonal,
-    Vertical,
+    Horizontal = 0,
+    Diagonal = 1,
+    Vertical = 2,
 }
 
+#[derive(Deserialize, Debug, Clone)]
 struct Constraint {
     direction: Direction,
     cells: Vec<usize>,
 }
 
-struct Context {
+struct Context<'a> {
     constraints: Vec<Constraint>,
-    sets: Vec<Set>,
+    sets: &'a Vec<Set>,
     cells: HashSet<usize>,
-    two_gram_counters: Vec<HashMap<[u8; 2], usize>>,
+    two_gram_counters: &'a Vec<HashMap<[u8; 2], usize>>,
 }
 
 fn is_non_initial(c: u8) -> bool {
@@ -101,6 +107,7 @@ fn get_board(context: &Context, board: [u8; 36]) -> Option<[u8; 36]> {
         if let Some(horizontal_constraint) = horizontal_prefix {
             constraints.push(horizontal_constraint);
         }
+
         let (prefix, constraint) = constraints.iter().min_by_key(|(c, _)| c.len()).unwrap();
 
         if prefix.len() == constraint.cells.len() {
@@ -116,7 +123,7 @@ fn get_board(context: &Context, board: [u8; 36]) -> Option<[u8; 36]> {
                 }
 
                 let mut cloned_board = board.clone();
-                cloned_board[0] = new_value;
+                cloned_board[constraint.cells[0]] = new_value;
 
                 // no need to check constraints
 
@@ -226,6 +233,8 @@ fn get_board(context: &Context, board: [u8; 36]) -> Option<[u8; 36]> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let board_configs: Vec<Vec<Constraint>> = serde_json::from_str(include_str!("../boards.json"))?;
+
     let f = fs::File::open("crossword.txt")?;
     let file = io::BufReader::new(f);
 
@@ -262,46 +271,29 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    /*
-    let constraints: Vec<Constraint> = vec![
-        Constraint {cells: vec![0, 1, 2, 3], direction: Direction::Horizontal},
-        Constraint {cells: vec![4, 5, 6, 7], direction: Direction::Horizontal},
-        Constraint {cells: vec![8, 9, 10, 11], direction: Direction::Horizontal},
-        Constraint {cells: vec![12, 13, 14, 15], direction: Direction::Horizontal},
-        Constraint {cells: vec![0, 5, 10, 15], direction: Direction::Diagonal},
-        Constraint {cells: vec![0, 4, 8, 12], direction: Direction::Vertical},
-        Constraint {cells: vec![1, 5, 9, 13], direction: Direction::Vertical},
-        Constraint {cells: vec![2, 6, 10, 14], direction: Direction::Vertical},
-        Constraint {cells: vec![3, 7, 11, 15], direction: Direction::Vertical},
-    ];
-    */
-
-    let constraints: Vec<Constraint> = vec![
-        Constraint {cells: vec![0, 1, 2], direction: Direction::Horizontal},
-        Constraint {cells: vec![4, 5, 6], direction: Direction::Horizontal},
-        Constraint {cells: vec![8, 9, 10, 11], direction: Direction::Horizontal},
-        Constraint {cells: vec![12, 13, 14, 15], direction: Direction::Horizontal},
-        Constraint {cells: vec![17, 18, 19], direction: Direction::Horizontal},
-        Constraint {cells: vec![21, 22, 23], direction: Direction::Horizontal},
-        Constraint {cells: vec![0, 4, 8, 12], direction: Direction::Vertical},
-        Constraint {cells: vec![1, 5, 9, 13, 17, 21], direction: Direction::Vertical},
-        Constraint {cells: vec![2, 6, 10, 14, 18, 22], direction: Direction::Vertical},
-        Constraint {cells: vec![11, 15, 19, 23], direction: Direction::Vertical},
-    ];
-
-    let cells: HashSet<usize> = constraints.iter().map(|c| c.cells.clone()).flatten().collect();
-
-    let context = Context {
-        sets: sets,
-        constraints: constraints,
-        two_gram_counters: two_gram_counters,
-        cells: cells,
-    };
+    let mut rng = thread_rng();
 
     for _i in 0..100 {
+        let config_index = rng.gen_range(0, board_configs.len());
+        let constraints = &board_configs[config_index];
+        let cells: HashSet<usize> = constraints.iter().map(|c| c.cells.clone()).flatten().collect();
+        let context = Context {
+            sets: &sets,
+            constraints: constraints.to_vec(),
+            two_gram_counters: &two_gram_counters,
+            cells: cells,
+        };
+
         let board = get_board(&context, [0; 36]);
         if let Some(board) = board {
-            println!("{}", bytes_to_string(board.to_vec()));
+            let board_text: String = bytes_to_string(board.to_vec());
+            println!("{},{}", config_index, board_text);
+            /*
+            for j in 0..6 {
+                println!("{}", &board_text[6 * 3 * j..6 * 3 * (j + 1)]);
+            }
+            println!("");
+            */
         }
     }
 
