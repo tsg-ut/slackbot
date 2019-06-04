@@ -4,7 +4,7 @@ extern crate lazy_static;
 use std::{io, fs};
 use std::io::BufRead;
 use std::iter::FromIterator;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use fst::{IntoStreamer, Streamer, Set};
 use rand::thread_rng;
@@ -37,8 +37,9 @@ struct Constraint {
 
 struct Context {
     constraints: Vec<Constraint>,
-    set: Set,
-    two_gram_counter: HashMap<[u8; 2], usize>,
+    sets: Vec<Set>,
+    cells: HashSet<usize>,
+    two_gram_counters: Vec<HashMap<[u8; 2], usize>>,
 }
 
 fn is_non_initial(c: u8) -> bool {
@@ -73,35 +74,12 @@ fn count_prefix(set: &Set, prefix: Vec<u8>) -> usize {
     set.range().ge(prefix).lt(prefix_stop).into_stream().into_bytes().len()
 }
 
-fn get_board(context: &Context, board: [u8; 16]) -> Option<[u8; 16]> {
-    if board.iter().all(|&c| c != 0) {
+fn get_board(context: &Context, board: [u8; 36]) -> Option<[u8; 36]> {
+    if context.cells.iter().all(|&c| board[c] != 0) {
         return Some(board);
     }
 
     let mut rng = thread_rng();
-
-    // Strategy 1: if the board is empty, put random character into upperleft cell
-    if board.iter().all(|&c| c == 0) {
-        let mut new_values: Vec<u8> = (1..(HIRAGANAS.len() as u8 + 1)).collect();
-        new_values.shuffle(&mut rng);
-        'values: for new_value in new_values {
-            if is_non_initial(new_value) {
-                continue;
-            }
-
-            let mut cloned_board = board.clone();
-            cloned_board[0] = new_value;
-
-            // no need to check constraints
-
-            let result = get_board(context, cloned_board);
-            if let Some(board) = result {
-                return Some(board);
-            }
-        }
-
-        return None;
-    }
 
     let vertical_constraints = context.constraints.iter().filter(|&c| c.direction == Direction::Vertical);
     let vertical_prefixes = vertical_constraints.map(|c| {
@@ -117,8 +95,30 @@ fn get_board(context: &Context, board: [u8; 16]) -> Option<[u8; 16]> {
         let constraints = vec![vertical_constraint, horizontal_constraint];
         let (prefix, constraint) = constraints.iter().min_by_key(|(c, _)| c.len()).unwrap();
 
-        if prefix.len() == 4 {
+        if prefix.len() == constraint.cells.len() {
             continue;
+        }
+
+        if index == 0 && prefix.len() == 0 {
+            let mut new_values: Vec<u8> = (1..(HIRAGANAS.len() as u8 + 1)).collect();
+            new_values.shuffle(&mut rng);
+            'values: for new_value in new_values {
+                if is_non_initial(new_value) {
+                    continue;
+                }
+
+                let mut cloned_board = board.clone();
+                cloned_board[0] = new_value;
+
+                // no need to check constraints
+
+                let result = get_board(context, cloned_board);
+                if let Some(board) = result {
+                    return Some(board);
+                }
+            }
+
+            return None;
         }
 
         if index == 0 && prefix.len() == 1 {
@@ -129,7 +129,7 @@ fn get_board(context: &Context, board: [u8; 16]) -> Option<[u8; 16]> {
                     continue;
                 }
 
-                if let Some(&count) = context.two_gram_counter.get(&[prefix[0], new_value]) {
+                if let Some(&count) = context.two_gram_counters[constraint.cells.len() - 3].get(&[prefix[0], new_value]) {
                     if count < 1 {
                         continue;
                     }
@@ -148,10 +148,6 @@ fn get_board(context: &Context, board: [u8; 16]) -> Option<[u8; 16]> {
             break;
         }
 
-        if index == 0 && prefix.len() == 2 && board[5] == 0 { // fmm...
-            continue;
-        }
-
         if index == 1 && prefix.len() == 1 {
             let mut new_values: Vec<u8> = (1..(HIRAGANAS.len() as u8 + 1)).collect();
             new_values.shuffle(&mut rng);
@@ -165,7 +161,7 @@ fn get_board(context: &Context, board: [u8; 16]) -> Option<[u8; 16]> {
                     if prefix.len() == 0 {
                         continue;
                     }
-                    if !has_prefix(&context.set, prefix) {
+                    if !has_prefix(&context.sets[constraint.cells.len() - 3], prefix) {
                         continue 'second_values;
                     }
                 }
@@ -178,7 +174,7 @@ fn get_board(context: &Context, board: [u8; 16]) -> Option<[u8; 16]> {
             break;
         }
 
-        let mut words = get_prefix(&context.set, prefix.to_vec());
+        let mut words = get_prefix(&context.sets[constraint.cells.len() - 3], prefix.to_vec());
         words.shuffle(&mut rng);
         'words: for word in words {
             if index == 0 {
@@ -198,7 +194,7 @@ fn get_board(context: &Context, board: [u8; 16]) -> Option<[u8; 16]> {
                 if prefix.len() == 0 {
                     continue;
                 }
-                if !has_prefix(&context.set, prefix) {
+                if !has_prefix(&context.sets[constraint.cells.len() - 3], prefix) {
                     continue 'words;
                 }
             }
@@ -219,7 +215,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let f = fs::File::open("crossword.txt")?;
     let file = io::BufReader::new(f);
 
-    let mut words: Vec<Vec<u8>> = Vec::new();
+    let mut word_lists: [Vec<Vec<u8>>; 4] = [Vec::new(), Vec::new(), Vec::new(), Vec::new()];
     'lines: for line in file.lines() {
         let word = line?;
         let mut indices: Vec<u8> = Vec::new();
@@ -229,20 +225,30 @@ fn main() -> Result<(), Box<dyn Error>> {
                 None => continue 'lines,
             }
         }
-        words.push(indices);
+        word_lists[indices.len() - 3].push(indices);
     }
 
-    words.sort();
-    let set = Set::from_iter(words)?;
+    let sets = word_lists.iter_mut().map(|word_list| {
+        word_list.sort();
+        Set::from_iter(word_list).unwrap()
+    }).collect::<Vec<Set>>();
 
-    let mut two_gram_counter: HashMap<[u8; 2], usize> = HashMap::new();
+    let mut two_gram_counters = vec![
+        HashMap::new(),
+        HashMap::new(),
+        HashMap::new(),
+        HashMap::new(),
+    ];
 
     for i in 0..HIRAGANAS.len() {
         for j in 0..HIRAGANAS.len() {
-            two_gram_counter.insert([i as u8, j as u8], count_prefix(&set, vec![i as u8, j as u8]));
+            for (two_gram_counter, set) in two_gram_counters.iter_mut().zip(sets.iter()) {
+                two_gram_counter.insert([i as u8, j as u8], count_prefix(&set, vec![i as u8, j as u8]));
+            }
         }
     }
 
+    /*
     let constraints: Vec<Constraint> = vec![
         Constraint {cells: vec![0, 1, 2, 3], direction: Direction::Horizontal},
         Constraint {cells: vec![4, 5, 6, 7], direction: Direction::Horizontal},
@@ -254,15 +260,32 @@ fn main() -> Result<(), Box<dyn Error>> {
         Constraint {cells: vec![2, 6, 10, 14], direction: Direction::Vertical},
         Constraint {cells: vec![3, 7, 11, 15], direction: Direction::Vertical},
     ];
+    */
+
+    let constraints: Vec<Constraint> = vec![
+        Constraint {cells: vec![0, 1, 2], direction: Direction::Horizontal},
+        Constraint {cells: vec![4, 5, 6], direction: Direction::Horizontal},
+        Constraint {cells: vec![8, 9, 10, 11], direction: Direction::Horizontal},
+        Constraint {cells: vec![12, 13, 14, 15], direction: Direction::Horizontal},
+        Constraint {cells: vec![17, 18, 19], direction: Direction::Horizontal},
+        Constraint {cells: vec![21, 22, 23], direction: Direction::Horizontal},
+        Constraint {cells: vec![0, 4, 8, 12], direction: Direction::Vertical},
+        Constraint {cells: vec![1, 5, 9, 13, 17, 21], direction: Direction::Vertical},
+        Constraint {cells: vec![2, 6, 10, 14, 18, 22], direction: Direction::Vertical},
+        Constraint {cells: vec![11, 15, 19, 23], direction: Direction::Vertical},
+    ];
+
+    let cells: HashSet<usize> = constraints.iter().map(|c| c.cells.clone()).flatten().collect();
 
     let context = Context {
-        set: set,
+        sets: sets,
         constraints: constraints,
-        two_gram_counter: two_gram_counter,
+        two_gram_counters: two_gram_counters,
+        cells: cells,
     };
 
     for _i in 0..100 {
-        let board = get_board(&context, [0; 16]);
+        let board = get_board(&context, [0; 36]);
         if let Some(board) = board {
             println!("{}", bytes_to_string(board.to_vec()));
         }
