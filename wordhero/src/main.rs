@@ -66,12 +66,19 @@ fn get_board(context: &Context, board: [u8; 16]) -> Option<[u8; 16]> {
     let mut new_values: Vec<u8> = (1..(HIRAGANAS.len() as u8 + 1)).collect();
     let mut rng = thread_rng();
     new_values.shuffle(&mut rng);
-    let index = match board.iter().position(|&c| c == 0) {
-        Some(i) => i,
-        None => {
-            return Some(board);
-        },
-    };
+    if board.iter().all(|&c| c != 0) {
+        return Some(board);
+    }
+
+    let index = board.iter().enumerate().min_by_key(|(i, &c)| {
+        if c != 0 {
+            return std::u8::MAX;
+        }
+        let x = *i as u8 % 4;
+        let y = *i as u8 / 4;
+        return x + y;
+    }).unwrap().0;
+
     'values: for new_value in new_values {
         if is_non_initial(new_value) {
             continue;
