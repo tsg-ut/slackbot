@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 use std::{io, fs};
 use std::io::BufRead;
 use std::iter::FromIterator;
@@ -7,6 +10,19 @@ use fst::{IntoStreamer, Streamer, Set};
 use rand::thread_rng;
 use rand::seq::SliceRandom;
 
+const HIRAGANAS: [char; 81] = ['ぁ', 'あ', 'ぃ', 'い', 'ぅ', 'う', 'ぇ', 'え', 'ぉ', 'お', 'か', 'が', 'き', 'ぎ', 'く', 'ぐ', 'け', 'げ', 'こ', 'ご', 'さ', 'ざ', 'し', 'じ', 'す', 'ず', 'せ', 'ぜ', 'そ', 'ぞ', 'た', 'だ', 'ち', 'ぢ', 'っ', 'つ', 'づ', 'て', 'で', 'と', 'ど', 'な', 'に', 'ぬ', 'ね', 'の', 'は', 'ば', 'ぱ', 'ひ', 'び', 'ぴ', 'ふ', 'ぶ', 'ぷ', 'へ', 'べ', 'ぺ', 'ほ', 'ぼ', 'ぽ', 'ま', 'み', 'む', 'め', 'も', 'ゃ', 'や', 'ゅ', 'ゆ', 'ょ', 'よ', 'ら', 'り', 'る', 'れ', 'ろ', 'わ', 'を', 'ん', 'ー'];
+lazy_static! {
+    static ref NON_INITIALS: Vec<u8> = {
+        (0..HIRAGANAS.len()).filter_map(|index| {
+            if "ぁぃぅぇぉっゃゅょぢづーをん".contains(HIRAGANAS[index]) {
+                Some(index as u8 + 1)
+            } else {
+                None
+            }
+        }).collect()
+    };
+}
+
 struct Context {
     constraints: Vec<Vec<usize>>,
     set: Set,
@@ -14,9 +30,18 @@ struct Context {
     two_gram_counter: HashMap<[u8; 2], usize>,
 }
 
+fn is_non_initial(c: u8) -> bool {
+    (*NON_INITIALS).contains(&c)
+}
+
 fn bytes_to_string(bytes: Vec<u8>) -> String {
-    let hiraganas: Vec<char> = "ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろわをんー".chars().collect();
-    String::from_iter(bytes.iter().map(|&i| hiraganas[(i - 1) as usize]))
+    String::from_iter(bytes.iter().map(|&i| {
+        if i == 0 {
+            '　'
+        } else {
+            HIRAGANAS[(i - 1) as usize]
+        }
+    }))
 }
 
 fn has_prefix(set: &Set, prefix: Vec<u8>) -> bool {
@@ -37,21 +62,44 @@ fn count_prefix(set: &Set, prefix: Vec<u8>) -> usize {
     set.range().ge(prefix).lt(prefix_stop).into_stream().into_bytes().len()
 }
 
-fn get_board(context: &Context, board: &mut [u8; 16], index: usize) -> Option<[u8; 16]> {
-    let mut vec: Vec<u8> = (1..83).collect();
+fn get_board(context: &Context, board: [u8; 16]) -> Option<[u8; 16]> {
+    let mut new_values: Vec<u8> = (1..(HIRAGANAS.len() as u8 + 1)).collect();
     let mut rng = thread_rng();
-    vec.shuffle(&mut rng);
-    board[index] = vec[0];
-    if index == 15 {
-        Some(*board)
-    } else {
-        get_board(context, board, index + 1)
+    new_values.shuffle(&mut rng);
+    let index = match board.iter().position(|&c| c == 0) {
+        Some(i) => i,
+        None => {
+            return Some(board);
+        },
+    };
+    'values: for new_value in new_values {
+        if is_non_initial(new_value) {
+            continue;
+        }
+
+        let mut cloned_board = board.clone();
+        cloned_board[index] = new_value;
+
+        // check if constraints are met
+        for constraint in context.constraints.iter() {
+            let prefix: Vec<u8> = constraint.iter().map(|&c| board[c]).take_while(|&c| c != 0).collect();
+            if prefix.len() == 0 {
+                continue;
+            }
+            if !has_prefix(&context.set, prefix) {
+                continue 'values;
+            }
+        }
+
+        let result = get_board(context, cloned_board);
+        if let Some(board) = result {
+            return Some(board);
+        }
     }
+    None
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let hiraganas: Vec<char> = "ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろわをんー".chars().collect();
-
     let f = fs::File::open("crossword.txt")?;
     let file = io::BufReader::new(f);
 
@@ -60,7 +108,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let word = line?;
         let mut indices: Vec<u8> = Vec::new();
         for char in word.chars() {
-            match hiraganas.iter().position(|&c| c == char) {
+            match HIRAGANAS.iter().position(|&c| c == char) {
                 Some(i) => indices.push((i + 1) as u8),
                 None => continue 'lines,
             }
@@ -74,19 +122,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut one_gram_counter: HashMap<[u8; 1], usize> = HashMap::new();
     let mut two_gram_counter: HashMap<[u8; 2], usize> = HashMap::new();
 
-    for i in 0..hiraganas.len() {
+    for i in 0..HIRAGANAS.len() {
         one_gram_counter.insert([i as u8], count_prefix(&set, vec![i as u8]));
-        for j in 0..hiraganas.len() {
+        for j in 0..HIRAGANAS.len() {
             two_gram_counter.insert([i as u8, j as u8], count_prefix(&set, vec![i as u8, j as u8]));
         }
     }
-
-    let results: Vec<String> = get_prefix(&set, vec![23, 25])
-        .iter()
-        .map(|word| bytes_to_string(word.to_vec()))
-        .collect();
-
-    println!("{:?}", results);
 
     let constraints: Vec<Vec<usize>> = vec![
         vec![0, 1, 2, 3],
@@ -100,13 +141,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         vec![0, 4, 8, 12],
     ];
 
-    let count = get_board(&Context {
+    let board = get_board(&Context {
         set: set,
         constraints: constraints,
         one_gram_counter: one_gram_counter,
         two_gram_counter: two_gram_counter,
-    }, &mut [0; 16], 0);
-    println!("{:?}", count);
+    }, [0; 16]);
+    if let Some(board) = board {
+        println!("{:?}", bytes_to_string(board.to_vec()));
+    }
 
     Ok(())
 }
