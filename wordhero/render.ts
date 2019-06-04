@@ -22,17 +22,17 @@ const render = async (board: string[], {color = 'black'}: {color: string}) => {
 
 export default render;
 
-export const renderCrossword = async (board: {letter: string, color: string}[]) => {
+export const renderCrossword = async (board: {letter: string, color: string}[], boardIndex: number) => {
 	const font = await loadFont();
 	const fontPath = board.map((cell, index) => (
 		cell === null ? '' : font.getPath(
 			cell.letter,
-			index % 4 * 100 + 25,
-			Math.floor(index / 4) * 100 + 105,
+			index % 6 * 100 + 25,
+			Math.floor(index / 6) * 100 + 105,
 			90,
 		).toSVG().replace('<path', `<path fill="${cell.color}"`)
 	)).join('');
 	const svg = Buffer.from(`<svg width="550" height="550">${fontPath}</svg>`);
-	const png = await sharp(path.join(__dirname, 'crossword-board.png')).overlayWith(svg).png().toBuffer();
+	const png = await sharp(path.join(__dirname, `crossword-board-${boardIndex + 1}.png`)).overlayWith(svg).png().toBuffer();
 	return png;
 };

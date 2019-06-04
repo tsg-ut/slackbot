@@ -273,7 +273,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut rng = thread_rng();
 
-    for _i in 0..100 {
+    for _i in 0..10 {
         let config_index = rng.gen_range(0, board_configs.len());
         let constraints = &board_configs[config_index];
         let cells: HashSet<usize> = constraints.iter().map(|c| c.cells.clone()).flatten().collect();
