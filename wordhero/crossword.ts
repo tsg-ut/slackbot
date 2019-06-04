@@ -79,14 +79,20 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			for (const [index, correctWord] of state.crossword.words.entries()) {
 				if (word === correctWord) {
 					state.hitWords.push(word);
-					for (const letterIndex of boardConfigs[state.crossword.index][index].cells) {
+					for (const letterIndex of boardConfigs[state.crossword.index].find((constraint) => constraint.index === index + 1).cells) {
 						newIndices.add(letterIndex);
 						state.board[letterIndex] = state.crossword.board[letterIndex];
 					}
 				}
 			}
 
-			if (state.board.every((cell) => cell !== null)) {
+			await slack.reactions.add({
+				name: '+1',
+				channel: message.channel,
+				timestamp: message.ts,
+			});
+
+			if (state.board.every((cell, index) => state.crossword.board[index] === null || cell !== null)) {
 				for (const timeout of state.timeouts) {
 					clearTimeout(timeout);
 				}
@@ -146,7 +152,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 
 			state.isHolding = true;
-			state.board = Array(16).fill(null);
+			state.board = Array(36).fill(null);
 			state.hitWords = [];
 			state.timeouts = [];
 			const crossword = await generateCrossword();

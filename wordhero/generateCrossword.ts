@@ -4,6 +4,7 @@ import path from 'path';
 import {spawn} from 'child_process';
 // @ts-ignore
 import concat from 'concat-stream';
+import {sortBy} from 'lodash';
 import boardConfigs from './boards.json';
 
 const stocks: any[] = [];
@@ -20,13 +21,13 @@ const generate = async () => {
 		const lines = output.toString().split('\n').filter((line) => line);
 		for (const line of lines) {
 			const [index, board] = line.split(',');
-			stocks.push({index: parseInt(index), board: board.split('')});
+			stocks.push({index: parseInt(index), board: board.split('').map((char) => char === '　' ? null : char)});
 		}
 	}
 
 	const {index, board} = stocks.shift();
 	const constraints = boardConfigs[index];
-	const words = constraints.map(({cells}) => (
+	const words = sortBy(constraints, ({index}) => index).map(({cells}) => (
 		cells.map((cell) => board[cell]).join('')
 	));
 
