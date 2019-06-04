@@ -7,6 +7,7 @@ import {stripIndent} from 'common-tags';
 import {hiraganize} from 'japanese';
 import {renderCrossword} from './render';
 import generateCrossword from './generateCrossword';
+import boardConfigs from './boards.json';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -19,20 +20,8 @@ interface Description {
 	ruby: string,
 };
 
-const wordLetters = [
-	[0, 1, 2, 3],
-	[4, 5, 6, 7],
-	[8, 9, 10, 11],
-	[12, 13, 14, 15],
-	[0, 5, 10, 15],
-	[3, 7, 11, 15],
-	[2, 6, 10, 14],
-	[1, 5, 9, 13],
-	[0, 4, 8, 12],
-];
-
-const uploadImage = async (board: {color: string, letter: string}[]) => {
-	const imageData = await renderCrossword(board);
+const uploadImage = async (board: {color: string, letter: string}[], boardIndex: number) => {
+	const imageData = await renderCrossword(board, boardIndex);
 	const cloudinaryData: any = await new Promise((resolve, reject) => {
 		cloudinary.v2.uploader
 			.upload_stream({resource_type: 'image'}, (error: any, response: any) => {
@@ -55,6 +44,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			words: string[],
 			descriptions: Description[],
 			board: string[],
+			index: number,
 		},
 		board: string[],
 		hitWords: string[],
@@ -89,21 +79,27 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			for (const [index, correctWord] of state.crossword.words.entries()) {
 				if (word === correctWord) {
 					state.hitWords.push(word);
-					for (const letterIndex of wordLetters[index]) {
+					for (const letterIndex of boardConfigs[state.crossword.index].find((constraint) => constraint.index === index + 1).cells) {
 						newIndices.add(letterIndex);
 						state.board[letterIndex] = state.crossword.board[letterIndex];
 					}
 				}
 			}
 
-			if (state.board.every((cell) => cell !== null)) {
+			await slack.reactions.add({
+				name: '+1',
+				channel: message.channel,
+				timestamp: message.ts,
+			});
+
+			if (state.board.every((cell, index) => state.crossword.board[index] === null || cell !== null)) {
 				for (const timeout of state.timeouts) {
 					clearTimeout(timeout);
 				}
 				const cloudinaryData: any = await uploadImage(state.crossword.board.map((letter) => ({
 					color: 'red',
 					letter,
-				})));
+				})), state.crossword.index);
 				state.thread = null;
 				state.isHolding = false;
 				await slack.chat.postMessage({
@@ -125,7 +121,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				const cloudinaryData: any = await uploadImage(state.board.map((letter, index) => (letter === null ? null : {
 					color: newIndices.has(index) ? 'red' : 'black',
 					letter,
-				})));
+				})), state.crossword.index);
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
@@ -156,19 +152,20 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 
 			state.isHolding = true;
-			state.board = Array(16).fill(null);
+			state.board = Array(36).fill(null);
 			state.hitWords = [];
 			state.timeouts = [];
 			const crossword = await generateCrossword();
 			state.crossword = crossword;
 
-			const cloudinaryData: any = await uploadImage(Array(16).fill(null));
+			const cloudinaryData: any = await uploadImage(Array(16).fill(null), state.crossword.index);
+			const seconds = boardConfigs[state.crossword.index].length * 10;
 
 			const {ts}: any = await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: stripIndent`
-					楽しいクロスワードパズルを始めるよ～
-					マスに入ると思う単語を90秒以内に *スレッドで* 返信してね!
+					楽しいクロスワードパズを始めるよ～
+					マスに入ると思う単語を${seconds}秒以内に *スレッドで* 返信してね!
 				`,
 				username: 'crossword',
 				icon_emoji: ':capital_abcd:',
@@ -195,7 +192,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				const cloudinaryData: any = await uploadImage(state.crossword.board.map((letter, index) => ({
 					color: state.board[index] === null ? 'gray' : 'black',
 					letter,
-				})));
+				})), state.crossword.index);
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
@@ -212,7 +209,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					}))],
 				});
 				state.isHolding = false;
-			}, 90 * 1000));
+			}, seconds * 1000));
 
 			return;
 		}

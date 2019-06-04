@@ -1,4 +1,5 @@
 dict
 *.sqlite3
-words.txt
+*.sql
+*.txt
 crossword.txt

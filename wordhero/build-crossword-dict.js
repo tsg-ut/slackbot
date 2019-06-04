@@ -26,7 +26,7 @@ const {hiraganize} = require('japanese');
 		writer.write('CREATE TABLE words (word TEXT, ruby TEXT, description TEXT);\n')
 		writer.write('BEGIN TRANSACTION;\n');
 		for (const {ruby, word, description} of dictionary) {
-			if (ruby.length !== 4) {
+			if (ruby.length < 3 || ruby.length > 6) {
 				continue;
 			}
 			words.add(ruby);
