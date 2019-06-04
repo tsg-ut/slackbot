@@ -81,18 +81,26 @@ fn get_board(context: &Context, board: [u8; 36]) -> Option<[u8; 36]> {
 
     let mut rng = thread_rng();
 
-    let vertical_constraints = context.constraints.iter().filter(|&c| c.direction == Direction::Vertical);
-    let vertical_prefixes = vertical_constraints.map(|c| {
-        (c.cells.iter().map(|&c| board[c]).take_while(|&c| c != 0).collect::<Vec<u8>>(), c)
-    });
+    let vertical_constraints = context.constraints.iter().filter(|&c| c.direction == Direction::Vertical).collect::<Vec<&Constraint>>();
+    let horizontal_constraints = context.constraints.iter().filter(|&c| c.direction == Direction::Horizontal).collect::<Vec<&Constraint>>();
 
-    let horizontal_constraints = context.constraints.iter().filter(|&c| c.direction == Direction::Horizontal);
-    let horizontal_prefixes = horizontal_constraints.map(|c| {
-        (c.cells.iter().map(|&c| board[c]).take_while(|&c| c != 0).collect::<Vec<u8>>(), c)
-    });
+    let max_len = vertical_constraints.len().max(horizontal_constraints.len());
 
-    for (index, (vertical_constraint, horizontal_constraint)) in vertical_prefixes.zip(horizontal_prefixes).enumerate() {
-        let constraints = vec![vertical_constraint, horizontal_constraint];
+    let vertical_prefixes = vertical_constraints.iter().map(|c| {
+        Some((c.cells.iter().map(|&c| board[c]).take_while(|&c| c != 0).collect::<Vec<u8>>(), c))
+    }).chain(std::iter::repeat(None)).take(max_len);
+    let horizontal_prefixes = horizontal_constraints.iter().map(|c| {
+        Some((c.cells.iter().map(|&c| board[c]).take_while(|&c| c != 0).collect::<Vec<u8>>(), c))
+    }).chain(std::iter::repeat(None)).take(max_len);
+
+    for (index, (vertical_prefix, horizontal_prefix)) in vertical_prefixes.zip(horizontal_prefixes).enumerate() {
+        let mut constraints = Vec::new();
+        if let Some(vertical_constraint) = vertical_prefix {
+            constraints.push(vertical_constraint);
+        }
+        if let Some(horizontal_constraint) = horizontal_prefix {
+            constraints.push(horizontal_constraint);
+        }
         let (prefix, constraint) = constraints.iter().min_by_key(|(c, _)| c.len()).unwrap();
 
         if prefix.len() == constraint.cells.len() {
@@ -157,6 +165,9 @@ fn get_board(context: &Context, board: [u8; 36]) -> Option<[u8; 36]> {
 
                 // check if constraints are met
                 for constraint in context.constraints.iter() {
+                    if is_non_initial(cloned_board[constraint.cells[0]]) {
+                        continue 'second_values;
+                    }
                     let prefix: Vec<u8> = constraint.cells.iter().map(|&c| cloned_board[c]).take_while(|&c| c != 0).collect();
                     if prefix.len() == 0 {
                         continue;
@@ -190,6 +201,9 @@ fn get_board(context: &Context, board: [u8; 36]) -> Option<[u8; 36]> {
 
             // check if constraints are met
             for constraint in context.constraints.iter() {
+                if is_non_initial(cloned_board[constraint.cells[0]]) {
+                    continue 'words;
+                }
                 let prefix: Vec<u8> = constraint.cells.iter().map(|&c| cloned_board[c]).take_while(|&c| c != 0).collect();
                 if prefix.len() == 0 {
                     continue;
