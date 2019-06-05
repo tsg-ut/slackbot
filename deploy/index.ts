@@ -15,7 +15,14 @@ const commands = [
 	['npm', 'install', '--production'],
 ];
 
+// @ts-ignore
+import Blocker from './block.js';
+const deployBlocker = new Blocker();
+export const blockDeploy = (name: string) => deployBlocker.block(name);
+
 export const server = ({webClient: slack}: {webClient: WebClient}) => async (fastify: FastifyInstance) => {
+	let triggered = false;
+
 	const postMessage = (text: string) => (
 		slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
@@ -33,6 +40,8 @@ export const server = ({webClient: slack}: {webClient: WebClient}) => async (fas
 		}
 
 		if (name === 'push') {
+			if (triggered) return 'already triggered';
+
 			// TODO: Validation
 			if (get(req.body, ['repository', 'id']) !== 105612722) {
 				res.code(400);
@@ -43,37 +52,46 @@ export const server = ({webClient: slack}: {webClient: WebClient}) => async (fas
 				return 'refs not match';
 			}
 
-			await postMessage('デプロイを開始します');
+			deployBlocker.wait(
+				async () => {
+					await postMessage('デプロイを開始します');
 
-			for (const [command, ...args] of commands) {
-				const proc = spawn(command, args, {cwd: process.cwd()});
-				const muxed = new PassThrough();
+					for (const [command, ...args] of commands) {
+						const proc = spawn(command, args, {cwd: process.cwd()});
+						const muxed = new PassThrough();
 
-				proc.stdout.on('data', (chunk) => muxed.write(chunk));
-				proc.stderr.on('data', (chunk) => muxed.write(chunk));
+						proc.stdout.on('data', (chunk) => muxed.write(chunk));
+						proc.stderr.on('data', (chunk) => muxed.write(chunk));
 
-				Promise.all([
-					new Promise((resolve) => proc.stdout.on('end', () => resolve())),
-					new Promise((resolve) => proc.stderr.on('end', () => resolve())),
-				]).then(() => {
-					muxed.end();
-				});
+						Promise.all([
+							new Promise((resolve) => proc.stdout.on('end', () => resolve())),
+							new Promise((resolve) => proc.stderr.on('end', () => resolve())),
+						]).then(() => {
+							muxed.end();
+						});
 
-				const output = await new Promise<Buffer>((resolve) => {
-					muxed.pipe(concat({encoding: 'buffer'}, (data: Buffer) => {
-						resolve(data);
-					}));
-				});
+						const output = await new Promise<Buffer>((resolve) => {
+							muxed.pipe(concat({encoding: 'buffer'}, (data: Buffer) => {
+								resolve(data);
+							}));
+						});
 
-				const text = `\`\`\`\n$ ${[command, ...args].join(' ')}\n${output.toString().slice(0, 3500)}\`\`\``;
-				await postMessage(text);
-			}
+						const text = `\`\`\`\n$ ${[command, ...args].join(' ')}\n${output.toString().slice(0, 3500)}\`\`\``;
+						await postMessage(text);
+					}
 
-			await postMessage('死にます:wave:');
+					await postMessage('死にます:wave:');
 
-			setTimeout(() => {
-				process.exit(0);
-			}, 2000);
+					setTimeout(() => {
+						process.exit(0);
+					}, 2000);
+				},
+				30 * 60 * 1000, // 30min
+				(blocks: any) => {
+					logger.info(blocks);
+					postMessage('デプロイがブロック中だよ:confounded:');
+				}
+			);
 
 			return 'ok';
 		}
