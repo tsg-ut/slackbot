@@ -40,8 +40,6 @@ export const server = ({webClient: slack}: {webClient: WebClient}) => async (fas
 		}
 
 		if (name === 'push') {
-			if (triggered) return 'already triggered';
-
 			// TODO: Validation
 			if (get(req.body, ['repository', 'id']) !== 105612722) {
 				res.code(400);
@@ -51,6 +49,9 @@ export const server = ({webClient: slack}: {webClient: WebClient}) => async (fas
 				res.code(202);
 				return 'refs not match';
 			}
+
+			if (triggered) return 'already triggered';
+			triggered = true;
 
 			deployBlocker.wait(
 				async () => {
