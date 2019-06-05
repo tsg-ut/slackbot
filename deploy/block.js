@@ -1,5 +1,3 @@
-const {Deferred} = require('../lib/utils.ts');
-
 module.exports = class Blocker {
 	constructor() {
 		this._id = 0;
@@ -14,13 +12,14 @@ module.exports = class Blocker {
 
 		const id = this.id();
 
-		const deferred = new Deferred();
+		let resolve;
+		const promise = new Promise(_resolve => resolve = _resolve);
 
-		this.blocks[id] = {name, promise: deferred.promise, time: Date.now()};
+		this.blocks[id] = {name, promise, time: Date.now()};
 
 		return () => {
 			delete this.blocks[id];
-			deferred.resolve();
+			resolve();
 		};
 	}
 	async wait(callback, interval, intervalCallback) {
