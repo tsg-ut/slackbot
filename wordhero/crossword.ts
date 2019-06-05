@@ -164,7 +164,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const {ts}: any = await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: stripIndent`
-					楽しいクロスワードパズを始めるよ～
+					楽しいクロスワードパズルを始めるよ～
 					マスに入ると思う単語を${seconds}秒以内に *スレッドで* 返信してね!
 				`,
 				username: 'crossword',
