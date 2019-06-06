@@ -23,7 +23,7 @@ it('blocks until unblocked', () => new Promise(async (resolve) => {
 	});
 }));
 
-it('blocks until unblocked', () => new Promise(async (resolve) => {
+it('blocks until all unblocked', () => new Promise(async (resolve) => {
 	const unblocks = [];
 	for(let i=0; i<10; i++) {
 		unblocks.push(await blocker.block('block' + i));
@@ -35,15 +35,12 @@ it('blocks until unblocked', () => new Promise(async (resolve) => {
 		resolve();
 	});
 
-	const loop = () => {
-		if(unblocks.length === 0) return;
-
+	while (unblocks.length > 0) {
 		unblocked++;
 		unblocks.shift()();
 
-		process.nextTick(loop);
+		await new Promise(resolve => process.nextTick(resolve));
 	}
-	loop();
 }));
 
 it('calls intervalCallback when block continues', () => new Promise(async (resolve, reject) => {

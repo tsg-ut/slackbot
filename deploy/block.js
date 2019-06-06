@@ -31,9 +31,6 @@ module.exports = class Blocker {
 			clearInterval(intervalID);
 		}
 
-		this.waitPromise = new Promise(async resolve => {
-			await callback();
-			resolve();
-		});
+		this.waitPromise = callback();
 	}
 };
