@@ -1,24 +1,20 @@
 module.exports = class Blocker {
 	constructor() {
 		this._id = 0;
-		this.blocks = {};
+		this.blocks = new Set();
 		this.waitPromise = null;
-	}
-	id() {
-		return this._id++;
 	}
 	async block(name) {
 		await this.waitPromise;
 
-		const id = this.id();
-
 		let resolve;
 		const promise = new Promise(_resolve => resolve = _resolve);
 
-		this.blocks[id] = {name, promise, time: Date.now()};
+		const block = {name, promise, time: Date.now()};
+		this.blocks.add(block);
 
 		return () => {
-			delete this.blocks[id];
+			this.blocks.delete(block);
 			resolve();
 		};
 	}
@@ -27,8 +23,8 @@ module.exports = class Blocker {
 		if (intervalCallback) {
 			intervalID = setInterval(() => {intervalCallback(this.blocks)}, interval);
 		}
-		while (Object.keys(this.blocks).length > 0) {
-			await Promise.all(Object.values(this.blocks).map(({promise}) => promise));
+		while (this.blocks.size > 0) {
+			await Promise.all([...this.blocks].map(({promise}) => promise));
 		}
 
 		if (intervalID) {
