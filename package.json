@@ -29,7 +29,7 @@
     "@slack/client": "^5.0.1",
     "@slack/events-api": "^2.2.0",
     "@slack/interactive-messages": "^1.1.1",
-    "axios": "^0.18.0",
+    "axios": "^0.19.0",
     "bn.js": "^4.11.8",
     "cheerio": "^1.0.0-rc.2",
     "cloudinary": "^1.14.0",
@@ -74,7 +74,8 @@
     "ts-node": "^8.2.0",
     "typescript": "^3.4.5",
     "utf-8-validate": "^5.0.2",
-    "winston": "^3.2.1"
+    "winston": "^3.2.1",
+    "word2vec": "github:pizzacat83/node-word2vec"
   },
   "devDependencies": {
     "@hakatashi/eslint-config": "^1.8.4",
@@ -89,7 +90,5 @@
     "lolex": "^4.0.1",
     "ts-jest": "^24.0.2"
   },
-  "optionalDependencies": {
-    "word2vec": "github:pizzacat83/node-word2vec"
-  }
+  "optionalDependencies": {}
 }
