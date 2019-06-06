@@ -1,6 +1,5 @@
 module.exports = class Blocker {
 	constructor() {
-		this._id = 0;
 		this.blocks = new Set();
 		this.waitPromise = null;
 	}
