@@ -36,6 +36,25 @@ const uploadImage = async (board: {color: string, letter: string}[], boardIndex:
 	return cloudinaryData;
 };
 
+const colors = [
+	'#F44336',
+	'#7E57C2',
+	'#0288D1',
+	'#388E3C',
+	'#F4511E',
+	'#607D8B',
+	'#EC407A',
+	'#5C6BC0',
+	'#00838F',
+	'#558B2F',
+	'#8D6E63',
+	'#AB47BC',
+	'#1E88E5',
+	'#009688',
+	'#827717',
+	'#E65100',
+];
+
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const state: {
 		thread: string,
@@ -65,6 +84,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		if (message.thread_ts && message.thread_ts === state.thread) {
 			const word = hiraganize(message.text);
+
 			if (!state.crossword.words.includes(word) || state.hitWords.includes(word)) {
 				await slack.reactions.add({
 					name: 'no_good',
@@ -78,7 +98,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 			for (const [index, correctWord] of state.crossword.words.entries()) {
 				if (word === correctWord) {
-					state.hitWords.push(word);
 					for (const letterIndex of boardConfigs[state.crossword.index].find((constraint) => constraint.index === index + 1).cells) {
 						newIndices.add(letterIndex);
 						state.board[letterIndex] = state.crossword.board[letterIndex];
@@ -86,22 +105,30 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}
 			}
 
-			await slack.reactions.add({
-				name: '+1',
-				channel: message.channel,
-				timestamp: message.ts,
+			state.hitWords = state.crossword.words.filter((_, index) => {
+				const cells = boardConfigs[state.crossword.index].find((constraint) => constraint.index === index + 1).cells;
+				return cells.every((cell) => state.board[cell] !== null);
 			});
 
 			if (state.board.every((cell, index) => state.crossword.board[index] === null || cell !== null)) {
 				for (const timeout of state.timeouts) {
 					clearTimeout(timeout);
 				}
+				const thread = state.thread;
+				state.thread = null;
+				state.isHolding = false;
+
+				await slack.reactions.add({
+					name: 'tada',
+					channel: message.channel,
+					timestamp: message.ts,
+				});
+
 				const cloudinaryData: any = await uploadImage(state.crossword.board.map((letter) => ({
 					color: 'red',
 					letter,
 				})), state.crossword.index);
-				state.thread = null;
-				state.isHolding = false;
+
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
@@ -109,19 +136,28 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					`,
 					username: 'crossword',
 					icon_emoji: ':capital_abcd:',
+					thread_ts: thread,
 					reply_broadcast: true,
 					attachments: [{
 						title: 'Cross Word',
 						image_url: cloudinaryData.secure_url,
 					}, ...state.crossword.descriptions.map(({word, ruby, description}, index) => ({
 						text: `${index + 1}. ${word} (${ruby}): ${description}`,
+						color: state.hitWords.includes(ruby) ? '#FF6F00' : '',
 					}))],
 				});
 			} else {
+				await slack.reactions.add({
+					name: '+1',
+					channel: message.channel,
+					timestamp: message.ts,
+				});
+
 				const cloudinaryData: any = await uploadImage(state.board.map((letter, index) => (letter === null ? null : {
 					color: newIndices.has(index) ? 'red' : 'black',
 					letter,
 				})), state.crossword.index);
+
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
@@ -134,10 +170,14 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					attachments: [{
 						title: 'Cross Word',
 						image_url: cloudinaryData.secure_url,
-					}, ...state.crossword.descriptions.map(({description, ruby}, index) => ({
-						text: `${index + 1}. ${description}`,
-						ruby,
-					})).filter(({ruby}) => (
+					}, ...state.crossword.descriptions.map(({description, ruby}, index) => {
+						const cells = boardConfigs[state.crossword.index].find((constraint) => constraint.index === index + 1).cells;
+						return {
+							text: `${index + 1}. ${cells.map((cell) => state.board[cell] || '◯').join('')}: ${description}`,
+							ruby,
+							color: colors[index],
+						};
+					}).filter(({ruby}) => (
 						!state.hitWords.includes(ruby)
 					))],
 				});
@@ -173,12 +213,24 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				attachments: [{
 					title: 'Cross Word',
 					image_url: cloudinaryData.secure_url,
-				}, ...state.crossword.descriptions.map(({description}, index) => ({
-					text: `${index + 1}. ${description}`,
-				}))],
+				}, ...state.crossword.descriptions.map(({description}, index) => {
+					const cells = boardConfigs[state.crossword.index].find((constraint) => constraint.index === index + 1).cells;
+					return {
+						text: `${index + 1}. ${cells.map((cell) => state.board[cell] || '◯').join('')}: ${description}`,
+						color: colors[index],
+					};
+				})],
 			});
 
 			state.thread = ts;
+
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: 'ここにお願いします！',
+				thread_ts: ts,
+				username: 'crossword',
+				icon_emoji: ':capital_abcd:',
+			});
 
 			state.timeouts.push(setTimeout(async () => {
 				state.thread = null;
@@ -206,6 +258,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						image_url: cloudinaryData.secure_url,
 					}, ...state.crossword.descriptions.map(({word, ruby, description}, index) => ({
 						text: `${index + 1}. ${word} (${ruby}): ${description}`,
+						color: state.hitWords.includes(ruby) ? '#FF6F00' : '',
 					}))],
 				});
 				state.isHolding = false;
