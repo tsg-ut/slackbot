@@ -37,14 +37,14 @@ const uploadImage = async (board: {color: string, letter: string}[], boardIndex:
 };
 
 const colors = [
-	'#F44336',
+	'#FF6F00',
 	'#7E57C2',
 	'#0288D1',
 	'#388E3C',
-	'#F4511E',
-	'#607D8B',
+	'#F44336',
+	'#6D4C41',
 	'#EC407A',
-	'#5C6BC0',
+	'#01579B',
 	'#00838F',
 	'#558B2F',
 	'#8D6E63',
