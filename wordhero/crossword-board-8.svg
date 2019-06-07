@@ -29,43 +29,29 @@
     <path d="M519.5 220.5v99h-99v-99h99m.5-.5H420v100h100V220z"/>
     <path fill="#fff" d="M220.25 420.25h99.5v99.5h-99.5z"/>
     <path d="M319.5 420.5v99h-99v-99h99m.5-.5H220v100h100V420z"/>
-    <g>
-        <path fill="#fff" d="M420.25 420.25h99.5v99.5h-99.5z"/>
-        <path d="M519.5 420.5v99h-99v-99h99m.5-.5H420v100h100V420z"/>
-    </g>
-    <g>
-        <path fill="#e0e0e0" d="M320.25 420.25h99.5v99.5h-99.5z"/>
-        <path d="M419.5 420.5v99h-99v-99h99m.5-.5H320v100h100V420z"/>
-    </g>
-    <g>
-        <path fill="#e0e0e0" d="M420.25 320.25h99.5v99.5h-99.5z"/>
-        <path d="M519.5 320.5v99h-99v-99h99m.5-.5H420v100h100V320z"/>
-    </g>
-    <g>
-        <path fill="#fff" d="M320.25 320.25h99.5v99.5h-99.5z"/>
-        <path d="M419.5 320.5v99h-99v-99h99m.5-.5H320v100h100V320z"/>
-    </g>
-    <g>
-        <path fill="none" stroke="#ff6f00" stroke-width="14" stroke-miterlimit="10" d="M360.1 69.5H338"/>
-        <path fill="#ff6f00" d="M357.25 90.76V48.24L378.5 69.5z"/>
-        <text transform="translate(392.89 87.102)" fill="#ff6f00" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
-            ①
-        </text>
-    </g>
-    <g>
-        <path fill="none" stroke="#7e57c2" stroke-width="14" stroke-miterlimit="10" d="M460.1 169.5H438"/>
-        <path fill="#7e57c2" d="M457.25 190.76v-42.52l21.25 21.26z"/>
-        <text transform="translate(492.89 187.102)" fill="#7e57c2" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
-            ②
-        </text>
-    </g>
-    <g>
-        <path fill="none" stroke="#0288d1" stroke-width="14" stroke-miterlimit="10" d="M557.1 269.5H535"/>
-        <path fill="#0288d1" d="M554.25 290.76v-42.52l21.25 21.26z"/>
-        <text transform="translate(589.89 287.102)" fill="#0288d1" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
-            ③
-        </text>
-    </g>
+    <path fill="#fff" d="M420.25 420.25h99.5v99.5h-99.5z"/>
+    <path d="M519.5 420.5v99h-99v-99h99m.5-.5H420v100h100V420z"/>
+    <path fill="#e0e0e0" d="M320.25 420.25h99.5v99.5h-99.5z"/>
+    <path d="M419.5 420.5v99h-99v-99h99m.5-.5H320v100h100V420z"/>
+    <path fill="#e0e0e0" d="M420.25 320.25h99.5v99.5h-99.5z"/>
+    <path d="M519.5 320.5v99h-99v-99h99m.5-.5H420v100h100V320z"/>
+    <path fill="#fff" d="M320.25 320.25h99.5v99.5h-99.5z"/>
+    <path d="M419.5 320.5v99h-99v-99h99m.5-.5H320v100h100V320z"/>
+    <path fill="none" stroke="#ff6f00" stroke-width="14" stroke-miterlimit="10" d="M360.1 69.5H338"/>
+    <path fill="#ff6f00" d="M357.25 90.76V48.24L378.5 69.5z"/>
+    <text transform="translate(392.89 87.102)" fill="#ff6f00" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
+        ①
+    </text>
+    <path fill="none" stroke="#7e57c2" stroke-width="14" stroke-miterlimit="10" d="M460.1 169.5H438"/>
+    <path fill="#7e57c2" d="M457.25 190.76v-42.52l21.25 21.26z"/>
+    <text transform="translate(492.89 187.102)" fill="#7e57c2" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
+        ②
+    </text>
+    <path fill="none" stroke="#0288d1" stroke-width="14" stroke-miterlimit="10" d="M557.1 269.5H535"/>
+    <path fill="#0288d1" d="M554.25 290.76v-42.52l21.25 21.26z"/>
+    <text transform="translate(589.89 287.102)" fill="#0288d1" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
+        ③
+    </text>
     <g>
         <path fill="none" stroke="#388e3c" stroke-width="14" stroke-miterlimit="10" d="M557.1 369.5H535"/>
         <path fill="#388e3c" d="M554.25 390.76v-42.52l21.25 21.26z"/>
