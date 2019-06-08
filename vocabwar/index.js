@@ -10,6 +10,7 @@ const moment = require('moment');
 const {sampleSize} = require('lodash');
 const byline = require('byline');
 const w2v = require('word2vec');
+const {download} = require('../lib/download');
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const state = (() => {
@@ -218,22 +219,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			['ad.txt', 'https://drive.google.com/uc?id=1hlIeHy-ilaAfCicjaH0x5bjU_8rjx-Ju'],
 			['frequency.txt', 'https://drive.google.com/uc?id=1dtkJPTbH7xVRov77h8OBJ3wLsBaNPMNV'],
 			['wiki_wakati.wv', 'https://dl.dropboxusercontent.com/s/7laifmbdq4oqks9/wiki_wakati.wv'],
-		].map(async ([filename, url]) => {
-			const dataPath = path.join(__dirname, 'data', filename);
-			const dataExists = await new Promise((resolve) => {
-				fs.access(dataPath, fs.constants.F_OK, (error) => {
-					resolve(!error);
-				});
-			});
-			return dataExists ? undefined : new Promise(async (resolve, reject) => {
-				const response = await axios({url, responseType: 'stream'});
-				response.data.pipe(fs.createWriteStream(dataPath))
-					.on('finish', () => {
-						resolve();
-					})
-					.on('error', reject);
-			});
-		})
+		// eslint-disable-next-line require-await
+		].map(async ([filename, url]) => download(path.join(__dirname, 'data', filename), url))
 	);
 	const freq = await loadFrqData(path.join(__dirname, 'data', 'frequency.txt'));
 	const ad = await loadFrqData(path.join(__dirname, 'data', 'ad.txt'));
