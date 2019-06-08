@@ -12,13 +12,6 @@ const logger = require('./lib/logger.js');
 
 fastify.register(require('fastify-formbody'));
 
-let word2vecInstalled = true;
-try {
-	require.resolve('word2vec');
-} catch (e) {
-	word2vecInstalled = false;
-}
-
 const plugins = [
 	require('./mahjong'),
 	require('./pocky'),
@@ -35,7 +28,7 @@ const plugins = [
 	require('./dajare'),
 	require('./sunrise'),
 	require('./ahokusa'),
-	...(word2vecInstalled ? [require('./vocabwar')] : []),
+	require('./vocabwar'),
 	require('./ricochet-robots'),
 	require('./scrapbox'),
 	require('./slack-log'),
