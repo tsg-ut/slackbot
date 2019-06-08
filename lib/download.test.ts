@@ -11,7 +11,7 @@ import fs from 'fs';
 import { PassThrough } from 'stream';
 import { download } from './download';
 
-const fakeData = 'FAKE_DATA';
+const fakeData = Buffer.from('FAKE_DATA');
 const fakePath = '~/fake/path';
 const fakeUrl = 'https://www.example.com';
 
@@ -33,15 +33,21 @@ it('downloads fetched data to path', async () => {
     (<jest.Mock> (fs.access as any)).mockImplementation((_, __, callback) => {
         callback(true);
     });
-    (<jest.Mock> fs.createWriteStream).mockReturnValue(
-        new PassThrough().on('data', (data) => {
-            expect(data).toBe(fakeData)
-        }).pipe(new PassThrough())
-    );
-    await download(fakePath, fakeUrl);
+    await Promise.all([
+        new Promise((resolve) => {
+            (<jest.Mock> fs.createWriteStream).mockReturnValue(
+                new PassThrough().on('data', (data) => {
+                    expect(data).toBe(fakeData)
+                    resolve();
+                })
+            );
+        }),
+        download(fakePath, fakeUrl)
+    ]);
     expect((<jest.Mock> axios.get).mock.calls.length).toBe(1);
     expect((<jest.Mock> axios.get).mock.calls[0][0]).toBe(fakeUrl);
-
+    expect((<jest.Mock> fs.createWriteStream).mock.calls.length).toBe(1);
+    expect((<jest.Mock> fs.createWriteStream).mock.calls[0][0]).toBe(fakePath);
 });
 
 it('does not download when file exists', async () => {
