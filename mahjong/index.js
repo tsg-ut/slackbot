@@ -6,6 +6,7 @@ const {chunk, shuffle} = require('lodash');
 const path = require('path');
 const assert = require('assert');
 const {unlock} = require('../achievements/index.ts');
+const {blockDeploy} = require('../deploy/index.ts');
 
 const calculator = require('./calculator.js');
 const savedState = (() => {
@@ -105,6 +106,7 @@ const state = {
 	wins: savedState.wins,
 	loses: savedState.loses,
 	thread: null,
+	deployUnblock: null,
 };
 
 const 麻雀牌 = Array(136).fill(0).map((_, index) => {
@@ -233,6 +235,7 @@ module.exports = (clients) => {
 				return;
 			}
 
+			state.deployUnblock = await blockDeploy('mahjong');
 			state.phase = 'gaming';
 			state.mode = '四人';
 			state.抜きドラCount = 0;
@@ -270,6 +273,7 @@ module.exports = (clients) => {
 				return;
 			}
 
+			state.deployUnblock = await blockDeploy('mahjong');
 			state.phase = 'gaming';
 			state.mode = '三人';
 			state.抜きドラCount = 0;
@@ -360,6 +364,7 @@ module.exports = (clients) => {
 				}
 
 				if (state.remaining自摸 === 0) {
+					state.deployUnblock();
 					state.phase = 'waiting';
 					const isTenpai = calculator.tenpai(state.手牌);
 					if (isTenpai) {
@@ -522,6 +527,7 @@ module.exports = (clients) => {
 						await saveState();
 						await checkPoints();
 
+						state.deployUnblock();
 						state.phase = 'waiting';
 
 						if (state.mode === '四人') {
@@ -571,6 +577,7 @@ module.exports = (clients) => {
 					});
 				}
 
+				state.deployUnblock();
 				state.phase = 'waiting';
 				const isTenpai = calculator.tenpai(state.手牌);
 				if (isTenpai) {
@@ -617,6 +624,7 @@ module.exports = (clients) => {
 					additionalDora: state.抜きドラCount,
 				});
 
+				state.deployUnblock();
 				state.phase = 'waiting';
 
 				if (!agari.isAgari) {

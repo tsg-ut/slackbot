@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 743 447">
+    <path fill="#fff" d="M20.25 20.25h99.5v99.5h-99.5z"/>
+    <path d="M119.5 20.5v99h-99v-99h99m.5-.5H20v100h100V20z"/>
+    <path fill="#e0e0e0" d="M120.25 20.25h99.5v99.5h-99.5z"/>
+    <path d="M219.5 20.5v99h-99v-99h99m.5-.5H120v100h100V20z"/>
+    <path fill="#e0e0e0" d="M20.25 120.25h99.5v99.5h-99.5z"/>
+    <path d="M119.5 120.5v99h-99v-99h99m.5-.5H20v100h100V120z"/>
+    <path fill="#fff" d="M120.25 120.25h99.5v99.5h-99.5z"/>
+    <path d="M219.5 120.5v99h-99v-99h99m.5-.5H120v100h100V120z"/>
+    <path fill="#fff" d="M220.25 20.25h99.5v99.5h-99.5z"/>
+    <path d="M319.5 20.5v99h-99v-99h99m.5-.5H220v100h100V20z"/>
+    <path fill="#e0e0e0" d="M320.25 20.25h99.5v99.5h-99.5z"/>
+    <path d="M419.5 20.5v99h-99v-99h99m.5-.5H320v100h100V20z"/>
+    <path fill="#e0e0e0" d="M220.25 120.25h99.5v99.5h-99.5z"/>
+    <path d="M319.5 120.5v99h-99v-99h99m.5-.5H220v100h100V120z"/>
+    <path fill="#fff" d="M320.25 120.25h99.5v99.5h-99.5z"/>
+    <path d="M419.5 120.5v99h-99v-99h99m.5-.5H320v100h100V120z"/>
+    <path fill="#fff" d="M20.25 220.25h99.5v99.5h-99.5z"/>
+    <path d="M119.5 220.5v99h-99v-99h99m.5-.5H20v100h100V220z"/>
+    <path fill="#e0e0e0" d="M120.25 220.25h99.5v99.5h-99.5z"/>
+    <path d="M219.5 220.5v99h-99v-99h99m.5-.5H120v100h100V220z"/>
+    <path fill="#fff" d="M220.25 220.25h99.5v99.5h-99.5z"/>
+    <path d="M319.5 220.5v99h-99v-99h99m.5-.5H220v100h100V220z"/>
+    <path fill="#e0e0e0" d="M320.25 220.25h99.5v99.5h-99.5z"/>
+    <path d="M419.5 220.5v99h-99v-99h99m.5-.5H320v100h100V220z"/>
+    <path fill="#fff" d="M420.25 20.25h99.5v99.5h-99.5z"/>
+    <path d="M519.5 20.5v99h-99v-99h99m.5-.5H420v100h100V20z"/>
+    <path fill="#e0e0e0" d="M420.25 120.25h99.5v99.5h-99.5z"/>
+    <path d="M519.5 120.5v99h-99v-99h99m.5-.5H420v100h100V120z"/>
+    <path fill="#fff" d="M420.25 220.25h99.5v99.5h-99.5z"/>
+    <path d="M519.5 220.5v99h-99v-99h99m.5-.5H420v100h100V220z"/>
+    <path fill="#e0e0e0" d="M518.25 20.25h99.5v99.5h-99.5z"/>
+    <path d="M617.5 20.5v99h-99v-99h99m.5-.5H518v100h100V20z"/>
+    <path fill="#fff" d="M518.25 120.25h99.5v99.5h-99.5z"/>
+    <path d="M617.5 120.5v99h-99v-99h99m.5-.5H518v100h100V120z"/>
+    <path fill="#e0e0e0" d="M518.25 220.25h99.5v99.5h-99.5z"/>
+    <path d="M617.5 220.5v99h-99v-99h99m.5-.5H518v100h100V220z"/>
+    <path fill="none" stroke="#ff6f00" stroke-width="14" stroke-miterlimit="10" d="M652.1 69.5H630"/>
+    <path fill="#ff6f00" d="M649.25 90.76V48.24L670.5 69.5z"/>
+    <text transform="translate(684.89 87.102)" fill="#ff6f00" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
+        ①
+    </text>
+    <path fill="none" stroke="#7e57c2" stroke-width="14" stroke-miterlimit="10" d="M652.1 169.5H630"/>
+    <path fill="#7e57c2" d="M649.25 190.76v-42.52l21.25 21.26z"/>
+    <text transform="translate(684.89 187.102)" fill="#7e57c2" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
+        ②
+    </text>
+    <g>
+        <path fill="none" stroke="#0288d1" stroke-width="14" stroke-miterlimit="10" d="M652.1 269.5H630"/>
+        <path fill="#0288d1" d="M649.25 290.76v-42.52l21.25 21.26z"/>
+        <text transform="translate(684.89 287.102)" fill="#0288d1" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
+            ③
+        </text>
+    </g>
+    <g>
+        <path fill="none" stroke="#388e3c" stroke-width="14" stroke-miterlimit="10" d="M570.25 359.35v-22.1"/>
+        <path fill="#388e3c" d="M548.99 356.5h42.52l-21.26 21.25z"/>
+        <text transform="translate(546.836 428.102)" fill="#388e3c" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
+            ④
+        </text>
+    </g>
+    <g>
+        <path fill="none" stroke="#f44336" stroke-width="14" stroke-miterlimit="10" d="M470.25 359.35v-22.1"/>
+        <path fill="#f44336" d="M448.99 356.5h42.52l-21.26 21.25z"/>
+        <text transform="translate(446.836 428.102)" fill="#f44336" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
+            ⑤
+        </text>
+    </g>
+    <g>
+        <path fill="none" stroke="#6d4c41" stroke-width="14" stroke-miterlimit="10" d="M370.25 359.35v-22.1"/>
+        <path fill="#6d4c41" d="M348.99 356.5h42.52l-21.26 21.25z"/>
+        <text transform="translate(346.836 428.102)" fill="#6d4c41" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
+            ⑥
+        </text>
+    </g>
+    <g>
+        <path fill="none" stroke="#ec407a" stroke-width="14" stroke-miterlimit="10" d="M270.25 359.35v-22.1"/>
+        <path fill="#ec407a" d="M248.99 356.5h42.52l-21.26 21.25z"/>
+        <text transform="translate(246.836 428.102)" fill="#ec407a" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
+            ⑦
+        </text>
+    </g>
+    <g>
+        <path fill="none" stroke="#01579b" stroke-width="14" stroke-miterlimit="10" d="M170.25 359.35v-22.1"/>
+        <path fill="#01579b" d="M148.99 356.5h42.52l-21.26 21.25z"/>
+        <text transform="translate(146.836 428.102)" fill="#01579b" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
+            ⑧
+        </text>
+    </g>
+    <g>
+        <path fill="none" stroke="#00838f" stroke-width="14" stroke-miterlimit="10" d="M70.25 359.35v-22.1"/>
+        <path fill="#00838f" d="M48.99 356.5h42.52l-21.26 21.25z"/>
+        <text transform="translate(46.836 428.102)" fill="#00838f" font-family="NotoSansCJKjp-Bold-90ms-RKSJ-H" font-size="46.109">
+            ⑨
+        </text>
+    </g>
+</svg>
