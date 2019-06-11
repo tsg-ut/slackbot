@@ -50,6 +50,7 @@ const state = (() => {
 			lackedPiece: savedState.lackedPiece || ':ahokusa-top-center:',
 			seen: savedState.seen || 0,
 			boardName: savedState.boardName || 'ahokusa',
+			thread: null,
 		};
 	} catch (e) {
 		return {
@@ -60,6 +61,7 @@ const state = (() => {
 			lackedPiece: ':ahokusa-top-center:',
 			seen: 0,
 			boardName: 'ahokusa',
+			thread: null,
 		};
 	}
 })();
@@ -277,38 +279,27 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				text,
 				username: state.boardName === 'ahokusa' ? 'ahokusa' : 'sushi-puzzle',
 				icon_emoji: state.lackedPiece,
+				thread_ts: message.thread_ts || message.ts,
 				...opt,
 			});
 		};
 
-		const postBoard = async () => {
+		const postBoard = async (opt) => {
 			const boardText = getBoardString(state.board);
-			await postMessage(boardText);
+			await postMessage(boardText, opt);
 		};
 
 		if (message.text === 'あほくさスライドパズル') {
+			await setState({thread: message.thread_ts || message.ts});
 			await shuffleBoard('ahokusa');
-			await postBoard();
+			await postBoard({reply_broadcast: true});
 			return;
 		}
 
 		if (message.text === '寿司スライドパズル') {
+			await setState({thread: message.thread_ts || message.ts});
 			await shuffleBoard(sample(['sushi3', 'sushi4', 'sushi5', 'sushi6']));
-			await postBoard();
-			return;
-		}
-
-		if (message.text === 'もう一度') {
-			if (state.startBoard === null) {
-				await postMessage(':ha:');
-				return;
-			}
-			await setState({
-				board: state.startBoard,
-				hand: 0,
-				seen: 0,
-			});
-			await postBoard();
+			await postBoard({reply_broadcast: true});
 			return;
 		}
 
@@ -322,7 +313,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				})
 			);
 
-			if (command === 'ヒント') {
+			if (command === 'ヒント' && message.thread_ts && state.thread === message.thread_ts) {
 				if (state.board === null || state.boardName !== 'ahokusa') {
 					await postAsAhokusa(':ha:');
 					return;
@@ -347,8 +338,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					await postAsAhokusa(':ha:');
 					return;
 				}
+				await setState({thread: message.thread_ts || message.ts});
 				await setNewBoard(board, 'ahokusa');
-				await postBoard();
+				await postBoard({reply_broadcast: true});
 				return;
 			}
 
@@ -367,11 +359,30 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					await postAsAhokusa(':ha:');
 					return;
 				}
+				await setState({thread: message.thread_ts || message.ts});
 				await setNewBoard(board, 'ahokusa');
-				await postBoard();
+				await postBoard({reply_broadcast: true});
 				return;
 			}
 			await postAsAhokusa(':ha:');
+			return;
+		}
+
+		if (!message.thread_ts || state.thread !== message.thread_ts) {
+			return;
+		}
+
+		if (message.text === 'もう一度') {
+			if (state.startBoard === null) {
+				await postMessage(':ha:');
+				return;
+			}
+			await setState({
+				board: state.startBoard,
+				hand: 0,
+				seen: 0,
+			});
+			await postBoard();
 			return;
 		}
 
@@ -395,7 +406,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				});
 				await postMessage(
 					`:tada: ${round(time, 2).toFixed(2)}秒` +
-					`${state.seen === 0 ? '、一発' : ''}`
+					`${state.seen === 0 ? '、一発' : ''}`,
+					{reply_broadcast: true}
 				);
 				await setState({
 					board: null,
@@ -428,7 +440,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				await postMessage(
 					`:tada: ${round(time, 2).toFixed(2)}秒、` +
 					`${state.hand}手${minHandInfo}` +
-					`${state.seen === 1 ? '、一発' : ''}`
+					`${state.seen === 1 ? '、一発' : ''}`,
+					{reply_broadcast: true}
 				);
 				await setState({
 					board: null,
