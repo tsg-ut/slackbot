@@ -1,7 +1,42 @@
 const fs = require('fs');
-const {chunk, cloneDeep, escapeRegExp, flatten, random, round, shuffle, uniq} = require('lodash');
+const {chunk, cloneDeep, escapeRegExp, flatten, invert, random, round, sample, shuffle, uniq} = require('lodash');
 const path = require('path');
 const {promisify} = require('util');
+
+const completeBoards = {
+	ahokusa: [
+		[
+			':ahokusa-top-left:',
+			':ahokusa-top-center:',
+			':ahokusa-top-right:',
+		],
+		[
+			':ahokusa-bottom-left:',
+			':ahokusa-bottom-center:',
+			':ahokusa-bottom-right:',
+		],
+	],
+	sushi3: [
+		[
+			':sushi-top-left:',
+			':sushi-top-center:',
+			':sushi-top-right:',
+		],
+		[
+			':sushi-middle-left:',
+			':sushi-middle-center:',
+			':sushi-middle-right:',
+		],
+		[
+			':sushi-bottom-left:',
+			':sushi-bottom-center:',
+			':sushi-bottom-right:',
+		],
+	],
+	sushi4: Array(4).fill().map((_, y) => Array(4).fill().map((_, x) => `:sushi-4-${x}-${y}:`)),
+	sushi5: Array(5).fill().map((_, y) => Array(5).fill().map((_, x) => `:sushi-5_${x}_${y}:`)),
+	sushi6: Array(6).fill().map((_, y) => Array(6).fill().map((_, x) => `:sushi-6-${x}-${y}:`)),
+};
 
 const state = (() => {
 	try {
@@ -13,6 +48,8 @@ const state = (() => {
 			hand: savedState.hand || 0,
 			startDate: savedState.startDate || null,
 			lackedPiece: savedState.lackedPiece || ':ahokusa-top-center:',
+			seen: savedState.seen || 0,
+			boardName: savedState.boardName || 'ahokusa',
 		};
 	} catch (e) {
 		return {
@@ -22,6 +59,7 @@ const state = (() => {
 			startDate: null,
 			lackedPiece: ':ahokusa-top-center:',
 			seen: 0,
+			boardName: 'ahokusa',
 		};
 	}
 })();
@@ -40,32 +78,26 @@ const setState = async (newState) => {
 	);
 };
 
-const completeBoard = [
-	[
-		':ahokusa-top-left:',
-		':ahokusa-top-center:',
-		':ahokusa-top-right:',
-	],
-	[
-		':ahokusa-bottom-left:',
-		':ahokusa-bottom-center:',
-		':ahokusa-bottom-right:',
-	],
-];
-const height = completeBoard.length;
-const width = completeBoard[0].length;
+const getBoardSize = (board) => ({
+	height: board.length,
+	width: board[0].length,
+});
 
-const getMovedBoard = (board, dir) => {
-	const [x, y] = (() => {
-		for (let ay = 0; ay < height; ay++) {
-			for (let ax = 0; ax < width; ax++) {
-				if (board[ay][ax] === ':void:') {
-					return [ax, ay];
-				}
+const getPiecePosition = (board, piece) => {
+	const {height, width} = getBoardSize(board);
+	for (let ay = 0; ay < height; ay++) {
+		for (let ax = 0; ax < width; ax++) {
+			if (board[ay][ax] === piece) {
+				return [ax, ay];
 			}
 		}
-		throw new Error(':void: not found');
-	})();
+	}
+	throw new Error('the piece not found');
+};
+
+const getMovedBoard = (board, dir) => {
+	const {height, width} = getBoardSize(board);
+	const [x, y] = getPiecePosition(board, ':void:');
 	const [dx, dy] = {
 		上: [0, -1],
 		下: [0, 1],
@@ -85,6 +117,7 @@ const getMovedBoard = (board, dir) => {
 
 const move = async (text) => {
 	let {board, hand} = state;
+	const {height, width} = getBoardSize(board);
 	for (let matchArray, re = /([上下左右])(\d*)/g; (matchArray = re.exec(text));) {
 		const dir = matchArray[1];
 		const amount = parseInt(matchArray[2] || '1');
@@ -99,7 +132,7 @@ const move = async (text) => {
 	await setState({board, hand, seen: state.seen + 1});
 };
 
-const isFinishedBoard = (board) => board.every((row, y) => row.every((cell, x) => (
+const isFinishedBoard = (board, completeBoard = completeBoards[state.boardName]) => board.every((row, y) => row.every((cell, x) => (
 	cell === completeBoard[y][x] || cell === ':void:'
 )));
 
@@ -112,10 +145,12 @@ const reverseDirection = (dir) => ({
 	右: '左',
 }[dir]);
 
-const handMap = (() => {
+const ahokusaHandMap = (() => {
 	const result = new Map();
 	const queue = [];
 
+	const completeBoard = completeBoards.ahokusa;
+	const {height, width} = getBoardSize(completeBoard);
 	for (let i = 0; i < height * width; i++) {
 		const brokenPieces = flatten(completeBoard);
 		brokenPieces[i] = ':void:';
@@ -151,11 +186,47 @@ const handMap = (() => {
 	return result;
 })();
 
-const setNewBoard = async (board) => {
+const isSolvableBoard = (board, completeBoard) => {
+	const getParity = (a1, a2_) => {
+		const a2 = a2_.slice();
+		const inv_a2 = invert(a2);
+		const swap_a2 = (i, j) => {
+			const tmp = a2[i];
+			a2[i] = a2[j];
+			a2[j] = tmp;
+			inv_a2[a2[i]] = i;
+			inv_a2[a2[j]] = j;
+		};
+		let inversions = 0;
+		a1.forEach((elem, i) => {
+			if (a2[i] !== elem) {
+				const j = inv_a2[elem];
+				swap_a2(i, j);
+				inversions++;
+			}
+		});
+		return inversions % 2;
+	};
+	const pieces = flatten(board);
+	const lackedPiece = flatten(completeBoard).find((piece) => !pieces.includes(piece));
+	const parity = getParity(
+		flatten(completeBoard),
+		flatten(board).map((piece) => piece === ':void:' ? lackedPiece : piece)
+	);
+
+	const [x0, y0] = getPiecePosition(completeBoard, lackedPiece);
+	const [x1, y1] = getPiecePosition(board, ':void:');
+
+	return (parity + (x0 - x1) + (y0 - y1)) % 2 === 0;
+};
+
+const setNewBoard = async (board, boardName) => {
+	const completeBoard = completeBoards[boardName];
 	const pieces = flatten(board);
 	await setState({
 		board,
 		startBoard: board,
+		boardName,
 		hand: 0,
 		seen: 0,
 		startDate: new Date().valueOf(),
@@ -163,17 +234,19 @@ const setNewBoard = async (board) => {
 	});
 };
 
-const shuffleBoard = async () => {
+const shuffleBoard = async (boardName) => {
+	const completeBoard = completeBoards[boardName];
+	const {width} = getBoardSize(completeBoard);
 	const brokenPieces = flatten(completeBoard);
 	brokenPieces[random(brokenPieces.length - 1)] = ':void:';
 	let board = null;
 	do {
 		board = chunk(shuffle(brokenPieces), width);
-	} while (isFinishedBoard(board));
-	await setNewBoard(board);
+	} while (isFinishedBoard(board, completeBoard));
+	await setNewBoard(board, boardName);
 };
 
-const isValidBoard = (board) => {
+const isValidBoard = (board, completeBoard) => {
 	const givenPieces = flatten(board);
 	const okPieces = flatten(completeBoard);
 	return givenPieces.length === okPieces.length &&
@@ -184,9 +257,9 @@ const isValidBoard = (board) => {
 
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	rtm.on('message', async (message) => {
-		if (message.channel !== process.env.CHANNEL_SANDBOX) {
+		// if (message.channel !== process.env.CHANNEL_SANDBOX) {
 		// if (!message.channel.startsWith('D')) {
-		// if (message.channel !== process.env.CHANNEL_SANDBOX && !message.channel.startsWith('D')) {
+		if (message.channel !== process.env.CHANNEL_SANDBOX && !message.channel.startsWith('D')) {
 			return;
 		}
 
@@ -194,16 +267,17 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if (message.username === 'ahokusa') {
+		if (message.username === 'ahokusa' || message.username === 'sushi-puzzle') {
 			return;
 		}
 
-		const postMessage = async (text) => {
+		const postMessage = async (text, opt = {}) => {
 			await slack.chat.postMessage({
 				channel: message.channel,
 				text,
-				username: 'ahokusa',
+				username: state.boardName === 'ahokusa' ? 'ahokusa' : 'sushi-puzzle',
 				icon_emoji: state.lackedPiece,
+				...opt,
 			});
 		};
 
@@ -213,7 +287,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		};
 
 		if (message.text === 'あほくさスライドパズル') {
-			await shuffleBoard();
+			await shuffleBoard('ahokusa');
+			await postBoard();
+			return;
+		}
+
+		if (message.text === '寿司スライドパズル') {
+			await shuffleBoard(sample(['sushi3', 'sushi4', 'sushi5', 'sushi6']));
 			await postBoard();
 			return;
 		}
@@ -234,36 +314,46 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		if ((/^@ahokusa\b/).test(message.text)) {
 			const command = message.text.replace(/^@ahokusa\s*/, '');
+			const postAsAhokusa = (text, opt = {}) => (
+				postMessage(text, {
+					username: 'ahokusa',
+					...(state.boardName === 'ahokusa' ? {} : {icon_emoji: ':ahokusa-top-center:'}),
+					...opt,
+				})
+			);
 
 			if (command === 'ヒント') {
-				if (state.board === null) {
-					await postMessage(':ha:');
+				if (state.board === null || state.boardName !== 'ahokusa') {
+					await postAsAhokusa(':ha:');
 					return;
 				}
 				const boardStr = getBoardString(state.board);
-				if (handMap.has(boardStr)) {
-					const [hand, dirs] = handMap.get(boardStr);
-					await postMessage(`残り最短${hand}手: ${dirs.join(' or ')}`);
+				if (ahokusaHandMap.has(boardStr)) {
+					const [hand, dirs] = ahokusaHandMap.get(boardStr);
+					await postAsAhokusa(`残り最短${hand}手: ${dirs.join(' or ')}`);
 				} else {
-					await postMessage('残り最短∞手');
+					await postAsAhokusa('残り最短∞手');
 				}
 				return;
 			}
 
+			const completeBoard = completeBoards.ahokusa;
 			if (new RegExp(
 				`^((${flatten(completeBoard).map((str) => escapeRegExp(str)).join('|')}|:void:)\\s*)+$`
 			).test(command)) {
+				const {width} = getBoardSize(completeBoard);
 				const board = chunk(command.match(new RegExp(`${flatten(completeBoard).map((str) => escapeRegExp(str)).join('|')}|:void:`, 'g')), width);
-				if (!isValidBoard(board) || isFinishedBoard(board)) {
-					await postMessage(':ha:');
+				if (!isValidBoard(board, completeBoard) || isFinishedBoard(board, completeBoard)) {
+					await postAsAhokusa(':ha:');
 					return;
 				}
-				await setNewBoard(board);
+				await setNewBoard(board, 'ahokusa');
 				await postBoard();
 				return;
 			}
 
 			if ((/^([あほくさ_#.]\s*)+$/).test(command)) {
+				const {width} = getBoardSize(completeBoard);
 				const board = chunk(command.match(/[あほくさ_#.]/g).map((c) => ({
 					あ: ':ahokusa-top-right:',
 					ほ: ':ahokusa-bottom-right:',
@@ -273,15 +363,15 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					'#': ':ahokusa-bottom-center:',
 					'.': ':void:',
 				}[c])), width);
-				if (!isValidBoard(board) || isFinishedBoard(board)) {
-					await postMessage(':ha:');
+				if (!isValidBoard(board, completeBoard) || isFinishedBoard(board, completeBoard)) {
+					await postAsAhokusa(':ha:');
 					return;
 				}
-				await setNewBoard(board);
+				await setNewBoard(board, 'ahokusa');
 				await postBoard();
 				return;
 			}
-			await postMessage(':ha:');
+			await postAsAhokusa(':ha:');
 			return;
 		}
 
@@ -291,7 +381,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
-			if (handMap.has(getBoardString(state.startBoard))) {
+			if (isSolvableBoard(state.startBoard, completeBoards[state.boardName])) {
 				await postMessage(':seyaroka: ペナルティ: +5秒');
 				await setState({
 					startDate: state.startDate - 5000,
@@ -330,10 +420,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await postBoard();
 			if (isFinishedBoard(state.board)) {
 				const time = (new Date().valueOf() - state.startDate) / 1000;
-				const minHand = handMap.get(getBoardString(state.startBoard))[0];
+				let minHandInfo = '';
+				if (state.boardName === 'ahokusa') {
+					 const minHand = ahokusaHandMap.get(getBoardString(state.startBoard))[0];
+					 minHandInfo = `（${state.hand === minHand ? ':tada:最短' : `最短：${minHand}手`}）`;
+				}
 				await postMessage(
 					`:tada: ${round(time, 2).toFixed(2)}秒、` +
-					`${state.hand}手（${state.hand === minHand ? ':tada:最短' : `最短：${minHand}手`}）` +
+					`${state.hand}手${minHandInfo}` +
 					`${state.seen === 1 ? '、一発' : ''}`
 				);
 				await setState({
@@ -343,5 +437,3 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 	});
 };
-
-module.exports.handMap = handMap;

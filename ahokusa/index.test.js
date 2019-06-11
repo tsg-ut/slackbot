@@ -33,7 +33,7 @@ describe('ahokusa', () => {
 	});
 
 	it('accepts valid board initialization by letters', async () => {
-		const {text, username} = await slack.getResponseTo(`@ahokusa .#_さくあ`);
+		const {text, username} = await slack.getResponseTo('@ahokusa .#_さくあ');
 
 		expect(username).toBe('ahokusa');
 		expect(text).toBe([
@@ -43,16 +43,25 @@ describe('ahokusa', () => {
 	});
 
 	it('rejects invalid board initialization', async () => {
-		const {text, username} = await slack.getResponseTo(`@ahokusa ああああああ`);
+		const {text, username} = await slack.getResponseTo('@ahokusa ああああああ');
 
 		expect(username).toBe('ahokusa');
 		expect(text).toBe(':ha:');
 	});
 
 	it('rejects invalid board initialization', async () => {
-		const {text, username} = await slack.getResponseTo(`@ahokusa .#_さくああああああああああああああああああああ`);
+		const {text, username} = await slack.getResponseTo('@ahokusa .#_さくああああああああああああああああああああ');
 
 		expect(username).toBe('ahokusa');
 		expect(text).toBe(':ha:');
+	});
+
+	it('responds to 寿司スライドパズル', async () => {
+		const {text, username} = await slack.getResponseTo('寿司スライドパズル');
+
+		expect(username).toBe('sushi-puzzle');
+		expect(text).toContain(':void:');
+		expect(text).toContain('sushi');
+		expect(text).toMatch(/^(:[a-z-]+:\n?)+$/);
 	});
 });
