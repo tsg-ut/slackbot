@@ -62,6 +62,6 @@ describe('ahokusa', () => {
 		expect(username).toBe('sushi-puzzle');
 		expect(text).toContain(':void:');
 		expect(text).toContain('sushi');
-		expect(text).toMatch(/^(:[a-z-]+:\n?)+$/);
+		expect(text).toMatch(/^(:[a-z_\d-]+:\n?)+$/);
 	});
 });
