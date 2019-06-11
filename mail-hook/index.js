@@ -29,9 +29,10 @@ module.exports.server = ({webClient: slack}) => async (fastify) => {
                     ...(addresses.cc ? [`CC: ${sanitizeCode(addresses.cc)}`] : []),
                     `FROM: ${sanitizeCode(addresses.from)}`,
                     `SUBJECT: ${sanitizeCode(subject)}`,
-                    'BODY:',
-                    sanitizePreformatted(text),
                 ].join("\n"),
+                attachments: [{
+                    text,
+                }],
             });
 
             return res.send('ok');
