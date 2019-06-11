@@ -257,9 +257,9 @@ const isValidBoard = (board, completeBoard) => {
 
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	rtm.on('message', async (message) => {
-		// if (message.channel !== process.env.CHANNEL_SANDBOX) {
+		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 		// if (!message.channel.startsWith('D')) {
-		if (message.channel !== process.env.CHANNEL_SANDBOX && !message.channel.startsWith('D')) {
+		// if (message.channel !== process.env.CHANNEL_SANDBOX && !message.channel.startsWith('D')) {
 			return;
 		}
 
