@@ -187,20 +187,19 @@ module.exports = (clients) => {
             const cnt = chians.reduce((sum, cur) => sum + count(text, cur), 0);
 
             if(cnt >= 1) {
-                if (channel.startsWith('C')) {
-                    Promise.resolve()
-                        .then(() => slack.reactions.add({name: 'no_good', channel, timestamp}))
-                        .then(() => slack.reactions.add({name: 'cookies146', channel, timestamp}))
-                        .then(() =>
-                            cnt >= 2 &&
-                            Promise.resolve()
-                            .then(() => slack.reactions.add({name: 'x', channel, timestamp}))
-                            .then(() => slack.reactions.add({name: numToEmoji(cnt), channel, timestamp}))
-                        );
+                Promise.resolve()
+                    .then(() => slack.reactions.add({name: 'no_good', channel, timestamp}))
+                    .then(() => slack.reactions.add({name: 'cookies146', channel, timestamp}))
+                    .then(() =>
+                        cnt >= 2 &&
+                        Promise.resolve()
+                        .then(() => slack.reactions.add({name: 'x', channel, timestamp}))
+                        .then(() => slack.reactions.add({name: numToEmoji(cnt), channel, timestamp}))
+                    );
 
+                if (channel.startsWith('C')) {
                     unlock(user, 'freezing');
                     suspendCounter.add(user, cnt);
-
                 }
             }
         }
