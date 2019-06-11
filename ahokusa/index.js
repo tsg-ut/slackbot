@@ -50,7 +50,7 @@ const state = (() => {
 			lackedPiece: savedState.lackedPiece || ':ahokusa-top-center:',
 			seen: savedState.seen || 0,
 			boardName: savedState.boardName || 'ahokusa',
-			thread: null,
+			thread: savedState.thread || null,
 		};
 	} catch (e) {
 		return {
