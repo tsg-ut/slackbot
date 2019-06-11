@@ -96,15 +96,15 @@ it('reacts to "寿司ランキング 確認"', () => new Promise((resolve) => {
 
 	(async () => {
 		const promise = new Promise(resolve => {
-			slack.on('reactions.add', ({name, channel}) => {
-				if (name === 'sushi' && channel === 'D00000000') {
+			slack.on('reactions.add', ({name, timestamp}) => {
+				if (timestamp === slack.fakeTimestamp && name === 'sushi') {
 					resolve();
 				}
 			});
 		});
 
 		slack.rtmClient.emit('message', {
-			channel: "D00000000",
+			channel: slack.fakeChannel,
 			text: 'sushi',
 			user: slack.fakeUser,
 			ts: slack.fakeTimestamp,
@@ -133,8 +133,8 @@ it('reacts to "凍結ランキング 確認"', () => new Promise((resolve) => {
 	(async () => {
 		const promise = new Promise(resolve => {
 			const table = {no_good: false, cookies146: false};
-			slack.on('reactions.add', ({name, channel, timestamp}) => {
-				if(channel === "D00000000" && timestamp === slack.fakeTimestamp) {
+			slack.on('reactions.add', ({name, timestamp}) => {
+				if (timestamp === slack.fakeTimestamp && table.hasOwnProperty(name)) {
 					table[name] = true;
 				}
 				if(Object.values(table).every(x=>x)) {
@@ -144,7 +144,7 @@ it('reacts to "凍結ランキング 確認"', () => new Promise((resolve) => {
 		});
 
 		slack.rtmClient.emit('message', {
-			channel: "D00000000",
+			channel: slack.fakeChannel,
 			text: '死',
 			user: slack.fakeUser,
 			ts: slack.fakeTimestamp,

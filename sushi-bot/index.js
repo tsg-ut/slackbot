@@ -7,248 +7,275 @@ const moment = require('moment');
 const {unlock} = require('../achievements');
 
 class Counter {
-    constructor(name) {
-        this.name = name;
-        this.map = new Map();
-        this.load();
-    }
+	constructor(name) {
+		this.name = name;
+		this.map = new Map();
+		this.load();
+	}
 
-    add(key, cnt = 1) {
-        if (this.map.has(key)) {
-            this.map.set(key, this.map.get(key) + cnt);
-        } else {
-            this.map.set(key, cnt);
-        }
+	add(key, cnt = 1) {
+		if (this.map.has(key)) {
+			this.map.set(key, this.map.get(key) + cnt);
+		} else {
+			this.map.set(key, cnt);
+		}
 
-        this.save();
-    }
+		this.save();
+	}
 
-    clear() {
-        this.map = new Map();
-        this.save();
-    }
+	clear() {
+		this.map = new Map();
+		this.save();
+	}
 
-    entries() {
-        const keys = Array.from(this.map.keys());
-        const sortedKeys = sortBy(keys, (key) => this.map.get(key)).reverse();
-        return sortedKeys.map((key) => [key, this.map.get(key)]);
-    }
+	entries() {
+		const keys = Array.from(this.map.keys());
+		const sortedKeys = sortBy(keys, (key) => this.map.get(key)).reverse();
+		return sortedKeys.map((key) => [key, this.map.get(key)]);
+	}
 
-    async save() {
-        const filePath = path.join(__dirname, `${this.name}.json`);
-        await promisify(fs.writeFile)(filePath, JSON.stringify(Array.from(this.map.entries())));
-    }
+	async save() {
+		const filePath = path.join(__dirname, `${this.name}.json`);
+		await promisify(fs.writeFile)(filePath, JSON.stringify(Array.from(this.map.entries())));
+	}
 
-    async load() {
-        const filePath = path.join(__dirname, `${this.name}.json`);
+	async load() {
+		const filePath = path.join(__dirname, `${this.name}.json`);
 
-        const exists = await new Promise((resolve) => {
-            fs.access(filePath, fs.constants.F_OK, (error) => {
-                resolve(!Boolean(error));
-            });
-        });
+		const exists = await new Promise((resolve) => {
+			fs.access(filePath, fs.constants.F_OK, (error) => {
+				resolve(!Boolean(error));
+			});
+		});
 
-        if (exists) {
-            const data = await promisify(fs.readFile)(filePath);
-            this.map = new Map(JSON.parse(data));
-        } else {
-            this.map = new Map();
-        }
-    }
+		if (exists) {
+			const data = await promisify(fs.readFile)(filePath);
+			this.map = new Map(JSON.parse(data));
+		} else {
+			this.map = new Map();
+		}
+	}
 }
 
 function count(haystack, needle) {
-    return haystack.split(needle).length - 1;
+	return haystack.split(needle).length - 1;
 }
 
 function numToEmoji(num) {
-    switch(num) {
-        case 0:
-            return 'zero';
-        case 1:
-            return 'one';
-        case 2:
-            return 'two';
-        case 3:
-            return 'three';
-        case 4:
-            return 'four';
-        case 5:
-            return 'five';
-        case 6:
-            return 'six';
-        case 7:
-            return 'seven';
-        case 8:
-            return 'eight';
-        case 9:
-            return 'nine';
-        case 10:
-            return 'keycap_ten';
-        default:
-            return 'vsonline';
-    }
+	switch(num) {
+		case 0:
+			return 'zero';
+		case 1:
+			return 'one';
+		case 2:
+			return 'two';
+		case 3:
+			return 'three';
+		case 4:
+			return 'four';
+		case 5:
+			return 'five';
+		case 6:
+			return 'six';
+		case 7:
+			return 'seven';
+		case 8:
+			return 'eight';
+		case 9:
+			return 'nine';
+		case 10:
+			return 'keycap_ten';
+		default:
+			return 'vsonline';
+	}
 }
 
 module.exports = (clients) => {
-    const { rtmClient: rtm, webClient: slack } = clients;
+	const { rtmClient: rtm, webClient: slack } = clients;
 
-    const sushiCounter = new Counter('sushi');
-    const suspendCounter = new Counter('suspend');
+	const sushiCounter = new Counter('sushi');
+	const suspendCounter = new Counter('suspend');
 
-    rtm.on('message', async (message) => {
-        const { channel, text, user, ts: timestamp } = message;
-        if (!text) {
-            return;
-        }
+	rtm.on('message', async (message) => {
+		const { channel, text, user, ts: timestamp } = message;
+		if (!text) {
+			return;
+		}
 
-        if (message.channel.startsWith('D')) {
-            const postDM = (text) => (
-                slack.chat.postMessage({
-                    channel: message.channel,
-                    text,
-                    username: 'sushi-bot',
-                    // eslint-disable-next-line camelcase
-                    icon_emoji: ':sushi:',
-                })
-            );
+		if (message.channel.startsWith('D')) {
+			const postDM = (text) => (
+				slack.chat.postMessage({
+					channel: message.channel,
+					text,
+					username: 'sushi-bot',
+					// eslint-disable-next-line camelcase
+					icon_emoji: ':sushi:',
+				})
+			);
 
-            const tokens = text.trim().split(/\s+/);
+			const tokens = text.trim().split(/\s+/);
 
-            if (tokens[0] === '寿司ランキング' && tokens[1] === '確認') {
-                let currentRank = 1;
-                for (let entry of sushiCounter.entries()) {
-                    if (entry[0] === user) {
-                        return postDM(`あなたのすし数は${entry[1]}個、現在の順位は${currentRank}位`);
-                    }
-                    currentRank++;
-                }
-            }
+			if (tokens[0] === '寿司ランキング' && tokens[1] === '確認') {
+				let currentRank = 1;
+				for (let entry of sushiCounter.entries()) {
+					if (entry[0] === user) {
+						return postDM(`あなたのすし数は${entry[1]}個、現在の順位は${currentRank}位`);
+					}
+					currentRank++;
+				}
+			}
 
-            if (tokens[0] === '凍結ランキング' && tokens[1] === '確認') {
-                let currentRank = 1;
-                for (let entry of suspendCounter.entries()) {
-                    if (entry[0] === user) {
-                        return postDM(`あなたの凍結回数は${entry[1]}回、現在の順位は${currentRank}位`);
-                    }
-                    currentRank++;
-                }
-            }
-        }
+			if (tokens[0] === '凍結ランキング' && tokens[1] === '確認') {
+				let currentRank = 1;
+				for (let entry of suspendCounter.entries()) {
+					if (entry[0] === user) {
+						return postDM(`あなたの凍結回数は${entry[1]}回、現在の順位は${currentRank}位`);
+					}
+					currentRank++;
+				}
+			}
+		}
 
-        let rtext = text;
-        rtext = rtext.
-            replace(/鮨/g, 'すし').
-            replace(/(su|zu|ス|ズ|ず|寿|壽)/gi, 'す').
-            replace(/(sh?i|ci|し|シ|司|\u{0328})/giu, 'し');
+		{
+			const rtext = text.
+				replace(/鮨/g, 'すし').
+				replace(/(su|zu|[スズず寿壽])/gi, 'す').
+				replace(/(sh?i|ci|[しシ司\u{0328}])/giu, 'し');
+			const cnt = count(rtext, 'すし');
 
-        rtext = rtext.
-            replace(/(ca|(ke|け|ケ)(i|ぃ|い|ｨ|ィ|ｲ|イ|e|ぇ|え|ｪ|ェ|ｴ|エ|-|ー))(ki|ke|き|キ)/gi, 'ケーキ');
+			if (cnt >= 1) {
+				Promise.resolve()
+					.then(() => slack.reactions.add({name: 'sushi', channel, timestamp}))
+					.then(() =>
+						cnt >= 2 &&
+						Promise.resolve()
+						.then(() => slack.reactions.add({name: 'x', channel, timestamp}))
+						.then(() => slack.reactions.add({name: numToEmoji(cnt), channel, timestamp}))
+					);
 
-        rtext = rtext.
-            replace(/akouryyy/gi, 'akkoury').
-            replace(/akouryy/gi, '').
-            replace(/kk/gi, 'k').
-            replace(/rr/gi, 'r').
-            replace(/y/gi, 'yy');
+				if (channel.startsWith('C')) {
+					sushiCounter.add(user, cnt);
 
-        if (count(rtext, 'すし')) {
-            const cnt = count(rtext, 'すし');
-            await slack.reactions.add({name: 'sushi', channel, timestamp});
-            if (channel.startsWith('C')) {
-                unlock(user, 'get-sushi');
-                if (moment().utcOffset(9).day() === 3) {
-                    unlock(user, 'wednesday-sushi');
-                }
-            }
-            if(cnt >= 2) {
-                if (channel.startsWith('C')) {
-                    unlock(user, 'get-multiple-sushi');
-                    if (cnt > 10) {
-                        unlock(user, 'get-infinite-sushi');
-                    }
-                }
-                await slack.reactions.add({name: 'x', channel, timestamp});
-                await slack.reactions.add({name: numToEmoji(cnt), channel, timestamp});
-            }
-            sushiCounter.add(user, cnt);
-        }
-        if (rtext.includes("ケーキ")) {
-            slack.reactions.add({name: 'cake', channel, timestamp});
-        }
-        if (rtext.includes("殺") || rtext.includes("死")|| rtext.includes(":koroすzo:")) {
-            const cnt = count(rtext, '殺') + count(rtext, '死') + count(rtext, ':koroすzo:');
-            if (channel.startsWith('C')) {
-                unlock(user, 'freezing');
-            }
-            suspendCounter.add(user, cnt);
-            await slack.reactions.add({name: 'no_good', channel, timestamp});
-            await slack.reactions.add({name: 'cookies146', channel, timestamp});
-            if(cnt >= 2) {
-                await slack.reactions.add({name: 'x', channel, timestamp});
-                await slack.reactions.add({name: numToEmoji(cnt), channel, timestamp});
-            }
-        }
-        if (rtext.includes("akouryy")) {
-            slack.reactions.add({name: 'no_good', channel, timestamp});
-            slack.reactions.add({name: 'akouryy', channel, timestamp});
-        }
+					switch (true) {
+						case cnt > 10:
+							unlock(user, 'get-infinite-sushi');
+						case cnt >= 2:
+							unlock(user, 'get-multiple-sushi');
+						case cnt >= 1:
+							unlock(user, 'get-sushi');
+					}
 
-        const stars = ["欲し", "干し", "ほし", "星", "★", "☆"];
-        for(const star of stars) {
-            if (text.includes(star)) {
-                slack.reactions.add({name: 'grapes', channel, timestamp});
-                break;
-            }
-        }
-    });
+					if (moment().utcOffset(9).day() === 3) {
+						unlock(user, 'wednesday-sushi');
+					}
+				}
+			}
+		}
 
-    schedule.scheduleJob('0 19 * * 0', async () => {
-        const {members} = await slack.users.list();
+		{
+			const rtext = text.
+				replace(/(ca|(ke|け|ケ)(i|ぃ|い|ｨ|ィ|ｲ|イ|e|ぇ|え|ｪ|ェ|ｴ|エ|-|ー))(ki|ke|き|キ)/gi, 'ケーキ');
 
-        await slack.chat.postMessage({
-            channel: process.env.CHANNEL_SANDBOX,
-            username: 'sushi-bot',
-            text: '今週の凍結ランキング',
-            icon_emoji: ':cookies146:',
-            attachments: suspendCounter.entries().map(([user, count], index) => {
-                const member = members.find(({id}) => id === user);
-                if (!member) {
-                    return null;
-                }
-                const name = member.profile.display_name || member.name;
-                if (index === 0) {
-                    unlock(user, 'freezing-master');
-                }
+			if (rtext.includes("ケーキ")) {
+				slack.reactions.add({name: 'cake', channel, timestamp});
+			}
+		}
 
-                return {
-                    author_name: `${index + 1}位: ${name} (${count}回)`,
-                    author_icon: member.profile.image_24,
-                };
-            }).filter((attachment) => attachment !== null),
-        });
+		{
+			const chians = ["殺", "死", ":korosuzo:"];
 
-        suspendCounter.clear();
+			const cnt = chians.reduce((sum, cur) => sum + count(text, cur), 0);
 
-        await slack.chat.postMessage({
-            channel: process.env.CHANNEL_SANDBOX,
-            username: 'sushi-bot',
-            text: '今週の寿司ランキング',
-            icon_emoji: ':sushi:',
-            attachments: sushiCounter.entries().map(([user, count], index) => {
-                const member = members.find(({id}) => id === user);
-                if (!member) {
-                    return null;
-                }
-                const name = member.profile.display_name || member.name;
+			if(cnt >= 1) {
+				Promise.resolve()
+					.then(() => slack.reactions.add({name: 'no_good', channel, timestamp}))
+					.then(() => slack.reactions.add({name: 'cookies146', channel, timestamp}))
+					.then(() =>
+						cnt >= 2 &&
+						Promise.resolve()
+						.then(() => slack.reactions.add({name: 'x', channel, timestamp}))
+						.then(() => slack.reactions.add({name: numToEmoji(cnt), channel, timestamp}))
+					);
 
-                return {
-                    author_name: `${index + 1}位: ${name} (${count}回)`,
-                    author_icon: member.profile.image_24,
-                };
-            }).filter((attachment) => attachment !== null),
-        });
+				if (channel.startsWith('C')) {
+					unlock(user, 'freezing');
 
-        sushiCounter.clear();
-    });
-};
+					suspendCounter.add(user, cnt);
+				}
+			}
+		}
+
+		{
+			const rtext = text.
+				replace(/akouryyy/gi, 'akkoury').
+				replace(/akouryy/gi, '').
+				replace(/kk/gi, 'k').
+				replace(/rr/gi, 'r').
+				replace(/y/gi, 'yy');
+
+			if (rtext.includes("akouryy")) {
+				slack.reactions.add({name: 'no_good', channel, timestamp});
+				slack.reactions.add({name: 'akouryy', channel, timestamp});
+			}
+		}
+
+		{
+			const stars = ["欲し", "干し", "ほし", "星", "★", "☆"];
+			for(const star of stars) {
+				if (text.includes(star)) {
+					slack.reactions.add({name: 'grapes', channel, timestamp});
+					break;
+				}
+			}
+		}
+
+		schedule.scheduleJob('0 19 * * 0', async () => {
+			const {members} = await slack.users.list();
+
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				username: 'sushi-bot',
+				text: '今週の凍結ランキング',
+				icon_emoji: ':cookies146:',
+				attachments: suspendCounter.entries().map(([user, count], index) => {
+					const member = members.find(({id}) => id === user);
+					if (!member) {
+						return null;
+					}
+					const name = member.profile.display_name || member.name;
+					if (index === 0) {
+						unlock(user, 'freezing-master');
+					}
+
+					return {
+						author_name: `${index + 1}位: ${name} (${count}回)`,
+						author_icon: member.profile.image_24,
+					};
+				}).filter((attachment) => attachment !== null),
+			});
+
+			suspendCounter.clear();
+
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				username: 'sushi-bot',
+				text: '今週の寿司ランキング',
+				icon_emoji: ':sushi:',
+				attachments: sushiCounter.entries().map(([user, count], index) => {
+					const member = members.find(({id}) => id === user);
+					if (!member) {
+						return null;
+					}
+					const name = member.profile.display_name || member.name;
+
+					return {
+						author_name: `${index + 1}位: ${name} (${count}回)`,
+						author_icon: member.profile.image_24,
+					};
+				}).filter((attachment) => attachment !== null),
+			});
+
+			sushiCounter.clear();
+		});
+	});
+}
