@@ -83,9 +83,12 @@ export const server = ({webClient: slack}: {webClient: WebClient}) => async (fas
 
 					await postMessage('死にます:wave:');
 
-					setTimeout(() => {
-						process.exit(0);
-					}, 2000);
+					await new Promise(resolve =>
+						setTimeout(() => {
+							process.exit(0);
+							resolve();
+						}, 2000)
+					);
 				},
 				30 * 60 * 1000, // 30min
 				(blocks: any) => {
