@@ -90,14 +90,16 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			tsgSlack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: req.body.text,
-				username: `${name}@${teamName}`,
+				username: `${name || req.body.user_name}@${teamName}`,
 				icon_url: iconUrl,
+				unfurl_links: true,
 			}),
 			kmcSlack.chat.postMessage({
 				channel: process.env.KMC_CHANNEL_SANDBOX,
 				text: req.body.text,
-				username: `${name}@${teamName}`,
+				username: `${name || req.body.user_name}@${teamName}`,
 				icon_url: iconUrl,
+				unfurl_links: true,
 			}),
 		]);
 
