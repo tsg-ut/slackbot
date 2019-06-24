@@ -30,7 +30,6 @@ export const server = ({webClient: slack}: {webClient: WebClient}) => async (fas
 			logger.error(data);
 			return 'Internal Server Error';
 		}
-		logger.info(data)
 		await db.run(sql`
 			INSERT OR REPLACE INTO tokens (
 				team_id,
