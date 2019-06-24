@@ -12,6 +12,9 @@ interface SlackInterface {
 
 const messages = new Map();
 
+let isTsgAllowing = true;
+let isKmcAllowing = true;
+
 export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface) => plugin(async (fastify, opts, next) => {
 	const db = await sqlite.open(path.join(__dirname, '..', 'tokens.sqlite3'));
 	const kmcToken = await db.get(sql`SELECT * FROM tokens WHERE team_id = ${process.env.KMC_TEAM_ID}`);
@@ -34,6 +37,41 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			return 'Bad Request';
 		}
 		const teamName = req.body.team_id === tsgTeam.id ? 'TSG' : 'KMC';
+		const isAllowingSend = teamName === 'TSG' ? isTsgAllowing : isKmcAllowing;
+		const isAllowingReceive = teamName === 'TSG' ? isKmcAllowing : isTsgAllowing;
+
+		if (req.body.text.trim() === 'allow') {
+			if (isAllowingSend) {
+				return '受信拒否は設定されてないよ';
+			}
+			if (teamName === 'TSG') {
+				isTsgAllowing = true;
+			} else {
+				isKmcAllowing = true;
+			}
+			return '受信拒否を解除したよ:+1:';
+		}
+
+		if (req.body.text.trim() === 'deny') {
+			if (!isAllowingSend) {
+				return '現在、受信拒否中だよ';
+			}
+			if (teamName === 'TSG') {
+				isTsgAllowing = false;
+			} else {
+				isKmcAllowing = false;
+			}
+			return '受信拒否を設定したよ:cry:';
+		}
+
+		if (!isAllowingSend) {
+			return '受信拒否設定中はメッセージを送れません:innocent:';
+		}
+
+		if (!isAllowingReceive) {
+			return '受信拒否されているのでメッセージを送れません:cry:';
+		}
+
 		const user = await new Promise((resolve) => {
 			if (teamName === 'TSG') {
 				resolve(tsgSlack.users.info({
