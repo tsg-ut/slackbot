@@ -84,18 +84,19 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			}
 		});
 		const iconUrl = get(user, ['user', 'profile', 'image_192'], '');
+		const name = get(user, ['user', 'profile', 'display_name'], '');
 
 		const [{ts: tsgTs}, {ts: kmcTs}]: any = await Promise.all([
 			tsgSlack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: req.body.text,
-				username: `${req.body.user_name}@${teamName}`,
+				username: `${name}@${teamName}`,
 				icon_url: iconUrl,
 			}),
 			kmcSlack.chat.postMessage({
 				channel: process.env.KMC_CHANNEL_SANDBOX,
 				text: req.body.text,
-				username: `${req.body.user_name}@${teamName}`,
+				username: `${name}@${teamName}`,
 				icon_url: iconUrl,
 			}),
 		]);
