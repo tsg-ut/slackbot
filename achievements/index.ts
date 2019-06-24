@@ -77,7 +77,13 @@ const queue = new Queue({concurrency: 1});
 
 const loadDeferred = new Deferred();
 
+let isInitialized = false;
+
 const saveState = () => {
+	if (!isInitialized) {
+		return;
+	}
+
 	queue.add(async () => {
 		await promisify(fs.writeFile)(path.resolve(__dirname, 'state.json'), JSON.stringify({
 			counters: {
@@ -256,9 +262,15 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		unlock(payload.user.id, payload.actions[0].value);
 		respond({text: 'おめでとう!:tada:'});
 	});
+
+	isInitialized = true;
 };
 
 export const unlock = async (user: string, name: string) => {
+	if (!isInitialized) {
+		return;
+	}
+
 	const achievement = achievements.get(name);
 	if (!achievement) {
 		throw new Error(`Unknown achievement name ${name}`);
@@ -331,6 +343,10 @@ export const unlock = async (user: string, name: string) => {
 };
 
 export const increment = (user: string, name: string, value: number = 1) => {
+	if (!isInitialized) {
+		return;
+	}
+
 	if (!state.counters[name]) {
 		throw new Error(`Unknown counter name ${name}`);
 	}
@@ -362,6 +378,10 @@ export const get = (user: string, name: string) => {
 };
 
 export const set = (user: string, name: string, value: any) => {
+	if (!isInitialized) {
+		return;
+	}
+
 	if (!state.variables[name]) {
 		throw new Error(`Unknown variable name ${name}`);
 	}
