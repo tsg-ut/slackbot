@@ -176,6 +176,12 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		}
 	}
 
+	const {data: tempAchievements} = await axios.get('https://gist.github.com/hakatashi/abdaa59a3a6592a796b912c73dcb4f6a/raw/653d11e35c7bdae5053d6bbf77d77b241ad40c7a/temp.json');
+	for (const [user, achievements] of Object.entries(tempAchievements)) {
+		// @ts-ignore
+		state.achievements.set(user, achievements);
+	}
+
 	rtm.on('message', async (message) => {
 		if (message.text && message.user && !message.bot_id && !message.subtype && message.channel.startsWith('C')) {
 			const day = moment(parseFloat(message.ts) * 1000).utcOffset(9).format('YYYY-MM-DD');
