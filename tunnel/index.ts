@@ -26,8 +26,8 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 		return;
 	}
 
-	const kmcSlack = kmcToken === undefined ? null : new WebClient(kmcToken.bot_access_token);
-	const kmcRtm = kmcToken === undefined ? null : new RTMClient(kmcToken.bot_access_token);
+	const kmcSlack = new WebClient(kmcToken.bot_access_token);
+	const kmcRtm = new RTMClient(kmcToken.bot_access_token);
 
 	const {team: tsgTeam}: any = await tsgSlack.team.info();
 
