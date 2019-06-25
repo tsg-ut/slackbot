@@ -4,6 +4,8 @@ import sqlite from 'sqlite';
 import path from 'path';
 import plugin from 'fastify-plugin';
 import {get} from 'lodash';
+// @ts-ignore
+import logger from '../lib/logger.js';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -18,6 +20,12 @@ let isKmcAllowing = true;
 export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface) => plugin(async (fastify, opts, next) => {
 	const db = await sqlite.open(path.join(__dirname, '..', 'tokens.sqlite3'));
 	const kmcToken = await db.get(sql`SELECT * FROM tokens WHERE team_id = ${process.env.KMC_TEAM_ID}`);
+
+	if (kmcToken === undefined) {
+		logger.info('tunnel: Toekn for kmc slack not found. Disabling tunnel.');
+		return;
+	}
+
 	const kmcSlack = kmcToken === undefined ? null : new WebClient(kmcToken.bot_access_token);
 	const kmcRtm = kmcToken === undefined ? null : new RTMClient(kmcToken.bot_access_token);
 
