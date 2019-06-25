@@ -61,9 +61,6 @@ const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
 	}
 	for (const [id, uid] of uids.entries()) {
 		const station = stations.find((s) => s.uid === uid);
-		if (station === undefined) {
-			console.log(uid);
-		}
 		nodesWriter.write([id, station.name].join(','));
 		nodesWriter.write('\n');
 	}
