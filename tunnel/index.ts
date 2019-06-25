@@ -106,7 +106,7 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 		messages.set(tsgTs, {team: 'KMC', ts: kmcTs});
 		messages.set(kmcTs, {team: 'TSG', ts: tsgTs});
 
-		return 'ok';
+		return '';
 	});
 
 	const onReactionAdded = async (event: any, team: string) => {
