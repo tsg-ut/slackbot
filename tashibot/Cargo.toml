@@ -1,0 +1,11 @@
+[package]
+name = "tashibot"
+version = "0.1.0"
+authors = ["Koki Takahashi <hakatasiloving@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+
+[[bin]]
+name = "dijkstra"
+path = "dijkstra.rs"
