@@ -85,13 +85,13 @@ fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> Option
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = std::env::args().collect();
 
-    if args.len() != 4 {
+    if args.len() != 3 {
         println!("Usage: dijkstra [station1] [station2]");
         panic!("Argument count not satisfied");
     }
 
-    let station1 = args[2].parse()?;
-    let station2 = args[3].parse()?;
+    let station1 = args[1].parse()?;
+    let station2 = args[2].parse()?;
 
     let file = fs::File::open("edges.csv")?;
     let mut rdr = csv::ReaderBuilder::new().has_headers(false).from_reader(file);

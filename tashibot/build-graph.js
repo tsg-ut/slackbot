@@ -17,6 +17,7 @@ const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
 	const lineBuffer = await fs.readFile('line20190405free.csv');
 	const stationBuffer = await fs.readFile('station20190405free.csv');
 	const edgesWriter = createWriteStream('edges.csv');
+	const linesWriter = createWriteStream('lines.csv');
 	const nodesWriter = createWriteStream('nodes.csv');
 
 	const joins = joinBuffer.toString().split('\n').slice(1).map((l) => {
@@ -64,6 +65,11 @@ const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
 		nodesWriter.write([id, station.name].join(','));
 		nodesWriter.write('\n');
 	}
+	for (const [id, line] of lines.entries()) {
+		linesWriter.write([id, line.name].join(','));
+		linesWriter.write('\n');
+	}
 	edgesWriter.end();
 	nodesWriter.end();
+	linesWriter.end();
 })();

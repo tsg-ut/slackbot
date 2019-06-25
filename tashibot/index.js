@@ -1,6 +1,5 @@
-const {promisify} = require('util');
 const {katakanize, hiraganize} = require('japanese');
-const fs = require('fs');
+const {promises: fs, constants: {F_OK}} = require('fs');
 const path = require('path');
 const qs = require('querystring');
 const nodePersist = require('node-persist');
@@ -8,15 +7,43 @@ const download = require('download');
 const cloudinary = require('cloudinary');
 const {escapeRegExp, uniq} = require('lodash');
 const {default: Queue} = require('p-queue');
+const {spawn} = require('child_process');
+const concat = require('concat-stream');
 const getReading = require('../lib/getReading.js');
 const {unlock} = require('../achievements/index.ts');
+const prices = require('./prices.js');
 
 const histories = [];
 const queue = new Queue({concurrency: 1});
 const transaction = (func) => queue.add(func);
 
+const getPrice = (distance) => {
+	let previousPrice = 0;
+	for (const [km, price] of prices) {
+		if (distance < km * 1000) {
+			return previousPrice;
+		}
+		previousPrice = price;
+	}
+	return Infinity;
+};
+
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
-	const cities = (await promisify(fs.readFile)(path.resolve(__dirname, 'cities.csv')))
+	const statePath = path.join(__dirname, 'state.json');
+
+	const exists = await fs.access(statePath, F_OK).then(() => true).catch(() => false);
+
+	// eslint-disable-next-line no-async-promise-executor
+	const users = await new Promise(async (resolve) => {
+		if (exists) {
+			const data = await fs.readFile(statePath);
+			resolve(new Map(JSON.parse(data)));
+		} else {
+			resolve(new Map());
+		}
+	});
+
+	const cities = (await fs.readFile(path.resolve(__dirname, 'cities.csv')))
 		.toString()
 		.split('\n')
 		.filter((line) => line)
@@ -29,7 +56,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			year: year === '' ? null : parseInt(year),
 		}));
 
-	const stations = (await promisify(fs.readFile)(path.resolve(__dirname, 'stations.csv')))
+	const stations = (await fs.readFile(path.resolve(__dirname, 'stations.csv')))
 		.toString()
 		.split('\n')
 		.filter((line) => line)
@@ -41,6 +68,40 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			description,
 			year,
 		}));
+
+	const nodes = (await fs.readFile(path.resolve(__dirname, 'nodes.csv')))
+		.toString()
+		.split('\n')
+		.filter((line) => line)
+		.map((line) => line.split(','))
+		.map(([id, name]) => ({
+			id: parseInt(id),
+			name,
+		}));
+	const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+
+	const edges = (await fs.readFile(path.resolve(__dirname, 'edges.csv')))
+		.toString()
+		.split('\n')
+		.filter((line) => line)
+		.map((line) => line.split(','))
+		.map(([station1, station2, distance, line]) => ({
+			station1: parseInt(station1),
+			station2: parseInt(station2),
+			distance: parseInt(distance),
+			line: parseInt(line),
+		}));
+
+	const lines = (await fs.readFile(path.resolve(__dirname, 'lines.csv')))
+		.toString()
+		.split('\n')
+		.filter((line) => line)
+		.map((line) => line.split(','))
+		.map(([id, name]) => ({
+			id: parseInt(id),
+			name,
+		}));
+	const lineMap = new Map(lines.map((line) => [line.id, line.name]));
 
 	const readings = uniq([
 		...cities.map(({reading}) => reading),
@@ -118,8 +179,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			await slack.reactions.add({name: 'bomb', channel: message.channel, timestamp: message.ts});
 			return;
 		}
-
-		const isRepetitive = histories.find((history) => history.cityName === city.name && history.date >= Date.now() - 10 * 6000 * 1000) !== undefined;
 
 		histories.push({cityName: city.name, date: Date.now()});
 		const placeText = city.type === 'city' ? `${city.name},${city.prefecture}` : `${city.name},${city.description}`;
@@ -216,15 +275,83 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			await storage.setItem('achievements', achievements);
 		});
 
+		const attachments = isNew ? cloudinaryData.map((datum) => ({
+			image_url: datum.secure_url,
+			fallback: response,
+		})) : [];
+
+		if (city.type === 'station') {
+			const stationName = city.name.replace(/(?:駅|乗降場|停車場|信号場|停留場|電停|乗降所|停留所)$/, '');
+			const station = nodes.find(({name}) => name === stationName);
+			if (station) {
+				if (!users.has(message.user)) {
+					users.set(message.user, {
+						position: 1188,
+						history: [1188],
+						distance: 0,
+						price: 0,
+					});
+				}
+				const {position, history, distance, price} = users.get(message.user);
+				const generator = spawn('../target/release/dijkstra', [position, station.id], {cwd: __dirname});
+				const data = await new Promise((resolve) => {
+					generator.stdout.pipe(concat({encoding: 'buffer'}, resolve));
+				});
+				const output = data.toString().trim();
+				if (output !== 'null') {
+					const routes = output.split(',').map((c) => parseInt(c));
+					let newDistance = 0;
+					let line = null;
+					let firstLineString = '';
+					const routeString = routes.map((id, index) => {
+						let lineString = '';
+						if (index !== 0) {
+							const station1 = routes[index];
+							const station2 = routes[index + 1];
+							const filteredEdges = edges.filter((e) => (
+								(e.station1 === station1 && e.station2 === station2) ||
+								(e.station2 === station1 && e.station1 === station2)
+							));
+							if (filteredEdges.length > 0) {
+								const edge = filteredEdges.find((e) => e.line === line) || filteredEdges[0];
+								newDistance += edge.distance;
+								if (line === null) {
+									// eslint-disable-next-line prefer-destructuring
+									line = edge.line;
+									firstLineString = `【${lineMap.get(edge.line)}】`;
+								} else if (line !== edge.line) {
+									// eslint-disable-next-line prefer-destructuring
+									line = edge.line;
+									lineString = `\n【${lineMap.get(edge.line)}】`;
+								}
+							}
+						}
+						return `${lineString}${nodeMap.get(id).name}駅`;
+					}).join(' → ');
+					const from = nodeMap.get(routes[0]).name;
+					const to = nodeMap.get(routes[routes.length - 1]).name;
+					const newPrice = getPrice(newDistance);
+					users.set(message.user, {
+						position: station.id,
+						history: history.slice(0, -1).concat(routes),
+						distance: distance + newDistance,
+						price: price + newPrice,
+					});
+					await fs.writeFile(statePath, JSON.stringify(Array.from(users.entries())));
+					attachments.push({
+						title: `乗換案内 (${from}駅 → ${to}駅, ${(newDistance / 1000).toFixed(1)}km, ${newPrice}円)`,
+						text: firstLineString + routeString,
+					});
+				}
+			}
+		}
+
 		await slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			text: response,
 			username: 'tashibot',
 			icon_emoji: ':japan:',
-			attachments: isRepetitive ? [] : cloudinaryData.map((datum) => ({
-				image_url: datum.secure_url,
-				fallback: response,
-			})),
+			attachments,
 			...(message.thread_ts ? {
 				thread_ts: message.thread_ts,
 			} : {}),
