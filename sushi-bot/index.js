@@ -228,54 +228,54 @@ module.exports = (clients) => {
 				}
 			}
 		}
+	});
 
-		schedule.scheduleJob('0 19 * * 0', async () => {
-			const {members} = await slack.users.list();
+	schedule.scheduleJob('0 19 * * 0', async () => {
+		const {members} = await slack.users.list();
 
-			await slack.chat.postMessage({
-				channel: process.env.CHANNEL_SANDBOX,
-				username: 'sushi-bot',
-				text: '今週の凍結ランキング',
-				icon_emoji: ':cookies146:',
-				attachments: suspendCounter.entries().map(([user, count], index) => {
-					const member = members.find(({id}) => id === user);
-					if (!member) {
-						return null;
-					}
-					const name = member.profile.display_name || member.name;
-					if (index === 0) {
-						unlock(user, 'freezing-master');
-					}
+		await slack.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			username: 'sushi-bot',
+			text: '今週の凍結ランキング',
+			icon_emoji: ':cookies146:',
+			attachments: suspendCounter.entries().map(([user, count], index) => {
+				const member = members.find(({id}) => id === user);
+				if (!member) {
+					return null;
+				}
+				const name = member.profile.display_name || member.name;
+				if (index === 0) {
+					unlock(user, 'freezing-master');
+				}
 
-					return {
-						author_name: `${index + 1}位: ${name} (${count}回)`,
-						author_icon: member.profile.image_24,
-					};
-				}).filter((attachment) => attachment !== null),
-			});
-
-			suspendCounter.clear();
-
-			await slack.chat.postMessage({
-				channel: process.env.CHANNEL_SANDBOX,
-				username: 'sushi-bot',
-				text: '今週の寿司ランキング',
-				icon_emoji: ':sushi:',
-				attachments: sushiCounter.entries().map(([user, count], index) => {
-					const member = members.find(({id}) => id === user);
-					if (!member) {
-						return null;
-					}
-					const name = member.profile.display_name || member.name;
-
-					return {
-						author_name: `${index + 1}位: ${name} (${count}回)`,
-						author_icon: member.profile.image_24,
-					};
-				}).filter((attachment) => attachment !== null),
-			});
-
-			sushiCounter.clear();
+				return {
+					author_name: `${index + 1}位: ${name} (${count}回)`,
+					author_icon: member.profile.image_24,
+				};
+			}).filter((attachment) => attachment !== null),
 		});
+
+		suspendCounter.clear();
+
+		await slack.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			username: 'sushi-bot',
+			text: '今週の寿司ランキング',
+			icon_emoji: ':sushi:',
+			attachments: sushiCounter.entries().map(([user, count], index) => {
+				const member = members.find(({id}) => id === user);
+				if (!member) {
+					return null;
+				}
+				const name = member.profile.display_name || member.name;
+
+				return {
+					author_name: `${index + 1}位: ${name} (${count}回)`,
+					author_icon: member.profile.image_24,
+				};
+			}).filter((attachment) => attachment !== null),
+		});
+
+		sushiCounter.clear();
 	});
 }

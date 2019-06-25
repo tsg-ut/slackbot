@@ -7,7 +7,7 @@ const nodePersist = require('node-persist');
 const download = require('download');
 const cloudinary = require('cloudinary');
 const {escapeRegExp, uniq} = require('lodash');
-const Queue = require('p-queue');
+const {default: Queue} = require('p-queue');
 const getReading = require('../lib/getReading.js');
 const {unlock} = require('../achievements/index.ts');
 
