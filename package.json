@@ -1,5 +1,6 @@
 {
   "name": "slackbot",
+  "private": true,
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -10,14 +11,14 @@
     "test": "jest --verbose --coverage"
   },
   "engines": {
-    "node": ">=10.6.0"
+    "node": ">=12.4.0"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tsg-ut/slackbot.git"
   },
   "keywords": [],
-  "author": "Koki Takahashi <hakatasiloving@gmail.com> (http://hakatashi.com/)",
+  "author": "TSG <info@tsg.ne.jp>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/tsg-ut/slackbot/issues"
