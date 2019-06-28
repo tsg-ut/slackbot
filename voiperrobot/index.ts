@@ -57,6 +57,16 @@ const getTimeLink = (time: Date, title = '宣言締切') => {
 	return `<!date^${moment(time).valueOf() / 1000 | 0}^{time_secs}^${url}|${text}>`;
 };
 
+const validateNumber = (n: number, dflt: number) => {
+	if (isNaN(n) || !isFinite(n)) {
+		return dflt;
+	}
+	if (n < 0 || n * 2 > 200) {
+		return dflt;
+	}
+	return n || dflt;
+};
+
 const sleepUntil = (time: Date) => new Promise((resolve) => setTimeout(resolve, time.valueOf() - Date.now()));
 
 const hitblow = (seq1: string[], seq2: string[]) => {
@@ -118,15 +128,23 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			icon_url: 'https://i.gyazo.com/f0d6407563bf2cb1f4cddbce3f0b74f6.png',
 		});
 
-		if (message.text === 'ボイパーロボット' || message.text.match(/^@voiperrobot\b/)) {
-			await postMessage(await getTtsLink(voiper()));
+		if (/^@voiperrobot\b|^ボイパーロボット(?:$|\s*(\d+))/.test(message.text)) {
+			const m = /^@voiperrobot\b|^ボイパーロボット(?:$|\s*(\d+))/.exec(message.text)!;
+			const voiperLength = validateNumber(parseInt(m[1]), 8);
+			await postMessage(await getTtsLink(voiper(voiperLength)));
 			return;
 		}
-		if (message.text === 'ボイパーロボットバトル') {
+		if (/^ボイパーロボットバトル(?:$|\s*(\d+))/.test(message.text)) {
+			const m = /^ボイパーロボットバトル(?:$|\s*(\d+))/.exec(message.text)!;
 			if (state.phase !== 'waiting' || state.users.includes(message.user)) {
 				await postMessage(':ha:');
 				return;
 			}
+			if (state.ts && m[1]) {
+				await postMessage(':ha:');
+				return;
+			}
+			const voiperLength = validateNumber(parseInt(m[1]), 4);
 			slack.reactions.add({
 				name: 'ok_hand',
 				channel: message.channel,
@@ -142,7 +160,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			await battleMutex.exec(async () => {
 				setState({
 					ts: message.ts,
-					answer: voiper(4),
+					answer: voiper(voiperLength),
 					users: [message.user],
 					userIdx: 0,
 				});
