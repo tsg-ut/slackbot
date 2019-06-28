@@ -305,7 +305,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					let firstLineString = '';
 					const routeString = routes.map((id, index) => {
 						let lineString = '';
-						if (index !== 0) {
+						if (index !== routes.length - 1) {
 							const station1 = routes[index];
 							const station2 = routes[index + 1];
 							const filteredEdges = edges.filter((e) => (
