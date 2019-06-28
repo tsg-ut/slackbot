@@ -47,6 +47,7 @@ const plugins = [
 	require('./wordhero/crossword'),
 	require('./oauth'),
 	require('./tunnel'),
+	require('./voiperrobot'),
 ];
 
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
