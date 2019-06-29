@@ -33,17 +33,52 @@ function data2rawsharp(data){
 	};
 }
 
-const colournames = [
-		'red','green','blue','yellow','black'
+// const colournames = [
+// 		'red','green','blue','yellow','black'
+// ];
+
+// const colourcodes = [
+// 	{r: 255, g: 0, b: 0},
+// 	{r: 0, g: 255, b: 0},
+// 	{r: 0, g: 0, b: 255},
+// 	{r: 204, g: 204, b: 0},
+// 	{r: 0, g: 0, b: 0},	
+// ];
+
+const Colour = {
+	Red:    '#FF0000',
+	Green:  '#00FF00',
+	Blue:   '#0000FF',
+	Yellow: '#CCCC00',
+	Black:  '#000000',
+	White:  '#FFFFFF',
+};
+
+const colourset = [
+	Colour.Red,
+	Colour.Green,
+	Colour.Blue,
+	Colour.Yellow,
+	Colour.Black,
 ];
 
-const colourcodes = [
-	{r: 255, g: 0, b: 0},
-	{r: 0, g: 255, b: 0},
-	{r: 0, g: 0, b: 255},
-	{r: 204, g: 204, b: 0},
-	{r: 0, g: 0, b: 0},	
-];
+const graphics = {
+	robot: ({ colour }) => `
+		<svg width="50" height="50">
+			<circle cx="25" cy="25" r="25" fill="${colour}" shape-rendering="crispEdges"/>
+		</svg>
+	`,
+	trace: ({ colour }) => `
+		<svg width="50" height="50">
+			<circle cx="25" cy="25" r="22.5" fill="none" stroke="${colour}" stroke-width="5" shape-rendering="crispEdges"/>
+		</svg>
+	`,
+	goal: ({ colour }) => `
+		<svg width="50" height="50" viewBox="0 0 512 512">
+			<polygon points="256,12.531 327.047,183.922 512,198.531 370.938,319.047 414.219,499.469 256,402.563 97.781,499.469 141.063,319.047 0,198.531 184.953,183.922" fill="${colour}" shape-rendering="crispEdges"/>
+		</svg>
+	`,
+}
 
 async function data2buffer(data){
 	
@@ -83,7 +118,8 @@ async function data2buffer(data){
 	}
 	
 	for(const [i,p] of data.robots.entries()){
-		const robot = await sharp(path.resolve(__dirname, 'images', colournames[i] + '_robot.png')).toBuffer();
+		// const robot = await sharp(path.resolve(__dirname, 'images', colournames[i] + '_robot.png')).toBuffer();
+		const robot = await sharp(Buffer.from(graphics.robot({ colour: colourset[i] }))).toBuffer();
 		//console.log(i,p);
 		
 		board = await composite(board,robot,pos2topleft(p));
@@ -92,10 +128,12 @@ async function data2buffer(data){
 	{
 		let goal;
 		if(!data.iscleared()){
-			goal = await sharp(path.resolve(__dirname, 'images', colournames[data.goal.colour] + '_goal.png')).toBuffer();
+			// goal = await sharp(path.resolve(__dirname, 'images', colournames[data.goal.colour] + '_goal.png')).toBuffer();
+			goal = await sharp(Buffer.from(graphics.goal({ colour: colourset[data.goal.colour] }))).toBuffer();
 		}
 		else{
-			goal = await sharp(path.resolve(__dirname, 'images', 'white_goal.png')).toBuffer();
+			// goal = await sharp(path.resolve(__dirname, 'images', 'white_goal.png')).toBuffer();
+			goal = await sharp(Buffer.from(graphics.goal({ colour: Colour.White }))).toBuffer();
 		}
 		
 		board = await composite(board,goal,pos2topleft(data.goal));
@@ -134,9 +172,8 @@ async function data2buffer(data){
   	
   	const robotpos = deepcopy(data.robots);
   	
-  	for(const v of deepcopy(data.logs).reverse()){
-  		const colourcode = colourcodes[v.c];
-  		const colourstr = `fill="rgb(${colourcode.r},${colourcode.g},${colourcode.b})"`;
+		for(const v of deepcopy(data.logs).reverse()){
+			const colour = colourset[v.c];
   		
   		const tk = size.path.tick;
   		let w,h;
@@ -150,7 +187,7 @@ async function data2buffer(data){
    			w = Math.abs(v.from.x-v.to.x) * size.grid.w + tk; 
 	 		}
 	 		//console.log(v.c,h,w);
-  		svgstr += `<rect y="${p.y}" x="${p.x}" width="${w}" height="${h}" ${colourstr}/>`;
+  		svgstr += `<rect y="${p.y}" x="${p.x}" width="${w}" height="${h}" fill="${colour}"/>`;
   		
   		robotpos[v.c] = v.from;
   	}
@@ -162,7 +199,8 @@ async function data2buffer(data){
 		board = await composite(board,Buffer.from(svgstr),{y: 0, x: 0});
 		
 		for(const [i,rp] of robotpos.entries()){
-			const traceimg = await sharp(path.resolve(__dirname, 'images', colournames[i] + '_trace.png')).toBuffer();
+			// const traceimg = await sharp(path.resolve(__dirname, 'images', colournames[i] + '_trace.png')).toBuffer();
+			const traceimg = await sharp(Buffer.from(graphics.trace({ colour: colourset[i] }))).toBuffer();
 			board = await composite(board,traceimg,pos2topleft(rp));
 		}
 	}
