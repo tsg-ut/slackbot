@@ -86,7 +86,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'reaction-shoki-ka-5',
 		difficulty: 'hard',
-		title: '狂気の沙汰ほど面白い',
+		title: '狂気の沙汰ほど面白い...！',
 		condition: '1つのメッセージに対し5人以上から:shoki-ka:リアクションをもらう',
 	},
 	
