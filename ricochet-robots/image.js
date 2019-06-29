@@ -63,6 +63,11 @@ const colourset = [
 ];
 
 const graphics = {
+	grid: () => `
+		<svg width="70" height="70">
+			<rect x="0" y="0" width="70" height="70" fill="#F5F5DC" stroke="#808080" stroke-width="4"/>
+		</svg>
+	`,
 	robot: ({ colour }) => `
 		<svg width="50" height="50">
 			<circle cx="25" cy="25" r="25" fill="${colour}" shape-rendering="crispEdges"/>
@@ -95,7 +100,8 @@ async function data2buffer(data){
 		create: Object.assign({background: { r: 0, g: 0, b: 0, alpha: 255}}, rawsharp.raw)
 	}).toBuffer();
 
-	const grid = await sharp(path.resolve(__dirname, 'images', 'grid.png')).toBuffer();
+	// const grid = await sharp(path.resolve(__dirname, 'images', 'grid.png')).toBuffer();
+	const grid = await sharp(Buffer.from(graphics.grid())).toBuffer();
 	for(const y of [...Array(data.h).keys()]){
 		for(const x of [...Array(data.w).keys()]){
 			board = await composite(board,grid,{
