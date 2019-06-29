@@ -222,7 +222,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 
 	rtm.on('reaction_added', async (event) => {
 		if (event.user && event.item && event.item.channel.startsWith('C') && event.item_user && state.achievements.has(event.item_user)) {
-			for (const reaction of ['ha', 'wakari', 'koresuki', 'yakuza']) {
+			for (const reaction of ['ha', 'wakari', 'koresuki', 'yakuza','shoki-ka']) {
 				if (event.reaction === reaction) {
 					const {data}: any = await axios.get(`https://slack.com/api/conversations.history?${qs.stringify({
 						channel: event.item.channel,
