@@ -46,10 +46,10 @@ function data2rawsharp(data){
 // ];
 
 const Colour = {
-	Red:    '#FF0000',
-	Green:  '#00FF00',
-	Blue:   '#0000FF',
-	Yellow: '#CCCC00',
+	Red:    '#FF7CBC',
+	Green:  '#4BC584',
+	Blue:   '#409EDA',
+	Yellow: '#FADA81',
 	Black:  '#000000',
 	White:  '#FFFFFF',
 };
@@ -157,6 +157,29 @@ async function data2buffer(data){
 	
 	//console.log(data);
 
+	const wall_h = await sharp(Buffer.from(graphics.wall_h())).toBuffer();
+	const wall_v = await sharp(Buffer.from(graphics.wall_v())).toBuffer();
+	for (const y of [...Array(data.h).keys()]) {
+		board = await composite(board, wall_v, {
+			y: y * size.grid.h,
+			x: 0,
+		});
+		board = await composite(board, wall_v, {
+			y: y * size.grid.h,
+			x: data.w * size.grid.w,
+		});
+	}
+	for (const x of [...Array(data.w).keys()]) {
+		board = await composite(board, wall_h, {
+			y: 0,
+			x: x * size.grid.w,
+		});
+		board = await composite(board, wall_h, {
+			y: data.h * size.grid.h,
+			x: x * size.grid.w,
+		});
+	}
+
 	for(const wall of data.walls){
 		let p = {
 			y: wall.y * size.grid.h,
@@ -164,7 +187,7 @@ async function data2buffer(data){
 		};
 		
 		// const wallimg = await sharp(path.resolve(__dirname, 'images', 'wall_' + 'hv'[wall.d] + '.png')).toBuffer();
-		const wallimg = await sharp(Buffer.from(wall.d === 0 ?  graphics.wall_h() : graphics.wall_v())).toBuffer();
+		const wallimg = wall.d === 0 ? wall_h : wall_v;
 		board = await composite(board,wallimg,p);
 	}
 	
