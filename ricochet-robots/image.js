@@ -13,28 +13,28 @@ const size = {
 		h: 50, w: 50,
 	},
 	wall: {
-		tick: 5,
+		thickness: 5,
 	},
 	path: {
-		tick: 5,
+		thickness: 5,
 	},
 };
 
 function data2rawsharp(data) {
 	return {
 		raw: {
-			height: size.grid.h * data.h + size.wall.tick * 2,
-			width: size.grid.w * data.w + size.wall.tick * 2,
+			height: size.grid.h * data.h + size.wall.thickness * 2,
+			width: size.grid.w * data.w + size.wall.thickness * 2,
 			channels: 4
 		}
 	};
 }
 
 const Colour = {
-	Red: '#ff7cbc',
-	Green: '#4bc584',
-	Blue: '#409eda',
-	Yellow: '#fada81',
+	Red: '#FF7CBC',
+	Green: '#4BC584',
+	Blue: '#409EDA',
+	Yellow: '#FADA81',
 	Black: '#000000',
 	White: '#FFFFFF',
 };
@@ -95,19 +95,19 @@ async function data2buffer(data) {
 	}).toBuffer();
 
 	const grid = await sharp(Buffer.from(graphics.grid())).toBuffer();
-	for (const y of [...Array(data.h).keys()]) {
-		for (const x of [...Array(data.w).keys()]) {
+	for (const y of Array(data.h).keys()) {
+		for (const x of Array(data.w).keys()) {
 			board = await composite(board, grid, {
-				y: y * size.grid.h + size.wall.tick,
-				x: x * size.grid.w + size.wall.tick,
+				y: y * size.grid.h + size.wall.thickness,
+				x: x * size.grid.w + size.wall.thickness,
 			});
 		}
 	}
 
 	function pos2topleft(p) {
 		return {
-			y: p.y * size.grid.h + (size.grid.h - size.robot.h) / 2 + size.wall.tick,
-			x: p.x * size.grid.w + (size.grid.w - size.robot.w) / 2 + size.wall.tick,
+			y: p.y * size.grid.h + (size.grid.h - size.robot.h) / 2 + size.wall.thickness,
+			x: p.x * size.grid.w + (size.grid.w - size.robot.w) / 2 + size.wall.thickness,
 		};
 	}
 
@@ -125,13 +125,13 @@ async function data2buffer(data) {
 		else {
 			colour = Colour.White;
 		}
-		let goal = await sharp(Buffer.from(graphics.goal({ colour: colour }))).toBuffer();
+		const goal = await sharp(Buffer.from(graphics.goal({ colour }))).toBuffer();
 		board = await composite(board, goal, pos2topleft(data.goal));
 	}
 
 	const wall_h = await sharp(Buffer.from(graphics.wall_h())).toBuffer();
 	const wall_v = await sharp(Buffer.from(graphics.wall_v())).toBuffer();
-	for (const y of [...Array(data.h).keys()]) {
+	for (const y of Array(data.h).keys()) {
 		board = await composite(board, wall_v, {
 			y: y * size.grid.h,
 			x: 0,
@@ -141,7 +141,7 @@ async function data2buffer(data) {
 			x: data.w * size.grid.w,
 		});
 	}
-	for (const x of [...Array(data.w).keys()]) {
+	for (const x of Array(data.w).keys()) {
 		board = await composite(board, wall_h, {
 			y: 0,
 			x: x * size.grid.w,
@@ -165,13 +165,13 @@ async function data2buffer(data) {
 
 	if (data.logs.length > 0) {
 
-		let svgstr = "";
+		let svgstr = '';
 
 		function pos2cp(p) {
-			const dc = -size.path.tick / 2;
+			const dc = -size.path.thickness / 2;
 			return {
-				y: (p.y + 0.5) * size.grid.h + size.wall.tick + dc,
-				x: (p.x + 0.5) * size.grid.w + size.wall.tick + dc,
+				y: (p.y + 0.5) * size.grid.h + size.wall.thickness + dc,
+				x: (p.x + 0.5) * size.grid.w + size.wall.thickness + dc,
 			};
 		}
 
@@ -180,7 +180,7 @@ async function data2buffer(data) {
 		for (const v of deepcopy(data.logs).reverse()) {
 			const colour = colourset[v.c];
 
-			const tk = size.path.tick;
+			const tk = size.path.thickness;
 			let w, h;
 			const p = pos2cp({ y: Math.min(v.from.y, v.to.y), x: Math.min(v.from.x, v.to.x) });
 			if (v.from.x === v.to.x) {
