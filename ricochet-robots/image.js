@@ -68,6 +68,16 @@ const graphics = {
 			<rect x="0" y="0" width="70" height="70" fill="#F5F5DC" stroke="#808080" stroke-width="4"/>
 		</svg>
 	`,
+	wall_h: () => `
+		<svg width="80" height="10">
+			<rect x="0" y="0" width="80" height="10" fill="#000000"/>
+		</svg>
+	`,
+	wall_v: () => `
+		<svg width="10" height="80">
+			<rect x="0" y="0" width="10" height="80" fill="#000000"/>
+		</svg>
+	`,
 	robot: ({ colour }) => `
 		<svg width="50" height="50">
 			<circle cx="25" cy="25" r="25" fill="${colour}" shape-rendering="crispEdges"/>
@@ -153,7 +163,8 @@ async function data2buffer(data){
 			x: wall.x * size.grid.w,
 		};
 		
-		const wallimg = await sharp(path.resolve(__dirname, 'images', 'wall_' + 'hv'[wall.d] + '.png')).toBuffer();
+		// const wallimg = await sharp(path.resolve(__dirname, 'images', 'wall_' + 'hv'[wall.d] + '.png')).toBuffer();
+		const wallimg = await sharp(Buffer.from(wall.d === 0 ?  graphics.wall_h() : graphics.wall_v())).toBuffer();
 		board = await composite(board,wallimg,p);
 	}
 	
