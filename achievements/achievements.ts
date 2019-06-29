@@ -89,6 +89,12 @@ const achievements: Achievement[] = [
 		title: '狂気の沙汰ほど面白い...！',
 		condition: '1つのメッセージに対し5人以上から:shoki-ka:リアクションをもらう',
 	},
+	{
+		id: 'reaction-seyana-5',
+		difficulty: 'hard',
+		title: '聞いてよアカネちゃん！',
+		condition: '1つのメッセージに対し5人以上から:seyana:リアクションをもらう',
+	},
 	
 	// sushi-bot
 
