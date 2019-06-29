@@ -239,7 +239,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 					if (!targetReaction) {
 						return;
 					}
-					for (const reactionCount of Array(targetReaction.count + 1).key()) {
+					for (const reactionCount of Array(targetReaction.count + 1).keys()) {
 						const achievementName = `reaction-${reaction}-${reactionCount}`;
 						if (achievements.has(achievementName)) {
 							await unlock(event.item_user, achievementName);
