@@ -83,7 +83,13 @@ const achievements: Achievement[] = [
 		title: '今日からやの付く自由業',
 		condition: '1つのメッセージに対し5人以上から:yakuza:リアクションをもらう',
 	},
-
+	{
+		id: 'reaction-shoki-ka-5',
+		difficulty: 'hard',
+		title: '狂気の沙汰ほど面白い',
+		condition: '1つのメッセージに対し5人以上から:shoki-ka:リアクションをもらう',
+	},
+	
 	// sushi-bot
 
 	{
