@@ -46,10 +46,10 @@ function data2rawsharp(data){
 // ];
 
 const Colour = {
-	Red:    '#FF7CBC',
-	Green:  '#4BC584',
-	Blue:   '#409EDA',
-	Yellow: '#FADA81',
+	Red:    '#ff7cbc',
+	Green:  '#4bc584',
+	Blue:   '#409eda',
+	Yellow: '#fada81',
 	Black:  '#000000',
 	White:  '#FFFFFF',
 };
@@ -65,17 +65,17 @@ const colourset = [
 const graphics = {
 	grid: () => `
 		<svg width="70" height="70">
-			<rect x="0" y="0" width="70" height="70" fill="#F5F5DC" stroke="#808080" stroke-width="4"/>
+			<rect x="0" y="0" width="70" height="70" fill="#FFFFF7" stroke="#808080" stroke-width="4"/>
 		</svg>
 	`,
 	wall_h: () => `
 		<svg width="80" height="10">
-			<rect x="0" y="0" width="80" height="10" fill="#000000"/>
+			<rect x="0" y="0" width="80" height="10" rx="3" ry="3" fill="#38382D"/>
 		</svg>
 	`,
 	wall_v: () => `
 		<svg width="10" height="80">
-			<rect x="0" y="0" width="10" height="80" fill="#000000"/>
+			<rect x="0" y="0" width="10" height="80" rx="3" ry="3" fill="#38382D"/>
 		</svg>
 	`,
 	robot: ({ colour }) => `
@@ -93,7 +93,7 @@ const graphics = {
 			<polygon points="256,12.531 327.047,183.922 512,198.531 370.938,319.047 414.219,499.469 256,402.563 97.781,499.469 141.063,319.047 0,198.531 184.953,183.922" fill="${colour}" shape-rendering="crispEdges"/>
 		</svg>
 	`,
-}
+};
 
 async function data2buffer(data){
 	
