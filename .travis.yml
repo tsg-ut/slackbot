@@ -5,5 +5,7 @@ before_install:
   - mkdir -p shogi/boards
   - touch shogi/boards/temp.sqlite3
 script:
+  # Typecheck files not covered by tests
+  - tsc --noEmit
   - npm test
   - npx codecov
