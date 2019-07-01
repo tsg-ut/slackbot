@@ -222,29 +222,30 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 
 	rtm.on('reaction_added', async (event) => {
 		if (event.user && event.item && event.item.channel.startsWith('C') && event.item_user && state.achievements.has(event.item_user)) {
-			for (const reaction of ['ha', 'wakari', 'koresuki', 'yakuza', 'shoki-ka', 'seyana']) {
-				if (event.reaction === reaction) {
-					const {data}: any = await axios.get(`https://slack.com/api/conversations.history?${qs.stringify({
-						channel: event.item.channel,
-						latest: event.item.ts,
-						limit: 1,
-						inclusive: true,
-					})}`, {
-						headers: {
-							Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
-						},
-					});
-					const reactions = getter(data, ['messages', 0, 'reactions'], []);
-					const targetReaction = reactions.find(({name}: any) => name === reaction);
-					if (!targetReaction) {
-						return;
-					}
-					for (const reactionCount of Array(targetReaction.count + 1).key()) {
-						const achievementName = `reaction-${reaction}-${reactionCount}`;
-						if (achievements.has(achievementName)) {
-							await unlock(event.item_user, achievementName);
-						}
-					}
+			const reactionAchievements = Array.from(achievements.values()).filter((achievement) => (
+				achievement.reaction === event.reaction
+			));
+			if (reactionAchievements.length === 0) {
+				return;
+			}
+			const {data}: any = await axios.get(`https://slack.com/api/conversations.history?${qs.stringify({
+				channel: event.item.channel,
+				latest: event.item.ts,
+				limit: 1,
+				inclusive: true,
+			})}`, {
+				headers: {
+					Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
+				},
+			});
+			const reactions = getter(data, ['messages', 0, 'reactions'], []);
+			const targetReaction = reactions.find(({name}: any) => name === reaction);
+			if (!targetReaction) {
+				return;
+			}
+			for (const achievement of reactionAchievements) {
+				if (achievement.value <= targetReaction.count) {
+					await unlock(event.item_user, achievement.id);
 				}
 			}
 		}
