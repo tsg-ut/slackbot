@@ -239,7 +239,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 				},
 			});
 			const reactions = getter(data, ['messages', 0, 'reactions'], []);
-			const targetReaction = reactions.find(({name}: any) => name === reaction);
+			const targetReaction = reactions.find(({name}: any) => name === event.reaction);
 			if (!targetReaction) {
 				return;
 			}
