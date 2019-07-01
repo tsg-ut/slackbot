@@ -31,10 +31,10 @@ function data2rawsharp(data) {
 }
 
 const Colour = {
-	Red: '#FF7CBC',
-	Green: '#4BC584',
-	Blue: '#409EDA',
-	Yellow: '#FADA81',
+	Red: '#FF0000',
+	Green: '#00CC80',
+	Blue: '#0000FF',
+	Yellow: '#CCCC00',
 	Black: '#000000',
 	White: '#FFFFFF',
 };
@@ -50,7 +50,7 @@ const colourset = [
 const graphics = {
 	grid: () => `
 		<svg width="70" height="70">
-			<rect x="0" y="0" width="70" height="70" fill="#FFFFF7" stroke="#808080" stroke-width="4"/>
+			<rect x="0" y="0" width="70" height="70" fill="#F5F5DB" stroke="#808080" stroke-width="4"/>
 		</svg>
 	`,
 	wall_h: () => `
