@@ -24,6 +24,12 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 	const kmcRtm = kmcToken === undefined ? null : new RTMClient(kmcToken.bot_access_token);
 
 	const {team: tsgTeam}: any = await tsgSlack.team.info();
+	const [tsgMembers, kmcMembers] =
+		(await Promise.all([tsgSlack, kmcSlack].map((slack) => slack.users.list())) as any[])
+		.map(({members}) => members.map(
+			(member: {id: string}) => [member.id, member]
+			)
+		).map((members: [string, any]) => new Map(members));
 
 	fastify.post('/slash/tunnel', async (req, res) => {
 		if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
@@ -118,6 +124,7 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			return;
 		}
 
+		// fetch message detail
 		const message = get(await axios.get(`https://slack.com/api/conversations.history?${qs.stringify({
 			channel: process.env.CHANNEL_SANDBOX,
 			latest: message_data.ts,
@@ -129,52 +136,51 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			},
 		}), ['data', 'messages', 0]);
 
-		if (message.ts != message_data.ts) {
+		if (message.ts !== message_data.ts) {
 			// message not found
 			return;
 		}
-
-		const blocks = [message.blocks ? message.blocks[0] : {
-			type: 'section',
-			text: {
-				type: 'mrkdwn',
-				verbatim: true,
-				text: message.text,
-			},
-		}];
-
-		for (const reaction of message.reactions as {name: string, users: string[]}[]) {
-			blocks.push({
+		
+		const blocks = [
+			(message.blocks ? message.blocks[0] : {
+				type: 'section',
+				text: {
+					type: 'mrkdwn',
+					verbatim: true,
+					text: message.text,
+				},
+			}),
+			...message.reactions.map((reaction: {name: string, users: string[]}) => ({
 				type: 'context',
 				elements: [
 					{
 						type: 'mrkdwn',
 						text: `+:${reaction.name}: by`,
 					},
-					...(await Promise.all(reaction.users
-						.map((user) => (team === 'TSG'? tsgSlack : kmcSlack).users.info({user}))))
+					...(reaction.users
+						.map((user) => (team === 'TSG'? tsgMembers : kmcMembers).get(user))
 						.map((user) => ({
 							type: 'image',
-							image_url: get(user, ['user', 'profile', 'image_192'], ''),
-							alt_text: get(user, ['user', 'profile', 'display_name'], ''),
-						})),
+							image_url: get(user, ['profile', 'image_192'], ''),
+							alt_text: get(user, ['profile', 'display_name'], '') || get(user, ['profile', 'real_name'], ''),
+						}))),
 				],
-			});
-		}
+			})),
+		].slice(0, 50);
 
 		if (message_data.team === 'TSG') {
 			await tsgSlack.chat.update({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: '',
 				ts: message.ts,
-				blocks,
+				blocks: blocks.slice(0, 50),
 			});
 		} else {
 			await kmcSlack.chat.postMessage({
 				channel: process.env.KMC_CHANNEL_SANDBOX,
 				text: '',
 				ts: message.ts,
-				blocks,
+				blocks: blocks.slice(0, 50),
 			});
 		}
 	};
