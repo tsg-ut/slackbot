@@ -82,6 +82,7 @@
   },
   "devDependencies": {
     "@hakatashi/eslint-config": "^1.9.0",
+    "@types/download": "^6.2.4",
     "@types/jest": "^24.0.15",
     "@types/lodash": "^4.14.134",
     "@typescript-eslint/parser": "^1.11.0",

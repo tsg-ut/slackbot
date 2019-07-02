@@ -48,6 +48,7 @@ const plugins = [
 	require('./oauth'),
 	require('./tunnel'),
 	require('./voiperrobot'),
+	require('./bracket'),
 ];
 
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
