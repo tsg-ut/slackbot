@@ -4,6 +4,8 @@ import sqlite from 'sqlite';
 import path from 'path';
 import plugin from 'fastify-plugin';
 import {get} from 'lodash';
+import qs from 'querystring';
+import axios from 'axios';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -110,38 +112,63 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 	});
 
 	const onReactionAdded = async (event: any, team: string) => {
-		const message = messages.get(event.item.ts);
-		if (!message) {
+		const message_data = messages.get(event.item.ts);
+		if (!message_data) {
 			return;
 		}
-		const user = await new Promise((resolve) => {
-			if (team === 'TSG') {
-				resolve(tsgSlack.users.info({
-					user: event.user,
-				}));
-			} else {
-				resolve(kmcSlack.users.info({
-					user: event.user,
-				}));
-			}
-		});
-		const iconUrl = get(user, ['user', 'profile', 'image_192'], '');
-		const name = get(user, ['user', 'profile', 'display_name'], '');
-		if (message.team === 'TSG') {
-			await tsgSlack.chat.postMessage({
+
+		const message = get(await axios.get(`https://slack.com/api/conversations.history?${qs.stringify({
+			channel: process.env.CHANNEL_SANDBOX,
+			latest: message_data,
+			limit: 1,
+			inclusive: true,
+		})}`, {
+			headers: {
+				Authorization: `Bearer ${team === 'TSG'? process.env.HAKATASHI_TOKEN : kmcToken.access_token}`,
+			},
+		}), ['data', 'messages', 0]);
+
+		const blocks = [message.blocks ? message.blocks[0] : {
+			type: 'section',
+			text: {
+				type: 'mrkdwn',
+				verbatim: true,
+				text: message.text,
+			},
+		}];
+
+		for (const reaction of message.reactions as {name: string, users: string[]}[]) {
+			blocks.push({
+				type: 'context',
+				elements: [
+					{
+						type: 'mrkdwn',
+						text: `+:${reaction.name}: by`,
+					},
+					...(await Promise.all(reaction.users
+						.map((user) => (team === 'TSG'? tsgSlack : kmcSlack).users.info({user}))))
+						.map((user) => ({
+							type: 'image',
+							image_url: get(user, ['user', 'profile', 'image_192'], ''),
+							alt_text: get(user, ['user', 'profile', 'display_name'], ''),
+						})),
+				],
+			});
+		}
+
+		if (message_data.team === 'TSG') {
+			await tsgSlack.chat.update({
 				channel: process.env.CHANNEL_SANDBOX,
-				text: `+:${event.reaction}:`,
-				username: `${name}@${team}`,
-				icon_url: iconUrl,
-				thread_ts: message.ts,
+				text: '',
+				ts: message.ts,
+				blocks,
 			});
 		} else {
 			await kmcSlack.chat.postMessage({
 				channel: process.env.KMC_CHANNEL_SANDBOX,
-				text: `+:${event.reaction}:`,
-				username: `${name}@${team}`,
-				icon_url: iconUrl,
-				thread_ts: message.ts,
+				text: '',
+				ts: message.ts,
+				blocks,
 			});
 		}
 	};
