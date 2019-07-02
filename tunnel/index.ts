@@ -80,19 +80,9 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			return '受信拒否されているのでメッセージを送れません:cry:';
 		}
 
-		const user = await new Promise((resolve) => {
-			if (teamName === 'TSG') {
-				resolve(tsgSlack.users.info({
-					user: req.body.user_id,
-				}));
-			} else {
-				resolve(kmcSlack.users.info({
-					user: req.body.user_id,
-				}));
-			}
-		});
-		const iconUrl = get(user, ['user', 'profile', 'image_192'], '');
-		const name = get(user, ['user', 'profile', 'display_name'], '');
+		const user = (teamName === 'TSG'? tsgMembers : kmcMembers).get(req.body.user_id);
+		const iconUrl = get(user, ['profile', 'image_192'], '');
+		const name = get(user, ['profile', 'display_name'], '');
 
 		const [{ts: tsgTs}, {ts: kmcTs}]: any = await Promise.all([
 			tsgSlack.chat.postMessage({
