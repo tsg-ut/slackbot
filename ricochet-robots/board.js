@@ -63,7 +63,20 @@ function samep(p,q){
 }
 
 class Board{
-	constructor(){
+	constructor(){}
+	load_board(data,goalcolour,goalpos){
+		this.h = data["h"];
+		this.w = data["w"];
+		function pos2array(x){
+			return x;
+		}
+		this.walls = data["walls"].map(pos2array);
+		this.robots = data["robots"].map(pos2array);
+		this.goal = pos2array(goalpos);
+		this.goal.colour = goalcolour;
+		this.init_board();
+	}
+	init(){
 		this.h = 5;
 		this.w = 7;
 		this.walls = [];
@@ -130,8 +143,10 @@ class Board{
 		this.goal = this.robots.pop();
 		this.goal.colour = randi(0,4);
 		
-		//console.log(this.walls);
+		this.init_board();
+	}
 		
+	init_board(){
 		this.board = Array(this.h).fill().map(_ => Array(this.w).fill().map(_ => {
 			return {
 				haswall: Array(4).fill().map(_ => false)
@@ -245,7 +260,6 @@ class Board{
 	
 	undo(){
 		const v = this.logs.pop();
-		//console.log(v);
 		this.robots[v.c] = v.from;
 	}
 
@@ -456,8 +470,16 @@ module.exports.logstringfy = (log) => {
 };
 
 module.exports.getRandomBoard = () => {
-	return new Board();
+	const res = new Board();
+	res.init();
+	return res;
 };
+
+module.exports.getBoard = () => {
+	const res = new Board();
+	return res;
+};
+
 
 
 
