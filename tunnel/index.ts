@@ -112,6 +112,7 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 	});
 
 	const onReactionAdded = async (event: any, team: string) => {
+		// update message of the other team
 		const message_data = messages.get(event.item.ts);
 		if (!message_data) {
 			return;
@@ -119,14 +120,19 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 
 		const message = get(await axios.get(`https://slack.com/api/conversations.history?${qs.stringify({
 			channel: process.env.CHANNEL_SANDBOX,
-			latest: message_data,
+			latest: message_data.ts,
 			limit: 1,
 			inclusive: true,
 		})}`, {
 			headers: {
-				Authorization: `Bearer ${team === 'TSG'? process.env.HAKATASHI_TOKEN : kmcToken.access_token}`,
+				Authorization: `Bearer ${message_data.team === 'TSG'? process.env.HAKATASHI_TOKEN : kmcToken.access_token}`,
 			},
 		}), ['data', 'messages', 0]);
+
+		if (message.ts != message_data.ts) {
+			// message not found
+			return;
+		}
 
 		const blocks = [message.blocks ? message.blocks[0] : {
 			type: 'section',
