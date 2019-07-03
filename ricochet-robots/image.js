@@ -83,27 +83,28 @@ const graphics = {
 async function data2buffer(data) {
 
 	const rawsharp = data2rawsharp(data);
-
-	async function composite(dst, src, pos) {
-		return await sharp(dst, rawsharp)
-			.overlayWith(src, { left: pos.x, top: pos.y })
-			.toBuffer();
-	}
-
-	let board = await sharp({
+	let board = sharp({
 		create: Object.assign({ background: { r: 0, g: 0, b: 0, alpha: 255 } }, rawsharp.raw)
-	}).toBuffer();
-
-	const grid = await sharp(Buffer.from(graphics.grid())).toBuffer();
+	});
+	
+	const composites = [];
+	function compose_to_board(src,pos) {
+		composites.push({ input: src, left: pos.x, top: pos.y });
+	}
+	async function flush_board() {
+		return await board.composite(composites).toBuffer();
+	}
+	
+	const grid = Buffer.from(graphics.grid());
 	for (const y of Array(data.h).keys()) {
 		for (const x of Array(data.w).keys()) {
-			board = await composite(board, grid, {
+			compose_to_board(grid, {
 				y: y * size.grid.h + size.wall.thickness,
 				x: x * size.grid.w + size.wall.thickness,
 			});
 		}
 	}
-
+	
 	function pos2topleft(p) {
 		return {
 			y: p.y * size.grid.h + (size.grid.h - size.robot.h) / 2 + size.wall.thickness,
@@ -112,9 +113,8 @@ async function data2buffer(data) {
 	}
 
 	for (const [i, p] of data.robots.entries()) {
-		const robot = await sharp(Buffer.from(graphics.robot({ colour: colourset[i] }))).toBuffer();
-
-		board = await composite(board, robot, pos2topleft(p));
+		const robot = Buffer.from(graphics.robot({ colour: colourset[i] }));
+		compose_to_board(robot, pos2topleft(p));
 	}
 
 	{
@@ -125,28 +125,28 @@ async function data2buffer(data) {
 		else {
 			colour = Colour.White;
 		}
-		const goal = await sharp(Buffer.from(graphics.goal({ colour }))).toBuffer();
-		board = await composite(board, goal, pos2topleft(data.goal));
+		const goal = Buffer.from(graphics.goal({ colour }));
+		compose_to_board(goal, pos2topleft(data.goal));
 	}
 
-	const wall_h = await sharp(Buffer.from(graphics.wall_h())).toBuffer();
-	const wall_v = await sharp(Buffer.from(graphics.wall_v())).toBuffer();
+	const wall_h = Buffer.from(graphics.wall_h());
+	const wall_v = Buffer.from(graphics.wall_v());
 	for (const y of Array(data.h).keys()) {
-		board = await composite(board, wall_v, {
+		compose_to_board(wall_v, {
 			y: y * size.grid.h,
 			x: 0,
 		});
-		board = await composite(board, wall_v, {
+		compose_to_board(wall_v, {
 			y: y * size.grid.h,
 			x: data.w * size.grid.w,
 		});
 	}
 	for (const x of Array(data.w).keys()) {
-		board = await composite(board, wall_h, {
+		compose_to_board(wall_h, {
 			y: 0,
 			x: x * size.grid.w,
 		});
-		board = await composite(board, wall_h, {
+		compose_to_board(wall_h, {
 			y: data.h * size.grid.h,
 			x: x * size.grid.w,
 		});
@@ -159,7 +159,7 @@ async function data2buffer(data) {
 		};
 
 		const wallimg = wall.d === 0 ? wall_h : wall_v;
-		board = await composite(board, wallimg, p);
+		compose_to_board(wallimg, p);
 	}
 
 
@@ -196,14 +196,14 @@ async function data2buffer(data) {
 			robotpos[v.c] = v.from;
 		}
 		svgstr = `<svg height="${rawsharp.raw.height}" width="${rawsharp.raw.width}">` + svgstr + '</svg>';
-		board = await composite(board, Buffer.from(svgstr), { y: 0, x: 0 });
+		compose_to_board(Buffer.from(svgstr), { y: 0, x: 0 });
 
 		for (const [i, rp] of robotpos.entries()) {
-			const traceimg = await sharp(Buffer.from(graphics.trace({ colour: colourset[i] }))).toBuffer();
-			board = await composite(board, traceimg, pos2topleft(rp));
+			const traceimg = Buffer.from(graphics.trace({ colour: colourset[i] }));
+			compose_to_board(traceimg, pos2topleft(rp));
 		}
 	}
-	return board;
+	return await flush_board();
 };
 
 
