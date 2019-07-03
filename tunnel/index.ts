@@ -4,8 +4,6 @@ import sqlite from 'sqlite';
 import path from 'path';
 import plugin from 'fastify-plugin';
 import {get} from 'lodash';
-import qs from 'querystring';
-import axios from 'axios';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -113,18 +111,14 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 		if (!messageData) {
 			return;
 		}
-
 		// fetch message detail
-		const message = get(await axios.get(`https://slack.com/api/conversations.history?${qs.stringify({
+		const message: {ts: string, text: string, blocks: any[], reactions: any[]} = (await tsgSlack.conversations.history({
+			token: messageData.team === 'TSG'? process.env.HAKATASHI_TOKEN : kmcToken.access_token,
 			channel: process.env.CHANNEL_SANDBOX,
 			latest: messageData.ts,
 			limit: 1,
-			inclusive: true,
-		})}`, {
-			headers: {
-				Authorization: `Bearer ${messageData.team === 'TSG'? process.env.HAKATASHI_TOKEN : kmcToken.access_token}`,
-			},
-		}), ['data', 'messages', 0]);
+			inclusive: true,			
+		}) as any).messages[0];
 
 		if (message.ts !== messageData.ts) {
 			// message not found
