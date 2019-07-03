@@ -2,13 +2,10 @@ use std::env;
 use std::collections::VecDeque;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
-//use std::collections::LinkedList;
-//use std::hash::BuildHasherDefault;
-//extern crate fnv;
-//use fnv::FnvHasher;
 
 extern crate rand;
 use rand::Rng;
+use rand::prelude::SliceRandom;
 
 use std::cmp;
 
@@ -48,7 +45,7 @@ struct Board {
 	w: usize,
 	h: usize,
 	walls: Vec<WallPos>,
-	board: Vec<Vec<Vec<u8>>>,
+	haswall: Vec<Vec<Vec<bool>>>,
 	robots: Vec<Pos>,
 }
 
@@ -69,7 +66,7 @@ impl Board {
 			gone[y][x] = true;
 			let mut res = 1;
 			for i in 0..4 {
-				if self_.board[y][x][i] != 0 {
+				if self_.haswall[y][x][i] {
 					continue;
 				}
 				let ty = (y as i8 + DIRECTIONS[i].y) as usize;
@@ -94,7 +91,7 @@ impl Board {
 			for x in 0..self.w {
 				let mut d = 0;
 				for i in 0..4 {
-					if self.board[y][x][i] == 0 {
+					if !self.haswall[y][x][i] {
 						d += 1;
 					}
 				}
@@ -110,22 +107,22 @@ impl Board {
 	}
 	
 	fn init(&mut self){
-		self.board = vec![vec![vec![0;4];self.w];self.h];
+		self.haswall = vec![vec![vec![false;4];self.w];self.h];
 
 		//println!("{} {} {} {}",self.board.len(), self.h, self.board[0].len(), self.w);
 		for y in 0..self.h {
-			self.board[y][0][3] = 1;
-			self.board[y][self.w-1][1] = 1;
+			self.haswall[y][0][3] = true;
+			self.haswall[y][self.w-1][1] = true;
 		}
 
 		for x in 0..self.w {
-			self.board[0][x][2] = 1;
-			self.board[self.h-1][x][0] = 1;
+			self.haswall[0][x][2] = true;
+			self.haswall[self.h-1][x][0] = true;
 		}
 		
 		let mut rng = rand::thread_rng();		
-		for _ in 0..10 {
-			let mem_board = self.board.clone();
+		for _ in 0..15 {
+			let mem_haswall = self.haswall.clone();
 			let mut add_walls = vec![];
 			let cy = rng.gen_range(0,self.h);
 			let cx = rng.gen_range(0,self.w);
@@ -134,8 +131,8 @@ impl Board {
 				let x = cx;
 				if 0 < y && y < self.h {
 					add_walls.push(WallPos{y: y as i8, x: x as i8, d: 0});
-					self.board[y-1][x][0] = 1;
-					self.board[y][x][2] = 1;
+					self.haswall[y-1][x][0] = true;
+					self.haswall[y][x][2] = true;
 				}
 			}
 			{
@@ -143,8 +140,8 @@ impl Board {
 				let x = cx + rng.gen_range(0,2);
 				if 0 < x && x < self.w {
 					add_walls.push(WallPos{y: y as i8, x: x as i8, d: 1});
-					self.board[y][x-1][1] = 1;
-					self.board[y][x][3] = 1;
+					self.haswall[y][x-1][1] = true;
+					self.haswall[y][x][3] = true;
 				}
 			}
 			
@@ -153,7 +150,7 @@ impl Board {
 				self.walls.append(&mut add_walls);
 			}
 			else{
-				self.board = mem_board;
+				self.haswall = mem_haswall;
 			}
 		}
 		
@@ -171,7 +168,7 @@ impl Board {
 		}
 	}	
   pub fn new() -> Board {
-  	let mut res = Board {w: 9, h: 6, walls: vec![],board: vec![], robots: vec![]};
+  	let mut res = Board {w: 9, h: 6, walls: vec![],haswall: vec![], robots: vec![]};
   	res.init();
   	return res;
   }
@@ -248,7 +245,7 @@ impl<'a> State<'a> {
 		//println!("{} {:?} {:?}",mind,p,self.robots);
 		
 		for _ in 0..mind {
-			if self.bo.board[p.y as usize][p.x as usize][robot_dir] != 0{
+			if self.bo.haswall[p.y as usize][p.x as usize][robot_dir] {
 				break;
 			}
 			p = Pos{y: p.y + dir.y, x: p.x + dir.x};
@@ -359,13 +356,27 @@ fn bfs<'a,'b>(target: u8, bo:&'a Board) -> ((usize,Pos),Vec<(usize,usize)>){
 
 fn main(){
 	let args: Vec<String> = env::args().collect();
-	let bo = Board::new();
+	let mut bo = Board::new();
 	let depth = match atoi(args[1].as_bytes()) {
 		Some(i) => i,
 		None => panic!("args[1] isn't digit")
 	};
-	let ((goalcolour,goalpos),mut log) = bfs(depth,&bo);
-	log.reverse();
+	let ((mut goalcolour,goalpos),mut log) = bfs(depth,&bo);
+	
+	//randomize colour
+	
+	let mut rng = rand::thread_rng();
+	let mut perm: Vec<usize> = (0..bo.robots.len()).collect();
+	perm.shuffle(&mut rng);
+	let mut perminv: Vec<usize> = vec![0;perm.len()];
+	for i in 0..perm.len() {
+		perminv[perm[i]] = i;
+	}
+	
+	goalcolour = perm[goalcolour];
+	log = log.into_iter().map(|(x,y)| (perm[x],y)).rev().collect();
+	bo.robots = (0..bo.robots.len()).map(|k| bo.robots[perminv[k]].clone()).collect();
+	
 	println!("{:?}",bo);
 	println!("{:?}",goalcolour);
 	println!("{:?}",goalpos);

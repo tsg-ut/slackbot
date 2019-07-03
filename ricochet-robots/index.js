@@ -2,7 +2,6 @@
 
 const image = require('./image.js');
 const board = require('./board.js');
-const rustproxy = require('./rust-proxy.js');
 const deepcopy = require('deepcopy');
 const moment = require('moment');
 const querystring = require('querystring');
@@ -18,7 +17,6 @@ function getTimeLink(time){
 	})}`;
 	return `<${url}|${text}>`;
 };
-
 
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	let state = undefined;
@@ -176,7 +174,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				
 				const waittime = 10;
 				if(!state || (depth && state.answer.length < depth) || (isbattle && !state.battles.isbattle)){
-					const [bo,ans] = await rustproxy.getBoard(depth);
+					const [bo,ans] = await board.getBoard(depth);
 					state = {
 						board: bo,
 						answer: ans,

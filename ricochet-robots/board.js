@@ -2,6 +2,7 @@
 
 const image = require('./image.js');
 const deepcopy = require('deepcopy');
+const rust_proxy = require('./rust-proxy.js');
 
 function rep(n,f){ for(let i = 0; i < n; i++)f(i); } 
 
@@ -475,12 +476,29 @@ module.exports.getRandomBoard = () => {
 	return res;
 };
 
-module.exports.getBoard = () => {
-	const res = new Board();
-	return res;
+module.exports.getBoard = async (depth) => {
+	const data = await rust_proxy.get_data(depth);
+	let lines = data.split('\n').filter((line) => line);
+	lines = lines.slice(lines.length-4,lines.length);
+
+	const board_data = JSON.parse(lines[0].replace(/Pos|WallPos|Board/g,'').replace(/([a-z]+)/g,'"$1"'));
+	const goalcolour = parseInt(lines[1]);
+	const goalpos = JSON.parse(lines[2].replace(/Pos/g,'').replace(/([a-z]+)/g,'"$1"'));
+	const answer = JSON.parse(lines[3].replace(/\(/g,'[').replace(/\)/g,']'));
+
+	const bo =  new Board();
+	bo.load_board(board_data,goalcolour,goalpos);
+	//console.log(answer);
+	for(let d of answer){
+		bo.move(d[0],d[1]);
+	}
+	const logs = [...bo.logs];
+	//console.log(bo.logs);
+	for(let d of answer){
+		bo.undo();
+	}
+	return [bo,logs];
 };
-
-
 
 
 
