@@ -113,14 +113,14 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 		}
 		// fetch message detail
 		const message: {ts: string, text: string, blocks: any[], reactions: any[]} = (await tsgSlack.conversations.history({
-			token: messageData.team === 'TSG'? process.env.HAKATASHI_TOKEN : kmcToken.access_token,
-			channel: messageData.team === 'TSG'? process.env.CHANNEL_SANDBOX : process.env.KMC_CHANNEL_SANDBOX,
-			latest: messageData.ts,
+			token: team === 'TSG'? process.env.HAKATASHI_TOKEN : kmcToken.access_token,
+			channel: team === 'TSG'? process.env.CHANNEL_SANDBOX : process.env.KMC_CHANNEL_SANDBOX,
+			latest: event.item.ts,
 			limit: 1,
 			inclusive: true,			
 		}) as any).messages[0];
 
-		if (message.ts !== messageData.ts) {
+		if (message.ts !== event.item.ts) {
 			// message not found
 			return;
 		}
@@ -143,10 +143,11 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 					},
 					...(reaction.users
 						.map((user) => (team === 'TSG'? tsgMembers : kmcMembers).get(user))
+						.filter((user) => get(user, ['profile', 'image_48']))
 						.map((user) => ({
 							type: 'image',
-							image_url: get(user, ['profile', 'image_48'], ''),
-							alt_text: get(user, ['profile', 'display_name'], '') || get(user, ['profile', 'real_name'], ''),
+							image_url: get(user, ['profile', 'image_48']),
+							alt_text: get(user, ['profile', 'display_name']) || get(user, ['profile', 'real_name'], '[ERROR]'),
 						}))),
 				],
 			})),
