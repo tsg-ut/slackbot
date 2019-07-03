@@ -18,7 +18,6 @@ function getTimeLink(time){
 	return `<${url}|${text}>`;
 };
 
-
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	let state = undefined;
 
@@ -132,7 +131,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 		})(state);
 		
-		async function verifycommand(cmd){
+		async function verifycommand(cmd,text){
 			state.board.movecommand(cmd);
 			const url = await image.upload(state.board);
 			if(state.board.iscleared()){
@@ -149,6 +148,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					state.board.movecommand(state.answer);
 					await postmessage(
 						`実は${state.answer.length}手でたどり着けるんです。\n${board.logstringfy(state.answer)}`,
+						await image.upload(state.board)
+					);
+					state.board.undocommand(state.answer);
+				}
+				else if(board.isMADE(text)){
+					state.board.movecommand(state.answer);
+					await postmessage(
+						`僕の見つけた手順です。\n${board.logstringfy(state.answer)}`,
 						await image.upload(state.board)
 					);
 					state.board.undocommand(state.answer);
@@ -174,30 +181,18 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				const isbattle = (text === 'ハイパーロボットバトル');
 				
 				const waittime = 10;
-				if(!state || (depth && state.answer.length !== depth) || (isbattle && !state.battles.isbattle)){
-					const endtime = Date.now() + 1000 * waittime;
-					while(Date.now() <= endtime){
-						const bo = board.getRandomBoard();
-						const ans = board.getlongergoal(bo,depth);
-						if(!ans){
-							continue;
-						}
-						state = {
-							board: bo,
-							answer: ans,
-							battles: {
-								bids: {},
-								isbattle: isbattle,
-								isbedding: isbattle,
-								startbedding: false,
-							},
-						};
-						break;
-					}
-					if(!state || state.answer.length < depth){
-						await postmessage(`${waittime}秒では${depth}手かかる問題が見つけられなかったよ:cry:`);
-						return;
-					}
+				if(!state || (depth && state.answer.length < depth) || (isbattle && !state.battles.isbattle)){
+					const [bo,ans] = await board.getBoard(depth);
+					state = {
+						board: bo,
+						answer: ans,
+						battles: {
+							bids: {},
+							isbattle: isbattle,
+							isbedding: isbattle,
+							startbedding: false,
+						},
+					};
 				}
 				//console.log(state);
 				await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,await image.upload(state.board));
@@ -227,13 +222,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						return;
 					}
 					
-					if(await verifycommand(cmd)){
+					if(await verifycommand(cmd,text)){
 						clearTimeout(timeoutId);
 						state = undefined;
 					}
 				}
 				else{
-					if(await verifycommand(cmd)){
+					if(await verifycommand(cmd,text)){
 						state = undefined;
 					}
 				}
@@ -271,8 +266,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				}
 			}
 		}
+		
 		catch(e){
-			//console.log('error',e);
+			console.log('error',e);
 			await postmessage('内部errorです:cry:\n' + String(e));
 			restore_state();
 		}
