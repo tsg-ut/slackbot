@@ -109,24 +109,24 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 
 	const onReactionAdded = async (event: any, team: string) => {
 		// update message of the other team
-		const message_data = messages.get(event.item.ts);
-		if (!message_data) {
+		const messageData = messages.get(event.item.ts);
+		if (!messageData) {
 			return;
 		}
 
 		// fetch message detail
 		const message = get(await axios.get(`https://slack.com/api/conversations.history?${qs.stringify({
 			channel: process.env.CHANNEL_SANDBOX,
-			latest: message_data.ts,
+			latest: messageData.ts,
 			limit: 1,
 			inclusive: true,
 		})}`, {
 			headers: {
-				Authorization: `Bearer ${message_data.team === 'TSG'? process.env.HAKATASHI_TOKEN : kmcToken.access_token}`,
+				Authorization: `Bearer ${messageData.team === 'TSG'? process.env.HAKATASHI_TOKEN : kmcToken.access_token}`,
 			},
 		}), ['data', 'messages', 0]);
 
-		if (message.ts !== message_data.ts) {
+		if (message.ts !== messageData.ts) {
 			// message not found
 			return;
 		}
@@ -158,7 +158,7 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			})),
 		].slice(0, 50);
 
-		if (message_data.team === 'TSG') {
+		if (messageData.team === 'TSG') {
 			await tsgSlack.chat.update({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: '',
