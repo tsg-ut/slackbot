@@ -22,6 +22,12 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 	const kmcRtm = kmcToken === undefined ? null : new RTMClient(kmcToken.bot_access_token);
 
 	const {team: tsgTeam}: any = await tsgSlack.team.info();
+	const [tsgMembers, kmcMembers] =
+		(await Promise.all([tsgSlack, kmcSlack].map((slack) => slack.users.list())) as any[])
+		.map(({members}) => members.map(
+			(member: {id: string}) => [member.id, member]
+			)
+		).map((members: [string, any]) => new Map(members));
 
 	fastify.post('/slash/tunnel', async (req, res) => {
 		if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
@@ -72,19 +78,9 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			return '受信拒否されているのでメッセージを送れません:cry:';
 		}
 
-		const user = await new Promise((resolve) => {
-			if (teamName === 'TSG') {
-				resolve(tsgSlack.users.info({
-					user: req.body.user_id,
-				}));
-			} else {
-				resolve(kmcSlack.users.info({
-					user: req.body.user_id,
-				}));
-			}
-		});
-		const iconUrl = get(user, ['user', 'profile', 'image_192'], '');
-		const name = get(user, ['user', 'profile', 'display_name'], '');
+		const user = (teamName === 'TSG'? tsgMembers : kmcMembers).get(req.body.user_id);
+		const iconUrl = get(user, ['profile', 'image_192'], '');
+		const name = get(user, ['profile', 'display_name'], '');
 
 		const [{ts: tsgTs}, {ts: kmcTs}]: any = await Promise.all([
 			tsgSlack.chat.postMessage({
@@ -110,38 +106,65 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 	});
 
 	const onReactionAdded = async (event: any, team: string) => {
-		const message = messages.get(event.item.ts);
-		if (!message) {
+		// update message of the other team
+		const messageData = messages.get(event.item.ts);
+		if (!messageData) {
 			return;
 		}
-		const user = await new Promise((resolve) => {
-			if (team === 'TSG') {
-				resolve(tsgSlack.users.info({
-					user: event.user,
-				}));
-			} else {
-				resolve(kmcSlack.users.info({
-					user: event.user,
-				}));
-			}
-		});
-		const iconUrl = get(user, ['user', 'profile', 'image_192'], '');
-		const name = get(user, ['user', 'profile', 'display_name'], '');
-		if (message.team === 'TSG') {
-			await tsgSlack.chat.postMessage({
+		// fetch message detail
+		const message: {ts: string, text: string, blocks: any[], reactions: any[]} = (await tsgSlack.conversations.history({
+			token: messageData.team === 'TSG'? process.env.HAKATASHI_TOKEN : kmcToken.access_token,
+			channel: process.env.CHANNEL_SANDBOX,
+			latest: messageData.ts,
+			limit: 1,
+			inclusive: true,			
+		}) as any).messages[0];
+
+		if (message.ts !== messageData.ts) {
+			// message not found
+			return;
+		}
+		
+		const blocks = [
+			(message.blocks ? message.blocks[0] : {
+				type: 'section',
+				text: {
+					type: 'mrkdwn',
+					verbatim: true,
+					text: message.text,
+				},
+			}),
+			...message.reactions.map((reaction: {name: string, users: string[]}) => ({
+				type: 'context',
+				elements: [
+					{
+						type: 'mrkdwn',
+						text: `+:${reaction.name}: by`,
+					},
+					...(reaction.users
+						.map((user) => (team === 'TSG'? tsgMembers : kmcMembers).get(user))
+						.map((user) => ({
+							type: 'image',
+							image_url: get(user, ['profile', 'image_48'], ''),
+							alt_text: get(user, ['profile', 'display_name'], '') || get(user, ['profile', 'real_name'], ''),
+						}))),
+				],
+			})),
+		].slice(0, 50);
+
+		if (messageData.team === 'TSG') {
+			await tsgSlack.chat.update({
 				channel: process.env.CHANNEL_SANDBOX,
-				text: `+:${event.reaction}:`,
-				username: `${name}@${team}`,
-				icon_url: iconUrl,
-				thread_ts: message.ts,
+				text: '',
+				ts: message.ts,
+				blocks: blocks.slice(0, 50),
 			});
 		} else {
 			await kmcSlack.chat.postMessage({
 				channel: process.env.KMC_CHANNEL_SANDBOX,
-				text: `+:${event.reaction}:`,
-				username: `${name}@${team}`,
-				icon_url: iconUrl,
-				thread_ts: message.ts,
+				text: '',
+				ts: message.ts,
+				blocks: blocks.slice(0, 50),
 			});
 		}
 	};
