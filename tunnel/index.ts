@@ -29,6 +29,14 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			)
 		).map((members: [string, any]) => new Map(members));
 
+	const [tsgEmojis, kmcEmojis] =
+		(await Promise.all([
+			{slack: tsgSlack, token: process.env.HAKATASHI_TOKEN},
+			{slack: kmcSlack, token: kmcToken.access_token}
+		]
+			.map(({slack, token}) => slack.emoji.list({token}))) as any[])
+			.map(({emoji: emojis}) => new Map(Object.entries(emojis)));
+
 	fastify.post('/slash/tunnel', async (req, res) => {
 		if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
 			res.code(400);
@@ -139,10 +147,28 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 				elements: [
 					{
 						type: 'mrkdwn',
-						text: `+:${reaction.name}: by`,
+						text: '+',
 					},
+					...((updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).has(reaction.name) ?
+						[
+							{
+								type: 'image',
+								image_url: (updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).get(reaction.name),
+								alt_text: `:${reaction.name}:`,
+							},
+							{
+								type: 'mrkdwn',
+								text: 'by',
+							},
+						] : [
+							{
+								type: 'mrkdwn',
+								text: `:${reaction.name}: by`,
+							}
+						]
+					),
 					...(reaction.users
-						.map((user) => (updatedTeam === 'TSG'? tsgMembers : kmcMembers).get(user))
+						.map((user) => (updatedTeam === 'TSG' ? tsgMembers : kmcMembers).get(user))
 						.filter((user) => get(user, ['profile', 'image_48']))
 						.map((user) => ({
 							type: 'image',
