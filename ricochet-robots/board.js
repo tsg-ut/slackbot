@@ -41,7 +41,11 @@ const directionname2idx = arrays2idxs([
 ]);
 
 module.exports.iscommand = (str) => {
-	return str.match(/^([赤青黄緑rgby]([上下左右wasdhjkl]+))+$/);
+	return str.match(/^([赤青黄緑rgby]([上下左右wasdhjkl]+))+(まで)?$/);
+}
+
+module.exports.isMADE = (str) => {
+	return str.match(/まで$/);
 }
 
 module.exports.str2command = (str) => {

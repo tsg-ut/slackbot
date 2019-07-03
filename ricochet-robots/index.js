@@ -131,7 +131,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 		})(state);
 		
-		async function verifycommand(cmd){
+		async function verifycommand(cmd,text){
 			state.board.movecommand(cmd);
 			const url = await image.upload(state.board);
 			if(state.board.iscleared()){
@@ -148,6 +148,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					state.board.movecommand(state.answer);
 					await postmessage(
 						`実は${state.answer.length}手でたどり着けるんです。\n${board.logstringfy(state.answer)}`,
+						await image.upload(state.board)
+					);
+					state.board.undocommand(state.answer);
+				}
+				else if(board.isMADE(text)){
+					state.board.movecommand(state.answer);
+					await postmessage(
+						`僕の見つけた手順です。\n${board.logstringfy(state.answer)}`,
 						await image.upload(state.board)
 					);
 					state.board.undocommand(state.answer);
@@ -214,13 +222,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						return;
 					}
 					
-					if(await verifycommand(cmd)){
+					if(await verifycommand(cmd,text)){
 						clearTimeout(timeoutId);
 						state = undefined;
 					}
 				}
 				else{
-					if(await verifycommand(cmd)){
+					if(await verifycommand(cmd,text)){
 						state = undefined;
 					}
 				}
