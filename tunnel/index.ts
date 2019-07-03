@@ -151,7 +151,7 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 						.map((user) => (team === 'TSG'? tsgMembers : kmcMembers).get(user))
 						.map((user) => ({
 							type: 'image',
-							image_url: get(user, ['profile', 'image_192'], ''),
+							image_url: get(user, ['profile', 'image_48'], ''),
 							alt_text: get(user, ['profile', 'display_name'], '') || get(user, ['profile', 'real_name'], ''),
 						}))),
 				],
