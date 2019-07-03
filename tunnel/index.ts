@@ -157,14 +157,14 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			await tsgSlack.chat.update({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: '',
-				ts: message.ts,
+				ts: messageData.ts,
 				blocks: blocks.slice(0, 50),
 			});
 		} else {
 			await kmcSlack.chat.update({
 				channel: process.env.KMC_CHANNEL_SANDBOX,
 				text: '',
-				ts: message.ts,
+				ts: messageData.ts,
 				blocks: blocks.slice(0, 50),
 			});
 		}
