@@ -154,7 +154,7 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 							{
 								type: 'image',
 								image_url: (updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).get(reaction.name),
-								alt_text: reaction.name,
+								alt_text: `:${reaction.name}:`,
 							},
 							{
 								type: 'mrkdwn',
