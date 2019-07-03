@@ -105,36 +105,36 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 		return '';
 	});
 
-	const onReactionAdded = async (event: any, team: string) => {
+	const onReactionUpdated = async (event: any, updatedTeam: string) => {
 		// update message of the other team
-		const messageData = messages.get(event.item.ts);
-		if (!messageData) {
+		const updatingMessageData = messages.get(event.item.ts);
+		if (!updatingMessageData) {
 			return;
 		}
 		// fetch message detail
-		const message: {ts: string, text: string, blocks: any[], reactions: any[]} = (await tsgSlack.conversations.history({
-			token: team === 'TSG'? process.env.HAKATASHI_TOKEN : kmcToken.access_token,
-			channel: team === 'TSG'? process.env.CHANNEL_SANDBOX : process.env.KMC_CHANNEL_SANDBOX,
+		const updatedMessage: {ts: string, text: string, blocks: any[], reactions: any[]} = (await tsgSlack.conversations.history({
+			token: updatedTeam === 'TSG'? process.env.HAKATASHI_TOKEN : kmcToken.access_token,
+			channel: updatedTeam === 'TSG'? process.env.CHANNEL_SANDBOX : process.env.KMC_CHANNEL_SANDBOX,
 			latest: event.item.ts,
 			limit: 1,
 			inclusive: true,			
 		}) as any).messages[0];
 
-		if (message.ts !== event.item.ts) {
+		if (updatedMessage.ts !== event.item.ts) {
 			// message not found
 			return;
 		}
 		
 		const blocks = [
-			(message.blocks ? message.blocks[0] : {
+			(updatedMessage.blocks ? updatedMessage.blocks[0] : {
 				type: 'section',
 				text: {
 					type: 'mrkdwn',
 					verbatim: true,
-					text: message.text,
+					text: updatedMessage.text,
 				},
 			}),
-			...message.reactions.map((reaction: {name: string, users: string[]}) => ({
+			...updatedMessage.reactions.map((reaction: {name: string, users: string[]}) => ({
 				type: 'context',
 				elements: [
 					{
@@ -142,7 +142,7 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 						text: `+:${reaction.name}: by`,
 					},
 					...(reaction.users
-						.map((user) => (team === 'TSG'? tsgMembers : kmcMembers).get(user))
+						.map((user) => (updatedTeam === 'TSG'? tsgMembers : kmcMembers).get(user))
 						.filter((user) => get(user, ['profile', 'image_48']))
 						.map((user) => ({
 							type: 'image',
@@ -153,29 +153,29 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			})),
 		].slice(0, 50);
 
-		if (messageData.team === 'TSG') {
+		if (updatingMessageData.team === 'TSG') {
 			await tsgSlack.chat.update({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: '',
-				ts: messageData.ts,
+				ts: updatingMessageData.ts,
 				blocks: blocks.slice(0, 50),
 			});
 		} else {
 			await kmcSlack.chat.update({
 				channel: process.env.KMC_CHANNEL_SANDBOX,
 				text: '',
-				ts: messageData.ts,
+				ts: updatingMessageData.ts,
 				blocks: blocks.slice(0, 50),
 			});
 		}
 	};
 
-	tsgRtm.on('reaction_added', (event) => {
-		onReactionAdded(event, 'TSG');
-	});
-
-	kmcRtm.on('reaction_added', (event) => {
-		onReactionAdded(event, 'KMC');
+	[{rtm: tsgRtm, team: 'TSG'}, {rtm: kmcRtm, team: 'KMC'}].forEach(({rtm, team}) => {
+		rtm.on('reaction_added', (event) => {
+			onReactionUpdated(event, team);
+		}).on('reaction_removed', (event) => {
+			onReactionUpdated(event, team);
+		});
 	});
 
 	kmcRtm.start();
