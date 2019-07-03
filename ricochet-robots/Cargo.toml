@@ -2,13 +2,13 @@
 name = "ricochet-robots"
 version = "0.1.0"
 authors = ["satos"]
-#edition = "2019"
+edition = "2018"
 
 [dependencies]
 rand = "0.7.0"
 atoi = "0.3.1"
 
 [[bin]]
-name = "main"
+name = "ricochet_robot_problem_generator"
 path = "src/main.rs"
 
