@@ -114,7 +114,7 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 		// fetch message detail
 		const message: {ts: string, text: string, blocks: any[], reactions: any[]} = (await tsgSlack.conversations.history({
 			token: messageData.team === 'TSG'? process.env.HAKATASHI_TOKEN : kmcToken.access_token,
-			channel: process.env.CHANNEL_SANDBOX,
+			channel: messageData.team === 'TSG'? process.env.CHANNEL_SANDBOX : process.env.KMC_CHANNEL_SANDBOX,
 			latest: messageData.ts,
 			limit: 1,
 			inclusive: true,			
