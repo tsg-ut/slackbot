@@ -29,7 +29,7 @@ const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
 		};
 	});
 	const lines = lineBuffer.toString().split('\n').slice(1).map((l) => {
-		const [id, , name] = l.split(',');
+		const [id, , , , name] = l.split(',');
 		return {id: parseInt(id), name};
 	});
 	const stations = stationBuffer.toString().split('\n').slice(1).map((l) => {
