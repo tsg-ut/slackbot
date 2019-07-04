@@ -64,6 +64,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			text,
 			username: 'bracket-matcher',
 			icon_emoji: ':ti-n:',
+			...(message.thread_ts ? {thread_ts: message.thread_ts} : {}),
 		});
 
 		const bracket = await matchBrackets(message.text);
