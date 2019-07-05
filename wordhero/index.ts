@@ -139,7 +139,7 @@ const generateBoard = (tree: any, seed: string) => {
 		const counter = new Map(hiraganaLetters.map((letter) => [letter, 0]));
 		for (const prefix of prefixes) {
 			for (const nextLetter of hiraganaLetters) {
-				counter.set(nextLetter, counter.get(nextLetter) + tree.getPrefix(prefix + nextLetter).filter((word) => word.length <= 5).length);
+				counter.set(nextLetter, counter.get(nextLetter) + tree.getPrefix(prefix + nextLetter).filter((word: string) => word.length <= 5).length);
 			}
 		}
 		const topLetters = sortBy(Array.from(counter.entries()), ([, count]) => count).reverse().slice(0, 3);
