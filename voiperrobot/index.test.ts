@@ -11,13 +11,13 @@ beforeEach(() => {
 });
 
 describe('voiperrobot', () => {
-	it('reponds to ボイパーロボット', async () => {
+	it('responds to ボイパーロボット', async () => {
 		const {text, username} = await slack.getResponseTo('ボイパーロボット');
 
 		expect(username).toBe('voiperrobot');
 		expect(text).toMatch(/(はっ|ひっ|くっ|むか|つく|パン|ツか){8}/);
 	});
-	it('reponds to ボイパーロボットバトル', async () => {
+	it('responds to ボイパーロボットバトル', async () => {
 		const {text, username} = await slack.getResponseTo('ボイパーロボットバトル');
 
 		expect(username).toBe('voiperrobot');
