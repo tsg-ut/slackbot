@@ -24,7 +24,6 @@ const plugins = [
 	require('./pocky'),
 	require('./emoji-notifier'),
 	require('./sushi-bot'),
-	require('./cubebot'),
 	require('./shogi'),
 	require('./tiobot'),
 	require('./checkin'),
