@@ -49,6 +49,7 @@
     "jaconv": "^1.0.4",
     "japanese": "^1.2.0",
     "jp-num": "^0.1.0",
+    "jsdom": "^15.1.1",
     "kuromojin": "^1.4.0",
     "lodash": "^4.17.11",
     "miller-rabin": "^4.0.1",
