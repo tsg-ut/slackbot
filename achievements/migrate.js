@@ -1,5 +1,6 @@
 const db = require('../lib/firestore.ts').default;
 const state = require('./state.json');
+const chunk = require('lodash/chunk');
 
 const users = new Map();
 
@@ -32,18 +33,22 @@ for (const [user, userAchievements] of Object.entries(state.achievements)) {
 	}
 }
 
-const batch = db.batch();
+(async () => {
+	for (const userChunks of chunk(Array.from(users), 300)) {
+		const batch = db.batch();
+		for (const [user, data] of userChunks) {
+			const doc = db.collection('users').doc(user);
+			batch.set(doc, data);
+		}
+		await batch.commit();
+	}
 
-for (const [user, data] of users) {
-	const doc = db.collection('users').doc(user);
-	batch.set(doc, data);
-}
-
-for (const achievement of achievements) {
-	const doc = db.collection('achievements').doc();
-	batch.set(doc, achievement);
-}
-
-batch.commit().then(() => {
-	console.log('done');
-});
+	for (const achievementChunks of chunk(Array.from(achievements), 300)) {
+		const batch = db.batch();
+		for (const achievement of achievementChunks) {
+			const doc = db.collection('achievements').doc();
+			batch.set(doc, achievement);
+		}
+		await batch.commit();
+	}
+})();
