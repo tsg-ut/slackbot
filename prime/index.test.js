@@ -3,6 +3,8 @@
 const shogi = require('./index.js');
 const Slack = require('../lib/slackMock.js');
 
+jest.mock('../achievements/index.ts');
+
 let slack = null;
 
 beforeEach(() => {
