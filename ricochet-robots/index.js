@@ -132,8 +132,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		})(state);
 		
 		async function verifycommand(cmd,text){
-			if(!state.battles.isbattle && board.isMADE(text) && cmd.length > state.answer.length){
-				await postmessage(`この問題は${state.answer.length}手詰めだよ。その手は${cmd.length}手かかってるよ:thinking_face:`);
+			if(!state.battles.isbattle && !board.isMADE(text) && cmd.length > state.answer.length){
+				await postmessage(
+					`この問題は${state.answer.length}手詰めだよ。その手は${cmd.length}手かかってるよ:thinking_face:\n` +
+					'もし最短でなくてもよいなら、手順のあとに「まで」をつけてね。'
+				);
 				return false;
 			}
 			state.board.movecommand(cmd);
