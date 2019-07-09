@@ -63,7 +63,8 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		if (message.text && message.user && !message.bot_id && !message.subtype && message.channel.startsWith('C')) {
 			const day = moment(parseFloat(message.ts) * 1000).utcOffset(9).format('YYYY-MM-DD');
 			increment(message.user, 'chats');
-			if (await get(message.user, 'lastChatDay') !== day) {
+			const lastChatDay = await get(message.user, 'lastChatDay')
+			if (lastChatDay !== day) {
 				increment(message.user, 'chatDays');
 				set(message.user, 'lastChatDay', day);
 			}
@@ -189,10 +190,17 @@ const triggerUpdateDb = throttle(async () => {
 	const operations = pendingOperations.splice(0);
 	const users = groupBy(operations, (operation) => operation.user);
 	await db.runTransaction(async (transaction) => {
-		for (const [user, userOperations] of Object.entries(users)) {
+		const userData = new Map();
+		// read before write
+		await Promise.all(Object.keys(users).map(async (user) => {
 			const userRef = db.collection('users').doc(user);
 			const userTransaction = await transaction.get(userRef);
 			const data = userTransaction.data() || {};
+			userData.set(user, {data, exists: userTransaction.exists});
+		}));
+		for (const [user, userOperations] of Object.entries(users)) {
+			const userRef = db.collection('users').doc(user);
+			const {data, exists} = userData.get(user);
 			for (const operation of userOperations) {
 				if (operation.type === 'increment') {
 					if (data.hasOwnProperty(operation.name)) {
@@ -205,7 +213,7 @@ const triggerUpdateDb = throttle(async () => {
 					data[operation.name] = operation.value;
 				}
 			}
-			if (userTransaction.exists) {
+			if (exists) {
 				transaction.update(userRef, data);
 			} else {
 				transaction.set(userRef, data);
@@ -293,6 +301,25 @@ export const unlock = async (user: string, name: string) => {
 		await unlock(user, newAchievement);
 	}
 };
+
+export const isUnlocked = async (user: string, name: string) => {
+	await initializeDeferred.promise;
+
+	const achievement = achievements.get(name);
+	if (!achievement) {
+		throw new Error(`Unknown achievement name ${name}`);
+	}
+
+	if (!user || !user.startsWith('U') || user === 'USLACKBOT') {
+		return false;
+	}
+
+	if (!state.achievements.has(user)) {
+		state.achievements.set(user, new Set())
+	}
+
+	return state.achievements.get(user).has(name);
+}
 
 export const increment = async (user: string, name: string, value: number = 1) => {
 	await initializeDeferred.promise;
