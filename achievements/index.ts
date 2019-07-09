@@ -1,6 +1,3 @@
-import fs from 'fs';
-import {promisify} from 'util';
-import path from 'path';
 import qs from 'querystring';
 import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
 import axios from 'axios';
@@ -8,7 +5,6 @@ import {throttle, groupBy, get as getter, chunk} from 'lodash';
 import moment from 'moment';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
-import Queue from 'p-queue';
 import achievements, {Difficulty} from './achievements';
 import {Deferred, getMemberName} from '../lib/utils';
 import db from '../lib/firestore';
@@ -19,36 +15,22 @@ interface SlackInterface {
 	messageClient: any,
 }
 
-type Counter = Map<string, number>;
-type Variable = Map<string, any>;
+type users = {
+	chats?: number,
+	chatDays?: number,
+	lastChatDay?: string,
+	[key: string]: any,
+};
 
 interface State {
-	counters: {
-		chats: Counter,
-		chatDays: Counter,
-		[name: string]: Counter,
-	},
-	variables: {
-		lastChatDay: Variable,
-		[name: string]: Variable,
-	},
+	users: Map<string, users>,
 	achievements: Map<string, Set<string>>
 }
 
 const state: State = {
-	counters: {
-		chats: new Map(),
-		chatDays: new Map(),
-	},
-	variables: {
-		lastChatDay: new Map(),
-	},
+	users: new Map(),
 	achievements: new Map(),
 };
-
-const mapToObject = (map: Map<any, any>) => (
-	Object.assign({}, ...[...map.entries()].map(([key, value]) => ({[key]: value})))
-);
 
 const difficultyToStars = (difficulty: Difficulty) => (
 	{
@@ -70,106 +52,18 @@ const difficultyToColor = (difficulty: Difficulty) => (
 	}[difficulty]
 );
 
-const queue = new Queue({concurrency: 1});
-
 const loadDeferred = new Deferred();
 
 const initializeDeferred = new Deferred();
 
-const saveState = async () => {
-	await initializeDeferred.promise;
-
-	queue.add(async () => {
-		await promisify(fs.writeFile)(path.resolve(__dirname, 'state.json'), JSON.stringify({
-			counters: {
-				chats: mapToObject(state.counters.chats),
-				chatDays: mapToObject(state.counters.chatDays),
-			},
-			variables: {
-				lastChatDay: mapToObject(state.variables.lastChatDay),
-			},
-		}));
-	});
-};
-
-const updateGist = throttle(async () => {
-	const memberTexts = await Promise.all(Array.from(state.achievements.entries()).map(async ([user, achievementEntries]) => {
-		if (achievementEntries.size === 0) {
-			return '';
-		}
-		const difficultyGroups = groupBy(Array.from(achievementEntries), (id) => achievements.get(id).difficulty);
-		const difficultyTexts = Object.entries(difficultyGroups).map(([difficulty, achievementGroup]: [Difficulty, string[]]) => {
-			const achievementTexts = achievementGroup.map((id) => {
-				const achievement = achievements.get(id);
-				return stripIndent`
-					* **${achievement.title}**
-						* ${achievement.condition}
-				`;
-			});
-			return [
-				`### 難易度${difficultyToStars(difficulty)} (${difficulty})`,
-				...achievementTexts,
-			].join('\n');
-		});
-		return [
-			`## @${await getMemberName(user)}`,
-			...difficultyTexts,
-		].join('\n');
-	}));
-	const markdown = [
-		'# TSG実績一覧',
-		...memberTexts.filter((text) => text !== ''),
-	].join('\n');
-
-	await axios.patch('https://api.github.com/gists/d5f284cf3a3433d01df081e8019176a1', {
-		description: 'TSG実績一覧',
-		files: {
-			'achievements.md': {
-				content: markdown,
-			},
-		},
-	}, {
-		headers: {
-			Authorization: `token ${process.env.GITHUB_TOKEN}`,
-		},
-	});
-}, 30 * 1000);
-
 export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
 	loadDeferred.resolve(slack);
-
-	const {members}: any = await slack.users.list();
-	for (const member of members) {
-		for (const counter of Object.values(state.counters)) {
-			counter.set(member.id, 0);
-		}
-		for (const variable of Object.values(state.variables)) {
-			variable.set(member.id, 0);
-		}
-	}
-
-	const stateData: Buffer = await promisify(fs.readFile)(path.resolve(__dirname, 'state.json')).catch(() => null);
-	if (stateData !== null) {
-		const data: State = JSON.parse(stateData.toString());
-
-		for (const [counterName, counter] of Object.entries(data.counters)) {
-			for (const [user, value] of Object.entries(counter)) {
-				state.counters[counterName].set(user, value);
-			}
-		}
-
-		for (const [variableName, variable] of Object.entries(data.variables)) {
-			for (const [user, value] of Object.entries(variable)) {
-				state.variables[variableName].set(user, value);
-			}
-		}
-	}
 
 	rtm.on('message', async (message) => {
 		if (message.text && message.user && !message.bot_id && !message.subtype && message.channel.startsWith('C')) {
 			const day = moment(parseFloat(message.ts) * 1000).utcOffset(9).format('YYYY-MM-DD');
 			increment(message.user, 'chats');
-			if (get(message.user, 'lastChatDay') !== day) {
+			if (await get(message.user, 'lastChatDay') !== day) {
 				increment(message.user, 'chatDays');
 				set(message.user, 'lastChatDay', day);
 			}
@@ -240,17 +134,6 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		}
 	});
 
-	rtm.on('team_join', (event) => {
-		state.achievements.set(event.user.id, new Set());
-		for (const counter of Object.values(state.counters)) {
-			counter.set(event.user.id, 0);
-		}
-		for (const variable of Object.values(state.variables)) {
-			variable.set(event.user.id, 0);
-		}
-		saveState();
-	});
-
 	slackInteractions.action({type: 'button', callbackId: 'achievements'}, (payload: any, respond: any) => {
 		unlock(payload.user.id, payload.actions[0].value);
 		respond({text: 'おめでとう!:tada:'});
@@ -267,8 +150,69 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		}
 	}
 
+	const usersData = await db.collection('users').get();
+	if (!usersData.empty) {
+		for (const doc of usersData.docs) {
+			const data = doc.data();
+			state.users.set(doc.id, data || Object.create(null));
+		}
+	}
+
 	initializeDeferred.resolve();
 };
+
+interface IncrementOperation {
+	type: 'increment',
+	name: string,
+	value: number,
+	user: string,
+}
+
+interface SetOperation {
+	type: 'set',
+	name: string,
+	value: any,
+	user: string,
+}
+
+type Operation = IncrementOperation | SetOperation;
+
+const pendingOperations: Operation[] = [];
+
+const updateDb = (operation: Operation) => {
+	pendingOperations.push(operation);
+	triggerUpdateDb();
+};
+
+// TODO: Sync back changes to local state
+const triggerUpdateDb = throttle(async () => {
+	const operations = pendingOperations.splice(0);
+	const users = groupBy(operations, (operation) => operation.user);
+	await db.runTransaction(async (transaction) => {
+		for (const [user, userOperations] of Object.entries(users)) {
+			const userRef = db.collection('users').doc(user);
+			const userTransaction = await transaction.get(userRef);
+			const data = userTransaction.data() || {};
+			for (const operation of userOperations) {
+				if (operation.type === 'increment') {
+					if (data.hasOwnProperty(operation.name)) {
+						data[operation.name] += operation.value;
+					} else {
+						data[operation.name] = operation.value;
+					}
+				}
+				if (operation.type === 'set') {
+					data[operation.name] = operation.value;
+				}
+			}
+			if (userTransaction.exists) {
+				transaction.update(userRef, data);
+			} else {
+				transaction.set(userRef, data);
+			}
+		}
+	});
+}, 30 * 1000);
 
 export const unlock = async (user: string, name: string) => {
 	await initializeDeferred.promise;
@@ -328,8 +272,6 @@ export const unlock = async (user: string, name: string) => {
 		}),
 	});
 
-	await updateGist();
-
 	const newAchievements = [];
 	if (holdingAchievements.length >= 1) {
 		newAchievements.push('achievements');
@@ -355,47 +297,50 @@ export const unlock = async (user: string, name: string) => {
 export const increment = async (user: string, name: string, value: number = 1) => {
 	await initializeDeferred.promise;
 
-	if (!state.counters[name]) {
-		throw new Error(`Unknown counter name ${name}`);
-	}
-
 	if (!user || !user.startsWith('U') || user === 'USLACKBOT') {
 		return;
 	}
 
-	const newValue = state.counters[name].get(user) + value;
-	state.counters[name].set(user, newValue);
-	saveState();
+	if (!state.users.has(user)) {
+		state.users.set(user, Object.create(null));
+	}
+
+	const newValue = (state.users.get(user)[name] || 0) + value;
+	state.users.get(user)[name] = newValue;
 
 	const unlocked = Array.from(achievements.values()).find((achievement) => achievement.counter === name && achievement.value === newValue);
 	if (unlocked !== undefined) {
 		unlock(user, unlocked.id);
 	}
+
+	updateDb({type: 'increment', name, value, user});
 };
 
-export const get = (user: string, name: string) => {
-	if (!state.variables[name]) {
-		throw new Error(`Unknown variable name ${name}`);
-	}
+export const get = async (user: string, name: string) => {
+	await initializeDeferred.promise;
 
 	if (!user || !user.startsWith('U') || user === 'USLACKBOT') {
-		return;
+		return undefined;
 	}
 
-	return state.variables[name].get(user);
+	if (!state.users.has(user)) {
+		state.users.set(user, Object.create(null));
+	}
+
+	return state.users.get(user)[name];
 };
 
 export const set = async (user: string, name: string, value: any) => {
 	await initializeDeferred.promise;
 
-	if (!state.variables[name]) {
-		throw new Error(`Unknown variable name ${name}`);
-	}
-
 	if (!user || !user.startsWith('U') || user === 'USLACKBOT') {
 		return;
 	}
 
-	state.variables[name].set(user, value);
-	saveState();
+	if (!state.users.has(user)) {
+		state.users.set(user, Object.create(null));
+	}
+
+	state.users.get(user)[name] = value;
+	updateDb({type: 'set', user, name, value});
 };
