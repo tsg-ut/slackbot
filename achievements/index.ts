@@ -4,13 +4,14 @@ import path from 'path';
 import qs from 'querystring';
 import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
 import axios from 'axios';
-import {throttle, groupBy, flatten, get as getter, chunk} from 'lodash';
+import {throttle, groupBy, get as getter, chunk} from 'lodash';
 import moment from 'moment';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
 import Queue from 'p-queue';
 import achievements, {Difficulty} from './achievements';
 import {Deferred, getMemberName} from '../lib/utils';
+import db from '../lib/firestore';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -20,10 +21,6 @@ interface SlackInterface {
 
 type Counter = Map<string, number>;
 type Variable = Map<string, any>;
-interface Achievement {
-	id: string,
-	date: number,
-}
 
 interface State {
 	counters: {
@@ -35,7 +32,7 @@ interface State {
 		lastChatDay: Variable,
 		[name: string]: Variable,
 	},
-	achievements: Map<string, Achievement[]>
+	achievements: Map<string, Set<string>>
 }
 
 const state: State = {
@@ -77,12 +74,10 @@ const queue = new Queue({concurrency: 1});
 
 const loadDeferred = new Deferred();
 
-let isInitialized = false;
+const initializeDeferred = new Deferred();
 
-const saveState = () => {
-	if (!isInitialized) {
-		return;
-	}
+const saveState = async () => {
+	await initializeDeferred.promise;
 
 	queue.add(async () => {
 		await promisify(fs.writeFile)(path.resolve(__dirname, 'state.json'), JSON.stringify({
@@ -93,22 +88,21 @@ const saveState = () => {
 			variables: {
 				lastChatDay: mapToObject(state.variables.lastChatDay),
 			},
-			achievements: mapToObject(state.achievements),
 		}));
 	});
 };
 
 const updateGist = throttle(async () => {
 	const memberTexts = await Promise.all(Array.from(state.achievements.entries()).map(async ([user, achievementEntries]) => {
-		if (achievementEntries.length === 0) {
+		if (achievementEntries.size === 0) {
 			return '';
 		}
-		const difficultyGroups = groupBy(achievementEntries, ({id}) => achievements.get(id).difficulty);
-		const difficultyTexts = Object.entries(difficultyGroups).map(([difficulty, achievementGroup]: [Difficulty, Achievement[]]) => {
-			const achievementTexts = achievementGroup.map(({id, date}) => {
+		const difficultyGroups = groupBy(Array.from(achievementEntries), (id) => achievements.get(id).difficulty);
+		const difficultyTexts = Object.entries(difficultyGroups).map(([difficulty, achievementGroup]: [Difficulty, string[]]) => {
+			const achievementTexts = achievementGroup.map((id) => {
 				const achievement = achievements.get(id);
 				return stripIndent`
-					* **${achievement.title}** (${moment(date).utcOffset(9).format('YYYY年MM月DD日')})
+					* **${achievement.title}**
 						* ${achievement.condition}
 				`;
 			});
@@ -146,7 +140,6 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 
 	const {members}: any = await slack.users.list();
 	for (const member of members) {
-		state.achievements.set(member.id, []);
 		for (const counter of Object.values(state.counters)) {
 			counter.set(member.id, 0);
 		}
@@ -158,10 +151,6 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 	const stateData: Buffer = await promisify(fs.readFile)(path.resolve(__dirname, 'state.json')).catch(() => null);
 	if (stateData !== null) {
 		const data: State = JSON.parse(stateData.toString());
-
-		for (const [user, achievements] of Object.entries(data.achievements)) {
-			state.achievements.set(user, achievements);
-		}
 
 		for (const [counterName, counter] of Object.entries(data.counters)) {
 			for (const [user, value] of Object.entries(counter)) {
@@ -190,7 +179,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 			const manualAchievements = Array.from(achievements.values()).filter((achievement) => (
 				achievement.manual === true &&
 				state.achievements.has(message.user) &&
-				state.achievements.get(message.user).every(({id}) => id !== achievement.id)
+				Array.from(state.achievements.get(message.user)).every((id) => id !== achievement.id)
 			));
 			const button: 'button' = 'button';
 			await slack.chat.postMessage({
@@ -252,7 +241,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 	});
 
 	rtm.on('team_join', (event) => {
-		state.achievements.set(event.user.id, []);
+		state.achievements.set(event.user.id, new Set());
 		for (const counter of Object.values(state.counters)) {
 			counter.set(event.user.id, 0);
 		}
@@ -267,13 +256,22 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		respond({text: 'おめでとう!:tada:'});
 	});
 
-	isInitialized = true;
+	const achievementsData = await db.collection('achievements').get();
+	if (!achievementsData.empty) {
+		for (const doc of achievementsData.docs) {
+			const {id, user} = doc.data();
+			if (!state.achievements.has(user)) {
+				state.achievements.set(user, new Set());
+			}
+			state.achievements.get(user).add(id);
+		}
+	}
+
+	initializeDeferred.resolve();
 };
 
 export const unlock = async (user: string, name: string) => {
-	if (!isInitialized) {
-		return;
-	}
+	await initializeDeferred.promise;
 
 	const achievement = achievements.get(name);
 	if (!achievement) {
@@ -284,21 +282,29 @@ export const unlock = async (user: string, name: string) => {
 		return;
 	}
 
-	if (state.achievements.get(user).some(({id}) => id === name)) {
+	if (!state.achievements.has(user)) {
+		state.achievements.set(user, new Set())
+	}
+
+	if (state.achievements.get(user).has(name)) {
 		return;
 	}
 
-	const isFirst = flatten(Array.from(state.achievements.values())).every(({id}) => id !== name);
-
-	state.achievements.get(user).push({
-		id: name,
-		date: Date.now(),
-	});
-	saveState();
+	const existingAchievements = await db.collection('achievements').where('id', '==', name).get();
+	const isFirst = existingAchievements.empty;
 
 	const slack: WebClient = await loadDeferred.promise;
+
+	state.achievements.get(user).add(name);
+
+	await db.collection('achievements').add({
+		user,
+		id: name,
+		date: new Date(),
+	});
+
 	const memberName = await getMemberName(user);
-	const holdingAchievements = state.achievements.get(user);
+	const holdingAchievements = Array.from(state.achievements.get(user));
 	const gistUrl = `https://gist.github.com/hakatashi/d5f284cf3a3433d01df081e8019176a1#${encodeURIComponent(memberName.toLowerCase())}`;
 	slack.chat.postMessage({
 		channel: process.env.CHANNEL_SANDBOX,
@@ -310,13 +316,13 @@ export const unlock = async (user: string, name: string) => {
 			難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty}) ${isFirst ? '*初達成者!!:ojigineko-superfast:*' : ''}
 		`,
 		attachments: ['professional', 'hard', 'medium', 'easy', 'baby'].map((difficulty: Difficulty) => {
-			const entries = holdingAchievements.filter(({id}) => achievements.get(id).difficulty === difficulty);
+			const entries = holdingAchievements.filter((id) => achievements.get(id).difficulty === difficulty);
 			if (entries.length === 0) {
 				return null;
 			}
 			const attachment: MessageAttachment = {
 				color: difficultyToColor(difficulty),
-				text: entries.map(({id}) => achievements.get(id).title).join(' '),
+				text: entries.map((id) => achievements.get(id).title).join(' '),
 			};
 			return attachment;
 		}),
@@ -328,13 +334,13 @@ export const unlock = async (user: string, name: string) => {
 	if (holdingAchievements.length >= 1) {
 		newAchievements.push('achievements');
 	}
-	if (holdingAchievements.filter(({id}) => achievements.get(id).difficulty !== 'baby').length >= 3) {
+	if (holdingAchievements.filter((id) => achievements.get(id).difficulty !== 'baby').length >= 3) {
 		newAchievements.push('achievements-3');
 	}
-	if (holdingAchievements.filter(({id}) => achievements.get(id).difficulty !== 'baby').length >= 10) {
+	if (holdingAchievements.filter((id) => achievements.get(id).difficulty !== 'baby').length >= 10) {
 		newAchievements.push('achievements-10');
 	}
-	if (holdingAchievements.filter(({id}) => (
+	if (holdingAchievements.filter((id) => (
 		achievements.get(id).difficulty !== 'baby'
 		&& achievements.get(id).difficulty !== 'easy'
 	)).length >= 10) {
@@ -346,10 +352,8 @@ export const unlock = async (user: string, name: string) => {
 	}
 };
 
-export const increment = (user: string, name: string, value: number = 1) => {
-	if (!isInitialized) {
-		return;
-	}
+export const increment = async (user: string, name: string, value: number = 1) => {
+	await initializeDeferred.promise;
 
 	if (!state.counters[name]) {
 		throw new Error(`Unknown counter name ${name}`);
@@ -381,10 +385,8 @@ export const get = (user: string, name: string) => {
 	return state.variables[name].get(user);
 };
 
-export const set = (user: string, name: string, value: any) => {
-	if (!isInitialized) {
-		return;
-	}
+export const set = async (user: string, name: string, value: any) => {
+	await initializeDeferred.promise;
 
 	if (!state.variables[name]) {
 		throw new Error(`Unknown variable name ${name}`);
