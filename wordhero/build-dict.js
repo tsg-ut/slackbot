@@ -65,9 +65,9 @@ const {hiraganize} = require('japanese');
 				writer.write(`INSERT INTO words VALUES ('${
 					word.replace(/\t/g, '').replace(/(['])/g, '\'$1')
 				}', '${
-					description.replace(/(['])/g, '\'$1')
-				}', '${
 					ruby.replace(/(['])/g, '\'$1')
+				}', '${
+					description.replace(/(['])/g, '\'$1')
 				}');\n`)
 			}
 			writer.write('COMMIT;');
