@@ -6,7 +6,8 @@ import moment from 'moment';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
 import achievements, {Difficulty} from './achievements';
-import {Deferred, getMemberName} from '../lib/utils';
+import {Deferred} from '../lib/utils';
+import {getMemberName} from '../lib/slackUtils';
 import db from '../lib/firestore';
 
 interface SlackInterface {
@@ -255,15 +256,13 @@ export const unlock = async (user: string, name: string) => {
 		date: new Date(),
 	});
 
-	const memberName = await getMemberName(user);
 	const holdingAchievements = Array.from(state.achievements.get(user));
-	const gistUrl = `https://gist.github.com/hakatashi/d5f284cf3a3433d01df081e8019176a1#${encodeURIComponent(memberName.toLowerCase())}`;
 	slack.chat.postMessage({
 		channel: process.env.CHANNEL_SANDBOX,
 		username: 'achievements',
 		icon_emoji: ':unlock:',
 		text: stripIndent`
-			<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada: <${gistUrl}|[実績一覧]>
+			<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada:
 			_${achievement.condition}_
 			難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty}) ${isFirst ? '*初達成者!!:ojigineko-superfast:*' : ''}
 		`,

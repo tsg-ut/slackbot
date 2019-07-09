@@ -86,6 +86,7 @@
     "eslint-plugin-react": "^7.14.2",
     "jest": "^24.8.0",
     "lolex": "^4.1.0",
+    "mock-cloud-firestore": "^0.9.3",
     "nodemon": "^1.19.1",
     "prettier-eslint-cli": "^5.0.0",
     "ts-jest": "^24.0.2"
