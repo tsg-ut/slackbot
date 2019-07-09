@@ -164,7 +164,7 @@ const achievements: Achievement[] = [
 		reaction: 'guchol',
 		value: 5,
 	},
-	
+
 	// sushi-bot
 
 	{
@@ -459,7 +459,7 @@ const achievements: Achievement[] = [
 		condition: '素数大富豪を4ターン以内でクリアする',
 	},
 	{
-		id: 'prime-fast-clear-wo-draw',
+		id: 'prime-fast-clear-no-draw',
 		difficulty: 'hard',
 		title: 'カール・フリードリヒ・ガウス',
 		condition: '素数大富豪をドローせずに4ターン以内でクリアする',
@@ -505,6 +505,12 @@ const achievements: Achievement[] = [
 		difficulty: 'medium',
 		title: 'エドゥアール・リュカ',
 		condition: '素数大富豪で3桁以上のリュカ素数を捨てる',
+	},
+	{
+		id: 'prime-wolstenholme',
+		difficulty: 'hard',
+		title: 'ジョセフ・ウォルステンホルム',
+		condition: '素数大富豪で3桁以上のウォルステンホルム素数を捨てる',
 	},
 
 	// achievements
