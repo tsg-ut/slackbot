@@ -135,6 +135,12 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		}
 	});
 
+	rtm.on('user_change', (event) => {
+		db.collection('users').doc(event.user.id).update({
+			info: event.user,
+		});
+	});
+
 	slackInteractions.action({type: 'button', callbackId: 'achievements'}, (payload: any, respond: any) => {
 		unlock(payload.user.id, payload.actions[0].value);
 		respond({text: 'おめでとう!:tada:'});
@@ -160,6 +166,18 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 	}
 
 	initializeDeferred.resolve();
+
+	const {members}: any = await slack.users.list();
+
+	for (const memberChunks of chunk(Array.from(members), 300) as any) {
+		const batch = db.batch();
+		for (const member of memberChunks) {
+			batch.update(db.collection('users').doc(member.id), {
+				info: member,
+			});
+		}
+		await batch.commit();
+	}
 };
 
 interface IncrementOperation {
