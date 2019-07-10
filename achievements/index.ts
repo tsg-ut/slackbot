@@ -7,7 +7,6 @@ import moment from 'moment';
 import {stripIndent} from 'common-tags';
 import achievements, {Difficulty} from './achievements';
 import {Deferred} from '../lib/utils';
-import {getMemberName} from '../lib/slackUtils';
 import db from '../lib/firestore';
 
 interface SlackInterface {
@@ -144,11 +143,11 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 	const achievementsData = await db.collection('achievements').get();
 	if (!achievementsData.empty) {
 		for (const doc of achievementsData.docs) {
-			const {id, user} = doc.data();
+			const {name, user} = doc.data();
 			if (!state.achievements.has(user)) {
 				state.achievements.set(user, new Set());
 			}
-			state.achievements.get(user).add(id);
+			state.achievements.get(user).add(name);
 		}
 	}
 
@@ -252,7 +251,7 @@ export const unlock = async (user: string, name: string) => {
 
 	await db.collection('achievements').add({
 		user,
-		id: name,
+		name,
 		date: new Date(),
 	});
 
