@@ -178,6 +178,14 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		}
 		await batch.commit();
 	}
+
+	for (const achievementChunks of chunk(Array.from(achievements), 300) as any) {
+		const batch = db.batch();
+		for (const [id, achievement] of achievementChunks) {
+			batch.set(db.collection('achievement_data').doc(id), achievement);
+		}
+		await batch.commit();
+	}
 };
 
 interface IncrementOperation {
@@ -260,7 +268,7 @@ export const unlock = async (user: string, name: string) => {
 		return;
 	}
 
-	const existingAchievements = await db.collection('achievements').where('id', '==', name).get();
+	const existingAchievements = await db.collection('achievements').where('name', '==', name).get();
 	const isFirst = existingAchievements.empty;
 
 	const slack: WebClient = await loadDeferred.promise;
@@ -279,7 +287,7 @@ export const unlock = async (user: string, name: string) => {
 		username: 'achievements',
 		icon_emoji: ':unlock:',
 		text: stripIndent`
-			<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada:
+			<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada: <https://sig.tsg.ne.jp/achievement-viewer/users/${user}|[実績一覧]>
 			_${achievement.condition}_
 			難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty}) ${isFirst ? '*初達成者!!:ojigineko-superfast:*' : ''}
 		`,
