@@ -322,15 +322,6 @@ const achievements: Achievement[] = [
 		value: 10144,
 	},
 	{
-		id: 'tashibot-10144km',
-		difficulty: 'medium',
-		title: '太平洋横断',
-		condition: 'tashibotの乗換案内で延べ10144km移動する',
-		category: 'tashibot',
-		counter: 'tashibotDistance',
-		value: 10144,
-	},
-	{
 		id: 'tashibot-40075km',
 		difficulty: 'medium',
 		title: '地球一周の旅',
