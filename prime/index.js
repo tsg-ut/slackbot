@@ -530,7 +530,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		if (
 			(matches = text
 				.replace(/\s/g, '')
-				.match(/^(?<rawNumberText>\d+)=(?<factorText>(?:\d+(?:\^\d+)?\*)*\d+(?:\^\d+)?)$/))
+				.match(/^(?<rawNumberText>\d+)=(?<factorsText>(?:\d+(?:\^\d+)?\*)*\d+(?:\^\d+)?)$/))
 		) {
 			if (state.phase !== 'playing') {
 				return;
