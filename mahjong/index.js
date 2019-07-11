@@ -535,6 +535,12 @@ module.exports = (clients) => {
 							if (役s.includes('七対子')) {
 								await unlock(message.user, 'mahjong-七対子');
 							}
+							if (役s.includes('海底摸月')) {
+								await unlock(message.user, 'mahjong-海底摸月');
+							}
+							if (agari.doraTotal >= 8) {
+								await unlock(message.user, 'mahjong-ドラ8');
+							}
 							if (agari.delta[0] >= 12000) {
 								await unlock(message.user, 'mahjong-12000');
 							}

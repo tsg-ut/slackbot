@@ -480,8 +480,8 @@ module.exports.getRandomBoard = () => {
 	return res;
 };
 
-module.exports.getBoard = async (depth) => {
-	const data = await rust_proxy.get_data(depth);
+module.exports.getBoard = async (boardspec) => {
+	const data = await rust_proxy.get_data(boardspec);
 	let lines = data.split('\n').filter((line) => line);
 	lines = lines.slice(lines.length-4,lines.length);
 

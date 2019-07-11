@@ -12,6 +12,9 @@ use std::cmp;
 extern crate atoi;
 use atoi::atoi;
 
+extern crate itertools;
+use itertools::Itertools;
+
 use std::rc::Rc;
 
 #[derive(PartialEq,Eq,Debug)]
@@ -106,7 +109,7 @@ impl Board {
 		return true;
 	}
 	
-	fn init(&mut self){
+	fn init(&mut self,wall_num: usize){
 		self.haswall = vec![vec![vec![false;4];self.w];self.h];
 
 		//println!("{} {} {} {}",self.board.len(), self.h, self.board[0].len(), self.w);
@@ -121,7 +124,7 @@ impl Board {
 		}
 		
 		let mut rng = rand::thread_rng();		
-		for _ in 0..15 {
+		for _ in 0..wall_num {
 			let mem_haswall = self.haswall.clone();
 			let mut add_walls = vec![];
 			let cy = rng.gen_range(0,self.h);
@@ -167,9 +170,9 @@ impl Board {
 			}
 		}
 	}	
-  pub fn new() -> Board {
-  	let mut res = Board {w: 9, h: 6, walls: vec![],haswall: vec![], robots: vec![]};
-  	res.init();
+  pub fn new(board_h: usize,board_w: usize,wall_num: usize) -> Board {
+  	let mut res = Board {w: board_w, h: board_h, walls: vec![],haswall: vec![], robots: vec![]};
+  	res.init(wall_num);
   	return res;
   }
 }
@@ -356,15 +359,15 @@ fn bfs<'a,'b>(target: u8, bo:&'a Board) -> ((usize,Pos),Vec<(usize,usize)>){
 
 fn main(){
 	let args: Vec<String> = env::args().collect();
-	let mut bo = Board::new();
-	let depth = match atoi(args[1].as_bytes()) {
-		Some(i) => i,
-		None => panic!("args[1] isn't digit")
+	let (depth,board_h,board_w,wall_num) = match args[1..5].into_iter().map(|x| atoi(x.as_bytes())).tuples().next()  {
+		Some((Some(a),Some(b),Some(c),Some(d))) => (a,b,c,d),
+		v => panic!("invalid argument. expect \"depth board_h board_w wall_num\", got {:?}.",v)
 	};
-	let ((mut goalcolour,goalpos),mut log) = bfs(depth,&bo);
+	
+	let mut bo = Board::new(board_h,board_w,wall_num);
+	let ((mut goalcolour,goalpos),mut log) = bfs(depth as u8,&bo);
 	
 	//randomize colour
-	
 	let mut rng = rand::thread_rng();
 	let mut perm: Vec<usize> = (0..bo.robots.len()).collect();
 	perm.shuffle(&mut rng);
