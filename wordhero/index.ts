@@ -60,9 +60,9 @@ const getPrecedings = (index: number) => {
 
 const precedingsList = Array(16).fill(0).map((_, index) => getPrecedings(index));
 
-const getPrefixedWords = (tree: any, letters: string[], prefix: string, bitmask: number, index: number) => {
+const getPrefixedWords = (tree: any, letters: string[], prefix: string, bitmask: number, index: number, minLength: number) => {
 	const ret: string[] = [];
-	if (tree.hasWord(prefix)) {
+	if (minLength <= prefix.length && tree.hasWord(prefix)) {
 		ret.push(prefix);
 	}
 	for (const preceding of precedingsList[index]) {
@@ -76,18 +76,18 @@ const getPrefixedWords = (tree: any, letters: string[], prefix: string, bitmask:
 		if (!tree.isPrefix(prefix + letter)) {
 			continue;
 		}
-		ret.push(...getPrefixedWords(tree, letters, prefix + letter, bitmask | (1 << preceding), preceding));
+		ret.push(...getPrefixedWords(tree, letters, prefix + letter, bitmask | (1 << preceding), preceding, minLength));
 	}
 	return ret;
 }
 
-const getWords = (tree: any, letters: string[]) => {
+const getWords = (tree: any, letters: string[], minLength: number) => {
 	const set = new Set<string>();
 	for (const index of letters.keys()) {
 		if (letters[index] === null) {
 			continue;
 		}
-		const words = getPrefixedWords(tree, letters, letters[index], 1 << index, index);
+		const words = getPrefixedWords(tree, letters, letters[index], 1 << index, index, minLength);
 		for (const word of words) {
 			set.add(word);
 		}
@@ -139,7 +139,7 @@ const generateBoard = (tree: any, seed: string) => {
 		const counter = new Map(hiraganaLetters.map((letter) => [letter, 0]));
 		for (const prefix of prefixes) {
 			for (const nextLetter of hiraganaLetters) {
-				counter.set(nextLetter, counter.get(nextLetter) + tree.countPrefix(prefix + nextLetter));
+				counter.set(nextLetter, counter.get(nextLetter) + tree.getPrefix(prefix + nextLetter).filter((word: string) => word.length <= 5).length);
 			}
 		}
 		const topLetters = sortBy(Array.from(counter.entries()), ([, count]) => count).reverse().slice(0, 3);
@@ -178,7 +178,7 @@ const generateHardBoard = (tree: any, seed: string) => {
 		const counter = new Map(hiraganaLetters.map((letter) => {
 			const newBoard = board.slice();
 			newBoard[targetCellIndex] = letter;
-			return [letter, sumBy(getWords(tree, newBoard), (word) => word.length ** 2)];
+			return [letter, sumBy(getWords(tree, newBoard, 5), (word) => word.length ** 2)];
 		}));
 		const [nextLetter] = maxBy(shuffle(Array.from(counter.entries())), ([, count]) => count);
 		board[targetCellIndex] = nextLetter;
@@ -217,12 +217,10 @@ const load = async () => {
 	const seedWords = dictionary.filter((word) => 7 <= word.length && word.length <= 8);
 	const hardSeedWords = dictionary.filter((word) => 9 <= word.length && word.length <= 10);
 	const tree = trie(dictionary);
-	const lightTree = trie(dictionary.filter((word) => word.length <= 5));
-	const hardTree = trie(dictionary.filter((word) => word.length >= 5));
 
 	const db = await sqlite.open(path.join(__dirname, 'dictionary.sqlite3'));
 
-	return loadDeferred.resolve({seedWords, hardSeedWords, tree, lightTree, hardTree, db});
+	return loadDeferred.resolve({seedWords, hardSeedWords, tree, db});
 };
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
@@ -279,11 +277,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 
 			const isHard = Boolean(message.text.match(/^hardhero$/i));
-			const {seedWords, hardSeedWords, tree, lightTree, hardTree, db} = await load();
+			const {seedWords, hardSeedWords, tree, db} = await load();
 
 			state.isHolding = true;
-			const board = isHard ? generateHardBoard(hardTree, sample(hardSeedWords)) : generateBoard(lightTree, sample(seedWords));
-			state.words = (isHard ? getWords(hardTree, board) : getWords(tree, board)).filter((word) => word.length >= 3);
+			const board = isHard ? generateHardBoard(tree, sample(hardSeedWords)) : generateBoard(tree, sample(seedWords));
+			state.words = (isHard ? getWords(tree, board, 5) : getWords(tree, board, 1)).filter((word) => word.length >= 3);
 
 			const imageData = await render(board, {color: isHard ? '#D50000' : 'black'});
 			const cloudinaryData: any = await new Promise((resolve, reject) => {

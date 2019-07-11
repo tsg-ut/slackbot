@@ -2,6 +2,7 @@
 
 const image = require('./image.js');
 const deepcopy = require('deepcopy');
+const rust_proxy = require('./rust-proxy.js');
 
 function rep(n,f){ for(let i = 0; i < n; i++)f(i); } 
 
@@ -40,7 +41,11 @@ const directionname2idx = arrays2idxs([
 ]);
 
 module.exports.iscommand = (str) => {
-	return str.match(/^([赤青黄緑rgby]([上下左右wasdhjkl]+))+$/);
+	return str.match(/^([赤青黄緑rgby]([上下左右wasdhjkl]+))+(まで)?$/);
+}
+
+module.exports.isMADE = (str) => {
+	return str.match(/まで$/);
 }
 
 module.exports.str2command = (str) => {
@@ -63,7 +68,20 @@ function samep(p,q){
 }
 
 class Board{
-	constructor(){
+	constructor(){}
+	load_board(data,goalcolour,goalpos){
+		this.h = data["h"];
+		this.w = data["w"];
+		function pos2array(x){
+			return x;
+		}
+		this.walls = data["walls"].map(pos2array);
+		this.robots = data["robots"].map(pos2array);
+		this.goal = pos2array(goalpos);
+		this.goal.colour = goalcolour;
+		this.init_board();
+	}
+	init(){
 		this.h = 5;
 		this.w = 7;
 		this.walls = [];
@@ -130,8 +148,10 @@ class Board{
 		this.goal = this.robots.pop();
 		this.goal.colour = randi(0,4);
 		
-		//console.log(this.walls);
+		this.init_board();
+	}
 		
+	init_board(){
 		this.board = Array(this.h).fill().map(_ => Array(this.w).fill().map(_ => {
 			return {
 				haswall: Array(4).fill().map(_ => false)
@@ -245,7 +265,6 @@ class Board{
 	
 	undo(){
 		const v = this.logs.pop();
-		//console.log(v);
 		this.robots[v.c] = v.from;
 	}
 
@@ -456,9 +475,34 @@ module.exports.logstringfy = (log) => {
 };
 
 module.exports.getRandomBoard = () => {
-	return new Board();
+	const res = new Board();
+	res.init();
+	return res;
 };
 
+module.exports.getBoard = async (boardspec) => {
+	const data = await rust_proxy.get_data(boardspec);
+	let lines = data.split('\n').filter((line) => line);
+	lines = lines.slice(lines.length-4,lines.length);
+
+	const board_data = JSON.parse(lines[0].replace(/Pos|WallPos|Board/g,'').replace(/([a-z]+)/g,'"$1"'));
+	const goalcolour = parseInt(lines[1]);
+	const goalpos = JSON.parse(lines[2].replace(/Pos/g,'').replace(/([a-z]+)/g,'"$1"'));
+	const answer = JSON.parse(lines[3].replace(/\(/g,'[').replace(/\)/g,']'));
+
+	const bo =  new Board();
+	bo.load_board(board_data,goalcolour,goalpos);
+	//console.log(answer);
+	for(let d of answer){
+		bo.move(d[0],d[1]);
+	}
+	const logs = [...bo.logs];
+	//console.log(bo.logs);
+	for(let d of answer){
+		bo.undo();
+	}
+	return [bo,logs];
+};
 
 
 

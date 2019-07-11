@@ -9,6 +9,8 @@ const {spawn} = require('child_process');
 const concat = require('concat-stream');
 const MillerRabin = require('miller-rabin');
 const BN = require('bn.js');
+const {unlock} = require('../achievements/index.ts');
+const primes = require('./primes.ts');
 
 const cardSet = range(1, 14);
 const millerRabin = new MillerRabin();
@@ -24,6 +26,7 @@ const state = (() => {
 			stock: savedState.stock || [],
 			pile: savedState.pile || [],
 			isDrew: savedState.isDrew || false,
+			isDrewOnce: savedState.isDrewOnce || false,
 			isRevolution: savedState.isRevolution || false,
 			boardCards: savedState.boardCards || [],
 			boardNumber: savedState.boardNumber || null,
@@ -37,6 +40,7 @@ const state = (() => {
 			stock: [], // 山札
 			pile: [], // 捨て札
 			isDrew: false,
+			isDrewOnce: false,
 			isRevolution: false,
 			boardCards: [],
 			boardNumber: null,
@@ -277,6 +281,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 	const afterDiscard = async () => {
 		if (state.hand.length === 0) {
+			const {turns, challenger, isDrewOnce} = state;
 			await postMessage(stripIndent`
 				クリアしました:tada:
 				*ターン数* ${state.turns}
@@ -288,10 +293,18 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				stock: [],
 				pile: [],
 				isDrew: false,
+				isDrewOnce: false,
 				boardCards: [],
 				boardNumber: null,
 				turns: 0,
 			});
+			unlock(challenger, 'prime-clear');
+			if (turns <= 4) {
+				unlock(challenger, 'prime-fast-clear');
+				if (!isDrewOnce) {
+					unlock(challenger, 'prime-fast-clear-no-draw');
+				}
+			}
 		}
 	};
 
@@ -348,12 +361,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				challenger: user,
 				isRevolution: false,
 				isDrew: false,
+				isDrewOnce: false,
 				stock,
 				phase: 'playing',
 				turns: 0,
 			});
 
 			await postMessage(`*手札* ${cardsToString(state.hand)}`);
+			unlock(user, 'prime');
 			return;
 		}
 
@@ -434,6 +449,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					場が流れました。
 					*手札* ${cardsToString(state.hand)}
 				`);
+				await unlock(state.challenger, 'prime-grothendieck');
 				await afterDiscard();
 				return;
 			}
@@ -453,6 +469,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					${state.isRevolution ? '革命状態になりました。' : '革命状態でなくなりました。'}
 					*手札* ${cardsToString(state.hand)}
 				`);
+				await unlock(state.challenger, 'prime-ramanujan');
 				await afterDiscard();
 				return;
 			}
@@ -489,6 +506,23 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				*場数* ${state.boardNumber} (${cardsToString(state.boardCards)})
 				*手札* ${cardsToString(state.hand)}
 			`);
+			if (numberText.length >= 3) {
+				if (primes.mersenne.includes(numberText)) {
+					await unlock(state.challenger, 'prime-mersenne');
+				}
+				if (primes.fermat.includes(numberText)) {
+					await unlock(state.challenger, 'prime-fermat');
+				}
+				if (primes.fibonacci.includes(numberText)) {
+					await unlock(state.challenger, 'prime-fibonacci');
+				}
+				if (primes.lucas.includes(numberText)) {
+					await unlock(state.challenger, 'prime-lucas');
+				}
+				if (primes.wolstenholme.includes(numberText)) {
+					await unlock(state.challenger, 'prime-wolstenholme');
+				}
+			}
 			await afterDiscard();
 			return;
 		}
@@ -496,7 +530,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		if (
 			(matches = text
 				.replace(/\s/g, '')
-				.match(/^(\d+)=((?:\d+(?:\^\d+)?\*)*\d+(?:\^\d+)?)$/))
+				.match(/^(?<rawNumberText>\d+)=(?<factorText>(?:\d+(?:\^\d+)?\*)*\d+(?:\^\d+)?)$/))
 		) {
 			if (state.phase !== 'playing') {
 				return;
@@ -506,7 +540,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				return;
 			}
 
-			const [, rawNumberText, factorsText] = matches;
+			const {rawNumberText, factorsText} = matches.groups;
 			const factorComponents = factorsText
 				.split(/[\^*]/)
 				.map((component) => component.replace(/[^\d]/g, '').replace(/^0+/, ''));
@@ -653,6 +687,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				→ *素因数分解* ${frequencyToString(factors.map(({mantissa, exponent}) => ({factor: mantissa, times: exponent})))} (${cardsToString(flatten(factorDecompositions))})
 				*手札* ${cardsToString(state.hand)}
 			`);
+			if (decompositionCards.length >= 8) {
+				await unlock(state.challenger, 'prime-composition-8');
+			}
 			await afterDiscard();
 			return;
 		}
@@ -674,6 +711,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const drewCards = await draw(1);
 			await setState({
 				isDrew: true,
+				isDrewOnce: true,
 			});
 			await postMessage(stripIndent`
 				ドロー +1枚 (${cardsToString(drewCards)})

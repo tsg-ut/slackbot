@@ -62,6 +62,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			text: ':ha:',
 			username: 'shogi',
 			icon_url: iconUrl,
+			thread_ts: state.thread,
 		});
 		if (description !== '') {
 			await slack.chat.postMessage({
@@ -69,6 +70,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				text: `${description}:korosuzo:`,
 				username: 'shogi',
 				icon_url: iconUrl,
+				thread_ts: state.thread,
 			});
 		}
 	};

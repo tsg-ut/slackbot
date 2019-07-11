@@ -13,6 +13,7 @@ const commands = [
 	['git', 'pull'],
 	['git', 'submodule', 'update', '--init', '--recursive'],
 	['npm', 'install', '--production'],
+	['/home/slackbot/.cargo/bin/cargo', 'build', '--release', '--all'],
 ];
 
 // @ts-ignore

@@ -18,7 +18,6 @@ function getTimeLink(time){
 	return `<${url}|${text}>`;
 };
 
-
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	let state = undefined;
 
@@ -132,7 +131,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 		})(state);
 		
-		async function verifycommand(cmd){
+		async function verifycommand(cmd,text){
+			if(!state.battles.isbattle && !board.isMADE(text) && cmd.length > state.answer.length){
+				await postmessage(
+					`この問題は${state.answer.length}手詰めだよ。その手は${cmd.length}手かかってるよ:thinking_face:\n` +
+					'もし最短でなくてもよいなら、手順のあとに「まで」をつけてね。'
+				);
+				return false;
+			}
 			state.board.movecommand(cmd);
 			const url = await image.upload(state.board);
 			if(state.board.iscleared()){
@@ -145,14 +151,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				}
 				await postmessage(comment,url);
 				state.board.undocommand(cmd);
-				if(cmd.length > state.answer.length){
-					state.board.movecommand(state.answer);
-					await postmessage(
-						`実は${state.answer.length}手でたどり着けるんです。\n${board.logstringfy(state.answer)}`,
-						await image.upload(state.board)
-					);
-					state.board.undocommand(state.answer);
-				}
+				
+				const botcomment = (cmd.length > state.answer.length) ?
+				                     `実は${state.answer.length}手でたどり着けるんです。\n${board.logstringfy(state.answer)}`:
+				                     `僕の見つけた手順です。\n${board.logstringfy(state.answer)}`;
+				
+				state.board.movecommand(state.answer);
+				await postmessage(botcomment, await image.upload(state.board));
+				state.board.undocommand(state.answer);
 				return true;
 			}
 			else{
@@ -163,41 +169,35 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 		
 		try{
-			if(text === 'ハイパーロボット' || text === 'ハイパーロボットバトル' || text.match(/^ハイパーロボット (\d+)手$/)){
+			if(text.match(/^(ベイビー|スーパー|ハイパー)ロボット(バトル| (\d+)手)?$/)){
 				let depth = undefined;
 				{
 					let matches = null;
-					if ((matches = text.match(/^ハイパーロボット (\d+)手$/))) {
-						depth = parseInt(matches[1]);
+					if ((matches = text.match(/^(ベイビー|スーパー|ハイパー)ロボット (\d+)手$/))) {
+						depth = parseInt(matches[2]);
 					}
 				}
-				const isbattle = (text === 'ハイパーロボットバトル');
+				const isbattle = text.match(/^(ベイビー|スーパー|ハイパー)ロボットバトル$/);
+				
+				const difficulty = {
+					"ベイビー": {size: {h: 3, w: 5}, numOfWalls: 3},
+					"スーパー": {size: {h: 5, w: 7}, numOfWalls: 10},
+					"ハイパー": {size: {h: 7, w: 9}, numOfWalls: 15},
+				}[text.match(/^(ベイビー|スーパー|ハイパー)/)[0]];
 				
 				const waittime = 10;
-				if(!state || (depth && state.answer.length !== depth) || (isbattle && !state.battles.isbattle)){
-					const endtime = Date.now() + 1000 * waittime;
-					while(Date.now() <= endtime){
-						const bo = board.getRandomBoard();
-						const ans = board.getlongergoal(bo,depth);
-						if(!ans){
-							continue;
-						}
-						state = {
-							board: bo,
-							answer: ans,
-							battles: {
-								bids: {},
-								isbattle: isbattle,
-								isbedding: isbattle,
-								startbedding: false,
-							},
-						};
-						break;
-					}
-					if(!state || state.answer.length < depth){
-						await postmessage(`${waittime}秒では${depth}手かかる問題が見つけられなかったよ:cry:`);
-						return;
-					}
+				if(!state || (depth && state.answer.length < depth) || (isbattle && !state.battles.isbattle)){
+					const [bo,ans] = await board.getBoard({depth: (depth || 1000) , ...difficulty});
+					state = {
+						board: bo,
+						answer: ans,
+						battles: {
+							bids: {},
+							isbattle: isbattle,
+							isbedding: isbattle,
+							startbedding: false,
+						},
+					};
 				}
 				//console.log(state);
 				await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,await image.upload(state.board));
@@ -227,13 +227,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						return;
 					}
 					
-					if(await verifycommand(cmd)){
+					if(await verifycommand(cmd,text)){
 						clearTimeout(timeoutId);
 						state = undefined;
 					}
 				}
 				else{
-					if(await verifycommand(cmd)){
+					if(await verifycommand(cmd,text)){
 						state = undefined;
 					}
 				}
@@ -271,8 +271,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				}
 			}
 		}
+		
 		catch(e){
-			//console.log('error',e);
+			console.log('error',e);
 			await postmessage('内部errorです:cry:\n' + String(e));
 			restore_state();
 		}

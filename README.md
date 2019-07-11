@@ -34,7 +34,14 @@ cp .env.example .env
 
 `CHANNEL_XXX`系は全部自分宛のDMを指定するのがオススメ。
 
-`SLACK_TOKEN` は [@tsgbot の OAuth & Permissions](https://api.slack.com/apps/ADMCWEP5X/oauth) から必要な権限のみに絞ったTokenを発行するのをオススメ。
+`SLACK_TOKEN` は [@tsgbot の OAuth & Permissions](https://api.slack.com/apps/ADMCWEP5X/oauth) から必要な権限のみに絞ったTokenを発行するのをオススメ。アクセスできない場合は管理者権限がありそうな人に聞いてください。
+
+大抵必要な設定項目
+
+* `HAKATASHI_TOKEN`: 自分のUser token
+* `SLACK_TOKEN`: 自分のBot token
+* `SIGNING_SECRET`: 手元でテストする分には適当な文字列でよい
+* `USER_TSGBOT`: @tsgbotのユーザー名
 
 必要なスコープ
 
