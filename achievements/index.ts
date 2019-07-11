@@ -19,6 +19,7 @@ type users = {
 	chats?: number,
 	chatDays?: number,
 	lastChatDay?: string,
+	tashibotDistance?: number,
 	[key: string]: any,
 };
 
