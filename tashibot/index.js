@@ -342,7 +342,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						title: `乗換案内 (${from}駅 → ${to}駅, ${(newDistance / 1000).toFixed(1)}km, ${newPrice}円)`,
 						text: firstLineString + routeString,
 					});
-					increment(message.user, 'tashibot-distance', Math.floor(newDistance / 1000));
+					increment(message.user, 'tashibotDistance', Math.floor(newDistance / 1000));
 				}
 			}
 		}
