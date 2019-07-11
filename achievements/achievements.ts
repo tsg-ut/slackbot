@@ -649,6 +649,30 @@ const achievements: Achievement[] = [
 		category: 'prime',
 	},
 
+	// voiperrobot
+
+	{
+		id: 'voiperrobot',
+		difficulty: 'easy',
+		title: 'はっつくパンツ',
+		condition: 'ボイパーロボットで遊ぶ',
+		category: 'voiperrobot',
+	},
+	{
+		id: 'voiperrobot-battle',
+		difficulty: 'easy',
+		title: 'ひっつくパンツ',
+		condition: 'ボイパーロボットバトルで遊ぶ',
+		category: 'voiperrobot',
+	},
+	{
+		id: 'voiperrobot-win-battle',
+		difficulty: 'medium',
+		title: 'くっつくパンツ',
+		condition: 'ボイパーロボットバトルで勝つ',
+		category: 'voiperrobot',
+	},
+
 	// achievements
 
 	{
