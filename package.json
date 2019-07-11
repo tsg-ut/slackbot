@@ -52,7 +52,7 @@
     "jp-num": "^0.1.0",
     "jsdom": "^15.1.1",
     "kuromojin": "^1.4.0",
-    "lodash": "^4.17.11",
+    "lodash": "^4.17.13",
     "miller-rabin": "^4.0.1",
     "moment": "^2.24.0",
     "node-emoji": "^1.10.0",
