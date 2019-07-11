@@ -232,7 +232,52 @@ const achievements: Achievement[] = [
 		reaction: 'guchol',
 		value: 5,
 	},
-
+	{
+		id: 'reaction-nanyanen-nannanode-5',
+		difficulty: 'hard',
+		title: 'お前はナンなんだ',
+		condition: '1つのメッセージに対し5人以上から:nanyanen-nannanode:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'nanyanen-nannanode',
+		value: 5,
+	},
+	{
+		id: 'reaction-hideo54-5',
+		difficulty: 'hard',
+		title: 'ドジでよく泣くキツネの子',
+		condition: '1つのメッセージに対し5人以上から:hideo54:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'hideo54',
+		value: 5,
+	},
+	{
+		id: 'reaction-hototogisu-5',
+		difficulty: 'hard',
+		title: '鳥さんが鳴いとるやんけ',
+		condition: '1つのメッセージに対し5人以上から:hototogisu:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'hototogisu',
+		value: 5,
+	},
+	{
+		id: 'reaction-ojigineko-5',
+		difficulty: 'hard',
+		title: 'ねこは今日もあなたの後ろでおじぎしている',
+		condition: '1つのメッセージに対し5人以上から:ojigineko:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'ojigineko',
+		value: 5,
+	},
+	{
+		id: 'reaction-serval-5',
+		difficulty: 'hard',
+		title: 'ねぇ、あなたは何のフレンズ？',
+		condition: '1つのメッセージに対し5人以上から:serval:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'serval',
+		value: 5,
+	},
+  
 	// sushi-bot
 
 	{
