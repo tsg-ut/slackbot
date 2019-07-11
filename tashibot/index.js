@@ -10,7 +10,7 @@ const {default: Queue} = require('p-queue');
 const {spawn} = require('child_process');
 const concat = require('concat-stream');
 const getReading = require('../lib/getReading.js');
-const {unlock} = require('../achievements/index.ts');
+const {unlock, increment} = require('../achievements/index.ts');
 const prices = require('./prices.js');
 
 const histories = [];
@@ -342,6 +342,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						title: `乗換案内 (${from}駅 → ${to}駅, ${(newDistance / 1000).toFixed(1)}km, ${newPrice}円)`,
 						text: firstLineString + routeString,
 					});
+					increment(message.user, Math.floor(newDistance / 1000));
 				}
 			}
 		}
