@@ -360,9 +360,9 @@ export const increment = async (user: string, name: string, value: number = 1) =
 	const newValue = (state.users.get(user)[name] || 0) + value;
 	state.users.get(user)[name] = newValue;
 
-	const unlocked = Array.from(achievements.values()).find((achievement) => achievement.counter === name && achievement.value === newValue);
-	if (unlocked !== undefined) {
-		unlock(user, unlocked.id);
+	const unlocked = Array.from(achievements.values()).filter((achievement) => achievement.counter === name && achievement.value <= newValue);
+	for (const achievement of unlocked) {
+		unlock(user, achievement.id);
 	}
 
 	updateDb({type: 'increment', name, value, user});
