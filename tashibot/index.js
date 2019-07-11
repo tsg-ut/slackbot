@@ -175,7 +175,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 		const city = citiesMap.get(matches[1]);
 
-		if (histories.filter((history) => history.cityName === city.name && history.date >= Date.now() - 10 * 1000).length >= 3) {
+		if (histories.filter((history) => history.cityName === city.name && history.date >= Date.now() - 3 * 60 * 1000).length >= 3) {
 			await slack.reactions.add({name: 'bomb', channel: message.channel, timestamp: message.ts});
 			return;
 		}
