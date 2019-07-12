@@ -179,8 +179,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			await slack.reactions.add({name: 'bomb', channel: message.channel, timestamp: message.ts});
 			return;
 		}
+		if (histories.filter((history) => history.user === message.user && history.date >= Date.now() - 5 * 60 * 1000).length >= 10) {
+			await slack.reactions.add({name: 'bomb', channel: message.channel, timestamp: message.ts});
+			return;
+		}
 
-		histories.push({cityName: city.name, date: Date.now()});
+		histories.push({cityName: city.name, date: Date.now(), user: message.user});
 		const placeText = city.type === 'city' ? `${city.name},${city.prefecture}` : `${city.name},${city.description}`;
 		const imageUrl = `https://maps.googleapis.com/maps/api/staticmap?${qs.encode({
 			center: placeText,
