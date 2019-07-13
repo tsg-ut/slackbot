@@ -20,6 +20,7 @@ type users = {
 	chatDays?: number,
 	lastChatDay?: string,
 	tashibotDistance?: number,
+	shogiWin?: number,
 	[key: string]: any,
 };
 
@@ -159,10 +160,12 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 	}
 
 	const usersData = await db.collection('users').get();
+	const usersSet = new Set();
 	if (!usersData.empty) {
 		for (const doc of usersData.docs) {
 			const data = doc.data();
 			state.users.set(doc.id, data || Object.create(null));
+			usersSet.add(doc.id);
 		}
 	}
 
@@ -173,9 +176,15 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 	for (const memberChunks of chunk(Array.from(members), 300) as any) {
 		const batch = db.batch();
 		for (const member of memberChunks) {
-			batch.update(db.collection('users').doc(member.id), {
-				info: member,
-			});
+			if (usersSet.has(member.id)) {
+				batch.update(db.collection('users').doc(member.id), {
+					info: member,
+				});
+			} else {
+				batch.set(db.collection('users').doc(member.id), {
+					info: member,
+				});
+			}
 		}
 		await batch.commit();
 	}
