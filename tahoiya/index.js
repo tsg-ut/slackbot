@@ -21,7 +21,7 @@ const {default: Queue} = require('p-queue');
 const nodePersist = require('node-persist');
 const rouge = require('rouge');
 const getReading = require('../lib/getReading.js');
-const {unlock} = require('../achievements/index.ts');
+const {unlock, increment} = require('../achievements/index.ts');
 
 const {
 	getPageTitle,
@@ -369,6 +369,14 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		timeoutId = setTimeout(onFinishBettings, (state.author === null ? 3 : 30) * 60 * 1000);
+
+		if (humanCount >= 3) {
+			for (const user of state.meanings.keys()) {
+				if (user.startsWith('U')) {
+					await increment(user, 'tahoiyaParticipate');
+				}
+			}
+		}
 	};
 
 	const onFinishBettings = async () => {
@@ -401,8 +409,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			}
 		}
 
+		const humanCount = Array.from(state.meanings.keys()).filter((user) => user.startsWith('U')).length;
+
 		if (state.author) {
-			const humanCount = Array.from(state.meanings.keys()).filter((user) => user.startsWith('U')).length;
 			const correctCount = correctBetters.filter(([user]) => user.startsWith('U')).length;
 			const wrongCount = humanCount - correctCount;
 
@@ -595,12 +604,25 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			const misdirectedUser = oldMeanings[meaning].user;
 			if (misdirectedUser !== null) {
 				deceiveCounter.set(misdirectedUser, (deceiveCounter.get(misdirectedUser) || 0) + 1);
+				await increment(misdirectedUser, 'tahoiyaDeceive');
 				if (misdirectedUser.startsWith('tahoiyabot')) {
 					await unlock(user, 'tahoiya-singularity');
+				}
+				if (!misdirectedUser.startsWith('tahoiyabot')) {
+					const otherBetting = oldBettings.get(misdirectedUser);
+					if (otherBetting && oldMeanings[otherBetting.meaning].user === user) {
+						await unlock(user, 'tahoiya-deceive-each-other');
+					}
 				}
 			}
 			if (coins >= 5) {
 				await unlock(user, 'tahoiya-5bet');
+			}
+			if (humanCount >= 3 && meaning === correctMeaningIndex) {
+				await increment(user, 'tahoiyaWin');
+			}
+			if (meaning !== correctMeaningIndex && newRatings.get(user) > 0) {
+				await unlock(user, 'tahoiya-positive-coins-without-win');
 			}
 		}
 

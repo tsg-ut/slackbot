@@ -340,7 +340,7 @@ const achievements: Achievement[] = [
 		reaction: 'mnemo',
 		value: 5,
 	},
-  
+
 	// sushi-bot
 
 	{
@@ -562,6 +562,83 @@ const achievements: Achievement[] = [
 		title: 'シンギュラリティ',
 		condition: 'たほいやでAIに振り込んでしまう',
 		category: 'tahoiya',
+	},
+	{
+		id: 'tahoiya-positive-coins-without-win',
+		difficulty: 'hard',
+		title: '負けるが勝ち',
+		condition: 'たほいやで誤った選択肢にBETした上で正の得点を獲得する',
+		category: 'tahoiya',
+	},
+	{
+		id: 'tahoiya-deceive-each-other',
+		difficulty: 'hard',
+		title: '鷸蚌の争い',
+		condition: 'たほいやでお互いの登録した意味に振り込み合う (BOTを除く)',
+		category: 'tahoiya',
+	},
+	{
+		id: 'tahoiya-wins-10',
+		difficulty: 'hard',
+		title: '勝てば官軍',
+		condition: 'たほいやで延べ10勝する (BOT以外の参加者が3人以上の場合に限る)',
+		category: 'tahoiya',
+		counter: 'tahoiyaWin',
+		value: 10,
+	},
+	{
+		id: 'tahoiya-wins-100',
+		difficulty: 'professional',
+		title: '百戦殆うからず',
+		condition: 'たほいやで延べ100勝する (BOT以外の参加者が3人以上の場合に限る)',
+		category: 'tahoiya',
+		counter: 'tahoiyaWin',
+		value: 100,
+	},
+	{
+		id: 'tahoiya-deceive-total7',
+		difficulty: 'medium',
+		title: '狐七化け、狸は八化け',
+		condition: 'たほいやで延べ8人をひっかける',
+		category: 'tahoiya',
+		counter: 'tahoiyaDeceive',
+		value: 8,
+	},
+	{
+		id: 'tahoiya-deceive-total300',
+		difficulty: 'professional',
+		title: '三百代言',
+		condition: 'たほいやで延べ300人をひっかける',
+		category: 'tahoiya',
+		counter: 'tahoiyaDeceive',
+		value: 300,
+	},
+	{
+		id: 'tahoiya-participate-10',
+		difficulty: 'medium',
+		title: '芸は道によって賢し',
+		condition: 'たほいやに10回参加する (BOT以外の参加者が3人以上の場合に限る)',
+		category: 'tahoiya',
+		counter: 'tahoiyaParticipate',
+		value: 10,
+	},
+	{
+		id: 'tahoiya-participate-100',
+		difficulty: 'hard',
+		title: '松笠より年嵩',
+		condition: 'たほいやに50回参加する (BOT以外の参加者が3人以上の場合に限る)',
+		category: 'tahoiya',
+		counter: 'tahoiyaParticipate',
+		value: 50,
+	},
+	{
+		id: 'tahoiya-participate-300',
+		difficulty: 'professional',
+		title: '海千山千',
+		condition: 'たほいやに300回参加する (BOT以外の参加者が3人以上の場合に限る)',
+		category: 'tahoiya',
+		counter: 'tahoiyaParticipate',
+		value: 300,
 	},
 
 	// mahjong
