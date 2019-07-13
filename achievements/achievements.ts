@@ -835,6 +835,65 @@ const achievements: Achievement[] = [
 		category: 'voiperrobot',
 	},
 
+	// ricochet-robots
+
+	{
+		id: 'ricochet-robots-play',
+		difficulty: 'easy',
+		title: 'Hey ハイパーロボット',
+		condition: 'ハイパーロボットで遊ぶ',
+		category: 'ricochet-robots',
+	},
+	{
+		id: 'ricochet-robots-clear',
+		difficulty: 'easy',
+		title: 'われはロボット',
+		condition: 'ハイパーロボットを正解する',
+		category: 'ricochet-robots',
+	},
+	{
+		id: 'ricochet-robots-clear-shortest',
+		difficulty: 'easy',
+		title: 'オートマタ',
+		condition: 'ハイパーロボットで最短勝利する',
+		category: 'ricochet-robots',
+	},
+	{
+		id: 'ricochet-robots-clear-shortest-over10',
+		difficulty: 'medium',
+		title: 'アンドロイド',
+		condition: 'ハイパーロボットで10手詰め以上の問題で最短勝利する',
+		category: 'ricochet-robots',
+	},
+	{
+		id: 'ricochet-robots-clear-shortest-over15',
+		difficulty: 'hard',
+		title: 'オラクル',
+		condition: 'ハイパーロボットで15手詰め以上の問題で最短勝利する',
+		category: 'ricochet-robots',
+	},
+	{
+		id: 'ricochet-robots-clear-shortest-over20',
+		difficulty: 'professional',
+		title: 'デウス・エクス・マキナ',
+		condition: 'ハイパーロボットで20手詰め以上の問題で最短勝利する',
+		category: 'ricochet-robots',
+	},
+	{
+		id: 'ricochet-robots-buttle-play',
+		difficulty: 'easy',
+		title: 'ハイパーロボット対戦',
+		condition: 'ハイパーロボットバトルで遊ぶ',
+		category: 'ricochet-robots',
+	},
+	{
+		id: 'ricochet-robots-debugger',
+		difficulty: 'hard',
+		title: 'ﾋﾟｭｰﾝ',
+		condition: 'ハイパーロボットのバグを突く',
+		category: 'ricochet-robots',
+	},
+
 	// achievements
 
 	{

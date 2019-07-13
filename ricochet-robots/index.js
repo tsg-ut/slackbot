@@ -4,7 +4,8 @@ const image = require('./image.js');
 const board = require('./board.js');
 const moment = require('moment');
 const querystring = require('querystring');
-const Mutex = require('async-mutex').Mutex;
+const {Mutex} = require('async-mutex');
+const {unlock} = require('../achievements/index.ts');
 
 function getTimeLink(time){
 	const text = moment(time).utcOffset('+0900').format('HH:mm:ss');
@@ -121,6 +122,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				}
 				else if(cmd.moves.length < state.answer.length){
 					comment += "というか:bug:ってますね...?????  :satos:に連絡してください。";
+					await unlock(message.user, 'ricochet-robots-debugger');
 				}
 				await postmessage(comment,url);
 				
@@ -172,6 +174,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						};
 					}
 					await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,await image.upload(state.board));
+					
+					if(isbattle){
+						await unlock(message.user, 'ricochet-robots-buttle-play');
+					}
+					else{
+						await unlock(message.user, 'ricochet-robots-play');
+					}
 				}
 				else if(board.iscommand(text)){
 					if(!state){
@@ -203,6 +212,19 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					}
 					else{
 						if(await verifycommand(cmd)){
+							await unlock(message.user, 'ricochet-robots-clear');
+							if(cmd.moves.length === state.answer.length){
+								await unlock(message.user, 'ricochet-robots-clear-shortest');
+								if(state.answer.length >= 10){
+									await unlock(message.user, 'ricochet-robots-clear-shortest-over10');
+								}
+								if(state.answer.length >= 15){
+									await unlock(message.user, 'ricochet-robots-clear-shortest-over15');
+								}
+								if(state.answer.length >= 20){
+									await unlock(message.user, 'ricochet-robots-clear-shortest-over20');
+								}
+							}
 							state = undefined;
 						}
 					}
@@ -233,6 +255,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			catch(e){
 				console.log('error',e);
 				await postmessage('内部errorです:cry:\n' + String(e));
+				await unlock(message.user, 'ricochet-robots-debugger');
 			}
 			release();
 		});
