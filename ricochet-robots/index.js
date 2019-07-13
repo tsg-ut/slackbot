@@ -2,9 +2,10 @@
 
 const image = require('./image.js');
 const board = require('./board.js');
-const deepcopy = require('deepcopy');
 const moment = require('moment');
 const querystring = require('querystring');
+const {Mutex} = require('async-mutex');
+const {unlock} = require('../achievements/index.ts');
 
 function getTimeLink(time){
 	const text = moment(time).utcOffset('+0900').format('HH:mm:ss');
@@ -20,18 +21,9 @@ function getTimeLink(time){
 
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	let state = undefined;
-
+	const mutex = new Mutex();
 	
 	rtm.on('message', async (message) => {
-		
-		/*
-		async function getMemberName(user){
-			const {members} = await slack.users.list();
-			const member = members.find(({id}) => id === user);
-			return member.profile.display_name || member.name;
-		};
-		*/
-		
 		function toMention(user){
 			return `<@${user}>`;
 		}
@@ -44,7 +36,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 
 		async function postmessage(comment,url){
-			//console.log(comment,url);
 			if(!url){
 				await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
@@ -73,6 +64,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		const answeringminutes = 1;
 		
 		async function chainbids(){
+			if(!state)return;
 			if(!state.battles.firstplayer){
 				await postmessage(`${toMention(state.battles.orderedbids[0].user)}さんは間に合わなかったみたいだね。残念:cry:`);
 				state.battles.orderedbids.shift();
@@ -86,12 +78,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				timeoutId = setTimeout(chainbids, answeringminutes * 60 * 1000);
 			}
 			else{
-				state.board.movecommand(state.answer);
+				const answerBoard = state.board.clone();
+				answerBoard.movecommand(state.answer);
 				await postmessage(
 					`だれも正解できなかったよ:cry:\n正解は ${board.logstringfy(state.answer)} の${state.answer.length}手だよ。`,
-					await image.upload(state.board)
+					await image.upload(answerBoard)
 				);
-				state.board.undocommand(state.answer);
 				state = undefined;
 			}
 		}
@@ -108,145 +100,136 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 			state.battles.orderedbids.sort((a,b) => (a.decl !== b.decl ? (a.decl-b.decl) : (a.time-b.time)));
 			state.battles.bids = {};
-			//console.log(state.battles.orderedbids);
 			state.battles.firstplayer = true;
 			await chainbids();
 		}
 		
-		const restore_state = ((mstate) => {
-			if(!mstate){
-				return () => {
-					state = undefined;
-				}
-			}
-			else{
-				const ans = deepcopy(mstate.answer);
-				const battles = deepcopy(mstate.battles);
-				const ds = mstate.board.dumpstate();
-				return () => {
-					state.answer = ans;
-					state.board.loadstate(ds);
-					state.battles = battles;
-				}
-			}
-		})(state);
-		
-		async function verifycommand(cmd,text){
-			if(!state.battles.isbattle && !board.isMADE(text) && cmd.length > state.answer.length){
+		async function verifycommand(cmd){
+			if(!state.battles.isbattle && !cmd.isMADE && cmd.moves.length > state.answer.length){
 				await postmessage(
-					`この問題は${state.answer.length}手詰めだよ。その手は${cmd.length}手かかってるよ:thinking_face:\n` +
+					`この問題は${state.answer.length}手詰めだよ。その手は${cmd.moves.length}手かかってるよ:thinking_face:\n` +
 					'もし最短でなくてもよいなら、手順のあとに「まで」をつけてね。'
 				);
 				return false;
 			}
-			state.board.movecommand(cmd);
-			const url = await image.upload(state.board);
-			if(state.board.iscleared()){
+			const playerBoard = state.board.clone(); 
+			playerBoard.movecommand(cmd.moves);
+			const url = await image.upload(playerBoard);
+			if(playerBoard.iscleared()){
 				let comment = "正解です!:tada:";
-				if(cmd.length === state.answer.length){
+				if(cmd.moves.length === state.answer.length){
 					comment += "さらに最短勝利です!:waiwai:";					
 				}
-				else if(cmd.length < state.answer.length){
+				else if(cmd.moves.length < state.answer.length){
 					comment += "というか:bug:ってますね...?????  :satos:に連絡してください。";
+					await unlock(message.user, 'ricochet-robots-debugger');
 				}
 				await postmessage(comment,url);
-				state.board.undocommand(cmd);
 				
-				const botcomment = (cmd.length > state.answer.length) ?
+				const botcomment = (cmd.moves.length > state.answer.length) ?
 				                     `実は${state.answer.length}手でたどり着けるんです。\n${board.logstringfy(state.answer)}`:
 				                     `僕の見つけた手順です。\n${board.logstringfy(state.answer)}`;
 				
-				state.board.movecommand(state.answer);
-				await postmessage(botcomment, await image.upload(state.board));
-				state.board.undocommand(state.answer);
+				const botBoard = state.board.clone();
+				botBoard.movecommand(state.answer);
+				await postmessage(botcomment, await image.upload(botBoard));
 				return true;
 			}
 			else{
 				await postmessage("解けてませんね:thinking_face:",url);
-				state.board.undocommand(cmd);
 				return false;
 			}
 		}
 		
-		try{
-			if(text.match(/^(ベイビー|スーパー|ハイパー)ロボット(バトル| (\d+)手)?$/)){
-				let depth = undefined;
-				{
-					let matches = null;
-					if ((matches = text.match(/^(ベイビー|スーパー|ハイパー)ロボット (\d+)手$/))) {
-						depth = parseInt(matches[2]);
+		mutex.acquire().then(async (release) => {
+			try{
+				if(text.match(/^(ベイビー|スーパー|ハイパー)ロボット(バトル| (\d+)手)?$/)){
+					let depth = undefined;
+					{
+						let matches = null;
+						if ((matches = text.match(/^(ベイビー|スーパー|ハイパー)ロボット (\d+)手$/))) {
+							depth = parseInt(matches[2]);
+						}
+					}
+					const isbattle = text.match(/^(ベイビー|スーパー|ハイパー)ロボットバトル$/);
+					
+					const difficulty = {
+						"ベイビー": {size: {h: 3, w: 5}, numOfWalls: 3},
+						"スーパー": {size: {h: 5, w: 7}, numOfWalls: 10},
+						"ハイパー": {size: {h: 7, w: 9}, numOfWalls: 15},
+					}[text.match(/^(ベイビー|スーパー|ハイパー)/)[0]];
+					
+					const waittime = 10;
+					if(!state || (depth && state.answer.length < depth) || (isbattle && !state.battles.isbattle)){
+						const [bo,ans] = await board.getBoard({depth: (depth || 1000) , ...difficulty});
+						state = {
+							board: bo,
+							answer: ans,
+							battles: {
+								bids: {},
+								isbattle: isbattle,
+								isbedding: isbattle,
+								startbedding: false,
+							},
+						};
+					}
+					await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,await image.upload(state.board));
+					
+					if(isbattle){
+						await unlock(message.user, 'ricochet-robots-buttle-play');
+					}
+					else{
+						await unlock(message.user, 'ricochet-robots-play');
 					}
 				}
-				const isbattle = text.match(/^(ベイビー|スーパー|ハイパー)ロボットバトル$/);
-				
-				const difficulty = {
-					"ベイビー": {size: {h: 3, w: 5}, numOfWalls: 3},
-					"スーパー": {size: {h: 5, w: 7}, numOfWalls: 10},
-					"ハイパー": {size: {h: 7, w: 9}, numOfWalls: 15},
-				}[text.match(/^(ベイビー|スーパー|ハイパー)/)[0]];
-				
-				const waittime = 10;
-				if(!state || (depth && state.answer.length < depth) || (isbattle && !state.battles.isbattle)){
-					const [bo,ans] = await board.getBoard({depth: (depth || 1000) , ...difficulty});
-					state = {
-						board: bo,
-						answer: ans,
-						battles: {
-							bids: {},
-							isbattle: isbattle,
-							isbedding: isbattle,
-							startbedding: false,
-						},
-					};
-				}
-				//console.log(state);
-				await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,await image.upload(state.board));
-			}
-			else if(board.iscommand(text)){
-				if(!state){
-					await postmessage("まだ出題していませんよ:thinking_face:\nもし問題が欲しければ「ハイパーロボット」と言ってください");
-					return;
-				}
-				
-				const cmd = board.str2command(text);
-				//console.log(cmd);
-				if(state.battles.isbattle){
-					if(state.battles.isbedding){
-						await postmessage("今は宣言中だよ:cry:");
-						return;
-					}
-					const nowplayer = state.battles.orderedbids[0].user;
-					//console.log(message.user,nowplayer);
-					if(message.user !== nowplayer){
-						await postmessage(`今は${toMention(nowplayer)}さんの解答時間だよ。`);
-						return;
-					}
-					const nowdecl = state.battles.orderedbids[0].decl;
-					if(cmd.length > nowdecl){
-						await postmessage(`${toMention(nowplayer)}さんの宣言手数は${nowdecl}手だよ:cry:\nその手は${cmd.length}手かかってるよ。`);
+				else if(board.iscommand(text)){
+					if(!state){
+						await postmessage("まだ出題していませんよ:thinking_face:\nもし問題が欲しければ「ハイパーロボット」と言ってください");
 						return;
 					}
 					
-					if(await verifycommand(cmd,text)){
-						clearTimeout(timeoutId);
-						state = undefined;
+					const cmd = board.str2command(text);
+					if(state.battles.isbattle){
+						if(state.battles.isbedding){
+							await postmessage("今は宣言中だよ:cry:");
+							return;
+						}
+						const nowplayer = state.battles.orderedbids[0].user;
+						if(message.user !== nowplayer){
+							await postmessage(`今は${toMention(nowplayer)}さんの解答時間だよ。`);
+							return;
+						}
+						const nowdecl = state.battles.orderedbids[0].decl;
+						if(cmd.moves.length > nowdecl){
+							await postmessage(`${toMention(nowplayer)}さんの宣言手数は${nowdecl}手だよ:cry:\nその手は${cmd.moves.length}手かかってるよ。`);
+							return;
+						}
+						
+						if(await verifycommand(cmd)){
+							state = undefined;
+							clearTimeout(timeoutId);
+						}
+					}
+					else{
+						if(await verifycommand(cmd)){
+							await unlock(message.user, 'ricochet-robots-clear');
+							if(cmd.moves.length === state.answer.length){
+								await unlock(message.user, 'ricochet-robots-clear-shortest');
+								if(state.answer.length >= 10){
+									await unlock(message.user, 'ricochet-robots-clear-shortest-over10');
+								}
+								if(state.answer.length >= 15){
+									await unlock(message.user, 'ricochet-robots-clear-shortest-over15');
+								}
+								if(state.answer.length >= 20){
+									await unlock(message.user, 'ricochet-robots-clear-shortest-over20');
+								}
+							}
+							state = undefined;
+						}
 					}
 				}
-				else{
-					if(await verifycommand(cmd,text)){
-						state = undefined;
-					}
-				}
-			}
-			else if(state && state.battles.isbattle && state.battles.isbedding && text.match(/^(\d+)手?$/)){
-				//console.log(text,message.ts,message.user,(state ? state.battles : ""));
-				/*
-				if(!state.battles.isbedding){
-					await postmessage("今は宣言中じゃないよ");
-					return;
-				}
-				*/
-				{
+				else if(state && state.battles.isbattle && state.battles.isbedding && text.match(/^(\d+)手?$/)){
 					let bid = 100;
 					let matches;
 					if(matches = text.match(/^(\d+)手?$/)) {
@@ -260,8 +243,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						};
 					}
 					await slack.reactions.add({name: 'ok_hand', channel: message.channel, timestamp: message.ts});
-					
-					
+						
 					if(!state.battles.startbedding){
 						state.battles.startbedding = true;
 						setTimeout(onEndBedding, beddingminutes * 60 * 1000);
@@ -270,13 +252,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					}
 				}
 			}
-		}
-		
-		catch(e){
-			console.log('error',e);
-			await postmessage('内部errorです:cry:\n' + String(e));
-			restore_state();
-		}
+			catch(e){
+				console.log('error',e);
+				await postmessage('内部errorです:cry:\n' + String(e));
+				await unlock(message.user, 'ricochet-robots-debugger');
+			}
+			release();
+		});
 	});
 };
 
