@@ -4,6 +4,7 @@ const image = require('./image.js');
 const board = require('./board.js');
 const moment = require('moment');
 const querystring = require('querystring');
+const Mutex = require('async-mutex').Mutex;
 
 function getTimeLink(time){
 	const text = moment(time).utcOffset('+0900').format('HH:mm:ss');
@@ -19,6 +20,7 @@ function getTimeLink(time){
 
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	let state = undefined;
+	const mutex = new Mutex();
 	
 	rtm.on('message', async (message) => {
 		function toMention(user){
@@ -61,6 +63,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		const answeringminutes = 1;
 		
 		async function chainbids(){
+			if(!state)return;
 			if(!state.battles.firstplayer){
 				await postmessage(`${toMention(state.battles.orderedbids[0].user)}さんは間に合わなかったみたいだね。残念:cry:`);
 				state.battles.orderedbids.shift();
@@ -136,101 +139,103 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 		}
 		
-		try{
-			if(text.match(/^(ベイビー|スーパー|ハイパー)ロボット(バトル| (\d+)手)?$/)){
-				let depth = undefined;
-				{
-					let matches = null;
-					if ((matches = text.match(/^(ベイビー|スーパー|ハイパー)ロボット (\d+)手$/))) {
-						depth = parseInt(matches[2]);
+		mutex.acquire().then(async (release) => {
+			try{
+				if(text.match(/^(ベイビー|スーパー|ハイパー)ロボット(バトル| (\d+)手)?$/)){
+					let depth = undefined;
+					{
+						let matches = null;
+						if ((matches = text.match(/^(ベイビー|スーパー|ハイパー)ロボット (\d+)手$/))) {
+							depth = parseInt(matches[2]);
+						}
 					}
-				}
-				const isbattle = text.match(/^(ベイビー|スーパー|ハイパー)ロボットバトル$/);
-				
-				const difficulty = {
-					"ベイビー": {size: {h: 3, w: 5}, numOfWalls: 3},
-					"スーパー": {size: {h: 5, w: 7}, numOfWalls: 10},
-					"ハイパー": {size: {h: 7, w: 9}, numOfWalls: 15},
-				}[text.match(/^(ベイビー|スーパー|ハイパー)/)[0]];
-				
-				const waittime = 10;
-				if(!state || (depth && state.answer.length < depth) || (isbattle && !state.battles.isbattle)){
-					const [bo,ans] = await board.getBoard({depth: (depth || 1000) , ...difficulty});
-					state = {
-						board: bo,
-						answer: ans,
-						battles: {
-							bids: {},
-							isbattle: isbattle,
-							isbedding: isbattle,
-							startbedding: false,
-						},
-					};
-				}
-				await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,await image.upload(state.board));
-			}
-			else if(board.iscommand(text)){
-				if(!state){
-					await postmessage("まだ出題していませんよ:thinking_face:\nもし問題が欲しければ「ハイパーロボット」と言ってください");
-					return;
-				}
-				
-				const cmd = board.str2command(text);
-				if(state.battles.isbattle){
-					if(state.battles.isbedding){
-						await postmessage("今は宣言中だよ:cry:");
-						return;
+					const isbattle = text.match(/^(ベイビー|スーパー|ハイパー)ロボットバトル$/);
+					
+					const difficulty = {
+						"ベイビー": {size: {h: 3, w: 5}, numOfWalls: 3},
+						"スーパー": {size: {h: 5, w: 7}, numOfWalls: 10},
+						"ハイパー": {size: {h: 7, w: 9}, numOfWalls: 15},
+					}[text.match(/^(ベイビー|スーパー|ハイパー)/)[0]];
+					
+					const waittime = 10;
+					if(!state || (depth && state.answer.length < depth) || (isbattle && !state.battles.isbattle)){
+						const [bo,ans] = await board.getBoard({depth: (depth || 1000) , ...difficulty});
+						state = {
+							board: bo,
+							answer: ans,
+							battles: {
+								bids: {},
+								isbattle: isbattle,
+								isbedding: isbattle,
+								startbedding: false,
+							},
+						};
 					}
-					const nowplayer = state.battles.orderedbids[0].user;
-					if(message.user !== nowplayer){
-						await postmessage(`今は${toMention(nowplayer)}さんの解答時間だよ。`);
-						return;
-					}
-					const nowdecl = state.battles.orderedbids[0].decl;
-					if(cmd.moves.length > nowdecl){
-						await postmessage(`${toMention(nowplayer)}さんの宣言手数は${nowdecl}手だよ:cry:\nその手は${cmd.moves.length}手かかってるよ。`);
+					await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,await image.upload(state.board));
+				}
+				else if(board.iscommand(text)){
+					if(!state){
+						await postmessage("まだ出題していませんよ:thinking_face:\nもし問題が欲しければ「ハイパーロボット」と言ってください");
 						return;
 					}
 					
-					if(await verifycommand(cmd)){
-						clearTimeout(timeoutId);
-						state = undefined;
+					const cmd = board.str2command(text);
+					if(state.battles.isbattle){
+						if(state.battles.isbedding){
+							await postmessage("今は宣言中だよ:cry:");
+							return;
+						}
+						const nowplayer = state.battles.orderedbids[0].user;
+						if(message.user !== nowplayer){
+							await postmessage(`今は${toMention(nowplayer)}さんの解答時間だよ。`);
+							return;
+						}
+						const nowdecl = state.battles.orderedbids[0].decl;
+						if(cmd.moves.length > nowdecl){
+							await postmessage(`${toMention(nowplayer)}さんの宣言手数は${nowdecl}手だよ:cry:\nその手は${cmd.moves.length}手かかってるよ。`);
+							return;
+						}
+						
+						if(await verifycommand(cmd)){
+							state = undefined;
+							clearTimeout(timeoutId);
+						}
+					}
+					else{
+						if(await verifycommand(cmd)){
+							state = undefined;
+						}
 					}
 				}
-				else{
-					if(await verifycommand(cmd)){
-						state = undefined;
+				else if(state && state.battles.isbattle && state.battles.isbedding && text.match(/^(\d+)手?$/)){
+					let bid = 100;
+					let matches;
+					if(matches = text.match(/^(\d+)手?$/)) {
+						bid = parseInt(matches[1]);
+					}
+					const time = parseFloat(message.ts)
+					if(!(message.user in state.battles.bids) || state.battles.bids[message.user].time < time){
+						state.battles.bids[message.user] = {
+							decl: bid,
+							time: time,
+						};
+					}
+					await slack.reactions.add({name: 'ok_hand', channel: message.channel, timestamp: message.ts});
+						
+					if(!state.battles.startbedding){
+						state.battles.startbedding = true;
+						setTimeout(onEndBedding, beddingminutes * 60 * 1000);
+						const endtime = Date.now() + beddingminutes * 60 * 1000;
+						await postmessage(`宣言終了予定時刻: ${getTimeLink(endtime)}`);
 					}
 				}
 			}
-			else if(state && state.battles.isbattle && state.battles.isbedding && text.match(/^(\d+)手?$/)){
-				let bid = 100;
-				let matches;
-				if(matches = text.match(/^(\d+)手?$/)) {
-					bid = parseInt(matches[1]);
-				}
-				const time = parseFloat(message.ts)
-				if(!(message.user in state.battles.bids) || state.battles.bids[message.user].time < time){
-					state.battles.bids[message.user] = {
-						decl: bid,
-						time: time,
-					};
-				}
-				await slack.reactions.add({name: 'ok_hand', channel: message.channel, timestamp: message.ts});
-					
-				if(!state.battles.startbedding){
-					state.battles.startbedding = true;
-					setTimeout(onEndBedding, beddingminutes * 60 * 1000);
-					const endtime = Date.now() + beddingminutes * 60 * 1000;
-					await postmessage(`宣言終了予定時刻: ${getTimeLink(endtime)}`);
-				}
+			catch(e){
+				console.log('error',e);
+				await postmessage('内部errorです:cry:\n' + String(e));
 			}
-		}
-		
-		catch(e){
-			console.log('error',e);
-			await postmessage('内部errorです:cry:\n' + String(e));
-		}
+			release();
+		});
 	});
 };
 
