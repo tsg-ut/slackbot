@@ -398,7 +398,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'zabutons',
 		difficulty: 'easy',
-		title: 'タワーの上に登ったわ―',
+		title: 'タワーの上に登ったわー',
 		condition: 'dajareボットから:zabutons:をもらう',
 		category: 'dajare',
 	},
@@ -630,7 +630,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'mahjong-ドラ8',
-		difficulty: 'hard',
+		difficulty: 'professional',
 		title: 'ドラゴンロード',
 		condition: '麻雀BOTの四麻モードでドラを8枚以上含む手で和了する',
 		category: 'mahjong',
@@ -677,7 +677,7 @@ const achievements: Achievement[] = [
 		id: 'shogi-win-10',
 		difficulty: 'hard',
 		title: '碁で負けたら将棋で勝て',
-		condition: '将棋BOTで10回最短勝利する (5手必勝以上に限る)',
+		condition: '将棋BOTで10回最短勝利する (7手必勝以上に限る)',
 		category: 'shogi',
 		counter: 'shogiWin',
 		value: 10,
