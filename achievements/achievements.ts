@@ -887,6 +887,13 @@ const achievements: Achievement[] = [
 		category: 'ricochet-robots',
 	},
 	{
+		id: 'ricochet-robots-buttle-win',
+		difficulty: 'easy',
+		title: '早見え',
+		condition: 'ハイパーロボットバトルで勝利する',
+		category: 'ricochet-robots',
+	},
+	{
 		id: 'ricochet-robots-debugger',
 		difficulty: 'hard',
 		title: 'ﾋﾟｭｰﾝ',

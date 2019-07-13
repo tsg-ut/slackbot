@@ -133,6 +133,19 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				const botBoard = state.board.clone();
 				botBoard.movecommand(state.answer);
 				await postmessage(botcomment, await image.upload(botBoard));
+				
+				if(cmd.moves.length <= state.answer.length){
+					await unlock(message.user, 'ricochet-robots-clear-shortest');
+					if(state.answer.length >= 10){
+						await unlock(message.user, 'ricochet-robots-clear-shortest-over10');
+					}
+					if(state.answer.length >= 15){
+						await unlock(message.user, 'ricochet-robots-clear-shortest-over15');
+					}
+					if(state.answer.length >= 20){
+						await unlock(message.user, 'ricochet-robots-clear-shortest-over20');
+					}
+				}
 				return true;
 			}
 			else{
@@ -208,24 +221,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						if(await verifycommand(cmd)){
 							state = undefined;
 							clearTimeout(timeoutId);
+							await unlock(message.user, 'ricochet-robots-buttle-win');
 						}
 					}
 					else{
 						if(await verifycommand(cmd)){
-							await unlock(message.user, 'ricochet-robots-clear');
-							if(cmd.moves.length === state.answer.length){
-								await unlock(message.user, 'ricochet-robots-clear-shortest');
-								if(state.answer.length >= 10){
-									await unlock(message.user, 'ricochet-robots-clear-shortest-over10');
-								}
-								if(state.answer.length >= 15){
-									await unlock(message.user, 'ricochet-robots-clear-shortest-over15');
-								}
-								if(state.answer.length >= 20){
-									await unlock(message.user, 'ricochet-robots-clear-shortest-over20');
-								}
-							}
 							state = undefined;
+							await unlock(message.user, 'ricochet-robots-clear');
 						}
 					}
 				}
