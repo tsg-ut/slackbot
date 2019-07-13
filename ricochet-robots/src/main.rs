@@ -17,7 +17,7 @@ use itertools::Itertools;
 
 use std::rc::Rc;
 
-#[derive(PartialEq,Eq,Debug)]
+#[derive(PartialEq,Eq,Debug,Clone)]
 struct Pos {
 	y: i8,
 	x: i8
@@ -27,12 +27,6 @@ impl Hash for Pos {
 	fn hash<H: Hasher>(&self,state: &mut H) {
 		self.y.hash(state);
 		self.x.hash(state);
-	}
-}
-
-impl Clone for Pos {
-	fn clone(&self) -> Self {
-		Pos {y:self.y, x:self.x}
 	}
 }
 
@@ -177,10 +171,14 @@ impl Board {
   }
 }
 
-
+#[derive(Debug,Clone,Copy)]
+struct Move{
+	c: usize,
+	d: usize
+}
 
 struct SinglyLinkedListNode{
-	v: (usize,usize),
+	v: Move,
 	next: Option<Rc<SinglyLinkedListNode>>
 }
 
@@ -193,7 +191,7 @@ impl SinglyLinkedList{
 		//SinglyLinkedList{node: SinglyLinkedList_data::Nil}
 		SinglyLinkedList{head: None}
 	}
-	fn cons(&self,data: (usize,usize)) -> SinglyLinkedList {
+	fn cons(&self,data: Move) -> SinglyLinkedList {
    	SinglyLinkedList{head: Some(Rc::new(
    		SinglyLinkedListNode {
    			v: data, next: self.head.clone()
@@ -203,7 +201,7 @@ impl SinglyLinkedList{
   	//SinglyLinkedList{node: SinglyLinkedList_data::Cons(Box::new(&self.node),data)}
   }
   
-  fn to_vec(&self) -> Vec<(usize,usize)> {
+  fn to_vec(&self) -> Vec<Move> {
   	let mut res = vec![];
   	let mut head = &self.head;
   	while let Some(ref p) = head {
@@ -254,7 +252,7 @@ impl<'a> State<'a> {
 			p = Pos{y: p.y + dir.y, x: p.x + dir.x};
 		}
 		
-		let tolog = self.log.cons((robot_index,robot_dir));
+		let tolog = self.log.cons(Move{c: robot_index,d: robot_dir});
 		let mut res = State{bo: self.bo,robots: self.robots.clone(),log: tolog};
 		res.robots[robot_index] = p;
 		res
@@ -286,7 +284,7 @@ impl<'a,'b> Hash for State<'a> {
 	}
 }
 
-fn bfs<'a,'b>(target: u8, bo:&'a Board) -> ((usize,Pos),Vec<(usize,usize)>){
+fn bfs<'a,'b>(target: u8, bo:&'a Board) -> ((usize,Pos),Vec<Move>){
 	//let log = &SinglyLinkedList::Nil;
 	let log = SinglyLinkedList::nil();
 	let init = State::init_state(&bo,log);
@@ -377,7 +375,7 @@ fn main(){
 	}
 	
 	goalcolour = perm[goalcolour];
-	log = log.into_iter().map(|(x,y)| (perm[x],y)).rev().collect();
+	log = log.into_iter().map(|x| Move{c: perm[x.c],d: x.d}).rev().collect();
 	bo.robots = (0..bo.robots.len()).map(|k| bo.robots[perminv[k]].clone()).collect();
 	
 	println!("{:?}",bo);

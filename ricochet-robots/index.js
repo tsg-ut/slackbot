@@ -2,7 +2,6 @@
 
 const image = require('./image.js');
 const board = require('./board.js');
-const deepcopy = require('deepcopy');
 const moment = require('moment');
 const querystring = require('querystring');
 
@@ -20,18 +19,8 @@ function getTimeLink(time){
 
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	let state = undefined;
-
 	
 	rtm.on('message', async (message) => {
-		
-		/*
-		async function getMemberName(user){
-			const {members} = await slack.users.list();
-			const member = members.find(({id}) => id === user);
-			return member.profile.display_name || member.name;
-		};
-		*/
-		
 		function toMention(user){
 			return `<@${user}>`;
 		}
@@ -44,7 +33,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 
 		async function postmessage(comment,url){
-			//console.log(comment,url);
 			if(!url){
 				await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
@@ -86,12 +74,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				timeoutId = setTimeout(chainbids, answeringminutes * 60 * 1000);
 			}
 			else{
-				state.board.movecommand(state.answer);
+				const answerBoard = state.board.clone();
+				answerBoard.movecommand(state.answer);
 				await postmessage(
 					`だれも正解できなかったよ:cry:\n正解は ${board.logstringfy(state.answer)} の${state.answer.length}手だよ。`,
-					await image.upload(state.board)
+					await image.upload(answerBoard)
 				);
-				state.board.undocommand(state.answer);
 				state = undefined;
 			}
 		}
@@ -108,62 +96,42 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 			state.battles.orderedbids.sort((a,b) => (a.decl !== b.decl ? (a.decl-b.decl) : (a.time-b.time)));
 			state.battles.bids = {};
-			//console.log(state.battles.orderedbids);
 			state.battles.firstplayer = true;
 			await chainbids();
 		}
 		
-		const restore_state = ((mstate) => {
-			if(!mstate){
-				return () => {
-					state = undefined;
-				}
-			}
-			else{
-				const ans = deepcopy(mstate.answer);
-				const battles = deepcopy(mstate.battles);
-				const ds = mstate.board.dumpstate();
-				return () => {
-					state.answer = ans;
-					state.board.loadstate(ds);
-					state.battles = battles;
-				}
-			}
-		})(state);
-		
-		async function verifycommand(cmd,text){
-			if(!state.battles.isbattle && !board.isMADE(text) && cmd.length > state.answer.length){
+		async function verifycommand(cmd){
+			if(!state.battles.isbattle && !cmd.isMADE && cmd.moves.length > state.answer.length){
 				await postmessage(
-					`この問題は${state.answer.length}手詰めだよ。その手は${cmd.length}手かかってるよ:thinking_face:\n` +
+					`この問題は${state.answer.length}手詰めだよ。その手は${cmd.moves.length}手かかってるよ:thinking_face:\n` +
 					'もし最短でなくてもよいなら、手順のあとに「まで」をつけてね。'
 				);
 				return false;
 			}
-			state.board.movecommand(cmd);
-			const url = await image.upload(state.board);
-			if(state.board.iscleared()){
+			const playerBoard = state.board.clone(); 
+			playerBoard.movecommand(cmd.moves);
+			const url = await image.upload(playerBoard);
+			if(playerBoard.iscleared()){
 				let comment = "正解です!:tada:";
-				if(cmd.length === state.answer.length){
+				if(cmd.moves.length === state.answer.length){
 					comment += "さらに最短勝利です!:waiwai:";					
 				}
-				else if(cmd.length < state.answer.length){
+				else if(cmd.moves.length < state.answer.length){
 					comment += "というか:bug:ってますね...?????  :satos:に連絡してください。";
 				}
 				await postmessage(comment,url);
-				state.board.undocommand(cmd);
 				
-				const botcomment = (cmd.length > state.answer.length) ?
+				const botcomment = (cmd.moves.length > state.answer.length) ?
 				                     `実は${state.answer.length}手でたどり着けるんです。\n${board.logstringfy(state.answer)}`:
 				                     `僕の見つけた手順です。\n${board.logstringfy(state.answer)}`;
 				
-				state.board.movecommand(state.answer);
-				await postmessage(botcomment, await image.upload(state.board));
-				state.board.undocommand(state.answer);
+				const botBoard = state.board.clone();
+				botBoard.movecommand(state.answer);
+				await postmessage(botcomment, await image.upload(botBoard));
 				return true;
 			}
 			else{
 				await postmessage("解けてませんね:thinking_face:",url);
-				state.board.undocommand(cmd);
 				return false;
 			}
 		}
@@ -199,7 +167,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						},
 					};
 				}
-				//console.log(state);
 				await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,await image.upload(state.board));
 			}
 			else if(board.iscommand(text)){
@@ -209,65 +176,53 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				}
 				
 				const cmd = board.str2command(text);
-				//console.log(cmd);
 				if(state.battles.isbattle){
 					if(state.battles.isbedding){
 						await postmessage("今は宣言中だよ:cry:");
 						return;
 					}
 					const nowplayer = state.battles.orderedbids[0].user;
-					//console.log(message.user,nowplayer);
 					if(message.user !== nowplayer){
 						await postmessage(`今は${toMention(nowplayer)}さんの解答時間だよ。`);
 						return;
 					}
 					const nowdecl = state.battles.orderedbids[0].decl;
-					if(cmd.length > nowdecl){
-						await postmessage(`${toMention(nowplayer)}さんの宣言手数は${nowdecl}手だよ:cry:\nその手は${cmd.length}手かかってるよ。`);
+					if(cmd.moves.length > nowdecl){
+						await postmessage(`${toMention(nowplayer)}さんの宣言手数は${nowdecl}手だよ:cry:\nその手は${cmd.moves.length}手かかってるよ。`);
 						return;
 					}
 					
-					if(await verifycommand(cmd,text)){
+					if(await verifycommand(cmd)){
 						clearTimeout(timeoutId);
 						state = undefined;
 					}
 				}
 				else{
-					if(await verifycommand(cmd,text)){
+					if(await verifycommand(cmd)){
 						state = undefined;
 					}
 				}
 			}
 			else if(state && state.battles.isbattle && state.battles.isbedding && text.match(/^(\d+)手?$/)){
-				//console.log(text,message.ts,message.user,(state ? state.battles : ""));
-				/*
-				if(!state.battles.isbedding){
-					await postmessage("今は宣言中じゃないよ");
-					return;
+				let bid = 100;
+				let matches;
+				if(matches = text.match(/^(\d+)手?$/)) {
+					bid = parseInt(matches[1]);
 				}
-				*/
-				{
-					let bid = 100;
-					let matches;
-					if(matches = text.match(/^(\d+)手?$/)) {
-						bid = parseInt(matches[1]);
-					}
-					const time = parseFloat(message.ts)
-					if(!(message.user in state.battles.bids) || state.battles.bids[message.user].time < time){
-						state.battles.bids[message.user] = {
-							decl: bid,
-							time: time,
-						};
-					}
-					await slack.reactions.add({name: 'ok_hand', channel: message.channel, timestamp: message.ts});
+				const time = parseFloat(message.ts)
+				if(!(message.user in state.battles.bids) || state.battles.bids[message.user].time < time){
+					state.battles.bids[message.user] = {
+						decl: bid,
+						time: time,
+					};
+				}
+				await slack.reactions.add({name: 'ok_hand', channel: message.channel, timestamp: message.ts});
 					
-					
-					if(!state.battles.startbedding){
-						state.battles.startbedding = true;
-						setTimeout(onEndBedding, beddingminutes * 60 * 1000);
-						const endtime = Date.now() + beddingminutes * 60 * 1000;
-						await postmessage(`宣言終了予定時刻: ${getTimeLink(endtime)}`);
-					}
+				if(!state.battles.startbedding){
+					state.battles.startbedding = true;
+					setTimeout(onEndBedding, beddingminutes * 60 * 1000);
+					const endtime = Date.now() + beddingminutes * 60 * 1000;
+					await postmessage(`宣言終了予定時刻: ${getTimeLink(endtime)}`);
 				}
 			}
 		}
@@ -275,7 +230,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		catch(e){
 			console.log('error',e);
 			await postmessage('内部errorです:cry:\n' + String(e));
-			restore_state();
 		}
 	});
 };

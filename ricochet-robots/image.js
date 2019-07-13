@@ -23,8 +23,8 @@ const size = {
 function data2rawsharp(data) {
 	return {
 		raw: {
-			height: size.grid.h * data.h + size.wall.thickness * 2,
-			width: size.grid.w * data.w + size.wall.thickness * 2,
+			height: size.grid.h * data.size.h + size.wall.thickness * 2,
+			width: size.grid.w * data.size.w + size.wall.thickness * 2,
 			channels: 4
 		}
 	};
@@ -96,8 +96,8 @@ async function data2buffer(data) {
 	}
 	
 	const grid = Buffer.from(graphics.grid());
-	for (const y of Array(data.h).keys()) {
-		for (const x of Array(data.w).keys()) {
+	for (const y of Array(data.size.h).keys()) {
+		for (const x of Array(data.size.w).keys()) {
 			compose_to_board(grid, {
 				y: y * size.grid.h + size.wall.thickness,
 				x: x * size.grid.w + size.wall.thickness,
@@ -131,23 +131,23 @@ async function data2buffer(data) {
 
 	const wall_h = Buffer.from(graphics.wall_h());
 	const wall_v = Buffer.from(graphics.wall_v());
-	for (const y of Array(data.h).keys()) {
+	for (const y of Array(data.size.h).keys()) {
 		compose_to_board(wall_v, {
 			y: y * size.grid.h,
 			x: 0,
 		});
 		compose_to_board(wall_v, {
 			y: y * size.grid.h,
-			x: data.w * size.grid.w,
+			x: data.size.w * size.grid.w,
 		});
 	}
-	for (const x of Array(data.w).keys()) {
+	for (const x of Array(data.size.w).keys()) {
 		compose_to_board(wall_h, {
 			y: 0,
 			x: x * size.grid.w,
 		});
 		compose_to_board(wall_h, {
-			y: data.h * size.grid.h,
+			y: data.size.h * size.grid.h,
 			x: x * size.grid.w,
 		});
 	}
