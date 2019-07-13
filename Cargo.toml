@@ -1,2 +1,2 @@
 [workspace]
-members = ["tashibot", "wordhero", "ricochet-robots"]
+members = ["wordhero", "ricochet-robots"]
