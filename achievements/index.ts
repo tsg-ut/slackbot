@@ -20,6 +20,9 @@ type users = {
 	chatDays?: number,
 	lastChatDay?: string,
 	tashibotDistance?: number,
+	tahoiyaWin?: number,
+	tahoiyaDeceive?: number,
+	tahoiyaParitcipate?: number,
 	shogiWin?: number,
 	[key: string]: any,
 };

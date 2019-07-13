@@ -2,6 +2,7 @@
 
 jest.mock('cloudinary');
 jest.mock('./rust-proxy.js');
+jest.mock('../achievements');
 
 const cloudinary = require('cloudinary');
 const rust_proxy = require('./rust-proxy.js');
