@@ -369,6 +369,14 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		timeoutId = setTimeout(onFinishBettings, (state.author === null ? 3 : 30) * 60 * 1000);
+
+		if (humanCount >= 3) {
+			for (const user of state.meanings.keys()) {
+				if (user.startsWith('U')) {
+					await increment(user, 'tahoiyaParticipate');
+				}
+			}
+		}
 	};
 
 	const onFinishBettings = async () => {
@@ -401,8 +409,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			}
 		}
 
+		const humanCount = Array.from(state.meanings.keys()).filter((user) => user.startsWith('U')).length;
+
 		if (state.author) {
-			const humanCount = Array.from(state.meanings.keys()).filter((user) => user.startsWith('U')).length;
 			const correctCount = correctBetters.filter(([user]) => user.startsWith('U')).length;
 			const wrongCount = humanCount - correctCount;
 
@@ -609,7 +618,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			if (coins >= 5) {
 				await unlock(user, 'tahoiya-5bet');
 			}
-			if (meaning === correctMeaningIndex) {
+			if (humanCount >= 3 && meaning === correctMeaningIndex) {
 				await increment(user, 'tahoiyaWin');
 			}
 			if (meaning !== correctMeaningIndex && newRatings.get(user) > 0) {
@@ -1088,7 +1097,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 							現在の参加者: ${humanCount}人 ${remainingText}
 						`);
 						await unlock(message.user, 'tahoiya');
-						await increment(message.user, 'tahoiyaParticipate');
 					}
 					return;
 				}
