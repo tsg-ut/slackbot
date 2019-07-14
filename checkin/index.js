@@ -2,6 +2,7 @@ const {stripIndent} = require('common-tags');
 const schedule = require('node-schedule');
 const axios = require('axios');
 const get = require('lodash/get');
+const logger = require('../lib/logger.js');
 
 const places = [
 	{id: '4bff8900daf9c9b68c58faef', name: '理学部7号館'},
