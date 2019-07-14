@@ -50,6 +50,7 @@ const state = (() => {
 			startDate: savedState.startDate || null,
 			lackedPiece: savedState.lackedPiece || ':ahokusa-top-center:',
 			seen: savedState.seen || 0,
+			usedHelp: savedState.usedHelp || false,
 			boardName: savedState.boardName || 'ahokusa',
 			thread: savedState.thread || null,
 		};
@@ -61,6 +62,7 @@ const state = (() => {
 			startDate: null,
 			lackedPiece: ':ahokusa-top-center:',
 			seen: 0,
+			usedHelp: false,
 			boardName: 'ahokusa',
 			thread: null,
 		};
