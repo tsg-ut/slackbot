@@ -925,6 +925,79 @@ const achievements: Achievement[] = [
 		category: 'ricochet-robots',
 	},
 
+	// ahokusa
+
+	{
+		id: 'ahokusa-play',
+		difficulty: 'easy',
+		title: '今話題のゲームがあるんですよ',
+		condition: 'あほくさスライドパズルで遊ぶ',
+		category: 'ahokusa',
+	},
+	{
+		id: 'ahokusa-clear',
+		difficulty: 'easy',
+		title: 'まあゆかりさんは天才ですから？',
+		condition: 'あほくさスライドパズルをクリアする',
+		category: 'ahokusa',
+	},
+	{
+		id: 'ahokusa-clear-shortest',
+		difficulty: 'easy',
+		title: '敵を華麗にバッタバッタやっつけるわけです',
+		condition: 'あほくさスライドパズルを最短でクリアする',
+		category: 'ahokusa',
+	},
+	{
+		id: 'ahokusa-clear-once',
+		difficulty: 'easy',
+		title: 'その結果ランキングに載るわけです！',
+		condition: 'あほくさスライドパズルを一発でクリアする',
+		category: 'ahokusa',
+	},
+	{
+		id: 'ahokusa-clear-shortest-once',
+		difficulty: 'medium',
+		title: 'ええんちゃう？',
+		condition: 'あほくさスライドパズルを一発かつ最短でクリアする',
+		category: 'ahokusa',
+	},
+	{
+		id: 'ahokusa-impossible',
+		difficulty: 'easy',
+		title: 'わかる（明察）',
+		condition: 'あほくさスライドパズルの不成立を指摘する',
+		category: 'ahokusa',
+	},
+	{
+		id: 'ahokusa-impossible-once',
+		difficulty: 'medium',
+		title: 'あ　ほ　く　さ',
+		condition: 'あほくさスライドパズルの不成立を一発で指摘する',
+		category: 'ahokusa',
+	},
+	{
+		id: 'ahokusa-clear-8s',
+		difficulty: 'hard',
+		title: '8秒で全員ぶっ飛ばしてやりますよ！！！！！！！',
+		condition: 'あほくさスライドパズルを8秒以内にクリアする',
+		category: 'ahokusa',
+	},
+	{
+		id: 'ahokusa-impossible-5s',
+		difficulty: 'hard',
+		title: 'やめたら？このゲーム',
+		condition: 'あほくさスライドパズルの不成立を5秒以内に指摘する',
+		category: 'ahokusa',
+	},
+	{
+		id: 'ahokusa-sushi-clear-once',
+		difficulty: 'professional',
+		title: '狂い出しそう 体が震える',
+		condition: '寿司スライドパズルを一発でクリアする',
+		category: 'ahokusa',
+	},
+
 	// achievements
 
 	{
@@ -955,7 +1028,7 @@ const achievements: Achievement[] = [
 		condition: '難易度medium以上の実績を10個解除する',
 		category: 'prime',
 	},
-
+	
 	// manual
 
 	{
