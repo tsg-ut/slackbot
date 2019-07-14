@@ -22,8 +22,6 @@ use atoi::atoi;
 extern crate itertools;
 use itertools::Itertools;
 
-use std::rc::Rc;
-
 #[derive(PartialEq,Eq,Debug,Clone)]
 pub struct Pos {
 	y: i8,
@@ -189,58 +187,56 @@ pub struct Move{
 	d: usize
 }
 
-struct SinglyLinkedListNode{
-	v: Move,
-	next: Option<Rc<SinglyLinkedListNode>>
-}
-
-struct SinglyLinkedList {
-	head: Option<Rc<SinglyLinkedListNode>>
-}
-
-impl SinglyLinkedList{
-	pub fn nil() -> SinglyLinkedList {
-		//SinglyLinkedList{node: SinglyLinkedList_data::Nil}
-		SinglyLinkedList{head: None}
-	}
-	fn cons(&self,data: Move) -> SinglyLinkedList {
-   	SinglyLinkedList{head: Some(Rc::new(
-   		SinglyLinkedListNode {
-   			v: data, next: self.head.clone()
-   		}
-   	))}
-	 	//SinglyLinkedList{node: Some(Box::new((self,data)))}
-  	//SinglyLinkedList{node: SinglyLinkedList_data::Cons(Box::new(&self.node),data)}
-  }
-  
-  fn to_vec(&self) -> Vec<Move> {
-  	let mut res = vec![];
-  	let mut head = &self.head;
-  	while let Some(ref p) = head {
-			res.push(p.v);
-			head = &p.next;
-  	}
-  	return res;
-  }
-}
-
-
 struct State<'a> {
 	bo: &'a Board,
 	robots: Vec<Pos>,
-	log: SinglyLinkedList
+	//log: SinglyLinkedList
+	log: usize
 }
 
 
 impl<'a> State<'a> {
-	pub fn init_state(bo:&'a Board,_log: SinglyLinkedList) -> State<'a> { 
-		State{bo: &bo,robots: bo.robots.clone(), log: SinglyLinkedList::nil()}
+	pub fn init_state(bo:&'a Board) -> State<'a> { 
+		//State{bo: &bo,robots: bo.robots.clone(), log: SinglyLinkedList::nil()}
+		State{bo: &bo,robots: bo.robots.clone(), log: 1}
 	}
 	
 	fn move_to(&self,robot_index: usize, robot_dir: usize) -> Option<State<'a>>{
 		let dir = &DIRECTIONS[robot_dir];
 		let mut p = self.robots[robot_index].clone();
-		let mut mind = self.bo.walldist[p.y as usize][p.x as usize][robot_dir] as i8;
+		let mut mind = self.bo.walldist[p.y as usize][p.x as usize][robot_dir] as i8; 
+		//removing "as i8" by changing type of walldist doesn't make well difference.
+		
+		// if mind == 0 { return None } //pruning with little (0.2~3sec) speedup.
+		/*
+		if robot_dir == 2 {
+			for j in 0..4 {
+				if j != robot_index {
+					if self.robots[j].x == p.x && self.robots[j].y < p.y {
+						mind = cmp::min(mind,p.y - self.robots[j].y - 1);
+					}
+				}
+			}
+		} else if robot_dir == 0 {
+			for j in 0..4 {
+				if j != robot_index {
+					if self.robots[j].x == p.x && self.robots[j].y > p.y {
+						mind = cmp::min(mind,self.robots[j].y - p.y - 1);
+					}
+				}
+			}
+		} else {
+			for j in 0..4 {
+				if j != robot_index {
+					let dx = self.robots[j].x - p.x;
+					if dx.signum() == dir.x.signum() && self.robots[j].y == p.y {
+						mind = cmp::min(mind,dx.abs()-1);
+					}
+				}
+			}
+		}
+		//unloling also has little speedup (0.2~0.3 sec)
+		*/
 		for j in 0..4 {
 			if j != robot_index {
 				let dx = self.robots[j].x - p.x;
@@ -248,21 +244,20 @@ impl<'a> State<'a> {
 				if dx.signum() == dir.x.signum() && dy.signum() == dir.y.signum() {
 					if dx.signum() == 0 {
 						mind = cmp::min(mind,dy.abs()-1);
-					}
-					else {
+					} else {
 						mind = cmp::min(mind,dx.abs()-1);
 					}
 				}
 			}
 		}
-		
+
 		if mind == 0 {
 			return None
 		}
 		
 		p = Pos{y: p.y + dir.y * mind, x: p.x + dir.x * mind};
 		
-		let tolog = self.log.cons(Move{c: robot_index,d: robot_dir});
+		let tolog = self.log << 4 | robot_index << 2 | robot_dir; //self.log.cons(Move{c: robot_index,d: robot_dir});
 		let mut res = State{bo: self.bo,robots: self.robots.clone(),log: tolog};
 		res.robots[robot_index] = p;
 		Some(res)
@@ -277,33 +272,37 @@ impl<'a> State<'a> {
 				}
 			}
 		}
-		//println!("add {} {}",self.robots.len() ,res.len());
 		return res;
 	}
 }
 
-impl<'a,'b> PartialEq for State<'a> {
+impl<'a> PartialEq for State<'a> {
 	fn eq(&self,ts:&State) -> bool {
 		return self.robots == ts.robots;
 	}
 }
-impl<'a,'b> Eq for State<'a> {}
+impl<'a> Eq for State<'a> {}
 
-impl<'a,'b> Hash for State<'a> {
+
+impl<'a> Hash for State<'a> {
 	fn hash<H: Hasher>(&self,state: &mut H) {
+		//Surprisingly, this makes program very slowly!
+		//:thinking_face:
+		//self.robots[0].y.hash(state); 
 		self.robots.hash(state);
 	}
 }
 
+
+
 pub fn bfs<'a,'b>(target: u8, bo:&'a Board) -> ((usize,Pos),Vec<Move>){
-	//let log = &SinglyLinkedList::Nil;
-	let log = SinglyLinkedList::nil();
-	let init = State::init_state(&bo,log);
-	let mut res = init.log.head.clone();
+	let init = State::init_state(&bo);
+	//let mut res = init.log.head.clone();
+	let mut res = init.log;
 	let mut goal = (0,init.robots[0].clone());
 	
-	//let mut gone: HashSet<State,BuildHasherDefault<FnvHasher>> = HashSet::new();
 	let mut gone: HashSet<State> = HashSet::new();
+	//let mut gone: HashSet<Vec<Pos>> = HashSet::new();
 	
 	let mut que = VecDeque::new();
 	let mut depth = 0;
@@ -312,6 +311,7 @@ pub fn bfs<'a,'b>(target: u8, bo:&'a Board) -> ((usize,Pos),Vec<Move>){
 	
 	let mut found : Vec<Vec<Vec<bool>>> = vec![vec![vec![false;bo.robots.len()];bo.w];bo.h];
 	let mut found_count = 0;
+	let max_pattern_num = bo.h * bo.w * bo.robots.len();
 	
 	let mut dnum = 1;
 	while !que.is_empty() {
@@ -327,9 +327,10 @@ pub fn bfs<'a,'b>(target: u8, bo:&'a Board) -> ((usize,Pos),Vec<Move>){
 							//println!("{} {} {} : {} ",p.y,p.x,i,depth); 
 							found[p.y as usize][p.x as usize][i] = true;
 							found_count += 1;
-							res = st.log.head.clone();
+							//res = st.log.head.clone();
+							res = st.log;
 							goal = (i,p.clone());
-							if depth >= target || found_count >= bo.h * bo.w * bo.robots.len() {
+							if depth >= target || found_count >= max_pattern_num {
 								ok = true;
 								break;
 							}
@@ -337,10 +338,9 @@ pub fn bfs<'a,'b>(target: u8, bo:&'a Board) -> ((usize,Pos),Vec<Move>){
 					}
 					if ok { break; }
 					for ts in st.enumerate_states() {
-						if !gone.contains(&ts) {
-							//println!("{:?}",ts.robots);
-							que.push_back(Some(ts));
-						}
+						//moving gone.contains & gone.insert to here decreased speed. 
+						//I don't understand why this happened. :thinking_face:
+						que.push_back(Some(ts));
 					}
 					gone.insert(st);
 				}
@@ -358,11 +358,19 @@ pub fn bfs<'a,'b>(target: u8, bo:&'a Board) -> ((usize,Pos),Vec<Move>){
 		}
 	}
 	
-	//return None;
-	let l = SinglyLinkedList{head: res};
 	
-	return (goal,l.to_vec());
-	//return l.to_vec(); //SinglyLinkedList::to_vec(l);
+	// Faster!!. Haee! 0.69s to 0.53s
+	let mut l = vec![];
+	while res > 1 {
+		let c = (res & 12) >> 2;
+		let d = res & 3;
+		l.push(Move{c: c, d: d});
+		res >>= 4;
+	}
+	
+	return (goal,l);
+	//let l = SinglyLinkedList{head: res};
+	//return (goal,l.to_vec());
 }
 
 
