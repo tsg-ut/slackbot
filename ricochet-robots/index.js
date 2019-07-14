@@ -154,7 +154,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 		}
 		
-		mutex.acquire().then(async (release) => {
+		mutex.runExclusive(async () => {
 			try{
 				if(text.match(/^(ベイビー|スーパー|ハイパー)ロボット(バトル| (\d+)手)?$/)){
 					let depth = undefined;
@@ -259,7 +259,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				await postmessage('内部errorです:cry:\n' + String(e));
 				await unlock(message.user, 'ricochet-robots-debugger');
 			}
-			release();
 		});
 	});
 };
