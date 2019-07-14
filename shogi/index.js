@@ -675,7 +675,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					state.flags.add('自陣飛車');
 				}
 				if (piece === 'KA' && y === 3) {
-					state.flags.add('自陣飛車');
+					state.flags.add('自陣角');
 				}
 
 				await post(logText);
