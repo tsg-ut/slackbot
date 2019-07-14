@@ -49,7 +49,7 @@ pub struct Board {
 	w: usize,
 	h: usize,
 	walls: Vec<WallPos>,
-	haswall: Vec<Vec<Vec<bool>>>,
+	walldist: Vec<Vec<Vec<usize>>>,
 	robots: Vec<Pos>,
 }
 
@@ -70,7 +70,7 @@ impl Board {
 			gone[y][x] = true;
 			let mut res = 1;
 			for i in 0..4 {
-				if self_.haswall[y][x][i] {
+				if self_.walldist[y][x][i]<=0 {
 					continue;
 				}
 				let ty = (y as i8 + DIRECTIONS[i].y) as usize;
@@ -95,7 +95,7 @@ impl Board {
 			for x in 0..self.w {
 				let mut d = 0;
 				for i in 0..4 {
-					if !self.haswall[y][x][i] {
+					if self.walldist[y][x][i]>0 {
 						d += 1;
 					}
 				}
@@ -111,22 +111,18 @@ impl Board {
 	}
 	
 	fn init(&mut self,mut rng: BoardRng,wall_num: usize){
-		self.haswall = vec![vec![vec![false;4];self.w];self.h];
+		self.walldist = vec![vec![vec![];self.w];self.h];
 
 		//println!("{} {} {} {}",self.board.len(), self.h, self.board[0].len(), self.w);
 		println!("{}",rng.gen_range(0,1000));
 		for y in 0..self.h {
-			self.haswall[y][0][3] = true;
-			self.haswall[y][self.w-1][1] = true;
-		}
-
-		for x in 0..self.w {
-			self.haswall[0][x][2] = true;
-			self.haswall[self.h-1][x][0] = true;
+			for x in 0..self.w {
+				self.walldist[y][x] = vec![self.h-1-y,self.w-1-x,y,x];
+			}
 		}
 		
 		for _ in 0..wall_num {
-			let mem_haswall = self.haswall.clone();
+			let mem_walldist = self.walldist.clone();
 			let mut add_walls = vec![];
 			let cy = rng.gen_range(0,self.h);
 			let cx = rng.gen_range(0,self.w);
@@ -135,8 +131,13 @@ impl Board {
 				let x = cx;
 				if 0 < y && y < self.h {
 					add_walls.push(WallPos{y: y as i8, x: x as i8, d: 0});
-					self.haswall[y-1][x][0] = true;
-					self.haswall[y][x][2] = true;
+					
+					for ty in 0..y {
+						self.walldist[ty][x][0] = cmp::min(y-1-ty,self.walldist[ty][x][0]);
+					}
+					for ty in y..self.h {
+						self.walldist[ty][x][2] = cmp::min(ty-y,self.walldist[ty][x][2]);
+					}
 				}
 			}
 			{
@@ -144,8 +145,12 @@ impl Board {
 				let x = cx + rng.gen_range(0,2);
 				if 0 < x && x < self.w {
 					add_walls.push(WallPos{y: y as i8, x: x as i8, d: 1});
-					self.haswall[y][x-1][1] = true;
-					self.haswall[y][x][3] = true;
+					for tx in 0..x {
+						self.walldist[y][tx][1] = cmp::min(x-1-tx,self.walldist[y][tx][1]);
+					}
+					for tx in x..self.w {
+						self.walldist[y][tx][3] = cmp::min(tx-x,self.walldist[y][tx][3]);
+					}
 				}
 			}
 			
@@ -154,7 +159,7 @@ impl Board {
 				self.walls.append(&mut add_walls);
 			}
 			else{
-				self.haswall = mem_haswall;
+				self.walldist = mem_walldist;
 			}
 		}
 		
@@ -172,7 +177,7 @@ impl Board {
 		}
 	}	
   pub fn new(board_h: usize,board_w: usize,rng: BoardRng,wall_num: usize) -> Board {
-  	let mut res = Board {w: board_w, h: board_h, walls: vec![],haswall: vec![], robots: vec![]};
+  	let mut res = Board {w: board_w, h: board_h, walls: vec![],walldist: vec![], robots: vec![]};
 		res.init(rng,wall_num);
   	return res;
   }
@@ -235,7 +240,7 @@ impl<'a> State<'a> {
 	fn move_to(&self,robot_index: usize, robot_dir: usize) -> Option<State<'a>>{
 		let dir = &DIRECTIONS[robot_dir];
 		let mut p = self.robots[robot_index].clone();
-		let mut mind = cmp::max(self.bo.h,self.bo.w) as i8;
+		let mut mind = self.bo.walldist[p.y as usize][p.x as usize][robot_dir] as i8;
 		for j in 0..4 {
 			if j != robot_index {
 				let dx = self.robots[j].x - p.x;
@@ -250,19 +255,12 @@ impl<'a> State<'a> {
 				}
 			}
 		}
-		//println!("{} {:?} {:?}",mind,p,self.robots);
-		/*
+		
 		if mind == 0 {
 			return None
 		}
-		*/
 		
-		for _ in 0..mind {
-			if self.bo.haswall[p.y as usize][p.x as usize][robot_dir] {
-				break;
-			}
-			p = Pos{y: p.y + dir.y, x: p.x + dir.x};
-		}
+		p = Pos{y: p.y + dir.y * mind, x: p.x + dir.x * mind};
 		
 		let tolog = self.log.cons(Move{c: robot_index,d: robot_dir});
 		let mut res = State{bo: self.bo,robots: self.robots.clone(),log: tolog};

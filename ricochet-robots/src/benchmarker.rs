@@ -9,16 +9,14 @@ use std::time::Instant;
 mod main;
 
 fn main() -> Result<(), Box<dyn std::error::Error + 'static>>{
-	
-	
 	let board_h = 5;
 	let board_w = 7;
 	let wall_num = 10;
 	let num_of_problem = 10;
 	
 	let mut bos = vec![];
-	for t in 1..num_of_problem {
-		let seed = [t,t];
+	for t in 0..num_of_problem {
+		let seed = [t+1,t+1];
 		let mut rng = Xorshift128::from_seed(&seed);
 		for _ in 1..200 {
 			let _ : u64 = rng.gen();
