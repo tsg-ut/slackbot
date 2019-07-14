@@ -466,11 +466,6 @@ module.exports = (clients) => {
 					new手牌.splice(new手牌.indexOf(打牌), 1);
 				}
 
-				if (!calculator.tenpai(new手牌)) {
-					perdon();
-					return;
-				}
-
 				state.手牌 = sort(new手牌);
 				state.phase = 'リーチ';
 				state.リーチTurn = state.remaining自摸;
