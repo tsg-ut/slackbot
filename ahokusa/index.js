@@ -231,7 +231,7 @@ const isSolvableBoard = (board, completeBoard) => {
 	return (parity + (x0 - x1) + (y0 - y1)) % 2 === 0;
 };
 
-const setNewBoard = async (board, boardName) => {
+const setNewBoard = async (board, boardName, usedHelp) => {
 	const completeBoard = completeBoards[boardName];
 	const pieces = flatten(board);
 	await setState({
@@ -240,6 +240,7 @@ const setNewBoard = async (board, boardName) => {
 		boardName,
 		hand: 0,
 		seen: 0,
+		usedHelp,
 		startDate: new Date().valueOf(),
 		lackedPiece: flatten(completeBoard).find((piece) => !pieces.includes(piece)),
 	});
@@ -254,7 +255,7 @@ const shuffleBoard = async (boardName) => {
 	do {
 		board = chunk(shuffle(brokenPieces), width);
 	} while (isFinishedBoard(board, completeBoard));
-	await setNewBoard(board, boardName);
+	await setNewBoard(board, boardName, false);
 };
 
 const isValidBoard = (board, completeBoard) => {
@@ -337,6 +338,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				} else {
 					await postAsAhokusa('残り最短∞手');
 				}
+				await setState({
+					usedHelp: true,
+				});
 				return;
 			}
 
@@ -351,7 +355,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					return;
 				}
 				await setState({thread: message.thread_ts || message.ts});
-				await setNewBoard(board, 'ahokusa');
+				await setNewBoard(board, 'ahokusa', true);
 				await postBoard({reply_broadcast: true});
 				return;
 			}
@@ -372,7 +376,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					return;
 				}
 				await setState({thread: message.thread_ts || message.ts});
-				await setNewBoard(board, 'ahokusa');
+				await setNewBoard(board, 'ahokusa', true);
 				await postBoard({reply_broadcast: true});
 				return;
 			}
@@ -393,6 +397,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				board: state.startBoard,
 				hand: 0,
 				seen: 0,
+				usedHelp: true,
 			});
 			await postBoard();
 			return;
@@ -424,10 +429,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				await setState({
 					board: null,
 				});
-				if(state.boardName === 'ahokusa'){
-					await unlock(user, 'ahokusa-impossible');
-					if(state.seen === 0)await unlock(user, 'ahokusa-impossible-once');
-					if(time < 5)await unlock(user, 'ahokusa-impossible-5s');
+				if (!state.usedHelp) {
+					if (state.boardName === 'ahokusa') {
+						await unlock(user, 'ahokusa-impossible');
+						if (state.seen === 0) await unlock(user, 'ahokusa-impossible-once');
+						if (time < 5) await unlock(user, 'ahokusa-impossible-5s');
+					}
 				}
 			}
 			return;
@@ -460,14 +467,16 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					`${state.seen === 1 ? '、一発' : ''}`,
 					{reply_broadcast: true}
 				);
-				if(state.boardName === 'ahokusa'){
-					await unlock(user, 'ahokusa-clear');
-					if(state.hand === minHand)await unlock(user, 'ahokusa-clear-shortest');
-					if(state.seen === 1)await unlock(user, 'ahokusa-clear-once');
-					if(state.seen === 1 && state.hand === minHand)await unlock(user, 'ahokusa-clear-shortest-once');
-					if(time < 8)await unlock(user, 'ahokusa-clear-8s');
-				}else if(stat.boardName === 'sushi3' || stat.boardName === 'sushi4' || stat.boardName === 'sushi5' || stat.boardName === 'sushi6'){
-					if(state.seen === 1)await unlock(user, 'ahokusa-sushi-clear-once');
+				if (!state.usedHelp){
+					if (state.boardName === 'ahokusa') {
+						await unlock(user, 'ahokusa-clear');
+						if (state.hand === minHand) await unlock(user, 'ahokusa-clear-shortest');
+						if (state.seen === 1) await unlock(user, 'ahokusa-clear-once');
+						if (state.seen === 1 && state.hand === minHand) await unlock(user, 'ahokusa-clear-shortest-once');
+						if (time < 8) await unlock(user, 'ahokusa-clear-8s');
+					} else if (stat.boardName === 'sushi3' || stat.boardName === 'sushi4' || stat.boardName === 'sushi5' || stat.boardName === 'sushi6') {
+						if (state.seen === 1) await unlock(user, 'ahokusa-sushi-clear-once');
+					}
 				}
 				await setState({
 					board: null,
