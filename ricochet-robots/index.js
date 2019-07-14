@@ -162,6 +162,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						let matches = null;
 						if ((matches = text.match(/^(ベイビー|スーパー|ハイパー)ロボット (\d+)手$/))) {
 							depth = parseInt(matches[2]);
+							if(depth >= 1000)depth = 1000;
+							else if(depth<=0)depth = 1;
 						}
 					}
 					const isbattle = text.match(/^(ベイビー|スーパー|ハイパー)ロボットバトル$/);
