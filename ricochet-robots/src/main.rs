@@ -3,9 +3,16 @@ use std::collections::VecDeque;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 
+
+extern crate xorshift;
+use xorshift::{Rng, SeedableRng, Xorshift128};
+type BoardRng = Xorshift128;
+
 extern crate rand;
-use rand::Rng;
 use rand::prelude::SliceRandom;
+
+extern crate time;
+use time::precise_time_ns;
 
 use std::cmp;
 
@@ -18,7 +25,7 @@ use itertools::Itertools;
 use std::rc::Rc;
 
 #[derive(PartialEq,Eq,Debug,Clone)]
-struct Pos {
+pub struct Pos {
 	y: i8,
 	x: i8
 }
@@ -38,7 +45,7 @@ struct WallPos {
 }
 
 #[derive(Debug)]
-struct Board {
+pub struct Board {
 	w: usize,
 	h: usize,
 	walls: Vec<WallPos>,
@@ -103,10 +110,11 @@ impl Board {
 		return true;
 	}
 	
-	fn init(&mut self,wall_num: usize){
+	fn init(&mut self,mut rng: BoardRng,wall_num: usize){
 		self.haswall = vec![vec![vec![false;4];self.w];self.h];
 
 		//println!("{} {} {} {}",self.board.len(), self.h, self.board[0].len(), self.w);
+		println!("{}",rng.gen_range(0,1000));
 		for y in 0..self.h {
 			self.haswall[y][0][3] = true;
 			self.haswall[y][self.w-1][1] = true;
@@ -117,7 +125,6 @@ impl Board {
 			self.haswall[self.h-1][x][0] = true;
 		}
 		
-		let mut rng = rand::thread_rng();		
 		for _ in 0..wall_num {
 			let mem_haswall = self.haswall.clone();
 			let mut add_walls = vec![];
@@ -164,15 +171,15 @@ impl Board {
 			}
 		}
 	}	
-  pub fn new(board_h: usize,board_w: usize,wall_num: usize) -> Board {
+  pub fn new(board_h: usize,board_w: usize,rng: BoardRng,wall_num: usize) -> Board {
   	let mut res = Board {w: board_w, h: board_h, walls: vec![],haswall: vec![], robots: vec![]};
-  	res.init(wall_num);
+		res.init(rng,wall_num);
   	return res;
   }
 }
 
 #[derive(Debug,Clone,Copy)]
-struct Move{
+pub struct Move{
 	c: usize,
 	d: usize
 }
@@ -225,7 +232,7 @@ impl<'a> State<'a> {
 		State{bo: &bo,robots: bo.robots.clone(), log: SinglyLinkedList::nil()}
 	}
 	
-	fn move_to(&self,robot_index: usize, robot_dir: usize) -> State<'a>{
+	fn move_to(&self,robot_index: usize, robot_dir: usize) -> Option<State<'a>>{
 		let dir = &DIRECTIONS[robot_dir];
 		let mut p = self.robots[robot_index].clone();
 		let mut mind = cmp::max(self.bo.h,self.bo.w) as i8;
@@ -244,6 +251,11 @@ impl<'a> State<'a> {
 			}
 		}
 		//println!("{} {:?} {:?}",mind,p,self.robots);
+		/*
+		if mind == 0 {
+			return None
+		}
+		*/
 		
 		for _ in 0..mind {
 			if self.bo.haswall[p.y as usize][p.x as usize][robot_dir] {
@@ -255,15 +267,16 @@ impl<'a> State<'a> {
 		let tolog = self.log.cons(Move{c: robot_index,d: robot_dir});
 		let mut res = State{bo: self.bo,robots: self.robots.clone(),log: tolog};
 		res.robots[robot_index] = p;
-		res
+		Some(res)
 	}
 	
 	fn enumerate_states(&self) -> Vec<State<'a>> {
 		let mut res = vec![];
 		for i in 0..self.robots.len() {
 			for j in 0..4 {
-				let ts = self.move_to(i,j);
-				res.push(ts);
+				if let Some(ts) = self.move_to(i,j) {
+					res.push(ts);
+				}
 			}
 		}
 		//println!("add {} {}",self.robots.len() ,res.len());
@@ -284,7 +297,7 @@ impl<'a,'b> Hash for State<'a> {
 	}
 }
 
-fn bfs<'a,'b>(target: u8, bo:&'a Board) -> ((usize,Pos),Vec<Move>){
+pub fn bfs<'a,'b>(target: u8, bo:&'a Board) -> ((usize,Pos),Vec<Move>){
 	//let log = &SinglyLinkedList::Nil;
 	let log = SinglyLinkedList::nil();
 	let init = State::init_state(&bo,log);
@@ -362,7 +375,10 @@ fn main(){
 		v => panic!("invalid argument. expect \"depth board_h board_w wall_num\", got {:?}.",v)
 	};
 	
-	let mut bo = Board::new(board_h,board_w,wall_num);
+	let now = precise_time_ns();
+	let states = [now, now];
+	let stdrng = SeedableRng::from_seed(&states[..]);
+	let mut bo = Board::new(board_h,board_w,stdrng,wall_num);
 	let ((mut goalcolour,goalpos),mut log) = bfs(depth as u8,&bo);
 	
 	//randomize colour
