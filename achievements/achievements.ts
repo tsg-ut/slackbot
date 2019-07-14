@@ -991,10 +991,10 @@ const achievements: Achievement[] = [
 		category: 'ahokusa',
 	},
 	{
-		id: 'ahokusa-sushi-clear-once',
+		id: 'ahokusa-sushi-clear-once-89s',
 		difficulty: 'professional',
 		title: '狂い出しそう 体が震える',
-		condition: '寿司スライドパズルを一発でクリアする',
+		condition: '寿司スライドパズルを一発かつ89秒以内にクリアする',
 		category: 'ahokusa',
 	},
 
