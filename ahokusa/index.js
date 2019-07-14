@@ -101,11 +101,19 @@ const getMovedBoard = (board, dir) => {
 	const {height, width} = getBoardSize(board);
 	const [x, y] = getPiecePosition(board, ':void:');
 	const [dx, dy] = {
-		上: [0, -1],
-		下: [0, 1],
-		左: [-1, 0],
-		右: [1, 0],
-	}[dir];
+            上: [0, -1],
+            w: [0, -1],
+            k: [0, -1],
+            下: [0, 1],
+            s: [0, 1],
+            j: [0, 1],
+            左: [-1, 0],
+            a: [-1, 0],
+            h: [-1, 0],
+            右: [1, 0],
+            d: [1, 0],
+            l: [1, 0],
+        }[dir];
 	const nx = x - dx;
 	const ny = y - dy;
 	if (nx < 0 || width <= nx || ny < 0 || height <= ny) {
@@ -120,7 +128,7 @@ const getMovedBoard = (board, dir) => {
 const move = async (text) => {
 	let {board, hand} = state;
 	const {height, width} = getBoardSize(board);
-	for (let matchArray, re = /([上下左右])(\d*)/g; (matchArray = re.exec(text));) {
+	for (let matchArray, re = /([上下左右wasdhjkl])(\d*)/g; (matchArray = re.exec(text));) {
 		const dir = matchArray[1];
 		const amount = parseInt(matchArray[2] || '1');
 		if (amount === 0 || (amount >= width && amount >= height)) {
@@ -416,7 +424,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if ((/^([上下左右]\d*)+$/).test(message.text)) {
+		if ((/^([上下左右wasdhjkl]\d*)+$/).test(message.text)) {
 			if (state.board === null) {
 				return;
 			}
