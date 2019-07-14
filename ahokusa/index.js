@@ -477,7 +477,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						if (state.seen === 1 && state.hand === minHand) await unlock(user, 'ahokusa-clear-shortest-once');
 						if (time < 8) await unlock(user, 'ahokusa-clear-8s');
 					} else if (stat.boardName === 'sushi3' || stat.boardName === 'sushi4' || stat.boardName === 'sushi5' || stat.boardName === 'sushi6') {
-						if (state.seen === 1) await unlock(user, 'ahokusa-sushi-clear-once');
+						if (state.seen === 1 && time < 89) await unlock(user, 'ahokusa-sushi-clear-once-89s');
 					}
 				}
 				await setState({
