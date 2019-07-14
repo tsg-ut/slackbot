@@ -2,6 +2,7 @@ const fs = require('fs');
 const {chunk, cloneDeep, escapeRegExp, flatten, invert, random, round, sample, shuffle, uniq} = require('lodash');
 const path = require('path');
 const {promisify} = require('util');
+const {unlock} = require('../achievements/index.ts');
 
 const completeBoards = {
 	ahokusa: [
@@ -281,6 +282,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
+		const {text, user} = message;
+
 		const postMessage = async (text, opt = {}) => {
 			await slack.chat.postMessage({
 				channel: message.channel,
@@ -301,6 +304,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await setState({thread: message.thread_ts || message.ts});
 			await shuffleBoard('ahokusa');
 			await postBoard({reply_broadcast: true});
+			await unlock(user, 'ahokusa-play')
 			return;
 		}
 
@@ -420,6 +424,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				await setState({
 					board: null,
 				});
+				if(state.boardName === 'ahokusa'){
+					await unlock(user, 'ahokusa-impossible');
+					if(state.seen === 0)await unlock(user, 'ahokusa-impossible-once');
+					if(time < 5)await unlock(user, 'ahokusa-impossible-5s');
+				}
 			}
 			return;
 		}
@@ -451,6 +460,15 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					`${state.seen === 1 ? '、一発' : ''}`,
 					{reply_broadcast: true}
 				);
+				if(state.boardName === 'ahokusa'){
+					await unlock(user, 'ahokusa-clear');
+					if(state.hand === minHand)await unlock(user, 'ahokusa-clear-shortest');
+					if(state.seen === 1)await unlock(user, 'ahokusa-clear-once');
+					if(state.seen === 1 && state.hand === minHand)await unlock(user, 'ahokusa-clear-shortest-once');
+					if(time < 8)await unlock(user, 'ahokusa-clear-8s');
+				}else if(stat.boardName === 'sushi3' || stat.boardName === 'sushi4' || stat.boardName === 'sushi5' || stat.boardName === 'sushi6'){
+					if(state.seen === 1)await unlock(user, 'ahokusa-sushi-clear-once');
+				}
 				await setState({
 					board: null,
 				});
