@@ -322,7 +322,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		if (match) {
 			const {size} = match.groups;
 			await setState({thread: message.thread_ts || message.ts});
-			await shuffleBoard('sushi${size}');
+			await shuffleBoard(`sushi${size}`);
 			await postBoard({reply_broadcast: true});
 			return;
 		}
