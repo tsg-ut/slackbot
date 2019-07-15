@@ -285,7 +285,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		const user = message.username;
+		const {user} = message;
 
 		const postMessage = async (text, opt = {}) => {
 			await slack.chat.postMessage({
