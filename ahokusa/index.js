@@ -318,6 +318,15 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
+		const match = message.text.match(/^寿司スライドパズル (?<size>[3456])$/);
+		if (match) {
+			const {size} = match.groups;
+			await setState({thread: message.thread_ts || message.ts});
+			await shuffleBoard('sushi${size}');
+			await postBoard({reply_broadcast: true});
+			return;
+		}
+
 		if ((/^@ahokusa\b/).test(message.text)) {
 			const command = message.text.replace(/^@ahokusa\s*/, '');
 			const postAsAhokusa = (text, opt = {}) => (
