@@ -285,7 +285,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		const {text, user} = message;
+		const user = message.username;
 
 		const postMessage = async (text, opt = {}) => {
 			await slack.chat.postMessage({
@@ -471,12 +471,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				);
 				if (!state.usedHelp){
 					if (state.boardName === 'ahokusa') {
+						const minHand = ahokusaHandMap.get(getBoardString(state.startBoard))[0];
 						await unlock(user, 'ahokusa-clear');
 						if (state.hand === minHand) await unlock(user, 'ahokusa-clear-shortest');
 						if (state.seen === 1) await unlock(user, 'ahokusa-clear-once');
 						if (state.seen === 1 && state.hand === minHand) await unlock(user, 'ahokusa-clear-shortest-once');
 						if (time < 8) await unlock(user, 'ahokusa-clear-8s');
-					} else if (stat.boardName === 'sushi3' || stat.boardName === 'sushi4' || stat.boardName === 'sushi5' || stat.boardName === 'sushi6') {
+					} else if (state.boardName === 'sushi3' || state.boardName === 'sushi4' || state.boardName === 'sushi5' || state.boardName === 'sushi6') {
 						if (state.seen === 1 && time < 89) await unlock(user, 'ahokusa-sushi-clear-once-89s');
 					}
 				}
