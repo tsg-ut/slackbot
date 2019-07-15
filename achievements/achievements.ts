@@ -1028,7 +1028,7 @@ const achievements: Achievement[] = [
 		condition: '難易度medium以上の実績を10個解除する',
 		category: 'prime',
 	},
-	
+
 	// manual
 
 	{
