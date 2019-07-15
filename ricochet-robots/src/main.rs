@@ -431,8 +431,12 @@ fn main() {
 		})
 		.rev()
 		.collect();
-	for i in 0..ROBOTS_COUNT {
-		bo.robots[i] = bo.robots[perminv[i]];
+
+	{
+		let copy = bo.robots;
+		for i in 0..ROBOTS_COUNT {
+			bo.robots[i] = copy[perminv[i]];
+		}
 	}
 
 	println!("{:?}", bo);
