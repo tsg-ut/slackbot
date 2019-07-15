@@ -424,7 +424,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			const 夜明and日暮 = [
 				...夜明s.map((time) => ({time: time.getTime(), type: '夜明'})),
 				...日暮s.map((time) => ({time: time.getTime(), type: '日暮'})),
-			];
+			].sort((a, b) => a.time - b.time);
 			const previousTime = 夜明and日暮.slice().reverse().find(({time}) => time < now);
 			const nextTime = 夜明and日暮.find(({time}) => time > now);
 
