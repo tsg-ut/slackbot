@@ -1142,7 +1142,7 @@ const achievements: Achievement[] = [
 		id: 'achievements-70',
 		difficulty: 'hard',
 		title: '実績七十古来稀なり',
-		condition: '難易度easy以上の実績を10個解除する',
+		condition: '難易度easy以上の実績を70個解除する',
 		category: 'prime',
 	},
 	{
