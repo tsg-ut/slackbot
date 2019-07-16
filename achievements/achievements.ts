@@ -143,6 +143,15 @@ const achievements: Achievement[] = [
 		value: 5,
 	},
 	{
+		id: 'reaction-koresuki-10',
+		difficulty: 'hard',
+		title: 'あーここすき',
+		condition: '1つのメッセージに対し10人以上から:koresuki:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'koresuki',
+		value: 10,
+	},
+	{
 		id: 'reaction-yakuza-5',
 		difficulty: 'hard',
 		title: '今日からやの付く自由業',
@@ -195,6 +204,15 @@ const achievements: Achievement[] = [
 		category: 'reactions',
 		reaction: 'pro',
 		value: 5,
+	},
+	{
+		id: 'reaction-pro-10',
+		difficulty: 'hard',
+		title: '仕事の流儀',
+		condition: '1つのメッセージに対し10人以上から:pro:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'pro',
+		value: 10,
 	},
 	{
 		id: 'reaction-shirimetsuretsu-5',
