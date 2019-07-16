@@ -327,6 +327,9 @@ export const unlock = async (user: string, name: string) => {
 	if (holdingAchievements.filter((id) => achievements.get(id).difficulty !== 'baby').length >= 10) {
 		newAchievements.push('achievements-10');
 	}
+	if (holdingAchievements.filter((id) => achievements.get(id).difficulty !== 'baby').length >= 70) {
+		newAchievements.push('achievements-70');
+	}
 	if (holdingAchievements.filter((id) => (
 		achievements.get(id).difficulty !== 'baby'
 		&& achievements.get(id).difficulty !== 'easy'
