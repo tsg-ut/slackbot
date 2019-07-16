@@ -94,7 +94,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	};
 
 	const end = async (color, reason) => {
-		console.log(state);
 		const {log, isEnded} = state;
 		state.previousPosition = null;
 		state.board = null;
