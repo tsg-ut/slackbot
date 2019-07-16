@@ -27,6 +27,7 @@ const state = (() => {
 			pile: savedState.pile || [],
 			isDrew: savedState.isDrew || false,
 			isDrewOnce: savedState.isDrewOnce || false,
+			isPenaltied: savedState.isPenaltied || false,
 			isRevolution: savedState.isRevolution || false,
 			boardCards: savedState.boardCards || [],
 			boardNumber: savedState.boardNumber || null,
@@ -41,6 +42,7 @@ const state = (() => {
 			pile: [], // 捨て札
 			isDrew: false,
 			isDrewOnce: false,
+			isPenaltied: false,
 			isRevolution: false,
 			boardCards: [],
 			boardNumber: null,
@@ -281,7 +283,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 	const afterDiscard = async () => {
 		if (state.hand.length === 0) {
-			const {turns, challenger, isDrewOnce} = state;
+			const {turns, challenger, isDrewOnce, isPenaltied} = state;
 			await postMessage(stripIndent`
 				クリアしました:tada:
 				*ターン数* ${state.turns}
@@ -294,6 +296,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				pile: [],
 				isDrew: false,
 				isDrewOnce: false,
+				isPenaltied: false,
 				boardCards: [],
 				boardNumber: null,
 				turns: 0,
@@ -303,6 +306,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				unlock(challenger, 'prime-fast-clear');
 				if (!isDrewOnce) {
 					unlock(challenger, 'prime-fast-clear-no-draw');
+				}
+				if (!isDrewOnce && isPenaltied) {
+					unlock(challenger, 'prime-fast-clear-no-draw-no-penalty');
 				}
 			}
 		}
@@ -362,6 +368,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				isRevolution: false,
 				isDrew: false,
 				isDrewOnce: false,
+				isPenaltied: false,
 				stock,
 				phase: 'playing',
 				turns: 0,
@@ -480,6 +487,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				const drewCards = await draw(decomposition.length);
 				await setState({
 					isDrew: false,
+					isPenaltied: true,
 					boardCards: [],
 					boardNumber: null,
 					turns: state.turns + 1,
@@ -637,6 +645,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				const drewCards = await draw(decompositionCards.length);
 				await setState({
 					isDrew: false,
+					isPenaltied: true,
 					boardCards: [],
 					boardNumber: null,
 					turns: state.turns + 1,
@@ -660,6 +669,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				const drewCards = await draw(decompositionCards.length);
 				await setState({
 					isDrew: false,
+					isPenaltied: true,
 					boardCards: [],
 					boardNumber: null,
 					turns: state.turns + 1,
@@ -737,6 +747,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const drewCards = await draw(state.boardCards.length);
 			await setState({
 				isDrew: false,
+				isPenaltied: true,
 				boardCards: [],
 				boardNumber: null,
 				turns: state.turns + 1,

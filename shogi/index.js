@@ -45,6 +45,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		isPrevious打ち歩: false,
 		isRepetitive: false,
 		isLocked: false,
+		isEnded: false,
 		player: null,
 		board: null,
 		turn: null,
@@ -93,11 +94,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	};
 
 	const end = async (color, reason) => {
-		const {log} = state;
+		const {log, isEnded} = state;
 		state.previousPosition = null;
 		state.board = null;
 		state.turn = null;
 		state.log = [];
+		state.isEnded = true;
 
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -136,6 +138,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await unlock(state.player, 'shogi');
 			if (log.length === state.previousTurns) {
 				await unlock(state.player, 'shogi-shortest');
+				if (!isEnded) {
+					await unlock(state.player, 'shogi-shortest-without-end');
+				}
 				if (!state.isRepetitive && state.previousTurns >= 7) {
 					await increment(state.player, 'shogiWin');
 				}
@@ -144,6 +149,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				}
 				if (state.previousTurns >= 19) {
 					await unlock(state.player, 'shogi-over19');
+					if (!isEnded) {
+						await unlock(state.player, 'shogi-over19-without-end');
+					}
 				}
 				if (state.previousTurns >= 7) {
 					if (state.flags.has('銀不成')) {
@@ -331,6 +339,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			state.previousTurns = data.depth - 1;
 			state.isPrevious打ち歩 = false;
 			state.isRepetitive = false;
+			state.isEnded = false;
 			state.turn = Color.Black;
 			state.player = message.user;
 			state.flags = new Set();

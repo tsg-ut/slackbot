@@ -144,7 +144,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'reaction-koresuki-10',
-		difficulty: 'hard',
+		difficulty: 'professional',
 		title: 'あーここすき',
 		condition: '1つのメッセージに対し10人以上から:koresuki:リアクションをもらう',
 		category: 'reactions',
@@ -207,7 +207,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'reaction-pro-10',
-		difficulty: 'hard',
+		difficulty: 'professional',
 		title: '仕事の流儀',
 		condition: '1つのメッセージに対し10人以上から:pro:リアクションをもらう',
 		category: 'reactions',
@@ -809,6 +809,13 @@ const achievements: Achievement[] = [
 		category: 'shogi',
 	},
 	{
+		id: 'shogi-shortest-without-end',
+		difficulty: 'hard',
+		title: '長い詰みより短い必至',
+		condition: '将棋BOTで一発で最短勝利する (7手必勝以上に限る)',
+		category: 'shogi',
+	},
+	{
 		id: 'shogi-win-10',
 		difficulty: 'hard',
 		title: '碁で負けたら将棋で勝て',
@@ -835,9 +842,16 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'shogi-over19',
+		difficulty: 'hard',
+		title: '攻めるは守るなり',
+		condition: '将棋BOTで19手必勝以上の盤面で最短勝利する',
+		category: 'shogi',
+	},
+	{
+		id: 'shogi-over19-without-end',
 		difficulty: 'professional',
 		title: '名人に定跡なし',
-		condition: '将棋BOTで19手必勝以上の盤面で最短勝利する',
+		condition: '将棋BOTで19手必勝以上の盤面で一発で最短勝利する',
 		category: 'shogi',
 	},
 	{
@@ -901,21 +915,28 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'prime-fast-clear',
-		difficulty: 'hard',
+		difficulty: 'medium',
 		title: 'レオンハルト・オイラー',
 		condition: '素数大富豪を4ターン以内でクリアする',
 		category: 'prime',
 	},
 	{
 		id: 'prime-fast-clear-no-draw',
-		difficulty: 'hard',
+		difficulty: 'medium',
 		title: 'カール・フリードリヒ・ガウス',
 		condition: '素数大富豪をドローせずに4ターン以内でクリアする',
 		category: 'prime',
 	},
 	{
-		id: 'prime-composition-8',
+		id: 'prime-fast-clear-no-draw-no-penalty',
 		difficulty: 'hard',
+		title: 'エヴァリスト・ガロア',
+		condition: '素数大富豪をドローおよびペナルティ無しで4ターン以内でクリアする',
+		category: 'prime',
+	},
+	{
+		id: 'prime-composition-8',
+		difficulty: 'medium',
 		title: 'ジョゼフ＝ルイ・ラグランジュ',
 		condition: '素数大富豪で合成数出しによって8枚以上を同時に捨てる',
 		category: 'prime',
@@ -929,7 +950,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'prime-ramanujan',
-		difficulty: 'hard',
+		difficulty: 'medium',
 		title: 'シュリニヴァーサ・ラマヌジャン',
 		condition: '素数大富豪でラマヌジャン革命を発生させる',
 		category: 'prime',
@@ -964,7 +985,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'prime-wolstenholme',
-		difficulty: 'hard',
+		difficulty: 'medium',
 		title: 'ジョセフ・ウォルステンホルム',
 		condition: '素数大富豪で3桁以上のウォルステンホルム素数を捨てる',
 		category: 'prime',
