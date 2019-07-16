@@ -307,7 +307,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				if (!isDrewOnce) {
 					unlock(challenger, 'prime-fast-clear-no-draw');
 				}
-				if (!isDrewOnce && isPenaltied) {
+				if (!isDrewOnce && !isPenaltied) {
 					unlock(challenger, 'prime-fast-clear-no-draw-no-penalty');
 				}
 			}
