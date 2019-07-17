@@ -6,6 +6,7 @@ import qs from 'querystring';
 
 const slacklogAPIDomain = 'localhost:9292';
 const slacklogURLRegexp = RegExp('^https?://slack-log.tsg.ne.jp/([A-Z0-9]+)/([0-9]+\.[0-9]+)');
+const slackURLRegexp = RegExp('^https?://tsg-ut.slack.com/archives/([A-Z0-9]+)/p([0-9]+)([0-9]{6})');
 const getAroundMessagesUrl = (channel: string) => `http://${slacklogAPIDomain}/around_messages/${channel}.json`;
 
 import {WebClient, RTMClient} from '@slack/client';
@@ -25,9 +26,20 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
             return;
         }
 
-        if (text.trim() === 'slacklog' || text.trim() === 'slack-log') {
-            const here = `https://slack-log.tsg.ne.jp/${channel}`;
-            slack.chat.postMessage({icon_emoji: 'slack', channel, text: here});
+        const trim = text.trim();
+        const [command, url] = trim.split(' ');
+        if (command === 'slacklog') {
+            if (slackURLRegexp.test(url)) {
+                const [_, chanid, ts1, ts2] = slackURLRegexp.exec(url);
+                slack.chat.postMessage({
+                    icon_emoji: 'slack',
+                    channel,
+                    text: `https://slack-log.tsg.ne.jp/${chanid}/${ts1}.${ts2}`,
+                });
+            } else {
+                const here = `https://slack-log.tsg.ne.jp/${channel}`;
+                slack.chat.postMessage({icon_emoji: 'slack', channel, text: here});
+            }
         }
     });
 
