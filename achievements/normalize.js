@@ -6,7 +6,6 @@ db.runTransaction(async (transaction) => {
 	const achievements = await transaction.get(db.collection('achievements'));
 	const rawAchievementData = await transaction.get(db.collection('achievement_data'));
 	const achievementData = new Map(rawAchievementData.docs.map((data) => [data.get('id'), data]));
-	console.log({achievementData});
 
 	const counts = countBy(achievements.docs, (achievement) => achievement.get('name'));
 	for (const [name, count] of Object.entries(counts)) {
@@ -18,7 +17,6 @@ db.runTransaction(async (transaction) => {
 		const categories = countBy(userAchievements, (achievement) => (
 			achievementData.get(achievement.get('name')).get('category')
 		));
-		console.log({userAchievements, categories});
 		await transaction.update(db.collection('users').doc(user), {counts: categories});
 	}
 });
