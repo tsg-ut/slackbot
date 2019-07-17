@@ -152,7 +152,6 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 	});
 
 	const achievementsData = await db.collection('achievements').get();
-	const achievementsDataSet = new Set(achievementsData.docs.map((a) => a.id));
 	if (!achievementsData.empty) {
 		for (const doc of achievementsData.docs) {
 			const {name, user} = doc.data();
@@ -193,6 +192,8 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		await batch.commit();
 	}
 
+	const achievementsDataData = await db.collection('achievement_data').get();
+	const achievementsDataSet = new Set(achievementsDataData.docs.map((a) => a.id));
 	for (const achievementChunks of chunk(Array.from(achievements), 300) as any) {
 		const batch = db.batch();
 		for (const [id, achievement] of achievementChunks) {
