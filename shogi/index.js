@@ -43,7 +43,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		previousDatabase: '245.sqlite3',
 		previousTurns: 7,
 		isPrevious打ち歩: false,
-		isRepetitive: false,
+		isSpoiled: false,
 		isLocked: false,
 		isEnded: false,
 		player: null,
@@ -138,10 +138,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await unlock(state.player, 'shogi');
 			if (log.length === state.previousTurns) {
 				await unlock(state.player, 'shogi-shortest');
-				if (!isEnded) {
-					await unlock(state.player, 'shogi-shortest-without-end');
-				}
-				if (!state.isRepetitive && state.previousTurns >= 7) {
+				if (!state.isSpoiled && state.previousTurns >= 7) {
 					await increment(state.player, 'shogiWin');
 				}
 				if (state.previousTurns >= 11) {
@@ -154,6 +151,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					}
 				}
 				if (state.previousTurns >= 7) {
+					if (!isEnded) {
+						await unlock(state.player, 'shogi-shortest-without-end');
+					}
 					if (state.flags.has('銀不成')) {
 						await unlock(state.player, 'shogi-銀不成');
 					}
@@ -338,7 +338,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			state.previousBoard = state.board.clone();
 			state.previousTurns = data.depth - 1;
 			state.isPrevious打ち歩 = false;
-			state.isRepetitive = false;
+			state.isSpoiled = false;
 			state.isEnded = false;
 			state.turn = Color.Black;
 			state.player = message.user;
@@ -377,7 +377,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			state.board = state.previousBoard;
 			state.previousBoard = state.board.clone();
 			state.isPrevious打ち歩 = false;
-			state.isRepetitive = true;
 			state.turn = Color.Black;
 			state.player = message.user;
 			state.flags = new Set();
@@ -409,6 +408,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			state.isLocked = true;
+			state.isSpoiled = true;
 
 			let board = state.previousBoard;
 			let previousPosition = null;

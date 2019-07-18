@@ -811,7 +811,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'shogi-shortest-without-end',
 		difficulty: 'hard',
-		title: '長い詰みより短い必至',
+		title: '長考に好手なし',
 		condition: '将棋BOTで一発で最短勝利する (7手必勝以上に限る)',
 		category: 'shogi',
 	},

@@ -10,7 +10,7 @@ db.runTransaction(async (transaction) => {
 
 	const names = groupBy(achievements.docs, (achievement) => achievement.get('name'));
 	for (const [name, nameAchievements] of Object.entries(names)) {
-		const first = minBy(nameAchievements, (achievement) => achievement.get('date'));
+		const first = minBy(nameAchievements, (achievement) => achievement.get('date').seconds);
 		await transaction.update(db.collection('achievement_data').doc(name), {
 			count: nameAchievements.length,
 			first: first.get('user'),
