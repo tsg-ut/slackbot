@@ -785,6 +785,13 @@ const achievements: Achievement[] = [
 		category: 'mahjong',
 	},
 	{
+		id: 'mahjong-ツモ切り立直-一発-門前清自摸和',
+		difficulty: 'hard',
+		title: '膝枕ソムリエ',
+		condition: '麻雀BOTの四麻モードでツモ切り立直をした上で一発ツモで和了する',
+		category: 'mahjong',
+	},
+	{
 		id: 'mahjong-一四索',
 		difficulty: 'professional',
 		title: '早い立直は一四索',

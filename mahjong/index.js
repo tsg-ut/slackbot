@@ -103,6 +103,7 @@ const state = {
 	抜きドラCount: 0,
 	points: savedState.points,
 	リーチTurn: null,
+	isツモ切り立直: false,
 	wins: savedState.wins,
 	loses: savedState.loses,
 	thread: null,
@@ -246,6 +247,7 @@ module.exports = (clients) => {
 			state.壁牌 = shuffled牌s.slice(15);
 			state.remaining自摸 = 17;
 			state.points -= 1500;
+			state.isツモ切り立直 = false;
 			await saveState();
 
 			const {ts} = await postMessage(stripIndent`
@@ -284,6 +286,7 @@ module.exports = (clients) => {
 			state.壁牌 = shuffled牌s.slice(15);
 			state.remaining自摸 = 17;
 			state.points -= 6000;
+			state.isツモ切り立直 = false;
 			await saveState();
 
 			const {ts} = await postMessage(stripIndent`
@@ -469,6 +472,7 @@ module.exports = (clients) => {
 				state.手牌 = sort(new手牌);
 				state.phase = 'リーチ';
 				state.リーチTurn = state.remaining自摸;
+				state.isツモ切り立直 = instruction === 'ツモ切り';
 
 				// TODO: フリテン
 				while (state.remaining自摸 > 0) {
@@ -532,6 +536,9 @@ module.exports = (clients) => {
 							}
 							if (役s.includes('海底摸月')) {
 								await unlock(message.user, 'mahjong-海底摸月');
+							}
+							if (state.isツモ切り立直 && 役s.includes('立直') && 役s.includes('一発') && 役s.includes('門前清自摸和')) {
+								await unlock(message.user, 'mahjong-ツモ切り立直-一発-門前清自摸和');
 							}
 							if (agari.doraTotal >= 8) {
 								await unlock(message.user, 'mahjong-ドラ8');
