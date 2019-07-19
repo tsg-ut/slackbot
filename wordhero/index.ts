@@ -60,9 +60,9 @@ const getPrecedings = (index: number) => {
 
 const precedingsList = Array(16).fill(0).map((_, index) => getPrecedings(index));
 
-const getPrefixedWords = (tree: any, letters: string[], prefix: string, bitmask: number, index: number, minLength: number) => {
+const getPrefixedWords = (treeNode: any, letters: string[], prefix: string, bitmask: number, index: number, minLength: number) => {
 	const ret: string[] = [];
-	if (minLength <= prefix.length && tree.hasWord(prefix)) {
+	if (minLength <= prefix.length && treeNode && treeNode["$"] === 1) {
 		ret.push(prefix);
 	}
 	for (const preceding of precedingsList[index]) {
@@ -73,21 +73,26 @@ const getPrefixedWords = (tree: any, letters: string[], prefix: string, bitmask:
 		if (letter === null) {
 			continue;
 		}
-		if (!tree.isPrefix(prefix + letter)) {
+		if (!treeNode[letter]) {
 			continue;
 		}
-		ret.push(...getPrefixedWords(tree, letters, prefix + letter, bitmask | (1 << preceding), preceding, minLength));
+		ret.push(...getPrefixedWords(treeNode[letter], letters, prefix + letter, bitmask | (1 << preceding), preceding, minLength));
 	}
 	return ret;
 }
 
 const getWords = (tree: any, letters: string[], minLength: number) => {
 	const set = new Set<string>();
+	const treeRoot = tree.tree();
 	for (const index of letters.keys()) {
 		if (letters[index] === null) {
 			continue;
 		}
-		const words = getPrefixedWords(tree, letters, letters[index], 1 << index, index, minLength);
+		const node = treeRoot[letters[index]];
+		if (!node) {
+			continue;
+		}
+		const words = getPrefixedWords(node, letters, letters[index], 1 << index, index, minLength);
 		for (const word of words) {
 			set.add(word);
 		}
