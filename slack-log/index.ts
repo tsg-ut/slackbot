@@ -5,8 +5,7 @@ import {LinkUnfurls} from '@slack/client';
 import qs from 'querystring';
 
 const slacklogAPIDomain = 'localhost:9292';
-const slacklogURLRegexp = RegExp('^https?://slack-log.tsg.ne.jp/([A-Z0-9]+)/([0-9]+\.[0-9]+)');
-const slackURLRegexp = RegExp('^https?://tsg-ut.slack.com/archives/([A-Z0-9]+)/p([0-9]+)([0-9]{6})');
+const slacklogURLRegexp = new RegExp('^https?://slack-log.tsg.ne.jp/([A-Z0-9]+)/([0-9]+\.[0-9]+)');
 const getAroundMessagesUrl = (channel: string) => `http://${slacklogAPIDomain}/around_messages/${channel}.json`;
 
 import {WebClient, RTMClient} from '@slack/client';
@@ -22,6 +21,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
     const channels = await axios.get(`http://${slacklogAPIDomain}/channels.json`).then(({data}) => data);
 
     rtm.on('message', async ({channel, text}) => {
+
         if (!text) {
             return;
         }
@@ -29,22 +29,23 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
         const trim = text.trim();
         const [command, url] = trim.split(' ');
         if (command === 'slacklog') {
+            const slackURLRegexp = new RegExp('^<https?://tsg-ut.slack.com/archives/([A-Z0-9]+)/p([0-9]+)([0-9]{6})>');
+
             if (slackURLRegexp.test(url)) {
                 const [_, chanid, ts1, ts2] = slackURLRegexp.exec(url);
                 slack.chat.postMessage({
                     icon_emoji: 'slack',
                     channel,
-                    text: `https://slack-log.tsg.ne.jp/${chanid}/${ts1}.${ts2}`,
+                    text: `<https://slack-log.tsg.ne.jp/${chanid}/${ts1}.${ts2}>`,
                 });
             } else {
-                const here = `https://slack-log.tsg.ne.jp/${channel}`;
+                const here = `<https://slack-log.tsg.ne.jp/${channel}>`;
                 slack.chat.postMessage({icon_emoji: 'slack', channel, text: here});
             }
         }
     });
 
     event.on('link_shared', async (e: any) => {
-        logger.info('Incoming unfurl request >');
         const links = e.links.filter(({domain}: {domain: string}) => domain === 'slack-log.tsg.ne.jp');
         links.map((link: string) => logger.info('-', link));
 

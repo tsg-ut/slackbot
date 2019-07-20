@@ -32,10 +32,10 @@ describe('slacklog', () => {
 	});
 
 	it('respond to slacklog-ize request', async () => {
-		const requestURL: string = 'https://tsg-ut.slack.com/archives/C0123ABCD/p1501234567890123';
+		const requestURL: string = '<https://tsg-ut.slack.com/archives/C0123ABCD/p1501234567890123>';
 		const {channel, text}: {channel: string, text: string} = await slack.getResponseTo(`slacklog ${requestURL}`);
 
-		const expectURL: string = 'https://slack-log.tsg.ne.jp/C0123ABCD/1501234567.890123';
+		const expectURL: string = '<https://slack-log.tsg.ne.jp/C0123ABCD/1501234567.890123>';
 		expect(channel).toBe(slack.fakeChannel);
 		expect(text).toBe(expectURL);
 	});
