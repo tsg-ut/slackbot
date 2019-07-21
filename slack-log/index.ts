@@ -37,6 +37,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
                     icon_emoji: 'slack',
                     channel,
                     text: `<https://slack-log.tsg.ne.jp/${chanid}/${ts1}.${ts2}>`,
+                    unfurl_links: true,
                 });
             } else {
                 const here = `<https://slack-log.tsg.ne.jp/${channel}>`;
