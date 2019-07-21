@@ -235,6 +235,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		const {text} = message;
+           
+        if (text === '将棋の強制再起動') {
+           end(Color.White);
+           return;
+        }
 
 		if (
 			text === '将棋' ||
