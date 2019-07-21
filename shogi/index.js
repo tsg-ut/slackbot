@@ -236,11 +236,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		const {text} = message;
            
-        if (text === '将棋の強制再起動') {
-           end(Color.White);
-           return;
-        }
-
 		if (
 			text === '将棋' ||
 			text.match(/^(\d+)手(:?詰め|必勝将棋)$/) ||
@@ -250,6 +245,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				perdon();
 				return;
 			}
+           if (message.thread_ts) {
+                perdon('スレッド中からの起動はやめてください');
+                return;
+           }
 
 			let matches = null;
 			let condition = '';
