@@ -4,6 +4,7 @@ import path from 'path';
 import assert from 'assert';
 import {WebClient, RTMClient} from '@slack/client';
 import {flatten, sum, sample, random, sortBy, maxBy, sumBy, shuffle} from 'lodash';
+// @ts-ignore
 import trie from './trie';
 // @ts-ignore
 import cloudinary from 'cloudinary';
