@@ -4,7 +4,6 @@ import path from 'path';
 import assert from 'assert';
 import {WebClient, RTMClient} from '@slack/client';
 import {flatten, sum, sample, random, sortBy, maxBy, sumBy, shuffle} from 'lodash';
-// @ts-ignore
 import trie from './trie';
 // @ts-ignore
 import cloudinary from 'cloudinary';
@@ -224,7 +223,7 @@ const load = async () => {
 	const hardSeedWords = dictionary.filter((word) => 9 <= word.length && word.length <= 10);
 	const rawTrie = {
 		LBS: await promisify(fs.readFile)(path.join(__dirname, 'LOUDS_LBS.bin')),
-	    label: await promisify(fs.readFile)(path.join(__dirname, 'LOUDS_label.txt')),
+		label: await promisify(fs.readFile)(path.join(__dirname, 'LOUDS_label.txt')),
 		terminal: await promisify(fs.readFile)(path.join(__dirname, 'LOUDS_terminal.bin'))
 	};
 	const tree = trie(rawTrie);
