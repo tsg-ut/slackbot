@@ -49,7 +49,7 @@ with tqdm(total=index) as t:
 
 print("saving LBS...")
 with open("LOUDS_LBS.bin", "wb") as f:
-    f.write(bytes(LBS))
+    f.write(bytes(LBS + [0]))
 
 print("saving terminal...")
 with open("LOUDS_terminal.bin", "wb") as f:
