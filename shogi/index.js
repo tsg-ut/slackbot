@@ -232,11 +232,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		if (message.username === 'shogi') {
 			return;
-           }
+		}
 
-        const {text, ts} = message;
+		const {text, ts} = message;
 
-        if (
+		if (
 			text === '将棋' ||
 			text.match(/^(\d+)手(:?詰め|必勝将棋)$/) ||
 			text.match(/^(\d+)手以上(:?詰め|必勝将棋)$/)
