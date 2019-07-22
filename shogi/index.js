@@ -234,7 +234,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		const {text} = message;
+		const {text, ts} = message;
            
 		if (
 			text === '将棋' ||
