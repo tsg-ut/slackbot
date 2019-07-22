@@ -5,7 +5,7 @@ import assert from 'assert';
 import {WebClient, RTMClient} from '@slack/client';
 import {flatten, sum, sample, random, sortBy, maxBy, sumBy, shuffle} from 'lodash';
 // @ts-ignore
-import trie from 'trie-prefix-tree';
+import trie from 'trie';
 // @ts-ignore
 import cloudinary from 'cloudinary';
 // @ts-ignore
@@ -62,7 +62,7 @@ const precedingsList = Array(16).fill(0).map((_, index) => getPrecedings(index))
 
 const getPrefixedWords = (treeNode: any, letters: string[], prefix: string, bitmask: number, index: number, minLength: number) => {
 	const ret: string[] = [];
-	if (minLength <= prefix.length && treeNode && treeNode["$"] === 1) {
+	if (minLength <= prefix.length && treeNode.isTerminal()) {
 		ret.push(prefix);
 	}
 	for (const preceding of precedingsList[index]) {
@@ -73,26 +73,27 @@ const getPrefixedWords = (treeNode: any, letters: string[], prefix: string, bitm
 		if (letter === null) {
 			continue;
 		}
-		if (!treeNode[letter]) {
+		if (!treeNode.step(letter)) {
 			continue;
 		}
-		ret.push(...getPrefixedWords(treeNode[letter], letters, prefix + letter, bitmask | (1 << preceding), preceding, minLength));
+		ret.push(...getPrefixedWords(treeNode, letters, prefix + letter, bitmask | (1 << preceding), preceding, minLength));
+		treeNode.back();
 	}
 	return ret;
 }
 
 const getWords = (tree: any, letters: string[], minLength: number) => {
 	const set = new Set<string>();
-	const treeRoot = tree.tree();
+	const treeNode = tree.tree();
 	for (const index of letters.keys()) {
 		if (letters[index] === null) {
 			continue;
 		}
-		const node = treeRoot[letters[index]];
-		if (!node) {
+		if (!treeNode.step(letters[index])) {
 			continue;
 		}
-		const words = getPrefixedWords(node, letters, letters[index], 1 << index, index, minLength);
+		const words = getPrefixedWords(treeNode, letters, letters[index], 1 << index, index, minLength);
+		treeNode.back();
 		for (const word of words) {
 			set.add(word);
 		}
@@ -144,7 +145,7 @@ const generateBoard = (tree: any, seed: string) => {
 		const counter = new Map(hiraganaLetters.map((letter) => [letter, 0]));
 		for (const prefix of prefixes) {
 			for (const nextLetter of hiraganaLetters) {
-				counter.set(nextLetter, counter.get(nextLetter) + tree.getPrefix(prefix + nextLetter).filter((word: string) => word.length <= 5).length);
+				counter.set(nextLetter, counter.get(nextLetter) + tree.getPrefix(prefix + nextLetter, 0, 5));
 			}
 		}
 		const topLetters = sortBy(Array.from(counter.entries()), ([, count]) => count).reverse().slice(0, 3);
@@ -199,7 +200,7 @@ const load = async () => {
 		return loadDeferred.promise;
 	}
 
-	for (const file of ['words.txt', 'dictionary.sqlite3']) {
+	for (const file of ['words.txt', 'dictionary.sqlite3', 'LOUDS_LBS.bin', 'LOUDS_label.txt', 'LOUDS_terminal.bin']) {
 		const filePath = path.resolve(__dirname, file);
 
 		const exists = await new Promise((resolve) => {
@@ -221,7 +222,12 @@ const load = async () => {
 	));
 	const seedWords = dictionary.filter((word) => 7 <= word.length && word.length <= 8);
 	const hardSeedWords = dictionary.filter((word) => 9 <= word.length && word.length <= 10);
-	const tree = trie(dictionary);
+	const rawTrie = {
+		LBS: await promisify(fs.readFile)(path.join(__dirname, 'LOUDS_LBS.bin')),
+	    label: await promisify(fs.readFile)(path.join(__dirname, 'LOUDS_label.txt')),
+		terminal: await promisify(fs.readFile)(path.join(__dirname, 'LOUDS_terminal.bin'))
+	};
+	const tree = trie(rawTrie);
 
 	const db = await sqlite.open(path.join(__dirname, 'dictionary.sqlite3'));
 
