@@ -297,7 +297,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				perdon();
 				return;
 			}
-
+			if (message.thread_ts) {
+				perdon('スレッド中からの起動はやめてください');
+				return;
+			}
 			let matches = null;
 			let condition = '';
 			if ((matches = text.match(/^(?<count>\d+)手(?:詰め|必勝将棋)$/))) {
