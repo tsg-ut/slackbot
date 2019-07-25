@@ -1204,7 +1204,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'sig-3times',
-		difficulty: 'hard',
+		difficulty: 'easy',
 		title: 'TSG中級者',
 		condition: '分科会に3回以上参加する',
 		category: 'manual',
@@ -1212,7 +1212,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'sig-5times',
-		difficulty: 'hard',
+		difficulty: 'medium',
 		title: 'TSG上級者',
 		condition: '分科会に5回以上参加する',
 		category: 'manual',
@@ -1220,7 +1220,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'create-sig',
-		difficulty: 'hard',
+		difficulty: 'medium',
 		title: 'はじめてのオフ会主催',
 		condition: '分科会を開催・運営する',
 		category: 'manual',
@@ -1228,7 +1228,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'create-sig-3times',
-		difficulty: 'professional',
+		difficulty: 'hard',
 		title: '人気TSGer',
 		condition: '分科会を3回以上開催・運営する',
 		category: 'manual',
