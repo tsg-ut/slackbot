@@ -1229,7 +1229,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'create-sig-3times',
 		difficulty: 'professional',
-		title: '人気講師',
+		title: '人気TSGer',
 		condition: '分科会を3回以上開催・運営する',
 		category: 'manual',
 		manual: true,
@@ -1237,7 +1237,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'create-sig-5times',
 		difficulty: 'professional',
-		title: '大物講師',
+		title: '大物TSGer',
 		condition: '分科会を5回以上開催・運営する',
 		category: 'manual',
 		manual: true,
