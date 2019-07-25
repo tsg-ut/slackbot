@@ -1251,11 +1251,6 @@ const achievements: Achievement[] = [
 		manual: true,
 	},
 	{
-		id: 'create-sig-5times',
-		difficulty: 'professional',
-		title: '',
-	},
-	{
 		id: 'clubroom',
 		difficulty: 'medium',
 		title: '足跡',
