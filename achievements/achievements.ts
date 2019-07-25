@@ -1196,7 +1196,7 @@ const achievements: Achievement[] = [
 
 	{
 		id: 'sig',
-		difficulty: 'medium',
+		difficulty: 'easy',
 		title: 'TSG初心者',
 		condition: '分科会に参加する',
 		category: 'manual',
@@ -1204,7 +1204,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'sig-3times',
-		difficulty: 'easy',
+		difficulty: 'medium',
 		title: 'TSG中級者',
 		condition: '分科会に3回以上参加する',
 		category: 'manual',
@@ -1212,7 +1212,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'sig-5times',
-		difficulty: 'medium',
+		difficulty: 'hard',
 		title: 'TSG上級者',
 		condition: '分科会に5回以上参加する',
 		category: 'manual',
