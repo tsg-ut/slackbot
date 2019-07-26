@@ -65,3 +65,5 @@ google_application_credentials.json
 target
 
 tokens.sqlite3
+
+.DS_Store
