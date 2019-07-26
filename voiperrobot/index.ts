@@ -6,6 +6,7 @@ import { stringify } from 'querystring';
 import assert from 'assert';
 import {RTMClient, WebClient} from '@slack/client';
 
+import {unlock} from '../achievements';
 import Mutex from './mutex';
 
 type VoiperPhase = 'waiting' | 'answering'
@@ -132,6 +133,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const m = /^@voiperrobot\b|^ボイパーロボット(?:$|\s*(\d+))/.exec(message.text)!;
 			const voiperLength = validateNumber(parseInt(m[1]), 8);
 			await postMessage(await getTtsLink(voiper(voiperLength)));
+			await unlock(message.user, 'voiperrobot');
 			return;
 		}
 		if (/^ボイパーロボットバトル(?:$|\s*(\d+))/.test(message.text)) {
@@ -150,6 +152,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				channel: message.channel,
 				timestamp: message.ts,
 			});
+			unlock(message.user, 'voiperrobot-battle');
 			if (state.ts) {
 				state.users.push(message.user);
 				return;
@@ -193,6 +196,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				if (message.text === state.answer) {
 					await postMessage(`正解です!:tada:\n${await getTtsLink(state.answer)}`);
 					setState({phase: 'waiting', answer: null, users: [], ts: null});
+					await unlock(message.user, 'voiperrobot-win-battle');
 				} else {
 					const {hit, blow} = hitblow(getPhrasesOf(state.answer), getPhrasesOf(message.text));
 					await postMessage(`「${message.text}」は違うよ:thinking_face:(${hit}H${blow}B)`);

@@ -1,3 +1,5 @@
+jest.mock('../achievements');
+
 import voiperrobot from './index';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';

@@ -19,6 +19,11 @@ type users = {
 	chats?: number,
 	chatDays?: number,
 	lastChatDay?: string,
+	tashibotDistance?: number,
+	tahoiyaWin?: number,
+	tahoiyaDeceive?: number,
+	tahoiyaParitcipate?: number,
+	shogiWin?: number,
 	[key: string]: any,
 };
 
@@ -158,10 +163,12 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 	}
 
 	const usersData = await db.collection('users').get();
+	const usersSet = new Set();
 	if (!usersData.empty) {
 		for (const doc of usersData.docs) {
 			const data = doc.data();
 			state.users.set(doc.id, data || Object.create(null));
+			usersSet.add(doc.id);
 		}
 	}
 
@@ -172,17 +179,29 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 	for (const memberChunks of chunk(Array.from(members), 300) as any) {
 		const batch = db.batch();
 		for (const member of memberChunks) {
-			batch.update(db.collection('users').doc(member.id), {
-				info: member,
-			});
+			if (usersSet.has(member.id)) {
+				batch.update(db.collection('users').doc(member.id), {
+					info: member,
+				});
+			} else {
+				batch.set(db.collection('users').doc(member.id), {
+					info: member,
+				});
+			}
 		}
 		await batch.commit();
 	}
 
+	const achievementsDataData = await db.collection('achievement_data').get();
+	const achievementsDataSet = new Set(achievementsDataData.docs.map((a) => a.id));
 	for (const achievementChunks of chunk(Array.from(achievements), 300) as any) {
 		const batch = db.batch();
 		for (const [id, achievement] of achievementChunks) {
-			batch.set(db.collection('achievement_data').doc(id), achievement);
+			if (achievementsDataSet.has(id)) {
+				batch.update(db.collection('achievement_data').doc(id), achievement);
+			} else {
+				batch.set(db.collection('achievement_data').doc(id), achievement);
+			}
 		}
 		await batch.commit();
 	}
@@ -314,6 +333,9 @@ export const unlock = async (user: string, name: string) => {
 	if (holdingAchievements.filter((id) => achievements.get(id).difficulty !== 'baby').length >= 10) {
 		newAchievements.push('achievements-10');
 	}
+	if (holdingAchievements.filter((id) => achievements.get(id).difficulty !== 'baby').length >= 70) {
+		newAchievements.push('achievements-70');
+	}
 	if (holdingAchievements.filter((id) => (
 		achievements.get(id).difficulty !== 'baby'
 		&& achievements.get(id).difficulty !== 'easy'
@@ -359,9 +381,9 @@ export const increment = async (user: string, name: string, value: number = 1) =
 	const newValue = (state.users.get(user)[name] || 0) + value;
 	state.users.get(user)[name] = newValue;
 
-	const unlocked = Array.from(achievements.values()).find((achievement) => achievement.counter === name && achievement.value === newValue);
-	if (unlocked !== undefined) {
-		unlock(user, unlocked.id);
+	const unlocked = Array.from(achievements.values()).filter((achievement) => achievement.counter === name && achievement.value <= newValue);
+	for (const achievement of unlocked) {
+		unlock(user, achievement.id);
 	}
 
 	updateDb({type: 'increment', name, value, user});

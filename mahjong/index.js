@@ -466,11 +466,6 @@ module.exports = (clients) => {
 					new手牌.splice(new手牌.indexOf(打牌), 1);
 				}
 
-				if (!calculator.tenpai(new手牌)) {
-					perdon();
-					return;
-				}
-
 				state.手牌 = sort(new手牌);
 				state.phase = 'リーチ';
 				state.リーチTurn = state.remaining自摸;
@@ -534,6 +529,12 @@ module.exports = (clients) => {
 							await unlock(message.user, 'mahjong');
 							if (役s.includes('七対子')) {
 								await unlock(message.user, 'mahjong-七対子');
+							}
+							if (役s.includes('海底摸月')) {
+								await unlock(message.user, 'mahjong-海底摸月');
+							}
+							if (agari.doraTotal >= 8) {
+								await unlock(message.user, 'mahjong-ドラ8');
 							}
 							if (agari.delta[0] >= 12000) {
 								await unlock(message.user, 'mahjong-12000');

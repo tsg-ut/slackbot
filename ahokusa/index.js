@@ -2,6 +2,7 @@ const fs = require('fs');
 const {chunk, cloneDeep, escapeRegExp, flatten, invert, random, round, sample, shuffle, uniq} = require('lodash');
 const path = require('path');
 const {promisify} = require('util');
+const {unlock} = require('../achievements/index.ts');
 
 const completeBoards = {
 	ahokusa: [
@@ -49,6 +50,7 @@ const state = (() => {
 			startDate: savedState.startDate || null,
 			lackedPiece: savedState.lackedPiece || ':ahokusa-top-center:',
 			seen: savedState.seen || 0,
+			usedHelp: savedState.usedHelp || false,
 			boardName: savedState.boardName || 'ahokusa',
 			thread: savedState.thread || null,
 		};
@@ -60,6 +62,7 @@ const state = (() => {
 			startDate: null,
 			lackedPiece: ':ahokusa-top-center:',
 			seen: 0,
+			usedHelp: false,
 			boardName: 'ahokusa',
 			thread: null,
 		};
@@ -101,11 +104,19 @@ const getMovedBoard = (board, dir) => {
 	const {height, width} = getBoardSize(board);
 	const [x, y] = getPiecePosition(board, ':void:');
 	const [dx, dy] = {
-		上: [0, -1],
-		下: [0, 1],
-		左: [-1, 0],
-		右: [1, 0],
-	}[dir];
+            上: [0, -1],
+            w: [0, -1],
+            k: [0, -1],
+            下: [0, 1],
+            s: [0, 1],
+            j: [0, 1],
+            左: [-1, 0],
+            a: [-1, 0],
+            h: [-1, 0],
+            右: [1, 0],
+            d: [1, 0],
+            l: [1, 0],
+        }[dir];
 	const nx = x - dx;
 	const ny = y - dy;
 	if (nx < 0 || width <= nx || ny < 0 || height <= ny) {
@@ -120,7 +131,7 @@ const getMovedBoard = (board, dir) => {
 const move = async (text) => {
 	let {board, hand} = state;
 	const {height, width} = getBoardSize(board);
-	for (let matchArray, re = /([上下左右])(\d*)/g; (matchArray = re.exec(text));) {
+	for (let matchArray, re = /([上下左右wasdhjkl])(\d*)/g; (matchArray = re.exec(text));) {
 		const dir = matchArray[1];
 		const amount = parseInt(matchArray[2] || '1');
 		if (amount === 0 || (amount >= width && amount >= height)) {
@@ -222,7 +233,7 @@ const isSolvableBoard = (board, completeBoard) => {
 	return (parity + (x0 - x1) + (y0 - y1)) % 2 === 0;
 };
 
-const setNewBoard = async (board, boardName) => {
+const setNewBoard = async (board, boardName, usedHelp) => {
 	const completeBoard = completeBoards[boardName];
 	const pieces = flatten(board);
 	await setState({
@@ -231,6 +242,7 @@ const setNewBoard = async (board, boardName) => {
 		boardName,
 		hand: 0,
 		seen: 0,
+		usedHelp,
 		startDate: new Date().valueOf(),
 		lackedPiece: flatten(completeBoard).find((piece) => !pieces.includes(piece)),
 	});
@@ -245,7 +257,7 @@ const shuffleBoard = async (boardName) => {
 	do {
 		board = chunk(shuffle(brokenPieces), width);
 	} while (isFinishedBoard(board, completeBoard));
-	await setNewBoard(board, boardName);
+	await setNewBoard(board, boardName, false);
 };
 
 const isValidBoard = (board, completeBoard) => {
@@ -273,6 +285,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
+		const {user} = message;
+
 		const postMessage = async (text, opt = {}) => {
 			await slack.chat.postMessage({
 				channel: message.channel,
@@ -293,12 +307,22 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await setState({thread: message.thread_ts || message.ts});
 			await shuffleBoard('ahokusa');
 			await postBoard({reply_broadcast: true});
+			await unlock(user, 'ahokusa-play')
 			return;
 		}
 
 		if (message.text === '寿司スライドパズル') {
 			await setState({thread: message.thread_ts || message.ts});
 			await shuffleBoard(sample(['sushi3', 'sushi4', 'sushi5', 'sushi6']));
+			await postBoard({reply_broadcast: true});
+			return;
+		}
+
+		const match = message.text.match(/^寿司スライドパズル (?<size>[3456])$/);
+		if (match) {
+			const {size} = match.groups;
+			await setState({thread: message.thread_ts || message.ts});
+			await shuffleBoard(`sushi${size}`);
 			await postBoard({reply_broadcast: true});
 			return;
 		}
@@ -325,6 +349,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				} else {
 					await postAsAhokusa('残り最短∞手');
 				}
+				await setState({
+					usedHelp: true,
+				});
 				return;
 			}
 
@@ -339,7 +366,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					return;
 				}
 				await setState({thread: message.thread_ts || message.ts});
-				await setNewBoard(board, 'ahokusa');
+				await setNewBoard(board, 'ahokusa', true);
 				await postBoard({reply_broadcast: true});
 				return;
 			}
@@ -360,7 +387,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					return;
 				}
 				await setState({thread: message.thread_ts || message.ts});
-				await setNewBoard(board, 'ahokusa');
+				await setNewBoard(board, 'ahokusa', true);
 				await postBoard({reply_broadcast: true});
 				return;
 			}
@@ -381,6 +408,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				board: state.startBoard,
 				hand: 0,
 				seen: 0,
+				usedHelp: true,
 			});
 			await postBoard();
 			return;
@@ -412,11 +440,18 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				await setState({
 					board: null,
 				});
+				if (!state.usedHelp) {
+					if (state.boardName === 'ahokusa') {
+						await unlock(user, 'ahokusa-impossible');
+						if (state.seen === 0) await unlock(user, 'ahokusa-impossible-once');
+						if (time < 5) await unlock(user, 'ahokusa-impossible-5s');
+					}
+				}
 			}
 			return;
 		}
 
-		if ((/^([上下左右]\d*)+$/).test(message.text)) {
+		if ((/^([上下左右wasdhjkl]\d*)+$/).test(message.text)) {
 			if (state.board === null) {
 				return;
 			}
@@ -443,6 +478,18 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					`${state.seen === 1 ? '、一発' : ''}`,
 					{reply_broadcast: true}
 				);
+				if (!state.usedHelp){
+					if (state.boardName === 'ahokusa') {
+						const minHand = ahokusaHandMap.get(getBoardString(state.startBoard))[0];
+						await unlock(user, 'ahokusa-clear');
+						if (state.hand === minHand) await unlock(user, 'ahokusa-clear-shortest');
+						if (state.seen === 1) await unlock(user, 'ahokusa-clear-once');
+						if (state.seen === 1 && state.hand === minHand) await unlock(user, 'ahokusa-clear-shortest-once');
+						if (time < 8) await unlock(user, 'ahokusa-clear-8s');
+					} else if (state.boardName === 'sushi3' || state.boardName === 'sushi4' || state.boardName === 'sushi5' || state.boardName === 'sushi6') {
+						if (state.seen === 1 && time < 89) await unlock(user, 'ahokusa-sushi-clear-once-89s');
+					}
+				}
 				await setState({
 					board: null,
 				});
