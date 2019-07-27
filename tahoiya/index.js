@@ -596,6 +596,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			}
 		}
 
+		const firstplace = ranking[0][0];
+		await unlock(firstplace, 'tahoiya-firstplace');
+
 		const deceiveCounter = new Map();
 		for (const [user, {coins, meaning}] of oldBettings.entries()) {
 			if (user.startsWith('tahoiyabot')) {
