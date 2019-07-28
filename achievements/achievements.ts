@@ -758,6 +758,13 @@ const achievements: Achievement[] = [
 		counter: 'tahoiyaParticipate',
 		value: 300,
 	},
+	{
+		id: 'tahoiya-firstplace',
+		difficulty: 'hard',
+		title: '歩く百科事典',
+		condition: 'たほいやのランキングで1位になる',
+		category: 'tahoiya'
+	},
 
 	// mahjong
 
