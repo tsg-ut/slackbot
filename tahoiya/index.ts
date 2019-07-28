@@ -14,22 +14,25 @@ interface SlackInterface {
 
 const loadDeferred = new Deferred();
 
+const wordsVersion = '201907260000';
+
 const load = async () => {
 	if (loadDeferred.isResolved) {
 		return loadDeferred.promise;
 	}
 
 	for (const file of ['words.txt', 'words.sqlite3']) {
-		const filePath = path.resolve(__dirname, file);
+		const filename = file.replace(/\./, `.${wordsVersion}.`);
+		const filePath = path.resolve(__dirname, filename);
 		const exists = await fs.access(filePath, constants.F_OK).then(() => true).catch(() => false);
 		if (!exists) {
 			await download(`https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/tahoiya/${file}`, __dirname, {
-				filename: file,
+				filename,
 			});
 		}
 	}
 
-	const wordsBuffer = await fs.readFile(path.resolve(__dirname, 'words.txt'));
+	const wordsBuffer = await fs.readFile(path.resolve(__dirname, `words.${wordsVersion}.txt`));
 	const words = wordsBuffer.toString().split('\n').filter((l) => l.length > 0);
 	return loadDeferred.resolve({words});
 };
