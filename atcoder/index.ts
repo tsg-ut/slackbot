@@ -350,8 +350,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	}, 5 * 1000);
 
 	setInterval(() => {
+		const now = Date.now();
 		for (const contest of state.contests) {
-			if (contest.isPreposted && !contest.isPosted) {
+			const endTime = contest.date + contest.duration;
+			if (contest.isPreposted && !contest.isPosted && endTime < now && now < endTime + 60 * 60 * 1000) {
 				postResult(contest.id);
 			}
 		}
