@@ -71,14 +71,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const statePath = path.resolve(__dirname, 'state.json');
 	const exists = await fs.access(statePath, constants.F_OK).then(() => true).catch(() => false);
 	const state = Object.assign({
-		users: [
-			{atcoder: 'pizzacat83', slack: 'UA4ANP0L9'},
-			{atcoder: 'C01L', slack: 'UA552M1RD'},
-			{atcoder: 'hakatashi', slack: 'U04G7TL4P'},
-			{atcoder: 'ready_player074', slack: 'UBUT1NWJU'},
-			{atcoder: 'sh_mug', slack: 'UJVA98XDM'},
-			{atcoder: 'MMNMM', slack: 'UA3H39U3T'},
-		] as {atcoder: string, slack: string}[],
+		users: [] as {atcoder: string, slack: string}[],
 		contests: [] as {id: string, startTime: number}[],
 	}, exists ? await fs.readFile(statePath) : {})
 
@@ -163,7 +156,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						author_name: `${await getMemberName(user)}: ${result ? `${result.Place}位` : '不参加'}`,
 						author_icon: await getMemberIcon(user),
 						text: result ? [
-							Object.entries(standingMap.get(user).TaskResults).filter(([, task]) => task.Status === 1).map(([id]) => `[${tasks.get(id).Assignment}]`).join(' '),
+							Object.entries(standingMap.get(user).TaskResults).filter(([, task]) => task.Status === 1).map(([id, task]) => `[ *${tasks.get(id).Assignment}*${task.Penalty ? ` (${task.Penalty})` : ''} ]`).join(' '),
 							stats.map(({title, value}) => `*${title}* ${value}`).join(', '),
 						].join('\n') : '',
 					};
