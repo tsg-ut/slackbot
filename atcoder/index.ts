@@ -158,7 +158,19 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 	const prepostResult = async (id: string) => {
 		const contest = state.contests.find((contest) => contest.id === id);
-		// TODO: check time correction
+
+		const {data: {endTime}} = await scrapeIt(`https://atcoder.jp/contests/${id}`, {
+			endTime: {
+				selector: '.contest-duration a:last-child time',
+				convert: (time) => new Date(time).getTime(),
+			},
+		});
+		// Check if the contest is postponed
+		if (endTime > contest.date + contest.duration) {
+			contest.duration = endTime - contest.date;
+			return;
+		}
+
 		contest.isPreposted = true;
 		logger.info(`Preposting result of contest ${id}...`);
 
@@ -262,28 +274,50 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 	}
 
-	rtm.on('message', (message) => {
-		console.log(message)
+	rtm.on('message', async (message) => {
 		if (message.text && message.subtype === undefined && message.text.startsWith('@atcoder ')) {
-			const atcoderId = message.text.replace(/^@atcoder/, '').trim();
-			const slackId = message.user;
-			if (atcoderId.length > 0) {
-				if (state.users.some(({slack}) => slackId === slack)) {
-					setState({
-						users: state.users.map((user) => user.slack === slackId ? {
-							slack: slackId,
-							atcoder: atcoderId,
-						} : user),
-					});
-				} else {
-					setState({
-						users: state.users.concat([{slack: slackId, atcoder: atcoderId}]),
+			const text = message.text.replace(/^@atcoder/, '').trim();
+
+			if (text === 'ユーザー一覧') {
+				await slack.chat.postMessage({
+					username: 'atcoder',
+					icon_emoji: ':atcoder:',
+					channel: message.channel,
+					text: '',
+					attachments: await Promise.all(state.users.map(async (user) => ({
+						author_name: await getMemberName(user.slack),
+						author_icon: await getMemberIcon(user.slack),
+						text: `https://atcoder.jp/users/${user.atcoder}`,
+					}))),
+				});
+			} else if (text.match(/^[\x00-\x7F]+$/)) {
+				const atcoderId = text;
+				const slackId = message.user;
+				if (atcoderId.length > 0) {
+					if (state.users.some(({slack}) => slackId === slack)) {
+						setState({
+							users: state.users.map((user) => user.slack === slackId ? {
+								slack: slackId,
+								atcoder: atcoderId,
+							} : user),
+						});
+					} else {
+						setState({
+							users: state.users.concat([{slack: slackId, atcoder: atcoderId}]),
+						});
+					}
+					await slack.reactions.add({
+						name: '+1',
+						channel: message.channel,
+						timestamp: message.ts,
 					});
 				}
-				slack.reactions.add({
-					name: '+1',
+			} else {
+				await slack.chat.postMessage({
+					username: 'atcoder',
+					icon_emoji: ':atcoder:',
 					channel: message.channel,
-					timestamp: message.ts,
+					text: ':wakarazu:',
 				});
 			}
 		}
