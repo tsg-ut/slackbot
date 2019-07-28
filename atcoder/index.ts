@@ -2,8 +2,6 @@ import {promises as fs, constants} from 'fs';
 import path from 'path';
 import axios from 'axios';
 // @ts-ignore
-import schedule from 'node-schedule';
-// @ts-ignore
 import {stripIndent} from 'common-tags';
 import scrapeIt from 'scrape-it';
 // @ts-ignore
@@ -118,24 +116,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		logger.info(`Fetched ${contests.length} contests`);
 		if (contests.length > 0) {
 			const oldContests = state.contests;
-			/*
 			setState({
 				contests: contests.filter(({date}: any) => !Number.isNaN(date)).map((contest) => ({
 					...contest,
 					isPosted: (oldContests.find(({id}) => id === contest.id) || {isPosted: false}).isPosted,
 					isPreposted: (oldContests.find(({id}) => id === contest.id) || {isPreposted: false}).isPreposted,
 				})),
-			});
-			*/
-			setState({
-				contests: [{
-					id: 'agc035',
-					date: new Date('2019-07-28T13:52+0900').getTime(),
-					title: 'ほげ',
-					duration: 60 * 1000,
-					isPosted: false,
-					isPreposted: false,
-				}],
 			});
 		}
 	};
@@ -275,6 +261,33 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			],
 		});
 	}
+
+	rtm.on('message', (message) => {
+		console.log(message)
+		if (message.text && message.subtype === undefined && message.text.startsWith('@atcoder ')) {
+			const atcoderId = message.text.replace(/^@atcoder/, '').trim();
+			const slackId = message.user;
+			if (atcoderId.length > 0) {
+				if (state.users.some(({slack}) => slackId === slack)) {
+					setState({
+						users: state.users.map((user) => user.slack === slackId ? {
+							slack: slackId,
+							atcoder: atcoderId,
+						} : user),
+					});
+				} else {
+					setState({
+						users: state.users.concat([{slack: slackId, atcoder: atcoderId}]),
+					});
+				}
+				slack.reactions.add({
+					name: '+1',
+					channel: message.channel,
+					timestamp: message.ts,
+				});
+			}
+		}
+	});
 
 	setInterval(() => {
 		updateContests();
