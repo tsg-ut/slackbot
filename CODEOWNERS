@@ -16,13 +16,13 @@ ricochet-robots/** @satos---jp
 scrapbox/** @hakatashi
 slack-log/** @cookie-s
 achievements/** @hakatashi
+atcoder/** @hakatashi
 channel-notifier/** @hakatashi
 checkin/** @hakatashi
 deploy/** @hakatashi
 mail-hook/** @cookie-s
 oauth/** @hakatashi
 sunrise/** @hakatashi
-tashibot/** @hakatashi
 tunnel/** @hakatashi
 voiperrobot/** @kurgm
 welcome/** @cookie-s
