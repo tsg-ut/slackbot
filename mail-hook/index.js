@@ -25,6 +25,7 @@ module.exports.server = ({webClient: slack}) => async (fastify) => {
                 username: 'Email Notifier',
                 icon_emoji: ':email:',
                 text: [
+                    `MAILFROM: ${sanitizeCode(addresses.mailfrom)}`,
                     `TO: ${sanitizeCode(addresses.to)}`,
                     ...(addresses.cc ? [`CC: ${sanitizeCode(addresses.cc)}`] : []),
                     `FROM: ${sanitizeCode(addresses.from)}`,
