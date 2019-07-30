@@ -251,12 +251,12 @@ const achievements: Achievement[] = [
 		value: 5,
 	},
 	{
-		id: 'reaction-nanyanen-nannanode-5',
+		id: 'reaction-ナンやねん-ナンなので-5',
 		difficulty: 'hard',
 		title: 'お前はナンなんだ',
-		condition: '1つのメッセージに対し5人以上から:nanyanen-nannanode:リアクションをもらう',
+		condition: '1つのメッセージに対し5人以上から:ナンやねん-ナンなので:リアクションをもらう',
 		category: 'reactions',
-		reaction: 'nanyanen-nannanode',
+		reaction: 'ナンやねん-ナンなので',
 		value: 5,
 	},
 	{
