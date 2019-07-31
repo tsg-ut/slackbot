@@ -95,17 +95,6 @@ const getEntries = () => (
 	])
 );
 
-const getHaiku = async () => {
-	const {data} = await axios.get('http://sendan.kaisya.co.jp/index3.html', {
-		responseType: 'arraybuffer',
-	});
-	const $ = cheerio.load(iconv.decode(data, 'sjis'));
-	const text = $('td[rowspan=7][width=590] center font').text();
-	const author = $('td[rowspan=7][width=590] center b').text();
-
-	return {text, author};
-};
-
 const getWeather = async (location) => {
 	// Fetch location id of target location
 	const {data: locationData} = await axios.get(`http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?${qs.encode({
@@ -123,4 +112,4 @@ const getWeather = async (location) => {
 	return {data, locationId};
 };
 
-module.exports = {getEntries, getHaiku, getWeather};
+module.exports = {getEntries, getWeather};
