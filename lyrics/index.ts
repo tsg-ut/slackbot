@@ -27,8 +27,12 @@ const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongIn
     const lyricist = (view.querySelector('h4[itemprop=lyricist]') as HTMLElement).textContent;
     const composer = (view.querySelector('h4[itemprop=composer]') as HTMLElement).textContent;
     const kashiHTML = document.getElementById('kashi_area').innerHTML;
-    const paragraphs = kashiHTML.split('<br><br>').map(paragraph => paragraph.replace(/<br>/g, '\n'));
+    const paragraphs = kashiHTML.split('<br><br>').map(paragraph => {
+        return paragraph.replace(/<br>/g, '\n').replace(/　/g, ' ');
+    });
+    console.log(paragraphs);
     const matchingParagraphs = paragraphs.filter(paragraph => paragraph.indexOf(keyword) !== -1);
+    console.log(matchingParagraphs);
     const formattedMathingParagraphs = matchingParagraphs.map(paragraph => {
         return paragraph.replace(new RegExp(keyword, 'g'), ' *$&* ');
     });
@@ -43,11 +47,12 @@ const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongIn
 const search = async (keyword: string): Promise<SongInfo | null> => {
     const utaNetHost = 'https://www.uta-net.com';
     const searchPageUrl = `${utaNetHost}/user/index_search/search2.html`;
+    console.log(keyword.replace(/ /g, '　'))
     const response = await axios.get(searchPageUrl, {
         params: {
             md: 'Kashi', // 歌詞検索
             st: 'Title1', // タイトル昇順ソート。アレンジ曲などが存在する場合、最も短い曲名を選びたいため。
-            kw: keyword,
+            kw: keyword.replace(/ /g, '　'),
         }
     });
     const source = response.data;
@@ -61,6 +66,11 @@ const search = async (keyword: string): Promise<SongInfo | null> => {
         return songInfo;
     }
 };
+
+(async () => {
+    const result = await search('作りましょう 作りましょう');
+    console.log(result);
+})();
 
 export default async ({rtmClient, webClient}: SlackInterface) => {
     rtmClient.on('message', async message => {
