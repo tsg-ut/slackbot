@@ -47,10 +47,10 @@ const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongIn
     });
     const matchingParagraphs = paragraphs.filter(paragraph => paragraph.indexOf(keyword) !== -1);
     const formattedMathingParagraphs = matchingParagraphs.map(paragraph => {
-        return paragraph.replace(new RegExp(keyword, 'g'), ' *$&* ');
+        return paragraph.replace(new RegExp(keyword, 'g'), '＊$&＊');
     });
     const audioUrl = await getAudioUrl(title, artist);
-    
+
     return {
         phrase: keyword,
         paragraph: formattedMathingParagraphs[0], // とりあえず1つだけ出すことにする
