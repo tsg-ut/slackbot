@@ -46,14 +46,14 @@ const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongIn
         return paragraph.replace(/<br>/g, '\n').replace(/　/g, ' ');
     });
     const matchingParagraphs = paragraphs.filter(paragraph => paragraph.indexOf(keyword) !== -1);
-    const formattedMathingParagraphs = matchingParagraphs.map(paragraph => {
+    const formattedMatchingParagraphs = matchingParagraphs.map(paragraph => {
         return paragraph.replace(new RegExp(keyword, 'g'), '＊$&＊');
     });
     const audioUrl = await getAudioUrl(title, artist);
 
     return {
         phrase: keyword,
-        paragraph: formattedMathingParagraphs[0], // とりあえず1つだけ出すことにする
+        paragraph: formattedMatchingParagraphs[0], // とりあえず1つだけ出すことにする
         utaNetUrl: songInfoUrl,
         title, artist, lyricist, composer, audioUrl,
     };
