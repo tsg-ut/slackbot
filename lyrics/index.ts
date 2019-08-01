@@ -10,12 +10,27 @@ interface SongInfo {
     lyricist: string;
     composer: string;
     utaNetUrl: string;
+    audioUrl: string | null;
 }
 
 interface SlackInterface {
     rtmClient: RTMClient;
     webClient: WebClient;
 }
+
+const getAudioUrl = async (title: string, artist: string): Promise<string|null> => {
+    const iTunesSearchAPIUrl = 'https://itunes.apple.com/search';
+    const response = await axios.get(iTunesSearchAPIUrl, {
+        params: {
+            term: `${title} ${artist}`,
+            country: 'JP',
+            media: 'music',
+        },
+    });
+    const results = response.data.results;
+    if (results.length === 0) return null;
+    return results[0].previewUrl;
+};
 
 const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongInfo> => {
     const response = await axios.get(songInfoUrl);
@@ -30,29 +45,28 @@ const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongIn
     const paragraphs = kashiHTML.split('<br><br>').map(paragraph => {
         return paragraph.replace(/<br>/g, '\n').replace(/　/g, ' ');
     });
-    console.log(paragraphs);
     const matchingParagraphs = paragraphs.filter(paragraph => paragraph.indexOf(keyword) !== -1);
-    console.log(matchingParagraphs);
     const formattedMathingParagraphs = matchingParagraphs.map(paragraph => {
         return paragraph.replace(new RegExp(keyword, 'g'), ' *$&* ');
     });
+    const audioUrl = await getAudioUrl(title, artist);
+    
     return {
         phrase: keyword,
         paragraph: formattedMathingParagraphs[0], // とりあえず1つだけ出すことにする
         utaNetUrl: songInfoUrl,
-        title, artist, lyricist, composer
+        title, artist, lyricist, composer, audioUrl,
     };
 };
 
 const search = async (keyword: string): Promise<SongInfo | null> => {
     const utaNetHost = 'https://www.uta-net.com';
     const searchPageUrl = `${utaNetHost}/user/index_search/search2.html`;
-    console.log(keyword.replace(/ /g, '　'))
     const response = await axios.get(searchPageUrl, {
         params: {
             md: 'Kashi', // 歌詞検索
             st: 'Title1', // タイトル昇順ソート。アレンジ曲などが存在する場合、最も短い曲名を選びたいため。
-            kw: keyword.replace(/ /g, '　'),
+            kw: keyword,
         }
     });
     const source = response.data;
@@ -66,11 +80,6 @@ const search = async (keyword: string): Promise<SongInfo | null> => {
         return songInfo;
     }
 };
-
-(async () => {
-    const result = await search('作りましょう 作りましょう');
-    console.log(result);
-})();
 
 export default async ({rtmClient, webClient}: SlackInterface) => {
     rtmClient.on('message', async message => {
@@ -91,6 +100,35 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
                 reply_broadcast: true,
             };
             if (songInfo) {
+                const fields = [
+                    {
+                        "title": "曲名",
+                        "value": songInfo.title,
+                        "short": true
+                    },
+                    {
+                        "title": "歌手",
+                        "value": songInfo.artist,
+                        "short": true
+                    },
+                    {
+                        "title": "作詞",
+                        "value": songInfo.lyricist,
+                        "short": true
+                    },
+                    {
+                        "title": "作曲",
+                        "value": songInfo.composer,
+                        "short": true
+                    },
+                ];
+                if (songInfo.audioUrl) {
+                    fields.push({
+                        "title": "試聴リンク",
+                        "value": songInfo.audioUrl,
+                        "short": false
+                    });
+                }
                 await webClient.chat.postMessage({
                     ...defaultResponseFormat,
                     text: songInfo.paragraph,
@@ -98,28 +136,7 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
                         {
                             title: '歌詞 - 歌ネット',
                             title_link: songInfo.utaNetUrl,
-                            fields: [
-                                {
-                                    "title": "曲名",
-                                    "value": songInfo.title,
-                                    "short": true
-                                },
-                                {
-                                    "title": "歌手",
-                                    "value": songInfo.artist,
-                                    "short": true
-                                },
-                                {
-                                    "title": "作詞",
-                                    "value": songInfo.lyricist,
-                                    "short": true
-                                },
-                                {
-                                    "title": "作曲",
-                                    "value": songInfo.composer,
-                                    "short": true
-                                },
-                            ],
+                            fields: fields,
                         },
                     ],
                 });
