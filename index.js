@@ -20,6 +20,33 @@ try {
 }
 
 const plugins = [
+	require('./mahjong'),
+	require('./pocky'),
+	require('./emoji-notifier'),
+	require('./sushi-bot'),
+	require('./shogi'),
+	require('./tiobot'),
+	require('./checkin'),
+	require('./tahoiya'),
+	require('./channel-notifier'),
+	require('./prime'),
+	require('./dajare'),
+	require('./sunrise'),
+	require('./ahokusa'),
+	...(word2vecInstalled ? [require('./vocabwar')] : []),
+	require('./ricochet-robots'),
+	require('./scrapbox'),
+	require('./slack-log'),
+	require('./welcome'),
+	require('./deploy'),
+	require('./achievements'),
+	require('./mail-hook'),
+	require('./wordhero'),
+	require('./wordhero/crossword'),
+	require('./oauth'),
+	require('./tunnel'),
+	require('./voiperrobot'),
+	require('./atcoder'),
 	require('./lyrics'),
 ];
 
