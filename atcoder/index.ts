@@ -198,6 +198,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						color: getRatingColor(standing ? standing.Rating : null),
 						author_name: `${await getMemberName(user)}: ${standing ? `${standing.Rank}位 (暫定)` : '不参加'}`,
 						author_icon: await getMemberIcon(user),
+						author_link: `https://atcoder.jp/contests/${contest.id}/standings?watching=${user.atcoder}`,
 						text: standing ? Object.entries(standing.TaskResults).filter(([, task]) => task.Status === 1).map(([id, task]) => `[ *${tasks.get(id).Assignment}*${task.Penalty ? ` (${task.Penalty})` : ''} ]`).join(' ') : '',
 						footer: standing ? `${score}点 (最終提出: ${lastSubmission})` : '',
 					};
@@ -259,6 +260,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						color: getRatingColor(result ? result.NewRating : null),
 						author_name: `${await getMemberName(user)}: ${result ? `${result.Place}位` : '不参加'}`,
 						author_icon: await getMemberIcon(user),
+						author_link: `https://atcoder.jp/contests/${contest.id}/standings?watching=${user.atcoder}`,
 						text: result ? [
 							Object.entries(standingMap.get(user).TaskResults).filter(([, task]) => task.Status === 1).map(([id, task]) => `[ *${tasks.get(id).Assignment}*${task.Penalty ? ` (${task.Penalty})` : ''} ]`).join(' '),
 							stats.map(({title, value}) => `*${title}* ${value}`).join(', '),
