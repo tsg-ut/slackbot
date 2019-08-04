@@ -5,7 +5,9 @@ import path from 'path';
 import {RTMClient, WebClient} from '@slack/client';
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
+import {Mutex} from 'async-mutex';
 import {Deferred} from '../lib/utils';
+import {Message} from '../lib/slackTypes';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -13,6 +15,8 @@ interface SlackInterface {
 }
 
 const loadDeferred = new Deferred();
+
+const mutex = new Mutex();
 
 const wordsVersion = '201907260000';
 
@@ -37,6 +41,12 @@ const load = async () => {
 	return loadDeferred.resolve({words});
 };
 
+const startTahoiya = async () => {
+	if (state.phase !== 'waiting') {
+		throw new Error('今たほいや中だよ:imp:');
+	}
+};
+
 module.exports = async ({rtmClient: tsgRtm, webClient: tsgSlack}: SlackInterface) => {
 	const tokensDb = await sqlite.open(path.join(__dirname, '..', 'tokens.sqlite3'));
 	const kmcToken = await tokensDb.get(sql`SELECT * FROM tokens WHERE team_id = ${process.env.KMC_TEAM_ID}`);
@@ -46,5 +56,27 @@ module.exports = async ({rtmClient: tsgRtm, webClient: tsgSlack}: SlackInterface
 	const {team: tsgTeam}: any = await tsgSlack.team.info();
 
 	const {words} = await load();
-	console.log(words);
+
+	const onMessage = (message: Message, team: string) => {
+		if (!message.text || message.subtype !== undefined) {
+			return;
+		}
+
+		const text = message.text.trim();
+
+		if (text === 'たほいや') {
+			mutex.runExclusive(async () => ( 
+				startTahoiya().catch((error) => {
+					error.message;
+				})
+			));
+		}
+	};
+
+	kmcRtm.on('message', (event) => {
+		onMessage(event, 'KMC');
+	});
+	tsgRtm.on('message', (event) => {
+		onMessage(event, 'TSG');
+	});
 };
