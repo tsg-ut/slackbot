@@ -23,7 +23,7 @@ const ojiginekoActivities = [
 module.exports = (clients) => {
 	const { rtmClient: rtm, webClient: slack } = clients;
 
-	schedule.scheduleJob('0 30 * * *', async () => {
+	schedule.scheduleJob('30 * * *', async () => {
 		const ojiginekoActivity = ojiginekoActivities[Math.floor(Math.random() * ojiginekoActivities.length)];
 
 		await slack.chat.postMessage({
