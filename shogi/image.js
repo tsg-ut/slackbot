@@ -33,6 +33,7 @@ module.exports.upload = async (board) => {
 		.raw()
 		.toBuffer();
 
+	const compositeImages = [];
 	for (const y of Array(3).keys()) {
 		for (const x of Array(3).keys()) {
 			const piece = board.get(x + 1, y + 1);
@@ -45,13 +46,11 @@ module.exports.upload = async (board) => {
 				filenameMap[piece.kind]
 			}.png`;
 
-			image = await sharp(image, imageOptions)
-				.overlayWith(path.resolve(__dirname, 'images', filename), {
-					left: Math.floor(319 - 58.5 * x),
-					top: Math.floor(42 + 58.5 * y),
-				})
-				.raw()
-				.toBuffer();
+			compositeImages.push({
+				input: path.resolve(__dirname, 'images', filename),
+				left: Math.floor(319 - 58.5 * x),
+				top: Math.floor(42 + 58.5 * y),
+			});
 		}
 	}
 
@@ -68,17 +67,16 @@ module.exports.upload = async (board) => {
 				continue;
 			}
 
-			image = await sharp(image, imageOptions)
-				.overlayWith(path.resolve(__dirname, 'images', filename), {
-					left: Math.floor(base.x + 45 * x * (color === Color.Black ? 1 : -1)),
-					top: Math.floor(base.y - 50 * y * (color === Color.Black ? 1 : -1)),
-				})
-				.raw()
-				.toBuffer();
+			compositeImages.push({
+				input: path.resolve(__dirname, 'images', filename),
+				left: Math.floor(base.x + 45 * x * (color === Color.Black ? 1 : -1)),
+				top: Math.floor(base.y - 50 * y * (color === Color.Black ? 1 : -1)),
+			});
 		}
 	}
 
 	image = await sharp(image, imageOptions)
+		.composite(compositeImages)
 		.jpeg()
 		.toBuffer();
 
