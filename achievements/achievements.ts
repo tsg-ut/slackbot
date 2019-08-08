@@ -574,6 +574,15 @@ const achievements: Achievement[] = [
 		reaction: 'kurotorianzu',
 		value: 5,
 	},
+	{
+		id: 'reaction-pwn-5',
+		difficulty: 'hard',
+		title: 'pwnpwnpain',
+		condition: '1つのメッセージに対し5人以上から:pwn:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'pwn',
+		value: 5,
+	},
 
 	// sushi-bot
 
