@@ -586,11 +586,20 @@ const achievements: Achievement[] = [
 	{
 		id: 'reaction-coil-5',
 		difficulty: 'hard',
-		title: '1.66レアコイル',
+		title: '1.667レアコイル',
 		condition: '1つのメッセージに対し5人以上から:coil:リアクションをもらう',
 		category: 'reactions',
 		reaction: 'coil',
 		value: 5,
+	},
+	{
+		id: 'reaction-coil-3',
+		difficulty: 'medium',
+		title: 'レアコイル',
+		condition: '1つのメッセージに対し3人以上から:coil:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'coil',
+		value: 3,
 	},
 
 	// sushi-bot
