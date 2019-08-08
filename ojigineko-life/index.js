@@ -49,7 +49,7 @@ module.exports = async (clients) => {
 		await fs.writeFile(statePath, JSON.stringify(state));
 	};
 
-	schedule.scheduleJob('* * * * *', async (date) => {
+	schedule.scheduleJob('30 * * * *', async (date) => {
 		const hour = moment(date).utcOffset(9).hour();
 
 		if (state.isSleeping) {
