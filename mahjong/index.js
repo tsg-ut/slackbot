@@ -5,7 +5,7 @@ const {promisify} = require('util');
 const {chunk, shuffle} = require('lodash');
 const path = require('path');
 const assert = require('assert');
-const {unlock} = require('../achievements/index.ts');
+const {unlock} = require('../achievements');
 const {blockDeploy} = require('../deploy/index.ts');
 
 const calculator = require('./calculator.js');

@@ -5,7 +5,7 @@ const {flatten, maxBy} = require('lodash');
 
 const tokenize = require('./tokenize');
 const {findDajare, listAlternativeReadings} = require('./dajare');
-const {unlock} = require('../achievements/index.ts');
+const {unlock} = require('../achievements');
 
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const slackDecode = (text) => text
