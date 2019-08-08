@@ -583,6 +583,15 @@ const achievements: Achievement[] = [
 		reaction: 'pwn',
 		value: 5,
 	},
+	{
+		id: 'reaction-coil-5',
+		difficulty: 'hard',
+		title: '1.66レアコイル',
+		condition: '1つのメッセージに対し5人以上から:coil:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'coil',
+		value: 5,
+	},
 
 	// sushi-bot
 
