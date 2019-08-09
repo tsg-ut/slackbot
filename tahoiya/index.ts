@@ -8,6 +8,8 @@ import sqlite from 'sqlite';
 import {Mutex} from 'async-mutex';
 import {Deferred} from '../lib/utils';
 import {Message} from '../lib/slackTypes';
+// @ts-ignore
+import logger from '../lib/logger';
 import { MessageChannel } from 'worker_threads';
 
 interface SlackInterface {
@@ -85,16 +87,33 @@ class Tahoiya {
 			channel: process.env.CHANNEL_SANDBOX,
 			username: 'tahoiya',
 			icon_emoji: ':open_book:',
-			text: 'たほいやを始めるよ〜',
-			attachments: [{
-				text: '',
-				actions: [{
-					name: 'participate',
-					text: '参加する',
-					type: 'button',
-					value: 'idhogehoge',
-				}],
-			}],
+			text: '',
+			blocks: [
+				{
+					type: 'section',
+					text: {
+						type: 'mrkdwn',
+						text: 'たのしい＊たほいや＊を始めるよ〜👏👏👏',
+					},
+				},
+				{type: 'divider'},
+				{
+					type: 'section',
+					text: {
+						type: 'mrkdwn',
+						text: '🍣 お題＊「ちぇぼくさる」＊'
+					},
+					accessory: {
+						type: 'button',
+						text: {
+							type: 'plain_text',
+							emoji: true,
+							text: '登録する',
+						},
+						value: 'add_meaning',
+					},
+				},
+			],
 		});
 	}
 
@@ -132,10 +151,15 @@ module.exports = async ({rtmClient: tsgRtm, webClient: tsgSlack}: SlackInterface
 		}
 	};
 
-	kmcRtm.on('message', (event) => {
-		onMessage(event, 'KMC');
-	});
 	tsgRtm.on('message', (event) => {
 		onMessage(event, 'TSG');
 	});
+
+	if (kmcToken === undefined) {
+		logger.info('Disabling KMC tahoiya because token is not found');
+	} else {
+		kmcRtm.on('message', (event) => {
+			onMessage(event, 'KMC');
+		});
+	}
 };
