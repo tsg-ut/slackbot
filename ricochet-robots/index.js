@@ -5,7 +5,7 @@ const board = require('./board.js');
 const moment = require('moment');
 const querystring = require('querystring');
 const {Mutex} = require('async-mutex');
-const {unlock} = require('../achievements/index.ts');
+const {unlock} = require('../achievements');
 
 function getTimeLink(time){
 	const text = moment(time).utcOffset('+0900').format('HH:mm:ss');
