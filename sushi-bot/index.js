@@ -228,6 +228,22 @@ module.exports = (clients) => {
 				}
 			}
 		}
+
+		{
+			if(text.replace(/[ \t\n　]/gi,'').
+				match(/^(あ|:(ahokusa|hokusai)-top-right:)+(さ|:(ahokusa|hokusai)-bottom-left:)(!|！|:exclamation:)*$/)
+			){
+				const hour = moment().utcOffset('+0900').hour();
+				let name = "0ten";
+				if(5 <= hour && hour < 10){
+					name = "100";
+				}
+				else if(10 <= hour && hour < 12){
+					name = "95";
+				}
+				slack.reactions.add({name: name, channel, timestamp});
+			}
+		}
 	});
 
 	schedule.scheduleJob('0 19 * * 0', async () => {
