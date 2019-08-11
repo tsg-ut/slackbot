@@ -230,8 +230,10 @@ module.exports = (clients) => {
 		}
 
 		{
-			if(text.replace(/[ \t\n　]/gi,'').
-				match(/^(あ|:(ahokusa|hokusai)-top-right:)+(さ|:(ahokusa|hokusai)-bottom-left:)(!|！|:exclamation:)*$/)
+			if(
+				text
+				.replace(/\s/gi,'')
+				.match(/^(あ|:(ahokusa|hokusai)-top-right:)+(さ|:(ahokusa|hokusai)-bottom-left:)(!|！|:exclamation:)*$/)
 			){
 				const hour = moment().utcOffset('+0900').hour();
 				let name = "0ten";
