@@ -15,6 +15,7 @@ import { MessageChannel } from 'worker_threads';
 interface SlackInterface {
 	rtmClient: RTMClient,
 	webClient: WebClient,
+	messageClient: any,
 }
 
 interface Game {
@@ -36,13 +37,15 @@ class Tahoiya {
 	tsgSlack: WebClient;
 	kmcRtm: RTMClient;
 	kmcSlack: WebClient;
+	slackInteractions: any;
 	state: State;
 
-	constructor({tsgRtm, tsgSlack, kmcRtm, kmcSlack}: {tsgRtm: RTMClient, tsgSlack: WebClient, kmcRtm: RTMClient, kmcSlack: WebClient}) {
+	constructor({tsgRtm, tsgSlack, kmcRtm, kmcSlack, slackInteractions}: {tsgRtm: RTMClient, tsgSlack: WebClient, kmcRtm: RTMClient, kmcSlack: WebClient, slackInteractions: any}) {
 		this.tsgRtm = tsgRtm;
 		this.tsgSlack = tsgSlack;
 		this.kmcRtm = kmcRtm;
 		this.kmcSlack = kmcSlack;
+		this.slackInteractions = slackInteractions;
 
 		this.state = {
 			games: [],
@@ -75,6 +78,13 @@ class Tahoiya {
 			Object.assign(this.state, JSON.parse(stateData.toString()));
 		}
 
+		this.slackInteractions.action({
+			type: 'button',
+			blockId: 'tahoiya_add_meaning',
+		}, (payload: any, respond: any) => {
+			console.log(payload);
+		});
+
 		return loadDeferred.resolve({words});
 	}
 
@@ -99,6 +109,7 @@ class Tahoiya {
 				{type: 'divider'},
 				{
 					type: 'section',
+					block_id: 'tahoiya_add_meaning',
 					text: {
 						type: 'mrkdwn',
 						text: '🍣 お題＊「ちぇぼくさる」＊'
@@ -110,7 +121,7 @@ class Tahoiya {
 							emoji: true,
 							text: '登録する',
 						},
-						value: 'add_meaning',
+						value: 'ちぇぼくさる',
 					},
 				},
 			],
@@ -124,7 +135,7 @@ class Tahoiya {
 	}
 }
 
-module.exports = async ({rtmClient: tsgRtm, webClient: tsgSlack}: SlackInterface) => {
+module.exports = async ({rtmClient: tsgRtm, webClient: tsgSlack, messageClient: slackInteractions}: SlackInterface) => {
 	const tokensDb = await sqlite.open(path.join(__dirname, '..', 'tokens.sqlite3'));
 	const kmcToken = await tokensDb.get(sql`SELECT * FROM tokens WHERE team_id = ${process.env.KMC_TEAM_ID}`);
 	const kmcSlack = kmcToken === undefined ? null : new WebClient(kmcToken.bot_access_token);
@@ -132,13 +143,14 @@ module.exports = async ({rtmClient: tsgRtm, webClient: tsgSlack}: SlackInterface
 
 	const {team: tsgTeam}: any = await tsgSlack.team.info();
 
-	const tahoiya = new Tahoiya({tsgSlack, tsgRtm, kmcSlack, kmcRtm});
+	const tahoiya = new Tahoiya({tsgSlack, tsgRtm, kmcSlack, kmcRtm, slackInteractions});
 	await tahoiya.initialize();
 
 	const onMessage = (message: Message, team: string) => {
 		if (!message.text || message.subtype !== undefined) {
 			return;
 		}
+		
 
 		const text = message.text.trim();
 
