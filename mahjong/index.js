@@ -5,7 +5,7 @@ const {promisify} = require('util');
 const {chunk, shuffle} = require('lodash');
 const path = require('path');
 const assert = require('assert');
-const {unlock} = require('../achievements/index.ts');
+const {unlock} = require('../achievements');
 const {blockDeploy} = require('../deploy/index.ts');
 
 const calculator = require('./calculator.js');
@@ -343,7 +343,10 @@ module.exports = (clients) => {
 
 					state.手牌 = state.手牌.slice(0, -1);
 				} else {
-					const 牌Name = text.slice(1);
+					let 牌Name = text.slice(1);
+					if (牌Name === ':nanyanen-nannanode:' || 牌Name === ':ナンやねん-ナンなので:') {
+						牌Name = '南';
+					}
 					if (!牌Names.includes(牌Name)) {
 						perdon();
 						return;

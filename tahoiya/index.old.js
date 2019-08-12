@@ -21,7 +21,7 @@ const {default: Queue} = require('p-queue');
 const nodePersist = require('node-persist');
 const rouge = require('rouge');
 const getReading = require('../lib/getReading.js');
-const {unlock, increment} = require('../achievements/index.ts');
+const {unlock, increment} = require('../achievements');
 
 const {
 	getPageTitle,

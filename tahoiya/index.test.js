@@ -2,7 +2,7 @@
 
 jest.mock('download');
 jest.mock('../lib/getReading.js');
-jest.mock('../achievements/index.ts');
+jest.mock('../achievements');
 
 const download = require('download');
 

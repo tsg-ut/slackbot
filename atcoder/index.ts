@@ -1,6 +1,7 @@
 import {promises as fs, constants} from 'fs';
 import path from 'path';
 import axios from 'axios';
+import qs from 'querystring';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
 import scrapeIt from 'scrape-it';
@@ -178,7 +179,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		const userStandings = state.users.map(({atcoder, slack}) => {
 			const standing = standings.StandingsData.find(({UserName, UserScreenName}) => UserName === atcoder || UserScreenName === atcoder);
-			return {user: slack, standing};
+			return {user: slack, atcoder, standing};
 		}).sort((a, b) => (a.standing ? a.standing.Rank : 1e9) - (b.standing ? b.standing.Rank : 1e9));
 		const tasks = new Map(standings.TaskInfo.map((task) => [task.TaskScreenName, task]));
 
@@ -190,7 +191,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				*${contest.title}* お疲れさまでした！
 			`,
 			attachments: [
-				...(await Promise.all(userStandings.map(async ({user, standing}) => {
+				...(await Promise.all(userStandings.map(async ({user, atcoder, standing}) => {
 					const score = standing && (standing.TotalResult.Score / 100);
 					const lastSubmission = standing && formatTime(standing.TotalResult.Elapsed / 1000000000);
 
@@ -198,6 +199,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						color: getRatingColor(standing ? standing.Rating : null),
 						author_name: `${await getMemberName(user)}: ${standing ? `${standing.Rank}位 (暫定)` : '不参加'}`,
 						author_icon: await getMemberIcon(user),
+						author_link: `https://atcoder.jp/contests/${contest.id}/standings?${qs.encode({watching: atcoder})}`,
 						text: standing ? Object.entries(standing.TaskResults).filter(([, task]) => task.Status === 1).map(([id, task]) => `[ *${tasks.get(id).Assignment}*${task.Penalty ? ` (${task.Penalty})` : ''} ]`).join(' ') : '',
 						footer: standing ? `${score}点 (最終提出: ${lastSubmission})` : '',
 					};
@@ -223,7 +225,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		const userResults = state.users.map(({atcoder, slack}) => {
 			const result = results.find(({UserName, UserScreenName}) => UserName === atcoder || UserScreenName === atcoder);
-			return {user: slack, result};
+			return {user: slack, atcoder, result};
 		}).sort((a, b) => (a.result ? a.result.Place : 1e9) - (b.result ? b.result.Place : 1e9));
 
 		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`);
@@ -241,7 +243,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				*${contest.title}* の順位が確定したよ～:checkered_flag:
 			`,
 			attachments: [
-				...(await Promise.all(userResults.map(async ({user, result}) => {
+				...(await Promise.all(userResults.map(async ({user, atcoder, result}) => {
 					const score = result && standingMap.get(user).TotalResult.Score / 100;
 					const lastSubmission = result && formatTime(standingMap.get(user).TotalResult.Elapsed / 1000000000);
 					const stats = (result && result.IsRated) ? [
@@ -259,6 +261,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						color: getRatingColor(result ? result.NewRating : null),
 						author_name: `${await getMemberName(user)}: ${result ? `${result.Place}位` : '不参加'}`,
 						author_icon: await getMemberIcon(user),
+						author_link: `https://atcoder.jp/contests/${contest.id}/standings?${qs.encode({watching: atcoder})}`,
 						text: result ? [
 							Object.entries(standingMap.get(user).TaskResults).filter(([, task]) => task.Status === 1).map(([id, task]) => `[ *${tasks.get(id).Assignment}*${task.Penalty ? ` (${task.Penalty})` : ''} ]`).join(' '),
 							stats.map(({title, value}) => `*${title}* ${value}`).join(', '),
