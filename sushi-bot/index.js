@@ -230,11 +230,15 @@ module.exports = (clients) => {
 		}
 
 		{
-			if(
-				text
-				.replace(/\s/gi,'')
-				.match(/^(あ|:(ahokusa|hokusai)-top-right:)+(さ|:(ahokusa|hokusai)-bottom-left:)(!|！|:exclamation:)*$/)
-			){
+			const rtext = text.
+				replace(/\s/gi,'').
+				replace(/さ|:(ahokusa|hokusai)-bottom-left:/gi,'さ').
+				replace(/あ|:(ahokusa|hokusai)-top-right:/gi,'あ').
+				replace(/!|！|:exclamation:|:heavy_exclamation_mark:|:grey_exclamation:|:bangbang:/gi,'！').
+				replace(/sa/gi,'さ').
+				replace(/a/gi,'あ');
+
+			if(rtext.match(/^あ+さ！*$/)){
 				const hour = moment().utcOffset('+0900').hour();
 				let name = "0ten";
 				if(5 <= hour && hour < 10){
