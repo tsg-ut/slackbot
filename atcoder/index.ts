@@ -284,14 +284,16 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 
 		for (const {user, result} of userResults) {
-			const rank = result.Place.toString();
-			const frequency = prime.getFrequency(result.Place);
-			const isPrime = frequency.length === 1 && frequency[0].times === 1 && result.Place >= 2;
-			if (rank.length >= 3 && new Set(rank.split('')).size === 1) {
-				await unlock(user, 'atcoder-repdigit');
-			}
-			if (isPrime) {
-				await unlock(user, 'atcoder-prime');
+			if (result) {
+				const rank = result.Place.toString();
+				const frequency = prime.getFrequency(result.Place);
+				const isPrime = frequency.length === 1 && frequency[0].times === 1 && result.Place >= 2;
+				if (rank.length >= 3 && new Set(rank.split('')).size === 1) {
+					await unlock(user, 'atcoder-repdigit');
+				}
+				if (isPrime) {
+					await unlock(user, 'atcoder-prime');
+				}
 			}
 			if (result && result.IsRated) {
 				const standing = standingMap.get(user);
