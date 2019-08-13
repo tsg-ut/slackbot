@@ -6,9 +6,12 @@ import qs from 'querystring';
 import {stripIndent} from 'common-tags';
 import scrapeIt from 'scrape-it';
 // @ts-ignore
+import prime from 'primes-and-factors';
+// @ts-ignore
 import logger from '../lib/logger.js';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {SlackInterface, Standings, Results} from './types';
+import {unlock} from '../achievements';
 
 const getRatingColor = (rating: number | null) => {
 	// gray
@@ -183,7 +186,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}).sort((a, b) => (a.standing ? a.standing.Rank : 1e9) - (b.standing ? b.standing.Rank : 1e9));
 		const tasks = new Map(standings.TaskInfo.map((task) => [task.TaskScreenName, task]));
 
-		slack.chat.postMessage({
+		await slack.chat.postMessage({
 			username: 'atcoder',
 			icon_emoji: ':atcoder:',
 			channel: process.env.CHANNEL_PROCON,
@@ -210,6 +213,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				},
 			],
 		});
+
+		for (const {user} of userStandings) {
+			await unlock(user, 'atcoder-participate');
+		}
 	};
 
 	const postResult = async (id: string) => {
@@ -235,7 +242,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}));
 		const tasks = new Map(standings.TaskInfo.map((task) => [task.TaskScreenName, task]));
 
-		slack.chat.postMessage({
+		await slack.chat.postMessage({
 			username: 'atcoder',
 			icon_emoji: ':atcoder:',
 			channel: process.env.CHANNEL_PROCON,
@@ -275,6 +282,45 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				},
 			],
 		});
+
+		for (const {user, result} of userResults) {
+			const rank = result.Place.toString();
+			const frequency = prime.getFrequency(result.Place);
+			const isPrime = frequency.length === 1 && frequency[0].times === 1 && result.Place >= 2;
+			if (rank.length >= 3 && new Set(rank.split('')).size === 1) {
+				await unlock(user, 'atcoder-repdigit');
+			}
+			if (isPrime) {
+				await unlock(user, 'atcoder-prime');
+			}
+			if (result && result.IsRated) {
+				const standing = standingMap.get(user);
+				if (result.NewRating - result.OldRating > 0) {
+					await unlock(user, 'atcoder-rating-plus');
+				}
+				if (result.NewRating - result.OldRating >= 50) {
+					await unlock(user, 'atcoder-rating-plus-50');
+				}
+				if (result.NewRating - result.OldRating < 0) {
+					await unlock(user, 'atcoder-rating-minus');
+				}
+				if (result.NewRating - result.OldRating < -50) {
+					await unlock(user, 'atcoder-rating-minus-50');
+				}
+				if (result.NewRating >= 2400) {
+					await unlock(user, 'atcoder-rating-over-2400');
+				}
+				if (standings.TaskInfo.every((task) => (
+					standing.TaskResults[task.TaskScreenName] &&
+					standing.TaskResults[task.TaskScreenName].Score > 0
+				))) {
+					await unlock(user, 'atcoder-all-solve');
+				}
+				if (Object.values(standing.TaskResults).every((result) => result.Score === 0)) {
+					await unlock(user, 'atcoder-no-solve');
+				}
+			}
+		}
 	}
 
 	rtm.on('message', async (message) => {
