@@ -82,6 +82,42 @@ class Tahoiya {
 			type: 'button',
 			blockId: 'tahoiya_add_meaning',
 		}, (payload: any, respond: any) => {
+			const [action] = payload.actions;
+
+			this.tsgSlack.dialog.open({
+				trigger_id: payload.trigger_id,
+				dialog: {
+					callback_id: 'tahoiya_add_meaning_dialog',
+					title: `「${action.value}」の意味を考えてね！`,
+					submit_label: '登録する',
+					notify_on_cancel: true,
+					state: action.value,
+					elements: [
+						{
+							type: 'text',
+							label: `「${action.value}」の意味`,
+							name: 'meaning',
+							min_length: 3,
+							value: 'ほげぷがぴよぴよ',
+							hint: '後から変更できます',
+						},
+						{
+							type: 'textarea',
+							label: 'コメント',
+							name: 'comment',
+							optional: true,
+							value: 'ほげぷがぴよぴよ',
+							hint: '後から変更できます',
+						},
+					],
+				},
+			});
+		});
+
+		this.slackInteractions.action({
+			type: 'dialog_submission',
+			callbackId: 'tahoiya_add_meaning_dialog',
+		}, (payload: any, respond: any) => {
 			console.log(payload);
 		});
 
