@@ -13,6 +13,15 @@ import {Deferred} from '../lib/utils';
 import {Message} from '../lib/slackTypes';
 // @ts-ignore
 import logger from '../lib/logger';
+import {
+	getPageTitle,
+	getWordUrl,
+	getIconUrl,
+	getTimeLink,
+	getMeaning,
+	getCandidateWords,
+	normalizeMeaning,
+} from './lib';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -128,9 +137,9 @@ class Tahoiya {
 		this.slackInteractions.action({
 			type: 'button',
 			blockId: /^start_tahoiya/,
-		}, (payload: any) => {
+		}, (payload: any, respond: any) => {
 			const [action] = payload.actions;
-			this.startTahoiya(action.value);
+			this.startTahoiya(action.value, respond);
 		});
 
 		loadDeferred.resolve();
@@ -193,8 +202,18 @@ class Tahoiya {
 		});
 	}
 
-	async startTahoiya(word: string) {
-		console.log(word);
+	async startTahoiya(word: string, respond: any) {
+		if (this.state.games.length > 2) {
+			respond({
+				text: 'たほいやを同時に3つ以上開催することはできないよ:imp:',
+				response_type: 'ephemeral',
+				replace_original: false,
+			});
+			return;
+		}
+
+		const end = Date.now() + 3 * 60 * 1000;
+
 		this.tsgSlack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			username: 'tahoiya',
@@ -207,6 +226,8 @@ class Tahoiya {
 						type: 'mrkdwn',
 						text: stripIndent`
 							お題を＊「${word}」＊に設定したよ:v:
+							参加者は5分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
+							終了予定時刻: ${getTimeLink(end)}
 						`,
 					},
 				},
@@ -257,7 +278,7 @@ module.exports = async ({rtmClient: tsgRtm, webClient: tsgSlack, messageClient: 
 
 		const text = message.text.trim();
 
-		if (text === 'たほいや2.0') {
+		if (text === 'たほいや') {
 			mutex.runExclusive(async () => ( 
 				tahoiya.generateCandidates().catch((error) => {
 					error.message;

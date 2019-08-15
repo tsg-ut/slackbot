@@ -1,18 +1,21 @@
-const path = require('path');
-const fs = require('fs');
-const {promisify} = require('util');
-const {hiraganize} = require('japanese');
-const moment = require('moment');
-const axios = require('axios');
-const download = require('download');
-const querystring = require('querystring');
-const assert = require('assert');
-const last = require('lodash/last');
-const shuffle = require('lodash/shuffle');
-const get = require('lodash/get');
-const logger = require('../lib/logger.js');
+import path from 'path';
+import fs from 'fs';
+import {promisify} from 'util';
+// @ts-ignore
+import {hiraganize} from 'japanese';
+import moment from 'moment';
+import axios from 'axios';
+// @ts-ignore
+import download from 'download';
+import querystring from 'querystring';
+import assert from 'assert';
+import last from 'lodash/last';
+import shuffle from 'lodash/shuffle';
+import get from 'lodash/get';
+// @ts-ignore
+import logger from '../lib/logger.js';
 
-module.exports.getPageTitle = (url) => {
+export const getPageTitle = (url: string) => {
 	const urlTitle = decodeURI(url.match(/([^/]+)$/)[1]);
 
 	if (url.startsWith('https://ja.wikipedia.org')) {
@@ -44,7 +47,7 @@ module.exports.getPageTitle = (url) => {
 	return `${urlTitle} - ニコニコ大百科`;
 };
 
-module.exports.getWordUrl = (word, source, id) => {
+export const getWordUrl = (word: string, source: string, id: string) => {
 	if (source === 'wikipedia') {
 		return `https://ja.wikipedia.org/wiki/${encodeURIComponent(word)}`;
 	}
@@ -73,7 +76,7 @@ module.exports.getWordUrl = (word, source, id) => {
 	return `http://dic.nicovideo.jp/a/${encodeURIComponent(word)}`;
 };
 
-module.exports.getIconUrl = (source) => {
+export const getIconUrl = (source: string) => {
 	if (source === 'wikipedia') {
 		return 'https://ja.wikipedia.org/static/favicon/wikipedia.ico';
 	}
@@ -102,7 +105,7 @@ module.exports.getIconUrl = (source) => {
 	return 'http://dic.nicovideo.jp/favicon.ico';
 };
 
-module.exports.getTimeLink = (time) => {
+export const getTimeLink = (time: number) => {
 	const text = moment(time).utcOffset('+0900').format('HH:mm:ss');
 	const url = `https://www.timeanddate.com/countdown/generic?${querystring.stringify({
 		iso: moment(time).utcOffset('+0900').format('YYYYMMDDTHHmmss'),
@@ -114,7 +117,7 @@ module.exports.getTimeLink = (time) => {
 	return `<${url}|${text}>`;
 };
 
-const normalizeMeaning = (input) => {
+export const normalizeMeaning = (input: string) => {
 	let meaning = input;
 	meaning = meaning.replace(/== (.+?) ==/g, '$1');
 	meaning = meaning.replace(/\(.+?\)/g, '');
@@ -128,14 +131,12 @@ const normalizeMeaning = (input) => {
 	return meaning.trim();
 };
 
-module.exports.normalizeMeaning = normalizeMeaning;
-
-module.exports.getMeaning = async ([word, , source, rawMeaning]) => {
+export const getMeaning = async ([word, , source, rawMeaning]: string[]) => {
 	if (source !== 'wikipedia' && source !== 'wiktionary') {
 		return rawMeaning;
 	}
 
-	let wikitext = null;
+	let wikitext: string = null;
 	let exsentences = 0;
 
 	await axios.post(
@@ -211,7 +212,7 @@ module.exports.getMeaning = async ([word, , source, rawMeaning]) => {
 	return meaning;
 };
 
-module.exports.getCandidateWords = async () => {
+export const getCandidateWords = async () => {
 	const [
 		wikipediaText,
 		wiktionaryText,
@@ -220,7 +221,7 @@ module.exports.getCandidateWords = async () => {
 		binaryText,
 		ewordsText,
 		fideliText,
-	] = await Promise.all([
+	]: string[] = await Promise.all([
 		['wikipedia.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/wikipedia.txt'],
 		['wiktionary.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/wiktionary.txt'],
 		['nicopedia.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/nicopedia.txt'],
