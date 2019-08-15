@@ -6,11 +6,13 @@ import {RTMClient, WebClient} from '@slack/client';
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
 import {Mutex} from 'async-mutex';
+import {sampleSize, chunk} from 'lodash';
+// @ts-ignore
+import {stripIndent} from 'common-tags';
 import {Deferred} from '../lib/utils';
 import {Message} from '../lib/slackTypes';
 // @ts-ignore
 import logger from '../lib/logger';
-import { MessageChannel } from 'worker_threads';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -39,6 +41,7 @@ class Tahoiya {
 	kmcSlack: WebClient;
 	slackInteractions: any;
 	state: State;
+	words: string[];
 
 	constructor({tsgRtm, tsgSlack, kmcRtm, kmcSlack, slackInteractions}: {tsgRtm: RTMClient, tsgSlack: WebClient, kmcRtm: RTMClient, kmcSlack: WebClient, slackInteractions: any}) {
 		this.tsgRtm = tsgRtm;
@@ -52,6 +55,7 @@ class Tahoiya {
 		};
 	}
 
+	// TODO: lock
 	async initialize() {
 		if (loadDeferred.isResolved) {
 			return loadDeferred.promise;
@@ -69,7 +73,7 @@ class Tahoiya {
 		}
 
 		const wordsBuffer = await fs.readFile(path.resolve(__dirname, `words.${wordsVersion}.txt`));
-		const words = wordsBuffer.toString().split('\n').filter((l) => l.length > 0);
+		this.words = wordsBuffer.toString().split('\n').filter((l) => l.length > 0);
 
 		const statePath = path.resolve(__dirname, 'state.json');
 		const stateExists = await fs.access(statePath, constants.F_OK).then(() => true).catch(() => false);
@@ -121,13 +125,23 @@ class Tahoiya {
 			console.log(payload);
 		});
 
-		return loadDeferred.resolve({words});
+		this.slackInteractions.action({
+			type: 'button',
+			blockId: /^start_tahoiya/,
+		}, (payload: any) => {
+			const [action] = payload.actions;
+			this.startTahoiya(action.value);
+		});
+
+		loadDeferred.resolve();
 	}
 
-	async startTahoiya() {
+	async generateCandidates() {
 		if (this.state.games.length > 2) {
 			throw new Error('たほいやを同時に3つ以上開催することはできないよ:imp:');
 		}
+
+		const candidates = sampleSize(this.words, 20);
 
 		this.tsgSlack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
@@ -139,7 +153,61 @@ class Tahoiya {
 					type: 'section',
 					text: {
 						type: 'mrkdwn',
-						text: 'たのしい＊たほいや＊を始めるよ〜👏👏👏',
+						text: stripIndent`
+							たのしい＊たほいや＊を始めるよ〜👏👏👏
+							下のリストの中からお題にする単語を選んでクリックしてね:wink:
+						`,
+					},
+				},
+				...(chunk(candidates, 5).map((candidateGroup, index) => ({
+					type: 'actions',
+					block_id: `start_tahoiya_${index}`,
+					elements: candidateGroup.map((candidate) => ({
+						type: 'button',
+						text: {
+							type: 'plain_text',
+							text: candidate,
+						},
+						value: candidate,
+						confirm: {
+							title: {
+								type: 'plain_text',
+								text: 'たほいや開始確認',
+							},
+							text: {
+								type: 'plain_text',
+								text: `お題を「${candidate}」にセットしますか?`,
+							},
+							confirm: {
+								type: 'plain_text',
+								text: 'いいよ',
+							},
+							deny: {
+								type: 'plain_text',
+								text: 'だめ',
+							},
+						},
+					})),
+				}))),
+			],
+		});
+	}
+
+	async startTahoiya(word: string) {
+		console.log(word);
+		this.tsgSlack.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			username: 'tahoiya',
+			icon_emoji: ':open_book:',
+			text: '',
+			blocks: [
+				{
+					type: 'section',
+					text: {
+						type: 'mrkdwn',
+						text: stripIndent`
+							お題を＊「${word}」＊に設定したよ:v:
+						`,
 					},
 				},
 				{type: 'divider'},
@@ -148,16 +216,15 @@ class Tahoiya {
 					block_id: 'tahoiya_add_meaning',
 					text: {
 						type: 'mrkdwn',
-						text: '🍣 お題＊「ちぇぼくさる」＊'
+						text: `🍣 お題＊「${word}」＊`
 					},
 					accessory: {
 						type: 'button',
 						text: {
 							type: 'plain_text',
-							emoji: true,
 							text: '登録する',
 						},
-						value: 'ちぇぼくさる',
+						value: word,
 					},
 				},
 			],
@@ -190,9 +257,9 @@ module.exports = async ({rtmClient: tsgRtm, webClient: tsgSlack, messageClient: 
 
 		const text = message.text.trim();
 
-		if (text === 'たほいや') {
+		if (text === 'たほいや2.0') {
 			mutex.runExclusive(async () => ( 
-				tahoiya.startTahoiya().catch((error) => {
+				tahoiya.generateCandidates().catch((error) => {
 					error.message;
 				})
 			));
