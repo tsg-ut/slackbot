@@ -30,10 +30,54 @@ interface SlackInterface {
 	messageClient: any,
 }
 
+interface UserChoice {
+	type: 'user',
+	user: string,
+}
+
+interface DummyChoice {
+	type: 'dummy',
+	source: string,
+	word: string,
+	text: string,
+}
+
+interface CorrectChoice {
+	type: 'correct',
+}
+
+interface WordRecord {
+	ruby: string,
+	word: string,
+	description: string,
+	source: string,
+}
+
 interface Game {
 	time: number,
 	duration: number,
-	word: string,
+	theme: {
+		ruby: string,
+		word: string,
+		description: string,
+		source: string,
+	},
+	meanings: {
+		[user: string]: {
+			text: string,
+			comment: string,
+		},
+	},
+	bettings: {
+		[user: string]: {
+			choice: number,
+			coins: number,
+			comment: string,
+		},
+	},
+	choices: (UserChoice | DummyChoice | CorrectChoice)[],
+	author: string,
+	isDaily: boolean,
 }
 
 interface State {
@@ -54,6 +98,7 @@ class Tahoiya {
 	slackInteractions: any;
 	state: State;
 	words: string[];
+	db: sqlite.Database;
 
 	constructor({tsgRtm, tsgSlack, kmcRtm, kmcSlack, slackInteractions}: {tsgRtm: RTMClient, tsgSlack: WebClient, kmcRtm: RTMClient, kmcSlack: WebClient, slackInteractions: any}) {
 		this.tsgRtm = tsgRtm;
@@ -87,6 +132,8 @@ class Tahoiya {
 		const wordsBuffer = await fs.readFile(path.resolve(__dirname, `words.${wordsVersion}.txt`));
 		this.words = wordsBuffer.toString().split('\n').filter((l) => l.length > 0);
 
+		this.db = await sqlite.open(path.join(__dirname, `words.${wordsVersion}.sqlite3`));
+
 		const statePath = path.resolve(__dirname, 'state.json');
 		const stateExists = await fs.access(statePath, constants.F_OK).then(() => true).catch(() => false);
 		if (stateExists) {
@@ -99,42 +146,29 @@ class Tahoiya {
 			blockId: /^tahoiya_add_meaning/,
 		}, (payload: any, respond: any) => {
 			const [action] = payload.actions;
-
-			this.tsgSlack.dialog.open({
-				trigger_id: payload.trigger_id,
-				dialog: {
-					callback_id: 'tahoiya_add_meaning_dialog',
-					title: `「${action.value}」の意味を考えてね！`,
-					submit_label: '登録する',
-					notify_on_cancel: true,
-					state: action.value,
-					elements: [
-						{
-							type: 'text',
-							label: `「${action.value}」の意味`,
-							name: 'meaning',
-							min_length: 3,
-							value: 'ほげぷがぴよぴよ',
-							hint: '後から変更できます',
-						},
-						{
-							type: 'textarea',
-							label: 'コメント',
-							name: 'comment',
-							optional: true,
-							value: 'ほげぷがぴよぴよ',
-							hint: '後から変更できます',
-						},
-					],
-				},
-			});
+			mutex.runExclusive(() => ( 
+				this.showMeaningDialog({
+					triggerId: payload.trigger_id,
+					word: action.value,
+					user: payload.user.id,
+					respond,
+				})
+			));
 		});
 
 		this.slackInteractions.action({
 			type: 'dialog_submission',
 			callbackId: 'tahoiya_add_meaning_dialog',
 		}, (payload: any, respond: any) => {
-			console.log(payload);
+			mutex.runExclusive(() => ( 
+				this.registerMeaning({
+					word: payload.state,
+					user: payload.user.id,
+					text: payload.submission.meaning,
+					comment: payload.submission.comment,
+					respond,
+				})
+			));
 		});
 
 		this.slackInteractions.action({
@@ -142,9 +176,13 @@ class Tahoiya {
 			blockId: /^start_tahoiya/,
 		}, (payload: any, respond: any) => {
 			const [action] = payload.actions;
-			mutex.runExclusive(async () => {
-				this.startTahoiya(action.value, respond);
-			});
+			mutex.runExclusive(() => ( 
+				this.startTahoiya({
+					word: action.value,
+					respond,
+					user: payload.user.id,
+				})
+			));
 		});
 
 		loadDeferred.resolve();
@@ -157,7 +195,7 @@ class Tahoiya {
 
 		const candidates = sampleSize(this.words, 20);
 
-		this.tsgSlack.chat.postMessage({
+		return this.tsgSlack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			username: 'tahoiya',
 			icon_emoji: ':open_book:',
@@ -203,7 +241,7 @@ class Tahoiya {
 		});
 	}
 
-	async startTahoiya(word: string, respond: any) {
+	async startTahoiya({word, respond, user}: {word: string, respond: any, user: string}) {
 		if (this.state.games.length > 2) {
 			respond({
 				text: 'たほいやを同時に3つ以上開催することはできないよ:imp:',
@@ -213,18 +251,31 @@ class Tahoiya {
 			return;
 		}
 
+		const theme: WordRecord = await this.db.get(sql`
+			SELECT *
+			FROM words
+			WHERE ruby = ${word}
+			ORDER BY RANDOM()
+			LIMIT 1
+		`);
+
 		const now = Date.now();
-		const game = {
+		const game: Game = {
 			time: now,
 			duration: 5 * 60 * 1000,
-			word,
+			theme,
+			meanings: Object.create(null),
+			bettings: Object.create(null),
+			choices: [],
+			author: user,
+			isDaily: false,
 		};
 
-		this.setState({
+		await this.setState({
 			games: this.state.games.concat([game]),
 		});
 
-		this.tsgSlack.chat.postMessage({
+		return this.tsgSlack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			username: 'tahoiya',
 			icon_emoji: ':open_book:',
@@ -236,7 +287,6 @@ class Tahoiya {
 						type: 'mrkdwn',
 						text: stripIndent`
 							お題を＊「${word}」＊に設定したよ:v:
-							参加者は5分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
 							終了予定時刻: ${getTimeLink(game.time + game.duration)}
 						`,
 					},
@@ -245,6 +295,84 @@ class Tahoiya {
 				...this.getGameBlocks(),
 			],
 		});
+	}
+
+	async showMeaningDialog({triggerId, word, user, respond}: {triggerId: string, word: string, user: string, respond: any}) {
+		const game = this.state.games.find((game) => game.theme.ruby === word);
+		if (!game) {
+			respond({
+				text: 'Error: Game not found',
+				response_type: 'ephemeral',
+				replace_original: false,
+			});
+			return;
+		}
+
+		const {text, comment} = game.meanings[user] || {text: '', comment: ''};
+
+		return this.tsgSlack.dialog.open({
+			trigger_id: triggerId,
+			dialog: {
+				callback_id: 'tahoiya_add_meaning_dialog',
+				title: `「${word}」の意味を考えてね！`,
+				submit_label: '登録する',
+				notify_on_cancel: true,
+				state: word,
+				elements: [
+					{
+						type: 'text',
+						label: `「${word}」の意味`,
+						name: 'meaning',
+						min_length: 3,
+						value: text,
+						hint: '後から変更できます',
+					},
+					{
+						type: 'textarea',
+						label: 'コメント',
+						name: 'comment',
+						optional: true,
+						value: comment,
+						hint: '後から変更できます',
+					},
+				],
+			},
+		});
+	}
+
+	async registerMeaning({word, user, text, comment, respond}: {word: string, user: string, text: string, comment: string, respond: any}) {
+		const game = this.state.games.find((game) => game.theme.ruby === word);
+		if (!game) {
+			respond({
+				text: 'このたほいやの意味登録は終了しているよ:cry:',
+				response_type: 'ephemeral',
+				replace_original: false,
+			});
+			return;
+		}
+
+		game.meanings[user] = {text, comment};
+		await this.setState({
+			games: this.state.games,
+		});
+
+		const humanCount = Object.keys(game.meanings).filter((user) => user.startsWith('U')).length;
+		const remainingText = game.isDaily ? (
+			humanCount > 3 ? '' : (
+				humanCount === 3 ? '(決行決定:tada:)'
+					: `(決行まであと${3 - humanCount}人)`
+			)
+		) : '';
+
+		return this.tsgSlack.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			username: 'tahoiya',
+			icon_emoji: ':open_book:',
+			text: stripIndent`
+				${this.getMention(user)} が意味を登録したよ:muscle:
+				現在の参加者: ${humanCount}人 ${remainingText}
+			`,
+		})
 	}
 
 	showStatus() {
@@ -294,7 +422,7 @@ class Tahoiya {
 			text: {
 				type: 'mrkdwn',
 				text: stripIndent`
-					🍣 お題＊「${game.word}」＊
+					🍣 お題＊「${game.theme.ruby}」＊ by ${this.getMention(game.author)}
 					終了予定時刻: ${getTimeLink(game.time + game.duration)}
 				`,
 			},
@@ -304,7 +432,7 @@ class Tahoiya {
 					type: 'plain_text',
 					text: '登録する',
 				},
-				value: game.word,
+				value: game.theme.ruby,
 			},
 		}))
 	}
