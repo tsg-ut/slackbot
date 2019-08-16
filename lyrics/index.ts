@@ -96,7 +96,6 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
                 channel: message.channel,
                 username: '歌詞検索くん',
                 icon_emoji: ':musical_note:',
-                thread_ts: message.thread_ts || message.ts,
                 reply_broadcast: true,
             };
             if (songInfo) {
