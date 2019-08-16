@@ -47,7 +47,7 @@ const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongIn
     });
     const matchingParagraphs = paragraphs.filter(paragraph => paragraph.indexOf(keyword) !== -1);
     const formattedMatchingParagraphs = matchingParagraphs.map(paragraph => {
-        return paragraph.replace(new RegExp(keyword, 'g'), '＊$&＊');
+        return paragraph.split(keyword).join(`＊${keyword}＊`);
     });
     const audioUrl = await getAudioUrl(title, artist);
 
