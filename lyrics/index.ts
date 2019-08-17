@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { JSDOM } from 'jsdom';
 import { RTMClient, WebClient } from '@slack/client';
+import { escapeRegExp } from 'lodash';
 
 interface SongInfo {
     phrase: string;
@@ -47,7 +48,7 @@ const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongIn
     });
     const matchingParagraphs = paragraphs.filter(paragraph => paragraph.indexOf(keyword) !== -1);
     const formattedMatchingParagraphs = matchingParagraphs.map(paragraph => {
-        return paragraph.split(keyword).join(`＊${keyword}＊`);
+        return paragraph.replace(new RegExp(escapeRegExp(keyword), 'g'), '＊$&＊');
     });
     const audioUrl = await getAudioUrl(title, artist);
 
