@@ -44,9 +44,9 @@ const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongIn
     const composer = (view.querySelector('h4[itemprop=composer]') as HTMLElement).textContent;
     const kashiHTML = document.getElementById('kashi_area').innerHTML;
     const paragraphs = kashiHTML.split('<br><br>').map(paragraph => {
-        return paragraph.replace(/<br>/g, '\n').replace(/　/g, ' ');
+        return paragraph.replace(/<br>/g, '\n').replace(/　/g, ' '); // <br>で改行し、全角空白を半角空白に置換
     });
-    const matchingParagraphs = paragraphs.filter(paragraph => paragraph.indexOf(keyword) !== -1);
+    const matchingParagraphs = paragraphs.filter(paragraph => paragraph.includes(keyword));
     const formattedMatchingParagraphs = matchingParagraphs.map(paragraph => {
         return paragraph.replace(new RegExp(escapeRegExp(keyword), 'g'), '＊$&＊');
     });
@@ -90,7 +90,7 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
         if (!message.text) {
             return;
         }
-        if (message.text.match(/^@lyrics/)) {
+        if (message.text.startsWith('@lyrics ')) {
             const keyword = message.text.replace('@lyrics ', '');
             const songInfo: SongInfo | null = await search(keyword);
             const defaultResponseFormat = {

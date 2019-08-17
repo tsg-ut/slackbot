@@ -1,10 +1,9 @@
 import lyrics from './index';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
+jest.mock('axios');
 import axios from 'axios';
 import { oneLineTrim, stripIndent } from 'common-tags';
-
-jest.mock('axios');
 
 let slack: Slack = null;
 
@@ -18,7 +17,7 @@ describe('lyrics', () => {
     it('responds to @lyrics query', async () => {
         // @ts-ignore
         axios.get = jest.fn(async url => {
-            if (url.indexOf('index_search') !== -1) { // Song search result
+            if (url.includes('index_search')) { // Song search result
                 return { data: oneLineTrim`
                     <html><body><dl id="search_list">
                         <dt>
@@ -28,7 +27,7 @@ describe('lyrics', () => {
                         <dd></dd>
                     </dl></body></html>` };
             }
-            if (url.indexOf('song') !== -1) { // Lyrics page
+            if (url.includes('song')) { // Lyrics page
                 return { data: oneLineTrim`
                     <html><body><div id="view_kashi">
                         <div class="title">
@@ -58,10 +57,10 @@ describe('lyrics', () => {
                         </div></div></div>
                     </div></body></html>` };
             }
-            if (url.indexOf('itunes') !== -1) {
+            if (url.includes('itunes')) { // iTunes Search API
                 return { data:  {
                     resultCount: 1,
-                    results: [{
+                    results: [{ // 一部パラメータは削りましたが、今後改良で使いそうなパラメータは残しておきました
                         wrapperType: 'track',
                         kind: 'song',
                         artistId: 834179764,
