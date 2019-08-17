@@ -47,6 +47,7 @@ const plugins = [
 	require('./tunnel'),
 	require('./voiperrobot'),
 	require('./atcoder'),
+	require('./lyrics'),
 	require('./ojigineko-life'),
 ];
 
