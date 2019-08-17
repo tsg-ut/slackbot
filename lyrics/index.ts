@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { JSDOM } from 'jsdom';
+import scrapeIt from 'scrape-it';
+import { AllHtmlEntities } from 'html-entities';
 import { RTMClient, WebClient } from '@slack/client';
 import { escapeRegExp } from 'lodash';
 
@@ -34,29 +36,43 @@ const getAudioUrl = async (title: string, artist: string): Promise<string|null> 
 };
 
 const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongInfo> => {
-    const response = await axios.get(songInfoUrl);
-    const source = response.data;
-    const document = new JSDOM(source).window.document;
-    const view = document.getElementById('view_kashi');
-    const title = view.getElementsByTagName('h2')[0].textContent;
-    const artist = view.getElementsByTagName('h3')[0].textContent;
-    const lyricist = (view.querySelector('h4[itemprop=lyricist]') as HTMLElement).textContent;
-    const composer = (view.querySelector('h4[itemprop=composer]') as HTMLElement).textContent;
-    const kashiHTML = document.getElementById('kashi_area').innerHTML;
-    const paragraphs = kashiHTML.split('<br><br>').map(paragraph => {
-        return paragraph.replace(/<br>/g, '\n').replace(/　/g, ' '); // <br>で改行し、全角空白を半角空白に置換
-    });
+    interface fetchedSongData {
+        title: string;
+        artist: string;
+        lyricist: string;
+        composer: string;
+        kashiHTML: string;
+    }
+    const entities = new AllHtmlEntities();
+    const fetchedSongData = (await scrapeIt<fetchedSongData>(songInfoUrl, {
+        title: 'h2',
+        artist: 'h3',
+        lyricist: 'h4[itemprop=lyricist]',
+        composer: 'h4[itemprop=composer]',
+        kashiHTML: {
+            selector: '#kashi_area',
+            how: 'html',
+            convert: x => entities.decode(x),
+        },
+    })).data;
+    const paragraphs = fetchedSongData.kashiHTML.split('<br><br>').map(paragraph =>
+        paragraph.replace(/<br>/g, '\n').replace(/　/g, ' ') // <br>で改行し、全角空白を半角空白に置換
+    );
     const matchingParagraphs = paragraphs.filter(paragraph => paragraph.includes(keyword));
-    const formattedMatchingParagraphs = matchingParagraphs.map(paragraph => {
-        return paragraph.replace(new RegExp(escapeRegExp(keyword), 'g'), '＊$&＊');
-    });
-    const audioUrl = await getAudioUrl(title, artist);
+    const formattedMatchingParagraphs = matchingParagraphs.map(paragraph => 
+        paragraph.replace(new RegExp(escapeRegExp(keyword), 'g'), '＊$&＊')
+    );
+    const audioUrl = await getAudioUrl(fetchedSongData.title, fetchedSongData.artist);
 
     return {
         phrase: keyword,
         paragraph: formattedMatchingParagraphs[0], // とりあえず1つだけ出すことにする
         utaNetUrl: songInfoUrl,
-        title, artist, lyricist, composer, audioUrl,
+        title: fetchedSongData.title,
+        artist: fetchedSongData.artist,
+        lyricist: fetchedSongData.lyricist,
+        composer: fetchedSongData.composer,
+        audioUrl,
     };
 };
 
