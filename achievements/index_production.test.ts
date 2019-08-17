@@ -15,7 +15,7 @@ jest.mock('../lib/firestore', () => {
 	return db;
 });
 
-import achievements from './index';
+import achievements from './index_production';
 
 beforeEach(() => {
 	slack = new Slack();

@@ -11,7 +11,7 @@ const sample = require('lodash/sample');
 const last = require('lodash/last');
 const flatten = require('lodash/flatten');
 const oneLine = require('common-tags/lib/oneLine');
-const {unlock, increment} = require('../achievements/index.ts');
+const {unlock, increment} = require('../achievements');
 
 const {
 	serialize,

@@ -2,7 +2,7 @@ const fs = require('fs');
 const {chunk, cloneDeep, escapeRegExp, flatten, invert, random, round, sample, shuffle, uniq} = require('lodash');
 const path = require('path');
 const {promisify} = require('util');
-const {unlock} = require('../achievements/index.ts');
+const {unlock} = require('../achievements');
 
 const completeBoards = {
 	ahokusa: [

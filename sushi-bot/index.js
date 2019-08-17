@@ -228,6 +228,28 @@ module.exports = (clients) => {
 				}
 			}
 		}
+
+		{
+			const rtext = text.
+				replace(/\s/gi,'').
+				replace(/さ|:(ahokusa|hokusai)-bottom-left:/gi,'さ').
+				replace(/あ|:(ahokusa|hokusai)-top-right:/gi,'あ').
+				replace(/!|！|:exclamation:|:heavy_exclamation_mark:|:grey_exclamation:|:bangbang:/gi,'！').
+				replace(/sa/gi,'さ').
+				replace(/a/gi,'あ');
+
+			if(rtext.match(/^あ+さ！*$/)){
+				const hour = moment().utcOffset('+0900').hour();
+				let name = "0ten";
+				if(5 <= hour && hour < 10){
+					name = "100";
+				}
+				else if(10 <= hour && hour < 12){
+					name = "95";
+				}
+				slack.reactions.add({name: name, channel, timestamp});
+			}
+		}
 	});
 
 	schedule.scheduleJob('0 19 * * 0', async () => {

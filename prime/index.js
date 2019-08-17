@@ -9,7 +9,7 @@ const {spawn} = require('child_process');
 const concat = require('concat-stream');
 const MillerRabin = require('miller-rabin');
 const BN = require('bn.js');
-const {unlock} = require('../achievements/index.ts');
+const {unlock} = require('../achievements');
 const primes = require('./primes.ts');
 
 const cardSet = range(1, 14);

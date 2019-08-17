@@ -48,6 +48,7 @@ const plugins = [
 	require('./voiperrobot'),
 	require('./atcoder'),
 	require('./lyrics'),
+	require('./ojigineko-life'),
 ];
 
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
