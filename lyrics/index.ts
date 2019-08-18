@@ -14,6 +14,12 @@ interface SongInfo {
     composer: string;
     utaNetUrl: string;
     audioUrl: string | null;
+    artworkUrl: string | null;
+}
+
+interface iTuensInfo {
+    audioUrl: string | null;
+    artworkUrl: string | null;
 }
 
 interface SlackInterface {
@@ -21,7 +27,7 @@ interface SlackInterface {
     webClient: WebClient;
 }
 
-const getAudioUrl = async (title: string, artist: string): Promise<string|null> => {
+const getiTunesInfo = async (title: string, artist: string): Promise<iTuensInfo> => {
     const iTunesSearchAPIUrl = 'https://itunes.apple.com/search';
     const response = await axios.get(iTunesSearchAPIUrl, {
         params: {
@@ -31,8 +37,14 @@ const getAudioUrl = async (title: string, artist: string): Promise<string|null> 
         },
     });
     const results = response.data.results;
-    if (results.length === 0) return null;
-    return results[0].previewUrl;
+    if (results.length === 0) {
+        return { audioUrl: null, artworkUrl: null };
+    } else {
+        return {
+            audioUrl: results[0].previewUrl,
+            artworkUrl: results[0].artworkUrl60,
+        };
+    }
 };
 
 const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongInfo> => {
@@ -62,7 +74,7 @@ const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongIn
     const formattedMatchingParagraphs = matchingParagraphs.map(paragraph => 
         paragraph.replace(new RegExp(escapeRegExp(keyword), 'g'), '＊$&＊')
     );
-    const audioUrl = await getAudioUrl(fetchedSongData.title, fetchedSongData.artist);
+    const { audioUrl, artworkUrl } = await getiTunesInfo(fetchedSongData.title, fetchedSongData.artist);
 
     return {
         phrase: keyword,
@@ -73,6 +85,7 @@ const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongIn
         lyricist: fetchedSongData.lyricist,
         composer: fetchedSongData.composer,
         audioUrl,
+        artworkUrl,
     };
 };
 
@@ -113,7 +126,7 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
                 channel: message.channel,
                 username: '歌詞検索くん',
                 icon_emoji: ':musical_note:',
-                reply_broadcast: true,
+                icon_url: '',
             };
             if (songInfo) {
                 const fields = [
@@ -138,12 +151,14 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
                         "short": true
                     },
                 ];
-                if (songInfo.audioUrl) {
+                if (songInfo.audioUrl) { // It also has artworkUrl
                     fields.push({
                         "title": "試聴リンク",
                         "value": songInfo.audioUrl,
                         "short": false
                     });
+                    defaultResponseFormat.icon_url = songInfo.artworkUrl;
+                    delete defaultResponseFormat.icon_emoji;
                 }
                 await webClient.chat.postMessage({
                     ...defaultResponseFormat,
@@ -152,7 +167,7 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
                         {
                             title: '歌詞 - 歌ネット',
                             title_link: songInfo.utaNetUrl,
-                            fields: fields,
+                            fields,
                         },
                     ],
                 });

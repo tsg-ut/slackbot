@@ -95,7 +95,7 @@ describe('lyrics', () => {
         });
         const response = await slack.getResponseTo('@lyrics 朝目が覚めたらもう');
         expect(response.username).toBe('歌詞検索くん');
-        expect(response.icon_emoji).toBe(':musical_note:');
+        expect(response.icon_url).toBe('https://is4-ssl.mzstatic.com/image/thumb/Music5/v4/52/33/6a/52336ad2-e139-98f3-fad8-fcf8edee53ab/source/60x60bb.jpg');
         expect(response.attachments[0].title).toBe('歌詞 - 歌ネット');
         expect(response.attachments[0].title_link).toBe('https://www.uta-net.com/song/159792/');
         expect(response.text).toContain(stripIndent`
