@@ -214,8 +214,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			],
 		});
 
-		for (const {user} of userStandings) {
-			await unlock(user, 'atcoder-participate');
+		for (const {user, standing} of userStandings) {
+			if (standing) {
+				await unlock(user, 'atcoder-participate');
+			}
 		}
 	};
 
