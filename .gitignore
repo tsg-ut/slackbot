@@ -63,6 +63,7 @@ __cache__
 __state__
 google_application_credentials.json
 target
+remember-koresuki/sandbox-log/
 
 tokens.sqlite3
 
