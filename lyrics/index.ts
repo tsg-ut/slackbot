@@ -1,9 +1,9 @@
 import axios from 'axios';
-import { JSDOM } from 'jsdom';
 import scrapeIt from 'scrape-it';
 import { AllHtmlEntities } from 'html-entities';
 import { RTMClient, WebClient } from '@slack/client';
-import { escapeRegExp } from 'lodash';
+import { escapeRegExp, sample } from 'lodash';
+import qs from 'querystring';
 
 interface SongInfo {
     phrase: string;
@@ -91,22 +91,28 @@ const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongIn
 
 const search = async (keyword: string): Promise<SongInfo | null> => {
     const utaNetHost = 'https://www.uta-net.com';
-    const searchPageUrl = `${utaNetHost}/user/index_search/search2.html`;
-    const response = await axios.get(searchPageUrl, {
-        params: {
-            md: 'Kashi', // 歌詞検索
-            st: 'Title1', // タイトル昇順ソート。アレンジ曲などが存在する場合、最も短い曲名を選びたいため。
-            kw: keyword,
-        }
+    const response = await scrapeIt<{songs: {infoPath: string}[]}>(`${utaNetHost}/user/index_search/search2.html?${qs.encode({
+        md: 'Kashi', // 歌詞検索
+        st: 'Title1', // タイトル昇順ソート
+        rc: 200, // 1ページの件数
+        kw: keyword,
+    })}`, {
+        songs: {
+            listItem: '#search_list > dt',
+            data: {
+                infoPath: {
+                    selector: 'a:first-child',
+                    attr: 'href',
+                },
+            },
+        },
     });
-    const source = response.data;
-    const results = new JSDOM(source).window.document.getElementById('search_list').children;
-    if (results.length === 0) {
+
+    if (response.data.songs.length === 0) {
         return null;
     } else {
-        const firstResult = results[0];
-        const songInfoPath = firstResult.getElementsByTagName('a')[0].href; // 初めのリンクが曲ページへのリンク
-        const songInfo = await getSongInfo(`${utaNetHost}${songInfoPath}`, keyword);
+        const song = sample(response.data.songs);
+        const songInfo = await getSongInfo(new URL(song.infoPath, utaNetHost).href, keyword);
         return songInfo;
     }
 };
