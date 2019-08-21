@@ -57,9 +57,6 @@ eventClient.on('error', (error) => {
 });
 
 const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
-messageClient.on('error', (error) => {
-	logger.error(error.stack);
-});
 
 (async () => {
 	await Promise.all(plugins.map(async (plugin) => {
