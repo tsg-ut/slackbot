@@ -1,7 +1,11 @@
+jest.mock('tinyreq');
+jest.mock('axios');
+
 import lyrics from './index';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
-jest.mock('axios');
+// @ts-ignore
+import tinyreq from 'tinyreq';
 import axios from 'axios';
 import { oneLineTrim, stripIndent } from 'common-tags';
 
@@ -16,19 +20,23 @@ beforeEach(async () => {
 describe('lyrics', () => {
     it('responds to @lyrics query', async () => {
         // @ts-ignore
-        axios.get = jest.fn(async url => {
+        tinyreq.impl = jest.fn(async (url, callback) => {
             if (url.includes('index_search')) { // Song search result
-                return { data: oneLineTrim`
+                const data = oneLineTrim`
                     <html><body><dl id="search_list">
                         <dt>
                             <span><a href="/song/159792/">とまどい→レシピ</a></span>
                             <a>みかくにんぐッ!</a>　（作詞：<a>Junky</a>/作曲：<a>Junky</a>）
                         </dt>
                         <dd></dd>
-                    </dl></body></html>` };
+                    </dl></body></html>`;
+                if (callback) {
+                    callback(null, data);
+                }
+                return data;
             }
             if (url.includes('song')) { // Lyrics page
-                return { data: oneLineTrim`
+                const data = oneLineTrim`
                     <html><body><div id="view_kashi">
                         <div class="title">
                             <h2>とまどい→レシピ</h2>
@@ -55,10 +63,18 @@ describe('lyrics', () => {
                             <br><br>
                             略
                         </div></div></div>
-                    </div></body></html>` };
+                    </div></body></html>`;
+                if (callback) {
+                    callback(null, data);
+                }
+                return data;
             }
+        });
+
+        // @ts-ignore
+        axios.get = jest.fn(async (url) => {
             if (url.includes('itunes')) { // iTunes Search API
-                return { data:  {
+                return { data: {
                     resultCount: 1,
                     results: [{ // 一部パラメータは削りましたが、今後改良で使いそうなパラメータは残しておきました
                         wrapperType: 'track',
