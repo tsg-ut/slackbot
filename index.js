@@ -73,6 +73,14 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 	});
 })();
 
+fastify.use('/slack-event', (req, res, next) => {
+	if (!{}.hasOwnProperty.call(req.headers, 'x-slack-signature')) {
+		res.statusCode = 400;
+		res.end("Bad Request");
+		return;
+	}
+	next();
+});
 fastify.use('/slack-event', eventClient.expressMiddleware());
 fastify.use('/slack-message', messageClient.requestListener());
 fastify.listen(process.env.PORT || 21864);
