@@ -52,7 +52,15 @@ const plugins = [
 ];
 
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
+eventClient.on('error', (error) => {
+	logger.error(error.stack);
+});
+
 const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
+messageClient.on('error', (error) => {
+	logger.error(error.stack);
+});
+
 (async () => {
 	await Promise.all(plugins.map(async (plugin) => {
 		if (typeof plugin === 'function') {
@@ -76,7 +84,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 fastify.use('/slack-event', (req, res, next) => {
 	if (!{}.hasOwnProperty.call(req.headers, 'x-slack-signature')) {
 		res.statusCode = 400;
-		res.end("Bad Request");
+		res.end('Bad Request');
 		return;
 	}
 	next();
