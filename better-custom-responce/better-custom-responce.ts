@@ -1,6 +1,7 @@
 import customResponces from "./custom-responces";
+import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
 
-const responce = (text) => {
+const responce = (text:string) => {
     const splittedText = text.replace(/ .,;:+\*<>?_}@\[`{]!"#\$%&'\(\)=~|-\^¥\\/g, ' ').split(' ');
     for (const part of splittedText) {
         for (const resp of customResponces) {
@@ -19,7 +20,9 @@ const responce = (text) => {
     return null;
 };
 
-module.exports = (clients) => {
+export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
+    loadDeferred.resolve(slack);
+
     rtm.on('message', async (message) => {
         const {text} = message;
         if(!text)return;
