@@ -66,4 +66,7 @@ target
 
 tokens.sqlite3
 
+# BigEmoji
+emoxpand/bigemojis.json
+
 .DS_Store
