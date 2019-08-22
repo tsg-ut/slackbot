@@ -49,12 +49,7 @@ const searchMessagesByReaction = (reaction: string, date: moment.Moment): Result
                 }
             } 
         }
-        const popularMessages: Result[] = hitMessages.filter(message => message.numberOfKeyReaction >= 3);
-        if (popularMessages.length > 0) {
-            return popularMessages;
-        } else {
-            return hitMessages;
-        }
+        return hitMessages;
     } else {
         return undefined;
     }
