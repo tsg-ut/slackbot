@@ -38,9 +38,9 @@ const searchMessagesByReaction = (reaction: string, date: moment.Moment): Result
         const messages = JSON.parse(fs.readFileSync(filename, 'utf-8')) as Message[];
         let hitMessages: Result[] = [];
         for (const message of messages) {
-            if (message.reactions) { // It is certainly given at least one reaction
+            if (message.reactions) { // It has at least one reaction
                 const targetReaction = message.reactions.find(gotReaction => gotReaction.name === reaction) as Reaction;
-                if (targetReaction) { // It is certainly given the specified reaction
+                if (targetReaction) { // It has the specified reaction
                     hitMessages.push({
                         ...message,
                         keyReaction: targetReaction.name,
@@ -60,7 +60,7 @@ const searchMessagesByReaction = (reaction: string, date: moment.Moment): Result
     }
 };
 
-const postToSlack = async (reaction: string, lastYearDate: moment.Moment, slack: SlackInterface) => {
+const postReportToSlack = async (reaction: string, lastYearDate: moment.Moment, slack: SlackInterface) => {
     const results = searchMessagesByReaction(reaction, lastYearDate);
     let text;
     if (results.length === 0) {
@@ -93,10 +93,10 @@ const postToSlack = async (reaction: string, lastYearDate: moment.Moment, slack:
 
 export default async (slack: SlackInterface) => {
     const sandbox = process.env.CHANNEL_SANDBOX;
-    schedule.scheduleJob('0 9 * * *', async date => {
+    schedule.scheduleJob('0 0 * * *', async date => {
         const lastYearDate = moment(date).subtract(1, 'year');
         for (const reaction of ['koresuki', 'shirimetsuretsu', 'yakuza']) {
-            await postToSlack(reaction, lastYearDate, slack);
+            await postReportToSlack(reaction, lastYearDate, slack);
         }
     });
     slack.rtmClient.on('message', async message => {
@@ -118,7 +118,7 @@ export default async (slack: SlackInterface) => {
             }
             if (isValid) {
                 const lastYearDate = moment().subtract(1, 'year');
-                await postToSlack(keyword, lastYearDate, slack);
+                await postReportToSlack(keyword, lastYearDate, slack);
             } else {
                 slack.webClient.chat.postMessage({
                     channel: sandbox,
