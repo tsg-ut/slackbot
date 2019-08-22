@@ -310,7 +310,9 @@ export const unlock = async (user: string, name: string) => {
 			_${achievement.condition}_
 			難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty}) ${isFirst ? '*初達成者!!:ojigineko-superfast:*' : ''}
 		`,
-		attachments: ['professional', 'hard', 'medium', 'easy', 'baby'].map((difficulty: Difficulty) => {
+		//もとの実装 : attachments: ['professional', 'hard', 'medium', 'easy', 'baby'].map((difficulty: Difficulty) => {
+		//案1の実装 : attachments: ['professional', 'hard'].map((difficulty: Difficulty) => {
+		attachments: [achievement.difficulty].map((difficulty: Difficulty) => {
 			const entries = holdingAchievements.filter((id) => achievements.get(id).difficulty === difficulty);
 			if (entries.length === 0) {
 				return null;
@@ -320,6 +322,12 @@ export const unlock = async (user: string, name: string) => {
 				text: entries.map((id) => achievements.get(id).title).join(' '),
 			};
 			return attachment;
+		}),
+		attachments_achievelist: ['list'].map(() => {
+			const attachment_achievelist: MessageAttachment = {
+				text: '解除済みの実績数 : ' + Object.keys(holdingAchievements).length,
+			}
+			return attachment_achievelist;
 		}),
 	});
 
