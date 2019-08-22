@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import moment from 'moment';
 import { RTMClient, WebClient } from '@slack/client';
 import * as schedule from 'node-schedule';
+import { getMemberName, getMemberIcon } from '../lib/slackUtils';
 
 require('dotenv').config();
 
@@ -21,7 +22,9 @@ interface Reaction {
 interface Message {
     reactions: Reaction[] | undefined;
     ts: string;
-    user: string;
+    user: string | undefined; // exists only when the user is not a bot
+    username: string | undefined; // exists only when the user is a bot
+    subtype: string | undefined;  // exists only when the user is a bot
     text: string;
     client_msg_id: string;
     type: string;
@@ -56,6 +59,7 @@ const searchMessagesByReaction = (reaction: string, date: moment.Moment): Result
 };
 
 const postReportToSlack = async (reaction: string, lastYearDate: moment.Moment, slack: SlackInterface) => {
+    const sandbox = process.env.CHANNEL_SANDBOX;
     const results = searchMessagesByReaction(reaction, lastYearDate);
     let text;
     if (results.length === 0) {
@@ -74,15 +78,29 @@ const postReportToSlack = async (reaction: string, lastYearDate: moment.Moment, 
                 break;
         }
     }
-    const sandbox = process.env.CHANNEL_SANDBOX;
-    text = [text, ...results.map(result => 
-            `https://slack-log.tsg.ne.jp/${sandbox}/${result.ts}`
-        )].join('\n');
+    const attachments = [];
+    for (const result of results) {
+        console.log(`https://slack-log.tsg.ne.jp/${sandbox}/${result.ts}`);
+        const attachment = {
+            text: result.text,
+            footer: `<https://slack-log.tsg.ne.jp/${sandbox}/${result.ts}|slack-log>`,
+            ts: result.ts,
+        };
+        if (result.user) {
+            const author_name = await getMemberName(result.user);
+            const author_icon = await getMemberIcon(result.user);
+            attachments.push({ author_name, author_icon, ...attachment });
+        }
+        if (result.subtype === 'bot_message') {
+            attachments.push({ author_name: result.username, ...attachment});
+        }
+    }
     await slack.webClient.chat.postMessage( {
         channel: sandbox,
         username: '1年前の今日',
         icon_emoji: `:${reaction}:`,
         text,
+        attachments,
     });
 };
 
