@@ -3,12 +3,16 @@ interface CustomResponse {
     outputArray?: string[],
     outputFunction?: ((input: string[])=> string),
     shuffle?: true,
+    username?: string,
+    icon_emoji?: string,
 }
 
 const customResponses: CustomResponse[] = [
     {
         input: [/^あほくさ$/],
         outputArray: [":ahokusa-top-left::ahokusa-top-center::ahokusa-top-right:\n:ahokusa-bottom-left::ahokusa-bottom-center::ahokusa-bottom-right:"],
+        username: 'あほくさresponse',
+        icon_emoji: ':atama:',
     },
     {
         input: [/^2d6$/, /^ダイス$/],
@@ -27,14 +31,17 @@ const customResponses: CustomResponse[] = [
                 retString += face.toString() + " ";
                 result += face;
             }
+            if(retString.length > 3000)retString = retString.slice(0, 1997) + "... ";
             retString += "= " + result.toString();
             return retString;
         },
+        username: 'dice response',
     },
     {
         input: [/^(おじぎねこ)?ファミリー$/],
         outputArray: [":ojigineko:", ":party-ojigineko-line:", ":ojigineko-superfast:", ":nameraka-ojigineko-extreme-fast:", ":ojigineko-fast:", ":ojigineko-extremefast:", ":ojigineko-pi:", ":iceojigineko:", ":ojigineko-hd:", ":ojigineko-drug:", ":dot-ojigineko:", ":ojigineko-waking:", ":party-ojigineko:", ":ojigineko-mirror:", ":ojigineko-sleeping:", ":space-ojigineko:", ":ojigiharassment:", ":ojigineko-mirror-pi:", ":magao-ojigineko:", ":nameraka-ojigineko:", ":party-ojigineko-fast:", ":quantum-ojigineko:", ":fukigen-ojigineko:", ":ojigineko-with-satos:", ":haritsuita-ojigineko:", ":harassment-ojigineko:", ":ojigineko-gokyu-kaiken:", ":ojigineko-muscle-exercise:", ":tosshutsu-symmetry-ojigineko:", ":ojigineko-upside-down:", ":ojikineko:"],
         shuffle: true,
+        icon_emoji: ':ojigineko:',
     },
 ];
 
