@@ -311,7 +311,7 @@ export const unlock = async (user: string, name: string) => {
 			難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty}) ${isFirst ? '*初達成者!!:ojigineko-superfast:*' : ''}
 		`,
 		//もとの実装 : attachments: ['professional', 'hard', 'medium', 'easy', 'baby'].map((difficulty: Difficulty) => {
-		//案1の実装 : attachments: ['professional', 'hard'].map((difficulty: Difficulty) => {
+		//案2の実装 : attachments: ['professional', 'hard'].map((difficulty: Difficulty) => {
 		attachments: [achievement.difficulty].map((difficulty: Difficulty) => {
 			const entries = holdingAchievements.filter((id) => achievements.get(id).difficulty === difficulty);
 			if (entries.length === 0) {
