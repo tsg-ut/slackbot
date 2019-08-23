@@ -157,16 +157,15 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					color: newIndices.has(index) ? 'red' : 'black',
 					letter,
 				})), state.crossword.index);
+				const seconds = boardConfigs[state.crossword.index].length * 10;
 
-				await slack.chat.postMessage({
+				await slack.chat.update({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
-						わいわい！
+						楽しいクロスワードパズルを始めるよ～
+						マスに入ると思う単語を${seconds}秒以内に *スレッドで* 返信してね!
 					`,
-					username: 'crossword',
-					icon_emoji: ':capital_abcd:',
-					thread_ts: state.thread,
-					reply_broadcast: true,
+					ts: state.thread,
 					attachments: [{
 						title: 'Cross Word',
 						image_url: cloudinaryData.secure_url,
