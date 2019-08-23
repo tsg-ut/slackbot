@@ -5,6 +5,7 @@ import logger from '../lib/logger.js';
 import {RTMClient, WebClient} from '@slack/client';
 import * as _ from 'lodash';
 import plugin from 'fastify-plugin';
+import {getMemberName, getMemberIcon} from '../lib/slackUtils'
 
 type EmojiName = string;
 type EmojiContent = EmojiName[][];
@@ -169,12 +170,11 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
       response.code(400);
       return 'Bad Request';
     }
-    const {user}: any = await slack.users.info({ user: request.body.user_id });
     slack.chat.postMessage({
       channel: request.body.channel_id,
       text: expandEmoji(request.body.text),
-      username: _.get(user, ['profile', 'display_name'], user.name),
-      icon_url: user.profile.image_192,
+      username: await getMemberName(request.body.user_id),
+      icon_url: await getMemberIcon(request.body.user_id),
     });
     return '';
   });
