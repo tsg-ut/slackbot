@@ -30,6 +30,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     loadDeferred.resolve(slack);
 
     rtm.on('message', async (message) => {
+        if (!message.user || message.user.startsWith('B') || message.user === 'UEJTPN6R5' || message.user === 'USLACKBOT') return;
         const {text} = message;
         if (!text) return;
         const resp = response(text);
