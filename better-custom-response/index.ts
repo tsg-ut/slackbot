@@ -8,7 +8,7 @@ interface SlackInterface {
 }
 
 const response = (text:string) => {
-    for (const resp of customResponses) {
+    for (const resp of customResponses.filter((response) => !response.reaction)) {
         for (const regexp of resp.input) {
             const matches = text.match(regexp);
             if (matches !== null) {
@@ -23,20 +23,42 @@ const response = (text:string) => {
     return [null, null, null];
 };
 
+const reaction = (text:string) => {
+    for (const resp of customResponses.filter((response) => response.reaction)) {
+        for (const regexp of resp.input) {
+            const matches = text.match(regexp);
+            if (matches !== null) {
+                if ({}.hasOwnProperty.call(resp, 'outputArray')) {
+                    return resp.shuffle ? shuffle(resp.outputArray) : [sample(resp.outputArray)];
+                } else {
+                    return resp.outputFunction(matches);
+                }
+            }
+        }
+    }
+    return null;
+};
+
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     rtm.on('message', async (message) => {
         if (!message.user || message.user.startsWith('B') || message.user === 'UEJTPN6R5' || message.user === 'USLACKBOT') return;
-        const {text} = message;
+        const {channel, text, ts: timestamp} = message;
         if (!text) return;
         const resp = response(text);
-        if (!resp[0]) return;
-        const username = !resp[1] ? 'better-custom-response' : resp[1];
-        const icon_emoji = !resp[2] ? ':slack:' : resp[2];
-        await slack.chat.postMessage({
-            channel: message.channel,
-            text: resp[0],
-            username,
-            icon_emoji,
-        });
+        if (resp[0]) {
+            const username = !resp[1] ? 'better-custom-response' : resp[1];
+            const icon_emoji = !resp[2] ? ':slack:' : resp[2];
+            await slack.chat.postMessage({
+                channel: message.channel,
+                text: resp[0],
+                username,
+                icon_emoji,
+            });
+        }
+        const reac = reaction(text);
+        if (!reac) return;
+        for (const reaction of reac) {
+            await slack.reactions.add({name: reaction, channel, timestamp});
+        }
     });
 }
