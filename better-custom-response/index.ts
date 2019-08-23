@@ -31,7 +31,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
         const resp = response(text);
         if (!resp[0]) return;
         const username = !resp[1] ? 'better-custom-response' : resp[1];
-        const icon_emoji = !resp[2] ? 'atama' : resp[2];
+        const icon_emoji = !resp[2] ? ':slack:' : resp[2];
         await slack.chat.postMessage({
             channel: message.channel,
             text: resp[0],
