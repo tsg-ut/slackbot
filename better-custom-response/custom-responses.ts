@@ -1,7 +1,7 @@
 interface CustomResponse {
     input: RegExp[],
     outputArray?: string[],
-    outputFunction?: ((input: string[])=> string),
+    outputFunction?: ((input: string[])=> string[]),
     shuffle?: true,
     username?: string,
     icon_emoji?: string,
@@ -34,7 +34,7 @@ const customResponses: CustomResponse[] = [
             }
             if(retString.length > 3000)retString = retString.slice(0, 1997) + "... ";
             retString += "= " + result.toString();
-            return retString;
+            return [retString];
         },
         username: 'dice response',
     },
@@ -46,7 +46,7 @@ const customResponses: CustomResponse[] = [
     },
     {
         input: [/ねこ/],
-        outputArray: [':nya-n:', ':neko:'],
+        outputArray: ['nya-n', 'neko'],
         reaction: true,
     },
 ];
