@@ -29,12 +29,13 @@ const emojiFromContent = (content: EmojiContent): BigEmoji => (
 const bigemojify = (smallEmoji: EmojiName): BigEmoji =>
   emojiFromContent([[smallEmoji]]);
 
-const emojiData = 'bigemojis.json';
-const emojiPath = path.resolve(__dirname, emojiData);
-
 const logError = (err: Error, mesg: string): void => {
   logger.error(`emoxpand: ${mesg} : ${err.name} ${err.message}`);
 };
+
+// Emoji saving {{{
+const emojiData = 'bigemojis.json';
+const emojiPath = path.resolve(__dirname, emojiData);
 
 const loadEmojis = (): EmojiTable => {
   let emojis = new Map;
@@ -68,7 +69,9 @@ const addEmoji = (name: EmojiName, emoji: BigEmoji): void => {
   emojis.set(name, emoji);
   storeEmojis(emojis);
 };
+// }}}
 
+// expansion {{{
 const alignEmojis = (es: BigEmoji[]): string[] => {
   if (es.length === 0) return [''];
   const wholeHeight = Math.max(...es.map(e => e.height));
@@ -155,6 +158,8 @@ const expandEmoji = (text: string): string =>
       },
       [[], []])[1];
   }).join('\n');
+
+//}}}
 
 interface SlackInterface {
   rtmClient: RTMClient;
