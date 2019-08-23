@@ -1,34 +1,41 @@
 interface CustomResponse {
     input: RegExp[],
     outputArray?: string[],
-    outputFunction?: ((input: string)=> string),
-    command?: string,
+    outputFunction?: ((input: string[])=> string),
+    shuffle?: true,
 }
 
 const customResponses: CustomResponse[] = [
     {
         input: [/^あほくさ$/],
-        outputArray: [":ahokus-top-left::ahokusa-top-center::ahokusa-top-right:\n:ahokusa-bottom-left::ahokusa-bottom-center::ahokusa-bottom-right:"],
+        outputArray: [":ahokusa-top-left::ahokusa-top-center::ahokusa-top-right:\n:ahokusa-bottom-left::ahokusa-bottom-center::ahokusa-bottom-right:"],
     },
     {
         input: [/^2d6$/, /^ダイス$/],
         outputArray: [":kurgm1::kurgm1:", ":kurgm1::kurgm2:", ":kurgm1::kurgm3:", ":kurgm1::kurgm4:", ":kurgm1::kurgm5:", ":kurgm1::kurgm6:", ":kurgm2::kurgm1:", ":kurgm2::kurgm2:", ":kurgm2::kurgm3:", ":kurgm2::kurgm4:", ":kurgm2::kurgm5:", ":kurgm2::kurgm6:", ":kurgm3::kurgm1:", ":kurgm3::kurgm2:", ":kurgm3::kurgm3:", ":kurgm3::kurgm4:", ":kurgm3::kurgm5:", ":kurgm3::kurgm6:", ":kurgm4::kurgm1:", ":kurgm4::kurgm2:", ":kurgm4::kurgm3:", ":kurgm4::kurgm4:", ":kurgm4::kurgm5:", ":kurgm4::kurgm6:", ":kurgm5::kurgm1:", ":kurgm5::kurgm2:", ":kurgm5::kurgm3:", ":kurgm5::kurgm4:", ":kurgm5::kurgm5:", ":kurgm5::kurgm6:", ":kurgm6::kurgm1:", ":kurgm6::kurgm2:", ":kurgm6::kurgm3:", ":kurgm6::kurgm4:", ":kurgm6::kurgm5:", ":kurgm6::kurgm6:"],
     },
     {
-        input: [/^[0-9]+d[0-9]+$/],
-        outputFunction: (input: string)=> {
-            const dices = input.split('d').map((num) => Number(num));
+        input: [/(\d+)d(\d+)/],
+        outputFunction: (input: string[]) => {
+            const diceCount = Number(input[1]);
+            const diceUpper = Number(input[2]);
             let retString = "";
             let result = 0;
-            for (let diceIndex = 0; diceIndex < dices[0]; ++diceIndex){
-                const face = Math.floor(Math.random() * dices[1] + 1);
+            if (diceCount > 2000) return null;
+            for (let diceIndex = 0; diceIndex < diceCount; ++diceIndex) {
+                const face = Math.floor(Math.random() * diceUpper) + 1;
                 retString += face.toString() + " ";
                 result += face;
             }
             retString += "= " + result.toString();
             return retString;
         },
-    }
+    },
+    {
+        input: [/^(おじぎねこ)?ファミリー$/],
+        outputArray: [":ojigineko:", ":party-ojigineko-line:", ":ojigineko-superfast:", ":nameraka-ojigineko-extreme-fast:", ":ojigineko-fast:", ":ojigineko-extremefast:", ":ojigineko-pi:", ":iceojigineko:", ":ojigineko-hd:", ":ojigineko-drug:", ":dot-ojigineko:", ":ojigineko-waking:", ":party-ojigineko:", ":ojigineko-mirror:", ":ojigineko-sleeping:", ":space-ojigineko:", ":ojigiharassment:", ":ojigineko-mirror-pi:", ":magao-ojigineko:", ":nameraka-ojigineko:", ":party-ojigineko-fast:", ":quantum-ojigineko:", ":fukigen-ojigineko:", ":ojigineko-with-satos:", ":haritsuita-ojigineko:", ":harassment-ojigineko:", ":ojigineko-gokyu-kaiken:", ":ojigineko-muscle-exercise:", ":tosshutsu-symmetry-ojigineko:", ":ojigineko-upside-down:", ":ojikineko:"],
+        shuffle: true,
+    },
 ];
 
 export default customResponses;
