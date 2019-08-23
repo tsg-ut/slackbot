@@ -49,6 +49,7 @@ const plugins = [
 	require('./atcoder'),
 	require('./lyrics'),
 	require('./ojigineko-life'),
+	require('./better-custom-response'),
 ];
 
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
