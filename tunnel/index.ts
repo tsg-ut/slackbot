@@ -142,33 +142,44 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 					text: updatedMessage.text,
 				},
 			}),
-			{
-				"type": "context",
-				"elements": // TODO: split each 10 components
-					flatten(updatedMessage.reactions.map((reaction: {name: string, users: string[]}) => (
-						updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).has(reaction.name) ?
-						[
-							{
-								"type": "image",
-								"image_url": (updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).get(reaction.name),
-								"alt_text": `:${reaction.name}: by ${
-									reaction.users.map((user) => (updatedTeam === 'TSG' ? tsgMembers : kmcMembers).get(user))
-										.map((user) => get(user, ['profile', 'display_name']) || get(user, ['profile', 'real_name'], '[ERROR]'))
-										.join(', ')
-								}`,
-							},
-							{
-								"type": "mrkdwn",
-								"text": `${reaction.users.length}`,
-							},
-						] : [ // TODO: use image for non-custom emojis too
-							{
-								"type": "mrkdwn",
-								"text": `:${reaction.name}: ${reaction.users.length}`,
-							},
-						]
-					)),
-			},
+			...updatedMessage.reactions
+				.map((reaction: {name: string, users: string[]}) => (
+					updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).has(reaction.name) ?
+					[
+						{
+							"type": "image",
+							"image_url": (updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).get(reaction.name),
+							"alt_text": `:${reaction.name}: by ${
+								reaction.users.map((user) => (updatedTeam === 'TSG' ? tsgMembers : kmcMembers).get(user))
+									.map((user) => get(user, ['profile', 'display_name']) || get(user, ['profile', 'real_name'], '[ERROR]'))
+									.join(', ') 
+							}`,
+						},
+						{
+							"type": "mrkdwn",
+							"text": `${reaction.users.length}`,
+						},
+					] : [ // TODO: use image for non-custom emojis too
+						{
+							"type": "mrkdwn",
+							"text": `:${reaction.name}: ${reaction.users.length}`,
+						},
+					]
+				)
+				.reduce(({rows, cnt}, reaction) => {
+					if (cnt + reaction.length > 10) {
+						// next line
+						rows.push([reaction]);
+						return {rows, cnt: reaction.length};
+					}
+					rows[rows.length - 1].push(reaction);
+					return {rows, cnt: cnt + reaction.length};
+				}, {rows: [[]], cnt: 0}).rows
+				.map(flatten)
+				.map((elements) => ({
+					type: 'context',
+					elements,
+				})),
 		].slice(0, 50);
 
 		if (updatingMessageData.team === 'TSG') {
