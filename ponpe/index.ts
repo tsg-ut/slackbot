@@ -14,6 +14,7 @@ function getTimeLink(time:number){
 
 async function getTheme(){
 	const header = await axios.head('https://www.weblio.jp/WeblioRandomSelectServlet');
+	//スペース(+) どうにかする
 	return decodeURI(header.request.path.split('/')[2]);
 }
 
@@ -55,23 +56,24 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}
 		
 		const answertime = 5 * 60 * 1000;
-		const registertime = 0.5 * 60 * 1000;
+		const registertime = 3 * 60 * 1000;
 		async function chainbids(){
 			if(states[0].hints.length > 0){
 				const endtime = Date.now() + answertime;
 				const hint = states[0].hints[0];
-				const msg = await reply(`${hint.data}\n${hint.user}さんのヒントだよ。${getTimeLink(endtime)}までにこのメッセージへのスレッドとして解答してね。`);
+				const msg = await reply(`${hint.data}\n${hint.user}さんのヒントだよ。${getTimeLink(endtime)}までにこのメッセージへのスレッドとして解答してね。もしこのヒントでわからずに諦める場合は「ギブアップ」と解答してね。`);
 				states[0].threadId = msg.ts;
 				states[0].timeoutId = setTimeout(chainbids, answertime);
 				states[0].hintuser = hint.user;
 			}
 			else{
 				await reply(`だれも正解できなかったよ:cry:。正解は「${states[0].answer}」だよ。`);
+				states.shift();
 			}
 			states[0].hints.shift();
 		}
 		if(message.channel.startsWith('D') && message.text === 'ぽんぺお題'){
-			if(states.length < 0){
+			if(states.length <= 0){
 				await reply(`まだ開始されていないよ。#sandboxで「ぽんぺ出題」と発言してね。`);
 				return;
 			}
@@ -83,7 +85,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			states.slice(-1)[0].registants.push(message.user);
 		}
 		if(message.channel.startsWith('D') && message.text.startsWith('ぽんぺ登録')){
-			if(states.length < 0){
+			if(states.length <= 0){
 				await reply(`まだ開始されていないよ。#sandboxで「ぽんぺ出題」と発言してね。`);
 				return;
 			}
@@ -111,7 +113,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			
 			const user = await getMemberName(message.user);
 			states.slice(-1)[0].hints = states.slice(-1)[0].hints.filter((x)=>{
-				x.user !== user
+				return x.user !== user;
 			});
 			
 			states.slice(-1)[0].hints.push({
@@ -121,6 +123,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				user: user,
 			});
 			await reply(`お題「${states.slice(-1)[0].answer}」に対してコスト${emoji_count}のぽんぺが登録されたよ:tada:`);
+			states.slice(-1)[0].registants.push(message.user);
+			
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: `${user}さんがぽんぺに登録したよ。`,
+			});
 		}
 		if(message.channel === process.env.CHANNEL_SANDBOX){
 			if(states.length > 0 && states[0].threadId !== null && message.thread_ts === states[0].threadId){
@@ -147,7 +155,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						channel: message.channel,
 						timestamp: message.ts,
 					});
-					await reply(`${getMemberName(message.user)}さんが${states[0].hintuser}さんのヒントで「${message.text}」を正解したよ！:tada:`);
+					await reply(`${await getMemberName(message.user)}さんが${states[0].hintuser}さんのヒントで「${message.text}」を正解したよ！:tada:`);
 					clearTimeout(states[0].timeoutId);
 					states.shift();
 				}
@@ -175,15 +183,20 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					hintuser: null,
 					answering: false,
 				});
-				await reply(`ぽんぺをはじめるよ:waiwai:。${getTimeLink(states[0].registerend)}までに登録してね。`);
+				await reply(`ぽんぺをはじめるよ:waiwai:。`);
 				await reply(`DMで「ぽんぺお題」というとお題を知ることができるよ。`);
 				await reply(`DMで「ぽんぺ登録」の次の行にお題を伝えられるようなemoji列を描いて登録してね。voidでないemojiが少ないほど偉いよ。`);
 				await reply(`以下は、"寿司職人"というお題に対する登録例だよ`);
 				await reply(`\nぽんぺ登録\n:sushi-clockwise-top-left::sushi-go-right::sushi-clockwise-top-right:\n:sushi-go-up::male-cook::sushi-go-down:\n:sushi-clockwise-bottom-left::sushi-go-left::sushi-clockwise-bottom-right:`);
+				await reply(`${getTimeLink(states[0].registerend)}以降にここで「ぽんぺ回答」というと、回答フェイズに移行するよ。`);
 			}
 			if(message.text === 'ぽんぺ回答'){
 				if(states.length > 0 && Date.now() <= states[0].registerend){
 					await reply(`ぽんぺはまだ出題中だよ。${getTimeLink(states[0].registerend)}までに登録してね。`);
+					return;
+				}
+				else if(states.length > 0 && states[0].answering){
+					await reply(`既にぽんぺ回答中だよ。`);
 					return;
 				}
 				await reply(`ぽんぺの回答を始めるよ。`);
