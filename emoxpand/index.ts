@@ -5,6 +5,7 @@ import logger from '../lib/logger.js';
 import {RTMClient, WebClient} from '@slack/client';
 //@ts-ignore
 import {stripIndent} from 'common-tags';
+import {_} from 'lodash';
 
 type EmojiName = string;
 type EmojiContent = EmojiName[][];
@@ -21,7 +22,7 @@ const emojiFromContent = (content: EmojiContent): BigEmoji => (
   {
     content,
     height: content.length,
-    width: content.map(x => x.length).reduce((a, b) => Math.max(a, b)),
+    width: Math.max(...content.map(x => x.length));
   }
 );
 
@@ -109,7 +110,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
         break;
       case 'WaitingName':
         {
-          const match = /^!([^!:]+)!$/.exec(message.text);
+          const match = /^!([^!:\s]+)!$/.exec(message.text);
           if (!match) return;
           state = { name: match[1] }
           postMessage(':waiwai: 本体:ha:');
@@ -117,7 +118,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
         break;
       default:
         {
-          const match = /^(:[^:]+:(\n?:[^:]+:)*)$/.exec(message.text);
+          const match = /^(:[^:!\s]+:(\n?:[^:!\s]+:)*)$/.exec(message.text);
           if (!match) return;
           const content = match[1]
             .split('\n')
