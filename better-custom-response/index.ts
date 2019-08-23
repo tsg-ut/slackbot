@@ -1,14 +1,11 @@
 import customResponses from './custom-responses';
 import {sample, shuffle} from 'lodash';
 import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
-import {Deferred} from '../lib/utils';
 
 interface SlackInterface {
     rtmClient: RTMClient,
     webClient: WebClient,
 }
-
-const loadDeferred = new Deferred();
 
 const response = (text:string) => {
     for (const resp of customResponses) {
@@ -27,8 +24,6 @@ const response = (text:string) => {
 };
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
-    loadDeferred.resolve(slack);
-
     rtm.on('message', async (message) => {
         if (!message.user || message.user.startsWith('B') || message.user === 'UEJTPN6R5' || message.user === 'USLACKBOT') return;
         const {text} = message;
