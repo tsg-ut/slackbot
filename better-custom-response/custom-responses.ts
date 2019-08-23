@@ -5,6 +5,7 @@ interface CustomResponse {
     shuffle?: true,
     username?: string,
     icon_emoji?: string,
+    reaction?: true,
 }
 
 const customResponses: CustomResponse[] = [
@@ -42,6 +43,11 @@ const customResponses: CustomResponse[] = [
         outputArray: [":ojigineko:", ":party-ojigineko-line:", ":ojigineko-superfast:", ":nameraka-ojigineko-extreme-fast:", ":ojigineko-fast:", ":ojigineko-extremefast:", ":ojigineko-pi:", ":iceojigineko:", ":ojigineko-hd:", ":ojigineko-drug:", ":dot-ojigineko:", ":ojigineko-waking:", ":party-ojigineko:", ":ojigineko-mirror:", ":ojigineko-sleeping:", ":space-ojigineko:", ":ojigiharassment:", ":ojigineko-mirror-pi:", ":magao-ojigineko:", ":nameraka-ojigineko:", ":party-ojigineko-fast:", ":quantum-ojigineko:", ":fukigen-ojigineko:", ":ojigineko-with-satos:", ":haritsuita-ojigineko:", ":harassment-ojigineko:", ":ojigineko-gokyu-kaiken:", ":ojigineko-muscle-exercise:", ":tosshutsu-symmetry-ojigineko:", ":ojigineko-upside-down:", ":ojikineko:"],
         shuffle: true,
         icon_emoji: ':ojigineko:',
+    },
+    {
+        input: [/ねこ/],
+        outputArray: [':nya-n:', ':neko:'],
+        reaction: true,
     },
 ];
 
