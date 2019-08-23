@@ -37,18 +37,24 @@ const logError = (err: Error, mesg: string): void => {
 const emojiData = 'bigemojis.json';
 const emojiPath = path.resolve(__dirname, emojiData);
 
-const loadEmojis = (): EmojiTable => {
-  let emojis = new Map;
-  if (!fs.existsSync(emojiPath)) {
-    logger.error("emoji file not found");
+let emojis : EmojiTable = new Map;
+
+const loadEmojis = () => {
+  emojis = new Map;
+  fs.readFile(emojiPath, 'utf8', (err, data) => {
+    if (err) {
+      logError(err, 'could not read emojis');
+      return;
+    }
+    const obj = JSON.parse(data);
+    logger.info('emoxpand: loading big emojis...');
+    for (const name in obj)
+      emojis.set(name, emojiFromContent(obj[name]));
     return emojis;
-  }
-  const obj = JSON.parse(fs.readFileSync(emojiPath, 'utf8'));
-  logger.info('emoxpand: loading big emojis...');
-  for (const name in obj)
-    emojis.set(name, emojiFromContent(obj[name]));
-  return emojis;
+  });
 };
+
+loadEmojis();
 
 const storeEmojis = (emojis: EmojiTable): void => {
   let obj: {[key: string]: EmojiContent} = {};
@@ -63,7 +69,6 @@ const storeEmojis = (emojis: EmojiTable): void => {
   });
 };
 
-let emojis : EmojiTable = loadEmojis();
 
 const addEmoji = (name: EmojiName, emoji: BigEmoji): void => {
   emojis.set(name, emoji);
