@@ -57,9 +57,11 @@ const loadEmojis = () => {
 loadEmojis();
 
 const storeEmojis = (emojis: EmojiTable): void => {
-  let obj: {[key: string]: EmojiContent} = {};
-  for (const [name, emoji] of emojis)
-    obj[name] = emoji.content;
+  //let obj: {[key: string]: EmojiContent} = {};
+  //for (const [name, emoji] of emojis)
+  //  obj[name] = emoji.content;
+  const obj = Object.fromEntries(
+    Array.from(emojis, ([name, emoji]) => [name, emoji.content]))
   fs.writeFile(emojiPath, JSON.stringify(obj), err => {
     if (err !== null) {
       logError(err, 'failed to write big emojis');
