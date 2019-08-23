@@ -12,11 +12,9 @@ const response = (text:string) => {
         for (const regexp of resp.input) {
             const matches = text.match(regexp);
             if (matches !== null) {
-                if ({}.hasOwnProperty.call(resp, 'outputArray')) {
-                    return [resp.shuffle ? shuffle(resp.outputArray).join('') : sample(resp.outputArray), resp.username, resp.icon_emoji];
-                } else {
-                    return [resp.outputFunction(matches), resp.username, resp.icon_emoji];
-                }
+                const responses = {}.hasOwnProperty.call(resp, 'outputArray') ? resp.outputArray : resp.outputFunction(matches);
+                if (!responses) continue;
+                return [resp.shuffle ? shuffle(responses).join('') : sample(responses), resp.username, resp.icon_emoji];
             }
         }
     }
@@ -28,11 +26,9 @@ const reaction = (text:string) => {
         for (const regexp of resp.input) {
             const matches = text.match(regexp);
             if (matches !== null) {
-                if ({}.hasOwnProperty.call(resp, 'outputArray')) {
-                    return resp.shuffle ? shuffle(resp.outputArray) : [sample(resp.outputArray)];
-                } else {
-                    return resp.outputFunction(matches);
-                }
+                const responses = {}.hasOwnProperty.call(resp, 'outputArray') ? resp.outputArray : resp.outputFunction(matches);
+                if (!responses) continue;
+                return resp.shuffle ? shuffle(responses) : [sample(responses)];
             }
         }
     }
