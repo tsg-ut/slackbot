@@ -97,10 +97,19 @@ const expandEmoji = (text: string): string =>
       ([parsing, chars, parsed], ch) => {
         const push = () => {
           if (chars.length === 0) return;
-          parsed.push({
-            kind: parsing,
-            content: chars.join(''),
-          });
+          const content = chars.join('');
+          if (parsing === 'BigEmoji' && !emojis.has(content)) {
+            parsed.push({
+              kind: 'Plain',
+              content: '!' + content + '!'
+            });
+          }
+          else {
+            parsed.push({
+              kind: parsing,
+              content: chars.join(''),
+            });
+          }
         };
         switch (ch) {
           case ':':
