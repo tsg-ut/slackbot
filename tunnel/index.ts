@@ -4,6 +4,7 @@ import sqlite from 'sqlite';
 import path from 'path';
 import plugin from 'fastify-plugin';
 import {get, flatten} from 'lodash';
+import {EmojiData} from 'emoji-data-ts';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -36,6 +37,16 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 		]
 			.map(({slack, token}) => slack.emoji.list({token}))) as any[])
 			.map(({emoji: emojis}) => new Map(Object.entries(emojis)));
+
+	const emojiData = new EmojiData();
+	const getEmojiImageUrl = (name: string, emojiMap: Map<string, string>): string => {
+		if(emojiMap.has(name)) {
+			return emojiMap.get(name);
+		}
+		const emoji = emojiData.getImageData(name)
+		if (emoji) return `https://raw.githubusercontent.com/iamcal/emoji-data/master/img-apple-64/${emoji.imageUrl}`;
+		return null;
+	}
 
 	fastify.post('/slash/tunnel', async (req, res) => {
 		if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
@@ -144,11 +155,11 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			}),
 			...updatedMessage.reactions
 				.map((reaction: {name: string, users: string[]}) => (
-					updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).has(reaction.name) ?
+					getEmojiImageUrl(reaction.name, updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis) ?
 					[
 						{
 							"type": "image",
-							"image_url": (updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).get(reaction.name),
+							"image_url": getEmojiImageUrl(reaction.name, updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis),
 							"alt_text": `:${reaction.name}: by ${
 								reaction.users.map((user) => (updatedTeam === 'TSG' ? tsgMembers : kmcMembers).get(user))
 									.map((user) => get(user, ['profile', 'display_name']) || get(user, ['profile', 'real_name'], '[ERROR]'))
@@ -165,7 +176,7 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 							"text": `:${reaction.name}: ${reaction.users.length}`,
 						},
 					]
-				)
+				))
 				.reduce(({rows, cnt}, reaction) => {
 					if (cnt + reaction.length > 10) {
 						// next line
