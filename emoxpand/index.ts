@@ -3,8 +3,6 @@ import path from 'path';
 // @ts-ignore
 import logger from '../lib/logger.js';
 import {RTMClient, WebClient} from '@slack/client';
-//@ts-ignore
-import {stripIndent} from 'common-tags';
 import * as _ from 'lodash';
 import plugin from 'fastify-plugin';
 
@@ -80,6 +78,7 @@ const alignEmojis = (es: BigEmoji[]): string[] => {
         .concat(Array(wholeHeight - height).fill(0).map(x => []))
         .map(row => row
           .concat(Array(width - row.length).fill('_'))
+          .map(emoji => `:${emoji}:`)
           .join('')));
   return _.zipWith(...filled, (...rows) => rows.join(''));
 };
@@ -96,6 +95,7 @@ const expandEmoji = (text: string): string =>
     const tokens: Token[] = (line + '\n').split('').reduce<[TokenType, string[], Token[]]>(
       ([parsing, chars, parsed], ch) => {
         const push = () => {
+          if (chars.length === 0) return;
           parsed.push({
             kind: parsing,
             content: chars.join(''),
@@ -160,8 +160,24 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
       icon_emoji: ':chian-ga-aru:',
     });
   };
+  
   // Big Emoji expansion {{{
-
+  const {team: tsgTeam}: any = await slack.team.info();
+  fastify.post('/slash/emoxpand', async (request, response) => {
+    if (request.body.token !== process.env.SLACK_VERIFICATION_TOKEN ||
+        request.body.team_id !== tsgTeam.id) {
+      response.code(400);
+      return 'Bad Request';
+    }
+    const {user}: any = await slack.users.info({ user: request.body.user_id });
+    slack.chat.postMessage({
+      channel: request.body.channel_id,
+      text: expandEmoji(request.body.text),
+      username: _.get(user, ['profile', 'display_name'], user.name),
+      icon_url: user.profile.image_192,
+    });
+    return '';
+  });
   // }}}
   
   // Big Emoji registration {{{
@@ -207,7 +223,7 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
             .map(row =>
               row.slice(1, row.length - 1).split('::'));
           addEmoji(state.name, emojiFromContent(content));
-          postMessage(String.raw`大絵文字 \`!${state.name}!\`
+          postMessage(`大絵文字 \`!${state.name}!\`
 ${match[1]}
 が登録されました:sushi-go-left::waiwai::saikou::chian-ga-aru::sushi-go-right:`);
           state = 'WaitingRegistration';
