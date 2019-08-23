@@ -325,7 +325,7 @@ export const unlock = async (user: string, name: string) => {
 		}),
 		attachments_achievelist: ['list'].map(() => {
 			const attachment_achievelist: MessageAttachment = {
-				text: '解除済みの実績数 : ' + Object.keys(holdingAchievements).length,
+				text: '解除済みの実績数 : ' + holdingAchievements.length,
 			}
 			return attachment_achievelist;
 		}),
