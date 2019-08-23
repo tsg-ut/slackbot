@@ -161,12 +161,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     });
 
     // royal straight flush
-    if (ranks[0] == 1 && ranks[9] == 1 && ranks[10] == 1 && ranks[11] == 1 && ranks[12] == 1 && suits.filter((val) => val === 5)) {
+    if (ranks[0] == 1 && ranks[9] == 1 && ranks[10] == 1 && ranks[11] == 1 && ranks[12] == 1 && suits.filter((val) => val === 5).length > 0) {
       return handList["Royal Straight Flush"];
     }
 
     // straight flush
-    let straight = suits.concat([suits[0]]);
+    let straight = ranks.concat([ranks[0]]);
     straight.reverse()
     straight.forEach((val, i) => {
       if (val) {
@@ -242,7 +242,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
     postMessage(stripIndent`
       結果発表!!!:tada::tada::tada:
-      ${rankings.map((val) => `<@${state.candidates[val].toString()}>` + " " + scores[val].toString() + " " + getNameOfHand(scores[val]) + '\n' + showHands(state.cards[val])).join('\n')}
+${rankings.map((val) => `<@${state.candidates[val].toString()}>` + " " + scores[val].toString() + " " + getNameOfHand(scores[val]) + '\n' + showHands(state.cards[val])).join('\n')}
     `);
 
     setState({
@@ -285,6 +285,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
           timerId = setTimeout(onFinishJoin, 1000 * 60 * 3);
         }
+        else if (text.match(/つばめし/)) {
+          await postMessage(stripIndent`
+            つばめしはTSG最強の生き物なので:ya:
+          `);
+        }
       }
       // DM
       if (message.channel.startsWith('D')) {
@@ -306,16 +311,22 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
             return;
           }
           let successJoin: boolean = false;
+          let lastCandidate: boolean = false;
           await mainMutex.exec(async () => {
             const candidates = state.candidates;
             const channels = state.channels;
             const leftChange = state.leftChange;
-            if (candidates.length < mostMemberNum) {
-              candidates.push(message.user);
-              channels.push(message.channel);
-              leftChange.push(5);
-              await setState({candidates, channels, leftChange});
-              successJoin = true;
+            if (candidates.filter(val => val === message.user).length == 0) {
+              if (candidates.length < mostMemberNum) {
+                candidates.push(message.user);
+                channels.push(message.channel);
+                leftChange.push(5);
+                await setState({candidates, channels, leftChange});
+                successJoin = true;
+                if (state.candidates.length === mostMemberNum) {
+                  lastCandidate = true;
+                }
+              }
             }
           });
 
@@ -324,13 +335,17 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
             const humanCount: number = state.candidates.length;
             const remainingText: string = (humanCount > leastMemeberNum ? '' : (
-              humanCount === leastMemeberNum ? '(決行決定:tada:)' : `(決行まであと${leastMemeberNum - humanCount}人)`));
+              humanCount === leastMemeberNum ? '(決行決定:clap:)' : `(決行まであと${leastMemeberNum - humanCount}人)`));
             await postMessage(stripIndent`
               ${getMention(message.user)} が参加するよ！現在の参加者: ${humanCount}人 ${remainingText}
             `);
           } else {
             postDM(stripIndent`ごめんね :cry: 既に最大参加人数(${mostMemberNum}人)に達してしまったよ :innocent:
             次の試合まで待つのじゃ...`);
+          }
+          if (lastCandidate) {
+            clearTimeout(timerId);
+            onFinishJoin();
           }
           return;
         }
@@ -363,18 +378,24 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
           });
 
           // add
-          const baseCards = state.baseCards;
-          while (cards.length < 5) {
-            cards.push(baseCards.pop());
-          }
-          const fullCards: number[][] = state.cards;
-          fullCards[idx] = cards;
-          const fullLeftChange: number[] = state.leftChange;
-          fullLeftChange[idx] = 0;
-          await setState({
-            leftChange: fullLeftChange,
-            cards: fullCards,
-            baseCards,
+          let allCandidateChanged = false;
+          await mainMutex.exec(async () => {
+            const baseCards = state.baseCards;
+            while (cards.length < 5) {
+              cards.push(baseCards.pop());
+            }
+            const fullCards: number[][] = state.cards;
+            fullCards[idx] = cards;
+            const fullLeftChange: number[] = state.leftChange;
+            fullLeftChange[idx] = 0;
+            await setState({
+              leftChange: fullLeftChange,
+              cards: fullCards,
+              baseCards,
+            });
+            if (state.leftChange.filter((val) => val > 0).length === 0) {
+              allCandidateChanged = true;
+            }
           });
           if (validTokens.length > 0) {
             await postDM(stripIndent`
@@ -385,6 +406,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
             await postMessage(stripIndent`
               <@${state.candidates[idx].toString()}> がカードを${validTokens.length} 枚捨てたよ！
             `);
+
+            if (allCandidateChanged) {
+              clearTimeout(timerId);
+              onFinishChangeCard();
+            }
           }
         }
       }
