@@ -174,10 +174,13 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
   // Big Emoji expansion {{{
   const {team: tsgTeam}: any = await slack.team.info();
   fastify.post('/slash/emoxpand', async (request, response) => {
-    if (request.body.token !== process.env.SLACK_VERIFICATION_TOKEN ||
-        request.body.team_id !== tsgTeam.id) {
+    if (request.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
       response.code(400);
       return 'Bad Request';
+    }
+    if (request.body.team_id !== tsgTeam.id) {
+      response.code(200);
+      return '/emoxpand is only for TSG. Sorry!';
     }
     slack.chat.postMessage({
       channel: request.body.channel_id,
