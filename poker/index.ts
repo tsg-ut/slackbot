@@ -125,8 +125,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     });
 
     await postMessage(stripIndent`
-      DMにそれぞれ手札を配るよ！1回だけ5枚まで交換していいから、交換する場合は"((S|Q|H|D)(A|2-9|10|J|Q|K)|JOKER)"を半角スペース区切りで <@${process.env.USER_TSGBOT}> にDMしてね。
-      2分経ったらベッティングタイムに入るよ。
+      DMにそれぞれ手札を配るよ！1回だけ5枚まで交換していいから、交換する場合は"(S|Q|H|D)(A|2-9|10|J|Q|K)"を半角スペース区切りで <@${process.env.USER_TSGBOT}> にDMしてね。
+      2分経ったら結果発表に入るよ。
     `);
 
     state.candidates.forEach(async (user, i) => {
@@ -142,7 +142,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       });
     });
 
-    timerId = setTimeout(onFinishChangeCard, 1000 * 30);
+    timerId = setTimeout(onFinishChangeCard, 1000 * 60 * 2);
   };
 
   const onFinishChangeCard = async () => {
@@ -159,9 +159,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       suits[Math.floor(card / 13)]++;
       ranks[card % 13]++;
     });
-
-    postMessage("suits: " + suits.toString());
-    postMessage("ranks: " + ranks.toString());
 
     // royal straight flush
     if (ranks[0] == 1 && ranks[9] == 1 && ranks[10] == 1 && ranks[11] == 1 && ranks[12] == 1 && suits.filter((val) => val === 5)) {
@@ -183,7 +180,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     straight.reverse();
     const straightIdx = straight.findIndex(val => val === 5);
     if (straightIdx !== -1) {
-      if (suits.filter((val) => val === 5)) {
+      if (suits.filter((val) => val === 5).length > 0) {
         return handList["Straight Flush"];
       }
     }
@@ -241,15 +238,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     // scoring
     const scores = state.cards.map((_, i) => getScore(i));
 
-    console.log((new Array(scores.length)).fill(0).map((_, i) => i));
-
     const rankings = sortBy(((new Array(scores.length)).fill(0).map((_, i) => i)), (val) => -scores[val]);
-
-    console.log(rankings);
 
     postMessage(stripIndent`
       結果発表!!!:tada::tada::tada:
-      ${rankings.map((val) => `<@${val.toString()}>` + " " + scores[val].toString() + " " + getNameOfHand(scores[val]) + '\n' + showHands(state.cards[val]))}
+      ${rankings.map((val) => `<@${state.candidates[val].toString()}>` + " " + scores[val].toString() + " " + getNameOfHand(scores[val]) + '\n' + showHands(state.cards[val])).join('\n')}
     `);
 
     setState({
@@ -290,7 +283,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
             参加者は3分以内に <@${process.env.USER_TSGBOT}> にDMしてね！
           `);
 
-          timerId = setTimeout(onFinishJoin, 1000 * 10);
+          timerId = setTimeout(onFinishJoin, 1000 * 60 * 3);
         }
       }
       // DM
@@ -309,6 +302,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
         const tokens = text.trim().split(/\s+/);
         if (state.phase === 'join') {
+          if (message.subtype === 'bot_message' || message.user === 'USLACKBOT') {
+            return;
+          }
           let successJoin: boolean = false;
           await mainMutex.exec(async () => {
             const candidates = state.candidates;
@@ -384,6 +380,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
             await postDM(stripIndent`
               ${validTokens.join(',')} を捨てたよ！残り操作回数:${state.leftChange[idx]} 回:thinking_face:
               ${showHands(state.cards[idx])}
+            `);
+
+            await postMessage(stripIndent`
+              <@${state.candidates[idx].toString()}> がカードを${validTokens.length} 枚捨てたよ！
             `);
           }
         }
