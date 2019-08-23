@@ -1,3 +1,9 @@
 import customResponses from "./custom-responses";
 
-expect(customResponses.every((customResponse) => {(customResponse.outputArray !== undefined) !== (customResponse.outputFunction !== undefined)}));
+discribe('better-custom-response', () => {
+    it('either one of array and function', async () => {
+        for (const customResponse of customResponses) {
+            expect((customResponse.outputFunction !== undefined) !== (customResponse.outputArray !== undefined));
+        }
+    });
+});
