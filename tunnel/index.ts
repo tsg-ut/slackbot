@@ -180,7 +180,7 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 					type: 'context',
 					elements,
 				})),
-		].slice(0, 50);
+		];
 
 		if (updatingMessageData.team === 'TSG') {
 			await tsgSlack.chat.update({
