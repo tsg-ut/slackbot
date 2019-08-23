@@ -13,14 +13,14 @@ const response = (text:string) => {
             const matches = text.match(regexp);
             if (matches !== null) {
                 if ({}.hasOwnProperty.call(resp, 'outputArray')) {
-                    return resp.shuffle ? shuffle(resp.outputArray).join('') : sample(resp.outputArray);
+                    return [resp.shuffle ? shuffle(resp.outputArray).join('') : sample(resp.outputArray), resp.username, resp.icon_emoji];
                 } else {
-                    return resp.outputFunction(matches);
+                    return [resp.outputFunction(matches), resp.username, resp.icon_emoji];
                 }
             }
         }
     }
-    return null;
+    return [null, null, null];
 };
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
@@ -29,10 +29,14 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
         const {text} = message;
         if (!text) return;
         const resp = response(text);
-        if (!resp) return;
+        if (!resp[0]) return;
+        const username = !resp[1] ? 'better-custom-response' : resp[1];
+        const icon_emoji = !resp[2] ? 'atama' : resp[2];
         await slack.chat.postMessage({
             channel: message.channel,
-            text: resp,
+            text: resp[0],
+            username,
+            icon_emoji,
         });
     });
 }
