@@ -54,7 +54,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
         const reac = reaction(text);
         if (!reac) return;
         for (const reaction of reac) {
-            await slack.reactions.add({name: reaction, channel, timestamp});
+            try {
+                await slack.reactions.add({name: reaction, channel, timestamp});
+            } catch (e) {
+            }
         }
     });
 }
