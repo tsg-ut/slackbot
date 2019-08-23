@@ -129,6 +129,7 @@ const expandEmoji = (text: string): string =>
               push();
               return ['Plain', [], parsed];
             }
+            break;
           case '!':
             if (parsing === 'Plain') {
               push();
@@ -138,9 +139,11 @@ const expandEmoji = (text: string): string =>
               push();
               return ['Plain', [], parsed];
             }
+            break;
           case '\n':
             push();
             return ['Plain', [], parsed];
+            break;
         }
         chars.push(ch);
         return [parsing, chars, parsed];
