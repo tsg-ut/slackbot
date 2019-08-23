@@ -3,7 +3,7 @@ import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
 import path from 'path';
 import plugin from 'fastify-plugin';
-import {get} from 'lodash';
+import {get, flatten} from 'lodash';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -142,41 +142,33 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 					text: updatedMessage.text,
 				},
 			}),
-			...updatedMessage.reactions.map((reaction: {name: string, users: string[]}) => ({
-				type: 'context',
-				elements: [
-					{
-						type: 'mrkdwn',
-						text: '+',
-					},
-					...((updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).has(reaction.name) ?
+			{
+				"type": "context",
+				"elements": // TODO: split each 10 components
+					flatten(updatedMessage.reactions.map((reaction: {name: string, users: string[]}) => (
+						updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).has(reaction.name) ?
 						[
 							{
-								type: 'image',
-								image_url: (updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).get(reaction.name),
-								alt_text: `:${reaction.name}:`,
+								"type": "image",
+								"image_url": (updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).get(reaction.name),
+								"alt_text": `:${reaction.name}: by ${
+									reaction.users.map((user) => (updatedTeam === 'TSG' ? tsgMembers : kmcMembers).get(user))
+										.map((user) => get(user, ['profile', 'display_name']) || get(user, ['profile', 'real_name'], '[ERROR]'))
+										.join(', ')
+								}`,
 							},
 							{
-								type: 'mrkdwn',
-								text: 'by',
+								"type": "mrkdwn",
+								"text": `${reaction.users.length}`,
 							},
-						] : [
+						] : [ // TODO: use image for non-custom emojis too
 							{
-								type: 'mrkdwn',
-								text: `:${reaction.name}: by`,
-							}
+								"type": "mrkdwn",
+								"text": `:${reaction.name}: ${reaction.users.length}`,
+							},
 						]
-					),
-					...(reaction.users
-						.map((user) => (updatedTeam === 'TSG' ? tsgMembers : kmcMembers).get(user))
-						.filter((user) => get(user, ['profile', 'image_48']))
-						.map((user) => ({
-							type: 'image',
-							image_url: get(user, ['profile', 'image_48']),
-							alt_text: get(user, ['profile', 'display_name']) || get(user, ['profile', 'real_name'], '[ERROR]'),
-						}))),
-				],
-			})),
+					)),
+			},
 		].slice(0, 50);
 
 		if (updatingMessageData.team === 'TSG') {
