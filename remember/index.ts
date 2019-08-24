@@ -39,7 +39,7 @@ const searchMessagesByReaction = (reaction: string, date: moment.Moment): Result
     const filename = `${__dirname}/sandbox-log/${date.format('YYYY-MM-DD')}.json`;
     if (fs.existsSync(filename)) {
         const messages = JSON.parse(fs.readFileSync(filename, 'utf-8')) as Message[];
-        let hitMessages: Result[] = [];
+        const hitMessages: Result[] = [];
         for (const message of messages) {
             if (message.reactions) { // It has at least one reaction
                 const targetReaction = message.reactions.find(gotReaction => gotReaction.name === reaction) as Reaction;
@@ -53,9 +53,8 @@ const searchMessagesByReaction = (reaction: string, date: moment.Moment): Result
             } 
         }
         return hitMessages;
-    } else {
-        return undefined;
     }
+        return undefined;
 };
 
 const postReportToSlack = async (reaction: string, lastYearDate: moment.Moment, slack: SlackInterface) => {
@@ -80,7 +79,6 @@ const postReportToSlack = async (reaction: string, lastYearDate: moment.Moment, 
     }
     const attachments = [];
     for (const result of results) {
-        console.log(`https://slack-log.tsg.ne.jp/${sandbox}/${result.ts}`);
         const attachment = {
             text: result.text,
             footer: `<https://slack-log.tsg.ne.jp/${sandbox}/${result.ts}|slack-log>`,
@@ -122,8 +120,7 @@ export default async (slack: SlackInterface) => {
         if (message.text.startsWith('@remember ')) {
             const keyword = message.text.split(' ')[1];
             let isValid = true;
-            const blackList = '`~!@#$%^&*()=+;:[{]}|,<.>/?"'.split('');
-            blackList.push("'");
+            const blackList = '`~!@#$%^&*()=;:[{]}|,<.>/?"'.split('');
             for (const str of blackList) {
                 if (keyword.includes(str)) {
                     isValid = false
