@@ -17,8 +17,8 @@ export const getMemberName = async (user: string): Promise<string> => {
 	const member = members.find(({id}: any) => id === user);
 	return member.profile.display_name || member.name;
 };
-type IconResoluton = 24 | 32 | 48 | 72 | 192 | 512;
-export const getMemberIcon = async (user: string, res: IconResoluton = 24): Promise<string> => {
+type IconResolution = 24 | 32 | 48 | 72 | 192 | 512;
+export const getMemberIcon = async (user: string, res: IconResolution = 24): Promise<string> => {
 	const members = [
 		...(await loadMembersDeferred.promise),
 		...additionalMembers,
