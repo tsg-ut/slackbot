@@ -50,7 +50,7 @@ const customResponses: CustomResponse[] = [
         reaction: true,
     },
     {
-        input: [/@tsgcat/],
+        input: [/@tsgcat(?![A-Za-z])/],
         outputArray: ['ねこ〜', 'すぴー'],
         icon_emoji: ':cat2:',
         username: 'tsgcat',
