@@ -45,9 +45,15 @@ const customResponses: CustomResponse[] = [
         icon_emoji: ':ojigineko:',
     },
     {
-        input: [/ねこ/],
+        input: [/((ね|ネ|ﾈ|ne)(こ|コ|ｺ|ko))|猫|cat|にゃ|nya|meow/i],
         outputArray: ['nya-n', 'neko'],
         reaction: true,
+    },
+    {
+        input: [/@tsgcat/],
+        outputArray: ['ねこ〜', 'すぴー'],
+        icon_emoji: ':cat2:',
+        username: 'tsgcat',
     },
 ];
 
