@@ -217,7 +217,8 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
     if (message.channel !== process.env.CHANNEL_SANDBOX)
       return;
 
-    if (message.text === 'やーめた') {
+    if (RegistrationState === 'WaitingRegistration' &&
+        message.text === 'やーめた') {
       postMessage(':OK:');
       state = 'WaitingRegistration';
       return;
