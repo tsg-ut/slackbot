@@ -175,7 +175,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
-		contest.isPreposted = true;
 		logger.info(`Preposting result of contest ${id}...`);
 
 		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`);
@@ -214,6 +213,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			],
 		});
 
+		contest.isPreposted = true;
+		setState({contests: state.contests});
+
 		for (const {user, standing} of userStandings) {
 			if (standing) {
 				await unlock(user, 'atcoder-participate');
@@ -229,7 +231,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
-		contest.isPosted = true;
 		logger.info(`Posting result of contest ${id}...`);
 
 		const resultMap = new Map(state.users.map(({atcoder, slack}) => {
@@ -286,6 +287,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				},
 			],
 		});
+
+		contest.isPosted = true;
+		setState({contests: state.contests});
 
 		for (const {user, standing} of userStandings) {
 			const result = resultMap.get(user);
