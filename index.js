@@ -50,6 +50,7 @@ const plugins = [
 	require('./lyrics'),
 	require('./ojigineko-life'),
 	require('./better-custom-response'),
+	require('./emoxpand'),
 ];
 
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
