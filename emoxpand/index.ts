@@ -198,7 +198,7 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
       channel: request.body.channel_id,
       text: expandEmoji(request.body.text),
       username: await getMemberName(request.body.user_id),
-      icon_url: await getMemberIcon(request.body.user_id),
+      icon_url: await getMemberIcon(request.body.user_id, 192),
     });
     return '';
   });
