@@ -15,8 +15,6 @@ TSGのSlackで動くSlackbotたち
 
 自分がOWNERのコードの変更は直接masterにpushして構いません。 ([CODEOWNERS](CODEOWNERS)参照)
 
-push後は必ずデプロイをお願いします。
-
 ## 環境構築
 
 ### Prerequisites
