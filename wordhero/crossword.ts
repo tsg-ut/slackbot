@@ -5,6 +5,7 @@ import cloudinary from 'cloudinary';
 import {stripIndent} from 'common-tags';
 // @ts-ignore
 import {hiraganize} from 'japanese';
+import Queue from 'p-queue';
 import {renderCrossword} from './render';
 import generateCrossword from './generateCrossword';
 import boardConfigs from './boards.json';
@@ -35,6 +36,8 @@ const uploadImage = async (board: {color: string, letter: string}[], boardIndex:
 	});
 	return cloudinaryData;
 };
+
+const updatesQueue = new Queue({concurrency: 1});
 
 const colors = [
 	'#FF6F00',
@@ -147,38 +150,45 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					}))],
 				});
 			} else {
-				await slack.reactions.add({
-					name: '+1',
-					channel: message.channel,
-					timestamp: message.ts,
-				});
+				const cloudinaryDataPromise = (async () => {
+					await slack.reactions.add({
+						name: '+1',
+						channel: message.channel,
+						timestamp: message.ts,
+					});
 
-				const cloudinaryData: any = await uploadImage(state.board.map((letter, index) => (letter === null ? null : {
-					color: newIndices.has(index) ? 'red' : 'black',
-					letter,
-				})), state.crossword.index);
-				const seconds = boardConfigs[state.crossword.index].length * 10;
+					const cloudinaryData: any = await uploadImage(state.board.map((letter, index) => (letter === null ? null : {
+						color: newIndices.has(index) ? 'red' : 'black',
+						letter,
+					})), state.crossword.index);
+					return cloudinaryData;
+				})();
 
-				await slack.chat.update({
-					channel: process.env.CHANNEL_SANDBOX,
-					text: stripIndent`
-						楽しいクロスワードパズルを始めるよ～
-						マスに入ると思う単語を${seconds}秒以内に *スレッドで* 返信してね!
-					`,
-					ts: state.thread,
-					attachments: [{
-						title: 'Cross Word',
-						image_url: cloudinaryData.secure_url,
-					}, ...state.crossword.descriptions.map(({description, ruby}, index) => {
-						const cells = boardConfigs[state.crossword.index].find((constraint) => constraint.index === index + 1).cells;
-						return {
-							text: `${index + 1}. ${cells.map((cell) => state.board[cell] || '◯').join('')}: ${description}`,
-							ruby,
-							color: colors[index],
-						};
-					}).filter(({ruby}) => (
-						!state.hitWords.includes(ruby)
-					))],
+				await updatesQueue.add(async () => {
+					const cloudinaryData = await cloudinaryDataPromise;
+					const seconds = boardConfigs[state.crossword.index].length * 10;
+
+					await slack.chat.update({
+						channel: process.env.CHANNEL_SANDBOX,
+						text: stripIndent`
+							楽しいクロスワードパズルを始めるよ～
+							マスに入ると思う単語を${seconds}秒以内に *スレッドで* 返信してね!
+						`,
+						ts: state.thread,
+						attachments: [{
+							title: 'Cross Word',
+							image_url: cloudinaryData.secure_url,
+						}, ...state.crossword.descriptions.map(({description, ruby}, index) => {
+							const cells = boardConfigs[state.crossword.index].find((constraint) => constraint.index === index + 1).cells;
+							return {
+								text: `${index + 1}. ${cells.map((cell) => state.board[cell] || '◯').join('')}: ${description}`,
+								ruby,
+								color: colors[index],
+							};
+						}).filter(({ruby}) => (
+							!state.hitWords.includes(ruby)
+						))],
+					});
 				});
 			}
 
