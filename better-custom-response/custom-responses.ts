@@ -42,7 +42,7 @@ const customResponses: CustomResponse[] = [
         input: [/^(.*)(てます|でます|ています|でいます|ちゃった|じゃった)[。⋯・…]*$/],
         outputFunction: ([, 動詞, 音便]) => {
             const 接助詞 = (音便.startsWith('て') || 音便.startsWith('ち')) ? 'て' : 'で';
-            return [`本当に${input[1]}${接助詞}いますか？`];
+            return [`本当に${動詞}${接助詞}いますか？`];
         },
     },
     {
