@@ -39,9 +39,10 @@ const customResponses: CustomResponse[] = [
         username: 'dice response',
     },
     {
-        input: [/^(.*)(てます|ています|ちゃった)。?$/],
-        outputFunction: (input: string[]) => {
-            return ["本当に" + input[1] + "ていますか？"];
+        input: [/^(.*)(てます|でます|ています|でいます|ちゃった|じゃった)[。⋯・…]*$/],
+        outputFunction: ([, 動詞, 音便]) => {
+            const 接助詞 = (音便.startsWith('て') || 音便.startsWith('ち')) ? 'て' : 'で';
+            return [`本当に${動詞}${接助詞}いますか？`];
         },
     },
     {
