@@ -265,6 +265,7 @@ class Tahoiya {
 			time: now,
 			duration: 5 * 60 * 1000,
 			theme,
+			status: 'meaning',
 			meanings: Object.create(null),
 			bettings: Object.create(null),
 			choices: [],
@@ -293,7 +294,7 @@ class Tahoiya {
 					},
 				},
 				{type: 'divider'},
-				...this.getGameBlocks(),
+				...(await this.getGameBlocks()),
 			],
 		});
 	}
@@ -376,14 +377,14 @@ class Tahoiya {
 		})
 	}
 
-	showStatus() {
+	async showStatus() {
 		return this.tsgSlack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			username: 'tahoiya',
 			icon_emoji: ':open_book:',
 			text: '',
 			blocks: [
-				...this.getGameBlocks(),
+				...(await this.getGameBlocks()),
 			],
 		});
 	}
@@ -414,7 +415,7 @@ class Tahoiya {
 		return 'ベッティング中';
 	}
 
-	getGameBlocks(): KnownBlock[] {
+	async getGameBlocks(): Promise<KnownBlock[]> {
 		if (this.state.games.length === 0) {
 			return [{
 				type: 'section',
@@ -425,7 +426,7 @@ class Tahoiya {
 			}];
 		}
 
-		const b = flatten(this.state.games.map((game, index) => ([
+		const gameBlocks = await Promise.all(this.state.games.map(async (game, index) => ([
 			{
 				type: 'section',
 				block_id: `tahoiya_add_meaning_${index}`,
@@ -456,8 +457,8 @@ class Tahoiya {
 				} as KnownBlock,
 			]),
 		])));
-		console.log(b);
-		return b;
+
+		return flatten(gameBlocks);
 	}
 }
 
