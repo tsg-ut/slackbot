@@ -14,7 +14,7 @@ class Response extends React.Component {
   send = (event) => {
     console.log('send data:');
     console.log(this.state);
-    axios.post(`http://localhost:${process.env.PORT}/bcr/update`, this.state);
+    axios.post(`http://localhost:3001/bcr/update`, this.state);
   }
 
   handleTextChange = (event, type) => {
