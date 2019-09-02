@@ -11,7 +11,7 @@ interface SlackInterface {
 const getCustomResponses = () => localResponses.concat(webResponses);
 
 const response = (text:string) => {
-    for (const resp of getCustomResponses().concat(webResponses).filter((response) => !response.reaction)) {
+    for (const resp of getCustomResponses().filter((response) => !response.reaction)) {
         for (const regexp of resp.input) {
             const matches = text.match(regexp);
             if (matches !== null) {
@@ -25,7 +25,7 @@ const response = (text:string) => {
 };
 
 const reaction = (text:string) => {
-    for (const resp of getCustomResponses().concat(webResponses).filter((response) => response.reaction)) {
+    for (const resp of getCustomResponses().filter((response) => response.reaction)) {
         for (const regexp of resp.input) {
             const matches = text.match(regexp);
             if (matches !== null) {
