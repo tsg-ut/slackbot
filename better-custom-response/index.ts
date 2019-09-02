@@ -1,14 +1,17 @@
-import customResponses from './custom-responses';
+import localResponses from './custom-responses';
 import {sample, shuffle} from 'lodash';
 import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
+import {customResponses as webResponses} from './server';
 
 interface SlackInterface {
     rtmClient: RTMClient,
     webClient: WebClient,
 }
 
+const getCustomResponses = () => localResponses.concat(webResponses);
+
 const response = (text:string) => {
-    for (const resp of customResponses.filter((response) => !response.reaction)) {
+    for (const resp of getCustomResponses().concat(webResponses).filter((response) => !response.reaction)) {
         for (const regexp of resp.input) {
             const matches = text.match(regexp);
             if (matches !== null) {
@@ -22,7 +25,7 @@ const response = (text:string) => {
 };
 
 const reaction = (text:string) => {
-    for (const resp of customResponses.filter((response) => response.reaction)) {
+    for (const resp of getCustomResponses().concat(webResponses).filter((response) => response.reaction)) {
         for (const regexp of resp.input) {
             const matches = text.match(regexp);
             if (matches !== null) {

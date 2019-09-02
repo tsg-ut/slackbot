@@ -50,6 +50,7 @@ const plugins = [
 	require('./lyrics'),
 	require('./ojigineko-life'),
 	require('./better-custom-response'),
+	require('./better-custom-response/server'),
 	require('./emoxpand'),
 ];
 

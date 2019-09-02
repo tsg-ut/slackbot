@@ -1,4 +1,4 @@
-interface CustomResponse {
+export interface CustomResponse {
     input: RegExp[],
     outputArray?: string[],
     outputFunction?: ((input: string[])=> string[]),
