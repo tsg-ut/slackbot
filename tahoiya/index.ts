@@ -2,11 +2,11 @@ import {promises as fs, constants} from 'fs';
 // @ts-ignore
 import download from 'download';
 import path from 'path';
-import {RTMClient, WebClient, SectionBlock} from '@slack/client';
+import {RTMClient, WebClient, KnownBlock} from '@slack/client';
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
 import {Mutex} from 'async-mutex';
-import {sampleSize, chunk} from 'lodash';
+import {sampleSize, chunk, flatten, isEmpty} from 'lodash';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
 import {Deferred} from '../lib/utils';
@@ -62,6 +62,7 @@ interface Game {
 		description: string,
 		source: string,
 	},
+	status: 'meaning' | 'betting',
 	meanings: {
 		[user: string]: {
 			text: string,
@@ -405,7 +406,15 @@ class Tahoiya {
 		return `<@${user}>`;
 	};
 
-	getGameBlocks(): SectionBlock[] {
+	getGameStatus(game: Game) {
+		if (game.status === 'meaning') {
+			return '意味登録中';
+		}
+
+		return 'ベッティング中';
+	}
+
+	getGameBlocks(): KnownBlock[] {
 		if (this.state.games.length === 0) {
 			return [{
 				type: 'section',
@@ -416,25 +425,39 @@ class Tahoiya {
 			}];
 		}
 
-		return this.state.games.map((game, index) => ({
-			type: 'section',
-			block_id: `tahoiya_add_meaning_${index}`,
-			text: {
-				type: 'mrkdwn',
-				text: stripIndent`
-					🍣 お題＊「${game.theme.ruby}」＊ by ${this.getMention(game.author)}
-					終了予定時刻: ${getTimeLink(game.time + game.duration)}
-				`,
-			},
-			accessory: {
-				type: 'button',
+		const b = flatten(this.state.games.map((game, index) => ([
+			{
+				type: 'section',
+				block_id: `tahoiya_add_meaning_${index}`,
 				text: {
-					type: 'plain_text',
-					text: '登録する',
+					type: 'mrkdwn',
+					text: stripIndent`
+						🍣 お題＊「${game.theme.ruby}」＊ by ${this.getMention(game.author)}
+						＊${this.getGameStatus(game)}＊ 終了予定時刻: ${getTimeLink(game.time + game.duration)}
+					`,
 				},
-				value: game.theme.ruby,
-			},
-		}))
+				accessory: {
+					type: 'button',
+					text: {
+						type: 'plain_text',
+						text: '登録する',
+					},
+					value: game.theme.ruby,
+				},
+			} as KnownBlock,
+			...(isEmpty(game.meanings) ? [] : [
+				{
+					type: 'context',
+					elements: Object.keys(game.meanings).map((user) => ({
+						type: 'image',
+						image_url: 'https://placehold.it/48x48',
+						alt_text: 'hoge',
+					})),
+				} as KnownBlock,
+			]),
+		])));
+		console.log(b);
+		return b;
 	}
 }
 
@@ -460,7 +483,7 @@ module.exports = async ({rtmClient: tsgRtm, webClient: tsgSlack, messageClient: 
 		if (text === 'たほいや') {
 			mutex.runExclusive(async () => ( 
 				tahoiya.generateCandidates().catch((error) => {
-					error.message;
+					console.error(error);
 				})
 			));
 		}
@@ -468,7 +491,7 @@ module.exports = async ({rtmClient: tsgRtm, webClient: tsgSlack, messageClient: 
 		if (text === 'たほいや 状況') {
 			mutex.runExclusive(async () => ( 
 				tahoiya.showStatus().catch((error) => {
-					error.message;
+					console.error(error);
 				})
 			));
 		}
