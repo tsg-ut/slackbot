@@ -56,10 +56,14 @@ const loadEmojis = () => {
 
 loadEmojis();
 
-const storeEmojis = (emojis: EmojiTable): void => {
+const emojisToJson = (emojis: EmojiTable): string => {
   const obj = Object.fromEntries(
-    Array.from(emojis, ([name, emoji]) => [name, emoji.content]))
-  fs.writeFile(emojiPath, JSON.stringify(obj), err => {
+    Array.from(emojis, ([name, emoji]) => [name, emoji.content]));
+  return JSON.stringify(obj);
+}
+
+const storeEmojis = (emojis: EmojiTable): void => {
+  fs.writeFile(emojiPath, emojisToJson(emojis), err => {
     if (err !== null) {
       logError(err, 'failed to write big emojis');
       return;
@@ -201,6 +205,13 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
       icon_url: await getMemberIcon(request.body.user_id, 192),
     });
     return '';
+  });
+  // }}}
+
+  // Emoji list API {{{
+  fastify.get('/emoxpand/list', async (request, response) => {
+    response.header('Content-Type', 'applicaton/json').code(200);
+    return emojisToJson(emojis);
   });
   // }}}
   
