@@ -100,6 +100,10 @@ class Tahoiya {
 	state: State;
 	words: string[];
 	db: sqlite.Database;
+	announces: {
+		message: string | null,
+		ts: string,
+	}[];
 
 	constructor({tsgRtm, tsgSlack, kmcRtm, kmcSlack, slackInteractions}: {tsgRtm: RTMClient, tsgSlack: WebClient, kmcRtm: RTMClient, kmcSlack: WebClient, slackInteractions: any}) {
 		this.tsgRtm = tsgRtm;
@@ -107,6 +111,7 @@ class Tahoiya {
 		this.kmcRtm = kmcRtm;
 		this.kmcSlack = kmcSlack;
 		this.slackInteractions = slackInteractions;
+		this.announces = [];
 
 		this.state = {
 			games: [],
@@ -277,7 +282,12 @@ class Tahoiya {
 			games: this.state.games.concat([game]),
 		});
 
-		return this.tsgSlack.chat.postMessage({
+		const message = stripIndent`
+			お題を＊「${word}」＊に設定したよ:v:
+			終了予定時刻: ${getTimeLink(game.time + game.duration)}
+		`;
+
+		const announce: any = await this.tsgSlack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			username: 'tahoiya',
 			icon_emoji: ':open_book:',
@@ -287,15 +297,17 @@ class Tahoiya {
 					type: 'section',
 					text: {
 						type: 'mrkdwn',
-						text: stripIndent`
-							お題を＊「${word}」＊に設定したよ:v:
-							終了予定時刻: ${getTimeLink(game.time + game.duration)}
-						`,
+						text: message,
 					},
 				},
 				{type: 'divider'},
 				...(await this.getGameBlocks()),
 			],
+		});
+
+		this.announces.push({
+			message,
+			ts: announce.ts,
 		});
 	}
 
@@ -378,7 +390,7 @@ class Tahoiya {
 	}
 
 	async showStatus() {
-		return this.tsgSlack.chat.postMessage({
+		const announce: any = await this.tsgSlack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			username: 'tahoiya',
 			icon_emoji: ':open_book:',
@@ -386,6 +398,11 @@ class Tahoiya {
 			blocks: [
 				...(await this.getGameBlocks()),
 			],
+		});
+
+		this.announces.push({
+			message: null,
+			ts: announce.ts,
 		});
 	}
 
