@@ -47,11 +47,19 @@ const plugins = [
 	require('./tunnel'),
 	require('./voiperrobot'),
 	require('./atcoder'),
+	require('./lyrics'),
 	require('./ojigineko-life'),
+	require('./better-custom-response'),
+	require('./emoxpand'),
 ];
 
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
+eventClient.on('error', (error) => {
+	logger.error(error.stack);
+});
+
 const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
+
 (async () => {
 	await Promise.all(plugins.map(async (plugin) => {
 		if (typeof plugin === 'function') {
@@ -72,6 +80,14 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 	});
 })();
 
+fastify.use('/slack-event', (req, res, next) => {
+	if (!{}.hasOwnProperty.call(req.headers, 'x-slack-signature')) {
+		res.statusCode = 400;
+		res.end('Bad Request');
+		return;
+	}
+	next();
+});
 fastify.use('/slack-event', eventClient.expressMiddleware());
 fastify.use('/slack-message', messageClient.requestListener());
 fastify.listen(process.env.PORT || 21864);

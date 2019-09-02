@@ -1287,6 +1287,79 @@ const achievements: Achievement[] = [
 		category: 'ahokusa',
 	},
 
+	// atcoder
+
+	{
+		id: 'atcoder-participate',
+		difficulty: 'medium',
+		title: 'はいプロ',
+		condition: 'AtCoderに参加する',
+		category: 'atcoder',
+	},
+	{
+		id: 'atcoder-rating-plus',
+		difficulty: 'medium',
+		title: '競プロの天才',
+		condition: 'AtCoderでレーティングを上げる',
+		category: 'atcoder',
+	},
+	{
+		id: 'atcoder-rating-plus-50',
+		difficulty: 'hard',
+		title: '競プロ界のtourist',
+		condition: 'AtCoderでレーティングを一度に50以上上げる',
+		category: 'atcoder',
+	},
+	{
+		id: 'atcoder-rating-minus',
+		difficulty: 'medium',
+		title: '競プロの終焉を告げる者',
+		condition: 'AtCoderでレーティングを下げる',
+		category: 'atcoder',
+	},
+	{
+		id: 'atcoder-rating-minus-50',
+		difficulty: 'hard',
+		title: '実質趣味',
+		condition: 'AtCoderでレーティングを一度に50以上下げる',
+		category: 'atcoder',
+	},
+	{
+		id: 'atcoder-rating-over-2400',
+		difficulty: 'professional',
+		title: '競プロするために生まれてきた男',
+		condition: 'AtCoderのレーティングを2400以上にする',
+		category: 'atcoder',
+	},
+	{
+		id: 'atcoder-all-solve',
+		difficulty: 'hard',
+		title: 'スペースエクスプローラー高橋君',
+		condition: 'AtCoderのレーティング更新対象の大会で全ての問題で正の得点を獲得した状態でレーティングを確定させる',
+		category: 'atcoder',
+	},
+	{
+		id: 'atcoder-repdigit',
+		difficulty: 'hard',
+		title: '魔法使い高橋君',
+		condition: 'AtCoderでゾロ目の順位 (10進数、3桁以上に限る) でレーティングを確定させる',
+		category: 'atcoder',
+	},
+	{
+		id: 'atcoder-prime',
+		difficulty: 'medium',
+		title: '高橋君と青木君の好きな数',
+		condition: 'AtCoderで素数となる順位でレーティングを確定させる',
+		category: 'atcoder',
+	},
+	{
+		id: 'atcoder-no-solve',
+		difficulty: 'medium',
+		title: '器物損壊！高橋君',
+		condition: 'AtCoderのレーティング更新対象の大会で1問も解かずにレーティングを確定させる',
+		category: 'atcoder',
+	},
+
 	// achievements
 
 	{

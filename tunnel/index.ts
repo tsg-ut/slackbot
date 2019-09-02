@@ -3,9 +3,10 @@ import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
 import path from 'path';
 import plugin from 'fastify-plugin';
-import {get} from 'lodash';
 // @ts-ignore
 import logger from '../lib/logger.js';
+import {get, flatten} from 'lodash';
+import {EmojiData} from 'emoji-data-ts';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -44,6 +45,16 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 		]
 			.map(({slack, token}) => slack.emoji.list({token}))) as any[])
 			.map(({emoji: emojis}) => new Map(Object.entries(emojis)));
+
+	const emojiData = new EmojiData();
+	const getEmojiImageUrl = (name: string, emojiMap: Map<string, string>): string => {
+		if(emojiMap.has(name)) {
+			return emojiMap.get(name);
+		}
+		const emoji = emojiData.getImageData(name)
+		if (emoji) return `https://raw.githubusercontent.com/iamcal/emoji-data/master/img-apple-64/${emoji.imageUrl}`;
+		return null;
+	}
 
 	fastify.post('/slash/tunnel', async (req, res) => {
 		if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
@@ -150,42 +161,45 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 					text: updatedMessage.text,
 				},
 			}),
-			...updatedMessage.reactions.map((reaction: {name: string, users: string[]}) => ({
-				type: 'context',
-				elements: [
-					{
-						type: 'mrkdwn',
-						text: '+',
-					},
-					...((updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).has(reaction.name) ?
-						[
-							{
-								type: 'image',
-								image_url: (updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis).get(reaction.name),
-								alt_text: `:${reaction.name}:`,
-							},
-							{
-								type: 'mrkdwn',
-								text: 'by',
-							},
-						] : [
-							{
-								type: 'mrkdwn',
-								text: `:${reaction.name}: by`,
-							}
-						]
-					),
-					...(reaction.users
-						.map((user) => (updatedTeam === 'TSG' ? tsgMembers : kmcMembers).get(user))
-						.filter((user) => get(user, ['profile', 'image_48']))
-						.map((user) => ({
-							type: 'image',
-							image_url: get(user, ['profile', 'image_48']),
-							alt_text: get(user, ['profile', 'display_name']) || get(user, ['profile', 'real_name'], '[ERROR]'),
-						}))),
-				],
-			})),
-		].slice(0, 50);
+			...updatedMessage.reactions
+				.map((reaction: {name: string, users: string[]}) => (
+					getEmojiImageUrl(reaction.name, updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis) ?
+					[
+						{
+							"type": "image",
+							"image_url": getEmojiImageUrl(reaction.name, updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis),
+							"alt_text": `:${reaction.name}: by ${
+								reaction.users.map((user) => (updatedTeam === 'TSG' ? tsgMembers : kmcMembers).get(user))
+									.map((user) => get(user, ['profile', 'display_name']) || get(user, ['profile', 'real_name'], '[ERROR]'))
+									.join(', ') 
+							}`,
+						},
+						{
+							"type": "mrkdwn",
+							"text": `${reaction.users.length}`,
+						},
+					] : [ // TODO: use image for non-custom emojis too
+						{
+							"type": "mrkdwn",
+							"text": `:${reaction.name}: ${reaction.users.length}`,
+						},
+					]
+				))
+				.reduce(({rows, cnt}, reaction) => {
+					if (cnt + reaction.length > 10) {
+						// next line
+						rows.push([reaction]);
+						return {rows, cnt: reaction.length};
+					}
+					rows[rows.length - 1].push(reaction);
+					return {rows, cnt: cnt + reaction.length};
+				}, {rows: [[]], cnt: 0}).rows
+				.map(flatten)
+				.map((elements) => ({
+					type: 'context',
+					elements,
+				})),
+		];
 
 		if (updatingMessageData.team === 'TSG') {
 			await tsgSlack.chat.update({
