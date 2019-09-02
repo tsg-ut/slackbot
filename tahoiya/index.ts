@@ -10,7 +10,7 @@ import {sampleSize, chunk, flatten, isEmpty} from 'lodash';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
 import {Deferred} from '../lib/utils';
-import {getMemberName} from '../lib/slackUtils';
+import {getMemberName, getMemberIcon} from '../lib/slackUtils';
 import {Message} from '../lib/slackTypes';
 // @ts-ignore
 import logger from '../lib/logger';
@@ -449,11 +449,18 @@ class Tahoiya {
 			...(isEmpty(game.meanings) ? [] : [
 				{
 					type: 'context',
-					elements: Object.keys(game.meanings).map((user) => ({
-						type: 'image',
-						image_url: 'https://placehold.it/48x48',
-						alt_text: 'hoge',
-					})),
+					elements: [
+						...(await Promise.all(Object.keys(game.meanings).map(async (user) => ({
+							type: 'image',
+							image_url: await getMemberIcon(user),
+							alt_text: await getMemberName(user),
+						})))),
+						{
+							type: 'plain_text',
+							emoji: true,
+							text: `${Object.keys(game.meanings).length}人が登録済み`,
+						},
+					],
 				} as KnownBlock,
 			]),
 		])));
