@@ -2,7 +2,7 @@ import {promises as fs, constants} from 'fs';
 // @ts-ignore
 import download from 'download';
 import path from 'path';
-import {RTMClient, WebClient, KnownBlock} from '@slack/client';
+import {RTMClient, WebClient, KnownBlock, MrkdwnElement} from '@slack/client';
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
 import {Mutex} from 'async-mutex';
@@ -305,7 +305,9 @@ class Tahoiya {
 			],
 		});
 
-		this.announces.push({
+		await this.updateAnnounces();
+
+		this.announces.unshift({
 			message,
 			ts: announce.ts,
 		});
@@ -378,7 +380,7 @@ class Tahoiya {
 			)
 		) : '';
 
-		return this.tsgSlack.chat.postMessage({
+		await this.tsgSlack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			username: 'tahoiya',
 			icon_emoji: ':open_book:',
@@ -387,6 +389,8 @@ class Tahoiya {
 				現在の参加者: ${humanCount}人 ${remainingText}
 			`,
 		})
+
+		return this.updateAnnounces();
 	}
 
 	async showStatus() {
@@ -400,7 +404,7 @@ class Tahoiya {
 			],
 		});
 
-		this.announces.push({
+		this.announces.unshift({
 			message: null,
 			ts: announce.ts,
 		});
@@ -430,6 +434,31 @@ class Tahoiya {
 		}
 
 		return 'ベッティング中';
+	}
+
+	async updateAnnounces() {
+		for (const announce of this.announces) {
+			await this.tsgSlack.chat.update({
+				channel: process.env.CHANNEL_SANDBOX,
+				username: 'tahoiya',
+				icon_emoji: ':open_book:',
+				text: '',
+				ts: announce.ts,
+				blocks: [
+					...(announce.message === null ? [] : [
+						{
+							type: 'section',
+							text: {
+								type: 'mrkdwn',
+								text: announce.message,
+							} as MrkdwnElement,
+						},
+						{type: 'divider'},
+					]),
+					...(await this.getGameBlocks()),
+				],
+			});
+		}
 	}
 
 	async getGameBlocks(): Promise<KnownBlock[]> {
