@@ -1,26 +1,26 @@
-import {promises as fs, constants} from 'fs';
+import {constants, promises as fs} from 'fs';
 // @ts-ignore
 import download from 'download';
 import path from 'path';
-import {RTMClient, WebClient, KnownBlock, MrkdwnElement} from '@slack/client';
+import {KnownBlock, MrkdwnElement, RTMClient, WebClient} from '@slack/client';
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
 import {Mutex} from 'async-mutex';
-import {sampleSize, chunk, flatten, isEmpty} from 'lodash';
+import {chunk, flatten, isEmpty, sampleSize} from 'lodash';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
 import {Deferred} from '../lib/utils';
-import {getMemberName, getMemberIcon} from '../lib/slackUtils';
+import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Message} from '../lib/slackTypes';
 // @ts-ignore
-import logger from '../lib/logger';
+import logger from '../lib/logger.js';
 import {
-	getPageTitle,
-	getWordUrl,
-	getIconUrl,
-	getTimeLink,
-	getMeaning,
 	getCandidateWords,
+	getIconUrl,
+	getMeaning,
+	getPageTitle,
+	getTimeLink,
+	getWordUrl,
 	normalizeMeaning,
 } from './lib';
 
@@ -85,25 +85,33 @@ interface State {
 	games: Game[],
 }
 
-const loadDeferred = new Deferred();
-
 const mutex = new Mutex();
 
 const wordsVersion = '201907260000';
 
 class Tahoiya {
 	tsgRtm: RTMClient;
+
 	tsgSlack: WebClient;
+
 	kmcRtm: RTMClient;
+
 	kmcSlack: WebClient;
+
 	slackInteractions: any;
+
 	state: State;
+
 	words: string[];
+
 	db: sqlite.Database;
+
 	announces: {
 		message: string | null,
 		ts: string,
 	}[];
+
+	loadDeferred: Deferred;
 
 	constructor({tsgRtm, tsgSlack, kmcRtm, kmcSlack, slackInteractions}: {tsgRtm: RTMClient, tsgSlack: WebClient, kmcRtm: RTMClient, kmcSlack: WebClient, slackInteractions: any}) {
 		this.tsgRtm = tsgRtm;
@@ -112,6 +120,7 @@ class Tahoiya {
 		this.kmcSlack = kmcSlack;
 		this.slackInteractions = slackInteractions;
 		this.announces = [];
+		this.loadDeferred = new Deferred();
 
 		this.state = {
 			games: [],
@@ -120,8 +129,8 @@ class Tahoiya {
 
 	// TODO: lock
 	async initialize() {
-		if (loadDeferred.isResolved) {
-			return loadDeferred.promise;
+		if (this.loadDeferred.isResolved) {
+			return this.loadDeferred.promise;
 		}
 
 		for (const file of ['words.txt', 'words.sqlite3']) {
@@ -152,7 +161,7 @@ class Tahoiya {
 			blockId: /^tahoiya_add_meaning/,
 		}, (payload: any, respond: any) => {
 			const [action] = payload.actions;
-			mutex.runExclusive(() => ( 
+			mutex.runExclusive(() => (
 				this.showMeaningDialog({
 					triggerId: payload.trigger_id,
 					word: action.value,
@@ -166,7 +175,7 @@ class Tahoiya {
 			type: 'dialog_submission',
 			callbackId: 'tahoiya_add_meaning_dialog',
 		}, (payload: any, respond: any) => {
-			mutex.runExclusive(() => ( 
+			mutex.runExclusive(() => (
 				this.registerMeaning({
 					word: payload.state,
 					user: payload.user.id,
@@ -182,7 +191,7 @@ class Tahoiya {
 			blockId: /^start_tahoiya/,
 		}, (payload: any, respond: any) => {
 			const [action] = payload.actions;
-			mutex.runExclusive(() => ( 
+			mutex.runExclusive(() => (
 				this.startTahoiya({
 					word: action.value,
 					respond,
@@ -191,7 +200,7 @@ class Tahoiya {
 			));
 		});
 
-		loadDeferred.resolve();
+		this.loadDeferred.resolve();
 	}
 
 	async generateCandidates() {
@@ -388,7 +397,7 @@ class Tahoiya {
 				${this.getMention(user)} が意味を登録したよ:muscle:
 				現在の参加者: ${humanCount}人 ${remainingText}
 			`,
-		})
+		});
 
 		return this.updateAnnounces();
 	}
@@ -426,7 +435,7 @@ class Tahoiya {
 		}
 
 		return `<@${user}>`;
-	};
+	}
 
 	getGameStatus(game: Game) {
 		if (game.status === 'meaning') {
@@ -467,7 +476,7 @@ class Tahoiya {
 				type: 'section',
 				text: {
 					type: 'mrkdwn',
-					text: '現在行われているたほいやはありません:cry:'
+					text: '現在行われているたほいやはありません:cry:',
 				},
 			}];
 		}
@@ -530,12 +539,11 @@ module.exports = async ({rtmClient: tsgRtm, webClient: tsgSlack, messageClient: 
 		if (!message.text || message.subtype !== undefined) {
 			return;
 		}
-		
 
 		const text = message.text.trim();
 
 		if (text === 'たほいや') {
-			mutex.runExclusive(async () => ( 
+			mutex.runExclusive(async () => (
 				tahoiya.generateCandidates().catch((error) => {
 					console.error(error);
 				})
@@ -543,7 +551,7 @@ module.exports = async ({rtmClient: tsgRtm, webClient: tsgSlack, messageClient: 
 		}
 
 		if (text === 'たほいや 状況') {
-			mutex.runExclusive(async () => ( 
+			mutex.runExclusive(async () => (
 				tahoiya.showStatus().catch((error) => {
 					console.error(error);
 				})
