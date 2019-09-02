@@ -150,19 +150,16 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					}))],
 				});
 			} else {
-				const cloudinaryDataPromise = (async () => {
-					await slack.reactions.add({
-						name: '+1',
-						channel: message.channel,
-						timestamp: message.ts,
-					});
+				slack.reactions.add({
+					name: '+1',
+					channel: message.channel,
+					timestamp: message.ts,
+				});
 
-					const cloudinaryData: any = await uploadImage(state.board.map((letter, index) => (letter === null ? null : {
-						color: newIndices.has(index) ? 'red' : 'black',
-						letter,
-					})), state.crossword.index);
-					return cloudinaryData;
-				})();
+				const cloudinaryDataPromise = uploadImage(state.board.map((letter, index) => (letter === null ? null : {
+					color: newIndices.has(index) ? 'red' : 'black',
+					letter,
+				})), state.crossword.index);
 
 				await updatesQueue.add(async () => {
 					const cloudinaryData = await cloudinaryDataPromise;
