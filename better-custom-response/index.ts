@@ -7,12 +7,12 @@ interface SlackInterface {
     webClient: WebClient,
 }
 
-const response = (text:string) => {
+const response = async (text:string) => {
     for (const resp of customResponses.filter((response) => !response.reaction)) {
         for (const regexp of resp.input) {
             const matches = text.match(regexp);
             if (matches !== null) {
-                const responses = {}.hasOwnProperty.call(resp, 'outputArray') ? resp.outputArray : resp.outputFunction(matches);
+                const responses = {}.hasOwnProperty.call(resp, 'outputArray') ? resp.outputArray : await resp.outputFunction(matches);
                 if (!responses) continue;
                 return [resp.shuffle ? shuffle(responses).join('') : sample(responses), resp.username, resp.icon_emoji];
             }
@@ -21,12 +21,12 @@ const response = (text:string) => {
     return [null, null, null];
 };
 
-const reaction = (text:string) => {
+const reaction = async (text:string) => {
     for (const resp of customResponses.filter((response) => response.reaction)) {
         for (const regexp of resp.input) {
             const matches = text.match(regexp);
             if (matches !== null) {
-                const responses = {}.hasOwnProperty.call(resp, 'outputArray') ? resp.outputArray : resp.outputFunction(matches);
+                const responses = {}.hasOwnProperty.call(resp, 'outputArray') ? resp.outputArray : await resp.outputFunction(matches);
                 if (!responses) continue;
                 return resp.shuffle ? shuffle(responses) : [sample(responses)];
             }
@@ -40,7 +40,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
         if (!message.user || message.user.startsWith('B') || message.user === 'UEJTPN6R5' || message.user === 'USLACKBOT') return;
         const {channel, text, ts: timestamp} = message;
         if (!text) return;
-        const resp = response(text);
+        const resp = await response(text);
         if (resp[0]) {
             const username = !resp[1] ? 'better-custom-response' : resp[1];
             const icon_emoji = !resp[2] ? ':slack:' : resp[2];
@@ -51,7 +51,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
                 icon_emoji,
             });
         }
-        const reac = reaction(text);
+        const reac = await reaction(text);
         if (!reac) return;
         for (const reaction of reac) {
             try {
