@@ -47,7 +47,7 @@ export const getPageTitle = (url: string) => {
 	return `${urlTitle} - ニコニコ大百科`;
 };
 
-export const getWordUrl = (word: string, source: string, id: string) => {
+export const getWordUrl = (word: string, source: string, id?: string) => {
 	if (source === 'wikipedia') {
 		return `https://ja.wikipedia.org/wiki/${encodeURIComponent(word)}`;
 	}
@@ -70,6 +70,10 @@ export const getWordUrl = (word: string, source: string, id: string) => {
 
 	if (source === 'fideli') {
 		return `http://dic-it.fideli.com/dictionary/m/word/w/${encodeURIComponent(id)}/index.html`;
+	}
+
+	if (source === 'kojien') {
+		return '';
 	}
 
 	assert(source === 'nicopedia');

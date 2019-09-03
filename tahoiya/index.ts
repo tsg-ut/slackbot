@@ -56,6 +56,7 @@ interface WordRecord {
 interface Game {
 	time: number,
 	duration: number,
+	bettingDuration: number,
 	theme: {
 		ruby: string,
 		word: string,
@@ -113,7 +114,21 @@ class Tahoiya {
 
 	loadDeferred: Deferred;
 
-	constructor({tsgRtm, tsgSlack, kmcRtm, kmcSlack, slackInteractions}: {tsgRtm: RTMClient, tsgSlack: WebClient, kmcRtm: RTMClient, kmcSlack: WebClient, slackInteractions: any}) {
+	previousTick: number;
+
+	constructor({
+		tsgRtm,
+		tsgSlack,
+		kmcRtm,
+		kmcSlack,
+		slackInteractions,
+	}: {
+		tsgRtm: RTMClient,
+		tsgSlack: WebClient,
+		kmcRtm: RTMClient,
+		kmcSlack: WebClient,
+		slackInteractions: any,
+	}) {
 		this.tsgRtm = tsgRtm;
 		this.tsgSlack = tsgSlack;
 		this.kmcRtm = kmcRtm;
@@ -121,6 +136,7 @@ class Tahoiya {
 		this.slackInteractions = slackInteractions;
 		this.announces = [];
 		this.loadDeferred = new Deferred();
+		this.previousTick = 0;
 
 		this.state = {
 			games: [],
@@ -202,7 +218,28 @@ class Tahoiya {
 
 		this.loadDeferred.resolve();
 
+		setInterval(() => {
+			this.handleTick();
+		}, 1000);
+
 		return this.loadDeferred.promise;
+	}
+
+	handleTick() {
+		mutex.runExclusive(async () => {
+			const now = Date.now();
+
+			for (const game of this.state.games) {
+				if (game.status === 'meaning') {
+					const meaningEnd = game.time + game.duration;
+					if (this.previousTick < meaningEnd && meaningEnd <= now) {
+						await this.finishMeaning(game);
+					}
+				}
+			}
+
+			this.previousTick = now;
+		});
 	}
 
 	generateCandidates() {
@@ -212,10 +249,7 @@ class Tahoiya {
 
 		const candidates = sampleSize(this.words, 20);
 
-		return this.tsgSlack.chat.postMessage({
-			channel: process.env.CHANNEL_SANDBOX,
-			username: 'tahoiya',
-			icon_emoji: ':open_book:',
+		return this.postMessage({
 			text: '',
 			blocks: [
 				{
@@ -224,7 +258,7 @@ class Tahoiya {
 						type: 'mrkdwn',
 						text: stripIndent`
 							たのしい＊たほいや＊を始めるよ〜👏👏👏
-							下のリストの中からお題にする単語を選んでクリックしてね:wink:
+							下のリストの中からお題にする単語を選んでクリックしてね😉
 						`,
 					},
 				},
@@ -253,7 +287,7 @@ class Tahoiya {
 							},
 						},
 					})),
-				}))),
+				} as KnownBlock))),
 			],
 		});
 	}
@@ -261,7 +295,7 @@ class Tahoiya {
 	async startTahoiya({word, respond, user}: {word: string, respond: any, user: string}) {
 		if (this.state.games.length > 2) {
 			respond({
-				text: 'たほいやを同時に3つ以上開催することはできないよ:imp:',
+				text: 'たほいやを同時に3つ以上開催することはできないよ👿',
 				response_type: 'ephemeral',
 				replace_original: false,
 			});
@@ -279,7 +313,8 @@ class Tahoiya {
 		const now = Date.now();
 		const game: Game = {
 			time: now,
-			duration: 5 * 60 * 1000,
+			duration: 5 * 1000,
+			bettingDuration: 5 * 1000,
 			theme,
 			status: 'meaning',
 			meanings: Object.create(null),
@@ -294,14 +329,11 @@ class Tahoiya {
 		});
 
 		const message = stripIndent`
-			お題を＊「${word}」＊に設定したよ:v:
+			お題を＊「${word}」＊に設定したよ✌️
 			終了予定時刻: ${getTimeLink(game.time + game.duration)}
 		`;
 
-		const announce: any = await this.tsgSlack.chat.postMessage({
-			channel: process.env.CHANNEL_SANDBOX,
-			username: 'tahoiya',
-			icon_emoji: ':open_book:',
+		const announce: any = await this.postMessage({
 			text: '',
 			blocks: [
 				{
@@ -325,7 +357,7 @@ class Tahoiya {
 	}
 
 	showMeaningDialog({triggerId, word, user, respond}: {triggerId: string, word: string, user: string, respond: any}) {
-		const game = this.state.games.find((game) => game.theme.ruby === word);
+		const game = this.state.games.find((g) => g.theme.ruby === word);
 		if (!game) {
 			respond({
 				text: 'Error: Game not found',
@@ -368,10 +400,10 @@ class Tahoiya {
 	}
 
 	async registerMeaning({word, user, text, comment, respond}: {word: string, user: string, text: string, comment: string, respond: any}) {
-		const game = this.state.games.find((game) => game.theme.ruby === word);
+		const game = this.state.games.find((g) => g.theme.ruby === word);
 		if (!game) {
 			respond({
-				text: 'このたほいやの意味登録は終了しているよ:cry:',
+				text: 'このたほいやの意味登録は終了しているよ😢',
 				response_type: 'ephemeral',
 				replace_original: false,
 			});
@@ -383,20 +415,17 @@ class Tahoiya {
 			games: this.state.games,
 		});
 
-		const humanCount = Object.keys(game.meanings).filter((user) => user.startsWith('U')).length;
+		const humanCount = Object.keys(game.meanings).filter((u) => u.startsWith('U')).length;
 		const remainingText = game.isDaily ? (
 			humanCount > 3 ? '' : (
-				humanCount === 3 ? '(決行決定:tada:)'
+				humanCount === 3 ? '(決行決定🎉)'
 					: `(決行まであと${3 - humanCount}人)`
 			)
 		) : '';
 
-		await this.tsgSlack.chat.postMessage({
-			channel: process.env.CHANNEL_SANDBOX,
-			username: 'tahoiya',
-			icon_emoji: ':open_book:',
+		await this.postMessage({
 			text: stripIndent`
-				${this.getMention(user)} が意味を登録したよ:muscle:
+				${this.getMention(user)} が意味を登録したよ💪
 				現在の参加者: ${humanCount}人 ${remainingText}
 			`,
 		});
@@ -404,11 +433,31 @@ class Tahoiya {
 		return this.updateAnnounces();
 	}
 
+	async finishMeaning(game: Game) {
+		const humanCount = Object.keys(game.meanings).filter((user) => user.startsWith('U')).length;
+
+		if (humanCount === 0) {
+			await this.setState({
+				games: this.state.games.filter((g) => g !== game),
+			});
+			await this.postMessage({
+				text: stripIndent`
+					お題「${game.theme.ruby}」は参加者がいないのでキャンセルされたよ🙄
+
+					＊${game.theme.ruby}＊の正しい意味は⋯⋯
+					＊${game.theme.word}＊: ＊${game.theme.description}＊
+
+					${getWordUrl(game.theme.word, game.theme.source)}
+				`,
+			});
+			return;
+		}
+
+		console.log(game, humanCount);
+	}
+
 	async showStatus() {
-		const announce: any = await this.tsgSlack.chat.postMessage({
-			channel: process.env.CHANNEL_SANDBOX,
-			username: 'tahoiya',
-			icon_emoji: ':open_book:',
+		const announce: any = await this.postMessage({
 			text: '',
 			blocks: [
 				...(await this.getGameBlocks()),
@@ -523,6 +572,16 @@ class Tahoiya {
 		])));
 
 		return flatten(gameBlocks);
+	}
+
+	postMessage({text, blocks = []}: {text: string, blocks?: KnownBlock[]}) {
+		return this.tsgSlack.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			username: 'tahoiya',
+			icon_emoji: ':open_book:',
+			text,
+			blocks,
+		});
 	}
 }
 
