@@ -201,9 +201,11 @@ class Tahoiya {
 		});
 
 		this.loadDeferred.resolve();
+
+		return this.loadDeferred.promise;
 	}
 
-	async generateCandidates() {
+	generateCandidates() {
 		if (this.state.games.length > 2) {
 			throw new Error('たほいやを同時に3つ以上開催することはできないよ:imp:');
 		}
@@ -322,7 +324,7 @@ class Tahoiya {
 		});
 	}
 
-	async showMeaningDialog({triggerId, word, user, respond}: {triggerId: string, word: string, user: string, respond: any}) {
+	showMeaningDialog({triggerId, word, user, respond}: {triggerId: string, word: string, user: string, respond: any}) {
 		const game = this.state.games.find((game) => game.theme.ruby === word);
 		if (!game) {
 			respond({
@@ -330,7 +332,7 @@ class Tahoiya {
 				response_type: 'ephemeral',
 				replace_original: false,
 			});
-			return;
+			return null;
 		}
 
 		const {text, comment} = game.meanings[user] || {text: '', comment: ''};
@@ -373,7 +375,7 @@ class Tahoiya {
 				response_type: 'ephemeral',
 				replace_original: false,
 			});
-			return;
+			return null;
 		}
 
 		game.meanings[user] = {text, comment};
@@ -543,7 +545,7 @@ module.exports = async ({rtmClient: tsgRtm, webClient: tsgSlack, messageClient: 
 		const text = message.text.trim();
 
 		if (text === 'たほいや') {
-			mutex.runExclusive(async () => (
+			mutex.runExclusive(() => (
 				tahoiya.generateCandidates().catch((error) => {
 					console.error(error);
 				})
@@ -551,7 +553,7 @@ module.exports = async ({rtmClient: tsgRtm, webClient: tsgSlack, messageClient: 
 		}
 
 		if (text === 'たほいや 状況') {
-			mutex.runExclusive(async () => (
+			mutex.runExclusive(() => (
 				tahoiya.showStatus().catch((error) => {
 					console.error(error);
 				})

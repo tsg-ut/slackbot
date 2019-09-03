@@ -1,34 +1,11 @@
 {
-    "extends": "@hakatashi",
-    "parser": "@typescript-eslint/parser",
-    "parserOptions": {
-        "ecmaVersion": 2018,
-        "ecmaFeatures": {
-            "experimentalObjectRestSpread": true,
-            "jsx": true
-        },
-        "sourceType": "module"
-    },
+    "extends": "@hakatashi/eslint-config/typescript",
     "rules": {
         "no-console": "off",
         "no-nested-ternary": "off",
         "no-unused-vars": "off",
         "sort-imports": "off",
-        "node/file-extension-in-import": "off",
-        "node/no-unsupported-features": "off",
-        "node/no-unsupported-features/es-syntax": "off",
-        "react/no-access-state-in-setstate": "off",
-        "prefer-destructuring": ["error", {
-            "VariableDeclarator": {
-                "array": true,
-                "object": true
-            },
-            "AssignmentExpression": {
-                "array": true,
-                "object": false
-            }
-        }, {
-            "enforceForRenamedProperties": false
-        }]
+        "no-restricted-imports": "off",
+        "react/no-access-state-in-setstate": "off"
     }
 }

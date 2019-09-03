@@ -82,7 +82,7 @@
     "word2vec": "github:pizzacat83/node-word2vec"
   },
   "devDependencies": {
-    "@hakatashi/eslint-config": "^1.9.0",
+    "@hakatashi/eslint-config": "^1.10.1",
     "@types/jest": "^24.0.16",
     "@types/lodash": "^4.14.136",
     "@typescript-eslint/parser": "^1.13.0",
