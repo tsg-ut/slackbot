@@ -1,3 +1,5 @@
+import { stringLiteral } from "@babel/types";
+
 export class Deferred {
 	promise: Promise<any>;
 	isResolved: boolean;
@@ -25,4 +27,12 @@ export class Deferred {
 		this.isRejected = true;
 		return this.promise;
 	}
+}
+
+export const overflowText = (text: string, length: number) => {
+	const chars = Array.from(text);
+	if (chars.length <= length) {
+		return text;
+	}
+	return `${chars.slice(0, length - 1).join('')}⋯`;
 }

@@ -2,7 +2,7 @@ import {constants, promises as fs} from 'fs';
 // @ts-ignore
 import download from 'download';
 import path from 'path';
-import {KnownBlock, MrkdwnElement, RTMClient, WebClient} from '@slack/client';
+import {KnownBlock, MrkdwnElement, PlainTextElement, RTMClient, WebClient} from '@slack/client';
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
 import {Mutex} from 'async-mutex';
@@ -11,7 +11,7 @@ import {chunk, flatten, isEmpty, sampleSize, size, minBy, times, sample, shuffle
 import {stripIndent} from 'common-tags';
 // @ts-ignore
 import levenshtein from 'fast-levenshtein';
-import {Deferred} from '../lib/utils';
+import {Deferred, overflowText} from '../lib/utils';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Message} from '../lib/slackTypes';
 // @ts-ignore
@@ -165,7 +165,7 @@ class Tahoiya {
 		}
 
 		const wordsBuffer = await fs.readFile(path.resolve(__dirname, `words.${wordsVersion}.txt`));
-		this.words = wordsBuffer.toString().split('\n').filter((l) => l.length > 0);
+		this.words = shuffle(wordsBuffer.toString().split('\n').filter((l) => l.length > 0));
 
 		this.db = await sqlite.open(path.join(__dirname, `words.${wordsVersion}.sqlite3`));
 
@@ -216,6 +216,24 @@ class Tahoiya {
 					word: action.value,
 					respond,
 					user: payload.user.id,
+				})
+			));
+		});
+
+		this.slackInteractions.action({
+			type: 'button',
+			blockId: /^tahoiya_betting/,
+		}, (payload: any, respond: any) => {
+			const [action] = payload.actions;
+			const [word, choiceText] = action.value.split(',');
+			const choice = parseInt(choiceText);
+			mutex.runExclusive(() => (
+				this.showBettingDialog({
+					triggerId: payload.trigger_id,
+					word,
+					choice: Number.isNaN(choice) ? null : choice,
+					user: payload.user.id,
+					respond,
 				})
 			));
 		});
@@ -311,8 +329,8 @@ class Tahoiya {
 		const now = Date.now();
 		const game: Game = {
 			time: now,
-			duration: 5 * 1000,
-			bettingDuration: 5 * 1000,
+			duration: 15 * 1000,
+			bettingDuration: 15 * 1000,
 			theme,
 			status: 'meaning',
 			meanings: Object.create(null),
@@ -397,6 +415,76 @@ class Tahoiya {
 		});
 	}
 
+	showBettingDialog({
+		triggerId,
+		word,
+		choice,
+		user,
+		respond,
+	}: {
+		triggerId: string,
+		word: string,
+		choice: number | null,
+		user: string,
+		respond: any,
+	}) {
+		const game = this.state.games.find((g) => g.theme.ruby === word);
+		if (!game) {
+			respond({
+				text: 'Error: Game not found',
+				response_type: 'ephemeral',
+				replace_original: false,
+			});
+			return null;
+		}
+
+		const choices = this.getChoiceTexts(game);
+		const {comment, coins} = game.bettings[user] || {comment: '', coins: 1};
+
+		return this.tsgSlack.dialog.open({
+			trigger_id: triggerId,
+			dialog: {
+				callback_id: 'tahoiya_betting_dialog',
+				title: overflowText(`「${word}」の正しい意味だと思うものを選んでね！`, 24),
+				submit_label: 'BETする',
+				notify_on_cancel: true,
+				state: word,
+				elements: [
+					{
+						type: 'select',
+						label: 'BETする意味',
+						name: 'choice',
+						...(choice === null ? {} : {value: choice.toString()}),
+						hint: '後から変更できます',
+						options: choices.map((text, index) => ({
+							label: `${index + 1}. ${text}`,
+							value: index.toString(),
+						})),
+					},
+					{
+						type: 'select',
+						label: 'BETする枚数',
+						name: 'coins',
+						value: coins.toString(),
+						hint: '後から変更できます',
+						options: times(5, (index) => ({
+							label: `${index + 1}枚`,
+							value: (index + 1).toString(),
+						})),
+					},
+					{
+						type: 'textarea',
+						label: 'コメント',
+						name: 'comment',
+						optional: true,
+						value: comment,
+						hint: '後から変更できます',
+					},
+				],
+			},
+		});
+	}
+
 	async registerMeaning({word, user, text, comment, respond}: {word: string, user: string, text: string, comment: string, respond: any}) {
 		const game = this.state.games.find((g) => g.theme.ruby === word);
 		if (!game) {
@@ -443,11 +531,13 @@ class Tahoiya {
 					お題「${game.theme.ruby}」は参加者がいないのでキャンセルされたよ🙄
 
 					＊${game.theme.ruby}＊の正しい意味は⋯⋯
-					＊${game.theme.word}＊: ＊${game.theme.description}＊
+					【${game.theme.word}】＊${game.theme.description}＊
 
 					${getWordUrl(game.theme.word, game.theme.source)}
 				`,
+				unfurl_links: true,
 			});
+			await this.updateAnnounces();
 			return;
 		}
 
@@ -486,7 +576,49 @@ class Tahoiya {
 			...dummyChoices,
 		]);
 
-		console.log(shuffledChoices);
+		// eslint-disable-next-line require-atomic-updates
+		game.choices = shuffledChoices;
+
+		await this.setState({games: this.state.games});
+
+		const choiceTexts = this.getChoiceTexts(game);
+		const mentions = Object.keys(game.meanings).filter((user) => user.startsWith('U')).map((user) => this.getMention(user));
+
+		await this.postMessage({
+			text: '',
+			blocks: [
+				{
+					type: 'section',
+					text: {
+						type: 'mrkdwn',
+						text: stripIndent`
+							${mentions.join(' ')}
+							ベッティングタイムが始まるよ～👐👐👐
+							下のリストから＊${game.theme.ruby}＊の正しい意味だと思うものを選んで、 <@${process.env.USER_TSGBOT}> に「nにm枚」とDMしてね😉
+							全員ぶん出揃うか${game.bettingDuration / 60 / 1000}分が経過すると結果発表だよ😎
+						`,
+					},
+				} as KnownBlock,
+				...choiceTexts.map((text, index) => ({
+					type: 'section',
+					block_id: `tahoiya_betting_${index}`,
+					text: {
+						type: 'mrkdwn',
+						text: `${index + 1}. ＊${text}＊`,
+					},
+					accessory: {
+						type: 'button',
+						text: {
+							type: 'plain_text',
+							text: `${index + 1}にBETする`,
+						},
+						value: [game.theme.ruby, index].join(','),
+					},
+				} as KnownBlock)),
+			],
+		});
+
+		await this.updateAnnounces();
 	}
 
 	async showStatus() {
@@ -523,10 +655,10 @@ class Tahoiya {
 
 	getGameStatus(game: Game) {
 		if (game.status === 'meaning') {
-			return '意味登録中';
+			return '📝意味登録中📝';
 		}
 
-		return 'ベッティング中';
+		return '💰ベッティング中💰';
 	}
 
 	getWordRecord(ruby: string): Promise<WordRecord> {
@@ -617,13 +749,25 @@ class Tahoiya {
 		return flatten(gameBlocks);
 	}
 
-	postMessage({text, blocks = []}: {text: string, blocks?: KnownBlock[]}) {
+	getChoiceTexts(game: Game): string[] {
+		return game.choices.map((choice) => {
+			if (choice.type === 'user') {
+				return game.meanings[choice.user].text;
+			}
+			if (choice.type === 'dummy') {
+				return choice.text;
+			}
+			return game.theme.description;
+		});
+	}
+
+	// eslint-disable-next-line camelcase
+	postMessage(message: {text: string, blocks?: KnownBlock[], unfurl_links?: true}) {
 		return this.tsgSlack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			username: 'tahoiya',
 			icon_emoji: ':open_book:',
-			text,
-			blocks,
+			...message,
 		});
 	}
 }

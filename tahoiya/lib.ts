@@ -72,6 +72,14 @@ export const getWordUrl = (word: string, source: string, id?: string) => {
 		return `http://dic-it.fideli.com/dictionary/m/word/w/${encodeURIComponent(id)}/index.html`;
 	}
 
+	if (source === 'hatena') {
+		return `http://d.hatena.ne.jp/keyword/${encodeURIComponent(word)}`;
+	}
+
+	if (source === 'pixpedia') {
+		return `https://dic.pixiv.net/a/${encodeURIComponent(word)}`;
+	}
+
 	if (source === 'kojien') {
 		return '';
 	}
