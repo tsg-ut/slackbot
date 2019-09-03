@@ -1,7 +1,9 @@
+import hontouni from './responses/hontouni';
+
 interface CustomResponse {
     input: RegExp[],
     outputArray?: string[],
-    outputFunction?: ((input: string[])=> string[]),
+    outputFunction?: ((input: string[]) => string[] | Promise<string[]>),
     shuffle?: true,
     username?: string,
     icon_emoji?: string,
@@ -39,11 +41,8 @@ const customResponses: CustomResponse[] = [
         username: 'dice response',
     },
     {
-        input: [/^(.*)(てます|でます|ています|でいます|ちゃった|じゃった)[。⋯・…]*$/],
-        outputFunction: ([, 動詞, 音便]) => {
-            const 接助詞 = (音便.startsWith('て') || 音便.startsWith('ち')) ? 'て' : 'で';
-            return [`本当に${動詞}${接助詞}いますか？`];
-        },
+        input: [/^.*(てます|でます|ています|でいます|ちゃった|じゃった)[。⋯・…]*$/],
+        outputFunction: hontouni,
     },
     {
         input: [/^(おじぎねこ)?ファミリー$/],
