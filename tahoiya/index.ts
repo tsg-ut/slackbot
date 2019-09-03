@@ -6,9 +6,11 @@ import {KnownBlock, MrkdwnElement, RTMClient, WebClient} from '@slack/client';
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
 import {Mutex} from 'async-mutex';
-import {chunk, flatten, isEmpty, sampleSize} from 'lodash';
+import {chunk, flatten, isEmpty, sampleSize, size, minBy, times, sample, shuffle, map} from 'lodash';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
+// @ts-ignore
+import levenshtein from 'fast-levenshtein';
 import {Deferred} from '../lib/utils';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Message} from '../lib/slackTypes';
@@ -46,6 +48,8 @@ interface CorrectChoice {
 	type: 'correct',
 }
 
+type Choice = UserChoice | DummyChoice | CorrectChoice;
+
 interface WordRecord {
 	ruby: string,
 	word: string,
@@ -77,7 +81,7 @@ interface Game {
 			comment: string,
 		},
 	},
-	choices: (UserChoice | DummyChoice | CorrectChoice)[],
+	choices: Choice[],
 	author: string,
 	isDaily: boolean,
 }
@@ -302,13 +306,7 @@ class Tahoiya {
 			return;
 		}
 
-		const theme: WordRecord = await this.db.get(sql`
-			SELECT *
-			FROM words
-			WHERE ruby = ${word}
-			ORDER BY RANDOM()
-			LIMIT 1
-		`);
+		const theme = await this.getWordRecord(word);
 
 		const now = Date.now();
 		const game: Game = {
@@ -453,7 +451,42 @@ class Tahoiya {
 			return;
 		}
 
-		console.log(game, humanCount);
+		game.status = 'betting';
+		await this.setState({games: this.state.games});
+
+		const dummySize = Math.max(1, 4 - size(game.meanings));
+		const ambiguateDummy = minBy(this.words, (ruby) => {
+			const distance = levenshtein.get(game.theme.ruby, ruby);
+			if (distance === 0) {
+				return Infinity;
+			}
+			return distance;
+		});
+
+		const dummyChoices = await Promise.all(times(dummySize, async (i) => {
+			const word = (i === 0 && !game.isDaily && ambiguateDummy !== undefined) ? ambiguateDummy : sample(this.words);
+			const meaning = await this.getWordRecord(word);
+
+			return {
+				type: 'dummy',
+				source: meaning.source,
+				word: meaning.word,
+				text: meaning.description,
+			} as DummyChoice;
+		}));
+
+		const shuffledChoices: Choice[] = shuffle([
+			{
+				type: 'correct',
+			},
+			...map(game.meanings, (meaning, user) => ({
+				type: 'user',
+				user,
+			} as UserChoice)),
+			...dummyChoices,
+		]);
+
+		console.log(shuffledChoices);
 	}
 
 	async showStatus() {
@@ -494,6 +527,16 @@ class Tahoiya {
 		}
 
 		return 'ベッティング中';
+	}
+
+	getWordRecord(ruby: string): Promise<WordRecord> {
+		return this.db.get(sql`
+			SELECT *
+			FROM words
+			WHERE ruby = ${ruby}
+			ORDER BY RANDOM()
+			LIMIT 1
+		`);
 	}
 
 	async updateAnnounces() {
