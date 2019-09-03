@@ -8,7 +8,7 @@ export default async ([text, tail]: string[]): Promise<string[]> => {
         basic_form !== 'て' &&
         basic_form !== 'いる' &&
         basic_form !== 'ます' &&
-        basic_form !== 'じゃ' &&
+        basic_form !== 'じゃう' &&
         basic_form !== 'ちゃう' &&
         basic_form !== 'た'
     ));
