@@ -54,8 +54,9 @@ class Inputs extends React.Component {
             <div>
                 {Object.keys(this.props.inputs).map((_, i) => 
                     <Input onChange={(event) => this.props.onChange(event, i)}></Input>
-                )}
-                { // TODO: add button }
+                )
+                // TODO: add button
+                }
             </div>
         );
     }
