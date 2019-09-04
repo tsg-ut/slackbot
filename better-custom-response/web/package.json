@@ -14,7 +14,10 @@
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
-    "extends": "react-app"
+    "extends": "react-app",
+    "rules": {
+      "indent": ["error", 2]
+    }
   },
   "browserslist": {
     "production": [
