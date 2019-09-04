@@ -7,7 +7,7 @@ class Response extends React.Component {
     super(props);
     this.state = {
       inputs: [''],
-      output: null,
+      outputs: [''],
     };
   }
     
@@ -31,7 +31,10 @@ class Response extends React.Component {
             onChange={(event, i) => this.handleTextChange(event, 'inputs', i)}
             inputs={this.state.inputs}
           ></Inputs>
-          <Outputs onChange={(event) => this.handleTextChange(event, 'output')}></Outputs>
+          <Outputs
+            onChange={(event, i) => this.handleTextChange(event, 'outputs', i)}
+            outputs={this.state.outputs}
+          ></Outputs>
           <Options></Options>
           <SaveButton onClick={this.send}></SaveButton>
         </div>
@@ -52,21 +55,36 @@ class Inputs extends React.Component {
   render() {
     return (
       <div>
-        {Object.keys(this.props.inputs).map((_, i) => 
-          <Input onChange={(event) => this.props.onChange(event, i)}></Input>
-        )
+        {
+          Object.keys(this.props.inputs).map((_, i) => 
+            <Input onChange={(event) => this.props.onChange(event, i)}></Input>
+          )
           // TODO: add button
         }
       </div>
     );
   }
 }
+
+class Output extends React.Component {
+  render() {
+    return (
+      <textarea onChange={this.props.onChange}></textarea>
+    );
+  }
+}
+
         
 class Outputs extends React.Component {
   render() {
     return (
       <div>
-        <textarea onChange={this.props.onChange}></textarea>
+        {
+          Object.keys(this.props.outputs).map((_, i) => 
+            <Output onChange={(event) => this.props.onChange(event, i)}></Output>
+          )
+          // TODO: add button
+        }
       </div>
     );
   }
