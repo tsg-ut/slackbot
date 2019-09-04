@@ -115,6 +115,23 @@ class SaveButton extends React.Component {
     );
   }
 }
+
+class Responses extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      responses: [null], // list of keys?
+    };
+  }
+  
+  render() {
+    return (
+      this.state.responses.map(
+        (_, i) => <Response></Response> // TODO: use UUID for key
+      )
+    );
+  }
+}
                         
 const App = () => {
   return (
@@ -122,7 +139,7 @@ const App = () => {
       <header>
         <p>カスタムレスポンス</p>
       </header>
-      <Response></Response>
+      <Responses></Responses>
     </div>
   );
 }
