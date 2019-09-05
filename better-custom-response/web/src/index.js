@@ -3,12 +3,19 @@ import ReactDOM from 'react-dom';
 import axios from 'axios';
 import uuid from 'uuid/v4';
 
+class TextBoxContent {
+  constructor(text=null) {
+    this.id = uuid();
+    this.text = text;
+  }
+}
+
 class Response extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      inputs: [''],
-      outputs: [''],
+      inputs: [new TextBoxContent()],
+      outputs: [new TextBoxContent()],
     };
   }
     
@@ -20,13 +27,16 @@ class Response extends React.Component {
   
   handleTextChange = (event, name, i) => {
     const data = this.state[name].slice();
-    data[i] = event.target.value;
+    data[i].text = event.target.value;
     this.setState({[name]: data});
-    console.log(name, this.state[name][i]);
+    console.log(name, this.state[name][i].text);
   };
 
   handleAddButtonClick = (event, name) => {
-    console.log(`more ${name}!`);
+    const data = this.state[name].slice();
+    data.push(new TextBoxContent());
+    this.setState({[name]: data});
+    console.log(name, data);
   }
   
   render() {
@@ -51,11 +61,12 @@ class Response extends React.Component {
   }
 }
 
-
 class Input extends React.Component {
   render() {
     return (
-      <input type="text" onInput={this.props.onChange}></input>
+      <li>
+        <input type="text" onInput={this.props.onChange}></input>
+      </li>
     )
   }
 }
@@ -63,7 +74,9 @@ class Input extends React.Component {
 class Output extends React.Component {
   render() {
     return (
-      <textarea onChange={this.props.onChange}></textarea>
+      <li>
+        <textarea onChange={this.props.onChange}></textarea>
+      </li>
     );
   }
 }
@@ -83,10 +96,13 @@ class TextBoxes extends React.Component {
       <div>
         <ul>
           {
-            Object.keys(this.props.values).map((_, i) =>
-              <this.props.contentClass onChange={
-                (event) => this.props.onChange(event, i)
-              } />
+            this.props.values.map(({id}, i) =>
+              <this.props.contentClass
+                key={id}
+                onChange={
+                  (event) => this.props.onChange(event, i)
+                }
+              />
             )
           }
         </ul>
