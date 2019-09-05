@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
+import uuid from 'uuid/v4';
 
 class Response extends React.Component {
   constructor(props) {
@@ -27,14 +28,16 @@ class Response extends React.Component {
     render() {
       return (
         <div>
-          <Inputs
+          <TextBoxes
+            contentClass={Input}
             onChange={(event, i) => this.handleTextChange(event, 'inputs', i)}
-            inputs={this.state.inputs}
-          ></Inputs>
-          <Outputs
+            values={this.state.inputs}
+          ></TextBoxes>
+          <TextBoxes
+            contentClass={Output}
             onChange={(event, i) => this.handleTextChange(event, 'outputs', i)}
-            outputs={this.state.outputs}
-          ></Outputs>
+            values={this.state.outputs}
+          ></TextBoxes>
           <Options></Options>
           <SaveButton onClick={this.send}></SaveButton>
         </div>
@@ -50,21 +53,6 @@ class Input extends React.Component {
     )
   }
 }
-    
-class Inputs extends React.Component {
-  render() {
-    return (
-      <div>
-        {
-          Object.keys(this.props.inputs).map((_, i) => 
-            <Input onChange={(event) => this.props.onChange(event, i)}></Input>
-          )
-          // TODO: add button
-        }
-      </div>
-    );
-  }
-}
 
 class Output extends React.Component {
   render() {
@@ -74,17 +62,20 @@ class Output extends React.Component {
   }
 }
 
-        
-class Outputs extends React.Component {
+
+class TextBoxes extends React.Component {
   render() {
     return (
       <div>
-        {
-          Object.keys(this.props.outputs).map((_, i) => 
-            <Output onChange={(event) => this.props.onChange(event, i)}></Output>
-          )
-          // TODO: add button
-        }
+        <ul>
+          {
+            Object.keys(this.props.values).map((_, i) =>
+              <this.props.contentClass onChange={
+                (event) => this.props.onChange(event, i)
+              } />
+            )
+          }
+        </ul>
       </div>
     );
   }
