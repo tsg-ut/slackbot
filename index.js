@@ -20,6 +20,7 @@ try {
 }
 
 const plugins = [
+	require('./summary'),
 	require('./mahjong'),
 	require('./pocky'),
 	require('./emoji-notifier'),
