@@ -24,6 +24,10 @@ class Response extends React.Component {
       this.setState({[name]: data});
       console.log(name, this.state[name][i]);
     };
+
+    handleAddButtonClick = (event, name) => {
+      console.log(`more ${name}!`);
+    }
     
     render() {
       return (
@@ -32,11 +36,13 @@ class Response extends React.Component {
             contentClass={Input}
             onChange={(event, i) => this.handleTextChange(event, 'inputs', i)}
             values={this.state.inputs}
+            onAddButtonClick={(event) => this.handleAddButtonClick(event, 'inputs')}
           ></TextBoxes>
           <TextBoxes
             contentClass={Output}
             onChange={(event, i) => this.handleTextChange(event, 'outputs', i)}
             values={this.state.outputs}
+            onAddButtonClick={(event) => this.handleAddButtonClick(event, 'outputs')}
           ></TextBoxes>
           <Options></Options>
           <SaveButton onClick={this.send}></SaveButton>
@@ -62,6 +68,14 @@ class Output extends React.Component {
   }
 }
 
+class AddButton extends React.Component {
+  render() {
+    return (
+      <button onClick={this.props.onClick}>Add</button>
+    );
+  }
+}
+
 
 class TextBoxes extends React.Component {
   render() {
@@ -76,6 +90,7 @@ class TextBoxes extends React.Component {
             )
           }
         </ul>
+        <AddButton onClick={this.props.onAddButtonClick} />
       </div>
     );
   }
@@ -123,16 +138,23 @@ class Responses extends React.Component {
     );
   }
 }
-                        
-const App = () => {
-  return (
-    <div>
-      <header>
-        <p>カスタムレスポンス</p>
-      </header>
-      <Responses></Responses>
-    </div>
-  );
+
+class App extends React.Component {
+  handleAddButtonClick = (event) => {
+    console.log('more responses!');
+  }
+
+  render() {
+    return (
+      <div>
+        <header>
+          <p>カスタムレスポンス</p>
+        </header>
+        <Responses></Responses>
+        <AddButton onClick={this.handleAddButtonClick}></AddButton>
+      </div>
+    );
+  }
 }
                             
 ReactDOM.render(<App />, document.getElementById('root'));
