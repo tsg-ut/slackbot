@@ -5,7 +5,8 @@
   "dependencies": {
     "react": "^16.9.0",
     "react-dom": "^16.9.0",
-    "react-scripts": "3.1.1"
+    "react-scripts": "3.1.1",
+    "uuid": "^3.3.3"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -16,7 +17,10 @@
   "eslintConfig": {
     "extends": "react-app",
     "rules": {
-      "indent": ["error", 2]
+      "indent": [
+        "error",
+        2
+      ]
     }
   },
   "browserslist": {
