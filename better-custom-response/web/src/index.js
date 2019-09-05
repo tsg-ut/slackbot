@@ -12,43 +12,43 @@ class Response extends React.Component {
     };
   }
     
-    send = (event) => {
-      console.log('send data:');
-      console.log(this.state);
-      axios.post(`http://localhost:3001/bcr/update`, this.state);
-    }
-    
-    handleTextChange = (event, name, i) => {
-      const data = this.state[name].slice();
-      data[i] = event.target.value;
-      this.setState({[name]: data});
-      console.log(name, this.state[name][i]);
-    };
+  send = (event) => {
+    console.log('send data:');
+    console.log(this.state);
+    axios.post(`http://localhost:3001/bcr/update`, this.state);
+  }
+  
+  handleTextChange = (event, name, i) => {
+    const data = this.state[name].slice();
+    data[i] = event.target.value;
+    this.setState({[name]: data});
+    console.log(name, this.state[name][i]);
+  };
 
-    handleAddButtonClick = (event, name) => {
-      console.log(`more ${name}!`);
-    }
-    
-    render() {
-      return (
-        <div>
-          <TextBoxes
-            contentClass={Input}
-            onChange={(event, i) => this.handleTextChange(event, 'inputs', i)}
-            values={this.state.inputs}
-            onAddButtonClick={(event) => this.handleAddButtonClick(event, 'inputs')}
-          ></TextBoxes>
-          <TextBoxes
-            contentClass={Output}
-            onChange={(event, i) => this.handleTextChange(event, 'outputs', i)}
-            values={this.state.outputs}
-            onAddButtonClick={(event) => this.handleAddButtonClick(event, 'outputs')}
-          ></TextBoxes>
-          <Options></Options>
-          <SaveButton onClick={this.send}></SaveButton>
-        </div>
-      );
-    }
+  handleAddButtonClick = (event, name) => {
+    console.log(`more ${name}!`);
+  }
+  
+  render() {
+    return (
+      <div>
+        <TextBoxes
+          contentClass={Input}
+          onChange={(event, i) => this.handleTextChange(event, 'inputs', i)}
+          values={this.state.inputs}
+          onAddButtonClick={(event) => this.handleAddButtonClick(event, 'inputs')}
+        ></TextBoxes>
+        <TextBoxes
+          contentClass={Output}
+          onChange={(event, i) => this.handleTextChange(event, 'outputs', i)}
+          values={this.state.outputs}
+          onAddButtonClick={(event) => this.handleAddButtonClick(event, 'outputs')}
+        ></TextBoxes>
+        <Options></Options>
+        <SaveButton onClick={this.send}></SaveButton>
+      </div>
+    );
+  }
 }
 
 
