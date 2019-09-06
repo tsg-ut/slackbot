@@ -601,6 +601,15 @@ const achievements: Achievement[] = [
 		reaction: 'coil',
 		value: 3,
 	},
+	{
+		id: 'reaction-nanachi-5',
+		difficulty: 'hard',
+		title: '君はかわいいですね',
+		condition: '1つのメッセージに対し5人以上から:nanachi:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'nanachi',
+		value: 5,
+	},
 
 	// sushi-bot
 
