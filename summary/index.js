@@ -52,13 +52,31 @@ async function getZipData(drive, month) {
 async function getRecords() {
     let drive = null;
     if (process.env.NODE_ENV === 'production') {
-        const auth = new google.auth.OAuth2(
-            process.env.GOOGLE_API_CLIENT_ID,
-            process.env.GOOGLE_API_CLIENT_SECRET,
-            process.env.GOOGLE_API_REDIRECT_URI,
-        );
-        auth.setCredentials({
-            refresh_token: process.env.GOOGLE_API_REFRESH_TOKEN,
+        const TOKEN = 'token.json';
+        const auth = await new Promise((resolve, reject) => {
+            fs.readFile(process.env.GOOGLE_APPLICATION_CREDENTIALS, (err, content) => {
+                if (err) {
+                    logger.error(err);
+                    reject(err);
+                    return;
+                }
+                const credentials = JSON.parse(content);
+                const {client_secret, client_id, redirect_uris} = credentials.installed;
+                const newAuth = new google.auth.OAuth2(
+                    client_id,
+                    client_secret,
+                    redirect_uris[0]
+                );
+                fs.readFile(TOKEN, (err, token) => {
+                    if (err) {
+                        logger.error(err);
+                        reject(err);
+                        return;
+                    }
+                    newAuth.setCredentials(JSON.parse(token));
+                    resolve(newAuth);
+                });
+            });
         });
         drive = google.drive({version: 'v3', auth});
     }
