@@ -61,6 +61,7 @@
     "japanese": "^1.2.0",
     "jp-num": "^0.1.0",
     "jsdom": "^15.1.1",
+    "jszip": "^3.2.2",
     "kuromojin": "^2.0.0",
     "lodash": "^4.17.15",
     "miller-rabin": "^4.0.1",
