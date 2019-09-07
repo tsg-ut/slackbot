@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import axios from 'axios';
 import uuid from 'uuid/v4';
 
+
 class TextBoxContent {
   constructor(text=null) {
     this.id = uuid();
@@ -37,7 +38,12 @@ class Response extends React.Component {
     const data = this.state[name].slice();
     data.push(new TextBoxContent());
     this.setState({[name]: data});
-    console.log(name, data);
+  }
+
+  componentDidMount = () => {
+    if (this.props.initialResponse) {
+      this.setState(this.props.initialResponse);
+    }
   }
   
   render() {
@@ -66,7 +72,7 @@ class Input extends React.Component {
   render() {
     return (
       <li>
-        <input type="text" onInput={this.props.onChange}></input>
+        <input type="text" onInput={this.props.onChange} defaultValue={this.props.value.text}></input>
       </li>
     )
   }
@@ -76,7 +82,7 @@ class Output extends React.Component {
   render() {
     return (
       <li>
-        <textarea onChange={this.props.onChange}></textarea>
+        <textarea onChange={this.props.onChange} defaultValue={this.props.value.text}></textarea>
       </li>
     );
   }
@@ -97,12 +103,13 @@ class TextBoxes extends React.Component {
       <div>
         <ul>
           {
-            this.props.values.map(({id}, i) =>
+            this.props.values.map((value, i) =>
               <this.props.contentClass
-                key={id}
+                key={value.id}
                 onChange={
                   (event) => this.props.onChange(event, i)
                 }
+                value={value}
               />
             )
           }
@@ -143,21 +150,37 @@ class Responses extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      responses: [uuid()], // list of keys?
+      responseIDs: [],
+      initialResponses: null,
     };
   }
 
+  componentDidMount = async () => {
+    const responses = await (await fetch("http://localhost:3001/bcr/list")).json();
+    console.log(responses);
+    this.setState({
+      responseIDs: responses.map(({id}) => id),
+      initialResponses: new Map(responses.map(r => [r.id, r])),
+    });
+  }
+
   handleAddButtonClick = (event) => {
-    const responses = this.state.responses;
-    responses.push(uuid());
-    this.setState({responses});
+    const responseIDs = this.state.responseIDs;
+    responseIDs.push(uuid());
+    this.setState({responseIDs: responseIDs});
   }
   
   render() {
     return (
       <div>
-        {this.state.responses.map(
-          (id, i) => <Response key={id} id={id} onClick={this.handleAddButtonClick}></Response> // TODO: use UUID for key
+        {this.state.responseIDs.map(
+          (id, i) => 
+            <Response
+              key={id}
+              id={id}
+              initialResponse={this.state.initialResponses.get(id)}
+              onClick={this.handleAddButtonClick}
+            ></Response>
         )}
         <AddButton onClick={this.handleAddButtonClick}></AddButton>
       </div>
