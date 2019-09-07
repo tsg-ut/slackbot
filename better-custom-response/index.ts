@@ -1,14 +1,14 @@
 import localResponses from './custom-responses';
 import {sample, shuffle} from 'lodash';
 import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
-import {customResponses as webResponses} from './server';
+import {getCustomResponses as getWebResponses} from './server';
 
 interface SlackInterface {
     rtmClient: RTMClient,
     webClient: WebClient,
 }
 
-const getCustomResponses = () => localResponses.concat(webResponses);
+const getCustomResponses = () => localResponses.concat(getWebResponses());
 
 const response = (text:string) => {
     for (const resp of getCustomResponses().filter((response) => !response.reaction)) {
@@ -45,8 +45,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
         if (!text) return;
         const resp = response(text);
         if (resp[0]) {
-            const username = !resp[1] ? 'better-custom-response' : resp[1];
-            const icon_emoji = !resp[2] ? ':slack:' : resp[2];
+            const username = !resp[1] ? '(Web) better-custom-response' : resp[1];
+            const icon_emoji = !resp[2] ? ':pizzacat83:' : resp[2];
             await slack.chat.postMessage({
                 channel: message.channel,
                 text: resp[0],
