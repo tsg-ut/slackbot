@@ -156,12 +156,20 @@ class Responses extends React.Component {
   }
 
   componentDidMount = async () => {
-    const responses = await (await fetch("http://localhost:3001/bcr/list")).json();
+    const res = await fetch('http://localhost:3001/bcr/list');
+    if (!res.ok) {
+      throw new Error(`fetch error ${res.status} ${res.statusText}`);
+    }
+    const responses = await res.json();
     console.log(responses);
-    this.setState({
-      responseIDs: responses.map(({id}) => id),
-      initialResponses: new Map(responses.map(r => [r.id, r])),
-    });
+    if (responses.length === 0) {
+      this.setState({responseIDs: [uuid()], initialResponses: new Map()});
+    } else {
+      this.setState({
+        responseIDs: responses.map(({id}) => id),
+        initialResponses: new Map(responses.map(r => [r.id, r])),
+      });
+    }
   }
 
   handleAddButtonClick = (event) => {
