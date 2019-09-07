@@ -8,7 +8,7 @@ interface SlackInterface {
     webClient: WebClient,
 }
 
-const getCustomResponses = () => localResponses.concat(getWebResponses());
+const getCustomResponses = () => localResponses.concat(Array.from(getWebResponses()));
 
 const response = (text:string) => {
     for (const resp of getCustomResponses().filter((response) => !response.reaction)) {
