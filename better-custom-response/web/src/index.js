@@ -142,23 +142,29 @@ class Responses extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      responses: [null], // list of keys?
+      responses: [uuid()], // list of keys?
     };
+  }
+  
+  handleAddButtonClick = (event) => {
+    const responses = this.state.responses;
+    responses.push(uuid());
+    this.setState({responses});
   }
   
   render() {
     return (
-      this.state.responses.map(
-        (_, i) => <Response></Response> // TODO: use UUID for key
-      )
+      <div>
+        {this.state.responses.map(
+          (id, i) => <Response key={id} onClick={this.handleAddButtonClick}></Response> // TODO: use UUID for key
+        )}
+        <AddButton onClick={this.handleAddButtonClick}></AddButton>
+      </div>
     );
   }
 }
 
 class App extends React.Component {
-  handleAddButtonClick = (event) => {
-    console.log('more responses!');
-  }
 
   render() {
     return (
@@ -167,7 +173,6 @@ class App extends React.Component {
           <p>カスタムレスポンス</p>
         </header>
         <Responses></Responses>
-        <AddButton onClick={this.handleAddButtonClick}></AddButton>
       </div>
     );
   }
