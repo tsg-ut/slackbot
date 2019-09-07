@@ -14,6 +14,7 @@ class Response extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
+      id: this.props.id,
       inputs: [new TextBoxContent()],
       outputs: [new TextBoxContent()],
     };
@@ -145,7 +146,7 @@ class Responses extends React.Component {
       responses: [uuid()], // list of keys?
     };
   }
-  
+
   handleAddButtonClick = (event) => {
     const responses = this.state.responses;
     responses.push(uuid());
@@ -156,7 +157,7 @@ class Responses extends React.Component {
     return (
       <div>
         {this.state.responses.map(
-          (id, i) => <Response key={id} onClick={this.handleAddButtonClick}></Response> // TODO: use UUID for key
+          (id, i) => <Response key={id} id={id} onClick={this.handleAddButtonClick}></Response> // TODO: use UUID for key
         )}
         <AddButton onClick={this.handleAddButtonClick}></AddButton>
       </div>
