@@ -52,7 +52,7 @@ export const server = ({webClient: slack}: {webClient: WebClient}) => async (fas
 }
 
 
-export const getCustomResponses = () => 
+export const getCustomResponses = (): CustomResponse[] => 
     Array.from(customResponses.values()).map(({inputs, outputs}) => ({
         input: inputs.map(({text}) => new RegExp(text)),
         outputArray: outputs.map(({text}) => text),
