@@ -1,12 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import axios from 'axios';
-import uuid from 'uuid/v4';
+import {ulid} from 'ulid';
 
 
 class TextBoxContent {
   constructor(text=null) {
-    this.id = uuid();
+    this.id = ulid();
     this.text = text;
   }
 }
@@ -163,7 +163,7 @@ class Responses extends React.Component {
     const responses = await res.json();
     console.log(responses);
     if (responses.length === 0) {
-      this.setState({responseIDs: [uuid()], initialResponses: new Map()});
+      this.setState({responseIDs: [ulid()], initialResponses: new Map()});
     } else {
       this.setState({
         responseIDs: responses.map(({id}) => id),
@@ -174,7 +174,7 @@ class Responses extends React.Component {
 
   handleAddButtonClick = (event) => {
     const responseIDs = this.state.responseIDs;
-    responseIDs.push(uuid());
+    responseIDs.push(ulid());
     this.setState({responseIDs: responseIDs});
   }
   
