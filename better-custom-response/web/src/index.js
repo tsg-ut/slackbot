@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import axios from 'axios';
 import {ulid} from 'ulid';
 
+const apiURLPrefix = 'http://localhost:3001/bcr';
 
 class TextBoxContent {
   constructor(text=null) {
@@ -24,7 +25,7 @@ class Response extends React.Component {
   send = (event) => {
     console.log('send data:');
     console.log(this.state);
-    axios.post(`http://localhost:3001/bcr/update`, this.state);
+    axios.post(`${apiURLPrefix}/update`, this.state);
   }
   
   handleTextChange = (event, name, i) => {
@@ -156,11 +157,7 @@ class Responses extends React.Component {
   }
 
   componentDidMount = async () => {
-    const res = await fetch('http://localhost:3001/bcr/list');
-    if (!res.ok) {
-      throw new Error(`fetch error ${res.status} ${res.statusText}`);
-    }
-    const responses = await res.json();
+    const responses = (await axios.get(`${apiURLPrefix}/list`, this.state)).data;
     console.log(responses);
     if (responses.length === 0) {
       this.setState({responseIDs: [ulid()], initialResponses: new Map()});
