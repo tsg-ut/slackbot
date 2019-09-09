@@ -72,6 +72,7 @@ class Response extends React.Component {
         ></TextBoxes>
         <Options></Options>
         <SaveButton onClick={this.send}></SaveButton>
+        <DeleteButton onClick={this.props.onDeleteButtonClick}></DeleteButton>
       </div>
     );
   }
@@ -192,6 +193,12 @@ class Responses extends React.Component {
     responseIDs.push(ulid());
     this.setState({responseIDs: responseIDs});
   }
+
+  handleDeleteButtonClick = (event, id) => {
+    const newResponseIDs = this.state.responseIDs.filter(id2 => id !== id2);
+    this.setState({responseIDs: newResponseIDs});
+    axios.post(`${apiURLPrefix}/delete`, {id});
+  }
   
   render() {
     return (
@@ -202,7 +209,7 @@ class Responses extends React.Component {
               key={id}
               id={id}
               initialResponse={this.state.initialResponses.get(id)}
-              onClick={this.handleAddButtonClick}
+              onDeleteButtonClick={(event) => this.handleDeleteButtonClick(event, id)}
             ></Response>
         )}
         <AddButton onClick={this.handleAddButtonClick}></AddButton>

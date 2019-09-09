@@ -46,6 +46,16 @@ export const server = ({webClient: slack}: {webClient: WebClient}) => async (fas
         return ({ok: true});
     });
 
+    fastify.post('/bcr/delete', async (req, res) => {
+        const {id}: {id: string} = req.body;
+        const idExisted = customResponses.delete(id);
+        if (!idExisted) {
+            // TODO: Error
+        }
+        saveResponses();
+        return ({ok: true});
+    });
+
     fastify.get('/bcr/list', async (req, res) => {
         return Array.from(customResponses.values()).sort(({id: id1}, {id: id2}) => id1 > id2? 1:-1);
     })
