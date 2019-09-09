@@ -41,6 +41,12 @@ class Response extends React.Component {
     this.setState({[name]: data});
   }
 
+  handleDeleteButtonClick =  (event, name, id) => {
+    const newData = this.state[name].filter(({id: id2}) => id2 !== id);
+    console.log(newData);
+    this.setState({[name]: newData});
+  }
+
   componentDidMount = () => {
     if (this.props.initialResponse) {
       this.setState(this.props.initialResponse);
@@ -55,12 +61,14 @@ class Response extends React.Component {
           onChange={(event, i) => this.handleTextChange(event, 'inputs', i)}
           values={this.state.inputs}
           onAddButtonClick={(event) => this.handleAddButtonClick(event, 'inputs')}
+          onDeleteButtonClick={(event, id) => this.handleDeleteButtonClick(event, 'inputs', id)}
         ></TextBoxes>
         <TextBoxes
           contentClass={Output}
           onChange={(event, i) => this.handleTextChange(event, 'outputs', i)}
           values={this.state.outputs}
           onAddButtonClick={(event) => this.handleAddButtonClick(event, 'outputs')}
+          onDeleteButtonClick={(event, id) => this.handleDeleteButtonClick(event, 'outputs', id)}
         ></TextBoxes>
         <Options></Options>
         <SaveButton onClick={this.send}></SaveButton>
@@ -97,6 +105,13 @@ class AddButton extends React.Component {
   }
 }
 
+class DeleteButton extends React.Component {
+  render() {
+    return (
+      <button onClick={this.props.onClick}>Delete</button>
+    );
+  }
+}
 
 class TextBoxes extends React.Component {
   render() {
@@ -105,13 +120,16 @@ class TextBoxes extends React.Component {
         <ul>
           {
             this.props.values.map((value, i) =>
-              <this.props.contentClass
-                key={value.id}
-                onChange={
-                  (event) => this.props.onChange(event, i)
-                }
-                value={value}
-              />
+              <div>
+                <this.props.contentClass
+                  key={value.id}
+                  onChange={
+                    (event) => this.props.onChange(event, i)
+                  }
+                  value={value}
+                />
+                <DeleteButton onClick={(event) => this.props.onDeleteButtonClick(event, value.id)}></DeleteButton>
+              </div>
             )
           }
         </ul>
