@@ -16,13 +16,26 @@ const {makeSummary} = require('./summary_writer.js');
 async function getZipData(drive, month) {
     const filename = `sandbox-messages-${month}.zip`;
     if (drive) {
-        const {data: {files}} = await drive.files.list({
-            pageSize: 100,
-            fields: 'nextPageToken, files(id, name)',
-            q: `name = '${filename}'`,
+        const {files} = await new Promise((resolve, reject) => {
+            drive.files.list({
+                pageSize: 10,
+                fields: 'files(id, name)',
+                spaces: 'drive',
+                q: `name='${filename}'`,
+            }, (err, res) => {
+                if (err) {
+                    logger.error(err);
+                    reject();
+                    return;
+                }
+                logger.info(JSON.stringify(res.data));
+                resolve(res.data);
+            });
         });
-        if (!files || files.length !== 1) return null;
-    
+        if (!files) {
+            logger.error(`unable to find ${filename}`);
+            return null;
+        }
         const file = files[0];
         console.log(`downloading file ${file.id}...`);
         const stream = await drive.files.get({
@@ -50,39 +63,15 @@ async function getZipData(drive, month) {
 }
 
 async function getRecords() {
-    let drive = null;
-    if (process.env.NODE_ENV === 'production') {
-        const TOKEN = 'token.json';
-        const auth = await new Promise((resolve, reject) => {
-            fs.readFile(process.env.GOOGLE_APPLICATION_CREDENTIALS, (err, content) => {
-                if (err) {
-                    logger.error(err);
-                    reject(err);
-                    return;
-                }
-                const credentials = JSON.parse(content);
-                const {client_secret, client_id, redirect_uris} = credentials.installed;
-                const newAuth = new google.auth.OAuth2(
-                    client_id,
-                    client_secret,
-                    redirect_uris[0]
-                );
-                fs.readFile(TOKEN, (err, token) => {
-                    if (err) {
-                        logger.error(err);
-                        reject(err);
-                        return;
-                    }
-                    newAuth.setCredentials(JSON.parse(token));
-                    resolve(newAuth);
-                });
-            });
-        });
-        drive = google.drive({version: 'v3', auth});
-    }
+    const auth = await new google.auth.GoogleAuth({
+        // Scopes can be specified either as an array or as a single, space-delimited string.
+        scopes: ['https://www.googleapis.com/auth/drive.readonly']
+    }).getClient();
+    const drive = google.drive({version: 'v3', auth});
+    // const drive = null; // for local test
 
-    const now = moment().startOf('day').hours(6).utcOffset(9);
-    const dayago = moment().startOf('day').hours(6).utcOffset(9).subtract(1, 'days');
+    const now = moment().startOf('day').hours(6).utcOffset(9).subtract(1,'days');
+    const dayago = moment().startOf('day').hours(6).utcOffset(9).subtract(2, 'days');
     const nowMonth = now.format('YYYYMM');
     const dayagoMonth = dayago.format('YYYYMM');
     const nowZip = await getZipData(drive, nowMonth);
@@ -99,7 +88,7 @@ async function getRecords() {
             .then(data => data.filter(mes => {
                 const time = moment(mes.ts*1000).utcOffset(9);
                 return (
-                    //!mes.thread_ts &&
+                    !mes.thread_ts &&
                     time.isBefore(now) && time.isAfter(dayago)
                 );
             }));

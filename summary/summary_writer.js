@@ -1,6 +1,6 @@
 require('dotenv').config();
 
-const {countBy, groupBy, maxBy, minBy} = require('lodash');
+const {uniq, countBy, groupBy, maxBy, minBy} = require('lodash');
 const moment = require('moment');
 const fs = require('fs');
 const {tokenize} = require('kuromojin');
@@ -115,10 +115,12 @@ module.exports.makeSummary = async (messages, slack) => {
                     }
                 }, []))
                 .then(res => res.filter(r => TARGET_POS.includes(r.pos)))
+                .then(res => res.map(r => r.surface_form))
+                .then(uniq)
         ));
         const wordsCount = await Promise.all(nestedWordsPromise)
             .then(x => [].concat(...x))
-            .then(x => countBy(x, 'surface_form'))
+            .then(countBy)
             .then(Object.entries)
             .then(xs => xs.filter(([text,]) => !stop_words.includes(text)))
             .then(xs => xs.filter(([,count]) => count > 1))
@@ -132,7 +134,7 @@ module.exports.makeSummary = async (messages, slack) => {
             cloud().size([CANVAS_W, CANVAS_H])
                 .canvas(() => createCanvas(CANVAS_W, CANVAS_H))
                 .words(wordsCount)
-                .rotate(word => word.size % 2 === 1 ? 0 : 90)
+                .rotate(() => 0)
                 .fontWeight(word => Math.pow(word.size, 1.3) * 1.0)
                 .fontSize(word =>
                     MINFONT + (MAXFONT-MINFONT) * Math.log(1 + (word.size-minwordsize)/(maxwordsize-minwordsize) * (Math.pow(Math.E, 2)-1) / 2)
@@ -166,6 +168,7 @@ module.exports.makeSummary = async (messages, slack) => {
         const canvas = createCanvas(PNG_W, PNG_H);
         const ctx = canvas.getContext('2d');
         const canPromise = new Promise((resolve, reject) => {
+            logger.info("converting");
             const image = new Image;
             image.onload = () => {
                 ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, PNG_W, PNG_H);
@@ -178,26 +181,28 @@ module.exports.makeSummary = async (messages, slack) => {
         });
         const cloudPNG = await canPromise;
 
-        if (process.env.NODE_ENV === 'production') {
-            const cloudinaryData = await new Promise((resolve, reject) => {
-                cloudinary.v2.uploader
-                    .upload_stream({resource_type: 'image'}, (error, response) => {
-                        if (error) {
-                            reject(error);
-                        } else {
-                            resolve(response);
-                        }
-                    })
-                    .end(cloudPNG);
-                });
-            summary.push({
-                title: "WORD CLOUD",
-                image_url: cloudinaryData.secure_url,
+        const cloudinaryData = await new Promise((resolve, reject) => {
+            logger.info("uploading");
+            cloudinary.v2.uploader
+                .upload_stream({resource_type: 'image'}, (error, response) => {
+                    if (error) {
+                        logger.error(error);
+                        reject(error);
+                    } else {
+                        logger.info("uploaded!");
+                        resolve(response);
+                    }
+                })
+                .end(cloudPNG);
             });
-        } else {
-            await fs.writeFile("out.png", cloudPNG, (err, data) => { if (err) logger.error(err); });
-            logger.info("saved");
-        }
+        summary.push({
+            title: "WORD CLOUD",
+            image_url: cloudinaryData.secure_url,
+        });
+
+        // local save
+        // await fs.writeFile("out.png", cloudPNG, (err, data) => { if (err) logger.error(err); });
+        // logger.info("saved");
     }
                 
     
