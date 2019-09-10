@@ -129,7 +129,10 @@ class TextBoxes extends React.Component {
                   }
                   value={value}
                 />
-                <DeleteButton onClick={(event) => this.props.onDeleteButtonClick(event, value.id)}></DeleteButton>
+                {
+                  this.props.values.length > 1 &&
+                    <DeleteButton onClick={(event) => this.props.onDeleteButtonClick(event, value.id)}></DeleteButton>
+                }
               </div>
             )
           }
