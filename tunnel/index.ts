@@ -1,10 +1,10 @@
 import {RTMClient, WebClient} from '@slack/client';
-import sql from 'sql-template-strings';
-import sqlite from 'sqlite';
+import {flatten, get} from 'lodash';
+import {EmojiData} from 'emoji-data-ts';
 import path from 'path';
 import plugin from 'fastify-plugin';
-import {get, flatten} from 'lodash';
-import {EmojiData} from 'emoji-data-ts';
+import sql from 'sql-template-strings';
+import sqlite from 'sqlite';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -25,28 +25,29 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 	const {team: tsgTeam}: any = await tsgSlack.team.info();
 	const [tsgMembers, kmcMembers] =
 		(await Promise.all([tsgSlack, kmcSlack].map((slack) => slack.users.list())) as any[])
-		.map(({members}) => members.map(
-			(member: {id: string}) => [member.id, member]
-			)
-		).map((members: [string, any]) => new Map(members));
+			.map(({members}) => members.map(
+				(member: {id: string}) => [member.id, member]
+			)).map((members: [string, any]) => new Map(members));
 
 	const [tsgEmojis, kmcEmojis] =
 		(await Promise.all([
 			{slack: tsgSlack, token: process.env.HAKATASHI_TOKEN},
-			{slack: kmcSlack, token: kmcToken.access_token}
+			{slack: kmcSlack, token: kmcToken.access_token},
 		]
 			.map(({slack, token}) => slack.emoji.list({token}))) as any[])
 			.map(({emoji: emojis}) => new Map(Object.entries(emojis)));
 
 	const emojiData = new EmojiData();
 	const getEmojiImageUrl = (name: string, emojiMap: Map<string, string>): string => {
-		if(emojiMap.has(name)) {
+		if (emojiMap.has(name)) {
 			return emojiMap.get(name);
 		}
-		const emoji = emojiData.getImageData(name)
-		if (emoji) return `https://raw.githubusercontent.com/iamcal/emoji-data/master/img-apple-64/${emoji.imageUrl}`;
+		const emoji = emojiData.getImageData(name);
+		if (emoji) {
+			return `https://raw.githubusercontent.com/iamcal/emoji-data/master/img-apple-64/${emoji.imageUrl}`;
+		}
 		return null;
-	}
+	};
 
 	fastify.post('/slash/tunnel', async (req, res) => {
 		if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
@@ -97,7 +98,7 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			return '受信拒否されているのでメッセージを送れません:cry:';
 		}
 
-		const user = (teamName === 'TSG'? tsgMembers : kmcMembers).get(req.body.user_id);
+		const user = (teamName === 'TSG' ? tsgMembers : kmcMembers).get(req.body.user_id);
 		const iconUrl = get(user, ['profile', 'image_192'], '');
 		const name = get(user, ['profile', 'display_name'], '');
 
@@ -131,19 +132,20 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			return;
 		}
 		// fetch message detail
+		// eslint-disable-next-line prefer-destructuring
 		const updatedMessage: {ts: string, text: string, blocks: any[], reactions: any[]} = (await tsgSlack.conversations.history({
-			token: updatedTeam === 'TSG'? process.env.HAKATASHI_TOKEN : kmcToken.access_token,
-			channel: updatedTeam === 'TSG'? process.env.CHANNEL_SANDBOX : process.env.KMC_CHANNEL_SANDBOX,
+			token: updatedTeam === 'TSG' ? process.env.HAKATASHI_TOKEN : kmcToken.access_token,
+			channel: updatedTeam === 'TSG' ? process.env.CHANNEL_SANDBOX : process.env.KMC_CHANNEL_SANDBOX,
 			latest: event.item.ts,
 			limit: 1,
-			inclusive: true,			
+			inclusive: true,
 		}) as any).messages[0];
 
 		if (updatedMessage.ts !== event.item.ts) {
 			// message not found
 			return;
 		}
-		
+
 		const blocks = [
 			(updatedMessage.blocks ? updatedMessage.blocks[0] : {
 				type: 'section',
@@ -155,27 +157,27 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			}),
 			...updatedMessage.reactions
 				.map((reaction: {name: string, users: string[]}) => (
-					getEmojiImageUrl(reaction.name, updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis) ?
-					[
-						{
-							"type": "image",
-							"image_url": getEmojiImageUrl(reaction.name, updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis),
-							"alt_text": `:${reaction.name}: by ${
-								reaction.users.map((user) => (updatedTeam === 'TSG' ? tsgMembers : kmcMembers).get(user))
-									.map((user) => get(user, ['profile', 'display_name']) || get(user, ['profile', 'real_name'], '[ERROR]'))
-									.join(', ') 
-							}`,
-						},
-						{
-							"type": "mrkdwn",
-							"text": `${reaction.users.length}`,
-						},
-					] : [ // TODO: use image for non-custom emojis too
-						{
-							"type": "mrkdwn",
-							"text": `:${reaction.name}: ${reaction.users.length}`,
-						},
-					]
+					getEmojiImageUrl(reaction.name, updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis)
+						? [
+							{
+								type: 'image',
+								image_url: getEmojiImageUrl(reaction.name, updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis),
+								alt_text: `:${reaction.name}: by ${
+									reaction.users.map((user) => (updatedTeam === 'TSG' ? tsgMembers : kmcMembers).get(user))
+										.map((user) => get(user, ['profile', 'display_name']) || get(user, ['profile', 'real_name'], '[ERROR]'))
+										.join(', ')
+								}`,
+							},
+							{
+								type: 'mrkdwn',
+								text: `${reaction.users.length}`,
+							},
+						] : [ // TODO: use image for non-custom emojis too
+							{
+								type: 'mrkdwn',
+								text: `:${reaction.name}: ${reaction.users.length}`,
+							},
+						]
 				))
 				.reduce(({rows, cnt}, reaction) => {
 					if (cnt + reaction.length > 10) {
@@ -210,13 +212,13 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 		}
 	};
 
-	[{rtm: tsgRtm, team: 'TSG'}, {rtm: kmcRtm, team: 'KMC'}].forEach(({rtm, team}) => {
+	for (const {rtm, team} of [{rtm: tsgRtm, team: 'TSG'}, {rtm: kmcRtm, team: 'KMC'}]) {
 		rtm.on('reaction_added', (event) => {
 			onReactionUpdated(event, team);
 		}).on('reaction_removed', (event) => {
 			onReactionUpdated(event, team);
 		});
-	});
+	}
 
 	kmcRtm.start();
 
