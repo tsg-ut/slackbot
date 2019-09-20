@@ -13,7 +13,7 @@ const loadEmojisDeferred = new Deferred();
 
 getTokens().then(async (tokens) => {
 	for (const token of tokens) {
-		const rtmClient = await getRtmClient(token.bot_access_token);
+		const rtmClient = await getRtmClient(token.team_id);
 		rtmClient.on('team_join', (event) => {
 			additionalMembers.unshift(event.user);
 		});

@@ -19,8 +19,8 @@ const loadTokens = async () => {
 	await db.close();
 
 	loadTokensDeferred.resolve(tokens.concat([{
-		team_id: null,
-		team_name: null,
+		team_id: process.env.TEAM_ID,
+		team_name: process.env.TEAMNAME,
 		access_token: process.env.HAKATASHI_TOKEN,
 		bot_access_token: process.env.SLACK_TOKEN,
 	}]));
@@ -28,7 +28,7 @@ const loadTokens = async () => {
 	for (const token of tokens) {
 		const rtmClient = new RTMClient(token.bot_access_token);
 		rtmClient.start();
-		rtmClients.set(token.bot_access_token, rtmClient);
+		rtmClients.set(token.team_id, rtmClient);
 	}
 };
 
@@ -36,7 +36,7 @@ loadTokens();
 
 export const getTokens = (): Promise<Token[]> => loadTokensDeferred.promise;
 
-export const getRtmClient = async (token: string): Promise<RTMClient> => {
+export const getRtmClient = async (teamId: string): Promise<RTMClient> => {
 	await loadTokensDeferred.promise;
-	return rtmClients.get(token);
+	return rtmClients.get(teamId);
 };
