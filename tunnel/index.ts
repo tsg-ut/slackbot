@@ -1,4 +1,5 @@
 import {RTMClient, WebClient} from '@slack/client';
+import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {flatten, get} from 'lodash';
 import {EmojiData} from 'emoji-data-ts';
 import path from 'path';
@@ -19,6 +20,8 @@ let isKmcAllowing = true;
 export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface) => plugin(async (fastify, opts, next) => {
 	const db = await sqlite.open(path.join(__dirname, '..', 'tokens.sqlite3'));
 	const kmcToken = await db.get(sql`SELECT * FROM tokens WHERE team_id = ${process.env.KMC_TEAM_ID}`);
+	await db.close();
+
 	const kmcSlack = kmcToken === undefined ? null : new WebClient(kmcToken.bot_access_token);
 	const kmcRtm = kmcToken === undefined ? null : new RTMClient(kmcToken.bot_access_token);
 
