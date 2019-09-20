@@ -1,6 +1,6 @@
-import {RTMClient, WebClient} from '@slack/client';
+import {WebClient} from '@slack/client';
 import {flatten} from 'lodash';
-import {getTokens} from './slack';
+import {getTokens, getRtmClient} from './slack';
 import {Deferred} from './utils';
 
 const webClient = new WebClient();
@@ -10,9 +10,12 @@ const additionalMembers: any[] = [];
 const loadMembersDeferred = new Deferred();
 getTokens().then(async (tokens) => {
 	for (const token of tokens) {
-		const rtmClient = new RTMClient(token);
+		const rtmClient = await getRtmClient(token);
 		rtmClient.on('team_join', (event) => {
-			additionalMembers.push(event.user);
+			additionalMembers.unshift(event.user);
+		});
+		rtmClient.on('user_change', (event) => {
+			additionalMembers.unshift(event.user);
 		});
 	}
 
@@ -26,8 +29,8 @@ getTokens().then(async (tokens) => {
 
 export const getMemberName = async (user: string): Promise<string> => {
 	const members = [
-		...(await loadMembersDeferred.promise),
 		...additionalMembers,
+		...(await loadMembersDeferred.promise),
 	];
 	const member = members.find(({id}: any) => id === user);
 	return member.profile.display_name || member.name;
@@ -36,8 +39,8 @@ export const getMemberName = async (user: string): Promise<string> => {
 type IconResolution = 24 | 32 | 48 | 72 | 192 | 512;
 export const getMemberIcon = async (user: string, res: IconResolution = 24): Promise<string> => {
 	const members = [
-		...(await loadMembersDeferred.promise),
 		...additionalMembers,
+		...(await loadMembersDeferred.promise),
 	];
 	const member = members.find(({id}: any) => id === user);
 	switch (res) {

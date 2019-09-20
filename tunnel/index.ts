@@ -1,6 +1,7 @@
 import {RTMClient, WebClient} from '@slack/client';
+import {getRtmClient} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
-import {flatten, get} from 'lodash';
+import {flatten, get, uniq} from 'lodash';
 import {EmojiData} from 'emoji-data-ts';
 import path from 'path';
 import plugin from 'fastify-plugin';
@@ -19,18 +20,13 @@ let isKmcAllowing = true;
 
 export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface) => plugin(async (fastify, opts, next) => {
 	const db = await sqlite.open(path.join(__dirname, '..', 'tokens.sqlite3'));
-	const kmcToken = await db.get(sql`SELECT * FROM tokens WHERE team_id = ${process.env.KMC_TEAM_ID}`);
+	const kmcToken = await db.get(sql`SELECT * FROM tokens WHERE team_id = ${process.env.KMC_TEAM_ID}`).catch(() => null);
 	await db.close();
 
 	const kmcSlack = kmcToken === undefined ? null : new WebClient(kmcToken.bot_access_token);
-	const kmcRtm = kmcToken === undefined ? null : new RTMClient(kmcToken.bot_access_token);
+	const kmcRtm = kmcToken === undefined ? null : await getRtmClient(kmcToken.bot_access_token);
 
 	const {team: tsgTeam}: any = await tsgSlack.team.info();
-	const [tsgMembers, kmcMembers] =
-		(await Promise.all([tsgSlack, kmcSlack].map((slack) => slack.users.list())) as any[])
-			.map(({members}) => members.map(
-				(member: {id: string}) => [member.id, member]
-			)).map((members: [string, any]) => new Map(members));
 
 	const [tsgEmojis, kmcEmojis] =
 		(await Promise.all([
@@ -101,9 +97,8 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			return '受信拒否されているのでメッセージを送れません:cry:';
 		}
 
-		const user = (teamName === 'TSG' ? tsgMembers : kmcMembers).get(req.body.user_id);
-		const iconUrl = get(user, ['profile', 'image_192'], '');
-		const name = get(user, ['profile', 'display_name'], '');
+		const iconUrl = await getMemberIcon(req.body.user_id, 192);
+		const name = await getMemberName(req.body.user_id);
 
 		const [{ts: tsgTs}, {ts: kmcTs}]: any = await Promise.all([
 			tsgSlack.chat.postMessage({
@@ -149,6 +144,13 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			return;
 		}
 
+		const users = uniq(flatten(updatedMessage.reactions.map((reaction) => reaction.users)));
+		const userNames = await Promise.all(users.map(async (user) => {
+			const name = await getMemberName(user);
+			return [user, name] as [string, string];
+		}));
+		const userNameMap = new Map(userNames);
+
 		const blocks = [
 			(updatedMessage.blocks ? updatedMessage.blocks[0] : {
 				type: 'section',
@@ -166,9 +168,7 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 								type: 'image',
 								image_url: getEmojiImageUrl(reaction.name, updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis),
 								alt_text: `:${reaction.name}: by ${
-									reaction.users.map((user) => (updatedTeam === 'TSG' ? tsgMembers : kmcMembers).get(user))
-										.map((user) => get(user, ['profile', 'display_name']) || get(user, ['profile', 'real_name'], '[ERROR]'))
-										.join(', ')
+									reaction.users.map((user) => userNameMap.get(user)).join(', ')
 								}`,
 							},
 							{
@@ -216,14 +216,12 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 	};
 
 	for (const {rtm, team} of [{rtm: tsgRtm, team: 'TSG'}, {rtm: kmcRtm, team: 'KMC'}]) {
-		rtm.on('reaction_added', (event) => {
+		rtm.on('reaction_added', (event: any) => {
 			onReactionUpdated(event, team);
-		}).on('reaction_removed', (event) => {
+		}).on('reaction_removed', (event: any) => {
 			onReactionUpdated(event, team);
 		});
 	}
-
-	kmcRtm.start();
 
 	next();
 });
