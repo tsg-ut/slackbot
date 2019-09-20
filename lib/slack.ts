@@ -10,7 +10,7 @@ export const webClient = new WebClient(process.env.SLACK_TOKEN);
 
 rtmClient.start();
 const rtmClients = new Map<string, RTMClient>();
-rtmClients.set(process.env.SLACK_TOKEN, rtmClient);
+rtmClients.set(process.env.TEAM_ID, rtmClient);
 
 const loadTokensDeferred = new Deferred();
 const loadTokens = async () => {
