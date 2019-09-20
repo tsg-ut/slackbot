@@ -1,6 +1,5 @@
 import {tokenize} from 'kuromojin';
 import {findLastIndex} from 'lodash';
-import { start } from 'repl';
 
 export default async ([, head, tail]: string[]): Promise<string[]> => {
     const tokens = await tokenize(head + tail);
