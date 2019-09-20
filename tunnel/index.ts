@@ -1,8 +1,8 @@
 import {RTMClient, WebClient} from '@slack/client';
-import {getRtmClient} from '../lib/slack';
-import {getMemberIcon, getMemberName} from '../lib/slackUtils';
-import {flatten, get, uniq} from 'lodash';
+import {flatten, uniq} from 'lodash';
+import {getEmoji, getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {EmojiData} from 'emoji-data-ts';
+import {getRtmClient} from '../lib/slack';
 import path from 'path';
 import plugin from 'fastify-plugin';
 import sql from 'sql-template-strings';
@@ -18,6 +18,19 @@ const messages = new Map();
 let isTsgAllowing = true;
 let isKmcAllowing = true;
 
+const emojiData = new EmojiData();
+const getEmojiImageUrl = async (name: string, team: string): Promise<string> => {
+	const emojiUrl = await getEmoji(name, team);
+	if (emojiUrl !== undefined) {
+		return emojiUrl;
+	}
+	const emoji = emojiData.getImageData(name);
+	if (emoji) {
+		return `https://raw.githubusercontent.com/iamcal/emoji-data/master/img-apple-64/${emoji.imageUrl}`;
+	}
+	return null;
+};
+
 export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface) => plugin(async (fastify, opts, next) => {
 	const db = await sqlite.open(path.join(__dirname, '..', 'tokens.sqlite3'));
 	const kmcToken = await db.get(sql`SELECT * FROM tokens WHERE team_id = ${process.env.KMC_TEAM_ID}`).catch(() => null);
@@ -27,26 +40,6 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 	const kmcRtm = kmcToken === undefined ? null : await getRtmClient(kmcToken.bot_access_token);
 
 	const {team: tsgTeam}: any = await tsgSlack.team.info();
-
-	const [tsgEmojis, kmcEmojis] =
-		(await Promise.all([
-			{slack: tsgSlack, token: process.env.HAKATASHI_TOKEN},
-			{slack: kmcSlack, token: kmcToken.access_token},
-		]
-			.map(({slack, token}) => slack.emoji.list({token}))) as any[])
-			.map(({emoji: emojis}) => new Map(Object.entries(emojis)));
-
-	const emojiData = new EmojiData();
-	const getEmojiImageUrl = (name: string, emojiMap: Map<string, string>): string => {
-		if (emojiMap.has(name)) {
-			return emojiMap.get(name);
-		}
-		const emoji = emojiData.getImageData(name);
-		if (emoji) {
-			return `https://raw.githubusercontent.com/iamcal/emoji-data/master/img-apple-64/${emoji.imageUrl}`;
-		}
-		return null;
-	};
 
 	fastify.post('/slash/tunnel', async (req, res) => {
 		if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
@@ -129,6 +122,7 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 		if (!updatingMessageData) {
 			return;
 		}
+
 		// fetch message detail
 		// eslint-disable-next-line prefer-destructuring
 		const updatedMessage: {ts: string, text: string, blocks: any[], reactions: any[]} = (await tsgSlack.conversations.history({
@@ -144,12 +138,21 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			return;
 		}
 
+		const teamId = updatedTeam === 'TSG' ? tsgTeam.id : process.env.KMC_TEAM_ID;
+
 		const users = uniq(flatten(updatedMessage.reactions.map((reaction) => reaction.users)));
 		const userNames = await Promise.all(users.map(async (user) => {
 			const name = await getMemberName(user);
 			return [user, name] as [string, string];
 		}));
 		const userNameMap = new Map(userNames);
+
+		const emojis = updatedMessage.reactions.map((reaction) => reaction.name);
+		const emojiUrls = await Promise.all(emojis.map(async (emoji) => {
+			const url = await getEmojiImageUrl(emoji, teamId);
+			return [emoji, url] as [string, string];
+		}));
+		const emojiUrlMap = new Map(emojiUrls);
 
 		const blocks = [
 			(updatedMessage.blocks ? updatedMessage.blocks[0] : {
@@ -162,11 +165,11 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			}),
 			...updatedMessage.reactions
 				.map((reaction: {name: string, users: string[]}) => (
-					getEmojiImageUrl(reaction.name, updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis)
+					emojiUrlMap.has(reaction.name)
 						? [
 							{
 								type: 'image',
-								image_url: getEmojiImageUrl(reaction.name, updatedTeam === 'TSG' ? tsgEmojis : kmcEmojis),
+								image_url: emojiUrlMap.get(reaction.name),
 								alt_text: `:${reaction.name}: by ${
 									reaction.users.map((user) => userNameMap.get(user)).join(', ')
 								}`,

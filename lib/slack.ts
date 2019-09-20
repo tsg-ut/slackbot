@@ -1,5 +1,6 @@
 import {RTMClient, WebClient} from '@slack/client';
 import {Deferred} from './utils';
+import {Token} from '../oauth/tokens';
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
 import path from 'path';
@@ -14,23 +15,26 @@ rtmClients.set(process.env.SLACK_TOKEN, rtmClient);
 const loadTokensDeferred = new Deferred();
 const loadTokens = async () => {
 	const db = await sqlite.open(path.join(__dirname, '..', 'tokens.sqlite3'));
-	const tokenEntries = await db.all(sql`SELECT * FROM tokens WHERE bot_access_token <> ''`).catch(() => []);
+	const tokens = await db.all(sql`SELECT * FROM tokens WHERE bot_access_token <> ''`).catch(() => []);
 	await db.close();
 
-	const tokens = tokenEntries.map((token: any) => token.bot_access_token);
-
-	loadTokensDeferred.resolve(tokens.concat([process.env.SLACK_TOKEN]));
+	loadTokensDeferred.resolve(tokens.concat([{
+		team_id: null,
+		team_name: null,
+		access_token: process.env.HAKATASHI_TOKEN,
+		bot_access_token: process.env.SLACK_TOKEN,
+	}]));
 
 	for (const token of tokens) {
-		const rtmClient = new RTMClient(token);
+		const rtmClient = new RTMClient(token.bot_access_token);
 		rtmClient.start();
-		rtmClients.set(token, rtmClient);
+		rtmClients.set(token.bot_access_token, rtmClient);
 	}
 };
 
 loadTokens();
 
-export const getTokens = (): Promise<string[]> => loadTokensDeferred.promise;
+export const getTokens = (): Promise<Token[]> => loadTokensDeferred.promise;
 
 export const getRtmClient = async (token: string): Promise<RTMClient> => {
 	await loadTokensDeferred.promise;

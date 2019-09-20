@@ -6,25 +6,50 @@ import {Deferred} from './utils';
 const webClient = new WebClient();
 
 const additionalMembers: any[] = [];
+const additionalEmojis: any[] = [];
 
 const loadMembersDeferred = new Deferred();
+const loadEmojisDeferred = new Deferred();
+
 getTokens().then(async (tokens) => {
 	for (const token of tokens) {
-		const rtmClient = await getRtmClient(token);
+		const rtmClient = await getRtmClient(token.bot_access_token);
 		rtmClient.on('team_join', (event) => {
 			additionalMembers.unshift(event.user);
 		});
 		rtmClient.on('user_change', (event) => {
 			additionalMembers.unshift(event.user);
 		});
+		rtmClient.on('emoji_changed', async (event) => {
+			const {team}: any = await webClient.team.info({token: token.bot_access_token});
+			if (event.subtype === 'add') {
+				additionalEmojis.unshift({
+					team: team.id,
+					name: event.name,
+					url: event.value,
+				});
+			}
+		});
 	}
 
-	const usersArray = await Promise.all(tokens.map(async (token) => { 
-		const {members} = await webClient.users.list({token});
+	Promise.all(tokens.map(async (token) => { 
+		const {members} = await webClient.users.list({token: token.bot_access_token});
 		return members;
-	}));
+	})).then((usersArray) => {
+		loadMembersDeferred.resolve(flatten(usersArray));
+	});
 
-	loadMembersDeferred.resolve(flatten(usersArray));
+	Promise.all(tokens.map(async (token) => { 
+		const {emoji}: any = await webClient.emoji.list({token: token.access_token});
+		const {team}: any = await webClient.team.info({token: token.bot_access_token});
+		return Object.entries(emoji).map(([name, url]) => ({
+			team: team.id,
+			name,
+			url,
+		}));
+	})).then((emojisArray) => {
+		loadEmojisDeferred.resolve(flatten(emojisArray));
+	});
 });
 
 export const getMemberName = async (user: string): Promise<string> => {
@@ -57,4 +82,13 @@ export const getMemberIcon = async (user: string, res: IconResolution = 24): Pro
 		default:
 			return member.profile.image_24;
 	}
+};
+
+export const getEmoji = async (name: string, team: string): Promise<string> => {
+	const emojis = [
+		...additionalEmojis,
+		...(await loadEmojisDeferred.promise),
+	];
+	const emoji = emojis.find((emoji: any) => emoji.name === name && emoji.team === team);
+	return emoji ? emoji.url : undefined;
 };

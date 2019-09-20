@@ -92,7 +92,11 @@ fastify.use('/slack-event', (req, res, next) => {
 fastify.use('/slack-event', eventClient.expressMiddleware());
 fastify.use('/slack-message', messageClient.requestListener());
 fastify.listen(process.env.PORT || 21864, (error, address) => {
-	console.log({error, address});
+	if (error) {
+		logger.error(error);
+	} else {
+		logger.info(`Server launched at ${address}`);
+	}
 });
 
 let firstLogin = true;
