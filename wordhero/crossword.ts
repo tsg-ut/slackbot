@@ -156,13 +156,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					timestamp: message.ts,
 				});
 
-				const cloudinaryDataPromise = uploadImage(state.board.map((letter, index) => (letter === null ? null : {
-					color: newIndices.has(index) ? 'red' : 'black',
-					letter,
-				})), state.crossword.index);
-
 				await updatesQueue.add(async () => {
-					const cloudinaryData = await cloudinaryDataPromise;
+					const cloudinaryData = await uploadImage(state.board.map((letter, index) => (letter === null ? null : {
+						color: newIndices.has(index) ? 'red' : 'black',
+						letter,
+					})), state.crossword.index);
+
 					const seconds = boardConfigs[state.crossword.index].length * 10;
 
 					await slack.chat.update({

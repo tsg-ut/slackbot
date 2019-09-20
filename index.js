@@ -20,6 +20,7 @@ try {
 }
 
 const plugins = [
+	require('./summary'),
 	require('./mahjong'),
 	require('./pocky'),
 	require('./emoji-notifier'),
@@ -33,7 +34,7 @@ const plugins = [
 	require('./dajare'),
 	require('./sunrise'),
 	require('./ahokusa'),
-	...(word2vecInstalled ? [require('./vocabwar')] : []),
+	// ...(word2vecInstalled ? [require('./vocabwar')] : []),
 	require('./ricochet-robots'),
 	require('./scrapbox'),
 	require('./slack-log'),
