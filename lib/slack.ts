@@ -18,18 +18,18 @@ const loadTokens = async () => {
 	const tokens = await db.all(sql`SELECT * FROM tokens WHERE bot_access_token <> ''`).catch(() => []);
 	await db.close();
 
+	for (const token of tokens) {
+		const rtmClient = new RTMClient(token.bot_access_token);
+		rtmClient.start();
+		rtmClients.set(token.team_id, rtmClient);
+	}
+
 	loadTokensDeferred.resolve(tokens.concat([{
 		team_id: process.env.TEAM_ID,
 		team_name: process.env.TEAMNAME,
 		access_token: process.env.HAKATASHI_TOKEN,
 		bot_access_token: process.env.SLACK_TOKEN,
 	}]));
-
-	for (const token of tokens) {
-		const rtmClient = new RTMClient(token.bot_access_token);
-		rtmClient.start();
-		rtmClients.set(token.team_id, rtmClient);
-	}
 };
 
 loadTokens();
