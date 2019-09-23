@@ -2,7 +2,7 @@ import {WebClient, RTMClient} from '@slack/client';
 import moment from 'moment';
 import axios from 'axios';
 // @ts-ignore
-import hiraganize from 'japanese';
+import {hiraganize} from 'japanese';
 import sample from 'lodash/sample';
 import fs from 'fs';
 import {getMemberName} from '../lib/slackUtils';
@@ -55,8 +55,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const custom_emoji_list = Object.keys((await slack.emoji.list({token: process.env.HAKATASHI_TOKEN})).emoji);
 	const emoji_list = default_emoji_list + custom_emoji_list;
 	
-	//cat BCCWJ_frequencylist_luw_ver1_0.tsv | grep "名詞" | grep -v "人名" | grep -v "数詞" 
-	//    | head -n 50000 | tail -n 10000 | awk '{ print $2 "," $3 }' > common_word_list
+	// cat BCCWJ_frequencylist_luw_ver1_0.tsv | grep "名詞" | grep -v "人名" | grep -v "数詞" | awk '{ print $2 "," $3 }' | grep -E -v "^([^,]{1,5}|[^,]{10,100})," | head -n 50000 | tail -n 20000 > common_word_list
 	const themes = String(fs.readFileSync('../wiki_dataset/common_word_list')).split('\n');
 
 	function getTheme(){
@@ -88,12 +87,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				states[0].threadId = msg.ts;
 				states[0].timeoutId = setTimeout(chainbids, answertime);
 				states[0].hintuser = hint.user;
+				states[0].hints.shift();
 			}
 			else{
 				await reply(`だれも正解できなかったよ:cry:。正解は「${states[0].answer.ruby}」だよ。`);
 				states.shift();
 			}
-			states[0].hints.shift();
 		}
 		if(message.channel.startsWith('D') && message.text === 'ぽんぺお題'){
 			if(states.length <= 0){
@@ -173,13 +172,19 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					});
 				}
 				else if(message.text === states[0].answer.ruby){
+					clearTimeout(states[0].timeoutId);
 					await slack.reactions.add({
 						name: 'tada',
 						channel: message.channel,
 						timestamp: message.ts,
 					});
 					await reply(`${await getMemberName(message.user)}さんが${states[0].hintuser}さんのヒントで「${message.text}」を正解したよ！:tada:`);
-					clearTimeout(states[0].timeoutId);
+					if(states[0].hints.length > 0){
+						await reply(`以下はほかのひとの登録したヒントだよ。`);
+						for(const hint of states[0].hints){
+							await reply(`${hint.user}さんのヒントだよ。\n${hint.data}`);
+						}
+					}
 					states.shift();
 				}
 				else{
