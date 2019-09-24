@@ -5,6 +5,9 @@ jest.mock('fs');
 
 import path from 'path';
 import fs from 'fs';
+
+jest.unmock('fs');
+
 // @ts-ignore
 fs.virtualFiles = {
 	[path.join(__dirname, 'data')]: '',
