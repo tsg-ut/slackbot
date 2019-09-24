@@ -12,13 +12,6 @@ const logger = require('./lib/logger.js');
 
 fastify.register(require('fastify-formbody'));
 
-let word2vecInstalled = true;
-try {
-	require.resolve('word2vec');
-} catch (e) {
-	word2vecInstalled = false;
-}
-
 const plugins = [
 	require('./summary'),
 	require('./mahjong'),
@@ -52,8 +45,8 @@ const plugins = [
 	require('./ojigineko-life'),
 	require('./better-custom-response'),
 	require('./emoxpand'),
+	require('./ponpe'),
 ];
-
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
 	logger.error(error.stack);

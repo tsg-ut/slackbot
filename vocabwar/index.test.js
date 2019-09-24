@@ -12,6 +12,8 @@ const {promisify} = require('util');
 const path = require('path');
 const fs = require('fs');
 
+jest.unmock('fs');
+
 fs.virtualFiles = {
 	[path.join(__dirname, 'data')]: '',
 	[path.join(__dirname, 'data', 'ad.txt')]: [
