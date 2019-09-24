@@ -5,7 +5,7 @@ import axios from 'axios';
 import {hiraganize} from 'japanese';
 import sample from 'lodash/sample';
 import fs from 'fs';
-import {getMemberName} from '../lib/slackUtils';
+import {getMemberName, getEmoji} from '../lib/slackUtils';
 import path from 'path';
 import {download} from '../lib/download';
 
@@ -49,22 +49,38 @@ interface State{
 	answering: boolean
 }
 
+
+async function loadFile(filepath:string) : Promise<string> {
+	return await new Promise((resolve ,reject) => {
+		fs.readFile(filepath, (err, data) => {
+			if (err) {
+				return reject(err);
+			}
+			return resolve(data.toString());
+		});
+	});
+}
+
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const states : State[] = [];
 	
 	const emojipath = path.join(__dirname, 'data', 'emoji.json');
 	await download(emojipath, 'https://raw.githubusercontent.com/iamcal/emoji-data/master/emoji.json');
-	const default_emoji_list = JSON.parse(String(fs.readFileSync(emojipath)))
+	const default_emoji_list = JSON.parse(await loadFile(emojipath))
 		.map((x:{short_names:string[]})=>{return x.short_names;}).flat();
-	const custom_emoji_list = Object.keys((await slack.emoji.list({token: process.env.HAKATASHI_TOKEN})).emoji);
-	const emoji_list = default_emoji_list.concat(custom_emoji_list);
+
+	const {team: tsgTeam}: any = await slack.team.info();
+	async function isValidEmoji(name:string){
+		return default_emoji_list.includes(name) ||
+			await getEmoji(name,tsgTeam.id) !== undefined;
+	}
 	
 	// cat BCCWJ_frequencylist_luw_ver1_0.tsv | grep "名詞" | grep -v "人名" | grep -v "数詞" 
 	// | awk '{ print $2 "," $3 }' | grep -E -v "^([^,]{1,5}|[^,]{10,100})," | head -n 50000 | tail -n 20000 > common_word_list
 
 	const themepath = path.join(__dirname, 'data', 'common_word_list');
 	await download(themepath, 'https://drive.google.com/uc?id=1MO5fDrDHLtrVvNcnfUlddo56w29OWFMc');
-	const themes = String(fs.readFileSync(themepath)).split('\n');
+	const themes = (await loadFile(themepath)).split('\n');
 
 	function getTheme(){
 		const theme = sample(themes).split(',');
@@ -134,7 +150,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			let emoji_count = 0;
 			for (let matchArray, re = /:([^:\s]+):\s*/g; (matchArray = re.exec(ponpe));) {
 				const name = matchArray[1];
-				if(!emoji_list.includes(name)){
+				if(!await isValidEmoji(name)){
 					await reply(`:${name}:はemojiとして登録されていないよ:cry:`);
 					return;
 				}
