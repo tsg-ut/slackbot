@@ -69,6 +69,13 @@ interface State {
 	contests: {id: string, date: number, title: string, duration: number, isPosted: boolean, isPreposted: boolean}[],
 }
 
+interface ContestEntry {
+	date: number,
+	title: string,
+	id: string,
+	duration: number,
+}
+
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const statePath = path.resolve(__dirname, 'state.json');
 	const exists = await fs.access(statePath, constants.F_OK).then(() => true).catch(() => false);
@@ -90,7 +97,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				'Accept-Language': 'ja-JP',
 			},
 		});
-		const {contests}: {contests: {date: number, title: string, id: string, duration: number}[]} = await scrapeIt.scrapeHTML(html, {
+		const {contests} = await scrapeIt.scrapeHTML<{contests: ContestEntry[]}>(html, {
 			contests: {
 				listItem: 'tbody tr',
 				data: {
@@ -120,14 +127,39 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		logger.info(`Fetched ${contests.length} contests`);
 		if (contests.length > 0) {
 			const oldContests = state.contests;
+			const newContests: ContestEntry[] = [];
 			setState({
-				contests: contests.filter(({date}: any) => !Number.isNaN(date)).map((contest) => ({
-					...contest,
-					isPosted: (oldContests.find(({id}) => id === contest.id) || {isPosted: false}).isPosted,
-					isPreposted: (oldContests.find(({id}) => id === contest.id) || {isPreposted: false}).isPreposted,
-				})),
+				contests: contests.filter(({date}: any) => !Number.isNaN(date)).map((contest) => {
+					const oldContest = oldContests.find(({id}) => id === contest.id);
+					if (!oldContest) {
+						newContests.push(contest);
+					}
+					return {
+						...contest,
+						isPosted: oldContest ? oldContest.isPosted : false,
+						isPreposted: oldContest ? oldContest.isPreposted : false,
+					};
+				}),
 			});
+			for (const contest of newContests) {
+				await postNewContest(contest.id);
+			}
 		}
+	};
+
+	const postNewContest = async (id: string) => {
+		const contest = state.contests.find((contest) => contest.id === id);
+		logger.info(`Posting notification of new contest ${id}...`);
+
+		slack.chat.postMessage({
+			username: 'atcoder',
+			icon_emoji: ':atcoder:',
+			channel: process.env.CHANNEL_PROCON,
+			text: stripIndent`
+				新しいコンテスト *${contest.title}* が追加されたよ！
+				https://atcoder.jp/contests/${contest.id}
+			`,
+		});
 	};
 
 	const postPreroll = async (id: string) => {
