@@ -6,6 +6,8 @@ import {hiraganize} from 'japanese';
 import sample from 'lodash/sample';
 import fs from 'fs';
 import {getMemberName} from '../lib/slackUtils';
+import path from 'path';
+import {download} from '../lib/download';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -49,14 +51,20 @@ interface State{
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const states : State[] = [];
-	const default_emoji_list = 
-		(await axios.get('https://raw.githubusercontent.com/iamcal/emoji-data/master/emoji.json'))
-		.data.map((x:{short_names:string})=>{return x.short_names;}).flat();
-	const custom_emoji_list = Object.keys((await slack.emoji.list({token: process.env.HAKATASHI_TOKEN})).emoji);
-	const emoji_list = default_emoji_list + custom_emoji_list;
 	
-	// cat BCCWJ_frequencylist_luw_ver1_0.tsv | grep "名詞" | grep -v "人名" | grep -v "数詞" | awk '{ print $2 "," $3 }' | grep -E -v "^([^,]{1,5}|[^,]{10,100})," | head -n 50000 | tail -n 20000 > common_word_list
-	const themes = String(fs.readFileSync('../wiki_dataset/common_word_list')).split('\n');
+	const emojipath = path.join(__dirname, 'data', 'emoji.json');
+	await download(emojipath, 'https://raw.githubusercontent.com/iamcal/emoji-data/master/emoji.json');
+	const default_emoji_list = JSON.parse(String(fs.readFileSync(emojipath)))
+		.map((x:{short_names:string[]})=>{return x.short_names;}).flat();
+	const custom_emoji_list = Object.keys((await slack.emoji.list({token: process.env.HAKATASHI_TOKEN})).emoji);
+	const emoji_list = default_emoji_list.concat(custom_emoji_list);
+	
+	// cat BCCWJ_frequencylist_luw_ver1_0.tsv | grep "名詞" | grep -v "人名" | grep -v "数詞" 
+	// | awk '{ print $2 "," $3 }' | grep -E -v "^([^,]{1,5}|[^,]{10,100})," | head -n 50000 | tail -n 20000 > common_word_list
+
+	const themepath = path.join(__dirname, 'data', 'common_word_list');
+	await download(themepath, 'https://drive.google.com/uc?id=1MO5fDrDHLtrVvNcnfUlddo56w29OWFMc');
+	const themes = String(fs.readFileSync(themepath)).split('\n');
 
 	function getTheme(){
 		const theme = sample(themes).split(',');
@@ -74,6 +82,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return await slack.chat.postMessage({
 				channel: message.channel,
 				text: msg,
+				username: 'ぽんぺマスター',
+				icon_emoji: ':art',
 			});
 		}
 		
