@@ -328,7 +328,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			if (standing) {
 				const rank = standing.Rank.toString();
 				const frequency = prime.getFrequency(standing.Rank);
-				const isPrime = frequency.length === 1 && frequency[0].times === 1 && result.Place >= 2;
+				const isPrime = frequency.length === 1 && frequency[0].times === 1 && standing.Rank >= 2;
 				if (rank.length >= 3 && new Set(rank.split('')).size === 1) {
 					await unlock(user, 'atcoder-repdigit');
 				}
