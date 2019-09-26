@@ -11,7 +11,7 @@ import {range, uniq, chunk, flatten, isEmpty, sampleSize, size, minBy, times, sa
 import {stripIndent} from 'common-tags';
 // @ts-ignore
 import levenshtein from 'fast-levenshtein';
-import {Deferred, overflowText} from '../lib/utils';
+import {Deferred} from '../lib/utils';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import plugin from 'fastify-plugin';
 
@@ -162,6 +162,21 @@ class Oogiri {
 					triggerId: payload.trigger_id,
 					id,
 					choice: Number.isNaN(choice) ? null : choice,
+					user: payload.user.id,
+					respond,
+				})
+			));
+		});
+
+		this.slackInteractions.action({
+			type: 'dialog_submission',
+			callbackId: 'oogiri_add_betting_dialog',
+		}, (payload: any, respond: any) => {
+			mutex.runExclusive(() => (
+				this.registerBetting({
+					id: payload.state,
+					choice: payload.submission.choice,
+					coins: payload.submission.coins,
 					user: payload.user.id,
 					respond,
 				})
@@ -514,7 +529,7 @@ class Oogiri {
 		return this.slack.dialog.open({
 			trigger_id: triggerId,
 			dialog: {
-				callback_id: 'oogiri_betting_dialog',
+				callback_id: 'oogiri_add_betting_dialog',
 				title: '大喜利BET',
 				submit_label: 'BETする',
 				notify_on_cancel: true,
@@ -545,6 +560,58 @@ class Oogiri {
 				],
 			},
 		});
+	}
+
+	async registerBetting({
+		id,
+		choice,
+		coins,
+		user,
+		respond,
+	}: {
+		id: string,
+		choice: string,
+		coins: string,
+		user: string,
+		respond: any,
+	}): Promise<void> {
+		const game = this.state.games.find((g) => g.id === id);
+		if (!game || game.status !== 'betting') {
+			respond({
+				text: 'この大喜利の投票は終了しているよ😢',
+				response_type: 'ephemeral',
+				replace_original: false,
+			});
+			return null;
+		}
+
+		const choiceMeaning = game.choices[parseInt(choice)];
+
+		if (choiceMeaning && choiceMeaning.user === user) {
+			respond({
+				text: '自分自身には投票できないよ',
+				response_type: 'ephemeral',
+				replace_original: false,
+			});
+			return null;
+		}
+
+		game.bettings[user] = {
+			choice: parseInt(choice),
+			coins: parseInt(coins),
+		};
+
+		await this.setState({
+			games: this.state.games,
+		});
+
+		await this.postMessage({
+			text: stripIndent`
+				<@${user}>が投票したよ💰
+			`,
+		});
+
+		return;
 	}
 
 	async setState(object: Partial<State>) {
