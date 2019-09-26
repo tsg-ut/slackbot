@@ -6,7 +6,7 @@ import {KnownBlock, MrkdwnElement, PlainTextElement, RTMClient, WebClient} from 
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
 import {Mutex} from 'async-mutex';
-import {chunk, flatten, isEmpty, sampleSize, size, minBy, times, sample, shuffle, map} from 'lodash';
+import {range, chunk, flatten, isEmpty, sampleSize, size, minBy, times, sample, shuffle, map} from 'lodash';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
 // @ts-ignore
@@ -75,8 +75,6 @@ interface State {
 
 const mutex = new Mutex();
 
-const wordsVersion = '201907260000';
-
 class Oogiri {
 	rtm: RTMClient;
 
@@ -138,6 +136,21 @@ class Oogiri {
 			));
 		});
 
+		this.slackInteractions.action({
+			type: 'button',
+			blockId: 'oogiri_add_meaning',
+		}, (payload: any, respond: any) => {
+			const [action] = payload.actions;
+			mutex.runExclusive(() => (
+				this.showMeaningDialog({
+					triggerId: payload.trigger_id,
+					user: payload.user.id,
+					id: action.value,
+					respond,
+				})
+			));
+		});
+
 		this.loadDeferred.resolve();
 
 		return this.loadDeferred.promise;
@@ -145,7 +158,7 @@ class Oogiri {
 
 	showStartDialog(triggerId: string) {
 		if (this.state.games.length >= 3) {
-			throw new Error('大喜利を同時に3つ以上開催することはできないよ:imp:');
+			return '大喜利を同時に3つ以上開催することはできないよ:imp:';
 		}
 
 		return this.slack.dialog.open({
@@ -218,6 +231,7 @@ class Oogiri {
 			blocks: [
 				{
 					type: 'section',
+					block_id: 'oogiri_add_meaning',
 					text: {
 						type: 'mrkdwn',
 						text: stripIndent`
@@ -246,6 +260,7 @@ class Oogiri {
 				},
 				{
 					type: 'section',
+					block_id: 'oogiri_end_meaning',
 					text: {
 						type: 'mrkdwn',
 						text: stripIndent`
@@ -258,12 +273,12 @@ class Oogiri {
 							type: 'plain_text',
 							text: '終了する',
 						},
-						value: 'end_meaning',
+						value: game.id,
 						style: 'danger',
 						confirm: {
 							text: {
 								type: 'plain_text',
-								text: '意味登録を終了しますか？',
+								text: `大喜利「${game.title}」の意味登録を締め切りますか？`,
 							},
 							confirm: {
 								type: 'plain_text',
@@ -280,6 +295,48 @@ class Oogiri {
 		});
 	}
 
+	showMeaningDialog({triggerId, id, user, respond}: {triggerId: string, id: string, user: string, respond: any}) {
+		const game = this.state.games.find((g) => g.id === id);
+		if (!game) {
+			respond({
+				text: 'Error: Game not found',
+				response_type: 'ephemeral',
+				replace_original: false,
+			});
+			return null;
+		}
+
+		const meanings = game.meanings.filter((meaning) => meaning.user === user);
+
+		return this.slack.dialog.open({
+			trigger_id: triggerId,
+			dialog: {
+				callback_id: 'tahoiya_add_meaning_dialog',
+				title: '大喜利意味登録',
+				submit_label: '登録する',
+				notify_on_cancel: true,
+				elements: [
+					{
+						type: 'text',
+						label: game.title,
+						name: 'meaning1',
+						min_length: 3,
+						value: meanings[0] ? meanings[0].text : '',
+						hint: '後から変更できます',
+					},
+					...(range(game.maxMeanings - 1).map((i) => ({
+						type: 'text' as ('text'),
+						label: `${i + 2}個目`,
+						name: `meaning${i + 2}`,
+						min_length: 3,
+						value: meanings[i + 1] ? meanings[i + 1].text : '',
+						hint: '後から変更できます',
+						optional: true,
+					}))),
+				],
+			},
+		});
+	}
 
 	async setState(object: Partial<State>) {
 		Object.assign(this.state, object);
@@ -308,7 +365,6 @@ export const server = ({webClient: slack, rtmClient: rtm, messageClient: slackIn
 			return 'Bad Request';
 		}
 
-		await oogiri.showStartDialog(req.body.trigger_id);
-		return 'ok';
+		return oogiri.showStartDialog(req.body.trigger_id);
 	});
 });
