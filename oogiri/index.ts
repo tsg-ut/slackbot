@@ -38,7 +38,6 @@ interface Game {
 		[user: string]: {
 			choice: number,
 			coins: number,
-			comment: string,
 		},
 	},
 	choices: Meaning[],
@@ -148,6 +147,24 @@ class Oogiri {
 			const [action] = payload.actions;
 			mutex.runExclusive(() => (
 				this.finishMeaning(action.value)
+			));
+		});
+
+		this.slackInteractions.action({
+			type: 'button',
+			blockId: /^oogiri_betting/,
+		}, (payload: any, respond: any) => {
+			const [action] = payload.actions;
+			const [id, choiceText] = action.value.split(',');
+			const choice = parseInt(choiceText);
+			mutex.runExclusive(() => (
+				this.showBettingDialog({
+					triggerId: payload.trigger_id,
+					id,
+					choice: Number.isNaN(choice) ? null : choice,
+					user: payload.user.id,
+					respond,
+				})
 			));
 		});
 
@@ -432,7 +449,101 @@ class Oogiri {
 						value: [game.id, index].join(','),
 					},
 				} as KnownBlock)),
+				{
+					type: 'section',
+					block_id: 'oogiri_end_betting',
+					text: {
+						type: 'mrkdwn',
+						text: stripIndent`
+							BET済み: なし
+						`,
+					},
+					accessory: {
+						type: 'button',
+						text: {
+							type: 'plain_text',
+							text: '終了する',
+						},
+						value: game.id,
+						style: 'danger',
+						confirm: {
+							text: {
+								type: 'plain_text',
+								text: `大喜利「${game.title}」のベッティングを締め切りますか？`,
+							},
+							confirm: {
+								type: 'plain_text',
+								text: 'いいよ',
+							},
+							deny: {
+								type: 'plain_text',
+								text: 'だめ',
+							},
+						},
+					},
+				},
 			],
+		});
+	}
+
+	showBettingDialog({
+		triggerId,
+		id,
+		choice,
+		user,
+		respond,
+	}: {
+		triggerId: string,
+		id: string,
+		choice: number | null,
+		user: string,
+		respond: any,
+	}) {
+		const game = this.state.games.find((g) => g.id === id);
+		if (!game) {
+			respond({
+				text: 'Error: Game not found',
+				response_type: 'ephemeral',
+				replace_original: false,
+			});
+			return null;
+		}
+
+		const coins = game.bettings[user] ? game.bettings[user].coins : 1;
+
+		return this.slack.dialog.open({
+			trigger_id: triggerId,
+			dialog: {
+				callback_id: 'oogiri_betting_dialog',
+				title: '大喜利BET',
+				submit_label: 'BETする',
+				notify_on_cancel: true,
+				state: id,
+				elements: [
+					{
+						type: 'select',
+						label: 'BETする意味',
+						name: 'choice',
+						...(choice === null ? {} : {value: choice.toString()}),
+						hint: '後から変更できます',
+						options: game.choices.map(({text}, index) => ({
+							label: `${index + 1}. ${text}`,
+							value: index.toString(),
+						})),
+					},
+					{
+						type: 'select',
+						label: 'BETする枚数',
+						name: 'coins',
+						value: coins.toString(),
+						hint: '後から変更できます',
+						options: times(game.maxCoins, (index) => ({
+							label: `${index + 1}枚`,
+							value: (index + 1).toString(),
+						})),
+					},
+				],
+			},
 		});
 	}
 
