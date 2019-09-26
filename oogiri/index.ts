@@ -183,6 +183,16 @@ class Oogiri {
 			));
 		});
 
+		this.slackInteractions.action({
+			type: 'button',
+			blockId: 'oogiri_end_betting',
+		}, (payload: any, respond: any) => {
+			const [action] = payload.actions;
+			mutex.runExclusive(() => (
+				this.finishBetting(action.value)
+			));
+		});
+
 		this.loadDeferred.resolve();
 
 		return this.loadDeferred.promise;
@@ -612,6 +622,44 @@ class Oogiri {
 		});
 
 		return;
+	}
+
+	async finishBetting(id: string) {
+		const game = this.state.games.find((g) => g.id === id);
+
+		await this.postMessage({
+			text: '',
+			blocks: [
+				{
+					type: 'section',
+					text: {
+						type: 'mrkdwn',
+						text: stripIndent`
+							結果発表～～
+							＊テーマ＊ ${game.title}
+						`,
+					},
+				} as KnownBlock,
+				...game.choices.map((meaning, index) => ({
+					type: 'section',
+					block_id: `oogiri_betting_${index}`,
+					text: {
+						type: 'mrkdwn',
+						text: stripIndent`
+							<@${meaning.user}>
+							${index + 1}. ＊${meaning.text}＊
+							投票: ${Object.entries(game.bettings).filter(([, betting]) => betting.choice === index).map(([user, betting]) => (
+								`<@${user}> (${betting.coins}枚)`
+							)).join('、')}
+						`,
+					},
+				} as KnownBlock)),
+			],
+		});
+
+		await this.setState({
+			games: this.state.games.filter((g) => g !== game),
+		});
 	}
 
 	async setState(object: Partial<State>) {
