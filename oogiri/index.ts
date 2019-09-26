@@ -6,7 +6,7 @@ import {KnownBlock, MrkdwnElement, PlainTextElement, RTMClient, WebClient} from 
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
 import {Mutex} from 'async-mutex';
-import {range, chunk, flatten, isEmpty, sampleSize, size, minBy, times, sample, shuffle, map} from 'lodash';
+import {range, uniq, chunk, flatten, isEmpty, sampleSize, size, minBy, times, sample, shuffle, map} from 'lodash';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
 // @ts-ignore
@@ -15,35 +15,15 @@ import {Deferred, overflowText} from '../lib/utils';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import plugin from 'fastify-plugin';
 
-interface UserChoice {
-	type: 'user',
-	user: string,
-}
-
 interface SlackInterface {
 	rtmClient: RTMClient,
 	webClient: WebClient,
 	messageClient: any,
 }
 
-interface DummyChoice {
-	type: 'dummy',
-	source: string,
-	word: string,
+interface Meaning {
+	user: string,
 	text: string,
-}
-
-interface CorrectChoice {
-	type: 'correct',
-}
-
-type Choice = UserChoice | DummyChoice | CorrectChoice;
-
-interface WordRecord {
-	ruby: string,
-	word: string,
-	description: string,
-	source: string,
 }
 
 interface Game {
@@ -53,11 +33,7 @@ interface Game {
 	maxMeanings: number,
 	maxCoins: number,
 	status: 'meaning' | 'betting',
-	meanings: {
-		user: string,
-		text: string,
-		comment: string,
-	}[],
+	meanings: Meaning[],
 	bettings: {
 		[user: string]: {
 			choice: number,
@@ -65,7 +41,7 @@ interface Game {
 			comment: string,
 		},
 	},
-	choices: Choice[],
+	choices: Meaning[],
 	author: string,
 }
 
@@ -148,6 +124,30 @@ class Oogiri {
 					id: action.value,
 					respond,
 				})
+			));
+		});
+
+		this.slackInteractions.action({
+			type: 'dialog_submission',
+			callbackId: 'oogiri_add_meaning_dialog',
+		}, (payload: any, respond: any) => {
+			mutex.runExclusive(() => (
+				this.registerMeaning({
+					id: payload.state,
+					meanings: Object.entries(payload.submission).filter(([key]) => key.startsWith('meaning')).map(([, meaning]) => meaning as string),
+					user: payload.user.id,
+					respond,
+				})
+			));
+		});
+
+		this.slackInteractions.action({
+			type: 'button',
+			blockId: 'oogiri_end_meaning',
+		}, (payload: any, respond: any) => {
+			const [action] = payload.actions;
+			mutex.runExclusive(() => (
+				this.finishMeaning(action.value)
 			));
 		});
 
@@ -311,10 +311,11 @@ class Oogiri {
 		return this.slack.dialog.open({
 			trigger_id: triggerId,
 			dialog: {
-				callback_id: 'tahoiya_add_meaning_dialog',
+				callback_id: 'oogiri_add_meaning_dialog',
 				title: '大喜利意味登録',
 				submit_label: '登録する',
 				notify_on_cancel: true,
+				state: game.id,
 				elements: [
 					{
 						type: 'text',
@@ -335,6 +336,103 @@ class Oogiri {
 					}))),
 				],
 			},
+		});
+	}
+
+	async registerMeaning({
+		id,
+		meanings,
+		user,
+		respond,
+	}: {
+		id: string,
+		meanings: string[],
+		user: string,
+		respond: any,
+	}): Promise<void> {
+		const game = this.state.games.find((g) => g.id === id);
+		if (!game) {
+			respond({
+				text: 'この大喜利の意味登録は終了しているよ😢',
+				response_type: 'ephemeral',
+				replace_original: false,
+			});
+			return null;
+		}
+
+		game.meanings = game.meanings.filter((meaning) => meaning.user !== user).concat(meanings.filter((meaning) => meaning).map((text) => ({user, text})))
+		await this.setState({
+			games: this.state.games,
+		});
+
+		const count = uniq(game.meanings.map((m) => m.user)).length;
+
+		await this.postMessage({
+			text: stripIndent`
+				<@${user}>が意味を登録したよ💪
+				現在の参加者: ${count}人
+			`,
+		});
+
+		return;
+	}
+
+	async finishMeaning(id: string) {
+		const game = this.state.games.find((g) => g.id === id);
+
+		if (isEmpty(game.meanings)) {
+			await this.setState({
+				games: this.state.games.filter((g) => g !== game),
+			});
+			await this.postMessage({
+				text: stripIndent`
+					大喜利「${game.title}」は参加者がいないのでキャンセルされたよ🙄
+				`,
+			});
+			return;
+		}
+
+		game.status = 'betting';
+		await this.setState({games: this.state.games});
+
+		const shuffledMeanings = shuffle(game.meanings);
+
+		// eslint-disable-next-line require-atomic-updates
+		game.choices = shuffledMeanings;
+
+		await this.setState({games: this.state.games});
+		const mentions = uniq(game.meanings.map((meaning) => `<@${meaning.user}>`));
+
+		await this.postMessage({
+			text: '',
+			blocks: [
+				{
+					type: 'section',
+					text: {
+						type: 'mrkdwn',
+						text: stripIndent`
+							${mentions.join(' ')}
+							ベッティングタイムが始まるよ～👐👐👐
+						`,
+					},
+				} as KnownBlock,
+				...shuffledMeanings.map((meaning, index) => ({
+					type: 'section',
+					block_id: `oogiri_betting_${index}`,
+					text: {
+						type: 'mrkdwn',
+						text: `${index + 1}. ＊${meaning.text}＊`,
+					},
+					accessory: {
+						type: 'button',
+						text: {
+							type: 'plain_text',
+							text: `${index + 1}にBETする`,
+						},
+						value: [game.id, index].join(','),
+					},
+				} as KnownBlock)),
+			],
 		});
 	}
 
