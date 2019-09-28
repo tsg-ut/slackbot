@@ -85,7 +85,8 @@
     "typescript": "^3.5.3",
     "utf-8-validate": "^5.0.2",
     "winston": "^3.2.1",
-    "word2vec": "github:pizzacat83/node-word2vec"
+    "word2vec": "github:pizzacat83/node-word2vec",
+    "xml-js": "^1.6.11"
   },
   "devDependencies": {
     "@hakatashi/eslint-config": "^1.9.0",

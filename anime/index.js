@@ -1,34 +1,80 @@
-const path = require('path');
 const cloudinary = require('cloudinary');
-const {sample} = require('lodash');
+const {random, sum, sample, uniq} = require('lodash');
 const fs = require('fs-extra');
-const ThumbnailGenerator = require('video-thumbnail-generator').default;
 const levenshtein = require('fast-levenshtein');
+const {google} = require('googleapis');
+// const {xml2js} = require('xml-js');
+// const axios = require('axios');
+const {Deferred} = require('../lib/utils.ts');
 
-module.exports = async ({rtmClient: rtm, webClient: slack}) => {
+const animesDeferred = new Deferred();
+
+const loadSheet = async () => {
+	const auth = await new google.auth.GoogleAuth({
+		scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+	}).getClient();
+	const sheets = google.sheets({version: 'v4', auth});
+	const {data: {values}} = await new Promise((resolve, reject) => {
+		sheets.spreadsheets.values.get({
+			spreadsheetId: '12YLDm-YqzWO3kL0ehZPKr9zF5WbYwLj31B_XsRIPb58',
+			range: 'A:F',
+		}, (error, response) => {
+			if (error) {
+				reject(error);
+			} else {
+				resolve(response);
+			}
+		});
+	});
+	const animes = values.map(([type, id, title, channel, animeTitle, count]) => ({
+		type, id, title, channel, animeTitle, count: parseInt(count),
+	}));
+	animesDeferred.resolve(animes);
+	return animesDeferred;
+};
+
+const getRandomThumb = async (answer) => {
+	const animes = await animesDeferred.promise;
+	const videos = animes.filter(({animeTitle}) => animeTitle === answer);
+	const totalThumbs = sum(videos.map(({count}) => count));
+	const thumbIndex = random(totalThumbs);
+	let offset = 0;
+	const video = videos.find(({count}) => {
+		offset += count;
+		return thumbIndex < offset;
+	});
+
+	/*
+	const {data: filesXml} = await axios.get('https://hakata-thumbs.s3.amazonaws.com/', {
+		params: {
+			'list-type': 2,
+			prefix: `${video.type}/${video.id}/`,
+		},
+	});
+	const filesData = xml2js(filesXml, {compact: true});
+	*/
+
+	const thumbs = await fs.readdir(`../slackbot-anime-thumber/webp/${video.type}/${video.id}`);
+	console.log(thumbs);
+	const thumb = sample(thumbs);
+	const imageData = await fs.readFile(`../slackbot-anime-thumber/webp/${video.type}/${video.id}/${thumb}`);
+	return imageData;
+};
+
+module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	let answer = null;
-	let dir = null;
+
 	rtm.on('message', async (message) => {
 		if (message.text === 'アニメ当てクイズ' && answer === null) {
-			const isLiveMode = Math.random() < 0.5;
-			const basedir = isLiveMode ? 'Z:\\kakorokuRecorder\\video\\channel' : 'Z:\\Hakatanimation\\video';
-			const list = await fs.readdir(basedir);
-			answer = sample(list);
-			dir = path.join(basedir, answer);
-			const videos = (await fs.readdir(dir)).filter((file) => file.endsWith('.flv') || file.endsWith('.mp4'));
-			const video = sample(videos);
+			if (!animesDeferred.isResolved) {
+				loadSheet();
+			}
+			const animes = await animesDeferred.promise;
+			const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
+			answer = sample(animeTitles);
 
-			const tg = new ThumbnailGenerator({
-				sourcePath: path.join(basedir, answer, video),
-				thumbnailPath: __dirname,
-			});
-			const thumbnail = await tg.generateOneByPercent(10 + Math.random() * (isLiveMode ? 10 : 80), {
-				size: '320x180',
-			});
-			console.log({thumbnail});
+			const imageData = await getRandomThumb(answer);
 
-			const imageData = await fs.readFile(path.join(__dirname, thumbnail));
-			console.log({imageData});
 			const cloudinaryDatum = await new Promise((resolve, reject) => {
 				cloudinary.v2.uploader
 					.upload_stream({resource_type: 'image'}, (error, data) => {
@@ -48,7 +94,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				username: 'anime',
 				icon_emoji: ':japan:',
 				attachments: [{
-					image_url: cloudinaryDatum.secure_url,
+					image_url: cloudinaryDatum.secure_url.replace(/\.webp$/, '.png'),
 					fallback: 'このアニメなーんだ',
 				}],
 			});
@@ -56,20 +102,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if (message.text === '@anime ヒント' && answer !== null) {
-			const videos = (await fs.readdir(dir)).filter((file) => file.endsWith('.flv') || file.endsWith('.mp4'));
-			const video = sample(videos);
+			const imageData = await getRandomThumb(answer);
 
-			const tg = new ThumbnailGenerator({
-				sourcePath: path.join(dir, video),
-				thumbnailPath: __dirname,
-			});
-			const thumbnail = await tg.generateOneByPercent(10 + Math.random() * (dir.includes('kakorokuRecorder') ? 10 : 80), {
-				size: '320x180',
-			});
-			console.log({thumbnail});
-
-			const imageData = await fs.readFile(path.join(__dirname, thumbnail));
-			console.log({imageData});
 			const cloudinaryDatum = await new Promise((resolve, reject) => {
 				cloudinary.v2.uploader
 					.upload_stream({resource_type: 'image'}, (error, data) => {
@@ -89,7 +123,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				username: 'anime',
 				icon_emoji: ':japan:',
 				attachments: [{
-					image_url: cloudinaryDatum.secure_url,
+					image_url: cloudinaryDatum.secure_url.replace(/\.webp$/, '.png'),
 					fallback: 'もう、しょうがないにゃあ',
 				}],
 			});
@@ -99,7 +133,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		if (message.text === '@anime わからん' && answer !== null) {
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
-				text: `:ha:\n答えは *${answer.replace(/_/g, ' ')}* だよ:anger:\nこれくらい常識だよね?`,
+				text: `:ha:\n答えは＊${answer}＊だよ:anger:\nこれくらい常識だよね?`,
 				username: 'anime',
 				icon_emoji: ':japan:',
 			});
@@ -108,13 +142,16 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if (answer !== null && message.text) {
-			const distance = levenshtein.get(answer.replace(/[_ -]/g, '').toLowerCase(), message.text.replace(/[_ -]/g, '').toLowerCase());
+			const distance = levenshtein.get(
+				answer.replace(/\P{Letter}/gu, '').toLowerCase(),
+				message.text.replace(/\P{Letter}/gu, '').toLowerCase(),
+			);
 			console.log(answer, message.text, distance);
 
 			if (distance <= answer.length / 3) {
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
-					text: `<@${message.user}> 正解:tada:\n答えは *${answer.replace(/_/g, ' ')}* だよ:muscle:`,
+					text: `<@${message.user}> 正解:tada:\n答えは＊${answer}＊だよ:muscle:`,
 					username: 'anime',
 					icon_emoji: ':japan:',
 				});

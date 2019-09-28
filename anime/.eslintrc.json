@@ -10,6 +10,7 @@
     },
     "rules": {
         "no-console": "off",
-        "camelcase": "off"
+        "camelcase": "off",
+        "require-atomic-updates": "off"
     }
 }
