@@ -54,8 +54,6 @@ const getRandomThumb = async (answer) => {
 	});
 	const filesData = get(xml2js(filesXml, {compact: true}), ['ListBucketResult', 'Contents'], []);
 	const filePath = get(sample(filesData), ['Key', '_text'], '');
-	console.log({filePath});
-
 	const {data: imageData} = await axios.get(`https://hakata-thumbs.s3.amazonaws.com/${filePath}`, {responseType: 'arraybuffer'});
 
 	const cloudinaryDatum = await new Promise((resolve, reject) => {
@@ -102,6 +100,19 @@ const getVideoInfo = (video, filename) => {
 	};
 };
 
+const getHintText = (n) => {
+	if (n <= 1) {
+		return 'しょうがないにゃあ、ヒントだよ';
+	}
+	if (n <= 2) {
+		return 'もう一つヒントだよ、早く答えてね';
+	}
+	if (n <= 3) {
+		return 'まだわからないの？ヒント追加するね';
+	}
+	return '最後のヒントだよ！もうわかるよね？';
+};
+
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const state = {
 		answer: null,
@@ -120,16 +131,17 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				state.previousHint = now;
 				if (state.hints.length < 5) {
 					const {imageUrl, video, filename} = await getRandomThumb(state.answer);
+					const hintText = getHintText(state.hints.length);
 
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
-						text: 'しょうがないにゃあ、ヒントだよ',
+						text: hintText,
 						username: 'anime',
 						icon_emoji: ':tv:',
 						thread_ts: state.thread,
 						attachments: [{
 							image_url: imageUrl,
-							fallback: 'しょうがないにゃあ、ヒントだよ',
+							fallback: hintText,
 						}],
 					});
 
