@@ -94,7 +94,7 @@ const getVideoInfo = (video, filename) => {
 	if (video.type === 'youtube') {
 		return {
 			title: `${video.title} (${timeText}) - YouTube`,
-			url: `https://www.youtube.com/watch?v=${video.id}`,
+			url: `https://www.youtube.com/watch?v=${video.id}&t=${seekTime}`,
 		};
 	}
 
@@ -116,7 +116,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const onTick = () => {
 		mutex.runExclusive(async () => {
 			const now = Date.now();
-			const nextHint = state.previousHint + 30 * 1000;
+			const nextHint = state.previousHint + (state.hints.length === 5 ? 30 : 15) * 1000;
 
 			if (state.answer !== null && nextHint <= now) {
 				state.previousHint = now;
@@ -144,6 +144,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						icon_emoji: ':tv:',
 						thread_ts: state.thread,
 						reply_broadcast: true,
+					});
+					await slack.chat.postMessage({
+						channel: process.env.CHANNEL_SANDBOX,
+						text: '今回のヒント一覧だよ:anger:',
+						username: 'anime',
+						icon_emoji: ':tv:',
+						thread_ts: state.thread,
 						attachments: state.hints.map((hint) => {
 							const info = getVideoInfo(hint.video, hint.filename);
 							return {
@@ -167,7 +174,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	setInterval(onTick, 1000);
 
 	rtm.on('message', (message) => {
-		console.log(message, process.env.CHANNEL_SANDBOX);
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
@@ -200,7 +206,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
-					text: '30秒経過でヒントを出すよ♫',
+					text: '15秒経過でヒントを出すよ♫',
 					username: 'anime',
 					icon_emoji: ':tv:',
 					thread_ts: ts,
@@ -224,6 +230,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						icon_emoji: ':tv:',
 						thread_ts: state.thread,
 						reply_broadcast: true,
+					});
+					await slack.chat.postMessage({
+						channel: process.env.CHANNEL_SANDBOX,
+						text: '今回のヒント一覧だよ',
+						username: 'anime',
+						icon_emoji: ':tv:',
+						thread_ts: state.thread,
 						attachments: state.hints.map((hint) => {
 							const info = getVideoInfo(hint.video, hint.filename);
 							return {
