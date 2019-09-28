@@ -3,11 +3,13 @@ const {random, sum, sample, uniq} = require('lodash');
 const fs = require('fs-extra');
 const levenshtein = require('fast-levenshtein');
 const {google} = require('googleapis');
+const {Mutex} = require('async-mutex');
 // const {xml2js} = require('xml-js');
 // const axios = require('axios');
 const {Deferred} = require('../lib/utils.ts');
 
 const animesDeferred = new Deferred();
+const mutex = new Mutex();
 
 const loadSheet = async () => {
 	const auth = await new google.auth.GoogleAuth({
@@ -55,108 +57,195 @@ const getRandomThumb = async (answer) => {
 	*/
 
 	const thumbs = await fs.readdir(`../slackbot-anime-thumber/webp/${video.type}/${video.id}`);
-	console.log(thumbs);
 	const thumb = sample(thumbs);
 	const imageData = await fs.readFile(`../slackbot-anime-thumber/webp/${video.type}/${video.id}/${thumb}`);
-	return imageData;
+
+	const cloudinaryDatum = await new Promise((resolve, reject) => {
+		cloudinary.v2.uploader
+			.upload_stream({resource_type: 'image'}, (error, data) => {
+				if (error) {
+					reject(error);
+				} else {
+					resolve(data);
+				}
+			})
+			.end(imageData);
+	});
+	const imageUrl = cloudinaryDatum.secure_url.replace(/\.webp$/, '.png');
+
+	return {imageUrl, video, filename: thumb};
+};
+
+const getVideoInfo = (video, filename) => {
+	const fileIndex = parseInt(filename.split('.')[0]);
+	const seekTime = fileIndex * 30;
+	const hours = Math.floor(seekTime / 60 / 60);
+	const minutes = Math.floor(seekTime / 60) % 60;
+	const seconds = seekTime % 60;
+	const timeText = hours === 0 ? `${minutes}分${seconds}秒～` : `${hours}時間${minutes}分${seconds}秒～`;
+
+	if (video.type === 'lives') {
+		return {
+			title: `${video.title} (${timeText}) - ニコニコ生放送`,
+			url: `https://live.nicovideo.jp/gate/${video.id}`,
+		};
+	}
+
+	if (video.type === 'youtube') {
+		return {
+			title: `${video.title} (${timeText}) - YouTube`,
+			url: `https://www.youtube.com/watch?v=${video.id}`,
+		};
+	}
+
+	return {
+		title: '',
+		url: '',
+	};
 };
 
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
-	let answer = null;
+	const state = {
+		answer: null,
+		previousTick: 0,
+		previousHint: 0,
+		hints: [],
+		thread: null,
+	};
 
-	rtm.on('message', async (message) => {
-		if (message.text === 'アニメ当てクイズ' && answer === null) {
-			if (!animesDeferred.isResolved) {
-				loadSheet();
+	const onTick = () => {
+		mutex.runExclusive(async () => {
+			const now = Date.now();
+			const nextHint = state.previousHint + 30 * 1000;
+
+			if (state.answer !== null && nextHint <= now) {
+				state.previousHint = now;
+				if (state.hints.length < 5) {
+					const {imageUrl, video, filename} = await getRandomThumb(state.answer);
+
+					await slack.chat.postMessage({
+						channel: process.env.CHANNEL_SANDBOX,
+						text: 'しょうがないにゃあ、ヒントだよ',
+						username: 'anime',
+						icon_emoji: ':tv:',
+						thread_ts: state.thread,
+						attachments: [{
+							image_url: imageUrl,
+							fallback: 'しょうがないにゃあ、ヒントだよ',
+						}],
+					});
+
+					state.hints.push({imageUrl, video, filename});
+				} else {
+					await slack.chat.postMessage({
+						channel: process.env.CHANNEL_SANDBOX,
+						text: `もう、しっかりして！\n答えは＊${state.answer}＊だよ:anger:\nこれくらい常識だよね？`,
+						username: 'anime',
+						icon_emoji: ':tv:',
+						thread_ts: state.thread,
+						reply_broadcast: true,
+						attachments: state.hints.map((hint) => {
+							const info = getVideoInfo(hint.video, hint.filename);
+							return {
+								title: info.title,
+								title_link: info.url,
+								image_url: hint.imageUrl,
+								fallback: info.title,
+							};
+						}),
+					});
+					state.answer = null;
+					state.previousHint = 0;
+					state.hints = [];
+					state.thread = null;
+				}
 			}
-			const animes = await animesDeferred.promise;
-			const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
-			answer = sample(animeTitles);
+			state.previousTick = now;
+		});
+	};
 
-			const imageData = await getRandomThumb(answer);
+	setInterval(onTick, 1000);
 
-			const cloudinaryDatum = await new Promise((resolve, reject) => {
-				cloudinary.v2.uploader
-					.upload_stream({resource_type: 'image'}, (error, data) => {
-						if (error) {
-							reject(error);
-						} else {
-							resolve(data);
-						}
-					})
-					.end(imageData);
-			});
-			console.log({cloudinaryDatum});
-
-			await slack.chat.postMessage({
-				channel: process.env.CHANNEL_SANDBOX,
-				text: 'このアニメなーんだ',
-				username: 'anime',
-				icon_emoji: ':japan:',
-				attachments: [{
-					image_url: cloudinaryDatum.secure_url.replace(/\.webp$/, '.png'),
-					fallback: 'このアニメなーんだ',
-				}],
-			});
+	rtm.on('message', (message) => {
+		console.log(message, process.env.CHANNEL_SANDBOX);
+		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
 
-		if (message.text === '@anime ヒント' && answer !== null) {
-			const imageData = await getRandomThumb(answer);
+		if (message.text === 'アニメ当てクイズ' && state.answer === null) {
+			mutex.runExclusive(async () => {
+				if (!animesDeferred.isResolved) {
+					loadSheet();
+				}
+				const animes = await animesDeferred.promise;
+				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
+				state.answer = sample(animeTitles);
 
-			const cloudinaryDatum = await new Promise((resolve, reject) => {
-				cloudinary.v2.uploader
-					.upload_stream({resource_type: 'image'}, (error, data) => {
-						if (error) {
-							reject(error);
-						} else {
-							resolve(data);
-						}
-					})
-					.end(imageData);
-			});
-			console.log({cloudinaryDatum});
+				const {imageUrl, video, filename} = await getRandomThumb(state.answer);
 
-			await slack.chat.postMessage({
-				channel: process.env.CHANNEL_SANDBOX,
-				text: 'もう、しょうがないにゃあ',
-				username: 'anime',
-				icon_emoji: ':japan:',
-				attachments: [{
-					image_url: cloudinaryDatum.secure_url.replace(/\.webp$/, '.png'),
-					fallback: 'もう、しょうがないにゃあ',
-				}],
-			});
-			return;
-		}
+				const {ts} = await slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					text: 'このアニメなーんだ',
+					username: 'anime',
+					icon_emoji: ':tv:',
+					attachments: [{
+						image_url: imageUrl,
+						fallback: 'このアニメなーんだ',
+					}],
+				});
 
-		if (message.text === '@anime わからん' && answer !== null) {
-			await slack.chat.postMessage({
-				channel: process.env.CHANNEL_SANDBOX,
-				text: `:ha:\n答えは＊${answer}＊だよ:anger:\nこれくらい常識だよね?`,
-				username: 'anime',
-				icon_emoji: ':japan:',
-			});
-			answer = null;
-			return;
-		}
+				state.thread = ts;
+				state.hints.push({imageUrl, video, filename});
+				state.previousHint = Date.now();
 
-		if (answer !== null && message.text) {
-			const distance = levenshtein.get(
-				answer.replace(/\P{Letter}/gu, '').toLowerCase(),
-				message.text.replace(/\P{Letter}/gu, '').toLowerCase(),
-			);
-			console.log(answer, message.text, distance);
-
-			if (distance <= answer.length / 3) {
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
-					text: `<@${message.user}> 正解:tada:\n答えは＊${answer}＊だよ:muscle:`,
+					text: '30秒経過でヒントを出すよ♫',
 					username: 'anime',
-					icon_emoji: ':japan:',
+					icon_emoji: ':tv:',
+					thread_ts: ts,
 				});
-				answer = null;
-			}
+			});
+		}
+
+		if (state.answer !== null && message.text && message.thread_ts === state.thread && message.username !== 'anime') {
+			mutex.runExclusive(async () => {
+				const distance = levenshtein.get(
+					state.answer.replace(/\P{Letter}/gu, '').toLowerCase(),
+					message.text.replace(/\P{Letter}/gu, '').toLowerCase(),
+				);
+				console.log(state.answer, message.text, distance);
+
+				if (distance <= state.answer.replace(/\P{Letter}/gu, '').length / 3) {
+					await slack.chat.postMessage({
+						channel: process.env.CHANNEL_SANDBOX,
+						text: `<@${message.user}> 正解:tada:\n答えは＊${state.answer}＊だよ:muscle:`,
+						username: 'anime',
+						icon_emoji: ':tv:',
+						thread_ts: state.thread,
+						reply_broadcast: true,
+						attachments: state.hints.map((hint) => {
+							const info = getVideoInfo(hint.video, hint.filename);
+							return {
+								title: info.title,
+								title_link: info.url,
+								image_url: hint.imageUrl,
+								fallback: info.title,
+							};
+						}),
+					});
+					state.answer = null;
+					state.previousHint = 0;
+					state.hints = [];
+					state.thread = null;
+				} else {
+					await slack.reactions.add({
+						name: 'no_good',
+						channel: message.channel,
+						timestamp: message.ts,
+					});
+				}
+			});
 		}
 	});
 };
