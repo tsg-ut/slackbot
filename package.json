@@ -53,6 +53,7 @@
     "fastify-plugin": "^1.6.0",
     "firebase-admin": "^8.3.0",
     "forever": "^1.0.0",
+    "fs-extra": "^8.0.1",
     "google-tts-api": "^0.0.4",
     "googleapis": "^42.0.0",
     "html-entities": "^1.2.1",
@@ -84,7 +85,8 @@
     "typescript": "^3.5.3",
     "utf-8-validate": "^5.0.2",
     "winston": "^3.2.1",
-    "word2vec": "github:pizzacat83/node-word2vec"
+    "word2vec": "github:pizzacat83/node-word2vec",
+    "xml-js": "^1.6.11"
   },
   "devDependencies": {
     "@hakatashi/eslint-config": "^1.9.0",
