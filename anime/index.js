@@ -1,11 +1,10 @@
 const cloudinary = require('cloudinary');
-const {random, sum, sample, uniq} = require('lodash');
-const fs = require('fs-extra');
+const {get, last, random, sum, sample, uniq} = require('lodash');
 const levenshtein = require('fast-levenshtein');
 const {google} = require('googleapis');
 const {Mutex} = require('async-mutex');
-// const {xml2js} = require('xml-js');
-// const axios = require('axios');
+const {xml2js} = require('xml-js');
+const axios = require('axios');
 const {Deferred} = require('../lib/utils.ts');
 
 const animesDeferred = new Deferred();
@@ -31,6 +30,7 @@ const loadSheet = async () => {
 	const animes = values.map(([type, id, title, channel, animeTitle, count]) => ({
 		type, id, title, channel, animeTitle, count: parseInt(count),
 	}));
+
 	animesDeferred.resolve(animes);
 	return animesDeferred;
 };
@@ -46,19 +46,17 @@ const getRandomThumb = async (answer) => {
 		return thumbIndex < offset;
 	});
 
-	/*
 	const {data: filesXml} = await axios.get('https://hakata-thumbs.s3.amazonaws.com/', {
 		params: {
 			'list-type': 2,
 			prefix: `${video.type}/${video.id}/`,
 		},
 	});
-	const filesData = xml2js(filesXml, {compact: true});
-	*/
+	const filesData = get(xml2js(filesXml, {compact: true}), ['ListBucketResult', 'Contents'], []);
+	const filePath = get(sample(filesData), ['Key', '_text'], '');
+	console.log({filePath});
 
-	const thumbs = await fs.readdir(`../slackbot-anime-thumber/webp/${video.type}/${video.id}`);
-	const thumb = sample(thumbs);
-	const imageData = await fs.readFile(`../slackbot-anime-thumber/webp/${video.type}/${video.id}/${thumb}`);
+	const {data: imageData} = await axios.get(`https://hakata-thumbs.s3.amazonaws.com/${filePath}`, {responseType: 'arraybuffer'});
 
 	const cloudinaryDatum = await new Promise((resolve, reject) => {
 		cloudinary.v2.uploader
@@ -73,7 +71,7 @@ const getRandomThumb = async (answer) => {
 	});
 	const imageUrl = cloudinaryDatum.secure_url.replace(/\.webp$/, '.png');
 
-	return {imageUrl, video, filename: thumb};
+	return {imageUrl, video, filename: last(filePath.split('/'))};
 };
 
 const getVideoInfo = (video, filename) => {
@@ -220,7 +218,6 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					state.answer.replace(/\P{Letter}/gu, '').toLowerCase(),
 					message.text.replace(/\P{Letter}/gu, '').toLowerCase(),
 				);
-				console.log(state.answer, message.text, distance);
 
 				if (distance <= state.answer.replace(/\P{Letter}/gu, '').length / 3) {
 					await slack.chat.postMessage({
