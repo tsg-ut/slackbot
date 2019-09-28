@@ -1,6 +1,7 @@
 const axios = require("axios");
 const emoji = require("node-emoji");
-const {unlock} = require("../achievements/index.ts");
+const {unlock} = require("../achievements");
+const logger = require('../lib/logger.js');
 
 const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，．…・?!：；:;\s]+$/g;
 

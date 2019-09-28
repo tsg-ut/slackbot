@@ -31,7 +31,7 @@ describe('shogi', () => {
 		const {username, attachments, text} = await slack.getResponseTo('将棋');
 
 		expect(username).toBe('shogi');
-		expect(text).toMatch(/手必勝$/);
+		expect(text).toMatch(/手必勝/);
 		expect(attachments).toHaveLength(1);
 	});
 });

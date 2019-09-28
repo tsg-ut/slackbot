@@ -2,7 +2,7 @@
 
 jest.mock('axios');
 jest.mock('./tokenize.js');
-jest.mock('../achievements/index.ts');
+jest.mock('../achievements');
 
 const dajare = require('./index.js');
 const Slack = require('../lib/slackMock.js');

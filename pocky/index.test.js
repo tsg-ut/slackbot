@@ -1,7 +1,7 @@
 /* eslint-env node, jest */
 
 jest.mock('axios');
-jest.mock('../achievements/index.ts');
+jest.mock('../achievements');
 
 const axios = require('axios');
 const pocky = require('./index.js');

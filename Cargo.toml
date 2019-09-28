@@ -1,0 +1,2 @@
+[workspace]
+members = ["wordhero", "ricochet-robots"]

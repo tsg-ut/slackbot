@@ -12,30 +12,22 @@ const logger = require('./lib/logger.js');
 
 fastify.register(require('fastify-formbody'));
 
-let word2vecInstalled = true;
-try {
-	require.resolve('word2vec');
-} catch (e) {
-	word2vecInstalled = false;
-}
-
 const plugins = [
+	require('./summary'),
 	require('./mahjong'),
 	require('./pocky'),
 	require('./emoji-notifier'),
 	require('./sushi-bot'),
-	require('./cubebot'),
 	require('./shogi'),
 	require('./tiobot'),
 	require('./checkin'),
 	require('./tahoiya'),
 	require('./channel-notifier'),
-	require('./tashibot'),
 	require('./prime'),
 	require('./dajare'),
 	require('./sunrise'),
 	require('./ahokusa'),
-	...(word2vecInstalled ? [require('./vocabwar')] : []),
+	// ...(word2vecInstalled ? [require('./vocabwar')] : []),
 	require('./ricochet-robots'),
 	require('./scrapbox'),
 	require('./slack-log'),
@@ -44,10 +36,24 @@ const plugins = [
 	require('./achievements'),
 	require('./mail-hook'),
 	require('./wordhero'),
+	require('./wordhero/crossword'),
+	require('./oauth'),
+	require('./tunnel'),
+	require('./voiperrobot'),
+	require('./atcoder'),
+	require('./lyrics'),
+	require('./ojigineko-life'),
+	require('./better-custom-response'),
+	require('./emoxpand'),
+	require('./ponpe'),
 ];
-
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
+eventClient.on('error', (error) => {
+	logger.error(error.stack);
+});
+
 const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
+
 (async () => {
 	await Promise.all(plugins.map(async (plugin) => {
 		if (typeof plugin === 'function') {
@@ -68,9 +74,23 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 	});
 })();
 
+fastify.use('/slack-event', (req, res, next) => {
+	if (!{}.hasOwnProperty.call(req.headers, 'x-slack-signature')) {
+		res.statusCode = 400;
+		res.end('Bad Request');
+		return;
+	}
+	next();
+});
 fastify.use('/slack-event', eventClient.expressMiddleware());
 fastify.use('/slack-message', messageClient.requestListener());
-fastify.listen(process.env.PORT || 21864);
+fastify.listen(process.env.PORT || 21864, (error, address) => {
+	if (error) {
+		logger.error(error);
+	} else {
+		logger.info(`Server launched at ${address}`);
+	}
+});
 
 let firstLogin = true;
 rtmClient.on('authenticated', (data) => {
@@ -83,4 +103,3 @@ rtmClient.on('authenticated', (data) => {
 	}
 	firstLogin = false;
 });
-rtmClient.start();
