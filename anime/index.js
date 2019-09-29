@@ -74,7 +74,7 @@ const getRandomThumb = async (answer) => {
 
 const getVideoInfo = (video, filename) => {
 	const fileIndex = parseInt(filename.split('.')[0]);
-	const seekTime = fileIndex * 30;
+	const seekTime = fileIndex * (video.type === 'niconico' ? 15 : 30);
 	const hours = Math.floor(seekTime / 60 / 60);
 	const minutes = Math.floor(seekTime / 60) % 60;
 	const seconds = seekTime % 60;
@@ -84,6 +84,13 @@ const getVideoInfo = (video, filename) => {
 		return {
 			title: `${video.title} (${timeText}) - ニコニコ生放送`,
 			url: `https://live.nicovideo.jp/gate/${video.id}`,
+		};
+	}
+
+	if (video.type === 'niconico') {
+		return {
+			title: `${video.title} (${timeText}) - ニコニコ動画`,
+			url: `https://www.nicovideo.jp/watch/${video.id}?from=${seekTime}`,
 		};
 	}
 
