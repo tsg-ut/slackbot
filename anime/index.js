@@ -74,7 +74,7 @@ const getRandomThumb = async (answer) => {
 
 const getVideoInfo = (video, filename) => {
 	const fileIndex = parseInt(filename.split('.')[0]);
-	const seekTime = fileIndex * (video.type === 'niconico' ? 15 : 30);
+	const seekTime = Math.floor((fileIndex + 0.5) * (video.type === 'niconico' ? 15 : 30));
 	const hours = Math.floor(seekTime / 60 / 60);
 	const minutes = Math.floor(seekTime / 60) % 60;
 	const seconds = seekTime % 60;
@@ -115,7 +115,7 @@ const getHintText = (n) => {
 		return 'もう一つヒントだよ、早く答えてね';
 	}
 	if (n <= 3) {
-		return 'まだわからないの？ヒント追加するね';
+		return 'まだわからないの？ヒント追加するからね';
 	}
 	return '最後のヒントだよ！もうわかるよね？';
 };
