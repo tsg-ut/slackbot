@@ -35,6 +35,15 @@ const loadSheet = async () => {
 	return animesDeferred;
 };
 
+const getUrl = (publicId, options = {}) => (
+	cloudinary.url(`${publicId}.jpg`, {
+		private_cdn: false,
+		secure: true,
+		secure_distribution: 'res.cloudinary.com',
+		...options,
+	})
+);
+
 const getRandomThumb = async (answer) => {
 	const animes = await animesDeferred.promise;
 	const videos = animes.filter(({animeTitle}) => animeTitle === answer);
@@ -67,9 +76,8 @@ const getRandomThumb = async (answer) => {
 			})
 			.end(imageData);
 	});
-	const imageUrl = cloudinaryDatum.secure_url.replace(/\.webp$/, '.png');
 
-	return {imageUrl, video, filename: last(filePath.split('/'))};
+	return {publicId: cloudinaryDatum.public_id, video, filename: last(filePath.split('/'))};
 };
 
 const getVideoInfo = (video, filename) => {
@@ -120,6 +128,25 @@ const getHintText = (n) => {
 	return '最後のヒントだよ！もうわかるよね？';
 };
 
+const getHintOptions = (n) => {
+	if (n <= 0) {
+		return {
+			transformation: [
+				{width: 150},
+				{effect: 'pixelate:6'},
+			],
+		};
+	}
+	if (n <= 1) {
+		return {
+			transformation: [
+				{effect: 'pixelate:8'},
+			],
+		};
+	}
+	return {};
+};
+
 module.exports = ({rtmClient: rtm, webClient: slack}) => {
 	const state = {
 		answer: null,
@@ -137,7 +164,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			if (state.answer !== null && nextHint <= now) {
 				state.previousHint = now;
 				if (state.hints.length < 5) {
-					const {imageUrl, video, filename} = await getRandomThumb(state.answer);
+					const {publicId, video, filename} = await getRandomThumb(state.answer);
 					const hintText = getHintText(state.hints.length);
 
 					await slack.chat.postMessage({
@@ -147,12 +174,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						icon_emoji: ':tv:',
 						thread_ts: state.thread,
 						attachments: [{
-							image_url: imageUrl,
+							image_url: getUrl(publicId, getHintOptions(state.hints.length)),
 							fallback: hintText,
 						}],
 					});
 
-					state.hints.push({imageUrl, video, filename});
+					state.hints.push({publicId, video, filename});
 				} else {
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
@@ -173,7 +200,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 							return {
 								title: info.title,
 								title_link: info.url,
-								image_url: hint.imageUrl,
+								image_url: getUrl(hint.publicId),
 								fallback: info.title,
 							};
 						}),
@@ -204,7 +231,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
 				state.answer = sample(animeTitles);
 
-				const {imageUrl, video, filename} = await getRandomThumb(state.answer);
+				const {publicId, video, filename} = await getRandomThumb(state.answer);
 
 				const {ts} = await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
@@ -212,13 +239,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					username: 'anime',
 					icon_emoji: ':tv:',
 					attachments: [{
-						image_url: imageUrl,
+						image_url: getUrl(publicId, getHintOptions(0)),
 						fallback: 'このアニメなーんだ',
 					}],
 				});
 
 				state.thread = ts;
-				state.hints.push({imageUrl, video, filename});
+				state.hints.push({publicId, video, filename});
 				state.previousHint = Date.now();
 
 				await slack.chat.postMessage({
@@ -258,7 +285,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 							return {
 								title: info.title,
 								title_link: info.url,
-								image_url: hint.imageUrl,
+								image_url: getUrl(hint.publicId),
 								fallback: info.title,
 							};
 						}),
