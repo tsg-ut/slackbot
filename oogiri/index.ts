@@ -1,16 +1,10 @@
 import {constants, promises as fs} from 'fs';
-// @ts-ignore
-import download from 'download';
 import path from 'path';
-import {KnownBlock, MrkdwnElement, PlainTextElement, RTMClient, WebClient} from '@slack/client';
-import sql from 'sql-template-strings';
-import sqlite from 'sqlite';
+import {KnownBlock, RTMClient, WebClient} from '@slack/client';
 import {Mutex} from 'async-mutex';
-import {range, uniq, chunk, flatten, isEmpty, sampleSize, size, minBy, times, sample, shuffle, map} from 'lodash';
+import {range, uniq, isEmpty, times, shuffle} from 'lodash';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
-// @ts-ignore
-import levenshtein from 'fast-levenshtein';
 import {Deferred} from '../lib/utils';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import plugin from 'fastify-plugin';
