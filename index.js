@@ -46,6 +46,7 @@ const plugins = [
 	require('./better-custom-response'),
 	require('./emoxpand'),
 	require('./ponpe'),
+	require('./anime'),
 ];
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
