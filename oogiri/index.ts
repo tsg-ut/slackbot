@@ -1,13 +1,17 @@
-import {constants, promises as fs} from 'fs';
-import path from 'path';
+/* eslint-disable require-atomic-updates */
+/* eslint-disable no-restricted-imports */
+/* eslint-disable react/no-access-state-in-setstate */
+// eslint-disable-next-line no-unused-vars
 import {KnownBlock, RTMClient, WebClient} from '@slack/client';
+import {constants, promises as fs} from 'fs';
+import {flatten, isEmpty, range, shuffle, times, uniq} from 'lodash';
+import {Deferred} from '../lib/utils';
 import {Mutex} from 'async-mutex';
-import {range, uniq, isEmpty, times, shuffle} from 'lodash';
+import {getMemberName} from '../lib/slackUtils';
+import path from 'path';
+import plugin from 'fastify-plugin';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
-import {Deferred} from '../lib/utils';
-import {getMemberIcon, getMemberName} from '../lib/slackUtils';
-import plugin from 'fastify-plugin';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -28,12 +32,14 @@ interface Game {
 	maxCoins: number,
 	status: 'meaning' | 'betting',
 	meanings: Meaning[],
+	meaningMessage: string,
 	bettings: {
 		[user: string]: {
 			choice: number,
 			coins: number,
 		},
 	},
+	bettingMessage: string,
 	choices: Meaning[],
 	author: string,
 }
@@ -77,7 +83,6 @@ class Oogiri {
 		};
 	}
 
-	// TODO: lock
 	async initialize() {
 		if (this.loadDeferred.isResolved) {
 			return this.loadDeferred.promise;
@@ -89,6 +94,16 @@ class Oogiri {
 			const stateData = await fs.readFile(statePath);
 			Object.assign(this.state, JSON.parse(stateData.toString()));
 		}
+
+		this.rtm.on('message', async (message) => {
+			if (!message.text || message.subtype || message.channel !== process.env.CHANNEL_SANDBOX) {
+				return;
+			}
+
+			if (message.text === '大喜利') {
+				await this.showStatus();
+			}
+		});
 
 		this.slackInteractions.action({
 			type: 'dialog_submission',
@@ -137,7 +152,7 @@ class Oogiri {
 		this.slackInteractions.action({
 			type: 'button',
 			blockId: 'oogiri_end_meaning',
-		}, (payload: any, respond: any) => {
+		}, (payload: any) => {
 			const [action] = payload.actions;
 			mutex.runExclusive(() => (
 				this.finishMeaning(action.value)
@@ -180,7 +195,7 @@ class Oogiri {
 		this.slackInteractions.action({
 			type: 'button',
 			blockId: 'oogiri_end_betting',
-		}, (payload: any, respond: any) => {
+		}, (payload: any) => {
 			const [action] = payload.actions;
 			mutex.runExclusive(() => (
 				this.finishBetting(action.value)
@@ -192,7 +207,7 @@ class Oogiri {
 		return this.loadDeferred.promise;
 	}
 
-	showStartDialog(triggerId: string) {
+	showStartDialog(triggerId: string, text: string = '') {
 		if (this.state.games.length >= 3) {
 			return '大喜利を同時に3つ以上開催することはできないよ:imp:';
 		}
@@ -209,6 +224,7 @@ class Oogiri {
 						type: 'text',
 						label: 'タイトル',
 						name: 'title',
+						value: text,
 						hint: '大喜利のタイトルを入力してください',
 					},
 					{
@@ -253,7 +269,9 @@ class Oogiri {
 			maxCoins: parseInt(coins),
 			status: 'meaning',
 			meanings: [],
+			meaningMessage: null,
 			bettings: Object.create(null),
+			bettingMessage: null,
 			choices: [],
 			author: user,
 		};
@@ -262,73 +280,83 @@ class Oogiri {
 			games: this.state.games.concat([game]),
 		});
 
-		await this.postMessage({
+		const message = await this.postMessage({
 			text: '',
-			blocks: [
-				{
-					type: 'section',
-					block_id: 'oogiri_add_meaning',
-					text: {
-						type: 'mrkdwn',
-						text: stripIndent`
-							大喜利を始めるよ～
-							＊テーマ＊ ${title}
-						`,
-					},
-					fields: [
-						{
-							type: 'mrkdwn',
-							text: `＊意味登録可能数＊ ${game.maxMeanings}個`,
-						},
-						{
-							type: 'mrkdwn',
-							text: `＊BET可能枚数＊ ${game.maxMeanings}枚`,
-						},
-					],
-					accessory: {
-						type: 'button',
-						text: {
-							type: 'plain_text',
-							text: '登録する',
-						},
-						value: game.id,
-					},
-				},
-				{
-					type: 'section',
-					block_id: 'oogiri_end_meaning',
-					text: {
-						type: 'mrkdwn',
-						text: stripIndent`
-							登録済み: なし
-						`,
-					},
-					accessory: {
-						type: 'button',
-						text: {
-							type: 'plain_text',
-							text: '終了する',
-						},
-						value: game.id,
-						style: 'danger',
-						confirm: {
-							text: {
-								type: 'plain_text',
-								text: `大喜利「${game.title}」の意味登録を締め切りますか？`,
-							},
-							confirm: {
-								type: 'plain_text',
-								text: 'いいよ',
-							},
-							deny: {
-								type: 'plain_text',
-								text: 'だめ',
-							},
-						},
-					},
-				},
-			],
+			blocks: await this.getMeaningBlocks(game),
 		});
+
+		game.meaningMessage = message.ts as string;
+		await this.setState({games: this.state.games});
+	}
+
+	async getMeaningBlocks(game: Game, compact: boolean = false): Promise<KnownBlock[]> {
+		const registrants = await Promise.all(uniq(game.meanings.map((meaning) => meaning.user)).map((user) => getMemberName(user)));
+
+		return [
+			{
+				type: 'section',
+				block_id: 'oogiri_add_meaning',
+				text: {
+					type: 'mrkdwn',
+					text: stripIndent`
+						${compact ? '' : '大喜利を始めるよ～'}
+						＊テーマ＊ ${game.title}
+						＊設定者＊ <@${game.author}>
+					`,
+				},
+				fields: [
+					{
+						type: 'mrkdwn',
+						text: `＊意味登録可能数＊ ${game.maxMeanings}個`,
+					},
+					{
+						type: 'mrkdwn',
+						text: `＊BET可能枚数＊ ${game.maxMeanings}枚`,
+					},
+				],
+				accessory: {
+					type: 'button',
+					text: {
+						type: 'plain_text',
+						text: '登録する',
+					},
+					value: game.id,
+				},
+			},
+			{
+				type: 'section',
+				block_id: 'oogiri_end_meaning',
+				text: {
+					type: 'mrkdwn',
+					text: stripIndent`
+						登録済み: ${registrants.length === 0 ? 'なし' : registrants.map((name) => `@${name}`).join(' ')}
+					`,
+				},
+				accessory: {
+					type: 'button',
+					text: {
+						type: 'plain_text',
+						text: '終了する',
+					},
+					value: game.id,
+					style: 'danger',
+					confirm: {
+						text: {
+							type: 'plain_text',
+							text: `大喜利「${game.title}」の意味登録を締め切りますか？`,
+						},
+						confirm: {
+							type: 'plain_text',
+							text: 'いいよ',
+						},
+						deny: {
+							type: 'plain_text',
+							text: 'だめ',
+						},
+					},
+				},
+			},
+		];
 	}
 
 	showMeaningDialog({triggerId, id, user, respond}: {triggerId: string, id: string, user: string, respond: any}) {
@@ -393,24 +421,34 @@ class Oogiri {
 				response_type: 'ephemeral',
 				replace_original: false,
 			});
-			return null;
+			return;
 		}
 
-		game.meanings = game.meanings.filter((meaning) => meaning.user !== user).concat(meanings.filter((meaning) => meaning).map((text) => ({user, text})))
+		const beforeCount = uniq(game.meanings.map((m) => m.user)).length;
+
+		game.meanings = game.meanings
+			.filter((meaning) => meaning.user !== user)
+			.concat(meanings.filter((meaning) => meaning).map((text) => ({user, text})));
+
 		await this.setState({
 			games: this.state.games,
 		});
 
-		const count = uniq(game.meanings.map((m) => m.user)).length;
+		const afterCount = uniq(game.meanings.map((m) => m.user)).length;
 
-		await this.postMessage({
-			text: stripIndent`
-				<@${user}>が意味を登録したよ💪
-				現在の参加者: ${count}人
-			`,
-		});
-
-		return;
+		if (beforeCount !== afterCount) {
+			await this.postMessage({
+				text: stripIndent`
+					<@${user}>が「${game.title}」に登録したよ💪
+					現在の参加者: ${afterCount}人
+				`,
+			});
+			await this.updateMessage({
+				text: '',
+				ts: game.meaningMessage,
+				blocks: await this.getMeaningBlocks(game),
+			});
+		}
 	}
 
 	async finishMeaning(id: string) {
@@ -437,72 +475,83 @@ class Oogiri {
 		game.choices = shuffledMeanings;
 
 		await this.setState({games: this.state.games});
-		const mentions = uniq(game.meanings.map((meaning) => `<@${meaning.user}>`));
 
-		await this.postMessage({
+		const message = await this.postMessage({
 			text: '',
-			blocks: [
-				{
-					type: 'section',
+			blocks: await this.getBettingBlocks(game),
+		});
+
+		game.bettingMessage = message.ts as string;
+		await this.setState({games: this.state.games});
+	}
+
+	async getBettingBlocks(game: Game, compact: boolean = false): Promise<KnownBlock[]> {
+		const mentions = uniq(game.meanings.map((meaning) => `<@${meaning.user}>`));
+		const betters = await Promise.all(Object.keys(game.bettings).map((user) => getMemberName(user)));
+
+		return [
+			{
+				type: 'section',
+				text: {
+					type: 'mrkdwn',
+					text: stripIndent`
+						${compact ? '' : mentions.join(' ')}
+						${compact ? '' : 'ベッティングタイムが始まるよ～👐👐👐'}
+						＊テーマ＊ ${game.title}
+						＊設定者＊ <@${game.author}>
+					`,
+				},
+			} as KnownBlock,
+			...game.choices.map((meaning, index) => ({
+				type: 'section',
+				block_id: `oogiri_betting_${index}`,
+				text: {
+					type: 'mrkdwn',
+					text: `${index + 1}. ＊${meaning.text}＊`,
+				},
+				accessory: {
+					type: 'button',
 					text: {
-						type: 'mrkdwn',
-						text: stripIndent`
-							${mentions.join(' ')}
-							ベッティングタイムが始まるよ～👐👐👐
-						`,
+						type: 'plain_text',
+						text: `${index + 1}にBETする`,
 					},
-				} as KnownBlock,
-				...shuffledMeanings.map((meaning, index) => ({
-					type: 'section',
-					block_id: `oogiri_betting_${index}`,
+					value: [game.id, index].join(','),
+				},
+			} as KnownBlock)),
+			{
+				type: 'section',
+				block_id: 'oogiri_end_betting',
+				text: {
+					type: 'mrkdwn',
+					text: stripIndent`
+						BET済み: ${betters.length === 0 ? 'なし' : betters.map((name) => `@${name}`).join(' ')}
+					`,
+				},
+				accessory: {
+					type: 'button',
 					text: {
-						type: 'mrkdwn',
-						text: `${index + 1}. ＊${meaning.text}＊`,
+						type: 'plain_text',
+						text: '終了する',
 					},
-					accessory: {
-						type: 'button',
+					value: game.id,
+					style: 'danger',
+					confirm: {
 						text: {
 							type: 'plain_text',
-							text: `${index + 1}にBETする`,
+							text: `大喜利「${game.title}」のベッティングを締め切りますか？`,
 						},
-						value: [game.id, index].join(','),
-					},
-				} as KnownBlock)),
-				{
-					type: 'section',
-					block_id: 'oogiri_end_betting',
-					text: {
-						type: 'mrkdwn',
-						text: stripIndent`
-							BET済み: なし
-						`,
-					},
-					accessory: {
-						type: 'button',
-						text: {
-							type: 'plain_text',
-							text: '終了する',
-						},
-						value: game.id,
-						style: 'danger',
 						confirm: {
-							text: {
-								type: 'plain_text',
-								text: `大喜利「${game.title}」のベッティングを締め切りますか？`,
-							},
-							confirm: {
-								type: 'plain_text',
-								text: 'いいよ',
-							},
-							deny: {
-								type: 'plain_text',
-								text: 'だめ',
-							},
+							type: 'plain_text',
+							text: 'いいよ',
+						},
+						deny: {
+							type: 'plain_text',
+							text: 'だめ',
 						},
 					},
 				},
-			],
-		});
+			},
+		];
 	}
 
 	showBettingDialog({
@@ -586,7 +635,7 @@ class Oogiri {
 				response_type: 'ephemeral',
 				replace_original: false,
 			});
-			return null;
+			return;
 		}
 
 		const choiceMeaning = game.choices[parseInt(choice)];
@@ -597,8 +646,10 @@ class Oogiri {
 				response_type: 'ephemeral',
 				replace_original: false,
 			});
-			return null;
+			return;
 		}
+
+		const isNew = !Object.keys(game.bettings).includes(user);
 
 		game.bettings[user] = {
 			choice: parseInt(choice),
@@ -609,13 +660,18 @@ class Oogiri {
 			games: this.state.games,
 		});
 
-		await this.postMessage({
-			text: stripIndent`
-				<@${user}>が投票したよ💰
-			`,
-		});
-
-		return;
+		if (isNew) {
+			await this.postMessage({
+				text: stripIndent`
+					<@${user}>が「${game.title}」に投票したよ💰
+				`,
+			});
+			await this.updateMessage({
+				text: '',
+				ts: game.bettingMessage,
+				blocks: await this.getBettingBlocks(game),
+			});
+		}
 	}
 
 	async finishBetting(id: string) {
@@ -643,8 +699,8 @@ class Oogiri {
 							<@${meaning.user}>
 							${index + 1}. ＊${meaning.text}＊
 							投票: ${Object.entries(game.bettings).filter(([, betting]) => betting.choice === index).map(([user, betting]) => (
-								`<@${user}> (${betting.coins}枚)`
-							)).join('、')}
+							`<@${user}> (${betting.coins}枚)`
+						)).join('、')}
 						`,
 					},
 				} as KnownBlock)),
@@ -653,6 +709,37 @@ class Oogiri {
 
 		await this.setState({
 			games: this.state.games.filter((g) => g !== game),
+		});
+	}
+
+	async showStatus() {
+		if (this.state.games.length === 0) {
+			await this.postMessage({
+				text: stripIndent`
+					現在開催中の大喜利はないよ
+					大喜利を開始するには \`/oogiri [テーマ]\` とタイプしてね:heart:
+				`,
+			});
+			return;
+		}
+
+		await this.postMessage({
+			text: '',
+			blocks: [
+				{
+					type: 'section',
+					text: {
+						type: 'mrkdwn',
+						text: '＊現在開催中の大喜利＊',
+					},
+				} as KnownBlock,
+				...flatten(await Promise.all(this.state.games.map((game) => {
+					if (game.status === 'meaning') {
+						return this.getMeaningBlocks(game, true);
+					}
+					return this.getBettingBlocks(game, true);
+				}))),
+			],
 		});
 	}
 
@@ -666,8 +753,16 @@ class Oogiri {
 	postMessage(message: {text: string, blocks?: KnownBlock[], unfurl_links?: true}) {
 		return this.slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
-			username: 'tahoiya',
-			icon_emoji: ':open_book:',
+			username: 'oogiri',
+			icon_emoji: ':lantern:',
+			...message,
+		});
+	}
+
+	// eslint-disable-next-line camelcase
+	updateMessage(message: {text: string, ts: string, blocks?: KnownBlock[], unfurl_links?: true}) {
+		return this.slack.chat.update({
+			channel: process.env.CHANNEL_SANDBOX,
 			...message,
 		});
 	}
@@ -677,12 +772,15 @@ export const server = ({webClient: slack, rtmClient: rtm, messageClient: slackIn
 	const oogiri = new Oogiri({slack, rtm, slackInteractions});
 	await oogiri.initialize();
 
+	// eslint-disable-next-line require-await
 	fastify.post('/slash/oogiri', async (req, res) => {
 		if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
 			res.code(400);
 			return 'Bad Request';
 		}
 
-		return oogiri.showStartDialog(req.body.trigger_id);
+		return oogiri.showStartDialog(req.body.trigger_id, req.body.text);
 	});
+
+	next();
 });
