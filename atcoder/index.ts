@@ -11,7 +11,7 @@ import prime from 'primes-and-factors';
 import logger from '../lib/logger.js';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {SlackInterface, Standings, Results} from './types';
-import {unlock} from '../achievements';
+import {unlock, increment} from '../achievements';
 
 const getRatingColor = (rating: number | null) => {
 	// gray
@@ -247,12 +247,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		contest.isPreposted = true;
 		setState({contests: state.contests});
-
-		for (const {user, standing} of userStandings) {
-			if (standing) {
-				await unlock(user, 'atcoder-participate');
-			}
-		}
 	};
 
 	const postResult = async (id: string) => {
@@ -320,6 +314,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			],
 		});
 
+		const isContestRated = standings.StandingsData.some((standing) => standing.IsRated);
+
 		contest.isPosted = true;
 		setState({contests: state.contests});
 
@@ -329,6 +325,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				const rank = standing.Rank.toString();
 				const frequency = prime.getFrequency(standing.Rank);
 				const isPrime = frequency.length === 1 && frequency[0].times === 1 && standing.Rank >= 2;
+				if (isContestRated) {
+					await increment(user, 'atcoder-participate');
+				}
 				if (rank.length >= 3 && new Set(rank.split('')).size === 1) {
 					await unlock(user, 'atcoder-repdigit');
 				}
@@ -352,14 +351,16 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				if (result.NewRating >= 2400) {
 					await unlock(user, 'atcoder-rating-over-2400');
 				}
+				if (Object.values(standing.TaskResults).every((result) => result.Score === 0)) {
+					await unlock(user, 'atcoder-no-solve');
+				}
+			}
+			if (result && isContestRated) {
 				if (standings.TaskInfo.every((task) => (
 					standing.TaskResults[task.TaskScreenName] &&
 					standing.TaskResults[task.TaskScreenName].Score > 0
 				))) {
 					await unlock(user, 'atcoder-all-solve');
-				}
-				if (Object.values(standing.TaskResults).every((result) => result.Score === 0)) {
-					await unlock(user, 'atcoder-no-solve');
 				}
 			}
 		}

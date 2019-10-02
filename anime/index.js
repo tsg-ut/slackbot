@@ -6,6 +6,7 @@ const {Mutex} = require('async-mutex');
 const {xml2js} = require('xml-js');
 const axios = require('axios');
 const {Deferred} = require('../lib/utils.ts');
+const {unlock, increment} = require('../achievements');
 
 const animesDeferred = new Deferred();
 const mutex = new Mutex();
@@ -229,9 +230,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				}
 				const animes = await animesDeferred.promise;
 				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
-				state.answer = sample(animeTitles);
+				const answer = sample(animeTitles);
 
-				const {publicId, video, filename} = await getRandomThumb(state.answer);
+				const {publicId, video, filename} = await getRandomThumb(answer);
 
 				const {ts} = await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
@@ -255,6 +256,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					icon_emoji: ':tv:',
 					thread_ts: ts,
 				});
+
+				state.answer = answer;
 			});
 		}
 
@@ -290,6 +293,16 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 							};
 						}),
 					});
+
+					await increment(message.user, 'anime-answer');
+					if (state.hints.length === 1) {
+						await increment(message.user, 'anime-answer-first-hint');
+					} else if (state.hints.length === 2) {
+						await unlock(message.user, 'anime-answer-second-hint');
+					} else if (state.hints.length === 3) {
+						await unlock(message.user, 'anime-answer-third-hint');
+					}
+
 					state.answer = null;
 					state.previousHint = 0;
 					state.hints = [];
