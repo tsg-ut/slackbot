@@ -47,6 +47,7 @@ const plugins = [
 	require('./emoxpand'),
 	require('./ponpe'),
 	require('./anime'),
+	require('./oogiri'),
 ];
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
