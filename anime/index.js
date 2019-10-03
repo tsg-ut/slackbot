@@ -297,9 +297,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					await increment(message.user, 'anime-answer');
 					if (state.hints.length === 1) {
 						await increment(message.user, 'anime-answer-first-hint');
-					} else if (state.hints.length === 2) {
+					}
+					if (state.hints.length <= 2) {
 						await unlock(message.user, 'anime-answer-second-hint');
-					} else if (state.hints.length === 3) {
+					}
+					if (state.hints.length <= 3) {
 						await unlock(message.user, 'anime-answer-third-hint');
 					}
 
