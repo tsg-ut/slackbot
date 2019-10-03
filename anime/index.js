@@ -5,6 +5,7 @@ const {google} = require('googleapis');
 const {Mutex} = require('async-mutex');
 const {xml2js} = require('xml-js');
 const axios = require('axios');
+const {hiraganize} = require('japanese');
 const {Deferred} = require('../lib/utils.ts');
 const {unlock, increment} = require('../achievements');
 
@@ -263,12 +264,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		if (state.answer !== null && message.text && message.thread_ts === state.thread && message.username !== 'anime') {
 			mutex.runExclusive(async () => {
-				const distance = levenshtein.get(
-					state.answer.replace(/\P{Letter}/gu, '').toLowerCase(),
-					message.text.replace(/\P{Letter}/gu, '').toLowerCase(),
-				);
+				const answer = hiraganize(state.answer.replace(/\P{Letter}/gu, '').toLowerCase());
+				const userAnswer = hiraganize(message.text.replace(/\P{Letter}/gu, '').toLowerCase());
 
-				if (distance <= state.answer.replace(/\P{Letter}/gu, '').length / 3) {
+				const distance = levenshtein.get(answer, userAnswer);
+
+				if (distance <= answer.length / 3) {
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
 						text: `<@${message.user}> 正解:tada:\n答えは＊${state.answer}＊だよ:muscle:`,
