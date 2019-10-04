@@ -262,7 +262,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			});
 		}
 
-		if (message.text.startsWith('@anime') && state.answer === null) {
+		if (message.text && message.text.startsWith('@anime') && state.answer === null) {
 			mutex.runExclusive(async () => {
 				if (!animesDeferred.isResolved) {
 					loadSheet();
