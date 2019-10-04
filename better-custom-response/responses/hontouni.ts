@@ -1,11 +1,11 @@
 import {tokenize} from 'kuromojin';
 import {findLastIndex} from 'lodash';
-import { start } from 'repl';
 
-export default async ([text, tail]: string[]): Promise<string[]> => {
-    const tokens = await tokenize(text);
+export default async ([, head, tail]: string[]): Promise<string[]> => {
+    const tokens = await tokenize(head + tail);
     const endPosition = findLastIndex(tokens, ({basic_form}) => (
         basic_form !== 'て' &&
+        basic_form !== 'で' &&
         basic_form !== 'いる' &&
         basic_form !== 'ます' &&
         basic_form !== 'じゃう' &&
