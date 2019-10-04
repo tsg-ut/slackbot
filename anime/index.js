@@ -1,5 +1,5 @@
 const cloudinary = require('cloudinary');
-const {get, last, random, sum, sample, uniq} = require('lodash');
+const {get, last, minBy, random, sum, sample, uniq} = require('lodash');
 const levenshtein = require('fast-levenshtein');
 const {google} = require('googleapis');
 const {Mutex} = require('async-mutex');
@@ -271,15 +271,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
 
 				const requestedTitle = hiraganize(message.text.replace('@anime', '').replace(/\P{Letter}/gu, '').toLowerCase());
-				let minimumDistance = 9999;
-				let animeTitle = '';
-				for (const title of animeTitles) {
-					const distance = levenshtein.get(requestedTitle, hiraganize(title.replace(/\P{Letter}/gu, '').toLowerCase()));
-					if (distance < minimumDistance) {
-						minimumDistance = distance;
-						animeTitle = title;
-					}
-				}
+				const animeTitle = minBy(animeTitles, (title) => (
+					levenshtein.get(requestedTitle, hiraganize(title.replace(/\P{Letter}/gu, '').toLowerCase()))
+				));
 
 				const {publicId, video, filename} = await getRandomThumb(animeTitle);
 				const info = getVideoInfo(video, filename);
