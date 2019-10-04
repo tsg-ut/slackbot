@@ -1,5 +1,5 @@
 const cloudinary = require('cloudinary');
-const {get, last, random, sum, sample, uniq} = require('lodash');
+const {get, last, minBy, random, sum, sample, uniq} = require('lodash');
 const levenshtein = require('fast-levenshtein');
 const {google} = require('googleapis');
 const {Mutex} = require('async-mutex');
@@ -259,6 +259,37 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				});
 
 				state.answer = answer;
+			});
+		}
+
+		if (message.text.startsWith('@anime') && state.answer === null) {
+			mutex.runExclusive(async () => {
+				if (!animesDeferred.isResolved) {
+					loadSheet();
+				}
+				const animes = await animesDeferred.promise;
+				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
+
+				const requestedTitle = hiraganize(message.text.replace('@anime', '').replace(/\P{Letter}/gu, '').toLowerCase());
+				const animeTitle = minBy(animeTitles, (title) => (
+					levenshtein.get(requestedTitle, hiraganize(title.replace(/\P{Letter}/gu, '').toLowerCase()))
+				));
+
+				const {publicId, video, filename} = await getRandomThumb(animeTitle);
+				const info = getVideoInfo(video, filename);
+
+				await slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					text: `${animeTitle}はこんなアニメだよ！`,
+					username: 'anime',
+					icon_emoji: ':tv:',
+					attachments: [{
+						title: info.title,
+						title_link: info.url,
+						image_url: getUrl(publicId),
+						fallback: info.title,
+					}],
+				});
 			});
 		}
 
