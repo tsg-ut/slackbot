@@ -29,7 +29,7 @@ const loadSheet = async () => {
 			}
 		});
 	});
-	const animes = values.map(([type, id, title, channel, animeTitle, count]) => ({
+	const animes = values.slice(1).map(([type, id, title, channel, animeTitle, count]) => ({
 		type, id, title, channel, animeTitle, count: parseInt(count),
 	}));
 
