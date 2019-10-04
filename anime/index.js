@@ -281,12 +281,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					}
 				}
 
-				const {publicId, video, filename} = await getRandomThumb(answer);
+				const {publicId, video, filename} = await getRandomThumb(animeTitle);
 				const info = getVideoInfo(video, filename);
 
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
-					text: `${title}はこんなアニメだよ！`,
+					text: `${animeTitle}はこんなアニメだよ！`,
 					username: 'anime',
 					icon_emoji: ':tv:',
 					attachments: [{
