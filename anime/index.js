@@ -274,7 +274,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				let minimumDistance = 9999;
 				let animeTitle = '';
 				for (const title of animeTitles) {
-					const distance = levenshtein.get(requestedTitle, hiraganize(title.replace(/\P{Letter}/gu, '').toLowerCase()););
+					const distance = levenshtein.get(requestedTitle, hiraganize(title.replace(/\P{Letter}/gu, '').toLowerCase()));
 					if (distance < minimumDistance) {
 						minimumDistance = distance;
 						animeTitle = title;
