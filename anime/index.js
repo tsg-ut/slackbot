@@ -261,6 +261,43 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				state.answer = answer;
 			});
 		}
+		
+		if (message.text.startsWith('@anime') && state.answer === null) {
+			mutex.runExclusive(async () => {
+				if (!animesDeferred.isResolved) {
+					loadSheet();
+				}
+				const animes = await animesDeferred.promise;
+				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
+
+				const requestedTitle = hiraganize(message.text.replace('@anime', '').replace(/\P{Letter}/gu, '').toLowerCase());
+				let minimumDistance = 9999;
+				let animeTitle = '';
+				for (const title of animeTitles) {
+					const distance = levenshtein.get(requestedTitle, hiraganize(title.replace(/\P{Letter}/gu, '').toLowerCase()););
+					if (distance < minimumDistance) {
+						minimumDistance = distance;
+						animeTitle = title;
+					}
+				}
+
+				const {publicId, video, filename} = await getRandomThumb(answer);
+				const info = getVideoInfo(video, filename);
+
+				await slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					text: title + 'はこんなアニメだよ！',
+					username: 'anime',
+					icon_emoji: ':tv:',
+					attachments: [{
+						title: info.title,
+						title_link: info.url,
+						image_url: getUrl(publicId),
+						fallback: info.title,
+					}],
+				});
+			});
+		}
 
 		if (state.answer !== null && message.text && message.thread_ts === state.thread && message.username !== 'anime') {
 			mutex.runExclusive(async () => {
