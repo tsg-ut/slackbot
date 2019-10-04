@@ -261,7 +261,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				state.answer = answer;
 			});
 		}
-		
+
 		if (message.text.startsWith('@anime') && state.answer === null) {
 			mutex.runExclusive(async () => {
 				if (!animesDeferred.isResolved) {
@@ -286,7 +286,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
-					text: title + 'はこんなアニメだよ！',
+					text: `${title}はこんなアニメだよ！`,
 					username: 'anime',
 					icon_emoji: ':tv:',
 					attachments: [{
