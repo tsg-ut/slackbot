@@ -41,7 +41,7 @@ const customResponses: CustomResponse[] = [
         username: 'dice response',
     },
     {
-        input: [/^.*(てます|でます|ています|でいます|ちゃった|じゃった)[。⋯・…]*$/],
+        input: [/^(.*)(てます|でます|ています|でいます|ちゃった|じゃった)[。⋯・…]*$/],
         outputFunction: hontouni,
     },
     {
