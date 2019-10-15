@@ -1,5 +1,5 @@
-const axios = require("axios");
-const { stripIndent } = require("common-tags");
+const axios = require('axios');
+const { stripIndent } = require('common-tags');
 
 const BOTNAME = 'sort-nazonazo';
 const TIMEOUT = 1000 * 60;
@@ -8,6 +8,19 @@ const getSortedString = (answer) => {
 	return [...answer].sort((a, b) => {
 		return a.codePointAt(0) - b.codePointAt(0);
 	}).join('');
+};
+
+const getRandomTitle = async () => {
+	const { data } = await axios.get(`https://ja.wikipedia.org/w/api.php`, {
+		params: {
+			action: 'query',
+			format: 'json',
+			list: 'random',
+			rnnamespace: '0',
+			rnlimit: '1',
+		},
+	});
+	return data.query.random[0].title;
 };
 
 module.exports = ({ rtmClient: rtm, webClient: slack }) => {
@@ -24,17 +37,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
 		}
 
 		if ((message.text || '').trim() === `ソートなぞなぞ` && state.answer === null) {
-			const { data } = await axios.get('https://ja.wikipedia.org/w/api.php', {
-				params: {
-					action: 'query',
-					format: 'json',
-					list: 'random',
-					rnnamespace: '0',
-					rnlimit: '1',
-				},
-			});
-
-			const answer = data.query.random[0].title;
+			const answer = await getRandomTitle();
 			state.answer = answer;
 
 			const sorted = getSortedString(answer);
