@@ -23,6 +23,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
 					action: 'query',
 					format: 'json',
 					list: 'random',
+					rnnamespace: '0',
 					rnlimit: '1',
 				},
 			});
