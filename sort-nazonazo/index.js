@@ -1,5 +1,7 @@
 const axios = require('axios');
 const { stripIndent } = require('common-tags');
+const sample = require('lodash/sample');
+const { getCandidateWords } = require('../tahoiya/lib');
 
 const BOTNAME = 'sort-nazonazo';
 const TIMEOUT = 1000 * 60;
@@ -23,21 +25,40 @@ const getRandomTitle = async () => {
 	return data.query.random[0].title;
 };
 
-module.exports = ({ rtmClient: rtm, webClient: slack }) => {
+module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 	const state = {
+		title: null,
 		answer: null,
 		sorted: null,
 		thread: null,
 		timeoutId: null,
 	};
 
+	const candidateWords = await getCandidateWords({ min: 0, max: Infinity });
+
+	const command = /^ソートなぞなぞ\s*(?:([1-9][0-9]?)文字)?$/;
+
 	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
 
-		if ((message.text || '').trim() === `ソートなぞなぞ` && state.answer === null) {
-			const answer = await getRandomTitle();
+		if (command.test(message.text || '') && state.answer === null) {
+			const length = Number((message.text.match(command) || [])[1]);
+
+			let found;
+			if (length) {
+				found = candidateWords.filter(([_, answer]) => answer.length === length);
+				if (found.length === 0) {
+					found = candidateWords.filter(([_, answer]) => answer.length >= length);
+				}
+			}
+			if (!found) {
+				found = candidateWords;
+			}
+
+			const [title, answer] = sample(found);
+			state.title = title;
 			state.answer = answer;
 
 			const sorted = getSortedString(answer);
@@ -47,7 +68,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
 				channel: process.env.CHANNEL_SANDBOX,
 				text: stripIndent`
 					ソート前の文字列を当ててね
-					${sorted}
+					\`${sorted}\`
 				`,
 				username: BOTNAME,
 			});
@@ -57,14 +78,13 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
-						正解は
-						${answer}
-						でした！
+						答えは＊${state.title}＊／＊${state.answer}＊だよ
 					`,
 					username: BOTNAME,
 					thread_ts: state.thread,
 					reply_broadcast: true,
 				});
+				state.title = null;
 				state.answer = null;
 				state.sorted = null;
 				state.thread = null;
@@ -82,12 +102,13 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
 						<@${message.user}> 正解:tada:
-						答えは＊${state.answer}＊だよ:muscle:
+						答えは＊${state.title}＊／＊${state.answer}＊だよ:muscle:
 					`,
 					username: BOTNAME,
 					thread_ts: state.thread,
 					reply_broadcast: true,
 				});
+				state.title = null;
 				state.answer = null;
 				state.sorted = null;
 				state.thread = null;

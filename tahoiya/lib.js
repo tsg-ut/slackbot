@@ -211,7 +211,7 @@ module.exports.getMeaning = async ([word, , source, rawMeaning]) => {
 	return meaning;
 };
 
-module.exports.getCandidateWords = async () => {
+module.exports.getCandidateWords = async ({min = 3, max = 7} = {}) => {
 	const [
 		wikipediaText,
 		wiktionaryText,
@@ -292,7 +292,7 @@ module.exports.getCandidateWords = async () => {
 		]),
 	];
 
-	const candidateWords = shuffle(databaseWords.filter(([, ruby]) => ruby.length >= 3 && ruby.length <= 7));
+	const candidateWords = shuffle(databaseWords.filter(([, ruby]) => ruby.length >= min && ruby.length <= max));
 
 	return candidateWords;
 };
