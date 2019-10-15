@@ -1,7 +1,10 @@
 const axios = require('axios');
 const { stripIndent } = require('common-tags');
 const sample = require('lodash/sample');
-const { getCandidateWords } = require('../tahoiya/lib');
+const {
+	getWordUrl,
+	getCandidateWords,
+} = require('../tahoiya/lib');
 
 const BOTNAME = 'sort-nazonazo';
 const TIMEOUT = 1000 * 60;
@@ -29,9 +32,18 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 	const state = {
 		title: null,
 		answer: null,
+		wordUrl: null,
 		sorted: null,
 		thread: null,
 		timeoutId: null,
+		clear() {
+			state.title = null;
+			state.answer = null;
+			state.wordUrl = null;
+			state.sorted = null;
+			state.thread = null;
+			state.timeoutId = null;
+		},
 	};
 
 	const candidateWords = await getCandidateWords({ min: 0, max: Infinity });
@@ -57,12 +69,15 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 				found = candidateWords;
 			}
 
-			const [title, answer] = sample(found);
+			const [title, answer, source, meaning, id] = sample(found);
 			state.title = title;
 			state.answer = answer;
 
 			const sorted = getSortedString(answer);
 			state.sorted = sorted;
+
+			const wordUrl = getWordUrl(title, source, id);
+			state.wordUrl = wordUrl;
 
 			const { ts } = await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
@@ -79,16 +94,13 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
 						答えは＊${state.title}＊／＊${state.answer}＊だよ
+						${state.wordUrl}
 					`,
 					username: BOTNAME,
 					thread_ts: state.thread,
 					reply_broadcast: true,
 				});
-				state.title = null;
-				state.answer = null;
-				state.sorted = null;
-				state.thread = null;
-				state.timeoutId = null;
+				state.clear();
 			}, TIMEOUT);
 			state.timeoutId = timeoutId;
 		}
@@ -96,22 +108,19 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 		if (state.answer !== null && message.thread_ts === state.thread && message.username !== BOTNAME) {
 			if (message.text === state.answer) {
 				clearTimeout(state.timeoutId);
-				state.timeoutId = null;
 
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
 						<@${message.user}> 正解:tada:
 						答えは＊${state.title}＊／＊${state.answer}＊だよ:muscle:
+						${state.wordUrl}
 					`,
 					username: BOTNAME,
 					thread_ts: state.thread,
 					reply_broadcast: true,
 				});
-				state.title = null;
-				state.answer = null;
-				state.sorted = null;
-				state.thread = null;
+				state.clear();
 			} else {
 				await slack.reactions.add({
 					name: 'no_good',
