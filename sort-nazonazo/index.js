@@ -4,6 +4,12 @@ const { stripIndent } = require("common-tags");
 const BOTNAME = 'sort-nazonazo';
 const TIMEOUT = 1000 * 60;
 
+const getSortedString = (answer) => {
+	return [...answer].sort((a, b) => {
+		return a.codePointAt(0) - b.codePointAt(0);
+	}).join('');
+};
+
 module.exports = ({ rtmClient: rtm, webClient: slack }) => {
 	const state = {
 		answer: null,
@@ -31,7 +37,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
 			const answer = data.query.random[0].title;
 			state.answer = answer;
 
-			const sorted = [...answer].sort().join("");
+			const sorted = getSortedString(answer);
 			state.sorted = sorted;
 
 			const { ts } = await slack.chat.postMessage({
