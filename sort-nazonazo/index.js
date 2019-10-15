@@ -37,12 +37,14 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 		thread: null,
 		timeoutId: null,
 		clear() {
+			const prevState = { ...state };
 			state.title = null;
 			state.answer = null;
 			state.wordUrl = null;
 			state.sorted = null;
 			state.thread = null;
 			state.timeoutId = null;
+			return prevState;
 		},
 	};
 
@@ -90,37 +92,37 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 			state.thread = ts;
 
 			const timeoutId = setTimeout(async () => {
+				const { title, answer, wordUrl, thread } = state.clear();
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
-						答えは＊${state.title}＊／＊${state.answer}＊だよ
-						${state.wordUrl}
+						答えは＊${title}＊／＊${answer}＊だよ
+						${wordUrl}
 					`,
 					username: BOTNAME,
-					thread_ts: state.thread,
+					thread_ts: thread,
 					reply_broadcast: true,
 				});
-				state.clear();
 			}, TIMEOUT);
 			state.timeoutId = timeoutId;
 		}
 
 		if (state.answer !== null && message.thread_ts === state.thread && message.username !== BOTNAME) {
 			if (message.text === state.answer) {
-				clearTimeout(state.timeoutId);
+				const { title, answer, wordUrl, thread, timeoutId } = state.clear();
+				clearTimeout(timeoutId);
 
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
 						<@${message.user}> 正解:tada:
-						答えは＊${state.title}＊／＊${state.answer}＊だよ:muscle:
-						${state.wordUrl}
+						答えは＊${title}＊／＊${answer}＊だよ:muscle:
+						${wordUrl}
 					`,
 					username: BOTNAME,
-					thread_ts: state.thread,
+					thread_ts: thread,
 					reply_broadcast: true,
 				});
-				state.clear();
 			} else {
 				await slack.reactions.add({
 					name: 'no_good',
