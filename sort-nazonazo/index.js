@@ -37,20 +37,18 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 		thread: null,
 		timeoutId: null,
 		clear() {
-			const prevState = { ...state };
-			state.title = null;
-			state.answer = null;
-			state.wordUrl = null;
-			state.sorted = null;
-			state.thread = null;
-			state.timeoutId = null;
-			return prevState;
+			this.title = null;
+			this.answer = null;
+			this.wordUrl = null;
+			this.sorted = null;
+			this.thread = null;
+			this.timeoutId = null;
 		},
 	};
 
 	const candidateWords = await getCandidateWords({ min: 0, max: Infinity });
 
-	const command = /^ソートなぞなぞ\s*(?:([1-9][0-9]?)文字)?$/;
+	const command = /^ソートなぞなぞ\s*(?:(?<length>[1-9][0-9]?)文字)?$/;
 
 	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
@@ -58,20 +56,20 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 		}
 
 		if (command.test(message.text || '') && state.answer === null) {
-			const length = Number((message.text.match(command) || [])[1]);
+			const match = message.text.match(command);
 
 			let found;
-			if (length) {
+			if (match.groups.length) {
+				const length = parseInt(match.groups.length, 10);
 				found = candidateWords.filter(([_, answer]) => answer.length === length);
 				if (found.length === 0) {
 					found = candidateWords.filter(([_, answer]) => answer.length >= length);
 				}
-			}
-			if (!found) {
+			} else {
 				found = candidateWords;
 			}
 
-			const [title, answer, source, meaning, id] = sample(found);
+			const [title, answer, source, _meaning, id] = sample(found);
 			state.title = title;
 			state.answer = answer;
 
@@ -92,11 +90,13 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 			state.thread = ts;
 
 			const timeoutId = setTimeout(async () => {
-				const { title, answer, wordUrl, thread } = state.clear();
+				const { title, answer, wordUrl, thread } = state;
+				state.clear();
+
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
-						答えは＊${title}＊／＊${answer}＊だよ
+						答えは＊${title}＊／＊${answer}＊だよ:triumph:
 						${wordUrl}
 					`,
 					username: BOTNAME,
@@ -109,7 +109,8 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 
 		if (state.answer !== null && message.thread_ts === state.thread && message.username !== BOTNAME) {
 			if (message.text === state.answer) {
-				const { title, answer, wordUrl, thread, timeoutId } = state.clear();
+				const { title, answer, wordUrl, thread, timeoutId } = state;
+				state.clear();
 				clearTimeout(timeoutId);
 
 				await slack.chat.postMessage({
