@@ -7,6 +7,7 @@ const {
 } = require('../tahoiya/lib');
 
 const BOTNAME = 'sort-nazonazo';
+const BOTICON = ':abc:';
 const TIMEOUT = 1000 * 60;
 
 const getSortedString = (answer) => {
@@ -86,6 +87,7 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 					\`${sorted}\`
 				`,
 				username: BOTNAME,
+				icon_emoji: BOTICON,
 			});
 			state.thread = ts;
 
@@ -100,6 +102,7 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 						${wordUrl}
 					`,
 					username: BOTNAME,
+					icon_emoji: BOTICON,
 					thread_ts: thread,
 					reply_broadcast: true,
 				});
@@ -121,6 +124,7 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 						${wordUrl}
 					`,
 					username: BOTNAME,
+					icon_emoji: BOTICON,
 					thread_ts: thread,
 					reply_broadcast: true,
 				});
