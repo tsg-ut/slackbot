@@ -48,6 +48,7 @@ const plugins = [
 	require('./ponpe'),
 	require('./anime'),
 	require('./oogiri'),
+	require('./sort-nazonazo'),
 ];
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
