@@ -1,5 +1,5 @@
 const cloudinary = require('cloudinary');
-const {get, last, minBy, random, sum, sample, uniq} = require('lodash');
+const {get, last, minBy, random, sum, sample, uniq, groupBy, mapValues, range, flatten} = require('lodash');
 const levenshtein = require('fast-levenshtein');
 const {google} = require('googleapis');
 const {Mutex} = require('async-mutex');
@@ -17,6 +17,7 @@ const loadSheet = async () => {
 		scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
 	}).getClient();
 	const sheets = google.sheets({version: 'v4', auth});
+
 	const {data: {values}} = await new Promise((resolve, reject) => {
 		sheets.spreadsheets.values.get({
 			spreadsheetId: '12YLDm-YqzWO3kL0ehZPKr9zF5WbYwLj31B_XsRIPb58',
@@ -33,7 +34,60 @@ const loadSheet = async () => {
 		type, id, title, channel, animeTitle, count: parseInt(count),
 	}));
 
-	animesDeferred.resolve(animes);
+	const {data: {values: animeInfoData}} = await new Promise((resolve, reject) => {
+		sheets.spreadsheets.values.get({
+			spreadsheetId: '12YLDm-YqzWO3kL0ehZPKr9zF5WbYwLj31B_XsRIPb58',
+			range: 'animes!A:G',
+		}, (error, response) => {
+			if (error) {
+				reject(error);
+			} else {
+				resolve(response);
+			}
+		});
+	});
+	const animeInfos = animeInfoData.map(([name, longName, reading, date, rank, point, url]) => ({
+		name,
+		longName,
+		reading,
+		date,
+		rank: parseInt(rank),
+		point: parseFloat(point),
+		url,
+		year: date ? parseInt(date.split('/')[0]) : null,
+	}));
+	const animeByYears = mapValues(
+		groupBy(animeInfos, ({year}) => year),
+		(year) => year.sort((a, b) => a.rank - b.rank).map(({name}) => name),
+	);
+	const easyAnimes = uniq([
+		...animeInfos.filter(({rank, year}) => rank <= 100 && year >= 2005).map(({name}) => name),
+		...flatten(
+			range(2010, 2020).map((year) => (
+				animeByYears[year.toString()].slice(0, 20)
+			)),
+		),
+	]);
+	const normalAnimes = uniq([
+		...animeInfos.filter(({rank}) => rank <= 150).map(({name}) => name),
+		...flatten(
+			range(2015, 2020).map((year) => (
+				animeByYears[year.toString()]
+			)),
+		),
+		...flatten(
+			range(2010, 2015).map((year) => (
+				animeByYears[year.toString()].slice(0, 40)
+			)),
+		),
+		...flatten(
+			range(2000, 2010).map((year) => (
+				animeByYears[year.toString()].slice(0, 20)
+			)),
+		),
+	]);
+
+	animesDeferred.resolve({animes, easyAnimes, normalAnimes});
 	return animesDeferred;
 };
 
@@ -47,7 +101,7 @@ const getUrl = (publicId, options = {}) => (
 );
 
 const getRandomThumb = async (answer) => {
-	const animes = await animesDeferred.promise;
+	const {animes} = await animesDeferred.promise;
 	const videos = animes.filter(({animeTitle}) => animeTitle === answer);
 	const totalThumbs = sum(videos.map(({count}) => count));
 	const thumbIndex = random(totalThumbs);
@@ -108,6 +162,13 @@ const getVideoInfo = (video, filename) => {
 		return {
 			title: `${video.title} (${timeText}) - YouTube`,
 			url: `https://www.youtube.com/watch?v=${video.id}&t=${seekTime}`,
+		};
+	}
+
+	if (video.type === 'gyao') {
+		return {
+			title: `${video.title} (${timeText}) - GYAO!`,
+			url: 'https://gyao.yahoo.co.jp/',
 		};
 	}
 
@@ -183,9 +244,16 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 					state.hints.push({publicId, video, filename});
 				} else {
+					const anger = sample([
+						'これくらい常識だよね？',
+						'なんでこんな簡単なこともわからないの？',
+						'次は絶対正解してよ？',
+						'やる気が足りないんじゃない？',
+						'もっと集中して！',
+					]);
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
-						text: `もう、しっかりして！\n答えは＊${state.answer}＊だよ:anger:\nこれくらい常識だよね？`,
+						text: `もう、しっかりして！\n答えは＊${state.answer}＊だよ:anger:\n${anger}`,
 						username: 'anime',
 						icon_emoji: ':tv:',
 						thread_ts: state.thread,
@@ -224,14 +292,25 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if (message.text === 'アニメ当てクイズ' && state.answer === null) {
+		let matches = null;
+
+		if (message.text && (matches = message.text.match(/^アニメ当てクイズ(?<difficulty>easy|normal|hard)?$/)) && state.answer === null) {
+			const difficulty = matches.groups.difficulty || 'normal';
+
 			mutex.runExclusive(async () => {
 				if (!animesDeferred.isResolved) {
 					loadSheet();
 				}
-				const animes = await animesDeferred.promise;
+				const {animes, easyAnimes, normalAnimes} = await animesDeferred.promise;
 				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
-				const answer = sample(animeTitles);
+				let answer = null;
+				if (difficulty === 'easy') {
+					answer = sample(easyAnimes);
+				} else if (difficulty === 'normal') {
+					answer = sample(normalAnimes);
+				} else {
+					answer = sample(animeTitles);
+				}
 
 				const {publicId, video, filename} = await getRandomThumb(answer);
 
