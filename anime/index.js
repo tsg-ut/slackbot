@@ -385,7 +385,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				if (!animesDeferred.isResolved) {
 					loadSheet();
 				}
-				const animes = await animesDeferred.promise;
+				const {animes} = await animesDeferred.promise;
 				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
 
 				const requestedTitle = hiraganize(message.text.replace('@anime', '').replace(/\P{Letter}/gu, '').toLowerCase());
