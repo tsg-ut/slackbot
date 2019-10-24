@@ -191,7 +191,43 @@ const getHintText = (n) => {
 	return '最後のヒントだよ！もうわかるよね？';
 };
 
-const getHintOptions = (n) => {
+const getHintOptions = (n, difficulty) => {
+	if (difficulty === 'extreme') {
+		if (n <= 0) {
+			return {
+				transformation: [
+					{width: 150},
+					{effect: 'pixelate:30'},
+				],
+			};
+		}
+		if (n <= 1) {
+			return {
+				transformation: [
+					{effect: 'pixelate:40'},
+				],
+			};
+		}
+		if (n <= 2) {
+			return {
+				transformation: [
+					{effect: 'pixelate:30'},
+				],
+			};
+		}
+		if (n <= 3) {
+			return {
+				transformation: [
+					{effect: 'pixelate:25'},
+				],
+			};
+		}
+		return {
+			transformation: [
+				{effect: 'pixelate:20'},
+			],
+		};
+	}
 	if (n <= 0) {
 		return {
 			transformation: [
@@ -217,6 +253,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		previousHint: 0,
 		hints: [],
 		thread: null,
+		difficulty: null,
 	};
 
 	const onTick = () => {
@@ -237,7 +274,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						icon_emoji: ':tv:',
 						thread_ts: state.thread,
 						attachments: [{
-							image_url: getUrl(publicId, getHintOptions(state.hints.length)),
+							image_url: getUrl(publicId, getHintOptions(state.hints.length, state.difficulty)),
 							fallback: hintText,
 						}],
 					});
@@ -279,6 +316,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					state.previousHint = 0;
 					state.hints = [];
 					state.thread = null;
+					state.difficulty = null;
 				}
 			}
 			state.previousTick = now;
@@ -294,7 +332,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		let matches = null;
 
-		if (message.text && (matches = message.text.match(/^アニメ当てクイズ(?<difficulty>easy|normal|hard)?$/)) && state.answer === null) {
+		if (message.text && (matches = message.text.match(/^アニメ当てクイズ(?<difficulty>easy|normal|hard|extreme)?$/)) && state.answer === null) {
 			const difficulty = matches.groups.difficulty || 'normal';
 
 			mutex.runExclusive(async () => {
@@ -304,7 +342,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				const {animes, easyAnimes, normalAnimes} = await animesDeferred.promise;
 				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
 				let answer = null;
-				if (difficulty === 'easy') {
+				if (difficulty === 'easy' || difficulty === 'extreme') {
 					answer = sample(easyAnimes);
 				} else if (difficulty === 'normal') {
 					answer = sample(normalAnimes);
@@ -320,7 +358,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					username: 'anime',
 					icon_emoji: ':tv:',
 					attachments: [{
-						image_url: getUrl(publicId, getHintOptions(0)),
+						image_url: getUrl(publicId, getHintOptions(0, difficulty)),
 						fallback: 'このアニメなーんだ',
 					}],
 				});
@@ -328,6 +366,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				state.thread = ts;
 				state.hints.push({publicId, video, filename});
 				state.previousHint = Date.now();
+				state.difficulty = difficulty;
 
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
@@ -420,6 +459,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					state.previousHint = 0;
 					state.hints = [];
 					state.thread = null;
+					state.difficulty = null;
 				} else {
 					await slack.reactions.add({
 						name: 'no_good',
