@@ -396,7 +396,25 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 				const {publicId, video, filename} = await getRandomThumb(animeTitle);
 				const info = getVideoInfo(video, filename);
-				const animeInfo = animeInfos.find(({name}) => name === animeTitle) || {};
+				const animeInfo = animeInfos.find(({name}) => name === animeTitle);
+				if (animeInfo === undefined || animeInfo.year === null) {
+					await slack.chat.postMessage({
+						channel: process.env.CHANNEL_SANDBOX,
+						text: stripIndent`
+						＊${animeTitle}＊はこんなアニメだよ！
+						＊出題範囲＊ hard
+					`,
+						username: 'anime',
+						icon_emoji: ':tv:',
+						attachments: [{
+							title: info.title,
+							title_link: info.url,
+							image_url: getUrl(publicId),
+							fallback: info.title,
+						}],
+					});
+					return;
+				}
 				const yearRank = animeByYears[animeInfo.year.toString()].findIndex((name) => name === animeTitle);
 				// eslint-disable-next-line no-nested-ternary
 				const difficulty = (easyAnimes.includes(animeTitle) ? 'easy' : (normalAnimes.includes(animeTitle) ? 'normal' : 'hard'));
