@@ -1,5 +1,6 @@
 const cloudinary = require('cloudinary');
 const {get, last, minBy, random, sum, sample, uniq, groupBy, mapValues, range, flatten} = require('lodash');
+const {stripIndent} = require('common-tags');
 const levenshtein = require('fast-levenshtein');
 const {google} = require('googleapis');
 const {Mutex} = require('async-mutex');
@@ -87,7 +88,7 @@ const loadSheet = async () => {
 		),
 	]);
 
-	animesDeferred.resolve({animes, easyAnimes, normalAnimes});
+	animesDeferred.resolve({animes, easyAnimes, normalAnimes, animeByYears, animeInfos});
 	return animesDeferred;
 };
 
@@ -385,7 +386,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				if (!animesDeferred.isResolved) {
 					loadSheet();
 				}
-				const {animes} = await animesDeferred.promise;
+				const {animes, easyAnimes, normalAnimes, animeByYears, animeInfos} = await animesDeferred.promise;
 				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
 
 				const requestedTitle = hiraganize(message.text.replace('@anime', '').replace(/\P{Letter}/gu, '').toLowerCase());
@@ -395,10 +396,18 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 				const {publicId, video, filename} = await getRandomThumb(animeTitle);
 				const info = getVideoInfo(video, filename);
+				const animeInfo = animeInfos.find(({name}) => name === animeTitle) || {};
+				const yearRank = animeByYears[animeInfo.year.toString()].findIndex((name) => name === animeTitle);
+				// eslint-disable-next-line no-nested-ternary
+				const difficulty = (easyAnimes.includes(animeTitle) ? 'easy' : (normalAnimes.includes(animeTitle) ? 'normal' : 'hard'));
 
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
-					text: `${animeTitle}はこんなアニメだよ！`,
+					text: stripIndent`
+						＊${animeTitle}＊はこんなアニメだよ！
+						＊総合ランキング＊ ${animeInfo.rank}位 ＊年度別ランキング＊ ${yearRank + 1}位
+						＊放送開始日＊ ${animeInfo.date} ＊出題範囲＊ ${difficulty}
+					`,
 					username: 'anime',
 					icon_emoji: ':tv:',
 					attachments: [{
