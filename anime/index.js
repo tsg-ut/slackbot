@@ -137,9 +137,16 @@ const getRandomThumb = async (answer) => {
 	return {publicId: cloudinaryDatum.public_id, video, filename: last(filePath.split('/'))};
 };
 
+const getUnitTime = (type) => {
+	if (type === 'niconico' || type === 'gyao') {
+		return 15;
+	}
+	return 30;
+};
+
 const getVideoInfo = (video, filename) => {
 	const fileIndex = parseInt(filename.split('.')[0]);
-	const seekTime = Math.floor((fileIndex + 0.5) * (video.type === 'niconico' ? 15 : 30));
+	const seekTime = Math.floor((fileIndex + 0.5) * getUnitTime(video.type));
 	const hours = Math.floor(seekTime / 60 / 60);
 	const minutes = Math.floor(seekTime / 60) % 60;
 	const seconds = seekTime % 60;
