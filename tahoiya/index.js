@@ -22,6 +22,7 @@ const nodePersist = require('node-persist');
 const rouge = require('rouge');
 const getReading = require('../lib/getReading.js');
 const {unlock, increment} = require('../achievements');
+const {blockDeploy} = require('../deploy/index.ts');
 
 const {
 	getPageTitle,
@@ -75,6 +76,7 @@ const state = (() => {
 const queue = new Queue({concurrency: 1});
 
 const transaction = (func) => queue.add(func);
+let deployUnblock = null;
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const db = await sqlite.open(path.join(__dirname, 'themes.sqlite3'));
@@ -96,6 +98,25 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	};
 
 	const setState = async (newState) => {
+		if (state.phase !== 'waiting' && newState.phase === 'waiting') {
+			// running -> waiting
+			if (deployUnblock) {
+				deployUnblock();
+				deployUnblock = null;
+			} else {
+				logger.warn("tahoiya: deployUnblock is falthy when running -> waiting");
+			}
+		}
+		if (state.phase === 'waiting' && newState.phase !== 'waiting') {
+			// waiting -> running
+			if (deployUnblock) {
+				logger.warn("tahoiya: deployUnblock is truthy when waiting -> running");
+				deployUnblock();
+				deployUnblock = null;
+			}
+			deployUnblock = await blockDeploy('tahoiya');
+		}
+
 		Object.assign(state, newState);
 
 		const savedState = {};
