@@ -37,6 +37,7 @@ const loadState = async () => {
 	return {
 		isSleeping: false,
 		location: 8,
+		gone: false,
 	};
 };
 
@@ -49,7 +50,22 @@ module.exports = async (clients) => {
 		await fs.writeFile(statePath, JSON.stringify(state));
 	};
 
+	const p = 1 / (365 * 24);
+
 	schedule.scheduleJob('30 * * * *', async (date) => {
+		if (state.gone)
+			return;
+		if (Math.random() < p) {
+			await setState({ gone: true });
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_OJIGINEKO,
+				username: 'ojigineko',
+				icon_emoji: ':pizzacat83:',
+				text: `${':void:'.repeat(state.location)}:dash:`,
+			});
+			return;
+		}
+
 		const hour = moment(date).utcOffset(9).hour();
 
 		if (state.isSleeping) {
