@@ -40,7 +40,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
 						text: stripIndent`
-							:bee: \`${user.firstName} ${user.lastName}\` が${place.name}にチェックインしました
+							:bee: \`${[user.firstName, user.lastName].join(' ')}\` が${place.name}にチェックインしました
 							${shout ? `「${shout}」` : ''}
 						`,
 						username: 'checkin',
