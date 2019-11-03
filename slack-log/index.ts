@@ -68,7 +68,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 
             const {text, user: userid} = message;
             const user = userid && users[userid];
-            const username = user && user.name;
+            const username = user && (user.profile.display_name || user.name);
             const channel = chanid && channels[chanid];
             const channame = channel && channel.name;
             const imageUrl = user && user.profile && (user.profile.image_original || user.profile.image_512);
