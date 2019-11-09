@@ -2,6 +2,7 @@ const axios = require('axios');
 const { stripIndent } = require('common-tags');
 const sample = require('lodash/sample');
 const {
+	getPageTitle,
 	getWordUrl,
 	getCandidateWords,
 } = require('../tahoiya/lib');
@@ -91,6 +92,16 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 			});
 			state.thread = ts;
 
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: stripIndent`
+					60 秒以内にこのスレッドに返信してね
+				`,
+				username: BOTNAME,
+				icon_emoji: BOTICON,
+				thread_ts: state.thread,
+			});
+
 			const timeoutId = setTimeout(async () => {
 				const { title, answer, wordUrl, thread } = state;
 				state.clear();
@@ -99,7 +110,7 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
 						答えは＊${title}＊／＊${answer}＊だよ:triumph:
-						${wordUrl}
+						<${wordUrl}|${getPageTitle(wordUrl)}>
 					`,
 					username: BOTNAME,
 					icon_emoji: BOTICON,
