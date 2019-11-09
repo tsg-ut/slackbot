@@ -2,6 +2,7 @@ const axios = require('axios');
 const { stripIndent } = require('common-tags');
 const sample = require('lodash/sample');
 const {
+	getPageTitle,
 	getWordUrl,
 	getCandidateWords,
 } = require('../tahoiya/lib');
@@ -109,7 +110,7 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
 						答えは＊${title}＊／＊${answer}＊だよ:triumph:
-						${wordUrl}
+						<${wordUrl}|${getPageTitle(wordUrl)}>
 					`,
 					username: BOTNAME,
 					icon_emoji: BOTICON,
