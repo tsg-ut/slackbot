@@ -1,5 +1,6 @@
 const cloudinary = require('cloudinary');
-const {get, last, minBy, random, sum, sample, uniq} = require('lodash');
+const {get, last, minBy, random, sum, sample, uniq, groupBy, mapValues, range, flatten} = require('lodash');
+const {stripIndent} = require('common-tags');
 const levenshtein = require('fast-levenshtein');
 const {google} = require('googleapis');
 const {Mutex} = require('async-mutex');
@@ -17,6 +18,7 @@ const loadSheet = async () => {
 		scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
 	}).getClient();
 	const sheets = google.sheets({version: 'v4', auth});
+
 	const {data: {values}} = await new Promise((resolve, reject) => {
 		sheets.spreadsheets.values.get({
 			spreadsheetId: '12YLDm-YqzWO3kL0ehZPKr9zF5WbYwLj31B_XsRIPb58',
@@ -33,7 +35,60 @@ const loadSheet = async () => {
 		type, id, title, channel, animeTitle, count: parseInt(count),
 	}));
 
-	animesDeferred.resolve(animes);
+	const {data: {values: animeInfoData}} = await new Promise((resolve, reject) => {
+		sheets.spreadsheets.values.get({
+			spreadsheetId: '12YLDm-YqzWO3kL0ehZPKr9zF5WbYwLj31B_XsRIPb58',
+			range: 'animes!A:G',
+		}, (error, response) => {
+			if (error) {
+				reject(error);
+			} else {
+				resolve(response);
+			}
+		});
+	});
+	const animeInfos = animeInfoData.map(([name, longName, reading, date, rank, point, url]) => ({
+		name,
+		longName,
+		reading,
+		date,
+		rank: parseInt(rank),
+		point: parseFloat(point),
+		url,
+		year: date ? parseInt(date.split('/')[0]) : null,
+	}));
+	const animeByYears = mapValues(
+		groupBy(animeInfos, ({year}) => year),
+		(year) => year.sort((a, b) => a.rank - b.rank).map(({name}) => name),
+	);
+	const easyAnimes = uniq([
+		...animeInfos.filter(({rank, year}) => rank <= 100 && year >= 2005).map(({name}) => name),
+		...flatten(
+			range(2010, 2020).map((year) => (
+				animeByYears[year.toString()].slice(0, 20)
+			)),
+		),
+	]);
+	const normalAnimes = uniq([
+		...animeInfos.filter(({rank}) => rank <= 150).map(({name}) => name),
+		...flatten(
+			range(2015, 2020).map((year) => (
+				animeByYears[year.toString()]
+			)),
+		),
+		...flatten(
+			range(2010, 2015).map((year) => (
+				animeByYears[year.toString()].slice(0, 40)
+			)),
+		),
+		...flatten(
+			range(2000, 2010).map((year) => (
+				animeByYears[year.toString()].slice(0, 20)
+			)),
+		),
+	]);
+
+	animesDeferred.resolve({animes, easyAnimes, normalAnimes, animeByYears, animeInfos});
 	return animesDeferred;
 };
 
@@ -47,7 +102,7 @@ const getUrl = (publicId, options = {}) => (
 );
 
 const getRandomThumb = async (answer) => {
-	const animes = await animesDeferred.promise;
+	const {animes} = await animesDeferred.promise;
 	const videos = animes.filter(({animeTitle}) => animeTitle === answer);
 	const totalThumbs = sum(videos.map(({count}) => count));
 	const thumbIndex = random(totalThumbs);
@@ -82,9 +137,16 @@ const getRandomThumb = async (answer) => {
 	return {publicId: cloudinaryDatum.public_id, video, filename: last(filePath.split('/'))};
 };
 
+const getUnitTime = (type) => {
+	if (type === 'niconico' || type === 'gyao') {
+		return 15;
+	}
+	return 30;
+};
+
 const getVideoInfo = (video, filename) => {
 	const fileIndex = parseInt(filename.split('.')[0]);
-	const seekTime = Math.floor((fileIndex + 0.5) * (video.type === 'niconico' ? 15 : 30));
+	const seekTime = Math.floor((fileIndex + 0.5) * getUnitTime(video.type));
 	const hours = Math.floor(seekTime / 60 / 60);
 	const minutes = Math.floor(seekTime / 60) % 60;
 	const seconds = seekTime % 60;
@@ -111,6 +173,13 @@ const getVideoInfo = (video, filename) => {
 		};
 	}
 
+	if (video.type === 'gyao') {
+		return {
+			title: `${video.title} (${timeText}) - GYAO!`,
+			url: 'https://gyao.yahoo.co.jp/',
+		};
+	}
+
 	return {
 		title: '',
 		url: '',
@@ -130,7 +199,43 @@ const getHintText = (n) => {
 	return '最後のヒントだよ！もうわかるよね？';
 };
 
-const getHintOptions = (n) => {
+const getHintOptions = (n, difficulty) => {
+	if (difficulty === 'extreme') {
+		if (n <= 0) {
+			return {
+				transformation: [
+					{width: 150},
+					{effect: 'pixelate:30'},
+				],
+			};
+		}
+		if (n <= 1) {
+			return {
+				transformation: [
+					{effect: 'pixelate:40'},
+				],
+			};
+		}
+		if (n <= 2) {
+			return {
+				transformation: [
+					{effect: 'pixelate:30'},
+				],
+			};
+		}
+		if (n <= 3) {
+			return {
+				transformation: [
+					{effect: 'pixelate:25'},
+				],
+			};
+		}
+		return {
+			transformation: [
+				{effect: 'pixelate:20'},
+			],
+		};
+	}
 	if (n <= 0) {
 		return {
 			transformation: [
@@ -156,6 +261,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		previousHint: 0,
 		hints: [],
 		thread: null,
+		difficulty: null,
 	};
 
 	const onTick = () => {
@@ -176,16 +282,23 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						icon_emoji: ':tv:',
 						thread_ts: state.thread,
 						attachments: [{
-							image_url: getUrl(publicId, getHintOptions(state.hints.length)),
+							image_url: getUrl(publicId, getHintOptions(state.hints.length, state.difficulty)),
 							fallback: hintText,
 						}],
 					});
 
 					state.hints.push({publicId, video, filename});
 				} else {
+					const anger = sample([
+						'これくらい常識だよね？',
+						'なんでこんな簡単なこともわからないの？',
+						'次は絶対正解してよ？',
+						'やる気が足りないんじゃない？',
+						'もっと集中して！',
+					]);
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
-						text: `もう、しっかりして！\n答えは＊${state.answer}＊だよ:anger:\nこれくらい常識だよね？`,
+						text: `もう、しっかりして！\n答えは＊${state.answer}＊だよ:anger:\n${anger}`,
 						username: 'anime',
 						icon_emoji: ':tv:',
 						thread_ts: state.thread,
@@ -211,6 +324,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					state.previousHint = 0;
 					state.hints = [];
 					state.thread = null;
+					state.difficulty = null;
 				}
 			}
 			state.previousTick = now;
@@ -224,14 +338,25 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if (message.text === 'アニメ当てクイズ' && state.answer === null) {
+		let matches = null;
+
+		if (message.text && (matches = message.text.match(/^アニメ当てクイズ(?<difficulty>easy|normal|hard|extreme)?$/)) && state.answer === null) {
+			const difficulty = matches.groups.difficulty || 'normal';
+
 			mutex.runExclusive(async () => {
 				if (!animesDeferred.isResolved) {
 					loadSheet();
 				}
-				const animes = await animesDeferred.promise;
+				const {animes, easyAnimes, normalAnimes} = await animesDeferred.promise;
 				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
-				const answer = sample(animeTitles);
+				let answer = null;
+				if (difficulty === 'easy' || difficulty === 'extreme') {
+					answer = sample(easyAnimes);
+				} else if (difficulty === 'normal') {
+					answer = sample(normalAnimes);
+				} else {
+					answer = sample(animeTitles);
+				}
 
 				const {publicId, video, filename} = await getRandomThumb(answer);
 
@@ -241,7 +366,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					username: 'anime',
 					icon_emoji: ':tv:',
 					attachments: [{
-						image_url: getUrl(publicId, getHintOptions(0)),
+						image_url: getUrl(publicId, getHintOptions(0, difficulty)),
 						fallback: 'このアニメなーんだ',
 					}],
 				});
@@ -249,6 +374,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				state.thread = ts;
 				state.hints.push({publicId, video, filename});
 				state.previousHint = Date.now();
+				state.difficulty = difficulty;
 
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
@@ -267,7 +393,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				if (!animesDeferred.isResolved) {
 					loadSheet();
 				}
-				const animes = await animesDeferred.promise;
+				const {animes, easyAnimes, normalAnimes, animeByYears, animeInfos} = await animesDeferred.promise;
 				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
 
 				const requestedTitle = hiraganize(message.text.replace('@anime', '').replace(/\P{Letter}/gu, '').toLowerCase());
@@ -277,10 +403,36 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 				const {publicId, video, filename} = await getRandomThumb(animeTitle);
 				const info = getVideoInfo(video, filename);
+				const animeInfo = animeInfos.find(({name}) => name === animeTitle);
+				if (animeInfo === undefined || animeInfo.year === null) {
+					await slack.chat.postMessage({
+						channel: process.env.CHANNEL_SANDBOX,
+						text: stripIndent`
+						＊${animeTitle}＊はこんなアニメだよ！
+						＊出題範囲＊ hard
+					`,
+						username: 'anime',
+						icon_emoji: ':tv:',
+						attachments: [{
+							title: info.title,
+							title_link: info.url,
+							image_url: getUrl(publicId),
+							fallback: info.title,
+						}],
+					});
+					return;
+				}
+				const yearRank = animeByYears[animeInfo.year.toString()].findIndex((name) => name === animeTitle);
+				// eslint-disable-next-line no-nested-ternary
+				const difficulty = (easyAnimes.includes(animeTitle) ? 'easy' : (normalAnimes.includes(animeTitle) ? 'normal' : 'hard'));
 
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
-					text: `${animeTitle}はこんなアニメだよ！`,
+					text: stripIndent`
+						＊${animeTitle}＊はこんなアニメだよ！
+						＊総合ランキング＊ ${animeInfo.rank}位 ＊年度別ランキング＊ ${yearRank + 1}位
+						＊放送開始日＊ ${animeInfo.date} ＊出題範囲＊ ${difficulty}
+					`,
 					username: 'anime',
 					icon_emoji: ':tv:',
 					attachments: [{
@@ -341,6 +493,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					state.previousHint = 0;
 					state.hints = [];
 					state.thread = null;
+					state.difficulty = null;
 				} else {
 					await slack.reactions.add({
 						name: 'no_good',
