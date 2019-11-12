@@ -1,5 +1,11 @@
 const axios = require("axios");
 const emoji = require("node-emoji");
+const download = require("download");
+const {promises: fs, constants} = require("fs");
+const path = require("path");
+const {sample, get} = require("lodash");
+const {hiraganize} = require("japanese");
+const {stripIndents} = require("common-tags");
 const {unlock} = require("../achievements");
 const logger = require('../lib/logger.js');
 
@@ -97,24 +103,129 @@ function normalize(text) {
 		.toLowerCase();
 }
 
+async function getDictionary() {
+	const dictionaryPath = path.resolve(__dirname, 'kanjibox.txt');
+	const exists = await fs.access(dictionaryPath, constants.R_OK).then(() => true).catch(() => false);
+	if (!exists) {
+		await download("https://hakata-public.s3-ap-northeast-1.amazonaws.com/slackbot/kanjibox.txt", __dirname, {filename: 'kanjibox.txt'});
+	}
+	const dictionary = await fs.readFile(dictionaryPath);
+	const entries = dictionary.toString().split('\n').filter((line) => (
+		!line.startsWith('#') && line.length !== 0)
+	).map((line) => {
+		const [, word, ruby] = line.split('\t');
+		return {word, ruby};
+	});
+	return entries;
+}
+
 module.exports = (clients) => {
 	const { rtmClient: rtm, webClient: slack } = clients;
 
-	function postMessage(message, channel) {
-		slack.chat.postMessage({
+	function postMessage(message, channel, broadcast = false) {
+		return slack.chat.postMessage({
 			channel,
 			text: message,
 			as_user: false,
 			username: "pocky",
 			icon_emoji: ":google:",
+			thread_ts: thread,
+			reply_broadcast: broadcast,
 		});
 	}
+
+	let theme = null;
+	let thread = null;
+	let hints = [];
+
+	async function pockygame() {
+		if (theme !== null) {
+			return;
+		}
+
+		const entries = await getDictionary();
+
+		let failures = 0;
+
+		while (failures <= 5 && theme === null) {
+			const entry = sample(entries);
+			const response = await axios({
+				url: "https://www.google.com/complete/search?client=firefox&hl=ja&q=" + encodeURIComponent(entry.word),
+				headers: {
+					"User-Agent": "Mozilla/5.0",
+				},
+				method: "GET",
+			});
+			hints = get(response, ['data', 1], []).filter((hint) => hint !== entry.word && hint.startsWith(entry.word));
+			if (hints.length >= 5) {
+				theme = entry;
+			}
+			failures++;
+		}
+
+		if (theme === null) {
+			postMessage("エラーΩ＼ζ°)ﾁｰﾝ", process.env.CHANNEL_SANDBOX);
+			return;
+		}
+		console.log(theme);
+
+		const message = await postMessage(stripIndents`
+			ポッキーゲームを始めるよ～
+			下の単語の〇〇に共通して入る単語は何かな～？
+			スレッドで回答してね!
+
+			${hints.map((hint) => hint.replace(theme.word, '• 〇〇')).join('\n')}
+		`, process.env.CHANNEL_SANDBOX);
+
+		thread = message.ts;
+
+		await postMessage('3分経過で答えを発表するよ～', process.env.CHANNEL_SANDBOX);
+		const currentTheme = theme;
+		setTimeout(async () => {
+			if (theme === currentTheme) {
+				await postMessage(stripIndents`
+					なんでわからないの？
+					答えは＊${theme.word}＊ (${theme.ruby}) だよ:anger:
+				`, process.env.CHANNEL_SANDBOX, true);
+				await postMessage(stripIndents`
+					${hints.map((hint) => hint.replace(theme.word, `• ＊${theme.word}＊`)).join('\n')}
+				`, process.env.CHANNEL_SANDBOX);
+				theme = null;
+				thread = null;
+			}
+		}, 180000);
+	};
+
 	rtm.on('message', async (message) => {
 		if (message.subtype) {
 			return;
 		}
-		const { channel, text } = message;
+		const { channel, text, thread_ts, ts } = message;
+		if (theme !== null && thread_ts === thread) {
+			if (text === theme.word || hiraganize(text) === hiraganize(theme.ruby)) {
+				await postMessage(stripIndents`
+					<@${message.user}> 正解:tada:
+					答えは＊${theme.word}＊ (${theme.ruby}) だよ:tada:
+				`, channel, true);
+				await postMessage(stripIndents`
+					${hints.map((hint) => hint.replace(theme.word, `• ＊${theme.word}＊`)).join('\n')}
+				`, channel);
+				theme = null;
+				thread = null;
+				return;
+			} else {
+				slack.reactions.add({
+					name: 'no_good',
+					channel: channel,
+					timestamp: ts,
+				});
+			}
+		}
 		if (channel !== process.env.CHANNEL_SANDBOX) {
+			return;
+		}
+		if (text === 'ポッキーゲーム') {
+			pockygame();
 			return;
 		}
 		const query = slackDecode(text.trim());
