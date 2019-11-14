@@ -38,7 +38,7 @@ export const server = ({webClient: slack}: SlackInterface) => plugin(async (fast
 			team: teamId,
 		});
 
-		const emoji = teamId === 0 ? ':large_blue_circle:' : ':large_red_circle:';
+		const emoji = teamId === 0 ? ':large_blue_circle:' : ':red_circle:';
 
 		await slack.chat.postMessage({
 			channel: req.body.channel_id,
