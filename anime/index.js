@@ -423,6 +423,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					return;
 				}
 				const yearRank = animeByYears[animeInfo.year.toString()].findIndex((name) => name === animeTitle);
+				const yearTotal = animeByYears[animeInfo.year.toString()].length;
 				// eslint-disable-next-line no-nested-ternary
 				const difficulty = (easyAnimes.includes(animeTitle) ? 'easy' : (normalAnimes.includes(animeTitle) ? 'normal' : 'hard'));
 
@@ -430,7 +431,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
 						＊${animeTitle}＊はこんなアニメだよ！
-						＊総合ランキング＊ ${animeInfo.rank}位 ＊年度別ランキング＊ ${yearRank + 1}位
+						＊総合ランキング＊ ${animeInfo.rank}位 ＊年度別ランキング＊ ${yearRank + 1}/${yearTotal}位
 						＊放送開始日＊ ${animeInfo.date} ＊出題範囲＊ ${difficulty}
 					`,
 					username: 'anime',
