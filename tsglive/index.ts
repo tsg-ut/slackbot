@@ -30,9 +30,11 @@ export const server = ({webClient: slack}: SlackInterface) => plugin(async (fast
 			return '#live-players-hongo もしくは #live-players-komaba チャンネルから実行してください';
 		}
 
+		const name = await getMemberName(req.body.user_id);
+
 		await db.collection('tsglive_comments').add({
 			user: req.body.user_id,
-			name: req.body.user_name,
+			name,
 			text: req.body.text,
 			date: new Date(),
 			team: teamId,
