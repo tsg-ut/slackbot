@@ -44,14 +44,14 @@ export const server = ({webClient: slack}: SlackInterface) => plugin(async (fast
 
 		await slack.chat.postMessage({
 			channel: req.body.channel_id,
-			username: `${req.body.user_name} (tsg-live-controller)`,
+			username: `${name} (tsg-live-controller)`,
 			icon_emoji: emoji,
 			text: req.body.text,
 		});
 
 		await slack.chat.postMessage({
 			channel: 'CARFNJLJX',
-			username: `${req.body.user_name} (tsg-live-controller)`,
+			username: `${name} (tsg-live-controller)`,
 			icon_emoji: emoji,
 			text: req.body.text,
 		});
