@@ -167,7 +167,7 @@ module.exports = (clients) => {
 			postMessage("エラーΩ＼ζ°)ﾁｰﾝ", process.env.CHANNEL_SANDBOX);
 			return;
 		}
-		console.log(theme);
+		logger.info(theme);
 
 		const message = await postMessage(stripIndents`
 			ポッキーゲームを始めるよ～
@@ -193,7 +193,7 @@ module.exports = (clients) => {
 				theme = null;
 				thread = null;
 			}
-		}, 180000);
+		}, 3 * 60 * 1000);
 	};
 
 	rtm.on('message', async (message) => {
