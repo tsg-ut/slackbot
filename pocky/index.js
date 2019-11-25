@@ -13,16 +13,26 @@ const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，�
 
 const ignoreRe = /( 英語| 韓国語| 中国語|の?意味|meaning|とは)+$/i;
 
+async function getSuggestions(text) {
+	const response = await axios({
+		url: "https://www.google.com/complete/search",
+		params: {
+			client: "firefox",
+			hl: "ja",
+			q: text,
+		},
+		headers: {
+			"User-Agent": "Mozilla/5.0",
+		},
+		method: "GET",
+	});
+	return get(response, ['data', 1], []);
+}
+
 async function reply(text, index) {
 	try {
-		const response = await axios({
-			url: "https://www.google.com/complete/search?client=firefox&hl=ja&q=" + encodeURIComponent(text),
-			headers: {
-				"User-Agent": "Mozilla/5.0",
-			},
-			method: "GET",
-		});
-		return generateReply(text, response.data[1], index);
+		const suggestions = await getSuggestions(text);
+		return generateReply(text, suggestions, index);
 	} catch (e) {
 		logger.error(e);
 		return "エラーΩ＼ζ°)ﾁｰﾝ";
@@ -149,14 +159,8 @@ module.exports = (clients) => {
 
 		while (failures <= 5 && theme === null) {
 			const entry = sample(entries);
-			const response = await axios({
-				url: "https://www.google.com/complete/search?client=firefox&hl=ja&q=" + encodeURIComponent(entry.word),
-				headers: {
-					"User-Agent": "Mozilla/5.0",
-				},
-				method: "GET",
-			});
-			hints = get(response, ['data', 1], []).filter((hint) => hint !== entry.word && hint.startsWith(entry.word));
+			const suggestions = await getSuggestions(entry.word);
+			hints = suggestions.filter((hint) => hint !== entry.word && hint.startsWith(entry.word));
 			if (hints.length >= 5) {
 				theme = entry;
 			}
