@@ -304,7 +304,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 							Object.entries(standing.TaskResults).filter(([, task]) => task.Status === 1).map(([id, task]) => `[ *${tasks.get(id).Assignment}*${task.Penalty ? ` (${task.Penalty})` : ''} ]`).join(' '),
 							stats.map(({title, value}) => `*${title}* ${value}`).join(', '),
 						].join('\n'),
-						footer: result ? `${score}点 (最終提出: ${lastSubmission})` : '',
+						footer: `${score}点 (最終提出: ${lastSubmission})`,
 					};
 				}))),
 				{
@@ -355,7 +355,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					await unlock(user, 'atcoder-no-solve');
 				}
 			}
-			if (result && isContestRated) {
+			if (isContestRated) {
 				if (standings.TaskInfo.every((task) => (
 					standing.TaskResults[task.TaskScreenName] &&
 					standing.TaskResults[task.TaskScreenName].Score > 0
