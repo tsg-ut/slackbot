@@ -1,5 +1,6 @@
 const logger = require('../lib/logger.js');
 const isValidUTF8 = require('utf-8-validate');
+const iconv = require('iconv-lite');
 
 const sanitizeCode = (input) => ["`", input.replace(/`/g, "'"), "`"].join('');
 const sanitizePreformatted = (input) => ["```", input.replace(/`/g, "'"), "```"].join("\n");
@@ -18,6 +19,10 @@ module.exports.server = ({webClient: slack}) => async (fastify) => {
                 if (isValidUTF8(buf)) {
                     text = buf.toString();
                 }
+            }
+            // ISO-2022-JP
+            if (text.contains('\x1B$B')) {
+                text = iconv.decode(Buffer.from(text), 'iso-2022-jp');
             }
 
             await slack.chat.postMessage({
