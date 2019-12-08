@@ -1,6 +1,6 @@
 const logger = require('../lib/logger.js');
 const isValidUTF8 = require('utf-8-validate');
-const iconv = require('iconv-lite');
+const encodingJapanese = require('encoding-japanese');
 const libmime = require('libmime');
 
 const sanitizeCode = (input) => ["`", input.replace(/`/g, "'"), "`"].join('');
@@ -21,10 +21,10 @@ module.exports.server = ({webClient: slack}) => async (fastify) => {
                     text = buf.toString();
                 }
             }
-            // ISO-2022-JP
-            if (text.contains('\x1B$B')) {
-                text = iconv.decode(Buffer.from(text), 'iso-2022-jp');
-            }
+            text = encodingJapanese.convert(Buffer.from(text), {
+                to: 'UNICODE',
+                type: 'string',
+            });
 
             await slack.chat.postMessage({
                 channel: process.env.CHANNEL_PRLOG,
