@@ -1,6 +1,7 @@
 const logger = require('../lib/logger.js');
 const isValidUTF8 = require('utf-8-validate');
 const iconv = require('iconv-lite');
+const libmime = require('libmime');
 
 const sanitizeCode = (input) => ["`", input.replace(/`/g, "'"), "`"].join('');
 const sanitizePreformatted = (input) => ["```", input.replace(/`/g, "'"), "```"].join("\n");
@@ -34,7 +35,7 @@ module.exports.server = ({webClient: slack}) => async (fastify) => {
                     `TO: ${sanitizeCode(addresses.to)}`,
                     ...(addresses.cc ? [`CC: ${sanitizeCode(addresses.cc)}`] : []),
                     `FROM: ${sanitizeCode(addresses.from)}`,
-                    `SUBJECT: ${sanitizeCode(subject)}`,
+                    `SUBJECT: ${sanitizeCode(libmime.decodeWords(subject))}`,
                 ].join("\n"),
                 attachments: [{
                     text,
