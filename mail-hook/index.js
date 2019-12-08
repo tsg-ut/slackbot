@@ -6,6 +6,21 @@ const libmime = require('libmime');
 const sanitizeCode = (input) => ["`", input.replace(/`/g, "'"), "`"].join('');
 const sanitizePreformatted = (input) => ["```", input.replace(/`/g, "'"), "```"].join("\n");
 
+const decodeMailSubject = (subject) => libmime.decodeWords(subject);
+module.exports.decodeMailSubject = decodeMailSubject;
+
+const decodeMailBody = (text) => {
+    let buf = Buffer.from(text, 'base64');
+    if (!isValidUTF8(buf)) {
+        buf = Buffer.from(text);
+    }
+    return encodingJapanese.convert(buf, {
+        to: 'UNICODE',
+        type: 'string',
+    });
+};
+module.exports.decodeMailBody = decodeMailBody;
+
 module.exports.server = ({webClient: slack}) => async (fastify) => {
     fastify.post('/api/smtp-hook', async (req, res) => {
         try {
@@ -14,17 +29,8 @@ module.exports.server = ({webClient: slack}) => async (fastify) => {
 
             const {addresses, subject, body} = req.body;
 
-            let text = body.text;
-            {
-                const buf = Buffer.from(text, 'base64');
-                if (isValidUTF8(buf)) {
-                    text = buf.toString();
-                }
-            }
-            text = encodingJapanese.convert(Buffer.from(text), {
-                to: 'UNICODE',
-                type: 'string',
-            });
+            const decodedSubject = decodeMailSubject(subject);
+            const text = decodeMailBody(body.text);
 
             await slack.chat.postMessage({
                 channel: process.env.CHANNEL_PRLOG,
@@ -35,7 +41,7 @@ module.exports.server = ({webClient: slack}) => async (fastify) => {
                     `TO: ${sanitizeCode(addresses.to)}`,
                     ...(addresses.cc ? [`CC: ${sanitizeCode(addresses.cc)}`] : []),
                     `FROM: ${sanitizeCode(addresses.from)}`,
-                    `SUBJECT: ${sanitizeCode(libmime.decodeWords(subject))}`,
+                    `SUBJECT: ${sanitizeCode(decodedSubject)}`,
                 ].join("\n"),
                 attachments: [{
                     text,
