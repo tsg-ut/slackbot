@@ -95,6 +95,7 @@
     "@types/jest": "^24.0.18",
     "@types/lodash": "^4.14.141",
     "@typescript-eslint/parser": "^2.3.2",
+    "@types/sharp": "^0.23.1",
     "byline": "^5.0.0",
     "csv-parse": "^4.4.7",
     "eslint": "^6.5.1",
