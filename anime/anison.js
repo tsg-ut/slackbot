@@ -234,6 +234,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		if (state.answer !== null && message.text && message.thread_ts === state.thread && message.username !== 'anime') {
 			mutex.runExclusive(async () => {
+				if (state.answer === null) {
+					return;
+				}
 				const songInfo = state.songInfos[0];
 				const answer = hiraganize(state.answer.replace(/\P{Letter}/gu, '').toLowerCase());
 				const songName = hiraganize(songInfo.title.replace(/\P{Letter}/gu, '').toLowerCase());
@@ -242,7 +245,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				const distance1 = levenshtein.get(answer, userAnswer);
 				const distance2 = levenshtein.get(songName, userAnswer);
 
-				if (distance1 <= answer.length / 3 || distance2 <= answer.length / 3) {
+				if (distance1 <= answer.length / 3 || distance2 <= songName.length / 3) {
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
 						text: `<@${message.user}> 正解:tada:\n答えは ＊${songInfo.title}＊ (${state.answer} ${songInfo.type}) だよ:muscle:`,

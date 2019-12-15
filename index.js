@@ -47,7 +47,7 @@ const plugins = [
 	require('./emoxpand'),
 	require('./ponpe'),
 	require('./anime'),
-  require('./anime/anison'),
+	require('./anime/anison'),
 	require('./oogiri'),
 	require('./sort-nazonazo'),
 	require('./tsglive'),
