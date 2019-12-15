@@ -6,7 +6,6 @@ import {WebClient, RTMClient} from '@slack/client';
 import {flatten, sum, sample, random, sortBy, maxBy, sumBy, shuffle} from 'lodash';
 // @ts-ignore
 import trie from './trie';
-// @ts-ignore
 import cloudinary from 'cloudinary';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
@@ -297,13 +296,14 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const imageData = await render(board, {color: isHard ? '#D50000' : 'black'});
 			const cloudinaryData: any = await new Promise((resolve, reject) => {
 				cloudinary.v2.uploader
-					.upload_stream({resource_type: 'image'}, (error: any, response: any) => {
+					// @ts-ignore ref: https://github.com/cloudinary/cloudinary_npm/pull/327
+					.upload_stream((error, response) => {
 						if (error) {
 							reject(error);
 						} else {
 							resolve(response);
 						}
-					})
+					}, {resource_type: 'image'})
 					.end(imageData);
 			});
 

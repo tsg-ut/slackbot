@@ -198,7 +198,7 @@ module.exports.makeSummary = async (messages, slack) => {
         const cloudinaryData = await new Promise((resolve, reject) => {
             logger.info('uploading');
             cloudinary.v2.uploader
-                .upload_stream({resource_type: 'image'}, (error, response) => {
+                .upload_stream((error, response) => {
                     if (error) {
                         logger.error(error);
                         reject(error);
@@ -206,7 +206,7 @@ module.exports.makeSummary = async (messages, slack) => {
                         logger.info('uploaded!');
                         resolve(response);
                     }
-                })
+                }, {resource_type: 'image'})
                 .end(cloudPNG);
         });
         summary.push({

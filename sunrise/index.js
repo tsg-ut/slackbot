@@ -309,13 +309,13 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			const imageData = await render(matchingWeather.name);
 			const cloudinaryData = await new Promise((resolve, reject) => {
 				cloudinary.v2.uploader
-					.upload_stream({resource_type: 'image'}, (error, response) => {
+					.upload_stream((error, response) => {
 						if (error) {
 							reject(error);
 						} else {
 							resolve(response);
 						}
-					})
+					}, {resource_type: 'image'})
 					.end(imageData);
 			});
 
