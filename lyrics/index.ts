@@ -15,6 +15,7 @@ interface SongInfo {
     utaNetUrl: string;
     audioUrl: string | null;
     artworkUrl: string | null;
+    paragraphs: string[],
 }
 
 interface iTuensInfo {
@@ -47,7 +48,7 @@ const getiTunesInfo = async (title: string, artist: string): Promise<iTuensInfo>
     }
 };
 
-const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongInfo> => {
+export const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongInfo> => {
     interface fetchedSongData {
         title: string;
         artist: string;
@@ -86,6 +87,7 @@ const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongIn
         composer: fetchedSongData.composer,
         audioUrl,
         artworkUrl,
+        paragraphs,
     };
 };
 

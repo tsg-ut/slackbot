@@ -14,6 +14,10 @@ const animesDeferred = new Deferred();
 const mutex = new Mutex();
 
 const loadSheet = async () => {
+	if (animesDeferred.isResolved) {
+		return animesDeferred.promise;
+	}
+
 	const auth = await new google.auth.GoogleAuth({
 		scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
 	}).getClient();
@@ -38,7 +42,7 @@ const loadSheet = async () => {
 	const {data: {values: animeInfoData}} = await new Promise((resolve, reject) => {
 		sheets.spreadsheets.values.get({
 			spreadsheetId: '12YLDm-YqzWO3kL0ehZPKr9zF5WbYwLj31B_XsRIPb58',
-			range: 'animes!A:G',
+			range: 'animes!A:H',
 		}, (error, response) => {
 			if (error) {
 				reject(error);
@@ -47,7 +51,7 @@ const loadSheet = async () => {
 			}
 		});
 	});
-	const animeInfos = animeInfoData.map(([name, longName, reading, date, rank, point, url]) => ({
+	const animeInfos = animeInfoData.map(([name, longName, reading, date, rank, point, url, utanetId]) => ({
 		name,
 		longName,
 		reading,
@@ -56,6 +60,7 @@ const loadSheet = async () => {
 		point: parseFloat(point),
 		url,
 		year: date ? parseInt(date.split('/')[0]) : null,
+		utanetId,
 	}));
 	const animeByYears = mapValues(
 		groupBy(animeInfos, ({year}) => year),
@@ -89,7 +94,7 @@ const loadSheet = async () => {
 	]);
 
 	animesDeferred.resolve({animes, easyAnimes, normalAnimes, animeByYears, animeInfos});
-	return animesDeferred;
+	return animesDeferred.promise;
 };
 
 const getUrl = (publicId, options = {}) => (
@@ -344,10 +349,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const difficulty = matches.groups.difficulty || 'normal';
 
 			mutex.runExclusive(async () => {
-				if (!animesDeferred.isResolved) {
-					loadSheet();
-				}
-				const {animes, easyAnimes, normalAnimes} = await animesDeferred.promise;
+				const {animes, easyAnimes, normalAnimes} = await loadSheet();
 				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
 				let answer = null;
 				if (difficulty === 'easy' || difficulty === 'extreme') {
@@ -506,3 +508,5 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 	});
 };
+
+module.exports.loadSheet = loadSheet;
