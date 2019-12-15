@@ -214,13 +214,13 @@ module.exports.data2dump = async (data, filename) => {
 
 async function uploadbuffer(image) {
 	const result = await new Promise((resolve, reject) => {
-		cloudinary.v2.uploader.upload_stream((error, data) => {
+		cloudinary.v2.uploader.upload_stream({ resource_type: 'image' }, (error, data) => {
 			if (error) {
 				reject(error);
 			} else {
 				resolve(data);
 			}
-		}, { resource_type: 'image' }).end(image);
+		}).end(image);
 	});
 	return result.secure_url;
 }

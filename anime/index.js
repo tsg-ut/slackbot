@@ -124,13 +124,13 @@ const getRandomThumb = async (answer) => {
 
 	const cloudinaryDatum = await new Promise((resolve, reject) => {
 		cloudinary.v2.uploader
-			.upload_stream((error, data) => {
+			.upload_stream({resource_type: 'image'}, (error, data) => {
 				if (error) {
 					reject(error);
 				} else {
 					resolve(data);
 				}
-			}, {resource_type: 'image'})
+			})
 			.end(imageData);
 	});
 

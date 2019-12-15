@@ -25,13 +25,13 @@ const uploadImage = async (board: {color: string, letter: string}[], boardIndex:
 	const cloudinaryData: any = await new Promise((resolve, reject) => {
 		cloudinary.v2.uploader
 			// @ts-ignore ref: https://github.com/cloudinary/cloudinary_npm/pull/327
-			.upload_stream((error, response) => {
+			.upload_stream({resource_type: 'image'}, (error, response) => {
 				if (error) {
 					reject(error);
 				} else {
 					resolve(response);
 				}
-			}, {resource_type: 'image'})
+			})
 			.end(imageData);
 	});
 	return cloudinaryData;
