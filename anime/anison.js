@@ -6,7 +6,7 @@ const {hiraganize} = require('japanese');
 const {Deferred} = require('../lib/utils.ts');
 const {unlock, increment} = require('../achievements');
 const {loadSheet} = require('./index.js');
-const {getSongInfo} = require('../lyrics/index.ts');
+const {getSongInfo, getMovieInfo} = require('../lyrics/index.ts');
 const {tokenize} = require('kuromojin');
 const {promises: fs} = require('fs');
 const path = require('path');
@@ -69,8 +69,10 @@ const getSongInfos = async (title) => {
 			continue;
 		}
 		const songInfo = await getSongInfo(song.link, '');
+		const movieInfos = await getMovieInfo(songInfo.utaNetUrl.replace('song', 'movie'));
 		songInfo.tokens = await tokenize(songInfo.paragraphs.join('\n'));
 		songInfo.type = song.type;
+		songInfo.movie = `https://youtu.be/${movieInfos[0].id}`;
 		songInfos.push(songInfo);
 		break;
 	}
@@ -146,11 +148,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					const songInfo = state.songInfos[0];
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
-						text: `もう、しっかりして！\n答えは ＊${songInfo.title}＊ (${state.answer} ${songInfo.type}) だよ:anger:\n${anger}`,
+						text: `もう、しっかりして！\n答えは ＊${songInfo.title}＊ (${state.answer} ${songInfo.type}) だよ:anger:\n${anger}\n\n${songInfo.movie}`,
 						username: 'anime',
 						icon_emoji: ':tv:',
 						thread_ts: state.thread,
 						reply_broadcast: true,
+						unfurl_links: true,
 					});
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
@@ -248,11 +251,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				if (distance1 <= answer.length / 3 || distance2 <= songName.length / 3) {
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
-						text: `<@${message.user}> 正解:tada:\n答えは ＊${songInfo.title}＊ (${state.answer} ${songInfo.type}) だよ:muscle:`,
+						text: `<@${message.user}> 正解:tada:\n答えは ＊${songInfo.title}＊ (${state.answer} ${songInfo.type}) だよ:muscle:\n\n${songInfo.movie}`,
 						username: 'anime',
 						icon_emoji: ':tv:',
 						thread_ts: state.thread,
 						reply_broadcast: true,
+						unfurl_links: true,
 					});
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
