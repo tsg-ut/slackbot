@@ -76,8 +76,8 @@ const getSongInfos = async (title) => {
 		songInfo.animeTitle = title;
 
 		songInfo.forbiddenWords = uniq([
-			...songInfo.title.split(/[\s\P{Letter}]+/),
-			...songInfo.animeTitle.split(/[\s\P{Letter}]+/),
+			...songInfo.title.split(/\P{Letter}+/u),
+			...songInfo.animeTitle.split(/\P{Letter}+/u),
 		]).filter((word) => word.length > 2).sort((a, b) => b.length - a.length);
 
 		songInfos.push(songInfo);
