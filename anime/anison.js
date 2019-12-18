@@ -89,7 +89,7 @@ const getSongInfos = async (title) => {
 const mask = (text, words) => {
 	let response = text;
 	for (const word of words) {
-		response = response.replace(new RegExp(escapeRegExp(word), 'iu'), '█'.repeat(word.length));
+		response = response.replace(new RegExp(escapeRegExp(word), 'igu'), '█'.repeat(word.length));
 	}
 	return response;
 };
