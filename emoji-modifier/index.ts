@@ -5,7 +5,7 @@ import {promisify} from 'util';
 import {EmojiData} from 'emoji-data-ts';
 import {getEmoji} from '../lib/slackUtils';
 import axios from 'axios';
-import * as sharp from 'sharp';
+import sharp from 'sharp';
 import * as _ from 'lodash';
 import {GifFrame, GifSpec, GifCodec} from 'gifwrap';
 // @ts-ignore
@@ -16,6 +16,11 @@ interface EmodiError {
   kind: 'error';
   message: string;
 }
+
+const errorOfKind = (kind: string): ((message: string) => EmodiError) => message => ({
+  kind: 'error',
+  message: kind + ': ' + message + ':cry:',
+});
 
 interface StaticEmoji {
   kind: 'static';
@@ -56,10 +61,16 @@ const downloadEmoji = async (url: string): Promise<Emoji> => {
 const emojiData = new EmojiData();
 let team_id: string = null;
 
+const trailAlias = async (name: string): Promise<string> => {
+  const match = /alias:(.+)/.exec(name);
+  return match == null ? name : await getEmoji(match[1], team_id)
+}
+
 const lookupEmoji = async (name: string): Promise<Emoji> => {
 	const emojiURL = await getEmoji(name, team_id);
 	if (emojiURL != null) {
-		return await downloadEmoji(emojiURL);
+    const realURL = await trailAlias(emojiURL)
+		return await downloadEmoji(realURL);
 	}
 	const defaultEmoji = emojiData.getImageData(name);
 	if (defaultEmoji != null) {
@@ -97,52 +108,70 @@ type ArgumentType = 'number' | 'string';
 
 interface Filter {
   arguments: ArgumentType[];
-  filter: (emoji: Emoji, args: Argument[]) => Emoji | EmodiError;
+  filter: (emoji: Emoji, args: Argument[]) => Promise<Emoji | EmodiError>;
 }
 
-const framewise = (emoji: Emoji, frameOp: (frame: Buffer) => Buffer): Emoji => {
+const framewise = async (emoji: Emoji, frameOp: (frame: Buffer) => Promise<Buffer>): Promise<Emoji> => {
   switch (emoji.kind) {
     case 'static':
       return {
         kind: 'static',
-        image: frameOp(emoji.image),
+        image: await frameOp(emoji.image),
       };
       break;
     case 'gif':
       return {
         kind: 'gif',
-        frames: emoji.frames.map(frame => {
-          frame.bitmap.data = frameOp(frame.bitmap.data)
+        frames: await Promise.all(emoji.frames.map(async frame => {
+          const codec = new GifCodec;
+          const gif = await codec.encodeGif([frame], emoji.options);
+          frame.bitmap.data = await frameOp(gif.buffer)
           return frame;
-        }),
+        })),
         options: emoji.options,
       };
       break;
   }
 };
 
-const simpleFilter = (f: (frame: Buffer) => Buffer): Filter => ({
+const simpleFilter = (f: (frame: Buffer) => Promise<Buffer>): Filter => ({
   arguments: [],
-  filter: (emoji: Emoji) => framewise(emoji, f),
+  filter: async (emoji: Emoji) => await framewise(emoji, f),
 });
+
+const runtimeError = errorOfKind('RuntimeError');
+
+/*
+const moveFromTo = async (emoji: Emoji, [from, to]: [string, string]): Promise<Emoji | EmodiError> => {
+  if (emoji.kind === 'gif')
+    return runtimeError('move accepts only static emoji');
+  const direction = new Map([
+    ['left', [-1, 0]], ['right', [1, 0]], ['up', [0, -1]], ['down', [0, 1]]
+  ]);
+  const resized = await sharp(emoji.image).resize().toBuffer();
+  const frames = await Promise.all(_.range(12).map(i => {
+  */
 
 
 const filters: Map<string,  Filter> = new Map([
   ['identity', simpleFilter(_.identity)],
   ['speedTimes', {
+    async: false,
     arguments: ['number'],
-    filter: (emoji: Emoji, [mult]: [number]) => {
+    filter: (emoji: Emoji, [ratio]: [number]) => {
       if (emoji.kind == 'static') return emoji;
       return {
         ...emoji,
         frames: emoji.frames.map(frame => {
-          frame.delayCentisecs /= mult;
+          frame.delayCentisecs /= ratio;
           return frame;
         }),
       };
     },
   }],
-]);
+  ['mirrorV', simpleFilter((image: Buffer): Promise<Buffer> => sharp(image).flip().toBuffer())],
+  ['mirror', simpleFilter((image: Buffer): Promise<Buffer> => sharp(image).flop().toBuffer())],
+] as [string, Filter][]);
 // }}}
 
 // parsing & executing {{{
@@ -151,16 +180,13 @@ interface Transformation {
   emojiName: string;
   filters: [string, string[]][];
 }
-const errorOfKind = (kind: string): ((message: string) => EmodiError) => message => ({
-  kind: 'error',
-  message: kind + ': ' + message + ':cry:',
-});
 
 type ParseResult = Transformation | EmodiError;
 // TODO: allow string arguments to contain spaces
 const parse = (message: string): ParseResult => {
   const parseError = errorOfKind('ParseError');
   const parts = message.split('|').map(_.trim);
+  console.log(parts);
   if (parts.length < 1)
     return parseError('Expected emoji');
   const nameMatch = /^:([^!:\s]+):$/.exec(parts[0]);
@@ -213,15 +239,16 @@ const runTransformation = async (message: string): Promise<Emoji | EmodiError> =
       error = typeMismatch;
       return null;
     }
-    return (emoji: Emoji) => filter.filter(emoji, args);
+    return async (emoji: Emoji) => await filter.filter(emoji, args);
   });
   if (error != null) return error;
-  return filterFuns.reduce(
-    (emoji, func) => {
+  return await filterFuns.reduce(
+    async (previous, func) => {
+      const emoji = await previous;
       if (emoji.kind == 'error') return emoji;
-      return func(emoji);
+      return await func(emoji);
     },
-    emoji as Emoji | EmodiError);
+    Promise.resolve(emoji as Emoji | EmodiError));
 };
 
 // }}}
