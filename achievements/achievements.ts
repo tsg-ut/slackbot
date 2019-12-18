@@ -611,6 +611,15 @@ const achievements: Achievement[] = [
 		value: 5,
 	},
 
+	{ 
+  		id: 'reaction-reizoukotte-5',
+  		difficulty: 'hard',
+  		title: 'お前は冷蔵庫！',
+  		condition: '1つのメッセージに5人以上から:reizoukotte:リアクションをもらう',
+  		category: 'reactions',
+  		reaction: 'reizoukotte',
+  		value: 5,
+  	},
 	// sushi-bot
 
 	{
