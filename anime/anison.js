@@ -1,4 +1,4 @@
-const {sample, sampleSize, chunk, uniq, sortBy, shuffle} = require('lodash');
+const {escapeRegExp, sample, sampleSize, chunk, uniq, sortBy, shuffle} = require('lodash');
 const scrapeIt = require('scrape-it');
 const levenshtein = require('fast-levenshtein');
 const {Mutex} = require('async-mutex');
@@ -73,35 +73,63 @@ const getSongInfos = async (title) => {
 		songInfo.tokens = await tokenize(songInfo.paragraphs.join('\n'));
 		songInfo.type = song.type;
 		songInfo.movie = `https://youtu.be/${movieInfos[0].id}`;
+		songInfo.animeTitle = title;
+
+		songInfo.forbiddenWords = uniq([
+			...songInfo.title.split(/[\s\P{Letter}]+/),
+			...songInfo.animeTitle.split(/[\s\P{Letter}]+/),
+		]).filter((word) => word.length > 2).sort((a, b) => b.length - a.length);
+
 		songInfos.push(songInfo);
 		break;
 	}
 	return songInfos;
 };
 
+const mask = (text, words) => {
+	let response = text;
+	for (const word of words) {
+		response = response.replace(new RegExp(escapeRegExp(word), 'iu'), '█'.repeat(word.length));
+	}
+	return response;
+};
+
 const getHint = async (songInfos, n) => {
+	const songInfo = sample(songInfos);
+
 	if (n === 0) {
-		const nouns = sample(songInfos).tokens.filter((token) => token.pos === '名詞');
-		return chunk(sampleSize(uniq(nouns.map((noun) => noun.basic_form)), 10), 5).map((hints) => hints.map((hint) => `＊${hint}＊`).join(' / ')).join('\n');
+		const nouns = songInfo.tokens.filter((token) => (
+			token.pos === '名詞' &&
+			!songInfo.forbiddenWords.includes(token.surface_form)
+		));
+		return chunk(sampleSize(uniq(nouns.map((noun) => noun.basic_form)), 10), 5)
+			.map((hints) => hints.map((hint) => `＊${hint}＊`).join(' / '))
+			.join('\n');
 	}
 	if (n === 1) {
 		const freq = await loadFreq();
-		const words = sample(songInfos).tokens.filter((token) => token.word_type === 'KNOWN' && ['名詞', '動詞', '形容詞'].includes(token.pos));
+		const words = songInfo.tokens.filter((token) => (
+			token.word_type === 'KNOWN' &&
+			['名詞', '動詞', '形容詞'].includes(token.pos) &&
+			!songInfo.forbiddenWords.includes(token.surface_form)
+		));
 		const sortedWords = sortBy(uniq(words.map((word) => word.basic_form)), (word) => {
 			if (freq.has(word)) {
 				return freq.get(word);
 			}
 			return Infinity;
 		}).reverse();
-		return chunk(sortedWords.slice(0, 20), 5).map((hints) => hints.map((hint) => `＊${hint}＊`).join(' / ')).join('\n');
+		return chunk(sortedWords.slice(0, 20), 5)
+			.map((hints) => hints.map((hint) => `＊${hint}＊`).join(' / '))
+			.join('\n');
 	}
 	if (n === 2) {
-		const sentences = sampleSize(sample(songInfos).paragraphs.join('\n').split(/\s+/), 5);
-		return sentences.map((sentence) => `＊${sentence}＊`).join('\n');
+		const sentences = sampleSize(songInfo.paragraphs.join('\n').split(/\s+/), 5);
+		return sentences.map((sentence) => `＊${mask(sentence, songInfo.forbiddenWords)}＊`).join('\n');
 	}
 	if (n === 3 || n === 4) {
-		const paragraph = sample(sample(songInfos).paragraphs);
-		return paragraph.split('\n').map((line) => `＊${line}＊`).join('\n');
+		const paragraph = sample(songInfo.paragraphs);
+		return paragraph.split('\n').map((line) => `＊${mask(line, songInfo.forbiddenWords)}＊`).join('\n');
 	}
 	return '';
 };
