@@ -151,7 +151,7 @@ class Oogiri {
 
 		this.slackInteractions.action({
 			type: 'button',
-			blockId: 'oogiri_end_meaning',
+			blockId: /^oogiri_end_meaning/,
 		}, (payload: any) => {
 			const [action] = payload.actions;
 			mutex.runExclusive(() => (
@@ -325,7 +325,7 @@ class Oogiri {
 			},
 			{
 				type: 'section',
-				block_id: 'oogiri_end_meaning',
+				block_id: `oogiri_end_meaning_${game.id}`,
 				text: {
 					type: 'mrkdwn',
 					text: stripIndent`
