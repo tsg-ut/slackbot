@@ -111,7 +111,9 @@ interface Filter {
   filter: (emoji: Emoji, args: Argument[]) => Promise<Emoji | EmodiError>;
 }
 
-const framewise = async (emoji: Emoji, frameOp: (frame: Buffer) => Promise<Buffer>): Promise<Emoji> => {
+type frameFilter = (frame: Buffer, sharpOpts?: sharp.Raw) => Promise<Buffer>
+
+const framewise = async (emoji: Emoji, frameOp: frameFilter): Promise<Emoji> => {
   switch (emoji.kind) {
     case 'static':
       return {
@@ -123,9 +125,14 @@ const framewise = async (emoji: Emoji, frameOp: (frame: Buffer) => Promise<Buffe
       return {
         kind: 'gif',
         frames: await Promise.all(emoji.frames.map(async frame => {
-          const codec = new GifCodec;
-          const gif = await codec.encodeGif([frame], emoji.options);
-          frame.bitmap.data = await frameOp(gif.buffer)
+          // const codec = new GifCodec;
+          // const gif = await codec.encodeGif([frame], emoji.options);
+          const options: sharp.Raw = {
+              width: frame.bitmap.width,
+              height: frame.bitmap.height,
+              channels: 4,
+          };
+          frame.bitmap.data = await frameOp(frame.bitmap.data, options);
           return frame;
         })),
         options: emoji.options,
@@ -169,8 +176,14 @@ const filters: Map<string,  Filter> = new Map([
       };
     },
   }],
-  ['mirrorV', simpleFilter((image: Buffer): Promise<Buffer> => sharp(image).flip().toBuffer())],
-  ['mirror', simpleFilter((image: Buffer): Promise<Buffer> => sharp(image).flop().toBuffer())],
+  ['mirrorV', simpleFilter((image: Buffer, raw?: sharp.Raw): Promise<Buffer> => {
+    const options = raw == null ? {} : {raw}
+    return sharp(image, options).flip().toBuffer();
+  })],
+  ['mirror', simpleFilter((image: Buffer, raw?: sharp.Raw): Promise<Buffer> => {
+    const options = raw == null ? {} : {raw}
+    return sharp(image, options).flop().toBuffer();
+  })],
 ] as [string, Filter][]);
 // }}}
 
