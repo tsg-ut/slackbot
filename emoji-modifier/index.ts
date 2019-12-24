@@ -68,17 +68,17 @@ const trailAlias = async (name: string): Promise<string> => {
 }
 
 const lookupEmoji = async (name: string): Promise<Emoji> => {
-	const emojiURL = await getEmoji(name, team_id);
-	if (emojiURL != null) {
+  const emojiURL = await getEmoji(name, team_id);
+  if (emojiURL != null) {
     const realURL = await trailAlias(emojiURL)
-		return await downloadEmoji(realURL);
-	}
-	const defaultEmoji = emojiData.getImageData(name);
-	if (defaultEmoji != null) {
-		const url = `https://raw.githubusercontent.com/iamcal/emoji-data/master/img-apple-64/${defaultEmoji.imageUrl}`;
-    return await downloadEmoji(url);
-	}
-	return null;
+    return await downloadEmoji(realURL);
+  }
+  const defaultEmoji = emojiData.getImageData(name);
+  if (defaultEmoji != null) {
+    const url = `https://raw.githubusercontent.com/iamcal/emoji-data/master/img-apple-64/${defaultEmoji.imageUrl}`;
+      return await downloadEmoji(url);
+  }
+  return null;
 };
 
 const uploadImage = async (image: Buffer): Promise<string> => {
