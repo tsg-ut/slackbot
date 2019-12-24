@@ -269,7 +269,7 @@ const parse = (message: string): ParseResult => {
     return parseError('Expected emoji');
   const nameMatch = /^:([^!:\s]+):$/.exec(parts[0]);
   if (nameMatch == null)
-    return parseError(`${parts[0]} is not a valid emoji name`);
+    return parseError(`\`${parts[0]}\` is not a valid emoji name`);
   let error: EmodiError = null;
   const appliedFilters: [string, string[]][] = parts.slice(1).map(part => {
     const tokens = part.split(/\s/).filter(s => s !== '');
@@ -294,24 +294,24 @@ const runTransformation = async (message: string): Promise<Emoji | EmodiError> =
   const nameError = errorOfKind('NameError');
   const emoji = await lookupEmoji(parseResult.emojiName);
   if (emoji == null)
-    return nameError(`:${parseResult.emojiName}: : No such emoji`);
+    return nameError(`\`:${parseResult.emojiName}:\` : No such emoji`);
   const typeError = errorOfKind('TypeError');
   let error: EmodiError = null;
   const filterFuns = parseResult.filters.map(([name, args]) => {
     const filter = filters.get(name);
     if (filter == null) {
-      error = nameError(`${name}: No such filter`);
+      error = nameError(`\`${name}\`: No such filter`);
       return null;
     }
     const argTypes = filter.arguments;
     if (args.length !== argTypes.length) {
       const plural = argTypes.length > 1 ? 's' : '';
-      error = typeError(`${name} expects ${argTypes.length} argument${plural}, but got ${args.length}`);
+      error = typeError(`\`${name}\` expects ${argTypes.length} argument${plural}, but got ${args.length}`);
       return null;
     }
     const typeMismatch = _.zipWith(args, argTypes, (arg, type) => {
       if (type === 'string' || !isNaN(_.toNumber(arg))) return null;
-      return typeError(`${arg} is not a number`);
+      return typeError(`\`${arg}\` is not a number`);
     }).reduce((a, b) => a || b, null);
     if (typeMismatch !=  null) {
       error = typeMismatch;
@@ -374,7 +374,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     const result = await runTransformation(operation[1])
       .catch(err => {
         console.log(err.message);
-        return internalError(err.message)
+        return internalError(err.name + ': ' + err.message + '\n Please inform :coil:.')
       });
     if (result.kind == 'error')
       postError(result.message);
