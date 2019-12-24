@@ -122,7 +122,7 @@ class Oogiri {
 
 		this.slackInteractions.action({
 			type: 'button',
-			blockId: 'oogiri_add_meaning',
+			blockId: /^oogiri_add_meaning/,
 		}, (payload: any, respond: any) => {
 			const [action] = payload.actions;
 			mutex.runExclusive(() => (
@@ -151,7 +151,7 @@ class Oogiri {
 
 		this.slackInteractions.action({
 			type: 'button',
-			blockId: 'oogiri_end_meaning',
+			blockId: /^oogiri_end_meaning/,
 		}, (payload: any) => {
 			const [action] = payload.actions;
 			mutex.runExclusive(() => (
@@ -295,7 +295,7 @@ class Oogiri {
 		return [
 			{
 				type: 'section',
-				block_id: 'oogiri_add_meaning',
+				block_id: `oogiri_add_meaning_${game.id}`,
 				text: {
 					type: 'mrkdwn',
 					text: stripIndent`
@@ -325,7 +325,7 @@ class Oogiri {
 			},
 			{
 				type: 'section',
-				block_id: 'oogiri_end_meaning',
+				block_id: `oogiri_end_meaning_${game.id}`,
 				text: {
 					type: 'mrkdwn',
 					text: stripIndent`

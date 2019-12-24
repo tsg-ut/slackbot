@@ -15,7 +15,14 @@ interface SongInfo {
     utaNetUrl: string;
     audioUrl: string | null;
     artworkUrl: string | null;
+    paragraphs: string[],
 }
+
+interface MovieInfo {
+    embedLink: string,
+    id: string,
+    title: string,
+};
 
 interface iTuensInfo {
     audioUrl: string | null;
@@ -47,8 +54,9 @@ const getiTunesInfo = async (title: string, artist: string): Promise<iTuensInfo>
     }
 };
 
-const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongInfo> => {
+export const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongInfo> => {
     interface fetchedSongData {
+        url: string;
         title: string;
         artist: string;
         lyricist: string;
@@ -57,6 +65,10 @@ const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongIn
     }
     const entities = new AllHtmlEntities();
     const fetchedSongData = (await scrapeIt<fetchedSongData>(songInfoUrl, {
+        url: {
+            selector: 'link[rel=canonical]',
+            attr: 'href',
+        },
         title: 'h2',
         artist: 'h3',
         lyricist: 'h4[itemprop=lyricist]',
@@ -79,14 +91,42 @@ const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongIn
     return {
         phrase: keyword,
         paragraph: formattedMatchingParagraphs[0], // とりあえず1つだけ出すことにする
-        utaNetUrl: songInfoUrl,
+        utaNetUrl: fetchedSongData.url,
         title: fetchedSongData.title,
         artist: fetchedSongData.artist,
         lyricist: fetchedSongData.lyricist,
         composer: fetchedSongData.composer,
         audioUrl,
         artworkUrl,
+        paragraphs,
     };
+};
+
+export const getMovieInfo = async (movieInfoUrl: string): Promise<MovieInfo[]> => {
+    interface fetchedSongData {
+        movies: {embedLink: string, title: string}[];
+    }
+    const {movies} = (await scrapeIt<fetchedSongData>(movieInfoUrl, {
+        movies: {
+            listItem: '#youtube_list .movie_l',
+            data: {
+                embedLink: {
+                    selector: 'a',
+                    attr: 'href',
+                },
+                title: {
+                    selector: 'a',
+                    attr: 'title',
+                },
+            }
+        },
+    })).data;
+
+    return movies.map(({embedLink, title}) => ({
+        embedLink,
+        title,
+        id: new URL(embedLink).pathname.split('/')[2],
+    }))
 };
 
 const search = async (keyword: string): Promise<SongInfo | null> => {

@@ -1,5 +1,4 @@
 import {WebClient, RTMClient} from '@slack/client';
-// @ts-ignore
 import cloudinary from 'cloudinary';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
@@ -25,7 +24,8 @@ const uploadImage = async (board: {color: string, letter: string}[], boardIndex:
 	const imageData = await renderCrossword(board, boardIndex);
 	const cloudinaryData: any = await new Promise((resolve, reject) => {
 		cloudinary.v2.uploader
-			.upload_stream({resource_type: 'image'}, (error: any, response: any) => {
+			// @ts-ignore ref: https://github.com/cloudinary/cloudinary_npm/pull/327
+			.upload_stream({resource_type: 'image'}, (error, response) => {
 				if (error) {
 					reject(error);
 				} else {

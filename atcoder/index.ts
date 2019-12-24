@@ -105,7 +105,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						selector: 'td:nth-child(1) time',
 						convert: (time) => new Date(time).getTime(),
 					},
-					title: 'td:nth-child(2)',
+					title: {
+						selector: 'td:nth-child(2)',
+						convert: (title) => title.replace('◉', '').trim(),
+					},
 					id: {
 						selector: 'td:nth-child(2) a',
 						attr: 'href',
