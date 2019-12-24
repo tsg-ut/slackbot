@@ -319,7 +319,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     if (operation == null)
       return;
 
-    const result = await runTransformation(operation[1]);
+    const internalError = errorOfKind('InternalError');
+    const result = await runTransformation(operation[1])
+      .catch(err => internalError(err.message));
     if (result.kind == 'error')
       postError(result.message);
     else {
