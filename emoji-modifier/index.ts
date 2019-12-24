@@ -165,15 +165,11 @@ const runtimeError = errorOfKind('RuntimeError');
 const moveFromTo = async (emoji: Emoji, [from, to]: [string, string]): Promise<Emoji | EmodiError> => {
   if (emoji.kind === 'gif')
     return runtimeError('move accepts only static emoji');
-  type direction = 'up' | 'down' | 'left' | 'right';
-  const directions: direction[] = ['up', 'down', 'left', 'right'];
-  const isDirection = (s: string): s is direction => (directions as string[]).includes(s);
   type position = 'top' | 'bottom' | 'left' | 'right';
   const positions: position[] = ['top', 'bottom', 'left', 'right'];
-  if (!isDirection(from) || !isDirection(to))
-    return runtimeError('move: expected direction (up | down | left | right)');
-  const positionize =
-    (dir: direction): position => dir == 'up' ? 'top' : dir == 'down' ? 'bottom' : dir;
+  const isPosition = (s: string): s is position => (positions as string[]).includes(s);
+  if (!isPosition(from) || !isPosition(to))
+    return runtimeError('move: expected direction (top | bottom | left | right)');
   const {width, height} = await sharp(emoji.image).metadata();
   const side = Math.max(width, height);
   const extension = { top: 0, bottom: 0, left: 0, right: 0, background: {r: 0, b: 0, g: 0, alpha: 0} };
@@ -207,11 +203,10 @@ const moveFromTo = async (emoji: Emoji, [from, to]: [string, string]): Promise<E
     const extended = await sharp(img).extend(extend).toBuffer();
     return await sharp(extended).extract(extract).toBuffer();
   };
-  const [fromP, toP] = [from, to].map(positionize);
   const frames = await Promise.all(_.range(12).map(async i => {
     const [coming, going] = await Promise.all([
-      shift(fromP, resized, 12 - i),
-      shift(toP, resized, i),
+      shift(from, resized, 12 - i),
+      shift(to, resized, i),
     ]);
     return await sharp(going).composite([{input: coming}]).raw().toBuffer();
   }));
@@ -231,23 +226,45 @@ const filters: Map<string,  Filter> = new Map([
       return {
         ...emoji,
         frames: emoji.frames.map(frame => {
-          frame.delayCentisecs /= ratio;
+          // TODO: better implementation
+          frame.delayCentisecs = Math.max(2, frame.delayCentisecs / ratio);
           return frame;
         }),
       };
     },
   }],
   ['mirrorV', simpleFilter((image: Buffer, raw?: sharp.Raw): Promise<Buffer> => {
-    const options = raw == null ? {} : {raw}
+    const options = raw == null ? {} : {raw};
     return sharp(image, options).flip().toBuffer();
   })],
   ['mirror', simpleFilter((image: Buffer, raw?: sharp.Raw): Promise<Buffer> => {
-    const options = raw == null ? {} : {raw}
+    const options = raw == null ? {} : {raw};
     return sharp(image, options).flop().toBuffer();
   })],
   ['move', {
     arguments: ['string', 'string'],
     filter: moveFromTo
+  }],
+  ['go', {
+    arguments: ['string'],
+    filter: async (emoji: Emoji, [direction]: [string]): Promise<Emoji | EmodiError> => {
+      const opposite = new Map([
+        ['top', 'bottom'], ['bottom', 'top'], ['left', 'right'], ['left', 'right']
+      ]);
+      const from = opposite.get(direction);
+      if (from == null)
+        return runtimeError('go: expected direction (top | bottom | left | right)');
+      return await moveFromTo(emoji, [from, direction]);
+    }
+  }],
+  ['trim', {
+    arguments: ['number'],
+    filter: async (emoji: Emoji, [threshold]: [number]): Promise<Emoji | EmodiError> => {
+      return framewise(emoji, async (image: Buffer, raw?: sharp.Raw): Promise<Buffer> => {
+        const options = raw == null ? {} : {raw};
+        return sharp(image, options).trim(threshold).toBuffer();
+      });
+    }
   }],
 ] as [string, Filter][]);
 // }}}
@@ -264,7 +281,7 @@ type ParseResult = Transformation | EmodiError;
 const parse = (message: string): ParseResult => {
   const parseError = errorOfKind('ParseError');
   const parts = message.split('|').map(_.trim);
-  console.log(parts);
+  logger.info(parts);
   if (parts.length < 1)
     return parseError('Expected emoji');
   const nameMatch = /^:([^!:\s]+):$/.exec(parts[0]);
@@ -300,7 +317,7 @@ const runTransformation = async (message: string): Promise<Emoji | EmodiError> =
   const filterFuns = parseResult.filters.map(([name, args]) => {
     const filter = filters.get(name);
     if (filter == null) {
-      error = nameError(`\`${name}\`: No such filter`);
+      error = nameError(`\`${name}\`: No such filter(Perhaps you can implement it?)`);
       return null;
     }
     const argTypes = filter.arguments;
@@ -317,7 +334,11 @@ const runTransformation = async (message: string): Promise<Emoji | EmodiError> =
       error = typeMismatch;
       return null;
     }
-    return async (emoji: Emoji) => await filter.filter(emoji, args);
+    const convertedArgs = _.zipWith(args, argTypes, (arg, type) => {
+      if (type ==  'string') return arg;
+      return _.toNumber(arg);
+    });
+    return async (emoji: Emoji) => await filter.filter(emoji, convertedArgs);
   });
   if (error != null) return error;
   return await filterFuns.reduce(
@@ -373,7 +394,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     const internalError = errorOfKind('InternalError');
     const result = await runTransformation(operation[1])
       .catch(err => {
-        console.log(err.message);
+        logger.error(err.message);
         return internalError(err.name + ': ' + err.message + '\n Please inform :coil:.')
       });
     if (result.kind == 'error')
