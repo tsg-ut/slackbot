@@ -8,6 +8,7 @@ import axios from 'axios';
 import sharp from 'sharp';
 import * as _ from 'lodash';
 import {GifFrame, GifSpec, GifCodec} from 'gifwrap';
+import * as iq from 'image-q';
 // @ts-ignore
 import {v2 as cloudinary} from 'cloudinary';
 
@@ -91,12 +92,27 @@ const uploadImage = async (image: Buffer): Promise<string> => {
   return response.secure_url;
 };
 
+const quantizeColor = async (frame: GifFrame): Promise<GifFrame> => {
+  const {colors, usesTransparency, indexCount} = frame.getPalette();
+  if (indexCount <= 256) return frame;
+  const maxColors = usesTransparency ? 255 : 256;
+  const pointContainer = iq.utils.PointContainer.fromBuffer(
+    frame.bitmap.data,
+    frame.bitmap.height,
+    frame.bitmap.width);
+  const palette = await iq.buildPalette([pointContainer], {colors: maxColors});
+  const processed = await iq.applyPalette(pointContainer, palette);
+  frame.bitmap.data = Buffer.from(processed.toUint8Array());
+  return frame;
+};
+
 const uploadEmoji = async (emoji: Emoji): Promise<string>  => {
   if (emoji.kind === 'static')
       return await uploadImage(emoji.image);
   else {
+    const quantizedFrames = await Promise.all(emoji.frames.map(quantizeColor));
     const codec = new GifCodec;
-    const gif = await codec.encodeGif(emoji.frames, emoji.options);
+    const gif = await codec.encodeGif(quantizedFrames, emoji.options);
     return await uploadImage(gif.buffer);
   }
 };
@@ -125,8 +141,6 @@ const framewise = async (emoji: Emoji, frameOp: frameFilter): Promise<Emoji> => 
       return {
         kind: 'gif',
         frames: await Promise.all(emoji.frames.map(async frame => {
-          // const codec = new GifCodec;
-          // const gif = await codec.encodeGif([frame], emoji.options);
           const options: sharp.Raw = {
               width: frame.bitmap.width,
               height: frame.bitmap.height,
