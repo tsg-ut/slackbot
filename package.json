@@ -60,7 +60,7 @@
     "googleapis": "^43.0.0",
     "html-entities": "^1.2.1",
     "iconv-lite": "^0.5.0",
-    "image-q": ^"2.1.2",
+    "image-q": "^2.1.2",
     "jaconv": "^1.0.4",
     "japanese": "^1.2.0",
     "jp-num": "^0.1.0",
