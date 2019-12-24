@@ -162,22 +162,69 @@ const simpleFilter = (f: (frame: Buffer) => Promise<Buffer>): Filter => ({
 
 const runtimeError = errorOfKind('RuntimeError');
 
-/*
 const moveFromTo = async (emoji: Emoji, [from, to]: [string, string]): Promise<Emoji | EmodiError> => {
   if (emoji.kind === 'gif')
     return runtimeError('move accepts only static emoji');
-  const direction = new Map([
-    ['left', [-1, 0]], ['right', [1, 0]], ['up', [0, -1]], ['down', [0, 1]]
-  ]);
-  const resized = await sharp(emoji.image).resize().toBuffer();
-  const frames = await Promise.all(_.range(12).map(i => {
-  */
-
+  type direction = 'up' | 'down' | 'left' | 'right';
+  const directions: direction[] = ['up', 'down', 'left', 'right'];
+  const isDirection = (s: string): s is direction => (directions as string[]).includes(s);
+  type position = 'top' | 'bottom' | 'left' | 'right';
+  const positions: position[] = ['top', 'bottom', 'left', 'right'];
+  if (!isDirection(from) || !isDirection(to))
+    return runtimeError('move: expected direction (up | down | left | right)');
+  const positionize =
+    (dir: direction): position => dir == 'up' ? 'top' : dir == 'down' ? 'bottom' : dir;
+  const {width, height} = await sharp(emoji.image).metadata();
+  const side = Math.max(width, height);
+  const extension = { top: 0, bottom: 0, left: 0, right: 0, background: {r: 0, b: 0, g: 0, alpha: 0} };
+  if (width > height) {
+    const top = Math.floor((width -  height) / 2);
+    extension.top = top;
+    extension.bottom = width - height - top;
+  }
+  else {
+    const left = Math.floor((height - width) / 2);
+    extension.left = left;
+    extension.right = height - width - left;
+  }
+  const resized = await sharp(emoji.image).extend(extension).png().toBuffer();
+  const shift = async (pos: position, img: Buffer, frame: number): Promise<Buffer> => {
+    const step = Math.round(frame * side / 12);
+    const opposites = new Map<position, position>([
+      ['top', 'bottom'], ['bottom', 'top'], ['left', 'right'], ['right', 'left']
+    ]);
+    const opposite = opposites.get(pos);
+    const extend = Object.fromEntries([
+      ['background', {r: 0, g: 0, b: 0, alpha: 0}],
+      ...positions.map(edge => [edge, edge == opposite ? step : 0])
+    ]);
+    const extract = {
+      top: pos == 'top' ? step : 0,
+      left: pos == 'left' ? step : 0,
+      width: side,
+      height: side,
+    };
+    const extended = await sharp(img).extend(extend).toBuffer();
+    return await sharp(extended).extract(extract).toBuffer();
+  };
+  const [fromP, toP] = [from, to].map(positionize);
+  const frames = await Promise.all(_.range(12).map(async i => {
+    const [coming, going] = await Promise.all([
+      shift(fromP, resized, 12 - i),
+      shift(toP, resized, i),
+    ]);
+    return await sharp(going).composite([{input: coming}]).raw().toBuffer();
+  }));
+  return {
+    kind: 'gif',
+    frames: frames.map(buffer => new GifFrame(side, side, buffer, { delayCentisecs: 6 })),
+    options: { loops: 0 }
+  };
+}
 
 const filters: Map<string,  Filter> = new Map([
   ['identity', simpleFilter(_.identity)],
   ['speedTimes', {
-    async: false,
     arguments: ['number'],
     filter: (emoji: Emoji, [ratio]: [number]) => {
       if (emoji.kind == 'static') return emoji;
@@ -198,6 +245,10 @@ const filters: Map<string,  Filter> = new Map([
     const options = raw == null ? {} : {raw}
     return sharp(image, options).flop().toBuffer();
   })],
+  ['move', {
+    arguments: ['string', 'string'],
+    filter: moveFromTo
+  }],
 ] as [string, Filter][]);
 // }}}
 
@@ -321,7 +372,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
     const internalError = errorOfKind('InternalError');
     const result = await runTransformation(operation[1])
-      .catch(err => internalError(err.message));
+      .catch(err => {
+        console.log(err.message);
+        return internalError(err.message)
+      });
     if (result.kind == 'error')
       postError(result.message);
     else {
