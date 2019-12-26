@@ -83,6 +83,7 @@ const lookupEmoji = async (name: string): Promise<Emoji> => {
 
 const uploadImage = async (image: Buffer): Promise<string> => {
   const response = await new Promise((resolve, reject) => {
+    // @ts-ignore it seems that cloudinary type definitions are not accurate
     cloudinary.uploader.upload_stream((error: any, data: any) => {
       if (error) reject(error);
       else resolve(data);
