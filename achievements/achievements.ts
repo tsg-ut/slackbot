@@ -844,7 +844,7 @@ const achievements: Achievement[] = [
 		difficulty: 'hard',
 		title: '歩く百科事典',
 		condition: 'たほいやのランキングで1位になる',
-		category: 'tahoiya'
+		category: 'tahoiya',
 	},
 
 	// mahjong
