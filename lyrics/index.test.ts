@@ -37,7 +37,9 @@ describe('lyrics', () => {
             }
             if (url.includes('song')) { // Lyrics page
                 const data = oneLineTrim`
-                    <html><body><div id="view_kashi">
+                    <html><head>
+                        <link rel="canonical" href="https://www.uta-net.com/song/159792/">
+                    </head><body><div id="view_kashi">
                         <div class="title">
                             <h2>とまどい→レシピ</h2>
                         </div>
