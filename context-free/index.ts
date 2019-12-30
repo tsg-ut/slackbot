@@ -17,29 +17,24 @@ const randomWord = async (): Promise<string> => {
     return response.data.word;
 };
 
+const randomInterval = () =>
+    1000 * 60 * (90 + (Math.random() - 0.5) * 2 * 60);
+
 interface SlackInterface {
     rtmClient: RTMClient;
     webClient: WebClient;
 }
-
-let messageCount = 0;
-// About 1400 messages are posted in #sandbox per day on average
-const threshold = 1400 / 10;
     
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
-    rtm.on('message', async message => {
-	if (message.channel !== process.env.CHANNEL_SANDBOX)
-	    return;
-	messageCount++;
-	if (messageCount >= threshold) {
-	    messageCount = 0;
-	    const word = await randomWord();
-	    slack.chat.postMessage({
-		channel: process.env.CHANNEL_SANDBOX,
-		icon_emoji: ':context:',
-		username: 'context free',
-		text: word,
-	    });
-	}
-    });
+    async function postWord() {
+	const word = await randomWord();
+	slack.chat.postMessage({
+	    channel: process.env.CHANNEL_SANDBOX,
+	    icon_emoji: ':context:',
+	    username: 'context free bot',
+	    text: word,
+	})
+	setTimeout(postWord, randomInterval());
+    }
+    setTimeout(postWord, randomInterval());
 };
