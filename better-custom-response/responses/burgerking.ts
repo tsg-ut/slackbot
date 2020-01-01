@@ -17,8 +17,8 @@ export default async ([, head, tail]: string[]): Promise<string[]> => {
     );
     const 語幹 = 語幹Tokens.map(({surface_form}) => surface_form).join('');
     if (tail.startsWith('て')) {
-        return [`:burger-king:「${語幹}てんで！」`];
+        return [`${語幹}てんで！`];
     }
-    return [`:burger-king:「${語幹}でんで！」`];
+    return [`${語幹}でんで！`];
 };
 

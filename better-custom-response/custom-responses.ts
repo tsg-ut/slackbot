@@ -48,6 +48,8 @@ const customResponses: CustomResponse[] = [
     {
         input: [/^(.*)(てくれや|でくれや)[。⋯・…！!]*$/],
         outputFunction: burgerking,
+        username: 'バーガーキング・ジャパン',
+        icon_emoji: ':burger-king:',
     },
     {
         input: [/^(おじぎねこ)?ファミリー$/],
