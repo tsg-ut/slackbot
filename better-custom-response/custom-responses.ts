@@ -1,4 +1,5 @@
 import hontouni from './responses/hontouni';
+import burgerking from './responses/burgerking';
 
 interface CustomResponse {
     input: RegExp[],
@@ -41,8 +42,12 @@ const customResponses: CustomResponse[] = [
         username: 'dice response',
     },
     {
-        input: [/^(.*)(てます|でます|ています|でいます|ちゃった|じゃった)[。⋯・…]*$/],
+        input: [/^(.*)(てます|でます|ています|でいます|ちゃった|じゃった)[。⋯・…!！]*$/],
         outputFunction: hontouni,
+    },
+    {
+        input: [/^(.*)(てくれや|でくれや)[。⋯・…！!]*$/],
+        outputFunction: burgerking,
     },
     {
         input: [/^(おじぎねこ)?ファミリー$/],
