@@ -19,8 +19,8 @@ async function postWelcomeMessage(slack: WebClient, channel: string) {
 		channel,
 		text,
 		link_names: true,
-		icon_emoji: ':jp3bgy:',
-		username: 'JP3BGY',
+		icon_emoji: ':tsg:',
+		username: 'TSG',
 	});
 }
 
