@@ -51,6 +51,7 @@ const plugins = [
 	require('./oogiri'),
 	require('./sort-nazonazo'),
 	require('./tsglive'),
+	require('./context-free'),
 ];
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
