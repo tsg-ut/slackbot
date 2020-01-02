@@ -27,7 +27,7 @@ interface SlackInterface {
 }
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
-  async function postWord() {
+  const postWord = async () => {
     const word = await randomWord();
     slack.chat.postMessage({
       channel: process.env.CHANNEL_SANDBOX,
@@ -35,7 +35,17 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       username: 'context free bot',
       text: word,
     });
-    setTimeout(postWord, randomInterval());
-  }
-  setTimeout(postWord, randomInterval());
+  };
+  const repeatPost = () => {
+    postWord();
+    setTimeout(repeatPost, randomInterval());
+  };
+  rtm.on('message', message => {
+    if (message.channel !== process.env.CHANNEL_SANDBOX
+        || message.subtype === 'bot_message')
+      return;
+    if (/\s*@cfb.*/.exec(message.text) != null)
+      postWord();
+  });
+  setTimeout(repeatPost, randomInterval());
 };
