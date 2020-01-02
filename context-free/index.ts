@@ -44,7 +44,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     if (message.channel !== process.env.CHANNEL_SANDBOX
         || message.subtype === 'bot_message')
       return;
-    if (/^\s*@cfb\s.*$/.exec(message.text) != null)
+    if (/^\s*@cfb(\s.*)?$/.exec(message.text) != null)
       postWord();
   });
   setTimeout(repeatPost, randomInterval());
