@@ -47,5 +47,5 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     if (/^\s*@cfb\s.*$/.exec(message.text) != null)
       postWord();
   });
-  // setTimeout(repeatPost, randomInterval());
+  setTimeout(repeatPost, randomInterval());
 };
