@@ -32,7 +32,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     slack.chat.postMessage({
       channel: process.env.CHANNEL_SANDBOX,
       icon_emoji: ':context:',
-      username: 'context free bot',
+      username: 'context free bot(dev)',
       text: word,
     });
   };
@@ -44,8 +44,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     if (message.channel !== process.env.CHANNEL_SANDBOX
         || message.subtype === 'bot_message')
       return;
-    if (/\s*@cfb.*/.exec(message.text) != null)
+    if (/^\s*@cfb\s.*$/.exec(message.text) != null)
       postWord();
   });
-  setTimeout(repeatPost, randomInterval());
+  // setTimeout(repeatPost, randomInterval());
 };
