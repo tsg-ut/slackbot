@@ -32,7 +32,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     slack.chat.postMessage({
       channel: process.env.CHANNEL_SANDBOX,
       icon_emoji: ':context:',
-      username: 'context free bot(dev)',
+      username: 'context free bot',
       text: word,
     });
   };
