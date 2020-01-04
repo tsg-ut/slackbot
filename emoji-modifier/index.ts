@@ -250,7 +250,7 @@ const filters: Map<string,  Filter> = new Map([
     arguments: ['string'],
     filter: async (emoji: Emoji, [direction]: [string]): Promise<Emoji | EmodiError> => {
       const opposite = new Map([
-        ['top', 'bottom'], ['bottom', 'top'], ['left', 'right'], ['left', 'right']
+        ['top', 'bottom'], ['bottom', 'top'], ['left', 'right'], ['right', 'left']
       ]);
       const from = opposite.get(direction);
       if (from == null)
