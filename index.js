@@ -53,6 +53,7 @@ const plugins = [
 	require('./tsglive'),
 	require('./emoji-modifier'),
 	require('./context-free'),
+	require('./nojoin'),
 ];
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
