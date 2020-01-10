@@ -214,7 +214,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`, {
 			headers: {
-				'Cookies': `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+				'Cookie': `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
 			},
 		});
 
@@ -261,7 +261,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		const {data: results}: {data: Results} = await axios.get(`https://atcoder.jp/contests/${id}/results/json`, {
 			headers: {
-				'Cookies': `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+				'Cookie': `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
 			},
 		});
 		if (results.length === 0) {
@@ -277,7 +277,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`, {
 			headers: {
-				'Cookies': `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+				'Cookie': `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
 			},
 		});
 		const userStandings = state.users.map(({atcoder, slack}) => {
