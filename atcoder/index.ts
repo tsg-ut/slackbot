@@ -212,7 +212,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		logger.info(`Preposting result of contest ${id}...`);
 
-		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`);
+		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`, {
+			headers: {
+				'Cookies': `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+			},
+		});
 
 		const userStandings = state.users.map(({atcoder, slack}) => {
 			const standing = standings.StandingsData.find(({UserName, UserScreenName}) => UserName === atcoder || UserScreenName === atcoder);
@@ -255,7 +259,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const postResult = async (id: string) => {
 		const contest = state.contests.find((contest) => contest.id === id);
 
-		const {data: results}: {data: Results} = await axios.get(`https://atcoder.jp/contests/${id}/results/json`);
+		const {data: results}: {data: Results} = await axios.get(`https://atcoder.jp/contests/${id}/results/json`, {
+			headers: {
+				'Cookies': `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+			},
+		});
 		if (results.length === 0) {
 			return;
 		}
@@ -267,7 +275,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return [slack, result];
 		}));
 
-		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`);
+		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`, {
+			headers: {
+				'Cookies': `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+			},
+		});
 		const userStandings = state.users.map(({atcoder, slack}) => {
 			const standing = standings.StandingsData.find(({UserName, UserScreenName}) => UserName === atcoder || UserScreenName === atcoder);
 			return {user: slack, atcoder, standing};
