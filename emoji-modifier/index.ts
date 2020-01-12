@@ -111,7 +111,9 @@ const uploadEmoji = async (emoji: Emoji): Promise<string>  => {
   if (emoji.kind === 'static')
       return await uploadImage(emoji.image);
   else {
-    const quantizedFrames = await Promise.all(emoji.frames.map(quantizeColor));
+    const quantizedFrames = new Array(emoji.frames.length);
+    for (const i of quantizedFrames.keys())
+      quantizedFrames[i] = await quantizeColor(emoji.frames[i]);
     const codec = new GifCodec;
     const gif = await codec.encodeGif(quantizedFrames, emoji.options);
     return await uploadImage(gif.buffer);
