@@ -81,15 +81,15 @@ interface SlackInterface {
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
   const postWord = async () => {
     const word = await randomWord();
-    slack.chat.postMessage({
+    await slack.chat.postMessage({
       channel: process.env.CHANNEL_SANDBOX,
       icon_emoji: ':context:',
       username: 'context free bot',
       text: word,
     });
-    await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
+    await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
     const meaning = await getMeaning(word);
-    slack.chat.postMessage({
+    await slack.chat.postMessage({
       channel: process.env.CHANNEL_SANDBOX,
       icon_emoji: ':man_dancing_2:',
       username: '通りすがりに context free bot の解説をしてくれるおじさん',
