@@ -92,6 +92,11 @@ interface SlackIncomingWebhookRequest {
 	attachments: SlackAttachment[]
 }
 
+const maskAttachment = (attachment: SlackAttachment) => ({
+	...attachment,
+	text: 'この記事の更新通知はミュートされています。',
+});
+
 // eslint-disable-next-line node/no-unsupported-features, node/no-unsupported-features/es-syntax, padded-blocks
 export const server = ({webClient: slack}: SlackInterface) => plugin((fastify, opts, next) => {
 
