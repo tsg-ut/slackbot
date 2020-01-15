@@ -40,6 +40,9 @@ const reaction = (text:string) => {
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     rtm.on('message', async (message) => {
+        if(message.channel !== process.env.CHANNEL_SANDBOX) {
+            return;
+        }
         if (!message.user || message.user.startsWith('B') || message.user === 'UEJTPN6R5' || message.user === 'USLACKBOT') return;
         const {channel, text, ts: timestamp} = message;
         if (!text) return;
