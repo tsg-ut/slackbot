@@ -92,7 +92,7 @@ interface SlackIncomingWebhookRequest {
 	attachments: SlackAttachment[]
 }
 
-const maskAttachment = (attachment: SlackAttachment) => ({
+const maskAttachment = (attachment: SlackAttachment): SlackAttachment => ({
 	...attachment,
 	text: 'この記事の更新通知はミュートされています。',
 });
