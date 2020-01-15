@@ -3,6 +3,7 @@ import axios from 'axios';
 import logger from '../lib/logger.js';
 import {LinkUnfurls} from '@slack/client';
 import qs from 'querystring';
+import plugin from 'fastify-plugin';
 
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
 
@@ -73,3 +74,47 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 		}
 	});
 };
+
+
+interface SlackAttachment {
+	// WARN: incomplete
+	title?: string;
+	title_link?: string;
+	text: string;
+	mrkdwn_in?: string[];
+	author_name?: string[]
+}
+
+interface SlackIncomingWebhookRequest {
+	text: string;
+	mrkdwn?: boolean;
+	username?: string;
+	attachments: SlackAttachment[]
+}
+
+// eslint-disable-next-line node/no-unsupported-features, node/no-unsupported-features/es-syntax, padded-blocks
+export const server = ({webClient: slack}: SlackInterface) => plugin((fastify, opts, next) => {
+
+	/**
+	 * Scrapboxからの更新通知 (Incoming Webhook形式) を受け取り，ミュート処理をしてSlackに投稿する
+	 */
+
+	fastify.post<unknown, unknown, unknown, SlackIncomingWebhookRequest>('/scrapbox', async (req, res) => {
+		req.body;
+		await slack.chat.postMessage(
+			{
+				channel: process.env.CHANNEL_SCRAPBOX,
+				icon_emoji: ':scrapbox:',
+				...req.body,
+				attachments: req.body.attachments.map(
+					(attachment) =>
+						isMuted(attachment.title_link) ? maskAttachment(attachment) : attachment
+				),
+			}
+		);
+		return '';
+	});
+
+	next();
+});
+
