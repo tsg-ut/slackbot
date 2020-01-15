@@ -19,7 +19,7 @@ try {
 	word2vecInstalled = false;
 }
 
-const plugins = [
+const plugins = [/*
 	require('./mahjong'),
 	require('./pocky'),
 	require('./emoji-notifier'),
@@ -48,10 +48,10 @@ const plugins = [
 	require('./voiperrobot'),
 	require('./atcoder'),
 	require('./lyrics'),
-	require('./ojigineko-life'),
+	require('./ojigineko-life'),*/
 	require('./better-custom-response'),
 	require('./better-custom-response/server'),
-	require('./emoxpand'),
+	//require('./emoxpand'),
 ];
 
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
@@ -77,7 +77,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 	logger.info('Launched');
 	webClient.chat.postMessage({
 		channel: process.env.CHANNEL_SANDBOX,
-		text: 'ｼｭｯｼｭｯ (起動音)',
+		text: 'ﾈｯｺｺｺ (起動音)',
 	});
 })();
 
