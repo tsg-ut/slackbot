@@ -8,7 +8,7 @@ export interface CustomResponse {
     reaction?: true,
 }
 
-const customResponses: CustomResponse[] = [
+const customResponses: CustomResponse[] = [/*
     {
         input: [/^あほくさ$/],
         outputArray: [":ahokusa-top-left::ahokusa-top-center::ahokusa-top-right:\n:ahokusa-bottom-left::ahokusa-bottom-center::ahokusa-bottom-right:"],
@@ -61,6 +61,10 @@ const customResponses: CustomResponse[] = [
         outputArray: ['ねこ〜', 'すぴー'],
         icon_emoji: ':cat2:',
         username: 'tsgcat',
+    },*/
+    {
+        input: [/ping/],
+        outputArray: ['pong'],
     },
 ];
 
