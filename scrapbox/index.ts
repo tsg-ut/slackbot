@@ -5,9 +5,19 @@ import {LinkUnfurls} from '@slack/client';
 import qs from 'querystring';
 import plugin from 'fastify-plugin';
 
+const scrapboxUrlRegexp = /^https?:\/\/scrapbox.io\/tsg\/(.+)$/;
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
+const getScrapboxUrlFromPageUrl = (url: string): string => {
+	let pageName = url.replace(scrapboxUrlRegexp, '$1');
+	try {
+		if (decodeURI(pageName) === pageName) {
+			pageName = encodeURI(pageName);
+		}
+	} catch {}
+	return getScrapboxUrl(pageName);
+};
 
-import {WebClient, RTMClient} from '@slack/client';
+import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -23,16 +33,10 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 		const unfurls: LinkUnfurls = {};
 		for (const link of links) {
 			const {url} = link;
-			if (!(/^https?:\/\/scrapbox.io\/tsg\/.+/).test(url)) {
+			if (!scrapboxUrlRegexp.test(url)) {
 				continue;
 			}
-			let pageName = url.replace(/^https?:\/\/scrapbox.io\/tsg\/(.+)$/, '$1');
-			try {
-				if (decodeURI(pageName) === pageName) {
-					pageName = encodeURI(pageName);
-				}
-			} catch {}
-			const scrapboxUrl = getScrapboxUrl(pageName);
+			const scrapboxUrl = getScrapboxUrlFromPageUrl(url);
 			const response = await axios.get(scrapboxUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
 			const {data} = response;
 
@@ -76,34 +80,46 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 };
 
 
-interface SlackAttachment {
-	// WARN: incomplete
-	title?: string;
-	title_link?: string;
-	text: string;
-	mrkdwn_in?: string[];
-	author_name?: string[]
-}
-
 interface SlackIncomingWebhookRequest {
 	text: string;
 	mrkdwn?: boolean;
 	username?: string;
-	attachments: SlackAttachment[]
+	attachments: MessageAttachment[]
 }
 
-const maskAttachment = (attachment: SlackAttachment): SlackAttachment => ({
+/**
+ * ミュートしたいattachmentに対し，隠したい情報を消して返す
+ *
+ * @param attachment ミュートするattachment
+ * @return ミュート済みのattachment
+ */
+const maskAttachment = (attachment: MessageAttachment): MessageAttachment => ({
 	...attachment,
 	text: 'この記事の更新通知はミュートされています。',
 });
 
-// eslint-disable-next-line node/no-unsupported-features, node/no-unsupported-features/es-syntax, padded-blocks
+/**
+ * 指定したURLの記事がミュート対象かどうかを判定する
+ *
+ * @param url Scrapbox記事のURL
+ * @return ミュート対象ならtrue, 対象外ならfalse
+ */
+const isMuted = async (url: string): Promise<boolean> => {
+	if (!scrapboxUrlRegexp.test(url)) {
+		// this url is not a scrapbox page
+		return false;
+	}
+	const muteTag = '##ミュート';
+	const infoUrl = getScrapboxUrlFromPageUrl(url);
+	const pageInfo = await axios.get(infoUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
+	return pageInfo.data.links.indexOf(muteTag) !== -1; // if found, the page is muted
+};
+
+/**
+ * Scrapboxからの更新通知 (Incoming Webhook形式) を受け取り，ミュート処理をしてSlackに投稿する
+ */
+// eslint-disable-next-line node/no-unsupported-features, node/no-unsupported-features/es-syntax
 export const server = ({webClient: slack}: SlackInterface) => plugin((fastify, opts, next) => {
-
-	/**
-	 * Scrapboxからの更新通知 (Incoming Webhook形式) を受け取り，ミュート処理をしてSlackに投稿する
-	 */
-
 	fastify.post<unknown, unknown, unknown, SlackIncomingWebhookRequest>('/scrapbox', async (req, res) => {
 		req.body;
 		await slack.chat.postMessage(
@@ -111,10 +127,9 @@ export const server = ({webClient: slack}: SlackInterface) => plugin((fastify, o
 				channel: process.env.CHANNEL_SCRAPBOX,
 				icon_emoji: ':scrapbox:',
 				...req.body,
-				attachments: req.body.attachments.map(
-					(attachment) =>
-						isMuted(attachment.title_link) ? maskAttachment(attachment) : attachment
-				),
+				attachments: await Promise.all(req.body.attachments.map(
+					async (attachment) => await isMuted(attachment.title_link) ? maskAttachment(attachment) : attachment
+				)),
 			}
 		);
 		return '';
