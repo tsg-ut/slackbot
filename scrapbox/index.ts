@@ -84,7 +84,7 @@ interface SlackIncomingWebhookRequest {
 	text: string;
 	mrkdwn?: boolean;
 	username?: string;
-	attachments: MessageAttachment[]
+	attachments: MessageAttachment[];
 }
 
 /**
@@ -93,10 +93,16 @@ interface SlackIncomingWebhookRequest {
  * @param attachment ミュートするattachment
  * @return ミュート済みのattachment
  */
-const maskAttachment = (attachment: MessageAttachment): MessageAttachment => ({
-	...attachment,
-	text: 'この記事の更新通知はミュートされています。',
-});
+const maskAttachment = (attachment: MessageAttachment): MessageAttachment => {
+	const dummyText = 'この記事の更新通知はミュートされています。';
+	return {
+		...attachment,
+		text: dummyText,
+		fallback: dummyText,
+		image_url: null,
+		thumb_url: null,
+	};
+};
 
 /**
  * 指定したURLの記事がミュート対象かどうかを判定する
