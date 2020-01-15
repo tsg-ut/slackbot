@@ -14,6 +14,7 @@ const response = (text:string) => {
     for (const resp of getCustomResponses().filter((response) => !response.reaction)) {
         for (const regexp of resp.input) {
             const matches = text.match(regexp);
+            // TODO: ReDoSを防ぐため，別スレッドを立ててTLEしたらterminateする
             if (matches !== null) {
                 const responses = {}.hasOwnProperty.call(resp, 'outputArray') ? resp.outputArray : resp.outputFunction(matches);
                 if (!responses) continue;
