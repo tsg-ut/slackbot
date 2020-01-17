@@ -1,7 +1,7 @@
 jest.mock('axios');
 
-import scrapbox from './index.ts';
-import {server} from './index.ts';
+import scrapbox from './index';
+import {server} from './index';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
 import axios from 'axios';
@@ -86,6 +86,16 @@ describe('scrapbox', () => {
 				thumb_url: 'https://example.com/fuga2.png',
 			},
 		];
+		// @ts-ignore
+		axios.mockImplementation(({url}: {url: string}) => {
+			console.log(url); // FIXME
+			if (url.match(/https:\/\/scrapbox.io\/api\/pages\/tsg\/page_1(?:#.*)?/)) {
+				return {data: {title: 'page 1', links: ['page 3', '###ミュート']}};
+			} else if (url.match(/https:\/\/scrapbox.io\/api\/pages\/tsg\/page_1(?:#.*)?/)) {
+				return {data: {title: 'page 2', links: ['page 4']}};
+			}
+			throw Error('axios-mock: unexpected URL');
+		});
 
 		slack.on('message', ({channel, text, attachments: attachments_res}: {channel: string; text: string; attachments: MessageAttachment[]}) => {
 			expect(channel).toBe(slack.fakeChannel);
@@ -105,8 +115,6 @@ describe('scrapbox', () => {
 			expect(attachments_res[1].text).toBe(attachments_req[1].text);
 			resolve();
 		});
-
-		// TODO: mock axios
 
 		fastify.inject({
 			method: 'POST',
