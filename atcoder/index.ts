@@ -1,17 +1,21 @@
-import {promises as fs, constants} from 'fs';
+import {constants, promises as fs} from 'fs';
 import path from 'path';
-import axios from 'axios';
 import qs from 'querystring';
+import axios from 'axios';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
-import scrapeIt from 'scrape-it';
+import moment from 'moment';
+// @ts-ignore
+import schedule from 'node-schedule';
 // @ts-ignore
 import prime from 'primes-and-factors';
+import scrapeIt from 'scrape-it';
+import {increment, unlock} from '../achievements/index.js';
 // @ts-ignore
 import logger from '../lib/logger.js';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
-import {SlackInterface, Standings, Results} from './types';
-import {unlock, increment} from '../achievements';
+// eslint-disable-next-line no-unused-vars
+import {Results, SlackInterface, Standings} from './types';
 
 const getRatingColor = (rating: number | null) => {
 	// gray
@@ -90,7 +94,7 @@ const formatNumber = (number: number) => {
 		return `+${number}`;
 	}
 	return number.toString();
-}
+};
 
 interface State {
 	users: {atcoder: string, slack: string}[],
@@ -107,10 +111,11 @@ interface ContestEntry {
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const statePath = path.resolve(__dirname, 'state.json');
 	const exists = await fs.access(statePath, constants.F_OK).then(() => true).catch(() => false);
-	const state: State = Object.assign({
+	const state: State = {
 		users: [],
 		contests: [],
-	}, exists ? JSON.parse((await fs.readFile(statePath)).toString()) : {})
+		...(exists ? JSON.parse((await fs.readFile(statePath)).toString()) : {}),
+	};
 
 	await fs.writeFile(statePath, JSON.stringify(state));
 	const setState = (object: {[key: string]: any}) => {
@@ -178,7 +183,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}
 	};
 
-	const postNewContest = async (id: string) => {
+	const postNewContest = (id: string) => {
 		const contest = state.contests.find((contest) => contest.id === id);
 		logger.info(`Posting notification of new contest ${id}...`);
 
@@ -193,7 +198,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 	};
 
-	const postPreroll = async (id: string) => {
+	const postPreroll = (id: string) => {
 		const contest = state.contests.find((contest) => contest.id === id);
 		logger.info(`Posting preroll of contest ${id}...`);
 
@@ -208,7 +213,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 	};
 
-	const postStart = async (id: string) => {
+	const postStart = (id: string) => {
 		const contest = state.contests.find((contest) => contest.id === id);
 		logger.info(`Posting start of contest ${id}...`);
 
@@ -242,7 +247,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`, {
 			headers: {
-				'Cookie': `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+				Cookie: `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
 			},
 		});
 
@@ -289,7 +294,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		const {data: results}: {data: Results} = await axios.get(`https://atcoder.jp/contests/${id}/results/json`, {
 			headers: {
-				'Cookie': `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+				Cookie: `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
 			},
 		});
 		if (results.length === 0) {
@@ -305,7 +310,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`, {
 			headers: {
-				'Cookie': `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+				Cookie: `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
 			},
 		});
 		const userStandings = state.users.map(({atcoder, slack}) => {
@@ -388,8 +393,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const result = resultMap.get(user);
 			if (standing) {
 				const rank = standing.Rank.toString();
-				const frequency = prime.getFrequency(standing.Rank);
-				const isPrime = frequency.length === 1 && frequency[0].times === 1 && standing.Rank >= 2;
+				const frequencies = prime.getFrequency(standing.Rank);
+				const isPrime = frequencies.length === 1 && frequencies[0].times === 1 && standing.Rank >= 2;
 				if (isContestRated) {
 					await increment(user, 'atcoder-participate');
 				}
