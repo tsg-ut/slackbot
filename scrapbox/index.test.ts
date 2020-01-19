@@ -1,11 +1,10 @@
 jest.mock('axios');
 
-import scrapbox from './index';
-import {server} from './index';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
 import axios from 'axios';
 import qs from 'querystring';
+import { escapeRegExp } from 'lodash';
 import fastifyConstructor from 'fastify';
 import {MessageAttachment} from '@slack/client';
 
@@ -15,6 +14,10 @@ axios.response = {data: {title: 'hoge', descriptions: ['fuga', 'piyo']}};
 
 let slack: Slack = null;
 
+const projectName = 'PROJECTNAME';
+process.env.SCRAPBOX_PROJECT_NAME = projectName;
+import scrapbox from './index';
+import {server} from './index';
 
 describe('scrapbox', () => {
 	beforeEach(async () => {
@@ -30,8 +33,8 @@ describe('scrapbox', () => {
 				if (url === 'https://slack.com/api/chat.unfurl') {
 					const parsed = qs.parse(data);
 					const unfurls = JSON.parse(Array.isArray(parsed.unfurls) ? parsed.unfurls[0] : parsed.unfurls);
-					expect(unfurls['https://scrapbox.io/tsg/hoge']).toBeTruthy();
-					expect(unfurls['https://scrapbox.io/tsg/hoge'].text).toBe('fuga\npiyo');
+					expect(unfurls[`https://scrapbox.io/${projectName}/hoge`]).toBeTruthy();
+					expect(unfurls[`https://scrapbox.io/${projectName}/hoge`].text).toBe('fuga\npiyo');
 					resolve();
 					return Promise.resolve({data: {ok: true}});
 				}
@@ -49,7 +52,7 @@ describe('scrapbox', () => {
 			links: [
 				{
 					domain: 'scrapbox.io',
-					url: 'https://scrapbox.io/tsg/hoge',
+					url: `https://scrapbox.io/${projectName}/hoge`,
 				},
 			],
 		});
@@ -67,7 +70,7 @@ describe('scrapbox', () => {
 		const attachments_req: (MessageAttachment & any)[] = [
 			{
 				title: 'page 1',
-				title_link: 'https://scrapbox.io/tsg/page_1#c632c886dc3061e3b85cabbd',
+				title_link: `https://scrapbox.io/${projectName}/page_1#c632c886dc3061e3b85cabbd`,
 				text: 'hoge',
 				rawText: 'hoge',
 				mrkdwn_in: ['text'],
@@ -77,7 +80,7 @@ describe('scrapbox', () => {
 			},
 			{
 				title: 'page 2',
-				title_link: 'https://scrapbox.io/tsg/page_2#aaf8924806eb538413c07c43',
+				title_link: `https://scrapbox.io/${projectName}/page_2#aaf8924806eb538413c07c43`,
 				text: 'hoge',
 				rawText: 'hoge',
 				mrkdwn_in: ['text'],
@@ -88,9 +91,9 @@ describe('scrapbox', () => {
 		];
 		// @ts-ignore
 		axios.get.mockImplementation((url: string) => {
-			if (url.match(/https:\/\/scrapbox.io\/api\/pages\/tsg\/page_1(?:#.*)?/)) {
+			if (url.match(new RegExp(`${escapeRegExp(`https://scrapbox.io/api/pages/${projectName}/page_1`)}(?:#.*)?`))) {
 				return {data: {title: 'page 1', links: ['page 3', '##ミュート']}};
-			} else if (url.match(/https:\/\/scrapbox.io\/api\/pages\/tsg\/page_2(?:#.*)?/)) {
+			} else if (url.match(new RegExp(`${escapeRegExp(`https://scrapbox.io/api/pages/${projectName}/page_2`)}(?:#.*)?`))) {
 				return {data: {title: 'page 2', links: ['page 4']}};
 			}
 			throw Error('axios-mock: unexpected URL');
@@ -101,7 +104,7 @@ describe('scrapbox', () => {
 		}};
 		fastify.register(server({webClient: slack} as any));
 		const args = {
-			text: 'New lines on <https://scrapbox.io/tsg|tsg>',
+			text: `New lines on <https://scrapbox.io/${projectName}|${projectName}>`,
 			mrkdwn: true,
 			username: 'Scrapbox',
 			attachments: attachments_req,

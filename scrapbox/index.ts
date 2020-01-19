@@ -3,10 +3,12 @@ import axios from 'axios';
 import logger from '../lib/logger.js';
 import qs from 'querystring';
 import plugin from 'fastify-plugin';
+import { escapeRegExp } from 'lodash';
 import {WebClient, RTMClient, LinkUnfurls, MessageAttachment} from '@slack/client';
 
-const scrapboxUrlRegexp = /^https?:\/\/scrapbox.io\/tsg\/(?<pageTitle>.+)$/;
-const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
+const projectName = process.env.SCRAPBOX_PROJECT_NAME;
+const scrapboxUrlRegexp = new RegExp(`^https?${escapeRegExp(`://scrapbox.io/${projectName}/`)}(?<pageTitle>.+)$`);
+const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/${projectName}/${pageName}`;
 const getScrapboxUrlFromPageUrl = (url: string): string => {
 	let pageName = url.replace(scrapboxUrlRegexp, '$<pageTitle>');
 	try {
