@@ -432,7 +432,32 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}
 			}
 		}
-	}
+	};
+
+	const postDaily = async () => {
+		const now = moment().utcOffset(9).startOf('day').hours(9);
+		const oneDayLater = now.clone().add(1, 'day');
+
+		const contests = state.contests.filter((contest) => now.valueOf() < contest.date && contest.date <= oneDayLater.valueOf());
+
+		logger.info(`Posting daily notifications of ${contests.length} contests...`);
+
+		for (const contest of contests) {
+			const date = moment(contest.date).utcOffset(9);
+			const hour = (date.hour() < 9 ? date.hour() + 24 : date.hour()).toString().padStart(2, '0');
+			const minute = date.minute().toString().padStart(2, '0');
+
+			await slack.chat.postMessage({
+				username: 'atcoder',
+				icon_emoji: ':atcoder:',
+				channel: process.env.CHANNEL_PROCON,
+				text: stripIndent`
+					本日${hour}:${minute}から＊${contest.title}＊開催です🙋
+					https://atcoder.jp/contests/${contest.id}
+				`,
+			});
+		}
+	};
 
 	rtm.on('message', async (message) => {
 		if (message.text && message.subtype === undefined && message.text.startsWith('@atcoder ')) {
@@ -518,4 +543,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 		}
 	}, 30 * 1000);
+
+	schedule.scheduleJob('0 9 * * *', () => {
+		postDaily();
+	});
 };
