@@ -5,10 +5,10 @@ import qs from 'querystring';
 import plugin from 'fastify-plugin';
 import {WebClient, RTMClient, LinkUnfurls, MessageAttachment} from '@slack/client';
 
-const scrapboxUrlRegexp = /^https?:\/\/scrapbox.io\/tsg\/(?:.+)$/;
+const scrapboxUrlRegexp = /^https?:\/\/scrapbox.io\/tsg\/(?<pageTitle>.+)$/;
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
 const getScrapboxUrlFromPageUrl = (url: string): string => {
-	let pageName = url.replace(scrapboxUrlRegexp, '$1');
+	let pageName = url.replace(scrapboxUrlRegexp, '$<pageTitle>');
 	try {
 		if (decodeURI(pageName) === pageName) {
 			pageName = encodeURI(pageName);
