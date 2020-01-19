@@ -1476,6 +1476,66 @@ const achievements: Achievement[] = [
 		value: 10,
 	},
 
+	// crossword
+
+	{
+		id: 'crossword-cells-1',
+		difficulty: 'easy',
+		title: '一頭地を抜く',
+		condition: 'crosswordで累計1マス以上のマスを開く',
+		category: 'crossword',
+		counter: 'crossword-cells',
+		value: 1,
+	},
+	{
+		id: 'crossword-cells-20',
+		difficulty: 'medium',
+		title: 'クロスワード・マニア',
+		condition: 'crosswordで累計20マス以上のマスを開く',
+		category: 'crossword',
+		counter: 'crossword-cells',
+		value: 20,
+	},
+	{
+		id: 'crossword-cells-100',
+		difficulty: 'hard',
+		title: '100マス計算',
+		condition: 'crosswordで累計100マス以上のマスを開く',
+		category: 'crossword',
+		counter: 'crossword-cells',
+		value: 100,
+	},
+	{
+		id: 'crossword-cells-1000',
+		difficulty: 'professional',
+		title: '千枚通し',
+		condition: 'crosswordで累計1000マス以上のマスを開く',
+		category: 'crossword',
+		counter: 'crossword-cells',
+		value: 1000,
+	},
+	{
+		id: 'crossword-solo',
+		difficulty: 'hard',
+		title: 'クロスワード・完投勝利',
+		condition: 'crosswordで1人で全てのマスを開いてクリアする',
+		category: 'crossword',
+	},
+	{
+		id: 'crossword-closer',
+		difficulty: 'hard',
+		title: 'クロスワード・クローザー',
+		condition: 'crosswordでクリアを決定する最後の単語を回答する。ただしそのゲームにおいてそれ以外に回答を行ってはいけない (正解・不正解を問わない)',
+		category: 'crossword',
+	},
+	{
+		id: 'crossword-buzzer-beater',
+		difficulty: 'hard',
+		title: 'クロスワード・ブザービーター',
+		condition: 'crosswordで制限時間が切れる2秒以内に、クリアを決定する最後の単語を回答する',
+		category: 'crossword',
+	},
+
 	// achievements
 
 	{
