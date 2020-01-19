@@ -1367,6 +1367,13 @@ const achievements: Achievement[] = [
 		category: 'atcoder',
 	},
 	{
+		id: 'atcoder-rating-plus-minus-zero',
+		difficulty: 'hard',
+		title: '競プロ界の咲',
+		condition: 'AtCoderでレーティングをプラスマイナスゼロで維持する',
+		category: 'atcoder',
+	},
+	{
 		id: 'atcoder-rating-minus',
 		difficulty: 'medium',
 		title: '競プロの終焉を告げる者',

@@ -407,6 +407,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				if (result.NewRating - result.OldRating >= 50) {
 					await unlock(user, 'atcoder-rating-plus-50');
 				}
+				if (result.NewRating === result.OldRating) {
+					await unlock(user, 'atcoder-rating-plus-minus-zero');
+				}
 				if (result.NewRating - result.OldRating < 0) {
 					await unlock(user, 'atcoder-rating-minus');
 				}
