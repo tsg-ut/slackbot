@@ -50,6 +50,34 @@ const getRatingColor = (rating: number | null) => {
 	return '#000000';
 };
 
+const getRatingColorName = (rating: number | null) => {
+	if (rating === null || rating < 400) {
+		return '灰';
+	}
+	if (rating < 800) {
+		return '茶';
+	}
+	if (rating < 1200) {
+		return '緑';
+	}
+	if (rating < 1600) {
+		return '水';
+	}
+	if (rating < 2000) {
+		return '青';
+	}
+	if (rating < 2400) {
+		return '黄';
+	}
+	if (rating < 2800) {
+		return '橙';
+	}
+	if (rating < 3200) {
+		return '赤';
+	}
+	return '???';
+};
+
 const formatTime = (seconds: number) => (
 	`${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`
 );
@@ -287,6 +315,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		const tasks = new Map(standings.TaskInfo.map((task) => [task.TaskScreenName, task]));
 
+		const colorUpdates: {user: string, oldRating: number, newRating: number}[] = [];
+
 		await slack.chat.postMessage({
 			username: 'atcoder',
 			icon_emoji: ':atcoder:',
@@ -310,6 +340,14 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						},
 					] : [];
 
+					if (getRatingColor(result.OldRating) !== getRatingColor(result.NewRating)) {
+						colorUpdates.push({
+							user,
+							newRating: result.NewRating,
+							oldRating: result.OldRating,
+						});
+					}
+
 					return {
 						color: getRatingColor(standing.Rating),
 						author_name: `${await getMemberName(user)}: ${standing.Rank}位`,
@@ -328,6 +366,18 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				},
 			],
 		});
+
+		for (const {user, newRating, oldRating} of colorUpdates) {
+			const verb = newRating > oldRating ? '昇格しました！🎉🎉🎉🎉🎉🎉🎉' : '降格しました⋯😢😢😢😢😢😢😢';
+			await slack.chat.postMessage({
+				username: 'atcoder',
+				icon_emoji: ':atcoder:',
+				channel: process.env.CHANNEL_PROCON,
+				text: stripIndent`
+					<@${user}>が${getRatingColorName(newRating)}コーダーに${verb}
+				`,
+			});
+		}
 
 		const isContestRated = standings.StandingsData.some((standing) => standing.IsRated);
 
