@@ -59,12 +59,12 @@ describe('scrapbox', () => {
 });
 
 describe('scrapbox', () => {
-	it('mutes pages with ##ミュート tag', () => new Promise((resolve) => {
-		slack = new Slack();
-		process.env.CHANNEL_SCRAPBOX = slack.fakeChannel;
+	it('mutes pages with ##ミュート tag', async () => {
+		const fakeChannel = 'CSCRAPBOX';
+		process.env.CHANNEL_SCRAPBOX = fakeChannel;
 		const fastify = fastifyConstructor();
-		fastify.register(server(slack));
-		const attachments_req = [
+		// eslint-disable-next-line array-plural/array-plural
+		const attachments_req: (MessageAttachment & any)[] = [
 			{
 				title: 'page 1',
 				title_link: 'https://scrapbox.io/tsg/page_1#c632c886dc3061e3b85cabbd',
@@ -87,44 +87,51 @@ describe('scrapbox', () => {
 			},
 		];
 		// @ts-ignore
-		axios.mockImplementation(({url}: {url: string}) => {
-			console.log(url); // FIXME
+		axios.get.mockImplementation((url: string) => {
 			if (url.match(/https:\/\/scrapbox.io\/api\/pages\/tsg\/page_1(?:#.*)?/)) {
-				return {data: {title: 'page 1', links: ['page 3', '###ミュート']}};
-			} else if (url.match(/https:\/\/scrapbox.io\/api\/pages\/tsg\/page_1(?:#.*)?/)) {
+				return {data: {title: 'page 1', links: ['page 3', '##ミュート']}};
+			} else if (url.match(/https:\/\/scrapbox.io\/api\/pages\/tsg\/page_2(?:#.*)?/)) {
 				return {data: {title: 'page 2', links: ['page 4']}};
 			}
 			throw Error('axios-mock: unexpected URL');
 		});
 
-		slack.on('message', ({channel, text, attachments: attachments_res}: {channel: string; text: string; attachments: MessageAttachment[]}) => {
-			expect(channel).toBe(slack.fakeChannel);
-			expect(text).toBeInstanceOf('string');
-			const unchanged = ['title', 'title_link', 'mrkdwn_in', 'author_name'] as const;
-			for (const i of [0, 1]) {
-				for (const key of unchanged) {
-					expect(attachments_res[i][key]).toBe(attachments_req[i][key])
-				}
-			}
-			const nulled = ['image_url', 'thumb_url'] as const;
-			for (const key of nulled) {
-				expect(attachments_res[0][key]).toBeNull();
-				expect(attachments_res[1][key]).toBe(attachments_req[1][key]);
-			}
-			expect(attachments_res[0].text).toContain('ミュート');
-			expect(attachments_res[1].text).toBe(attachments_req[1].text);
-			resolve();
-		});
-
-		fastify.inject({
+		slack = {chat: {
+			postMessage: jest.fn(),
+		}};
+		fastify.register(server({webClient: slack} as any));
+		const args = {
+			text: 'New lines on <https://scrapbox.io/tsg|tsg>',
+			mrkdwn: true,
+			username: 'Scrapbox',
+			attachments: attachments_req,
+		};
+		const {payload, statusCode} = await fastify.inject({
 			method: 'POST',
 			url: '/scrapbox',
-			payload: {
-				text: 'New lines on <https://scrapbox.io/tsg|tsg>',
-				mrkdwn: true,
-				username: 'Scrapbox',
-				attachments_req,
-			},
+			payload: args,
 		});
-	}));
+		if (statusCode !== 200) {
+			throw JSON.parse(payload);
+		}
+		expect(slack.chat.postMessage.mock.calls.length).toBe(1);
+		const {channel, text, attachments: attachments_res}: {channel: string; text: string; attachments: MessageAttachment[]} = slack.chat.postMessage.mock.calls[0][0];
+		expect(channel).toBe(fakeChannel);
+		expect(text).toBe(args.text);
+		const unchanged = ['title', 'title_link', 'mrkdwn_in', 'author_name'] as const;
+		for (const i of [0, 1]) {
+			for (const key of unchanged) {
+				expect(attachments_res[i][key]).toEqual(attachments_req[i][key]);
+			}
+		}
+		const nulled = ['image_url', 'thumb_url'] as const;
+		for (const key of nulled) {
+			expect(attachments_res[0][key]).toBeNull();
+			// eslint-disable-next-line array-plural/array-plural
+			expect(attachments_res[1][key]).toEqual(attachments_req[1][key]);
+		}
+		expect(attachments_res[0].text).toContain('ミュート');
+		// eslint-disable-next-line array-plural/array-plural
+		expect(attachments_res[1].text).toBe(attachments_req[1].text);
+	});
 });

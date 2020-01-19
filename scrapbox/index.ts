@@ -1,11 +1,11 @@
 import axios from 'axios';
 // @ts-ignore
 import logger from '../lib/logger.js';
-import {LinkUnfurls} from '@slack/client';
 import qs from 'querystring';
 import plugin from 'fastify-plugin';
+import {WebClient, RTMClient, LinkUnfurls, MessageAttachment} from '@slack/client';
 
-const scrapboxUrlRegexp = /^https?:\/\/scrapbox.io\/tsg\/(.+)$/;
+const scrapboxUrlRegexp = /^https?:\/\/scrapbox.io\/tsg\/(?:.+)$/;
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
 const getScrapboxUrlFromPageUrl = (url: string): string => {
 	let pageName = url.replace(scrapboxUrlRegexp, '$1');
@@ -17,7 +17,6 @@ const getScrapboxUrlFromPageUrl = (url: string): string => {
 	return getScrapboxUrl(pageName);
 };
 
-import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -126,8 +125,7 @@ const isMuted = async (url: string): Promise<boolean> => {
  */
 // eslint-disable-next-line node/no-unsupported-features, node/no-unsupported-features/es-syntax
 export const server = ({webClient: slack}: SlackInterface) => plugin((fastify, opts, next) => {
-	fastify.post<unknown, unknown, unknown, SlackIncomingWebhookRequest>('/scrapbox', async (req, res) => {
-		req.body;
+	fastify.post<unknown, unknown, unknown, SlackIncomingWebhookRequest>('/scrapbox', async (req) => {
 		await slack.chat.postMessage(
 			{
 				channel: process.env.CHANNEL_SCRAPBOX,
