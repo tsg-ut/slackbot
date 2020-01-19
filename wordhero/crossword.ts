@@ -168,6 +168,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					}))],
 				});
 
+				await unlock(message.user, 'crossword-clear');
+				for (const user of state.contributors) {
+					await increment(user, 'crossword-wins');
+				}
 				if (state.contributors.size === 1) {
 					await unlock(message.user, 'crossword-solo');
 				}
