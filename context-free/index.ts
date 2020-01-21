@@ -1,6 +1,8 @@
 import scrapeIt from 'scrape-it';
 import {RTMClient, WebClient} from '@slack/client';
 import {last} from 'lodash';
+import plugin from 'fastify-plugin';
+import {getMemberName, getMemberIcon} from '../lib/slackUtils'
 
 const normalizeMeaning = (input: string) => {
   let meaning = input;
@@ -73,6 +75,29 @@ const randomWord = async (): Promise<Word> => {
   };
 };
 
+const sleepFor = (duration: number): Promise<void> =>
+  new Promise(resolve => { setTimeout(resolve, duration) });
+
+const composePost = async (message: string): Promise<string> => {
+  if (message === '') {
+    const {word} = await randomWord();
+    return word;
+  }
+  let first = true;
+  let match;
+  while ((match = /{[^{}]*}/.exec(message)) != null) {
+    if (!first)
+      await sleepFor(5000);
+    first = false;
+    const {word} = await randomWord();
+    if (match[0] === '{}')
+      message = message.replace('{}', word);
+    else
+      message = message.replace(new RegExp(match[0], 'g'), word);
+  }
+  return message;
+};
+
 const randomInterval = () =>
   1000 * 60 * (90 + (Math.random() - 0.5) * 2 * 60);
 
@@ -81,7 +106,7 @@ interface SlackInterface {
   webClient: WebClient;
 }
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => plugin (async (fastify, opts, next) => {
   const postWord = async () => {
     const {word, description} = await randomWord();
     await slack.chat.postMessage({
@@ -90,7 +115,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       username: 'context free bot',
       text: word,
     });
-    await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
+    await sleepFor(10 * 1000);
     await slack.chat.postMessage({
       channel: process.env.CHANNEL_SANDBOX,
       icon_emoji: ':man_dancing_2:',
@@ -102,7 +127,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     postWord();
     setTimeout(repeatPost, randomInterval());
   };
-  rtm.on('message', message => {
+  rtm.on('message', async message => {
     if (message.channel !== process.env.CHANNEL_SANDBOX
         || message.subtype === 'bot_message')
       return;
@@ -110,4 +135,26 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       postWord();
   });
   setTimeout(repeatPost, randomInterval());
-};
+  const {team: tsgTeam}: any = await slack.team.info();
+  fastify.post('/slash/context-free-post', async (request, response) => {
+    if (request.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
+      response.code(400);
+      return 'Bad Request';
+    }
+    if (request.body.team_id !== tsgTeam.id) {
+      response.code(200);
+      return '/cfp is only for TSG. Sorry!';
+    }
+    const username = await getMemberName(request.body.user_id);
+    const icon_url = await getMemberIcon(request.body.user_id, 512);
+    composePost(request.body.text).then(text => {
+      slack.chat.postMessage({
+        username,
+        icon_url,
+        channel: request.body.channel_id,
+        text,
+      });
+    });
+    return '';
+  });
+});
