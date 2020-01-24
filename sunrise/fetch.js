@@ -100,8 +100,8 @@ const getHaiku = async () => {
 		responseType: 'arraybuffer',
 	});
 	const $ = cheerio.load(iconv.decode(data, 'sjis'));
-	const text = $('td[rowspan=7][width=590] center font').text();
-	const author = $('td[rowspan=7][width=590] center b').text();
+	const text = $('td[rowspan=9][width=600] center font').text();
+	const author = $('td[rowspan=9][width=600] center b').text();
 
 	return {text, author};
 };
