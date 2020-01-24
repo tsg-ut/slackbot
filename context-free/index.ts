@@ -1,6 +1,6 @@
 import scrapeIt from 'scrape-it';
 import {RTMClient, WebClient} from '@slack/client';
-import {last} from 'lodash';
+import {last, escapeRegExp} from 'lodash';
 import plugin from 'fastify-plugin';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils'
 
@@ -93,7 +93,7 @@ const composePost = async (message: string): Promise<string> => {
     if (match[0] === '{}')
       message = message.replace('{}', word);
     else
-      message = message.replace(new RegExp(match[0], 'g'), word);
+      message = message.replace(new RegExp(escapeRegExp(match[0]), 'g'), word);
   }
   return message;
 };
