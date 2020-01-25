@@ -1715,6 +1715,14 @@ const achievements: Achievement[] = [
 		category: 'manual',
 		manual: true,
 	},
+	{
+		id: 'github-review',
+		difficulty: 'hard',
+		title: 'レビュアー',
+		condition: 'GitHubのtsg-ut下のリポジトリでのPRにレビューをする',
+		category: 'manual',
+		manual: true,
+	},
 ];
 
 const achievementMap = new Map(achievements.map((achievement) => [achievement.id, achievement]));
