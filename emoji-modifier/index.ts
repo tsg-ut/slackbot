@@ -11,6 +11,7 @@ import {GifFrame, GifSpec, GifCodec} from 'gifwrap';
 import * as iq from 'image-q';
 // @ts-ignore
 import {v2 as cloudinary} from 'cloudinary';
+import {stripIndent} from 'common-tags';
 
 // emoji type definition {{{
 interface EmodiError {
@@ -165,6 +166,66 @@ const simpleFilter = (f: (frame: Buffer) => Promise<Buffer>): Filter => ({
 
 const runtimeError = errorOfKind('RuntimeError');
 
+const proTwitter = async (emoji: Emoji, [name, account]: [string, string]): Promise<Emoji | EmodiError> => {
+  const now = new Date();
+  const apm = now.getHours() < 12 ? 'am' : 'pm';
+  const hour = now.getHours() <= 12 ? now.getHours() : now.getHours() - 12;
+  const fillZero = (n: number): string => n < 10 ? '0' + n.toString() : n.toString();
+  const time = `${fillZero(hour)}:${fillZero(now.getMinutes())}${apm}`;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const date = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  const processFrame = async (frame: Buffer, raw?: sharp.Raw) => {
+    const textSVG = stripIndent`
+      <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">
+        <rect width="100%" height = "100%" fill="white"/>
+        <text x="4" y="80" font-family="sans-serif" font-size="23">私がプロだ</text>
+        <text x="35" y="34" font-family="sans-serif" font-size="19">${_.escape(name)}</text>
+        <text x="35" y="52" font-family="arial" font-size="17" fill="#9EABB6">@${_.escape(account)}</text>
+        <text x="4" y="106" font-family="arial" font-size="17" fill="#9EABB6">${time}</text>
+        <text x="28" y="126" font-family="arial" font-size="17" fill="#9EABB6">${date}</text>
+      </svg>`;
+    const maxHeight = 52;
+    const maxWidth = 35;
+    const rawOption = raw == null ? {} : {raw};
+    const icon = await sharp(frame, rawOption)
+      .resize(maxWidth, maxHeight, { fit: 'inside'})
+      .png()
+      .toBuffer();
+    const { width, height } = await sharp(icon).metadata();
+    return sharp(Buffer.from(textSVG))
+      .composite([{
+        input: icon,
+        top: maxHeight - height,
+        left: maxWidth - width,
+      }]);
+  };
+  if (emoji.kind === 'static') {
+    const image = await processFrame(emoji.image);
+    return {
+      kind: 'static',
+      image: await image.png().toBuffer(),
+    };
+  }
+  else {
+    const frames = await Promise.all(emoji.frames.map(async frame => {
+      const options: sharp.Raw = {
+        width: frame.bitmap.width,
+        height: frame.bitmap.height,
+        channels: 4,
+      };
+      const newFrame = await processFrame(frame.bitmap.data, options);
+      const buffer = await newFrame.raw().toBuffer();
+      return new GifFrame(128, 128, buffer, frame);
+    }));
+    return {
+      kind: 'gif',
+      frames,
+      options: emoji.options,
+    };
+  }
+};
+
+
 const moveFromTo = async (emoji: Emoji, [from, to]: [string, string]): Promise<Emoji | EmodiError> => {
   if (emoji.kind === 'gif')
     return runtimeError('move accepts only static emoji');
@@ -220,6 +281,7 @@ const moveFromTo = async (emoji: Emoji, [from, to]: [string, string]): Promise<E
   };
 }
 
+
 const filters: Map<string,  Filter> = new Map([
   ['identity', simpleFilter(_.identity)],
   ['speedTimes', {
@@ -268,6 +330,10 @@ const filters: Map<string,  Filter> = new Map([
         return sharp(image, options).trim(threshold).toBuffer();
       });
     }
+  }],
+  ['pro', {
+    arguments: ['string', 'string'],
+    filter: proTwitter,
   }],
 ] as [string, Filter][]);
 // }}}
