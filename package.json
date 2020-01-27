@@ -32,6 +32,7 @@
     "@types/common-tags": "^1.8.0",
     "@types/html-entities": "^1.2.16",
     "@types/jsdom": "^12.2.4",
+    "@types/opentype.js": "^0.7.2",
     "@types/sharp": "^0.23.1",
     "async-mutex": "0.1.4",
     "axios": "^0.19.0",
