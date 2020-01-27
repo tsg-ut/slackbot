@@ -12,8 +12,8 @@ const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/${pr
 const getScrapboxUrlFromPageUrl = (url: string): string => {
 	let pageName = url.replace(scrapboxUrlRegexp, '$<pageTitle>');
 	try {
-		if (decodeURI(pageName) === pageName) {
-			pageName = encodeURI(pageName);
+		if (decodeURIComponent(pageName) === pageName) {
+			pageName = encodeURIComponent(pageName);
 		}
 	} catch {}
 	return getScrapboxUrl(pageName);
