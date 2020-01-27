@@ -65,6 +65,7 @@ describe('scrapbox', () => {
 	it('mutes pages with ##ミュート tag', async () => {
 		const fakeChannel = 'CSCRAPBOX';
 		process.env.CHANNEL_SCRAPBOX = fakeChannel;
+		process.env.NODE_ENV = 'development';
 		const fastify = fastifyConstructor();
 		// eslint-disable-next-line array-plural/array-plural
 		const attachments_req: (MessageAttachment & any)[] = [
