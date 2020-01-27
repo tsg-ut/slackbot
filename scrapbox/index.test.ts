@@ -111,7 +111,7 @@ describe('scrapbox', () => {
 		};
 		const {payload, statusCode} = await fastify.inject({
 			method: 'POST',
-			url: '/scrapbox',
+			url: '/hooks/scrapbox',
 			payload: args,
 		});
 		if (statusCode !== 200) {
