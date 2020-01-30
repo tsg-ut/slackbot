@@ -134,7 +134,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 			}
 			const messageURL = event.item.type === 'message'
 				? `<https://tsg-ut.slack.com/archives/${event.item.channel}/p${event.item.ts.replace('.', '')}|[メッセージ]>`
-				: null;
+				: '';
 			for (const achievement of reactionAchievements) {
 				if (achievement.value <= targetReaction.count) {
 					await unlock(event.item_user, achievement.id, messageURL);
@@ -312,7 +312,7 @@ export const unlock = async (user: string, name: string, additionalInfo?: string
 			<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada: <https://sig.tsg.ne.jp/achievement-viewer/users/${user}|[実績一覧]>
 			_${achievement.condition}_
 			難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty}) ${isFirst ? '*初達成者!!:ojigineko-superfast:*' : ''}
-			${additionalInfo == null ? '' : additionalInfo}`,
+			${additionalInfo === undefined ? '' : additionalInfo}`,
 		attachments: ['professional', 'hard', 'medium', 'easy', 'baby'].map((difficulty: Difficulty) => {
 			const entries = holdingAchievements.filter((id) => achievements.get(id).difficulty === difficulty);
 			if (entries.length === 0) {
