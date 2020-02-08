@@ -186,8 +186,8 @@ const proTwitter = async (emoji: Emoji, [name, account]: [string, string]): Prom
       <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">
         <rect width="100%" height = "100%" fill="white"/>
         ${await stringSVG('私がプロだ', 'Noto Sans JP Regular', 4, 80, 23)}
-        ${await stringSVG(_.escape(name), 'Noto Sans JP Regular', 35, 34, 19)}
-        ${await stringSVG('@' + _.escape(account), 'Noto Sans JP Regular', 35, 52, 16, 'fill="#9EABB6"')}
+        ${await stringSVG(name, 'Noto Sans JP Regular', 35, 34, 19)}
+        ${await stringSVG('@' + account, 'Noto Sans JP Regular', 35, 52, 16, 'fill="#9EABB6"')}
         ${await stringSVG(time, 'Noto Sans JP Regular', 8, 106, 16, 'fill="#9EABB6"')}
         ${await stringSVG(date, 'Noto Sans JP Regular', 32, 126, 16, 'fill="#9EABB6"')}
       </svg>`;
