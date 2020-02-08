@@ -2,7 +2,6 @@ import {RTMClient, WebClient} from '@slack/client';
 // @ts-ignore
 import logger from '../lib/logger.js';
 import loadFont from '../lib/loadFont';
-import {promisify} from 'util';
 import {EmojiData} from 'emoji-data-ts';
 import {getEmoji} from '../lib/slackUtils';
 import axios from 'axios';
