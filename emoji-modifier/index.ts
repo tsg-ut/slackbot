@@ -1,6 +1,7 @@
 import {RTMClient, WebClient} from '@slack/client';
 // @ts-ignore
 import logger from '../lib/logger.js';
+import loadFont from '../lib/loadFont';
 import {promisify} from 'util';
 import {EmojiData} from 'emoji-data-ts';
 import {getEmoji} from '../lib/slackUtils';
@@ -166,6 +167,13 @@ const simpleFilter = (f: (frame: Buffer) => Promise<Buffer>): Filter => ({
 
 const runtimeError = errorOfKind('RuntimeError');
 
+const stringSVG = async (str: string, fontName: string, x: number, y: number, fontSize: number, options?: string): Promise<string> => {
+  const opts = options === undefined ? '' : options;
+  const font = await loadFont(fontName);
+  const svg = font.getPath(str, x, y, fontSize).toSVG(2);
+  return svg.replace('<path', `<path ${opts} `);
+};
+
 const proTwitter = async (emoji: Emoji, [name, account]: [string, string]): Promise<Emoji | EmodiError> => {
   const now = new Date();
   const apm = now.getHours() < 12 ? 'am' : 'pm';
@@ -178,11 +186,11 @@ const proTwitter = async (emoji: Emoji, [name, account]: [string, string]): Prom
     const textSVG = stripIndent`
       <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">
         <rect width="100%" height = "100%" fill="white"/>
-        <text x="4" y="80" font-family="sans-serif" font-size="23">私がプロだ</text>
-        <text x="35" y="34" font-family="sans-serif" font-size="19">${_.escape(name)}</text>
-        <text x="35" y="52" font-family="arial" font-size="17" fill="#9EABB6">@${_.escape(account)}</text>
-        <text x="4" y="106" font-family="arial" font-size="17" fill="#9EABB6">${time}</text>
-        <text x="28" y="126" font-family="arial" font-size="17" fill="#9EABB6">${date}</text>
+        ${await stringSVG('私がプロだ', 'Noto Sans JP Regular', 4, 80, 23)}
+        ${await stringSVG(_.escape(name), 'Noto Sans JP Regular', 35, 34, 19)}
+        ${await stringSVG('@' + _.escape(account), 'Noto Sans JP Regular', 35, 52, 16, 'fill="#9EABB6"')}
+        ${await stringSVG(time, 'Noto Sans JP Regular', 8, 106, 16, 'fill="#9EABB6"')}
+        ${await stringSVG(date, 'Noto Sans JP Regular', 32, 126, 16, 'fill="#9EABB6"')}
       </svg>`;
     const maxHeight = 52;
     const maxWidth = 35;
