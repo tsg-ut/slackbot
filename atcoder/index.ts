@@ -345,7 +345,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						},
 					] : [];
 
-					if (getRatingColor(result.OldRating) !== getRatingColor(result.NewRating)) {
+					if (result && getRatingColor(result.OldRating) !== getRatingColor(result.NewRating)) {
 						colorUpdates.push({
 							user,
 							newRating: result.NewRating,
