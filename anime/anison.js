@@ -295,6 +295,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						unfurl_links: true,
 					});
 
+					const {animeInfos} = await loadSheet();
+					const animeInfo = animeInfos.find(({name}) => name === state.answer);
 					await increment(message.user, 'anime-song-answer');
 					if (state.hints.length === 1) {
 						await increment(message.user, 'anime-song-answer-first-hint');
@@ -307,6 +309,9 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					}
 					if (state.difficulty === 'hard') {
 						await unlock(message.user, 'anime-song-hard-answer');
+					}
+					if (animeInfo && animeInfo.year < 2010) {
+						await unlock(message.user, 'anime-song-before-2010');
 					}
 
 					state.answer = null;

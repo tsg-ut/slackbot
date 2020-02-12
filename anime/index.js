@@ -481,6 +481,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						}),
 					});
 
+					const {animeInfos} = await animesDeferred.promise;
+					const animeInfo = animeInfos.find(({name}) => name === state.answer);
 					await increment(message.user, 'anime-answer');
 					if (state.hints.length === 1) {
 						await increment(message.user, 'anime-answer-first-hint');
@@ -493,6 +495,12 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					}
 					if (state.hints.length <= 3) {
 						await unlock(message.user, 'anime-answer-third-hint');
+					}
+					if (animeInfo && animeInfo.year < 2010) {
+						await unlock(message.user, 'anime-before-2010');
+					}
+					if (animeInfo && animeInfo.year < 2000) {
+						await unlock(message.user, 'anime-before-2000');
 					}
 
 					state.answer = null;

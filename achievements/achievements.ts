@@ -1444,6 +1444,20 @@ const achievements: Achievement[] = [
 		value: 30,
 	},
 	{
+		id: 'anime-before-2010',
+		difficulty: 'hard',
+		title: 'あの頃はよかった',
+		condition: 'アニメ当てクイズで2010年より前に放送されたアニメを正解する',
+		category: 'anime',
+	},
+	{
+		id: 'anime-before-2000',
+		difficulty: 'professional',
+		title: 'セル画の香り',
+		condition: 'アニメ当てクイズで2000年より前に放送されたアニメを正解する',
+		category: 'anime',
+	},
+	{
 		id: 'anime-answer-third-hint',
 		difficulty: 'medium',
 		title: 'アニメオタク',
@@ -1492,10 +1506,10 @@ const achievements: Achievement[] = [
 		value: 1,
 	},
 	{
-		id: 'anime-song-hard-answer',
+		id: 'anime-song-before-2010',
 		difficulty: 'hard',
 		title: '懐メロハンター',
-		condition: 'アニソン当てクイズhardで正解する',
+		condition: 'アニソン当てクイズで2010年より前に放送されたアニメの曲を正解する',
 		category: 'anime',
 	},
 	{
