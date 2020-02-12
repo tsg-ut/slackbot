@@ -1,8 +1,11 @@
+/* eslint-disable no-undef */
+// @ts-ignore
+import noop from 'lodash/noop';
+import MockFirebase from 'mock-cloud-firestore';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
-// @ts-ignore
-import MockFirebase  from 'mock-cloud-firestore';
-import noop from 'lodash/noop';
+
+import achievements from './index_production';
 
 let slack: Slack = null;
 
@@ -14,8 +17,6 @@ jest.mock('../lib/firestore', () => {
 	db.runTransaction = noop;
 	return db;
 });
-
-import achievements from './index_production';
 
 beforeEach(() => {
 	slack = new Slack();
