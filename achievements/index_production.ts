@@ -1,13 +1,12 @@
 import qs from 'querystring';
 import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
 import axios from 'axios';
-import {throttle, groupBy, get as getter, chunk} from 'lodash';
-import moment from 'moment';
-// @ts-ignore
 import {stripIndent} from 'common-tags';
-import achievements, {Difficulty} from './achievements';
-import {Deferred} from '../lib/utils';
+import {throttle, countBy, groupBy, get as getter, chunk} from 'lodash';
+import moment from 'moment';
 import db from '../lib/firestore';
+import {Deferred} from '../lib/utils';
+import achievements, {Difficulty} from './achievements';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -68,7 +67,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		if (message.text && message.user && !message.bot_id && !message.subtype && message.channel.startsWith('C')) {
 			const day = moment(parseFloat(message.ts) * 1000).utcOffset(9).format('YYYY-MM-DD');
 			increment(message.user, 'chats');
-			const lastChatDay = await get(message.user, 'lastChatDay')
+			const lastChatDay = await get(message.user, 'lastChatDay');
 			if (lastChatDay !== day) {
 				increment(message.user, 'chatDays');
 				set(message.user, 'lastChatDay', day);
@@ -90,7 +89,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 					fallback: achievement.condition,
 					color: 'good',
 				})),
-			})
+			});
 			await slack.chat.postMessage({
 				channel: message.channel,
 				text: '',
@@ -270,6 +269,23 @@ const triggerUpdateDb = throttle(async () => {
 	});
 }, 30 * 1000);
 
+const getAchievementsText = (holdingAchievements: string[], newDifficulty: Difficulty) => {
+	const achievementCounts = countBy(holdingAchievements, (id) => achievements.get(id).difficulty);
+	return ([
+		['professional', ':purple_heart:'],
+		['hard', ':heart:'],
+		['medium', ':orange_heart:'],
+		['easy', ':green_heart:'],
+		['baby', ':blue_heart:'],
+	] as [Difficulty, string][]).map(([difficulty, emoji]) => {
+		const count = getter(achievementCounts, [difficulty], 0);
+		if (difficulty === newDifficulty) {
+			return `${emoji}*${count}* (+1)`;
+		}
+		return `${emoji}${count}`;
+	}).join(' ');
+};
+
 export const unlock = async (user: string, name: string, additionalInfo?: string) => {
 	await initializeDeferred.promise;
 
@@ -283,7 +299,7 @@ export const unlock = async (user: string, name: string, additionalInfo?: string
 	}
 
 	if (!state.achievements.has(user)) {
-		state.achievements.set(user, new Set())
+		state.achievements.set(user, new Set());
 	}
 
 	if (state.achievements.get(user).has(name)) {
@@ -313,17 +329,9 @@ export const unlock = async (user: string, name: string, additionalInfo?: string
 			_${achievement.condition}_
 			難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty}) ${isFirst ? '*初達成者!!:ojigineko-superfast:*' : ''}
 			${additionalInfo === undefined ? '' : additionalInfo}`,
-		attachments: ['professional', 'hard', 'medium', 'easy', 'baby'].map((difficulty: Difficulty) => {
-			const entries = holdingAchievements.filter((id) => achievements.get(id).difficulty === difficulty);
-			if (entries.length === 0) {
-				return null;
-			}
-			const attachment: MessageAttachment = {
-				color: difficultyToColor(difficulty),
-				text: entries.map((id) => achievements.get(id).title).join(' '),
-			};
-			return attachment;
-		}),
+		attachments: [{
+			text: getAchievementsText(holdingAchievements, achievement.difficulty),
+		}],
 	});
 
 	const newAchievements = [];
@@ -340,8 +348,8 @@ export const unlock = async (user: string, name: string, additionalInfo?: string
 		newAchievements.push('achievements-70');
 	}
 	if (holdingAchievements.filter((id) => (
-		achievements.get(id).difficulty !== 'baby'
-		&& achievements.get(id).difficulty !== 'easy'
+		achievements.get(id).difficulty !== 'baby' &&
+		achievements.get(id).difficulty !== 'easy'
 	)).length >= 10) {
 		newAchievements.push('achievements-master');
 	}
@@ -364,11 +372,11 @@ export const isUnlocked = async (user: string, name: string) => {
 	}
 
 	if (!state.achievements.has(user)) {
-		state.achievements.set(user, new Set())
+		state.achievements.set(user, new Set());
 	}
 
 	return state.achievements.get(user).has(name);
-}
+};
 
 export const increment = async (user: string, name: string, value: number = 1) => {
 	await initializeDeferred.promise;
