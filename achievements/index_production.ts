@@ -1,11 +1,13 @@
 import qs from 'querystring';
-import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
+// eslint-disable-next-line no-unused-vars
+import {WebClient, RTMClient} from '@slack/client';
 import axios from 'axios';
 import {stripIndent} from 'common-tags';
 import {throttle, countBy, groupBy, get as getter, chunk} from 'lodash';
 import moment from 'moment';
 import db from '../lib/firestore';
 import {Deferred} from '../lib/utils';
+// eslint-disable-next-line no-unused-vars
 import achievements, {Difficulty} from './achievements';
 
 interface SlackInterface {
@@ -46,18 +48,7 @@ const difficultyToStars = (difficulty: Difficulty) => (
 	}[difficulty]
 );
 
-const difficultyToColor = (difficulty: Difficulty) => (
-	{
-		baby: '#03A9F4',
-		easy: '#2E7D32',
-		medium: '#F57C00',
-		hard: '#D50000',
-		professional: '#D500F9',
-	}[difficulty]
-);
-
 const loadDeferred = new Deferred();
-
 const initializeDeferred = new Deferred();
 
 export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
@@ -250,7 +241,7 @@ const triggerUpdateDb = throttle(async () => {
 			const {data, exists} = userData.get(user);
 			for (const operation of userOperations) {
 				if (operation.type === 'increment') {
-					if (data.hasOwnProperty(operation.name)) {
+					if ({}.hasOwnProperty.call(data, operation.name)) {
 						data[operation.name] += operation.value;
 					} else {
 						data[operation.name] = operation.value;
@@ -271,7 +262,7 @@ const triggerUpdateDb = throttle(async () => {
 
 const getAchievementsText = (holdingAchievements: string[], newDifficulty: Difficulty) => {
 	const achievementCounts = countBy(holdingAchievements, (id) => achievements.get(id).difficulty);
-	return ([
+	const hearts = ([
 		['professional', ':purple_heart:'],
 		['hard', ':heart:'],
 		['medium', ':orange_heart:'],
@@ -280,10 +271,15 @@ const getAchievementsText = (holdingAchievements: string[], newDifficulty: Diffi
 	] as [Difficulty, string][]).map(([difficulty, emoji]) => {
 		const count = getter(achievementCounts, [difficulty], 0);
 		if (difficulty === newDifficulty) {
-			return `${emoji}*${count}* (+1)`;
+			return `${emoji}*${count}*`;
 		}
 		return `${emoji}${count}`;
-	}).join(' ');
+	});
+
+	return [
+		...hearts,
+		`計 *${holdingAchievements.length}* 個`,
+	].join(' ');
 };
 
 export const unlock = async (user: string, name: string, additionalInfo?: string) => {
