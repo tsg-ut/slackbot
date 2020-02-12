@@ -10,6 +10,9 @@
     },
     "rules": {
         "no-console": "off",
-        "camelcase": "off"
+        "no-restricted-imports": "off",
+        "no-use-before-define": "off",
+        "camelcase": "off",
+        "import/extensions": "off"
     }
 }
