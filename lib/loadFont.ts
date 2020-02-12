@@ -1,3 +1,4 @@
+// @ts-ignore
 import * as opentype from 'opentype.js';
 // @ts-ignore
 import download from 'download';

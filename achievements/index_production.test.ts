@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
-// @ts-ignore
 import noop from 'lodash/noop';
+// @ts-ignore
 import MockFirebase from 'mock-cloud-firestore';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
