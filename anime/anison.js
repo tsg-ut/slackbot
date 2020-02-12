@@ -1,15 +1,15 @@
-const {escapeRegExp, sample, sampleSize, chunk, uniq, sortBy, shuffle} = require('lodash');
-const scrapeIt = require('scrape-it');
-const levenshtein = require('fast-levenshtein');
-const {Mutex} = require('async-mutex');
-const {hiraganize} = require('japanese');
-const {Deferred} = require('../lib/utils.ts');
-const {unlock, increment} = require('../achievements');
-const {loadSheet} = require('./index.js');
-const {getSongInfo, getMovieInfo} = require('../lyrics/index.ts');
-const {tokenize} = require('kuromojin');
 const {promises: fs} = require('fs');
 const path = require('path');
+const {Mutex} = require('async-mutex');
+const levenshtein = require('fast-levenshtein');
+const {hiraganize} = require('japanese');
+const {tokenize} = require('kuromojin');
+const {escapeRegExp, sample, sampleSize, chunk, uniq, sortBy, shuffle} = require('lodash');
+const scrapeIt = require('scrape-it');
+const {unlock, increment} = require('../achievements');
+const {Deferred} = require('../lib/utils.ts');
+const {getSongInfo, getMovieInfo} = require('../lyrics/index.ts');
+const {loadSheet} = require('./index.js');
 
 const freqDeferred = new Deferred();
 const mutex = new Mutex();
@@ -294,6 +294,21 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						thread_ts: state.thread,
 						unfurl_links: true,
 					});
+
+					await increment(message.user, 'anime-song-answer');
+					if (state.hints.length === 1) {
+						await increment(message.user, 'anime-song-answer-first-hint');
+					}
+					if (state.hints.length <= 2) {
+						await unlock(message.user, 'anime-song-answer-second-hint');
+					}
+					if (state.hints.length <= 3) {
+						await unlock(message.user, 'anime-song-answer-third-hint');
+					}
+					if (state.difficulty === 'hard') {
+						await unlock(message.user, 'anime-song-hard-answer');
+					}
+
 					state.answer = null;
 					state.previousHint = 0;
 					state.hints = [];
