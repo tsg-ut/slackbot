@@ -1,14 +1,14 @@
+const {Mutex} = require('async-mutex');
+const axios = require('axios');
 const cloudinary = require('cloudinary');
-const {get, last, minBy, random, sum, sample, uniq, groupBy, mapValues, range, flatten} = require('lodash');
 const {stripIndent} = require('common-tags');
 const levenshtein = require('fast-levenshtein');
 const {google} = require('googleapis');
-const {Mutex} = require('async-mutex');
-const {xml2js} = require('xml-js');
-const axios = require('axios');
 const {hiraganize} = require('japanese');
-const {Deferred} = require('../lib/utils.ts');
+const {get, last, minBy, random, sum, sample, uniq, groupBy, mapValues, range, flatten} = require('lodash');
+const {xml2js} = require('xml-js');
 const {unlock, increment} = require('../achievements');
+const {Deferred} = require('../lib/utils.ts');
 
 const animesDeferred = new Deferred();
 const mutex = new Mutex();
@@ -481,15 +481,26 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						}),
 					});
 
+					const {animeInfos} = await animesDeferred.promise;
+					const animeInfo = animeInfos.find(({name}) => name === state.answer);
 					await increment(message.user, 'anime-answer');
 					if (state.hints.length === 1) {
 						await increment(message.user, 'anime-answer-first-hint');
+						if (state.difficulty === 'extreme') {
+							await unlock(message.user, 'anime-extreme-answer-first-hint');
+						}
 					}
 					if (state.hints.length <= 2) {
 						await unlock(message.user, 'anime-answer-second-hint');
 					}
 					if (state.hints.length <= 3) {
 						await unlock(message.user, 'anime-answer-third-hint');
+					}
+					if (animeInfo && animeInfo.year < 2010) {
+						await unlock(message.user, 'anime-before-2010');
+					}
+					if (animeInfo && animeInfo.year < 2000) {
+						await unlock(message.user, 'anime-before-2000');
 					}
 
 					state.answer = null;
