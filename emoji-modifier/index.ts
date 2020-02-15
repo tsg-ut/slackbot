@@ -348,22 +348,24 @@ const filters: Map<string,  Filter> = new Map([
       const options = raw == null ? {} : {raw};
       const resized = await toSquare(await sharp(image, options).png().toBuffer());
       const {width: side} = await sharp(resized).metadata();
-      const rows = await Promise.all(
-        _.range(side).map(async i => {
-          const row = await sharp(resized)
-            .extract({ left: 0, top: i, width: side, height: 1 })
-            .toBuffer();
-          if (i == 0) return row;
-          return await sharp(row)
-            .extract({ left: i, top: 0, width: side - i, height: 1 })
-            .extend({ top:0, left:0, right: i, bottom: 0, background: 'transparent' })
-            .composite([{
-              input: await sharp(row).extract({ left:0, top:0, width: i, height: 1 }).toBuffer(),
-              gravity: 'east',
-            }])
-            .toBuffer();
-        })
-      );
+      const rows: Buffer[] = Array(side);
+      for (const i of Array(side).keys()) {
+        const row = await sharp(resized)
+          .extract({ left: 0, top: i, width: side, height: 1 })
+          .toBuffer();
+        if (i == 0) {
+          rows[i] = row;
+          continue;
+        }
+        rows[i] = await sharp(row)
+          .extract({ left: i, top: 0, width: side - i, height: 1 })
+          .extend({ top:0, left:0, right: i, bottom: 0, background: 'transparent' })
+          .composite([{
+            input: await sharp(row).extract({ left:0, top:0, width: i, height: 1 }).toBuffer(),
+            gravity: 'east',
+          }])
+          .toBuffer();
+      }
       const composed = sharp({
         create: {
           width: side,
