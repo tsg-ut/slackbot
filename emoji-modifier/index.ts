@@ -232,17 +232,8 @@ const proTwitter = async (emoji: Emoji, [name, account]: [string, string]): Prom
   }
 };
 
-
-const moveFromTo = async (emoji: Emoji, [from, to]: [string, string]): Promise<Emoji | EmodiError> => {
-  if (emoji.kind === 'gif')
-    return runtimeError('move accepts only static emoji');
-  type position = 'top' | 'bottom' | 'left' | 'right';
-  const positions: position[] = ['top', 'bottom', 'left', 'right'];
-  const isPosition = (s: string): s is position => (positions as string[]).includes(s);
-  if (!isPosition(from) || !isPosition(to))
-    return runtimeError('move: expected direction (top | bottom | left | right)');
-  const {width, height} = await sharp(emoji.image).metadata();
-  const side = Math.max(width, height);
+const toSquare = async (image: Buffer): Promise<Buffer> => {
+  const {width, height} = await sharp(image).metadata();
   const extension = { top: 0, bottom: 0, left: 0, right: 0, background: {r: 0, b: 0, g: 0, alpha: 0} };
   if (width > height) {
     const top = Math.floor((width -  height) / 2);
@@ -254,7 +245,21 @@ const moveFromTo = async (emoji: Emoji, [from, to]: [string, string]): Promise<E
     extension.left = left;
     extension.right = height - width - left;
   }
-  const resized = await sharp(emoji.image).extend(extension).png().toBuffer();
+  return await sharp(image).extend(extension).toBuffer();
+};
+
+
+const moveFromTo = async (emoji: Emoji, [from, to]: [string, string]): Promise<Emoji | EmodiError> => {
+  if (emoji.kind === 'gif')
+    return runtimeError('move accepts only static emoji');
+  type position = 'top' | 'bottom' | 'left' | 'right';
+  const positions: position[] = ['top', 'bottom', 'left', 'right'];
+  const isPosition = (s: string): s is position => (positions as string[]).includes(s);
+  if (!isPosition(from) || !isPosition(to))
+    return runtimeError('move: expected direction (top | bottom | left | right)');
+  const {width, height} = await sharp(emoji.image).metadata();
+  const side = Math.max(width, height);
+  const resized = await toSquare(emoji.image);
   const shift = async (pos: position, img: Buffer, frame: number): Promise<Buffer> => {
     const step = Math.round(frame * side / 12);
     const opposites = new Map<position, position>([
@@ -338,6 +343,42 @@ const filters: Map<string,  Filter> = new Map([
       });
     }
   }],
+  ['distort',
+    simpleFilter(async (image: Buffer, raw?: sharp.Raw): Promise<Buffer> => {
+      const options = raw == null ? {} : {raw};
+      const resized = await toSquare(await sharp(image, options).png().toBuffer());
+      const {width: side} = await sharp(resized).metadata();
+      const rows = await Promise.all(
+        _.range(side).map(async i => {
+          const row = await sharp(resized)
+            .extract({ left: 0, top: i, width: side, height: 1 })
+            .toBuffer();
+          if (i == 0) return row;
+          return await sharp(row)
+            .extract({ left: i, top: 0, width: side - i, height: 1 })
+            .extend({ top:0, left:0, right: i, bottom: 0, background: 'transparent' })
+            .composite([{
+              input: await sharp(row).extract({ left:0, top:0, width: i, height: 1 }).toBuffer(),
+              gravity: 'east',
+            }])
+            .toBuffer();
+        })
+      );
+      const composed = sharp({
+        create: {
+          width: side,
+          height: side,
+          channels: 4,
+          background: 'transparent',
+        }
+      }).composite(rows.map((row, i) => ({
+        input: row,
+        top: i,
+        left: 0,
+      })));
+      return await (raw == null ? composed.png().toBuffer() : composed.raw().toBuffer())
+    })
+  ],
   ['pro', {
     arguments: ['string', 'string'],
     filter: proTwitter,
