@@ -9,6 +9,7 @@ const {createEventAdapter} = require('@slack/events-api');
 const {createMessageAdapter} = require('@slack/interactive-messages');
 const fastify = require('fastify')({logger: true});
 const logger = require('./lib/logger.js');
+const yargs = require('yargs');
 
 fastify.register(require('fastify-formbody'));
 
@@ -55,13 +56,13 @@ const allBots = [
 	'context-free',
 ];
 
-const argv = require('yargs')
+const argv = yargs
 	.array('only')
 	.choices('only', allBots)
 	.default('only', allBots)
 	.argv;
 
-const plugins = argv.only.map(name => require('./' + name));
+const plugins = argv.only.map((name) => require(`./${name}`));
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
 	logger.error(error.stack);
