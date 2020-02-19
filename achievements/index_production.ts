@@ -3,11 +3,11 @@ import qs from 'querystring';
 import {WebClient, RTMClient} from '@slack/client';
 import axios from 'axios';
 import {stripIndent} from 'common-tags';
-import {throttle, countBy, groupBy, get as getter, chunk} from 'lodash';
+import {throttle, groupBy, get as getter, chunk} from 'lodash';
 import moment from 'moment';
+// @ts-ignore
 import db from '../lib/firestore';
 import {Deferred} from '../lib/utils';
-// eslint-disable-next-line no-unused-vars
 import achievements, {Difficulty} from './achievements';
 
 interface SlackInterface {
@@ -321,7 +321,7 @@ export const unlock = async (user: string, name: string, additionalInfo?: string
 		username: 'achievements',
 		icon_emoji: ':unlock:',
 		text: stripIndent`
-			<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada: <https://sig.tsg.ne.jp/achievement-viewer/users/${user}|[実績一覧]>
+			<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada: <https://achievements.tsg.ne.jp/users/${user}|[実績一覧]>
 			_${achievement.condition}_
 			難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty}) ${isFirst ? '*初達成者!!:ojigineko-superfast:*' : ''}
 			${additionalInfo === undefined ? '' : additionalInfo}`,
