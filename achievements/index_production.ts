@@ -3,7 +3,7 @@ import qs from 'querystring';
 import {WebClient, RTMClient} from '@slack/client';
 import axios from 'axios';
 import {stripIndent} from 'common-tags';
-import {throttle, groupBy, get as getter, chunk} from 'lodash';
+import {countBy, throttle, groupBy, get as getter, chunk} from 'lodash';
 import moment from 'moment';
 // @ts-ignore
 import db from '../lib/firestore';
