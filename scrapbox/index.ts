@@ -127,14 +127,6 @@ const isMuted = async (url: string): Promise<boolean> => {
  */
 // eslint-disable-next-line node/no-unsupported-features, node/no-unsupported-features/es-syntax
 export const server = ({webClient: slack}: SlackInterface) => plugin((fastify, opts, next) => {
-	fastify.setErrorHandler((err) => {
-		if (process.env.NODE_ENV === 'development') {
-			// debug
-			throw err;
-		} else {
-			logger.error(err.stack);
-		}
-	});
 	fastify.post<unknown, unknown, unknown, SlackIncomingWebhookRequest>('/hooks/scrapbox', async (req) => {
 		await slack.chat.postMessage(
 			{

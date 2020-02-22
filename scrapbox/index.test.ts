@@ -5,7 +5,7 @@ import Slack from '../lib/slackMock.js';
 import axios from 'axios';
 import qs from 'querystring';
 import { escapeRegExp } from 'lodash';
-import fastifyConstructor from 'fastify';
+import { fastifyDevConstructor } from '../lib/fastify';
 import {MessageAttachment} from '@slack/client';
 
 
@@ -65,8 +65,7 @@ describe('scrapbox', () => {
 	it('mutes pages with ##ミュート tag', async () => {
 		const fakeChannel = 'CSCRAPBOX';
 		process.env.CHANNEL_SCRAPBOX = fakeChannel;
-		process.env.NODE_ENV = 'development';
-		const fastify = fastifyConstructor();
+		const fastify = fastifyDevConstructor();
 		// eslint-disable-next-line array-plural/array-plural
 		const attachments_req: (MessageAttachment & any)[] = [
 			{
