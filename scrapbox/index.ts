@@ -7,7 +7,14 @@ import { escapeRegExp } from 'lodash';
 import {WebClient, RTMClient, LinkUnfurls, MessageAttachment} from '@slack/client';
 
 const projectName = process.env.SCRAPBOX_PROJECT_NAME;
-const scrapboxUrlRegexp = new RegExp(`^https?${escapeRegExp(`://scrapbox.io/${projectName}/`)}(?<pageTitle>.+)$`);
+const scrapboxUrlRegexp = new RegExp(`^https?${escapeRegExp(`://scrapbox.io/${projectName}/`)}(?<pageTitle>.+?)(?:#.*)?$`);
+const getTitleFromPageUrl = (url: string): string => {
+	let pageName = url.replace(scrapboxUrlRegexp, '$<pageTitle>');
+	try {
+		pageName = decodeURIComponent(pageName);
+	} catch {}
+	return pageName;
+};
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/${projectName}/${pageName}`;
 const getScrapboxUrlFromPageUrl = (url: string): string => {
 	let pageName = url.replace(scrapboxUrlRegexp, '$<pageTitle>');
@@ -105,21 +112,11 @@ const maskAttachment = (attachment: MessageAttachment): MessageAttachment => {
 	};
 };
 
-/**
- * 指定したURLの記事がミュート対象かどうかを判定する
- *
- * @param url Scrapbox記事のURL
- * @return ミュート対象ならtrue, 対象外ならfalse
- */
-const isMuted = async (url: string): Promise<boolean> => {
-	if (!scrapboxUrlRegexp.test(url)) {
-		// this url is not a scrapbox page
-		return false;
-	}
-	const muteTag = '##ミュート';
-	const infoUrl = getScrapboxUrlFromPageUrl(url);
-	const pageInfo = await axios.get(infoUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
-	return pageInfo.data.links.indexOf(muteTag) !== -1; // if found, the page is muted
+export const muteTag = '##ミュート';
+const getMutedList = async (): Promise<Set<string>> => {
+	const muteTagUrl = getScrapboxUrl(muteTag);
+	const pageInfo = await axios.get(muteTagUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
+	return new Set(pageInfo.data.relatedPages.links1hop.map(({titleLc}: {titleLc: string}) => titleLc));
 };
 
 /**
@@ -128,15 +125,16 @@ const isMuted = async (url: string): Promise<boolean> => {
 // eslint-disable-next-line node/no-unsupported-features, node/no-unsupported-features/es-syntax
 export const server = ({webClient: slack}: SlackInterface) => plugin((fastify, opts, next) => {
 	fastify.post<unknown, unknown, unknown, SlackIncomingWebhookRequest>('/hooks/scrapbox', async (req) => {
+		const mutedList = await getMutedList();
 		await slack.chat.postMessage(
 			{
 				channel: process.env.CHANNEL_SCRAPBOX,
 				icon_emoji: ':scrapbox:',
 				...req.body,
 				attachments: await Promise.all(req.body.attachments.map(
-					async (attachment) => await isMuted(attachment.title_link) ? maskAttachment(attachment) : attachment
+					async (attachment) => await mutedList.has(getTitleFromPageUrl(attachment.title_link)) ? maskAttachment(attachment) : attachment,
 				)),
-			}
+			},
 		);
 		return '';
 	});

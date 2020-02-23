@@ -4,7 +4,7 @@ jest.mock('axios');
 import Slack from '../lib/slackMock.js';
 import axios from 'axios';
 import qs from 'querystring';
-import { escapeRegExp } from 'lodash';
+import { escapeRegExp, set } from 'lodash';
 import { fastifyDevConstructor } from '../lib/fastify';
 import {MessageAttachment} from '@slack/client';
 
@@ -17,7 +17,7 @@ let slack: Slack = null;
 const projectName = 'PROJECTNAME';
 process.env.SCRAPBOX_PROJECT_NAME = projectName;
 import scrapbox from './index';
-import {server} from './index';
+import {server, muteTag} from './index';
 
 describe('scrapbox', () => {
 	beforeEach(async () => {
@@ -91,10 +91,8 @@ describe('scrapbox', () => {
 		];
 		// @ts-ignore
 		axios.get.mockImplementation((url: string) => {
-			if (url.match(new RegExp(`${escapeRegExp(`https://scrapbox.io/api/pages/${projectName}/page_1`)}(?:#.*)?`))) {
-				return {data: {title: 'page 1', links: ['page 3', '##ミュート']}};
-			} else if (url.match(new RegExp(`${escapeRegExp(`https://scrapbox.io/api/pages/${projectName}/page_2`)}(?:#.*)?`))) {
-				return {data: {title: 'page 2', links: ['page 4']}};
+			if (url === `https://scrapbox.io/api/pages/${projectName}/##ミュート`) {
+				return set({}, ['data', 'relatedPages', 'links1hop'], [{titleLc: 'page_1'}]);
 			}
 			throw Error('axios-mock: unexpected URL');
 		});
