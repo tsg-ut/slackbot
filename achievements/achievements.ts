@@ -269,6 +269,15 @@ const achievements: Achievement[] = [
 		value: 5,
 	},
 	{
+		id: 'reaction-kombu-5',
+		difficulty: 'hard',
+		title: '海藻を買いそう',
+		condition: '1つのメッセージに対し5人以上から:kombu:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'kombu',
+		value: 5,
+	},
+	{
 		id: 'reaction-hototogisu-5',
 		difficulty: 'hard',
 		title: '鳥さんが鳴いとるやんけ',
