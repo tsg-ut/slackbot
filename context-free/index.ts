@@ -1,5 +1,5 @@
 import scrapeIt from 'scrape-it';
-import {RTMClient, WebClient} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 import {last, escapeRegExp} from 'lodash';
 import plugin from 'fastify-plugin';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils'
@@ -100,11 +100,6 @@ const composePost = async (message: string): Promise<string> => {
 
 const randomInterval = () =>
   1000 * 60 * (90 + (Math.random() - 0.5) * 2 * 60);
-
-interface SlackInterface {
-  rtmClient: RTMClient;
-  webClient: WebClient;
-}
 
 export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => plugin (async (fastify, opts, next) => {
   const postWord = async () => {

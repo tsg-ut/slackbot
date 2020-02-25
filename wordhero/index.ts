@@ -2,7 +2,7 @@ import fs from 'fs';
 import {promisify} from 'util';
 import path from 'path';
 import assert from 'assert';
-import {WebClient, RTMClient} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 import {flatten, sum, sample, random, sortBy, maxBy, sumBy, shuffle} from 'lodash';
 // @ts-ignore
 import trie from './trie';
@@ -16,11 +16,6 @@ import download from 'download';
 import sqlite from 'sqlite';
 import render from './render';
 import {Deferred} from '../lib/utils';
-
-interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-}
 
 const hiraganaLetters = 'ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろわをんー'.split('');
 

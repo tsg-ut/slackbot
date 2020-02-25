@@ -1,6 +1,8 @@
 import qs from 'querystring';
 // eslint-disable-next-line no-unused-vars
-import {WebClient, RTMClient} from '@slack/client';
+import {WebClient} from '@slack/client';
+// eslint-disable-next-line no-unused-vars
+import type {SlackInterface} from '../lib/slack';
 import axios from 'axios';
 import {stripIndent} from 'common-tags';
 import {countBy, throttle, groupBy, get as getter, chunk} from 'lodash';
@@ -9,12 +11,6 @@ import moment from 'moment';
 import db from '../lib/firestore';
 import {Deferred} from '../lib/utils';
 import achievements, {Difficulty} from './achievements';
-
-interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-	messageClient: any,
-}
 
 type users = {
 	chats?: number,

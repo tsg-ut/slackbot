@@ -1,12 +1,7 @@
-import {RTMClient, WebClient} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 import db from '../lib/firestore';
 import {getMemberName} from '../lib/slackUtils';
 import plugin from 'fastify-plugin';
-
-interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-}
 
 export const server = ({webClient: slack}: SlackInterface) => plugin(async (fastify, opts, next) => {
 	const {team}: any = await slack.team.info();

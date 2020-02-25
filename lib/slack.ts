@@ -1,9 +1,18 @@
 import {RTMClient, WebClient} from '@slack/client';
+import {createEventAdapter} from '@slack/events-api';
+import {createMessageAdapter} from '@slack/interactive-messages';
 import {Deferred} from './utils';
 import {Token} from '../oauth/tokens';
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
 import path from 'path';
+
+export interface SlackInterface {
+	rtmClient: RTMClient;
+	webClient: WebClient;
+	eventClient: ReturnType<typeof createEventAdapter>;
+	messageClient: ReturnType<typeof createMessageAdapter>;
+};
 
 export const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
 export const webClient = new WebClient(process.env.SLACK_TOKEN);

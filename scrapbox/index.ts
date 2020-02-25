@@ -2,17 +2,11 @@ import axios from 'axios';
 // @ts-ignore
 import logger from '../lib/logger.js';
 import {LinkUnfurls} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 import qs from 'querystring';
 
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
 
-import {WebClient, RTMClient} from '@slack/client';
-
-interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-	eventClient: any,
-}
 
 export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
 	event.on('link_shared', async (e: any) => {
