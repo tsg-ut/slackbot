@@ -1,4 +1,4 @@
-import {WebClient, RTMClient} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 import moment from 'moment';
 import axios from 'axios';
 // @ts-ignore
@@ -8,11 +8,6 @@ import fs from 'fs';
 import {getMemberName, getEmoji} from '../lib/slackUtils';
 import path from 'path';
 import {download} from '../lib/download';
-
-interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-}
 
 function getTimeLink(time:number){
 	return moment(time).utcOffset('+0900').format('HH:mm:ss');

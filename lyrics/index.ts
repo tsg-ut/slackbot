@@ -1,7 +1,7 @@
 import axios from 'axios';
 import scrapeIt from 'scrape-it';
 import { AllHtmlEntities } from 'html-entities';
-import { RTMClient, WebClient } from '@slack/client';
+import type { SlackInterface } from '../lib/slack';
 import { escapeRegExp, sample } from 'lodash';
 import qs from 'querystring';
 
@@ -27,11 +27,6 @@ interface MovieInfo {
 interface iTuensInfo {
     audioUrl: string | null;
     artworkUrl: string | null;
-}
-
-interface SlackInterface {
-    rtmClient: RTMClient;
-    webClient: WebClient;
 }
 
 const getiTunesInfo = async (title: string, artist: string): Promise<iTuensInfo> => {

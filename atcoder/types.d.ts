@@ -1,10 +1,3 @@
-import {WebClient, RTMClient} from '@slack/client';
-
-export interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-}
-
 export interface Standings {
 	Fixed: boolean,
 	AdditionalColumns: null,

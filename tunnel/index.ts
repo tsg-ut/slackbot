@@ -1,4 +1,5 @@
-import {RTMClient, WebClient} from '@slack/client';
+import {WebClient} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 import {flatten, uniq} from 'lodash';
 import {getEmoji, getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {EmojiData} from 'emoji-data-ts';
@@ -7,11 +8,6 @@ import path from 'path';
 import plugin from 'fastify-plugin';
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
-
-interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-}
 
 const messages = new Map();
 

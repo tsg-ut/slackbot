@@ -1,4 +1,4 @@
-import {RTMClient, WebClient} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 // @ts-ignore
 import logger from '../lib/logger.js';
 import loadFont from '../lib/loadFont';
@@ -472,10 +472,6 @@ const runTransformation = async (message: string): Promise<Emoji | EmodiError> =
 // }}}
 
 // user interaction {{{
-interface SlackInterface {
-  rtmClient: RTMClient;
-  webClient: WebClient;
-}
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
   const {team}: any = await slack.team.info();

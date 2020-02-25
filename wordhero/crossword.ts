@@ -1,4 +1,4 @@
-import {WebClient, RTMClient} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 import cloudinary from 'cloudinary';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
@@ -10,10 +10,6 @@ import generateCrossword from './generateCrossword';
 import boardConfigs from './boards.json';
 import {unlock, increment} from '../achievements';
 
-interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-}
 
 interface Description {
 	word: string,

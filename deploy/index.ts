@@ -2,7 +2,7 @@
 import logger from '../lib/logger.js';
 import {get} from 'lodash';
 import {FastifyInstance} from 'fastify';
-import {WebClient} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 import {spawn} from 'child_process';
 // @ts-ignore
 import concat from 'concat-stream';
@@ -21,7 +21,7 @@ import Blocker from './block.js';
 const deployBlocker = new Blocker();
 export const blockDeploy = (name: string) => deployBlocker.block(name);
 
-export const server = ({webClient: slack}: {webClient: WebClient}) => async (fastify: FastifyInstance) => {
+export const server = ({webClient: slack}: SlackInterface) => async (fastify: FastifyInstance) => {
 	let triggered = false;
 
 	const postMessage = (text: string) => (
