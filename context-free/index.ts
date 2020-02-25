@@ -1,10 +1,12 @@
 import scrapeIt from 'scrape-it';
 import {RTMClient, WebClient} from '@slack/client';
-import {last} from 'lodash';
-import axios from 'axios';
+import {last, escapeRegExp} from 'lodash';
+import plugin from 'fastify-plugin';
+import {getMemberName, getMemberIcon} from '../lib/slackUtils'
 
 const normalizeMeaning = (input: string) => {
   let meaning = input;
+  meaning = meaning.replace(/&nbsp;/g, ' ');
   meaning = meaning.replace(/\s*\[.+?\]\s*/g, '');
   meaning = meaning.replace(/（/g, '(');
   meaning = meaning.replace(/）/g, ')');
@@ -35,31 +37,8 @@ const normalizeMeaning = (input: string) => {
   return meaning.trim();
 };
 
-const randomWord = async (): Promise<string> => {
-  const response = await axios.get('https://www.weblio.jp/WeblioRandomSelectServlet', {
-    maxRedirects: 0,
-    validateStatus: null,
-  });
-  const url = response.headers.location;
-  const word = decodeURIComponent(last(url.split('/')));
-  return word;
-};
-
-const getMeaning = async (word: string): Promise<string> => {
-  interface wordData {
-    description: string;
-  }
-  const response = await scrapeIt<wordData>(
-    `https://www.weblio.jp/content/${encodeURIComponent(word)}`,
-    {
-      description: {
-        selector: 'meta[name=description]',
-        attr: 'content',
-      }
-    }
-  );
-  
-  const match = response.data.description.match(/^.+?(とは\?(?<reference>.+?)。|の意味は)(?<meaning>.+)$/);
+const extractMeaning = (description: string): string => {
+  const match = description.match(/^.+?(とは\?(?<reference>.+?)。|の意味は)(?<meaning>.+)$/);
   if (match === null) {
     return 'わからん';
   }
@@ -70,6 +49,55 @@ const getMeaning = async (word: string): Promise<string> => {
   return `${normalizeMeaning(meaning)}。`;
 };
 
+interface Word {
+  word: string;
+  description: string;
+}
+
+const randomWord = async (): Promise<Word> => {
+  const response = await scrapeIt<Word>(
+    'https://www.weblio.jp/WeblioRandomSelectServlet',
+    {
+      word: {
+        selector: 'h2.midashigo',
+        attr: 'title',
+      },
+      description: {
+        selector: 'meta[name=description]',
+        attr: 'content',
+      },
+    }
+  );
+  const description = extractMeaning(response.data.description);
+  return {
+    word: response.data.word,
+    description,
+  };
+};
+
+const sleepFor = (duration: number): Promise<void> =>
+  new Promise(resolve => { setTimeout(resolve, duration) });
+
+const composePost = async (message: string): Promise<string> => {
+  if (message === '') {
+    const {word} = await randomWord();
+    return word;
+  }
+  let first = true;
+  let match;
+  while ((match = /{[^{}]*}/.exec(message)) != null) {
+    if (!first)
+      await sleepFor(5000);
+    first = false;
+    const {word} = await randomWord();
+    if (match[0] === '{}')
+      message = message.replace('{}', word);
+    else
+      message = message.replace(new RegExp(escapeRegExp(match[0]), 'g'), word);
+  }
+  return message;
+};
+
 const randomInterval = () =>
   1000 * 60 * (90 + (Math.random() - 0.5) * 2 * 60);
 
@@ -78,29 +106,28 @@ interface SlackInterface {
   webClient: WebClient;
 }
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => plugin (async (fastify, opts, next) => {
   const postWord = async () => {
-    const word = await randomWord();
+    const {word, description} = await randomWord();
     await slack.chat.postMessage({
       channel: process.env.CHANNEL_SANDBOX,
       icon_emoji: ':context:',
       username: 'context free bot',
       text: word,
     });
-    await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
-    const meaning = await getMeaning(word);
+    await sleepFor(10 * 1000);
     await slack.chat.postMessage({
       channel: process.env.CHANNEL_SANDBOX,
       icon_emoji: ':man_dancing_2:',
       username: '通りすがりに context free bot の解説をしてくれるおじさん',
-      text: `${word}: ${meaning}`,
+      text: `${word}: ${description}`,
     });
   };
   const repeatPost = () => {
     postWord();
     setTimeout(repeatPost, randomInterval());
   };
-  rtm.on('message', message => {
+  rtm.on('message', async message => {
     if (message.channel !== process.env.CHANNEL_SANDBOX
         || message.subtype === 'bot_message')
       return;
@@ -108,4 +135,26 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       postWord();
   });
   setTimeout(repeatPost, randomInterval());
-};
+  const {team: tsgTeam}: any = await slack.team.info();
+  fastify.post('/slash/context-free-post', async (request, response) => {
+    if (request.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
+      response.code(400);
+      return 'Bad Request';
+    }
+    if (request.body.team_id !== tsgTeam.id) {
+      response.code(200);
+      return '/cfp is only for TSG. Sorry!';
+    }
+    const username = await getMemberName(request.body.user_id);
+    const icon_url = await getMemberIcon(request.body.user_id, 512);
+    composePost(request.body.text).then(text => {
+      slack.chat.postMessage({
+        username,
+        icon_url,
+        channel: request.body.channel_id,
+        text,
+      });
+    });
+    return '';
+  });
+});

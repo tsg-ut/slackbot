@@ -9,51 +9,60 @@ const {createEventAdapter} = require('@slack/events-api');
 const {createMessageAdapter} = require('@slack/interactive-messages');
 const fastify = require('fastify')({logger: true});
 const logger = require('./lib/logger.js');
+const yargs = require('yargs');
 
 fastify.register(require('fastify-formbody'));
 
-const plugins = [
-	require('./summary'),
-	require('./mahjong'),
-	require('./pocky'),
-	require('./emoji-notifier'),
-	require('./sushi-bot'),
-	require('./shogi'),
-	require('./tiobot'),
-	require('./checkin'),
-	require('./tahoiya'),
-	require('./channel-notifier'),
-	require('./prime'),
-	require('./dajare'),
-	require('./sunrise'),
-	require('./ahokusa'),
-	// ...(word2vecInstalled ? [require('./vocabwar')] : []),
-	require('./ricochet-robots'),
-	require('./scrapbox'),
-	require('./slack-log'),
-	require('./welcome'),
-	require('./deploy'),
-	require('./achievements'),
-	require('./mail-hook'),
-	require('./wordhero'),
-	require('./wordhero/crossword'),
-	require('./oauth'),
-	require('./tunnel'),
-	require('./voiperrobot'),
-	require('./atcoder'),
-	require('./lyrics'),
-	require('./ojigineko-life'),
-	require('./better-custom-response'),
-	require('./emoxpand'),
-	require('./ponpe'),
-	require('./anime'),
-	require('./anime/anison'),
-	require('./oogiri'),
-	require('./sort-nazonazo'),
-	require('./tsglive'),
-	require('./emoji-modifier'),
-	require('./context-free'),
+const allBots = [
+	'summary',
+	'mahjong',
+	'pocky',
+	'emoji-notifier',
+	'sushi-bot',
+	'shogi',
+	'tiobot',
+	'checkin',
+	'tahoiya',
+	'channel-notifier',
+	'prime',
+	'dajare',
+	'sunrise',
+	'ahokusa',
+	// ...(word2vecInstalled ? ['vocabwar'] : []),
+	'ricochet-robots',
+	'scrapbox',
+	'slack-log',
+	'welcome',
+	'deploy',
+	'achievements',
+	'mail-hook',
+	'wordhero',
+	'wordhero/crossword',
+	'oauth',
+	'tunnel',
+	'voiperrobot',
+	'atcoder',
+	'lyrics',
+	'ojigineko-life',
+	'better-custom-response',
+	'emoxpand',
+	'ponpe',
+	'anime',
+	'anime/anison',
+	'oogiri',
+	'sort-nazonazo',
+	'tsglive',
+	'emoji-modifier',
+	'context-free',
 ];
+
+const argv = yargs
+	.array('only')
+	.choices('only', allBots)
+	.default('only', allBots)
+	.argv;
+
+const plugins = argv.only.map((name) => require(`./${name}`));
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
 	logger.error(error.stack);

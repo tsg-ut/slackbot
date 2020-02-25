@@ -1,13 +1,14 @@
 import qs from 'querystring';
-import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
+// eslint-disable-next-line no-unused-vars
+import {WebClient, RTMClient} from '@slack/client';
 import axios from 'axios';
-import {throttle, groupBy, get as getter, chunk} from 'lodash';
+import {stripIndent} from 'common-tags';
+import {countBy, throttle, groupBy, get as getter, chunk} from 'lodash';
 import moment from 'moment';
 // @ts-ignore
-import {stripIndent} from 'common-tags';
-import achievements, {Difficulty} from './achievements';
-import {Deferred} from '../lib/utils';
 import db from '../lib/firestore';
+import {Deferred} from '../lib/utils';
+import achievements, {Difficulty} from './achievements';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -47,18 +48,7 @@ const difficultyToStars = (difficulty: Difficulty) => (
 	}[difficulty]
 );
 
-const difficultyToColor = (difficulty: Difficulty) => (
-	{
-		baby: '#03A9F4',
-		easy: '#2E7D32',
-		medium: '#F57C00',
-		hard: '#D50000',
-		professional: '#D500F9',
-	}[difficulty]
-);
-
 const loadDeferred = new Deferred();
-
 const initializeDeferred = new Deferred();
 
 export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
@@ -68,7 +58,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		if (message.text && message.user && !message.bot_id && !message.subtype && message.channel.startsWith('C')) {
 			const day = moment(parseFloat(message.ts) * 1000).utcOffset(9).format('YYYY-MM-DD');
 			increment(message.user, 'chats');
-			const lastChatDay = await get(message.user, 'lastChatDay')
+			const lastChatDay = await get(message.user, 'lastChatDay');
 			if (lastChatDay !== day) {
 				increment(message.user, 'chatDays');
 				set(message.user, 'lastChatDay', day);
@@ -90,7 +80,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 					fallback: achievement.condition,
 					color: 'good',
 				})),
-			})
+			});
 			await slack.chat.postMessage({
 				channel: message.channel,
 				text: '',
@@ -132,9 +122,12 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 			if (!targetReaction) {
 				return;
 			}
+			const messageURL = event.item.type === 'message'
+				? `<https://tsg-ut.slack.com/archives/${event.item.channel}/p${event.item.ts.replace('.', '')}|[メッセージ]>`
+				: '';
 			for (const achievement of reactionAchievements) {
 				if (achievement.value <= targetReaction.count) {
-					await unlock(event.item_user, achievement.id);
+					await unlock(event.item_user, achievement.id, messageURL);
 				}
 			}
 		}
@@ -248,7 +241,7 @@ const triggerUpdateDb = throttle(async () => {
 			const {data, exists} = userData.get(user);
 			for (const operation of userOperations) {
 				if (operation.type === 'increment') {
-					if (data.hasOwnProperty(operation.name)) {
+					if ({}.hasOwnProperty.call(data, operation.name)) {
 						data[operation.name] += operation.value;
 					} else {
 						data[operation.name] = operation.value;
@@ -267,7 +260,29 @@ const triggerUpdateDb = throttle(async () => {
 	});
 }, 30 * 1000);
 
-export const unlock = async (user: string, name: string) => {
+const getAchievementsText = (holdingAchievements: string[], newDifficulty: Difficulty) => {
+	const achievementCounts = countBy(holdingAchievements, (id) => achievements.get(id).difficulty);
+	const hearts = ([
+		['professional', ':purple_heart:'],
+		['hard', ':heart:'],
+		['medium', ':orange_heart:'],
+		['easy', ':green_heart:'],
+		['baby', ':blue_heart:'],
+	] as [Difficulty, string][]).map(([difficulty, emoji]) => {
+		const count = getter(achievementCounts, [difficulty], 0);
+		if (difficulty === newDifficulty) {
+			return `${emoji}*${count}*`;
+		}
+		return `${emoji}${count}`;
+	});
+
+	return [
+		...hearts,
+		`計 *${holdingAchievements.length}* 個`,
+	].join(' ');
+};
+
+export const unlock = async (user: string, name: string, additionalInfo?: string) => {
 	await initializeDeferred.promise;
 
 	const achievement = achievements.get(name);
@@ -280,7 +295,7 @@ export const unlock = async (user: string, name: string) => {
 	}
 
 	if (!state.achievements.has(user)) {
-		state.achievements.set(user, new Set())
+		state.achievements.set(user, new Set());
 	}
 
 	if (state.achievements.get(user).has(name)) {
@@ -306,21 +321,13 @@ export const unlock = async (user: string, name: string) => {
 		username: 'achievements',
 		icon_emoji: ':unlock:',
 		text: stripIndent`
-			<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada: <https://sig.tsg.ne.jp/achievement-viewer/users/${user}|[実績一覧]>
+			<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada: <https://achievements.tsg.ne.jp/users/${user}|[実績一覧]>
 			_${achievement.condition}_
 			難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty}) ${isFirst ? '*初達成者!!:ojigineko-superfast:*' : ''}
-		`,
-		attachments: ['professional', 'hard', 'medium', 'easy', 'baby'].map((difficulty: Difficulty) => {
-			const entries = holdingAchievements.filter((id) => achievements.get(id).difficulty === difficulty);
-			if (entries.length === 0) {
-				return null;
-			}
-			const attachment: MessageAttachment = {
-				color: difficultyToColor(difficulty),
-				text: entries.map((id) => achievements.get(id).title).join(' '),
-			};
-			return attachment;
-		}),
+			${additionalInfo === undefined ? '' : additionalInfo}`,
+		attachments: [{
+			text: getAchievementsText(holdingAchievements, achievement.difficulty),
+		}],
 	});
 
 	const newAchievements = [];
@@ -337,8 +344,8 @@ export const unlock = async (user: string, name: string) => {
 		newAchievements.push('achievements-70');
 	}
 	if (holdingAchievements.filter((id) => (
-		achievements.get(id).difficulty !== 'baby'
-		&& achievements.get(id).difficulty !== 'easy'
+		achievements.get(id).difficulty !== 'baby' &&
+		achievements.get(id).difficulty !== 'easy'
 	)).length >= 10) {
 		newAchievements.push('achievements-master');
 	}
@@ -361,11 +368,11 @@ export const isUnlocked = async (user: string, name: string) => {
 	}
 
 	if (!state.achievements.has(user)) {
-		state.achievements.set(user, new Set())
+		state.achievements.set(user, new Set());
 	}
 
 	return state.achievements.get(user).has(name);
-}
+};
 
 export const increment = async (user: string, name: string, value: number = 1) => {
 	await initializeDeferred.promise;

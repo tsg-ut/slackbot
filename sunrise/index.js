@@ -10,7 +10,7 @@ const {get, maxBy, range, map} = require('lodash');
 
 const render = require('./render.js');
 const weathers = require('./weathers.js');
-const {getWeather, getEntries} = require('./fetch.js');
+const {getWeather, getHaiku, getEntries} = require('./fetch.js');
 
 const queue = new Queue({concurrency: 1});
 
@@ -340,6 +340,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				};
 			}
 
+			const haiku = await getHaiku();
+
 			const moonAge = moonphase * 29.5;
 
 			// https://eco.mtk.nao.ac.jp/koyomi/wiki/B7EEA4CECBFEA4C1B7E7A4B12FB7EECEF0A4C8CBFEA4C1B7E7A4B1.html#t10ca351
@@ -372,7 +374,13 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					color: '#4DB6AC',
 					title: entry.title,
 					title_link: entry.link,
-				}] : [])],
+				}] : []), {
+					color: '#6D4C41',
+					title: '本日の一句',
+					title_link: 'http://sendan.kaisya.co.jp/',
+					text: haiku.text,
+					footer: haiku.author,
+				}],
 			});
 
 			await storage.setItem('lastEntryUrl', {

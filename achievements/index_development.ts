@@ -1,7 +1,7 @@
 export default async () => {};
 
-export const unlock = async (user: string, name: string) => {
-	console.log(`${user} unlocked ${name}`);
+export const unlock = async (user: string, name: string, additionalInfo?: string) => {
+	console.log(`${user} unlocked ${name}${additionalInfo == null ? '' : (', ' + additionalInfo)}`);
 };
 
 export const isUnlocked = async () => false;
