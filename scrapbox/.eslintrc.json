@@ -1,6 +1,12 @@
 {
     "extends": "@hakatashi",
     "parser": "@typescript-eslint/parser",
+    "env": {
+        "jest/globals": true
+    },
+    "plugins": [
+        "jest"
+    ],
     "rules": {
         "no-console": "off",
         "camelcase": "off",

@@ -101,6 +101,7 @@
     "byline": "^5.0.0",
     "csv-parse": "^4.8.2",
     "eslint": "^6.7.2",
+    "eslint-plugin-jest": "^23.6.0",
     "eslint-plugin-react": "^7.17.0",
     "jest": "^24.9.0",
     "lolex": "^5.1.1",
