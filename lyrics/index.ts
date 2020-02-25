@@ -13,8 +13,8 @@ interface SongInfo {
     lyricist: string;
     composer: string;
     utaNetUrl: string;
-    audioUrl: string | null;
-    artworkUrl: string | null;
+    audioUrl?: string;
+    artworkUrl?: string;
     paragraphs: string[],
 }
 
@@ -22,14 +22,14 @@ interface MovieInfo {
     embedLink: string,
     id: string,
     title: string,
-};
-
-interface iTuensInfo {
-    audioUrl: string | null;
-    artworkUrl: string | null;
 }
 
-const getiTunesInfo = async (title: string, artist: string): Promise<iTuensInfo> => {
+interface iTunesInfo {
+    audioUrl?: string;
+    artworkUrl?: string;
+}
+
+const getiTunesInfo = async (title: string, artist: string): Promise<iTunesInfo> => {
     const iTunesSearchAPIUrl = 'https://itunes.apple.com/search';
     const response = await axios.get(iTunesSearchAPIUrl, {
         params: {
@@ -39,14 +39,11 @@ const getiTunesInfo = async (title: string, artist: string): Promise<iTuensInfo>
         },
     });
     const results = response.data.results;
-    if (results.length === 0) {
-        return { audioUrl: null, artworkUrl: null };
-    } else {
-        return {
-            audioUrl: results[0].previewUrl,
-            artworkUrl: results[0].artworkUrl60,
-        };
-    }
+    if (results.length === 0) return { audioUrl: null, artworkUrl: null };
+    return {
+        audioUrl: results[0].previewUrl,
+        artworkUrl: results[0].artworkUrl60,
+    };
 };
 
 export const getSongInfo = async (songInfoUrl: string, keyword: string): Promise<SongInfo> => {
@@ -78,7 +75,7 @@ export const getSongInfo = async (songInfoUrl: string, keyword: string): Promise
         paragraph.replace(/<br>/g, '\n').replace(/　/g, ' ') // <br>で改行し、全角空白を半角空白に置換
     );
     const matchingParagraphs = paragraphs.filter(paragraph => paragraph.includes(keyword));
-    const formattedMatchingParagraphs = matchingParagraphs.map(paragraph => 
+    const formattedMatchingParagraphs = matchingParagraphs.map(paragraph =>
         paragraph.replace(new RegExp(escapeRegExp(keyword), 'g'), '＊$&＊')
     );
     const { audioUrl, artworkUrl } = await getiTunesInfo(fetchedSongData.title, fetchedSongData.artist);
@@ -113,7 +110,7 @@ export const getMovieInfo = async (movieInfoUrl: string): Promise<MovieInfo[]> =
                     selector: 'a',
                     attr: 'title',
                 },
-            }
+            },
         },
     })).data;
 
@@ -121,7 +118,7 @@ export const getMovieInfo = async (movieInfoUrl: string): Promise<MovieInfo[]> =
         embedLink,
         title,
         id: new URL(embedLink).pathname.split('/')[2],
-    }))
+    }));
 };
 
 const search = async (keyword: string): Promise<SongInfo | null> => {
@@ -143,23 +140,16 @@ const search = async (keyword: string): Promise<SongInfo | null> => {
         },
     });
 
-    if (response.data.songs.length === 0) {
-        return null;
-    } else {
-        const song = sample(response.data.songs);
-        const songInfo = await getSongInfo(new URL(song.infoPath, utaNetHost).href, keyword);
-        return songInfo;
-    }
+    if (response.data.songs.length === 0) return null;
+    const song = sample(response.data.songs);
+    const songInfo = await getSongInfo(new URL(song.infoPath, utaNetHost).href, keyword);
+    return songInfo;
 };
 
 export default async ({rtmClient, webClient}: SlackInterface) => {
     rtmClient.on('message', async message => {
-        if (message.channel !== process.env.CHANNEL_SANDBOX) {
-            return;
-        }
-        if (!message.text) {
-            return;
-        }
+        if (message.channel !== process.env.CHANNEL_SANDBOX) return;
+        if (!message.text) return;
         if (message.text.startsWith('@lyrics ')) {
             const keyword = message.text.replace('@lyrics ', '');
             const songInfo: SongInfo | null = await search(keyword);
@@ -222,4 +212,4 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
             return;
         }
     });
-}
+};
