@@ -24,7 +24,7 @@ interface MovieInfo {
     title: string,
 };
 
-interface iTuensInfo {
+interface iTunesInfo {
     audioUrl: string | null;
     artworkUrl: string | null;
 }
@@ -34,7 +34,7 @@ interface SlackInterface {
     webClient: WebClient;
 }
 
-const getiTunesInfo = async (title: string, artist: string): Promise<iTuensInfo> => {
+const getiTunesInfo = async (title: string, artist: string): Promise<iTunesInfo> => {
     const iTunesSearchAPIUrl = 'https://itunes.apple.com/search';
     const response = await axios.get(iTunesSearchAPIUrl, {
         params: {
