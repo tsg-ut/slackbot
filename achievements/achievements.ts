@@ -416,9 +416,9 @@ const achievements: Achievement[] = [
 		id: 'reaction-fleshpeach-5',
 		difficulty: 'hard',
 		title: 'ずっと輝いてる未来はここにある',
-		condition: '1つのメッセージに対し5人以上から:fleshpeach:リアクションをもらう',
+		condition: '1つのメッセージに対し5人以上から:freshpeach:リアクションをもらう',
 		category: 'reactions',
-		reaction: 'fleshpeach',
+		reaction: 'freshpeach',
 		value: 5,
 	},
 	{
