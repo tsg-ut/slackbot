@@ -91,10 +91,10 @@ describe('scrapbox', () => {
 		];
 		// @ts-ignore
 		axios.get.mockImplementation((url: string) => {
-			if (url === `https://scrapbox.io/api/pages/${projectName}/##ミュート`) {
+			if (url === `https://scrapbox.io/api/pages/${projectName}/${encodeURIComponent(muteTag)}`) {
 				return set({}, ['data', 'relatedPages', 'links1hop'], [{titleLc: 'page_1'}]);
 			}
-			throw Error('axios-mock: unexpected URL');
+			throw Error(`axios-mock: unexpected URL: ${url}`);
 		});
 
 		slack = {chat: {

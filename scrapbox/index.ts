@@ -4,6 +4,7 @@ import logger from '../lib/logger.js';
 import qs from 'querystring';
 import plugin from 'fastify-plugin';
 import {WebClient, RTMClient, LinkUnfurls, MessageAttachment} from '@slack/client';
+import {Page} from '../lib/scrapbox';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -19,12 +20,13 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 		const unfurls: LinkUnfurls = {};
 		for (const link of links) {
 			const {url} = link;
-			if (!scrapboxUrlRegexp.test(url)) {
+			let page: Page | null = null;
+			try {
+				page = new Page({ url });
+			} catch {
 				continue;
 			}
-			const scrapboxUrl = getScrapboxUrlFromPageUrl(url);
-			const response = await axios.get(scrapboxUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
-			const {data} = response;
+			const data = await page.fetchInfo();
 
 			unfurls[url] = {
 				title: data.title,
@@ -92,9 +94,8 @@ const maskAttachment = (attachment: MessageAttachment): MessageAttachment => {
 
 export const muteTag = '##ミュート';
 const getMutedList = async (): Promise<Set<string>> => {
-	const muteTagUrl = getScrapboxUrl(muteTag);
-	const pageInfo = await axios.get(muteTagUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
-	return new Set(pageInfo.data.relatedPages.links1hop.map(({titleLc}: {titleLc: string}) => titleLc));
+	const muteTagPage = new Page({ titleLc: muteTag, isEncoded: false });
+	return new Set((await muteTagPage.fetchInfo()).relatedPages.links1hop.map(({ titleLc }) => titleLc));
 };
 
 /**
@@ -110,7 +111,7 @@ export const server = ({webClient: slack}: SlackInterface) => plugin((fastify, o
 				icon_emoji: ':scrapbox:',
 				...req.body,
 				attachments: await Promise.all(req.body.attachments.map(
-					async (attachment) => await mutedList.has(getTitleFromPageUrl(attachment.title_link)) ? maskAttachment(attachment) : attachment,
+					async (attachment) => await mutedList.has(new Page({ url: attachment.title_link }).titleLc) ? maskAttachment(attachment) : attachment,
 				)),
 			},
 		);
