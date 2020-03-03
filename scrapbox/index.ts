@@ -3,29 +3,7 @@ import axios from 'axios';
 import logger from '../lib/logger.js';
 import qs from 'querystring';
 import plugin from 'fastify-plugin';
-import { escapeRegExp } from 'lodash';
 import {WebClient, RTMClient, LinkUnfurls, MessageAttachment} from '@slack/client';
-
-const projectName = process.env.SCRAPBOX_PROJECT_NAME;
-const scrapboxUrlRegexp = new RegExp(`^https?${escapeRegExp(`://scrapbox.io/${projectName}/`)}(?<pageTitle>.+?)(?:#.*)?$`);
-const getTitleFromPageUrl = (url: string): string => {
-	let pageName = url.replace(scrapboxUrlRegexp, '$<pageTitle>');
-	try {
-		pageName = decodeURIComponent(pageName);
-	} catch {}
-	return pageName;
-};
-const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/${projectName}/${pageName}`;
-const getScrapboxUrlFromPageUrl = (url: string): string => {
-	let pageName = url.replace(scrapboxUrlRegexp, '$<pageTitle>');
-	try {
-		if (decodeURIComponent(pageName) === pageName) {
-			pageName = encodeURIComponent(pageName);
-		}
-	} catch {}
-	return getScrapboxUrl(pageName);
-};
-
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -122,7 +100,7 @@ const getMutedList = async (): Promise<Set<string>> => {
 /**
  * Scrapboxからの更新通知 (Incoming Webhook形式) を受け取り，ミュート処理をしてSlackに投稿する
  */
-// eslint-disable-next-line node/no-unsupported-features, node/no-unsupported-features/es-syntax
+// eslint-disable-next-line node/no-unsupported	-features, node/no-unsupported-features/es-syntax
 export const server = ({webClient: slack}: SlackInterface) => plugin((fastify, opts, next) => {
 	fastify.post<unknown, unknown, unknown, SlackIncomingWebhookRequest>('/hooks/scrapbox', async (req) => {
 		const mutedList = await getMutedList();
