@@ -5,11 +5,11 @@ export const tsgProjectName = process.env.SCRAPBOX_PROJECT_NAME!;
 export const tsgScrapboxToken = process.env.SCRAPBOX_SID!;
 
 export const getPageUrlRegExp = ({ projectName }: { projectName: string | null }) => 
-    new RegExp(`^https?${
+    new RegExp(`^https?${escapeRegExp('://scrapbox.io/')}${
         projectName === null ?
             '(?<projectName>.+?)':
-            escapeRegExp(`://scrapbox.io/${projectName}/`)
-    }(?<titleLc>.+?)(?<hash>#.*)?$`);
+            escapeRegExp(projectName)
+    }/(?<titleLc>.+?)(?:#(?<hash>.*))?$`);
 
 export const fetchScrapboxUrl =  async <T> ({ url, token = tsgScrapboxToken }: { url: string; token?: string }): Promise<T> => {
     // TODO: support axios config
@@ -76,11 +76,12 @@ export interface PageInfo {
 
 
 const decodeIfNeeded =  ({ str, isEncoded = undefined }: { str: string; isEncoded?: boolean }): { str: string; isEncoded?: boolean } => {
-    if (isEncoded !== true) {
+    if (isEncoded === true || isEncoded === undefined) {
         try {
             str = decodeURIComponent(str);
         } catch (err) {
-            if (isEncoded === false) throw err;
+            // str is not a valid encoded string
+            if (isEncoded === true) throw err;
             isEncoded = false;
         }
     }
@@ -158,14 +159,14 @@ export class Page {
     }
 
     get url(): string {
-        return `^https?://scrapbox.io/${this.projectName}/${this.titleLc}${this.hash? `#${this.hash}` : ''}`
+        return `https://scrapbox.io/${this.projectName}/${this.encodedTitleLc}${this.hash? `#${this.hash}` : ''}`
     }
 
     get infoUrl(): string {
         return `https://scrapbox.io/api/pages/${this.projectName}/${this.encodedTitleLc}`;
     }
 
-    async getInfo(): Promise<PageInfo> {
+    async fetchInfo(): Promise<PageInfo> {
         return fetchScrapboxUrl<PageInfo>({ url: this.infoUrl, token: this.token });
     }
 }
