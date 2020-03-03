@@ -6,7 +6,8 @@ import axios from 'axios';
 import qs from 'querystring';
 import { escapeRegExp, set } from 'lodash';
 import { fastifyDevConstructor } from '../lib/fastify';
-import {MessageAttachment} from '@slack/client';
+import { MessageAttachment } from '@slack/client';
+import { Page, PageInfo } from '../lib/scrapbox';
 
 
 // @ts-ignore
@@ -20,10 +21,20 @@ import scrapbox from './index';
 import {server, muteTag} from './index';
 
 describe('scrapbox', () => {
+	let fetchInfoSpy: jest.SpyInstance<Promise<PageInfo>> | null = null;
+
 	beforeEach(async () => {
+		fetchInfoSpy = jest.spyOn(Page.prototype, 'fetchInfo').mockImplementation(async () => 
+			({title: 'hoge', descriptions: ['fuga', 'piyo']} as PageInfo)
+			// cast this because it is too demanding to completely write down all properties
+		);
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		await scrapbox(slack);
+	});
+
+	afterEach(() => {
+		fetchInfoSpy!.mockRestore();
 	});
 
 	it('respond to slack hook of scrapbox unfurling', async () => {
@@ -37,9 +48,9 @@ describe('scrapbox', () => {
 					expect(unfurls[`https://scrapbox.io/${projectName}/hoge`].text).toBe('fuga\npiyo');
 					resolve();
 					return Promise.resolve({data: {ok: true}});
+				} else {
+					throw Error(`axios-mock: unknown URL: ${url}`);
 				}
-				// @ts-ignore
-				return Promise.resolve(axios.response);
 			});
 		});
 
@@ -62,7 +73,7 @@ describe('scrapbox', () => {
 });
 
 describe('scrapbox', () => {
-	it('mutes pages with ##ミュート tag', async () => {
+	it(`mutes pages with ${muteTag} tag`, async () => {
 		const fakeChannel = 'CSCRAPBOX';
 		process.env.CHANNEL_SCRAPBOX = fakeChannel;
 		const fastify = fastifyDevConstructor();
@@ -89,13 +100,11 @@ describe('scrapbox', () => {
 				thumb_url: 'https://example.com/fuga2.png',
 			},
 		];
-		// @ts-ignore
-		axios.get.mockImplementation((url: string) => {
-			if (url === `https://scrapbox.io/api/pages/${projectName}/${encodeURIComponent(muteTag)}`) {
-				return set({}, ['data', 'relatedPages', 'links1hop'], [{titleLc: 'page_1'}]);
-			}
-			throw Error(`axios-mock: unexpected URL: ${url}`);
-		});
+
+		jest.spyOn(Page.prototype, 'fetchInfo').mockImplementation(async () => 
+			set({}, ['relatedPages', 'links1hop'], [{titleLc: 'page_1'}]) as PageInfo
+			// cast this because it is too demanding to completely write down all properties
+		);
 
 		slack = {chat: {
 			postMessage: jest.fn(),
