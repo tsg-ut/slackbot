@@ -7,7 +7,7 @@ jest.mock('axios');
 import _axios from 'axios';
 const axios = _axios as jest.Mocked<typeof _axios>;
 
-import { fetchScrapboxUrl, Page } from './scrapbox';
+import { getPageUrlRegExp, fetchScrapboxUrl, Page } from './scrapbox';
 
 beforeEach(() => {
     axios.get.mockReset();
@@ -36,10 +36,39 @@ describe('fetchScrapboxUrl', () => {
     });
 });
 
+describe('getPageUrlRegExp', () => {
+    const projectName = 'proj';
+    const projectName2 = 'proj2';
+    const titleLc = 'タイトル';
+    const hash = 'hash';
+
+    it('parses URL without hash', () => {
+        const match = `https://scrapbox.io/${projectName}/${titleLc}`.match(getPageUrlRegExp({ projectName: null }));
+        expect(match).not.toBeNull();
+        expect(match!.groups).toMatchObject({ projectName, titleLc });
+    });
+
+    it('parses URL without hash', () => {
+        const match = `https://scrapbox.io/${projectName}/${titleLc}#${hash}`.match(getPageUrlRegExp({ projectName: null }));
+        expect(match).not.toBeNull();
+        expect(match!.groups).toMatchObject({ projectName, titleLc, hash });
+    });
+
+    it('parses URL when projectName specified', () => {
+        const url_ok = `https://scrapbox.io/${projectName}/${titleLc}`;
+        const regexp = getPageUrlRegExp({ projectName });
+        const match_ok = url_ok.match(regexp);
+        expect(match_ok).not.toBeNull();
+        expect(match_ok!.groups).toMatchObject({ titleLc });
+        const url_ng = `https://scrapbox.io/${projectName2}/${titleLc}`;
+        const match_ng = url_ng.match(regexp);
+        expect(match_ng).toBeNull();
+    });
+});
+
 describe('Page', () => {
     const projectName = 'proj';
     const titleLc = 'タイトル';
-    
     const encodedTitleLc = encodeURIComponent(titleLc);
     const hash = 'hash';
     const token = 'token';
