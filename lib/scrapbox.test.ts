@@ -1,17 +1,40 @@
-const defaultProjectName = 'test_proj';
+const defaultProjectName = 'default_proj';
 process.env.SCRAPBOX_PROJECT_NAME = defaultProjectName;
-const defaultToken = 'test_token';
+const defaultToken = 'default_token';
 process.env.SCRAPBOX_SID = defaultToken;
 
 jest.mock('axios');
 import _axios from 'axios';
 const axios = _axios as jest.Mocked<typeof _axios>;
 
-import { Page } from './scrapbox';
+import { fetchScrapboxUrl, Page } from './scrapbox';
 
 beforeEach(() => {
     axios.get.mockReset();
 })
+
+describe('fetchScrapboxUrl', () => {
+    const data = {dummy: 'data'};
+    const url = 'dummy_url';
+    const token = 'dummy_token';
+
+    beforeEach(() => {
+        axios.get.mockResolvedValueOnce({ data });
+    });
+
+    it('fetches given URL with given token', async () => {
+        const res = await fetchScrapboxUrl({ url, token });
+        expect(res).toEqual(data);
+        expect(axios.get.mock.calls.length).toBe(1);
+        expect(axios.get.mock.calls[0][0]).toBe(url);
+        expect(axios.get.mock.calls[0][1]!.headers.Cookie).toContain(token);
+    });
+
+    it('uses default token if not specified', async () => {
+        await fetchScrapboxUrl({ url });
+        expect(axios.get.mock.calls[0][1]!.headers.Cookie).toContain(defaultToken);
+    });
+});
 
 describe('Page', () => {
     const projectName = 'proj';
