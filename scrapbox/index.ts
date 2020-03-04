@@ -3,7 +3,7 @@ import axios from 'axios';
 import logger from '../lib/logger.js';
 import qs from 'querystring';
 import plugin from 'fastify-plugin';
-import {zip} from 'lodash';
+import {flatten, zip} from 'lodash';
 import {WebClient, RTMClient, LinkUnfurls, MessageAttachment} from '@slack/client';
 import {Page, getPageUrlRegExp} from '../lib/scrapbox';
 
@@ -23,7 +23,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 			const {url} = link;
 			let page: Page | null = null;
 			try {
-				page = new Page({ url });
+				page = new Page({url});
 			} catch {
 				continue;
 			}
@@ -69,6 +69,51 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 };
 
 
+interface ScrapboxPageNotification {
+	main: MessageAttachment,
+	sub: MessageAttachment[],
+}
+
+export const splitAttachments = (attachments: MessageAttachment[]): ScrapboxPageNotification[] => {
+	const pageIndices = attachments
+		.map(({title_link}, i) => ({url: title_link, i}))
+		.filter(({url}) => getPageUrlRegExp({projectName: null}).test(url))
+		.map(({i}) => i);
+	const pageRange = zip(pageIndices, pageIndices.concat([attachments.length]).slice(1));
+	return pageRange.map(([i, j]) => ({main: attachments[i], sub: attachments.slice(i + 1, j)}));
+};
+
+/**
+ * ミュートしたい記事に対し，隠したい情報を消したattachmentsを生成
+ *
+ * @param notification ミュートしたい記事のattachmentと画像
+ * @return ミュート済みのattachments
+ */
+export const maskAttachments = (notification: ScrapboxPageNotification): MessageAttachment[] => {
+	const dummyText = 'この記事の更新通知はミュートされています。';
+	return [{
+		...notification.main,
+		text: dummyText,
+		fallback: dummyText,
+		image_url: null,
+		thumb_url: null,
+	}];
+};
+
+/**
+ * ミュートしたくない記事に対し，そのままattachments形式に変換
+ *
+ * @param notification 変換する記事のattachmentと画像
+ * @return ミュート済みのattachments
+ */
+export const reconstructAttachments = (notification: ScrapboxPageNotification): MessageAttachment[] => [notification.main, ...notification.sub];
+
+export const muteTag = '##ミュート';
+const getMutedList = async (): Promise<Set<string>> => {
+	const muteTagPage = new Page({titleLc: muteTag, isEncoded: false});
+	return new Set((await muteTagPage.fetchInfo()).relatedPages.links1hop.map(({titleLc}) => titleLc));
+};
+
 interface SlackIncomingWebhookRequest {
 	text: string;
 	mrkdwn?: boolean;
@@ -77,51 +122,25 @@ interface SlackIncomingWebhookRequest {
 }
 
 /**
- * ミュートしたいattachmentに対し，隠したい情報を消して返す
- *
- * @param attachment ミュートするattachment
- * @return ミュート済みのattachment
- */
-const maskAttachment = (attachment: MessageAttachment): MessageAttachment => {
-	const dummyText = 'この記事の更新通知はミュートされています。';
-	return {
-		...attachment,
-		text: dummyText,
-		fallback: dummyText,
-		image_url: null,
-		thumb_url: null,
-	};
-};
-
-export const muteTag = '##ミュート';
-const getMutedList = async (): Promise<Set<string>> => {
-	const muteTagPage = new Page({ titleLc: muteTag, isEncoded: false });
-	return new Set((await muteTagPage.fetchInfo()).relatedPages.links1hop.map(({ titleLc }) => titleLc));
-};
-
-export const splitAttachments = (attachments: MessageAttachment[]): MessageAttachment[][] => {
-	const pageIndex = attachments
-		.map(({ title_link }, i) => ({ url: title_link, i }))
-		.filter(({ url }) => getPageUrlRegExp({ projectName: null }).test(url))
-		.map(({ i }) => i);
-	const pageRange = zip(pageIndex, pageIndex.concat([attachments.length]).slice(1));
-	return pageRange.map(([i, j]) => attachments.slice(i, j));
-};
-/**
  * Scrapboxからの更新通知 (Incoming Webhook形式) を受け取り，ミュート処理をしてSlackに投稿する
  */
-// eslint-disable-next-line node/no-unsupported	-features, node/no-unsupported-features/es-syntax
+// eslint-disable-next-line node/no-unsupported-features, node/no-unsupported-features/es-syntax
 export const server = ({webClient: slack}: SlackInterface) => plugin((fastify, opts, next) => {
 	fastify.post<unknown, unknown, unknown, SlackIncomingWebhookRequest>('/hooks/scrapbox', async (req) => {
 		const mutedList = await getMutedList();
+		const attachments = flatten(
+			splitAttachments(req.body.attachments).map(
+				(notification) => mutedList.has(new Page({url: notification.main.title_link}).titleLc)
+					? maskAttachments(notification)
+					: reconstructAttachments(notification),
+			),
+		);
 		await slack.chat.postMessage(
 			{
 				channel: process.env.CHANNEL_SCRAPBOX,
 				icon_emoji: ':scrapbox:',
 				...req.body,
-				attachments: await Promise.all(req.body.attachments.map(
-					async (attachment) => await mutedList.has(new Page({ url: attachment.title_link }).titleLc) ? maskAttachment(attachment) : attachment,
-				)),
+				attachments,
 			},
 		);
 		return '';

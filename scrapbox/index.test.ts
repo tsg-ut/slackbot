@@ -2,9 +2,11 @@ jest.mock('axios');
 
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
+import EventEmitter from 'events';
+import { WebClient } from '@slack/web-api';
 import axios from 'axios';
 import qs from 'querystring';
-import { flatten, set } from 'lodash';
+import { flatten, set, sum, transform } from 'lodash';
 import { fastifyDevConstructor } from '../lib/fastify';
 import { MessageAttachment } from '@slack/client';
 import { Page, PageInfo } from '../lib/scrapbox';
@@ -17,7 +19,7 @@ let slack: Slack = null;
 
 const projectName = 'PROJECTNAME';
 process.env.SCRAPBOX_PROJECT_NAME = projectName;
-import scrapbox from './index';
+import scrapbox, { maskAttachments, reconstructAttachments } from './index';
 import {server, muteTag, splitAttachments} from './index';
 
 describe('unfurl', () => {
@@ -73,126 +75,156 @@ describe('unfurl', () => {
 });
 
 class FakeAttachmentGenerator {
-	i: number = 0;
+	main_i: number = 0;
+
+	sub_i: number = 0;
 
 	get(kind: 'text' | 'img'): MessageAttachment {
 		let a: MessageAttachment & { [key: string]: any } | null = null;
 		switch (kind) {
 			case 'text': {
-				const title = `タイトル ${this.i}`;
-				const text = `page ${this.i}`;
+				const text = `page ${this.main_i}`;
 				a = {
-					title,
-					title_link: `https://scrapbox.io/${projectName}/${encodeURIComponent(title)}#hash_${this.i}`,
+					title: `タイトル ${this.main_i}`,
+					title_link: `https://scrapbox.io/${projectName}/${encodeURIComponent(`タイトル_${this.main_i}`)}#hash_${this.main_i}`,
 					text,
 					rawText: text,
 					mrkdwn_in: ['text' as const],
-					author_name: `user ${this.i}`,
-					image_url: `https://example.com/image_${this.i}.png`,
-					thumb_url: `https://example.com/thumb_${this.i}.png`,
+					author_name: `user ${this.main_i}`,
+					image_url: `https://example.com/image_${this.main_i}.png`,
+					thumb_url: `https://example.com/thumb_${this.main_i}.png`,
 				};
+				++this.main_i;
 				break;
 			}
 			case 'img': {
 				a = {
-					image_url: `https://example.com/image_${this.i}.png`,
+					image_url: `https://example.com/image_${this.main_i}_${this.sub_i}.png`,
 				};
+				++this.sub_i;
 				break;
 			}
 			default: {
 				a = kind;
 			}
 		}
-		++this.i;
 		return a;
+	}
+
+	reset() {
+		this.main_i = 0;
+		this.sub_i = 0;
 	}
 }
 
+const waitEvent = <T>(eventEmitter: EventEmitter, event: string): Promise<T> => new Promise((resolve) => {
+	eventEmitter.once(event, (args) => {
+		resolve(args);
+	});
+});
+
+
 describe('mute notification', () => {
-	test('splitAttachments splits attachments to each pages', () => {
-		const gen = new FakeAttachmentGenerator();
-		const pages = [[
-			gen.get('text'),
-			gen.get('img'),
-			gen.get('img'),
-		], [
-			gen.get('text'),
-			gen.get('img'),
-		]];
-		const attachments = flatten(pages);
-		const splittedAttachments = splitAttachments(attachments);
-		expect(splittedAttachments).toEqual(pages);
+	describe('splitAttachments', () => {
+		it('splits attachments to each pages', () => {
+			const gen = new FakeAttachmentGenerator();
+			const attachments = (['text', 'img', 'img', 'text', 'text', 'img'] as const).map((s) => gen.get(s));
+			gen.reset();
+			// eslint-disable-next-line array-plural/array-plural
+			const expected = [{
+				main: gen.get('text'),
+				sub: [gen.get('img'), gen.get('img')],
+			}, {
+				main: gen.get('text'),
+				sub: [],
+			}, {
+				main: gen.get('text'),
+				sub: [gen.get('img')],
+			}];
+			const splittedAttachments = splitAttachments(attachments);
+			expect(splittedAttachments).toEqual(expected);
+		});
 	});
 
-	it(`mutes pages with ${muteTag} tag`, async () => {
-		const fakeChannel = 'CSCRAPBOX';
-		process.env.CHANNEL_SCRAPBOX = fakeChannel;
-		const fastify = fastifyDevConstructor();
-		// eslint-disable-next-line array-plural/array-plural
-		const attachments_req: (MessageAttachment & any)[] = [
-			{
-				title: 'page 1',
-				title_link: `https://scrapbox.io/${projectName}/page_1#c632c886dc3061e3b85cabbd`,
-				text: 'hoge',
-				rawText: 'hoge',
-				mrkdwn_in: ['text'],
-				author_name: 'Alice',
-				image_url: 'https://example.com/hoge1.png',
-				thumb_url: 'https://example.com/fuga1.png',
-			},
-			{
-				title: 'page 2',
-				title_link: `https://scrapbox.io/${projectName}/page_2#aaf8924806eb538413c07c43`,
-				text: 'hoge',
-				rawText: 'hoge',
-				mrkdwn_in: ['text'],
-				author_name: 'Bob',
-				image_url: 'https://example.com/hoge2.png',
-				thumb_url: 'https://example.com/fuga2.png',
-			},
-		];
-		
-		jest.spyOn(Page.prototype, 'fetchInfo').mockImplementation(async () => 
-		set({}, ['relatedPages', 'links1hop'], [{titleLc: 'page_1'}]) as PageInfo
-		// cast this because it is too demanding to completely write down all properties
-		);
-		
-		slack = {chat: {
-			postMessage: jest.fn(),
-		}};
-		fastify.register(server({webClient: slack} as any));
-		const args = {
-			text: `New lines on <https://scrapbox.io/${projectName}|${projectName}>`,
-			mrkdwn: true,
-			username: 'Scrapbox',
-			attachments: attachments_req,
-		};
-		const {payload, statusCode} = await fastify.inject({
-			method: 'POST',
-			url: '/hooks/scrapbox',
-			payload: args,
-		});
-		if (statusCode !== 200) {
-			throw JSON.parse(payload);
-		}
-		expect(slack.chat.postMessage.mock.calls.length).toBe(1);
-		const {channel, text, attachments: attachments_res}: {channel: string; text: string; attachments: MessageAttachment[]} = slack.chat.postMessage.mock.calls[0][0];
-		expect(channel).toBe(fakeChannel);
-		expect(text).toBe(args.text);
-		const unchanged = ['title', 'title_link', 'mrkdwn_in', 'author_name'] as const;
-		for (const i of [0, 1]) {
+	describe('maskAttachments', () => {
+		it('conceals values of notification', () => {
+			const gen = new FakeAttachmentGenerator();
+			const notification = {
+				main: gen.get('text'),
+				sub: [gen.get('img'), gen.get('img')],
+			};
+			const attachments = maskAttachments(notification);
+			expect(attachments.length).toBe(1);
+			const [attachment] = attachments;
+			expect(attachment.text).toContain('ミュート');
+			const unchanged = ['title', 'title_link', 'mrkdwn_in', 'author_name'] as const;
+			const nulled = ['image_url', 'thumb_url'] as const;
 			for (const key of unchanged) {
-				expect(attachments_res[i][key]).toEqual(attachments_req[i][key]);
+				expect(attachment[key]).toEqual(notification.main[key]);
 			}
-		}
-		const nulled = ['image_url', 'thumb_url'] as const;
-		for (const key of nulled) {
-			expect(attachments_res[0][key]).toBeNull();
+			for (const key of nulled) {
+				expect(attachment[key]).toBeNull();
+			}
+		});
+	});
+
+	describe('reconstructAttachments', () => {
+		it('restores original attachment parsed by splitAttachments', () => {
+			const gen = new FakeAttachmentGenerator();
+			const attachments = [gen.get('text'), gen.get('img'), gen.get('img')]
+			const [notification] = splitAttachments(attachments);
+			const res = reconstructAttachments(notification);
+			expect(res).toEqual(attachments);
+		});
+	});
+
+	describe('server', () => {
+		it(`mutes pages with ${muteTag} tag`, async () => {
 			// eslint-disable-next-line array-plural/array-plural
-			expect(attachments_res[1][key]).toEqual(attachments_req[1][key]);
-		}
-		expect(attachments_res[0].text).toContain('ミュート');
-		// eslint-disable-next-line array-plural/array-plural
-		expect(attachments_res[1].text).toBe(attachments_req[1].text);
+			const isMuted = [true, false];
+
+			const fakeChannel = 'CSCRAPBOX';
+			process.env.CHANNEL_SCRAPBOX = fakeChannel;
+			const fastify = fastifyDevConstructor();
+			const gen = new FakeAttachmentGenerator();
+			jest.spyOn(Page.prototype, 'fetchInfo').mockImplementation(
+				() => Promise.resolve(set(
+					{},
+					['relatedPages', 'links1hop'],
+					isMuted.map((b, i) => ({b, i})).filter(({b}) => b).map(({i}) => ({titleLc: `タイトル_${i}`})),
+				) as PageInfo),
+				// cast this because it is too demanding to completely write down all properties
+			);
+			fastify.register(server(slack));
+
+			const separatedAttachments = [[
+				gen.get('text'),
+				gen.get('img'),
+				gen.get('img'),
+			], [
+				gen.get('text'),
+				gen.get('img'),
+			]];
+
+			const args = {
+				text: `New lines on <https://scrapbox.io/${projectName}|${projectName}>`,
+				mrkdwn: true,
+				username: 'Scrapbox',
+				attachments: flatten(separatedAttachments),
+			};
+			const messagePromise = waitEvent<Parameters<WebClient['chat']['postMessage']>[0]>(slack, 'chat.postMessage');
+			await fastify.inject({
+				method: 'POST',
+				url: '/hooks/scrapbox',
+				payload: args,
+			});
+
+			const {channel, text, attachments: attachments_res} = await messagePromise;
+			expect(channel).toBe(fakeChannel);
+			expect(text).toBe(args.text);
+			expect(attachments_res.length).toBe(
+				sum(separatedAttachments.map((a, i) => isMuted[i] ? 1 : a.length)),
+			);
+		});
 	});
 });
