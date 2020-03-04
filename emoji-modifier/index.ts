@@ -385,6 +385,18 @@ const filters: Map<string,  Filter> = new Map([
     arguments: ['string', 'string'],
     filter: proTwitter,
   }],
+  ['think',
+    simpleFilter(async (image: Buffer, raw?: sharp.Raw): Promise<Buffer> => {
+      const options = raw == null ? {} : {raw};
+      const resized = await toSquare(await sharp(image, options).png().toBuffer());
+      const {width: side} = await sharp(resized).metadata();
+      const hand = await sharp('emoji-modifier/resources/thinking-hand.png')
+        .resize(side)
+        .toBuffer();
+      const composed =  sharp(resized).composite([{ input: hand }]);
+      return await (raw == null ? composed.png().toBuffer() : composed.raw().toBuffer());
+    })
+  ],
 ] as [string, Filter][]);
 // }}}
 
