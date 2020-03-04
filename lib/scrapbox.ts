@@ -4,12 +4,21 @@ import { escapeRegExp } from 'lodash';
 export const tsgProjectName = process.env.SCRAPBOX_PROJECT_NAME!;
 export const tsgScrapboxToken = process.env.SCRAPBOX_SID!;
 
-export const getPageUrlRegExp = ({ projectName }: { projectName: string | null }) => 
-    new RegExp(`^https?${escapeRegExp('://scrapbox.io/')}${
-        projectName === null ?
-            '(?<projectName>.+?)':
-            escapeRegExp(projectName)
-    }/(?<titleLc>.+?)(?:#(?<hash>.*))?$`);
+const getPageUrlRegExpCache = new Map<string | null, RegExp>();
+
+export const getPageUrlRegExp = ({ projectName }: { projectName: string | null }) => {
+    if (getPageUrlRegExpCache.has(projectName)) {
+        return getPageUrlRegExpCache.get(projectName);
+    } else {
+        const regexp = new RegExp(`^https?${escapeRegExp('://scrapbox.io/')}${
+            projectName === null ?
+                '(?<projectName>.+?)':
+                escapeRegExp(projectName)
+        }/(?<titleLc>.+?)(?:#(?<hash>.*))?$`);
+        getPageUrlRegExpCache.set(projectName, regexp);
+        return regexp;
+    }
+};
 
 export const fetchScrapboxUrl =  async <T> ({ url, token = tsgScrapboxToken }: { url: string; token?: string }): Promise<T> => {
     // TODO: support axios config
