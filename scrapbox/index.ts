@@ -1,10 +1,10 @@
-import axios from 'axios';
-// @ts-ignore
-import logger from '../lib/logger.js';
 import qs from 'querystring';
+import {WebClient, RTMClient, LinkUnfurls, MessageAttachment} from '@slack/client';
+import axios from 'axios';
 import plugin from 'fastify-plugin';
 import {flatten, zip} from 'lodash';
-import {WebClient, RTMClient, LinkUnfurls, MessageAttachment} from '@slack/client';
+// @ts-ignore
+import logger from '../lib/logger.js';
 import {Page, getPageUrlRegExp} from '../lib/scrapbox';
 
 interface SlackInterface {

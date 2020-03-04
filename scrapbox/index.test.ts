@@ -1,16 +1,16 @@
-jest.mock('axios');
-
+import EventEmitter from 'events';
+import qs from 'querystring';
+import {MessageAttachment} from '@slack/client';
+import {WebClient} from '@slack/web-api';
+import axios from 'axios';
+import {flatten, set, sum} from 'lodash';
+import {fastifyDevConstructor} from '../lib/fastify';
+import {Page, PageInfo} from '../lib/scrapbox';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
-import EventEmitter from 'events';
-import { WebClient } from '@slack/web-api';
-import axios from 'axios';
-import qs from 'querystring';
-import { flatten, set, sum, transform } from 'lodash';
-import { fastifyDevConstructor } from '../lib/fastify';
-import { MessageAttachment } from '@slack/client';
-import { Page, PageInfo } from '../lib/scrapbox';
+import scrapbox, {maskAttachments, reconstructAttachments, server, muteTag, splitAttachments} from './index';
 
+jest.mock('axios');
 
 // @ts-ignore
 axios.response = {data: {title: 'hoge', descriptions: ['fuga', 'piyo']}};
@@ -19,89 +19,85 @@ let slack: Slack = null;
 
 const projectName = 'PROJECTNAME';
 process.env.SCRAPBOX_PROJECT_NAME = projectName;
-import scrapbox, { maskAttachments, reconstructAttachments } from './index';
-import {server, muteTag, splitAttachments} from './index';
 
 describe('unfurl', () => {
 	let fetchInfoSpy: jest.SpyInstance<Promise<PageInfo>> | null = null;
-	
+
 	beforeEach(async () => {
-		fetchInfoSpy = jest.spyOn(Page.prototype, 'fetchInfo').mockImplementation(async () => 
-		({title: 'hoge', descriptions: ['fuga', 'piyo']} as PageInfo)
+		fetchInfoSpy = jest.spyOn(Page.prototype, 'fetchInfo')
+			.mockImplementation(() => Promise.resolve({title: 'hoge', descriptions: ['fuga', 'piyo']} as PageInfo));
 		// cast this because it is too demanding to completely write down all properties
-		);
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		await scrapbox(slack);
 	});
-	
+
 	afterEach(() => {
 		fetchInfoSpy!.mockRestore();
 	});
-	
+
 	it('respond to slack hook of scrapbox unfurling', async () => {
 		const done = new Promise((resolve) => {
 			// @ts-ignore
 			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
 				if (url === 'https://slack.com/api/chat.unfurl') {
-				const parsed = qs.parse(data);
-				const unfurls = JSON.parse(Array.isArray(parsed.unfurls) ? parsed.unfurls[0] : parsed.unfurls);
-				expect(unfurls[`https://scrapbox.io/${projectName}/hoge`]).toBeTruthy();
-				expect(unfurls[`https://scrapbox.io/${projectName}/hoge`].text).toBe('fuga\npiyo');
-				resolve();
-				return Promise.resolve({data: {ok: true}});
-			} else {
+					const parsed = qs.parse(data);
+					const unfurls = JSON.parse(Array.isArray(parsed.unfurls) ? parsed.unfurls[0] : parsed.unfurls);
+					expect(unfurls[`https://scrapbox.io/${projectName}/hoge`]).toBeTruthy();
+					expect(unfurls[`https://scrapbox.io/${projectName}/hoge`].text).toBe('fuga\npiyo');
+					resolve();
+					return Promise.resolve({data: {ok: true}});
+				}
 				throw Error(`axios-mock: unknown URL: ${url}`);
-			}
+			});
 		});
+
+		slack.eventClient.emit('link_shared', {
+			type: 'link_shared',
+			channel: 'Cxxxxxx',
+			user: 'Uxxxxxxx',
+			message_ts: '123452389.9875',
+			thread_ts: '123456621.1855',
+			links: [
+				{
+					domain: 'scrapbox.io',
+					url: `https://scrapbox.io/${projectName}/hoge`,
+				},
+			],
+		});
+
+		return done;
 	});
-	
-	slack.eventClient.emit('link_shared', {
-		type: 'link_shared',
-		channel: 'Cxxxxxx',
-		user: 'Uxxxxxxx',
-		message_ts: '123452389.9875',
-		thread_ts: '123456621.1855',
-		links: [
-			{
-				domain: 'scrapbox.io',
-				url: `https://scrapbox.io/${projectName}/hoge`,
-			},
-		],
-	});
-	
-	return done;
-});
 });
 
 class FakeAttachmentGenerator {
-	main_i: number = 0;
+	i: number = 0;
 
-	sub_i: number = 0;
+	j: number = 0;
 
 	get(kind: 'text' | 'img'): MessageAttachment {
 		let a: MessageAttachment & { [key: string]: any } | null = null;
 		switch (kind) {
 			case 'text': {
-				const text = `page ${this.main_i}`;
+				const text = `page ${this.i}`;
 				a = {
-					title: `タイトル ${this.main_i}`,
-					title_link: `https://scrapbox.io/${projectName}/${encodeURIComponent(`タイトル_${this.main_i}`)}#hash_${this.main_i}`,
+					title: `タイトル ${this.i}`,
+					title_link: `https://scrapbox.io/${projectName}/${encodeURIComponent(`タイトル_${this.i}`)}#hash_${this.i}`,
 					text,
 					rawText: text,
 					mrkdwn_in: ['text' as const],
-					author_name: `user ${this.main_i}`,
-					image_url: `https://example.com/image_${this.main_i}.png`,
-					thumb_url: `https://example.com/thumb_${this.main_i}.png`,
+					author_name: `user ${this.i}`,
+					image_url: `https://example.com/image_${this.i}.png`,
+					thumb_url: `https://example.com/thumb_${this.i}.png`,
 				};
-				++this.main_i;
+				++this.i;
 				break;
 			}
 			case 'img': {
 				a = {
-					image_url: `https://example.com/image_${this.main_i}_${this.sub_i}.png`,
+					image_url: `https://example.com/image_${this.i}_${this.j}.png`,
 				};
-				++this.sub_i;
+				++this.j;
 				break;
 			}
 			default: {
@@ -112,8 +108,8 @@ class FakeAttachmentGenerator {
 	}
 
 	reset() {
-		this.main_i = 0;
-		this.sub_i = 0;
+		this.i = 0;
+		this.j = 0;
 	}
 }
 
@@ -171,7 +167,7 @@ describe('mute notification', () => {
 	describe('reconstructAttachments', () => {
 		it('restores original attachment parsed by splitAttachments', () => {
 			const gen = new FakeAttachmentGenerator();
-			const attachments = [gen.get('text'), gen.get('img'), gen.get('img')]
+			const attachments = [gen.get('text'), gen.get('img'), gen.get('img')];
 			const [notification] = splitAttachments(attachments);
 			const res = reconstructAttachments(notification);
 			expect(res).toEqual(attachments);
@@ -219,10 +215,10 @@ describe('mute notification', () => {
 				payload: args,
 			});
 
-			const {channel, text, attachments: attachments_res} = await messagePromise;
+			const {channel, text, attachments: resultAttachment} = await messagePromise;
 			expect(channel).toBe(fakeChannel);
 			expect(text).toBe(args.text);
-			expect(attachments_res.length).toBe(
+			expect(resultAttachment.length).toBe(
 				sum(separatedAttachments.map((a, i) => isMuted[i] ? 1 : a.length)),
 			);
 		});
