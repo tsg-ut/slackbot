@@ -6,9 +6,9 @@ export const tsgScrapboxToken = process.env.SCRAPBOX_SID!;
 
 const getPageUrlRegExpCache = new Map<string | null, RegExp>();
 
-export const getPageUrlRegExp = ({ projectName }: { projectName: string | null }) => {
+export const getPageUrlRegExp = ({ projectName }: { projectName: string | null }): RegExp => {
     if (getPageUrlRegExpCache.has(projectName)) {
-        return getPageUrlRegExpCache.get(projectName);
+        return getPageUrlRegExpCache.get(projectName)!;
     } else {
         const regexp = new RegExp(`^https?${escapeRegExp('://scrapbox.io/')}${
             projectName === null ?
