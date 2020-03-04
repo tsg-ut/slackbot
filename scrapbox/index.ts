@@ -5,7 +5,7 @@ import plugin from 'fastify-plugin';
 import {flatten, zip} from 'lodash';
 // @ts-ignore
 import logger from '../lib/logger.js';
-import {Page, getPageUrlRegExp} from '../lib/scrapbox';
+import {Page, pageUrlRegExp, tsgProjectName} from '../lib/scrapbox';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -25,6 +25,9 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 			try {
 				page = new Page({url});
 			} catch {
+				continue;
+			}
+			if (page.projectName !== tsgProjectName) {
 				continue;
 			}
 			const data = await page.fetchInfo();
@@ -77,7 +80,7 @@ interface ScrapboxPageNotification {
 export const splitAttachments = (attachments: MessageAttachment[]): ScrapboxPageNotification[] => {
 	const pageIndices = attachments
 		.map(({title_link}, i) => ({url: title_link, i}))
-		.filter(({url}) => getPageUrlRegExp({projectName: null}).test(url))
+		.filter(({url}) => pageUrlRegExp.test(url))
 		.map(({i}) => i);
 	const pageRange = zip(pageIndices, pageIndices.concat([attachments.length]).slice(1));
 	return pageRange.map(([i, j]) => ({main: attachments[i], sub: attachments.slice(i + 1, j)}));

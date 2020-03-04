@@ -7,7 +7,7 @@ jest.mock('axios');
 import _axios from 'axios';
 const axios = _axios as jest.Mocked<typeof _axios>;
 
-import { getPageUrlRegExp, fetchScrapboxUrl, Page } from './scrapbox';
+import { isPageOfProject, fetchScrapboxUrl, Page, pageUrlRegExp } from './scrapbox';
 
 beforeEach(() => {
     axios.get.mockReset();
@@ -36,33 +36,50 @@ describe('fetchScrapboxUrl', () => {
     });
 });
 
-describe('getPageUrlRegExp', () => {
+describe('pageUrlRegExp', () => {
     const projectName = 'proj';
-    const projectName2 = 'proj2';
     const titleLc = 'タイトル';
     const hash = 'hash';
 
     it('parses URL without hash', () => {
-        const match = `https://scrapbox.io/${projectName}/${titleLc}`.match(getPageUrlRegExp({ projectName: null }));
+        const match = `https://scrapbox.io/${projectName}/${titleLc}`.match(pageUrlRegExp);
         expect(match).not.toBeNull();
         expect(match!.groups).toMatchObject({ projectName, titleLc });
     });
 
-    it('parses URL without hash', () => {
-        const match = `https://scrapbox.io/${projectName}/${titleLc}#${hash}`.match(getPageUrlRegExp({ projectName: null }));
+    it('parses URL with hash', () => {
+        const match = `https://scrapbox.io/${projectName}/${titleLc}#${hash}`.match(pageUrlRegExp);
         expect(match).not.toBeNull();
         expect(match!.groups).toMatchObject({ projectName, titleLc, hash });
     });
+});
 
-    it('parses URL when projectName specified', () => {
-        const url_ok = `https://scrapbox.io/${projectName}/${titleLc}`;
-        const regexp = getPageUrlRegExp({ projectName });
-        const match_ok = url_ok.match(regexp);
-        expect(match_ok).not.toBeNull();
-        expect(match_ok!.groups).toMatchObject({ titleLc });
-        const url_ng = `https://scrapbox.io/${projectName2}/${titleLc}`;
-        const match_ng = url_ng.match(regexp);
-        expect(match_ng).toBeNull();
+describe('isPageOfProject', () => {
+    const projectName = 'proj';
+    const projectName2 = 'proj2';
+    const titleLc = 'タイトル';
+
+    it('returns true for Scrapbox URL of specified project', () => {
+        const url = `https://scrapbox.io/${projectName}/${titleLc}`;
+        expect(isPageOfProject({ url, projectName })).toBe(true);
+    });
+
+    it('returns false for Scrapbox URL of specified project', () => {
+        const url = `https://scrapbox.io/${projectName2}/${titleLc}`;
+        expect(isPageOfProject({ url, projectName })).toBe(false);
+    });
+
+    it('returns false for strings not Scrapbox URL', () => {
+        const url = 'hoge';
+        expect(isPageOfProject({ url, projectName })).toBe(false);
+    });
+
+    test.each([
+        {projectName: defaultProjectName, expected: true},
+        {projectName: projectName, expected: false}
+    ])('uses projectName specified in envvar when not specified #%#', ({ projectName, expected }) => {
+        const url = `https://scrapbox.io/${projectName}/${titleLc}`;
+        expect(isPageOfProject({ url })).toBe(expected);
     });
 });
 

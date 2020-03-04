@@ -5,10 +5,8 @@ import {WebClient} from '@slack/web-api';
 import axios from 'axios';
 import {flatten, set, sum} from 'lodash';
 import {fastifyDevConstructor} from '../lib/fastify';
-import {Page, PageInfo} from '../lib/scrapbox';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
-import scrapbox, {maskAttachments, reconstructAttachments, server, muteTag, splitAttachments} from './index';
 
 jest.mock('axios');
 
@@ -19,6 +17,12 @@ let slack: Slack = null;
 
 const projectName = 'PROJECTNAME';
 process.env.SCRAPBOX_PROJECT_NAME = projectName;
+
+
+// eslint-disable-next-line import/first, import/imports-first, import/order
+import {Page, PageInfo} from '../lib/scrapbox';
+// eslint-disable-next-line import/first, import/imports-first
+import scrapbox, {maskAttachments, reconstructAttachments, server, muteTag, splitAttachments} from './index';
 
 describe('unfurl', () => {
 	let fetchInfoSpy: jest.SpyInstance<Promise<PageInfo>> | null = null;

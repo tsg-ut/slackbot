@@ -1,23 +1,13 @@
 import axios from 'axios';
-import { escapeRegExp } from 'lodash';
 
 export const tsgProjectName = process.env.SCRAPBOX_PROJECT_NAME!;
 export const tsgScrapboxToken = process.env.SCRAPBOX_SID!;
 
-const getPageUrlRegExpCache = new Map<string | null, RegExp>();
+export const pageUrlRegExp = /^https?:\/\/scrapbox\.io\/(?<projectName>.+?)\/(?<titleLc>.+?)(?:#(?<hash>.*))?$/;
 
-export const getPageUrlRegExp = ({ projectName }: { projectName: string | null }): RegExp => {
-    if (getPageUrlRegExpCache.has(projectName)) {
-        return getPageUrlRegExpCache.get(projectName)!;
-    } else {
-        const regexp = new RegExp(`^https?${escapeRegExp('://scrapbox.io/')}${
-            projectName === null ?
-                '(?<projectName>.+?)':
-                escapeRegExp(projectName)
-        }/(?<titleLc>.+?)(?:#(?<hash>.*))?$`);
-        getPageUrlRegExpCache.set(projectName, regexp);
-        return regexp;
-    }
+export const isPageOfProject = ({ url, projectName = tsgProjectName }: { url: string, projectName?: string }) => {
+    const match = url.match(pageUrlRegExp);
+    return match !== null && match.groups!.projectName === projectName;
 };
 
 export const fetchScrapboxUrl =  async <T> ({ url, token = tsgScrapboxToken }: { url: string; token?: string }): Promise<T> => {
@@ -112,7 +102,7 @@ const encodeIfNeeded = ({ str, isEncoded = undefined }: { str: string; isEncoded
 }
 
 const parsePageUrl = (url: string): { titleLc: string; projectName: string; hash: string } => {
-    const match = url.match(getPageUrlRegExp({ projectName: null }));
+    const match = url.match(pageUrlRegExp);
     if (match) {
         const { titleLc, projectName, hash } = match.groups!;
         return { titleLc, projectName, hash };
