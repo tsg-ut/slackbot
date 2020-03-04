@@ -1,9 +1,6 @@
 {
-    "extends": "@hakatashi",
+    "extends": ["plugin:jest/recommended", "@hakatashi"],
     "parser": "@typescript-eslint/parser",
-    "env": {
-        "jest/globals": true
-    },
     "plugins": [
         "jest"
     ],
