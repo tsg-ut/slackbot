@@ -3,8 +3,9 @@ import axios from 'axios';
 import logger from '../lib/logger.js';
 import qs from 'querystring';
 import plugin from 'fastify-plugin';
+import {zip} from 'lodash';
 import {WebClient, RTMClient, LinkUnfurls, MessageAttachment} from '@slack/client';
-import {Page} from '../lib/scrapbox';
+import {Page, getPageUrlRegExp} from '../lib/scrapbox';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -98,6 +99,14 @@ const getMutedList = async (): Promise<Set<string>> => {
 	return new Set((await muteTagPage.fetchInfo()).relatedPages.links1hop.map(({ titleLc }) => titleLc));
 };
 
+export const splitAttachments = (attachments: MessageAttachment[]): MessageAttachment[][] => {
+	const pageIndex = attachments
+		.map(({ title_link }, i) => ({ url: title_link, i }))
+		.filter(({ url }) => getPageUrlRegExp({ projectName: null }).test(url))
+		.map(({ i }) => i);
+	const pageRange = zip(pageIndex, pageIndex.concat([attachments.length]).slice(1));
+	return pageRange.map(([i, j]) => attachments.slice(i, j));
+};
 /**
  * Scrapboxからの更新通知 (Incoming Webhook形式) を受け取り，ミュート処理をしてSlackに投稿する
  */

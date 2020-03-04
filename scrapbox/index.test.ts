@@ -4,7 +4,7 @@ jest.mock('axios');
 import Slack from '../lib/slackMock.js';
 import axios from 'axios';
 import qs from 'querystring';
-import { escapeRegExp, set } from 'lodash';
+import { flatten, set } from 'lodash';
 import { fastifyDevConstructor } from '../lib/fastify';
 import { MessageAttachment } from '@slack/client';
 import { Page, PageInfo } from '../lib/scrapbox';
@@ -18,61 +18,82 @@ let slack: Slack = null;
 const projectName = 'PROJECTNAME';
 process.env.SCRAPBOX_PROJECT_NAME = projectName;
 import scrapbox from './index';
-import {server, muteTag} from './index';
+import {server, muteTag, splitAttachments} from './index';
 
-describe('scrapbox', () => {
+describe('unfurl', () => {
 	let fetchInfoSpy: jest.SpyInstance<Promise<PageInfo>> | null = null;
-
+	
 	beforeEach(async () => {
 		fetchInfoSpy = jest.spyOn(Page.prototype, 'fetchInfo').mockImplementation(async () => 
-			({title: 'hoge', descriptions: ['fuga', 'piyo']} as PageInfo)
-			// cast this because it is too demanding to completely write down all properties
+		({title: 'hoge', descriptions: ['fuga', 'piyo']} as PageInfo)
+		// cast this because it is too demanding to completely write down all properties
 		);
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		await scrapbox(slack);
 	});
-
+	
 	afterEach(() => {
 		fetchInfoSpy!.mockRestore();
 	});
-
+	
 	it('respond to slack hook of scrapbox unfurling', async () => {
 		const done = new Promise((resolve) => {
 			// @ts-ignore
 			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
 				if (url === 'https://slack.com/api/chat.unfurl') {
-					const parsed = qs.parse(data);
-					const unfurls = JSON.parse(Array.isArray(parsed.unfurls) ? parsed.unfurls[0] : parsed.unfurls);
-					expect(unfurls[`https://scrapbox.io/${projectName}/hoge`]).toBeTruthy();
-					expect(unfurls[`https://scrapbox.io/${projectName}/hoge`].text).toBe('fuga\npiyo');
-					resolve();
-					return Promise.resolve({data: {ok: true}});
-				} else {
-					throw Error(`axios-mock: unknown URL: ${url}`);
-				}
-			});
+				const parsed = qs.parse(data);
+				const unfurls = JSON.parse(Array.isArray(parsed.unfurls) ? parsed.unfurls[0] : parsed.unfurls);
+				expect(unfurls[`https://scrapbox.io/${projectName}/hoge`]).toBeTruthy();
+				expect(unfurls[`https://scrapbox.io/${projectName}/hoge`].text).toBe('fuga\npiyo');
+				resolve();
+				return Promise.resolve({data: {ok: true}});
+			} else {
+				throw Error(`axios-mock: unknown URL: ${url}`);
+			}
 		});
-
-		slack.eventClient.emit('link_shared', {
-			type: 'link_shared',
-			channel: 'Cxxxxxx',
-			user: 'Uxxxxxxx',
-			message_ts: '123452389.9875',
-			thread_ts: '123456621.1855',
-			links: [
-				{
-					domain: 'scrapbox.io',
-					url: `https://scrapbox.io/${projectName}/hoge`,
-				},
-			],
-		});
-
-		return done;
 	});
+	
+	slack.eventClient.emit('link_shared', {
+		type: 'link_shared',
+		channel: 'Cxxxxxx',
+		user: 'Uxxxxxxx',
+		message_ts: '123452389.9875',
+		thread_ts: '123456621.1855',
+		links: [
+			{
+				domain: 'scrapbox.io',
+				url: `https://scrapbox.io/${projectName}/hoge`,
+			},
+		],
+	});
+	
+	return done;
+});
 });
 
-describe('scrapbox', () => {
+describe('mute notification', () => {
+	it('splits attachments to each pages', () => {
+		const pages = [[
+				{
+					title_link:`https://scrapbox.io/${projectName}/page_1#hash_1`,
+				},
+				{
+					image_url:"https://example.com/img1.png"
+				},
+				{
+					image_url:"https://example.com/img2.png"
+				}
+			], [
+				{
+					title_link:`https://scrapbox.io/${projectName}/page_2#hash_2`,
+				}
+		]];
+		const attachments = flatten(pages);
+		const splittedAttachments = splitAttachments(attachments);
+		expect(splittedAttachments).toEqual(pages);
+	})
+	
 	it(`mutes pages with ${muteTag} tag`, async () => {
 		const fakeChannel = 'CSCRAPBOX';
 		process.env.CHANNEL_SCRAPBOX = fakeChannel;
@@ -100,12 +121,12 @@ describe('scrapbox', () => {
 				thumb_url: 'https://example.com/fuga2.png',
 			},
 		];
-
+		
 		jest.spyOn(Page.prototype, 'fetchInfo').mockImplementation(async () => 
-			set({}, ['relatedPages', 'links1hop'], [{titleLc: 'page_1'}]) as PageInfo
-			// cast this because it is too demanding to completely write down all properties
+		set({}, ['relatedPages', 'links1hop'], [{titleLc: 'page_1'}]) as PageInfo
+		// cast this because it is too demanding to completely write down all properties
 		);
-
+		
 		slack = {chat: {
 			postMessage: jest.fn(),
 		}};
