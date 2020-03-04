@@ -72,28 +72,58 @@ describe('unfurl', () => {
 });
 });
 
+class FakeAttachmentGenerator {
+	i: number = 0;
+
+	get(kind: 'text' | 'img'): MessageAttachment {
+		let a: MessageAttachment & { [key: string]: any } | null = null;
+		switch (kind) {
+			case 'text': {
+				const title = `タイトル ${this.i}`;
+				const text = `page ${this.i}`;
+				a = {
+					title,
+					title_link: `https://scrapbox.io/${projectName}/${encodeURIComponent(title)}#hash_${this.i}`,
+					text,
+					rawText: text,
+					mrkdwn_in: ['text' as const],
+					author_name: `user ${this.i}`,
+					image_url: `https://example.com/image_${this.i}.png`,
+					thumb_url: `https://example.com/thumb_${this.i}.png`,
+				};
+				break;
+			}
+			case 'img': {
+				a = {
+					image_url: `https://example.com/image_${this.i}.png`,
+				};
+				break;
+			}
+			default: {
+				a = kind;
+			}
+		}
+		++this.i;
+		return a;
+	}
+}
+
 describe('mute notification', () => {
-	it('splits attachments to each pages', () => {
+	test('splitAttachments splits attachments to each pages', () => {
+		const gen = new FakeAttachmentGenerator();
 		const pages = [[
-				{
-					title_link:`https://scrapbox.io/${projectName}/page_1#hash_1`,
-				},
-				{
-					image_url:"https://example.com/img1.png"
-				},
-				{
-					image_url:"https://example.com/img2.png"
-				}
-			], [
-				{
-					title_link:`https://scrapbox.io/${projectName}/page_2#hash_2`,
-				}
+			gen.get('text'),
+			gen.get('img'),
+			gen.get('img'),
+		], [
+			gen.get('text'),
+			gen.get('img'),
 		]];
 		const attachments = flatten(pages);
 		const splittedAttachments = splitAttachments(attachments);
 		expect(splittedAttachments).toEqual(pages);
-	})
-	
+	});
+
 	it(`mutes pages with ${muteTag} tag`, async () => {
 		const fakeChannel = 'CSCRAPBOX';
 		process.env.CHANNEL_SCRAPBOX = fakeChannel;
