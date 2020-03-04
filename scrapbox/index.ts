@@ -71,31 +71,40 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 	});
 };
 
-
+/**
+ * 1つのScrapbox記事に関する通知を表すオブジェクト
+ * @property text: 文章の更新についてのattachment
+ * @property images: 添付画像のattachment[]
+ */
 interface ScrapboxPageNotification {
-	main: MessageAttachment,
-	sub: MessageAttachment[],
+	text: MessageAttachment,
+	images: MessageAttachment[],
 }
 
+/**
+ * Scrapboxからの通知attachments全体を記事ごとに分け，通知オブジェクトに変換
+ * @param attachments: 複数の記事に関するattachments
+ * @returns 通知オブジェクトの配列
+ */
 export const splitAttachments = (attachments: MessageAttachment[]): ScrapboxPageNotification[] => {
 	const pageIndices = attachments
 		.map(({title_link}, i) => ({url: title_link, i}))
 		.filter(({url}) => pageUrlRegExp.test(url))
 		.map(({i}) => i);
 	const pageRange = zip(pageIndices, pageIndices.concat([attachments.length]).slice(1));
-	return pageRange.map(([i, j]) => ({main: attachments[i], sub: attachments.slice(i + 1, j)}));
+	return pageRange.map(([i, j]) => ({text: attachments[i], images: attachments.slice(i + 1, j)}));
 };
 
 /**
  * ミュートしたい記事に対し，隠したい情報を消したattachmentsを生成
- *
- * @param notification ミュートしたい記事のattachmentと画像
+ * 文章の更新は一部を隠した上で返し，画像の更新は全て消す
+ * @param notification ミュートしたい記事の通知オブジェクト
  * @return ミュート済みのattachments
  */
 export const maskAttachments = (notification: ScrapboxPageNotification): MessageAttachment[] => {
 	const dummyText = 'この記事の更新通知はミュートされています。';
 	return [{
-		...notification.main,
+		...notification.text,
 		text: dummyText,
 		fallback: dummyText,
 		image_url: null,
@@ -104,12 +113,11 @@ export const maskAttachments = (notification: ScrapboxPageNotification): Message
 };
 
 /**
- * ミュートしたくない記事に対し，そのままattachments形式に変換
- *
- * @param notification 変換する記事のattachmentと画像
- * @return ミュート済みのattachments
+ * 記事の通知オブジェクトをそのままattachments形式に変換
+ * @param notification 変換する記事の通知オブジェクト
+ * @return 変換されたattachments
  */
-export const reconstructAttachments = (notification: ScrapboxPageNotification): MessageAttachment[] => [notification.main, ...notification.sub];
+export const reconstructAttachments = (notification: ScrapboxPageNotification): MessageAttachment[] => [notification.text, ...notification.images];
 
 export const muteTag = '##ミュート';
 const getMutedList = async (): Promise<Set<string>> => {
@@ -133,7 +141,7 @@ export const server = ({webClient: slack}: SlackInterface) => plugin((fastify, o
 		const mutedList = await getMutedList();
 		const attachments = flatten(
 			splitAttachments(req.body.attachments).map(
-				(notification) => mutedList.has(new Page({url: notification.main.title_link}).titleLc)
+				(notification) => mutedList.has(new Page({url: notification.text.title_link}).titleLc)
 					? maskAttachments(notification)
 					: reconstructAttachments(notification),
 			),

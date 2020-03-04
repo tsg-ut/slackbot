@@ -3,18 +3,28 @@ import axios from 'axios';
 export const tsgProjectName = process.env.SCRAPBOX_PROJECT_NAME!;
 export const tsgScrapboxToken = process.env.SCRAPBOX_SID!;
 
+/**
+ * ScrapboxのURLにマッチする正規表現
+ * Groups: { projectName, titleLc, hash }
+ */
 export const pageUrlRegExp = /^https?:\/\/scrapbox\.io\/(?<projectName>.+?)\/(?<titleLc>.+?)(?:#(?<hash>.*))?$/;
 
+/**
+ * URLが指定したプロジェクトのURLか判定
+ */
 export const isPageOfProject = ({ url, projectName = tsgProjectName }: { url: string, projectName?: string }) => {
     const match = url.match(pageUrlRegExp);
     return match !== null && match.groups!.projectName === projectName;
 };
 
+/**
+ * ScrapboxのURLをトークンをつけてGETリクエスト
+ */
 export const fetchScrapboxUrl =  async <T> ({ url, token = tsgScrapboxToken }: { url: string; token?: string }): Promise<T> => {
     // TODO: support axios config
     return (await axios.get(
         url,
-        { headers: { Cookie: `connect.sid=${token ?? tsgScrapboxToken}` } },
+        { headers: { Cookie: `connect.sid=${token}` } },
     )).data;
 }
 
@@ -44,6 +54,9 @@ export interface Link {
     accessed: number;
 }
 
+/**
+ * Scrapbox APIのページ情報の返り値
+ */
 export interface PageInfo {
     id: string;
     title: string;
@@ -111,6 +124,9 @@ const parsePageUrl = (url: string): { titleLc: string; projectName: string; hash
     }
 };
 
+/**
+ * Scrapboxの記事
+ */
 export class Page {
     token: string;
     projectName: string;
@@ -157,14 +173,23 @@ export class Page {
         }
     }
 
+    /**
+     * Scrapbox記事のURL
+     */
     get url(): string {
         return `https://scrapbox.io/${this.projectName}/${this.encodedTitleLc}${this.hash? `#${this.hash}` : ''}`
     }
 
+    /**
+     * ページ情報APIのURL
+     */
     get infoUrl(): string {
         return `https://scrapbox.io/api/pages/${this.projectName}/${this.encodedTitleLc}`;
     }
 
+    /**
+     * ページ情報をAPIから取得
+     */
     async fetchInfo(): Promise<PageInfo> {
         return fetchScrapboxUrl<PageInfo>({ url: this.infoUrl, token: this.token });
     }

@@ -132,14 +132,14 @@ describe('mute notification', () => {
 			gen.reset();
 			// eslint-disable-next-line array-plural/array-plural
 			const expected = [{
-				main: gen.get('text'),
-				sub: [gen.get('img'), gen.get('img')],
+				text: gen.get('text'),
+				images: [gen.get('img'), gen.get('img')],
 			}, {
-				main: gen.get('text'),
-				sub: [],
+				text: gen.get('text'),
+				images: [],
 			}, {
-				main: gen.get('text'),
-				sub: [gen.get('img')],
+				text: gen.get('text'),
+				images: [gen.get('img')],
 			}];
 			const splittedAttachments = splitAttachments(attachments);
 			expect(splittedAttachments).toEqual(expected);
@@ -150,8 +150,8 @@ describe('mute notification', () => {
 		it('conceals values of notification', () => {
 			const gen = new FakeAttachmentGenerator();
 			const notification = {
-				main: gen.get('text'),
-				sub: [gen.get('img'), gen.get('img')],
+				text: gen.get('text'),
+				images: [gen.get('img'), gen.get('img')],
 			};
 			const attachments = maskAttachments(notification);
 			expect(attachments.length).toBe(1);
@@ -160,7 +160,7 @@ describe('mute notification', () => {
 			const unchanged = ['title', 'title_link', 'mrkdwn_in', 'author_name'] as const;
 			const nulled = ['image_url', 'thumb_url'] as const;
 			for (const key of unchanged) {
-				expect(attachment[key]).toEqual(notification.main[key]);
+				expect(attachment[key]).toEqual(notification.text[key]);
 			}
 			for (const key of nulled) {
 				expect(attachment[key]).toBeNull();
