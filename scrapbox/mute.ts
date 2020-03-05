@@ -32,7 +32,10 @@ export const splitAttachments = (attachments: MessageAttachment[]): ScrapboxPage
 		.filter(({url}) => pageUrlRegExp.test(url))
 		.map(({i}) => i);
 	const pageRange = zip(pageIndices, pageIndices.concat([attachments.length]).slice(1));
-	return pageRange.map(([i, j]) => ({text: attachments[i], images: attachments.slice(i + 1, j)}));
+	return pageRange.map(([i, j]) => ({
+		text: attachments[i],
+		images: attachments.slice(i + 1, j).map((a) => ({text: '', ...a})),
+	}));
 };
 
 /**
