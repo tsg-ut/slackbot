@@ -269,6 +269,15 @@ const achievements: Achievement[] = [
 		value: 5,
 	},
 	{
+		id: 'reaction-kombu-5',
+		difficulty: 'hard',
+		title: '海藻を買いそう',
+		condition: '1つのメッセージに対し5人以上から:kombu:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'kombu',
+		value: 5,
+	},
+	{
 		id: 'reaction-hototogisu-5',
 		difficulty: 'hard',
 		title: '鳥さんが鳴いとるやんけ',
@@ -407,9 +416,9 @@ const achievements: Achievement[] = [
 		id: 'reaction-fleshpeach-5',
 		difficulty: 'hard',
 		title: 'ずっと輝いてる未来はここにある',
-		condition: '1つのメッセージに対し5人以上から:fleshpeach:リアクションをもらう',
+		condition: '1つのメッセージに対し5人以上から:freshpeach:リアクションをもらう',
 		category: 'reactions',
-		reaction: 'fleshpeach',
+		reaction: 'freshpeach',
 		value: 5,
 	},
 	{

@@ -13,9 +13,10 @@ import scrapeIt from 'scrape-it';
 import {increment, unlock} from '../achievements/index.js';
 // @ts-ignore
 import logger from '../lib/logger.js';
+import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 // eslint-disable-next-line no-unused-vars
-import {Results, SlackInterface, Standings} from './types';
+import {Results, Standings} from './types';
 
 const getRatingColor = (rating: number | null) => {
 	// gray

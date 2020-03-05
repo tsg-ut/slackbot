@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 // @ts-ignore
 import logger from '../lib/logger.js';
-import {RTMClient, WebClient} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 import * as _ from 'lodash';
 import plugin from 'fastify-plugin';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils'
@@ -171,11 +171,6 @@ const expandEmoji = (text: string): string =>
   }).join('\n');
 
 //}}}
-
-interface SlackInterface {
-  rtmClient: RTMClient;
-  webClient: WebClient;
-}
 
 export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => plugin(async (fastify, opts, next) => {
   const postMessage = (text: string): void => {

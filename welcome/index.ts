@@ -1,14 +1,10 @@
 import axios from 'axios';
+import {WebClient} from '@slack/client';
 // @ts-ignore
 import logger from '../lib/logger.js';
 
 import {Page} from '../lib/scrapbox';
-import {WebClient, RTMClient} from '@slack/client';
-
-interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-}
+import type {SlackInterface} from '../lib/slack';
 
 const welcomePageTitleLc = 'welcome';
 

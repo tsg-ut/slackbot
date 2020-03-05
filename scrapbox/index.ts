@@ -1,15 +1,10 @@
 import qs from 'querystring';
-import {WebClient, RTMClient, LinkUnfurls} from '@slack/client';
+import {LinkUnfurls} from '@slack/client';
 import axios from 'axios';
 // @ts-ignore
 import logger from '../lib/logger.js';
 import {Page, tsgProjectName} from '../lib/scrapbox';
-
-interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-	eventClient: any,
-}
+import type {SlackInterface} from '../lib/slack';
 
 export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
 	event.on('link_shared', async (e: any) => {

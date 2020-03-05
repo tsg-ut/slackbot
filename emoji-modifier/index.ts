@@ -1,4 +1,4 @@
-import {RTMClient, WebClient} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 // @ts-ignore
 import logger from '../lib/logger.js';
 import loadFont from '../lib/loadFont';
@@ -385,6 +385,18 @@ const filters: Map<string,  Filter> = new Map([
     arguments: ['string', 'string'],
     filter: proTwitter,
   }],
+  ['think',
+    simpleFilter(async (image: Buffer, raw?: sharp.Raw): Promise<Buffer> => {
+      const options = raw == null ? {} : {raw};
+      const resized = await toSquare(await sharp(image, options).png().toBuffer());
+      const {width: side} = await sharp(resized).metadata();
+      const hand = await sharp('emoji-modifier/resources/thinking-hand.png')
+        .resize(side)
+        .toBuffer();
+      const composed =  sharp(resized).composite([{ input: hand }]);
+      return await (raw == null ? composed.png().toBuffer() : composed.raw().toBuffer());
+    })
+  ],
 ] as [string, Filter][]);
 // }}}
 
@@ -472,10 +484,6 @@ const runTransformation = async (message: string): Promise<Emoji | EmodiError> =
 // }}}
 
 // user interaction {{{
-interface SlackInterface {
-  rtmClient: RTMClient;
-  webClient: WebClient;
-}
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
   const {team}: any = await slack.team.info();

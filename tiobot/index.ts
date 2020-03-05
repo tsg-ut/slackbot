@@ -1,12 +1,7 @@
 // @ts-ignore
 import {stripIndent} from 'common-tags';
 import * as zlib from 'zlib';
-import {WebClient, RTMClient} from '@slack/client';
-
-interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-}
+import type {SlackInterface} from '../lib/slack';
 
 export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	rtm.on('message', async (message) => {

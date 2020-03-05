@@ -1,11 +1,7 @@
 import customResponses from './custom-responses';
 import {sample, shuffle} from 'lodash';
-import {WebClient, RTMClient, MessageAttachment} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 
-interface SlackInterface {
-    rtmClient: RTMClient,
-    webClient: WebClient,
-}
 
 const response = async (text:string) => {
     for (const resp of customResponses.filter((response) => !response.reaction)) {
