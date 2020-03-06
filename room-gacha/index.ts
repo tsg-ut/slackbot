@@ -127,6 +127,16 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
             }
             const { ar, bs, ta } = HiddenValue[pref];
             const result = await pickOneResult(cityKeys.filter(s => s !== ''), ar, bs, ta);
+            if (typeof result.room === 'undefined') {
+                await webClient.chat.postMessage({
+                    channel: message.channel,
+                    username,
+                    icon_emoji: ':house:',
+                    icon_url: '',
+                    text: '家が見つからなかったよ :new_moon_with_face:',
+                });
+                return;
+            }
             const blocks = [
                 {
                     type: 'section',
