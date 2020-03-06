@@ -8,9 +8,20 @@ interface City {
     key: string;
 }
 
-const fetchCities = async (prefectureRomaji: PrefectureRomaji) => {
+interface HiddenValue {
+    ar: string;
+    bs: string;
+    ta: string;
+}
+
+const fetchData = async (prefectureRomaji: PrefectureRomaji) => {
     const citySelectionUrl = `https://suumo.jp/chintai/${prefectureRomaji}/city/`;
-    const result = await scrapeIt<{ cities: City[]}>(citySelectionUrl, {
+    const result = await scrapeIt<{
+        cities: City[];
+        ar: string;
+        bs: string;
+        ta: string;
+    }>(citySelectionUrl, {
         cities: {
             listItem: '.searchitem-list li',
             data: {
@@ -24,24 +35,33 @@ const fetchCities = async (prefectureRomaji: PrefectureRomaji) => {
                 },
             },
         },
+        ar: { selector: 'input[name=ar]', attr: 'value' },
+        bs: { selector: 'input[name=bs]', attr: 'value' },
+        ta: { selector: 'input[name=ta]', attr: 'value' },
     });
-    return result.data.cities;
+    return result.data;
 };
 
 (async () => {
     const cityDictionary: {[key in PrefectureKanji]?: {[key: string]: string}} = {};
+    const hiddenValueDictionary: {[key in PrefectureKanji]?: HiddenValue} = {};
     for (const prefKanji of Object.keys(Prefectures) as PrefectureKanji[]) {
         const prefRomaji = Prefectures[prefKanji];
-        const cities = await fetchCities(prefRomaji);
+        const { cities, ar, bs, ta } = await fetchData(prefRomaji);
         const dict: {[key: string]: string} = {};
         cities.forEach(city => { dict[city.name] = city.key });
         cityDictionary[prefKanji] = dict;
+        hiddenValueDictionary[prefKanji] = { ar, bs, ta};
     }
-    const json = JSON.stringify(cityDictionary, null, '    ');
-    const head = stripIndent`
-        import { PrefectureKanji } from './Prefectures';
-
-        export const Cities: {[key in PrefectureKanji]: {[key: string]: string}} =`;
-    const body = `${head} ${json};`;
+    const cityJson = JSON.stringify(cityDictionary, null, '    ');
+    const hiddenValueJson = JSON.stringify(hiddenValueDictionary, null, '    ');
+    const body = `import { PrefectureKanji } from './Prefectures';
+interface HiddenValue {
+    ar: string;
+    bs: string;
+    ta: string;
+}
+export const Cities: {[key in PrefectureKanji]: {[key: string]: string}} =${cityJson};
+export const HiddenValue: {[key in PrefectureKanji]: HiddenValue} =${hiddenValueJson};`;
     await fs.writeFile(`${__dirname}/Cities.ts`, body);
 })();
