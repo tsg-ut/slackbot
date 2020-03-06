@@ -65,4 +65,5 @@ export const Prefectures = {
     沖縄県: 'okinawa' as const,
 }
 
-export type Prefecture = keyof typeof Prefectures;
+export type PrefectureKanji = keyof typeof Prefectures;
+export type PrefectureRomaji = typeof Prefectures[PrefectureKanji];
