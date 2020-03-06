@@ -4,7 +4,7 @@ import * as qs from 'querystring';
 import _ from 'lodash';
 import type { SlackInterface } from '../lib/slack';
 import { Prefectures, PrefectureKanji } from './Prefectures';
-import { Cities } from './Cities';
+import { Cities, HiddenValue } from './Data';
 
 interface Image {
     url: string;
@@ -25,16 +25,14 @@ interface Room {
     access: string[];
 }
 
-const pickOneResult = async (cityIDs: string[]) => {
+const pickOneResult = async (cityIDs: string[], ar: string, bs: string, ta: string) => {
     const appAddress = 'https://suumo.jp/jj/chintai/ichiran/FR301FC005/'; // 部屋ごとに表示
     const queries = {
         sc: cityIDs,
         po01: '09', // 並び替え: 新着順
         pc: '100',  // 表示件数: 100件
         ts: '1',    // 謎 (必須)
-        ar: '030',  // 謎 (必須) 地域依存 <- NOTE: 未修正
-        bs: '040',  // 謎 (必須) 地域依存 <- NOTE: 未修正
-        ta: '13',   // 謎 (必須) 地域依存 <- NOTE: 未修正
+        ar, bs, ta,
     };
     const url = `${appAddress}?${qs.stringify(queries)}`;
     interface SearchResult {
@@ -127,7 +125,8 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
             if (cityKeys.length === 0) {
                 cityKeys = Object.values(Cities[pref]); // 全ての街を検索対象に
             }
-            const result = await pickOneResult(cityKeys.filter(s => s !== ''));
+            const { ar, bs, ta } = HiddenValue[pref];
+            const result = await pickOneResult(cityKeys.filter(s => s !== ''), ar, bs, ta);
             const blocks = [
                 {
                     type: 'section',
