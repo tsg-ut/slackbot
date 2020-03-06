@@ -63,5 +63,5 @@ interface HiddenValue {
 }
 export const Cities: {[key in PrefectureKanji]: {[key: string]: string}} =${cityJson};
 export const HiddenValue: {[key in PrefectureKanji]: HiddenValue} =${hiddenValueJson};`;
-    await fs.writeFile(`${__dirname}/Cities.ts`, body);
+    await fs.writeFile(`${__dirname}/Data.ts`, body);
 })();
