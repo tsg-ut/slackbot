@@ -1,5 +1,4 @@
 import scrapeIt from 'scrape-it';
-import {RTMClient, WebClient} from '@slack/client';
 import * as qs from 'querystring';
 import _ from 'lodash';
 import type { SlackInterface } from '../lib/slack';
@@ -29,10 +28,9 @@ const pickOneResult = async (cityIDs: string[], ar: string, bs: string, ta: stri
     const appAddress = 'https://suumo.jp/jj/chintai/ichiran/FR301FC005/'; // 部屋ごとに表示
     const queries = {
         sc: cityIDs,
+        ar, bs, ta, // 謎 (必須) (都道府県固有)
         po01: '09', // 並び替え: 新着順
         pc: '100',  // 表示件数: 100件
-        ts: '1',    // 謎 (必須)
-        ar, bs, ta,
     };
     const url = `${appAddress}?${qs.stringify(queries)}`;
     interface SearchResult {

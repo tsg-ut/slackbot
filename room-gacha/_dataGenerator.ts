@@ -1,6 +1,5 @@
 import scrapeIt from 'scrape-it';
 import { promises as fs } from 'fs';
-import { stripIndent } from 'common-tags';
 import { Prefectures, PrefectureKanji, PrefectureRomaji } from './Prefectures';
 
 interface City {
