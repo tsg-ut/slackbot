@@ -29,22 +29,19 @@ const fetchCities = async (prefectureRomaji: PrefectureRomaji) => {
 };
 
 (async () => {
-    const cityDictionary: {[key in PrefectureKanji]?: City[]} = {};
+    const cityDictionary: {[key in PrefectureKanji]?: {[key: string]: string}} = {};
     for (const prefKanji of Object.keys(Prefectures) as PrefectureKanji[]) {
         const prefRomaji = Prefectures[prefKanji];
         const cities = await fetchCities(prefRomaji);
-        cityDictionary[prefKanji] = cities;
+        const dict: {[key: string]: string} = {};
+        cities.forEach(city => { dict[city.name] = city.key });
+        cityDictionary[prefKanji] = dict;
     }
     const json = JSON.stringify(cityDictionary, null, '    ');
     const head = stripIndent`
         import { PrefectureKanji } from './Prefectures';
 
-        export interface City {
-            name: string;
-            key: string;
-        }
-
-        export const Cities: {[key in PrefectureKanji]: City[]} =`;
+        export const Cities: {[key in PrefectureKanji]: {[key: string]: string}} =`;
     const body = `${head} ${json};`;
     await fs.writeFile(`${__dirname}/Cities.ts`, body);
 })();
