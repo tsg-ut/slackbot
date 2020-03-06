@@ -9,7 +9,7 @@ interface City {
 }
 
 const fetchCities = async (prefectureRomaji: PrefectureRomaji) => {
-    const citySelectionUrl = `https://suumo.jp/chintai/${prefectureRomaji}/city/mansion/`;
+    const citySelectionUrl = `https://suumo.jp/chintai/${prefectureRomaji}/city/`;
     const result = await scrapeIt<{ cities: City[]}>(citySelectionUrl, {
         cities: {
             listItem: '.searchitem-list li',
