@@ -105,7 +105,7 @@ const pickOneResult = async (cityIDs: string[], ar: string, bs: string, ta: stri
 };
 
 export default async ({rtmClient, webClient}: SlackInterface) => {
-    const dataStr = await fs.readFile(`${__dirname}/Data.json`, 'utf-8');
+    const dataStr = await fs.readFile(`${__dirname}/data.json`, 'utf-8');
     const data: {
         sc: {[key in PrefectureKanji]: {[key: string]: string}},
         hiddenValue: {[key in PrefectureKanji]: {
