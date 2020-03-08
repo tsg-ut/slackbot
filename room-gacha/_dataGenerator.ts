@@ -50,17 +50,9 @@ const fetchData = async (prefectureRomaji: PrefectureRomaji) => {
         const dict: {[key: string]: string} = {};
         cities.forEach(city => { dict[city.name] = city.key });
         cityDictionary[prefKanji] = dict;
-        hiddenValueDictionary[prefKanji] = { ar, bs, ta};
+        hiddenValueDictionary[prefKanji] = { ar, bs, ta };
     }
     const cityJson = JSON.stringify(cityDictionary, null, '    ');
     const hiddenValueJson = JSON.stringify(hiddenValueDictionary, null, '    ');
-    const body = `import { PrefectureKanji } from './Prefectures';
-interface HiddenValue {
-    ar: string;
-    bs: string;
-    ta: string;
-}
-export const Cities: {[key in PrefectureKanji]: {[key: string]: string}} =${cityJson};
-export const HiddenValue: {[key in PrefectureKanji]: HiddenValue} =${hiddenValueJson};`;
-    await fs.writeFile(`${__dirname}/Data.ts`, body);
+    await fs.writeFile(`${__dirname}/data.json`, `{ "sc": ${cityJson}, "hiddenValue": ${hiddenValueJson}}`);
 })();

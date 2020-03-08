@@ -1,10 +1,4 @@
-import { PrefectureKanji } from './Prefectures';
-interface HiddenValue {
-    ar: string;
-    bs: string;
-    ta: string;
-}
-export const Cities: {[key in PrefectureKanji]: {[key: string]: string}} ={
+{ "sc": {
     "北海道": {
         "札幌市中央区": "01101",
         "札幌市北区": "01102",
@@ -66,7 +60,7 @@ export const Cities: {[key in PrefectureKanji]: {[key: string]: string}} ={
         "根室市": "01223",
         "中川郡": "01435",
         "網走郡": "01480",
-        "斜里郡": "01485",
+        "斜里郡": "",
         "常呂郡": "",
         "紋別郡": "01495",
         "河東郡": "01540",
@@ -715,7 +709,7 @@ export const Cities: {[key in PrefectureKanji]: {[key: string]: string}} ={
         "丹生郡": "18420",
         "三方郡": "18440",
         "大飯郡": "18480",
-        "三方上中郡": ""
+        "三方上中郡": "18500"
     },
     "愛知県": {
         "名古屋市千種区": "23101",
@@ -1224,7 +1218,7 @@ export const Cities: {[key in PrefectureKanji]: {[key: string]: string}} ={
         "安芸郡": "34300",
         "山県郡": "34360",
         "豊田郡": "",
-        "世羅郡": "",
+        "世羅郡": "34460",
         "神石郡": ""
     },
     "島根県": {
@@ -1239,7 +1233,7 @@ export const Cities: {[key in PrefectureKanji]: {[key: string]: string}} ={
         "仁多郡": "",
         "飯石郡": "",
         "邑智郡": "",
-        "鹿足郡": "32500",
+        "鹿足郡": "",
         "隠岐郡": ""
     },
     "鳥取県": {
@@ -1364,7 +1358,7 @@ export const Cities: {[key in PrefectureKanji]: {[key: string]: string}} ={
         "対馬市": "42209",
         "壱岐市": "",
         "五島市": "",
-        "西海市": "42212",
+        "西海市": "",
         "雲仙市": "42213",
         "南島原市": "42214",
         "西彼杵郡": "42300",
@@ -1484,8 +1478,7 @@ export const Cities: {[key in PrefectureKanji]: {[key: string]: string}} ={
         "宮古郡": "",
         "八重山郡": ""
     }
-};
-export const HiddenValue: {[key in PrefectureKanji]: HiddenValue} ={
+}, "hiddenValue": {
     "北海道": {
         "ar": "010",
         "bs": "040",
@@ -1721,4 +1714,4 @@ export const HiddenValue: {[key in PrefectureKanji]: HiddenValue} ={
         "bs": "040",
         "ta": "47"
     }
-};
+}}

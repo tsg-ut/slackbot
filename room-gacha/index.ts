@@ -1,9 +1,9 @@
 import scrapeIt from 'scrape-it';
+import { promises as fs } from 'fs';
 import * as qs from 'querystring';
 import _ from 'lodash';
 import type { SlackInterface } from '../lib/slack';
 import { Prefectures, PrefectureKanji } from './Prefectures';
-import { Cities, HiddenValue } from './Data';
 
 interface Image {
     url: string;
@@ -105,6 +105,16 @@ const pickOneResult = async (cityIDs: string[], ar: string, bs: string, ta: stri
 };
 
 export default async ({rtmClient, webClient}: SlackInterface) => {
+    const dataStr = await fs.readFile(`${__dirname}/Data.json`, 'utf-8');
+    const data: {
+        sc: {[key in PrefectureKanji]: {[key: string]: string}},
+        hiddenValue: {[key in PrefectureKanji]: {
+            ar: string,
+            bs: string;
+            ta: string;
+        }}
+    } = JSON.parse(dataStr);
+    const { sc, hiddenValue } = data;
     rtmClient.on('message', async message => {
         const username = '物件ガチャ';
         if (message.channel !== process.env.CHANNEL_SANDBOX) return;
@@ -115,15 +125,15 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
             const prefs = Object.keys(Prefectures);
             const isValidPrefSpecified = args.length > 1 && prefs.includes(args[1]);
             const pref = (isValidPrefSpecified ? args[1] : _.shuffle(prefs)[0]) as PrefectureKanji;
-            const cityNames = Object.keys(Cities[pref]);
+            const cityNames = Object.keys(sc[pref]);
             let cityKeys = [];
             for (const arg of args.slice(2)) {
-                if (cityNames.includes(arg)) cityKeys.push(Cities[pref][arg]);
+                if (cityNames.includes(arg)) cityKeys.push(sc[pref][arg]);
             }
             if (cityKeys.length === 0) {
-                cityKeys = Object.values(Cities[pref]); // 全ての街を検索対象に
+                cityKeys = Object.values(sc[pref]); // 全ての街を検索対象に
             }
-            const { ar, bs, ta } = HiddenValue[pref];
+            const { ar, bs, ta } = hiddenValue[pref];
             const result = await pickOneResult(cityKeys.filter(s => s !== ''), ar, bs, ta);
             if (typeof result.room === 'undefined') {
                 await webClient.chat.postMessage({
