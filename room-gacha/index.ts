@@ -192,7 +192,7 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
                     type: 'image',
                     title: { type: 'plain_text', text: '間取り図' },
                     image_url: result.room.layoutImageUrl,
-                    alt_text: '間取り図'
+                    alt_text: '間取り図',
                 },
             ];
             await webClient.chat.postMessage({
