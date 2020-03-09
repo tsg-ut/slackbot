@@ -3,9 +3,6 @@ import axios from 'axios';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
 
-// @ts-ignore
-axios.response = {data: {title: 'hoge', descriptions: ['fuga', 'piyo']}};
-
 let slack: Slack = null;
 
 const projectName = 'PROJECTNAME';
