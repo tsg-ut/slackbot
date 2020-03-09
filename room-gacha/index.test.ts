@@ -19,7 +19,7 @@ beforeEach(async () => {
 describe('room-gacha', () => {
     it('responds to "物件ガチャ" with a prefecture and a city specified', async () => {
         tinyreq.impl = jest.fn(async (url, callback) => {
-            const data = await fs.readFile(`${__dirname}/result.test.html`, 'utf-8');
+            const data = await fs.readFile(`${__dirname}/search-result.test.html`, 'utf-8');
             if (callback) callback(null, data);
             return data;
         });
