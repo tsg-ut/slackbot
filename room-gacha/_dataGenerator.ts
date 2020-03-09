@@ -1,6 +1,6 @@
 import scrapeIt from 'scrape-it';
 import { promises as fs } from 'fs';
-import { prefectures, PrefectureKanji, PrefectureRomaji } from './Prefectures';
+import { prefectures, PrefectureKanji, PrefectureRomaji } from './prefectures';
 
 interface City {
     name: string;

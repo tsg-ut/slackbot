@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import * as qs from 'querystring';
 import _ from 'lodash';
 import type { SlackInterface } from '../lib/slack';
-import { prefectures, PrefectureKanji } from './Prefectures';
+import { prefectures, PrefectureKanji } from './prefectures';
 
 interface Image {
     url: string;
