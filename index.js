@@ -54,6 +54,7 @@ const allBots = [
 	'tsglive',
 	'emoji-modifier',
 	'context-free',
+	'room-gacha',
 ];
 
 const argv = yargs
