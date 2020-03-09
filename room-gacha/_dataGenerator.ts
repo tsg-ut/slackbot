@@ -1,6 +1,6 @@
 import scrapeIt from 'scrape-it';
 import { promises as fs } from 'fs';
-import { Prefectures, PrefectureKanji, PrefectureRomaji } from './Prefectures';
+import { prefectures, PrefectureKanji, PrefectureRomaji } from './Prefectures';
 
 interface City {
     name: string;
@@ -44,8 +44,8 @@ const fetchData = async (prefectureRomaji: PrefectureRomaji) => {
 (async () => {
     const cityDictionary: {[key in PrefectureKanji]?: {[key: string]: string}} = {};
     const hiddenValueDictionary: {[key in PrefectureKanji]?: HiddenValue} = {};
-    for (const prefKanji of Object.keys(Prefectures) as PrefectureKanji[]) {
-        const prefRomaji = Prefectures[prefKanji];
+    for (const prefKanji of Object.keys(prefectures) as PrefectureKanji[]) {
+        const prefRomaji = prefectures[prefKanji];
         const { cities, ar, bs, ta } = await fetchData(prefRomaji);
         const dict: {[key: string]: string} = {};
         cities.forEach(city => { dict[city.name] = city.key });

@@ -1,4 +1,4 @@
-// Generation guide for Prefectures:
+// Generation guide for prefectures:
 // Go https://suumo.jp/chintai/mansion/ and execute codes below:
 //     const uls = Array.from(document.querySelectorAll('.spacebox-list'));
 //     const links = [];
@@ -15,7 +15,7 @@
 // 和歌山だけなぜか「県」が抜けているので、手動で「県」を追記。
 // All written above is confirmed to be effective as of March 6, 2020.
 
-export const Prefectures = {
+export const prefectures = {
     北海道: 'hokkaido_' as const,
     青森県: 'aomori' as const,
     岩手県: 'iwate' as const,
@@ -65,5 +65,5 @@ export const Prefectures = {
     沖縄県: 'okinawa' as const,
 }
 
-export type PrefectureKanji = keyof typeof Prefectures;
-export type PrefectureRomaji = typeof Prefectures[PrefectureKanji];
+export type PrefectureKanji = keyof typeof prefectures;
+export type PrefectureRomaji = typeof prefectures[PrefectureKanji];

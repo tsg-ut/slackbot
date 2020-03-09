@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import * as qs from 'querystring';
 import _ from 'lodash';
 import type { SlackInterface } from '../lib/slack';
-import { Prefectures, PrefectureKanji } from './Prefectures';
+import { prefectures, PrefectureKanji } from './Prefectures';
 
 interface Image {
     url: string;
@@ -124,7 +124,7 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
         if (message.username === username) return;
         if (message.text.startsWith('物件ガチャ')) {
             const args: string[] = message.text.split(' ');
-            const prefs = Object.keys(Prefectures);
+            const prefs = Object.keys(prefectures);
             const isValidPrefSpecified = args.length > 1 && prefs.includes(args[1]);
             const pref = (isValidPrefSpecified ? args[1] : _.sample(prefs)) as PrefectureKanji;
             const cityNames = Object.keys(sc[pref]);
