@@ -21,7 +21,7 @@ export const fastifyDevConstructor = (opts?: Parameters<typeof fastifyConstructo
      * Maybe because of not handling the generics of fastifyConstructor
      */
 
-    const fastify = fastifyConstructor(Object.assign({}, { logger: true }, opts));
+    const fastify = fastifyConstructor({ logger: true , ...opts });
 
     /**
      * デフォルトのエラーハンドラはエラーをログに出力して握り潰すため，

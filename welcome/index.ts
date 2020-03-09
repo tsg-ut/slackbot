@@ -6,10 +6,8 @@ import logger from '../lib/logger.js';
 import {Page} from '../lib/scrapbox';
 import type {SlackInterface} from '../lib/slack';
 
-const welcomePageTitleLc = 'welcome';
-
 async function postWelcomeMessage(slack: WebClient, channel: string) {
-	const welcomePage = new Page({ titleLc: welcomePageTitleLc, isEncoded: false });
+	const welcomePage = new Page({ titleLc: 'welcome', isEncoded: false });
 	const text = (await welcomePage.fetchInfo()).lines.map(({text}: {text: string}) => text).slice(1).join('\n');
 
 	return slack.chat.postMessage({
