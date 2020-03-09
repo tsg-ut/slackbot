@@ -13,7 +13,7 @@ interface HiddenValue {
     ta: string;
 }
 
-const fetchData = async (prefectureRomaji: PrefectureRomaji) => {
+export const fetchData = async (prefectureRomaji: PrefectureRomaji) => {
     const citySelectionUrl = `https://suumo.jp/chintai/${prefectureRomaji}/city/`;
     const result = await scrapeIt<{
         cities: City[];
