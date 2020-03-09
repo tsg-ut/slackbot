@@ -51,7 +51,7 @@ const pickOneResult = async (cityIDs: string[], ar: string, bs: string, ta: stri
                 url: {
                     selector: '.property_inner-title a',
                     attr: 'href',
-                    convert: s => `https://suumo.jp${s}`,
+                    convert: s => new URL(s, 'https://suumo.jp').href,
                 },
                 images: {
                     listItem: '.cassette_carrousel-item li',
@@ -100,20 +100,22 @@ const pickOneResult = async (cityIDs: string[], ar: string, bs: string, ta: stri
         },
     });
     const searchResult = result.data;
-    const pickedRoom = _.shuffle(searchResult.rooms)[0];
+    const pickedRoom = _.sample(searchResult.rooms);
     return { title: searchResult.title, hit: searchResult.hit, room: pickedRoom };
 };
 
 export default async ({rtmClient, webClient}: SlackInterface) => {
-    const dataStr = await fs.readFile(`${__dirname}/data.json`, 'utf-8');
-    const data: {
-        sc: {[key in PrefectureKanji]: {[key: string]: string}},
+    interface Data {
+        sc: {[key in PrefectureKanji]: {[key: string]: string}};
         hiddenValue: {[key in PrefectureKanji]: {
             ar: string,
             bs: string;
             ta: string;
-        }}
-    } = JSON.parse(dataStr);
+        }};
+    }
+
+    const dataStr = await fs.readFile(`${__dirname}/data.json`, 'utf-8');
+    const data: Data = JSON.parse(dataStr);
     const { sc, hiddenValue } = data;
     rtmClient.on('message', async message => {
         const username = '物件ガチャ';
@@ -124,7 +126,7 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
             const args: string[] = message.text.split(' ');
             const prefs = Object.keys(Prefectures);
             const isValidPrefSpecified = args.length > 1 && prefs.includes(args[1]);
-            const pref = (isValidPrefSpecified ? args[1] : _.shuffle(prefs)[0]) as PrefectureKanji;
+            const pref = (isValidPrefSpecified ? args[1] : _.sample(prefs)) as PrefectureKanji;
             const cityNames = Object.keys(sc[pref]);
             let cityKeys = [];
             for (const arg of args.slice(2)) {
@@ -135,12 +137,11 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
             }
             const { ar, bs, ta } = hiddenValue[pref];
             const result = await pickOneResult(cityKeys.filter(s => s !== ''), ar, bs, ta);
-            if (typeof result.room === 'undefined') {
+            if (result.room === undefined) {
                 await webClient.chat.postMessage({
                     channel: message.channel,
                     username,
                     icon_emoji: ':house:',
-                    icon_url: '',
                     text: '家が見つからなかったよ :new_moon_with_face:',
                 });
                 return;

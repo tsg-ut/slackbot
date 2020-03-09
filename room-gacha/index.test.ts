@@ -6,6 +6,7 @@ import Slack from '../lib/slackMock.js';
 // @ts-ignore
 import tinyreq from 'tinyreq';
 import { promises as fs } from 'fs';
+import { stripIndents } from 'common-tags';
 
 let slack: Slack = null;
 
@@ -27,7 +28,13 @@ describe('room-gacha', () => {
         expect(response.icon_emoji).toBe(':house:');
         expect(response.text).toBe('物件ガチャの結果だよ〜:full_moon_with_face:');
         expect(response.blocks[0].text.text).toBe('*東京都文京区の賃貸住宅[賃貸マンション・アパート]情報* (12,345件) から選んだよ〜 :full_moon_with_face:');
-        expect(response.blocks[3].text.text).toBe('*<https://suumo.jp/chintai/bc_000000000000/|ザ・シェアハウス地下>*\n*住所*: 東京都文京区本郷７丁目３−１\n*アクセス*: 本郷三丁目駅（地下鉄丸の内線）より徒歩8分\n本郷三丁目駅（地下鉄大江戸線）より徒歩6分\n湯島駅又は根津駅（地下鉄千代田線）より徒歩8分\n東大前駅（地下鉄南北線）より徒歩1分\n春日駅（地下鉄三田線）より徒歩10分');
+        expect(response.blocks[3].text.text).toBe(stripIndents`*<https://suumo.jp/chintai/bc_000000000000/|ザ・シェアハウス地下>*
+            *住所*: 東京都文京区本郷７丁目３−１
+            *アクセス*: 本郷三丁目駅（地下鉄丸の内線）より徒歩8分
+            本郷三丁目駅（地下鉄大江戸線）より徒歩6分
+            湯島駅又は根津駅（地下鉄千代田線）より徒歩8分
+            東大前駅（地下鉄南北線）より徒歩1分
+            春日駅（地下鉄三田線）より徒歩10分`);
         expect(response.blocks[4].fields.map(
             (field: {type: string; text: string; }) => field.text
         )).toMatchObject([
