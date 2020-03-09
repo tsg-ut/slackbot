@@ -3,8 +3,6 @@ import axios from 'axios';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
 
-jest.mock('axios');
-
 // @ts-ignore
 axios.response = {data: {title: 'hoge', descriptions: ['fuga', 'piyo']}};
 
