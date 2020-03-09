@@ -4,7 +4,6 @@ import {flatten, zip} from 'lodash';
 // @ts-ignore
 import {Page, pageUrlRegExp} from '../lib/scrapbox';
 
-
 interface SlackInterface {
 	rtmClient: RTMClient,
 	webClient: WebClient,
@@ -78,6 +77,8 @@ interface SlackIncomingWebhookRequest {
 /**
  * Scrapboxからの更新通知 (Incoming Webhook形式) を受け取り，ミュート処理をしてSlackに投稿する
  */
+// for developers: 実際に動かすのは手間がかかるので，fastify.inject などで動作確認するのがおすすめです。mute.test.ts 参照
+
 // eslint-disable-next-line node/no-unsupported-features, node/no-unsupported-features/es-syntax
 export const server = ({webClient: slack}: SlackInterface) => plugin((fastify, opts, next) => {
 	fastify.post<unknown, unknown, unknown, SlackIncomingWebhookRequest>('/hooks/scrapbox', async (req) => {
