@@ -128,12 +128,33 @@ const parsePageUrl = (url: string): { titleLc: string; projectName: string; hash
  * Scrapboxの記事
  */
 export class Page {
+    /**  Scrapbox SID */
     token: string;
+
+    /** Scrapbox プロジェクト名 */
     projectName: string;
+
+    /** URIエンコードされたtitleLc */
     encodedTitleLc: string;
-    titleLc: string;
+
+    /** URIエンコードされていないtitleLc */
+    titleLc: string
+
+    /** URL末尾のhash */
     hash?: string;
 
+    /**
+     * Scrapboxの記事
+     * 
+     * URLあるいはtitleLc, [プロジェクト名, hash]を指定可能
+     * 
+     * @param args.token -  Scrapbox SID
+     * @param args.isEncoded - URLのtitleLc部分がURIエンコード済みかどうか. デフォルトではurlまたはtitleLcから判断.
+     * @param args.url - Scrapbox 記事のURL
+     * @param args.titleLc - URL上の記事タイトル. スペースが_に変換されるなど，表示上のタイトルとは異なる場合がある.
+     * @param args.projectName - Scrapboxプロジェクト名. デフォルトでは環境変数を用いる
+     * @param hash - URL末尾のhash
+     */
     constructor(args: {
         token?: string;
         isEncoded?: boolean;
@@ -145,32 +166,18 @@ export class Page {
         hash?: string
     })) {
         this.token = args.token ?? tsgScrapboxToken;
-        if ('titleLc' in args) {
-            // specified titleLc
-            const { titleLc, projectName, hash, isEncoded: isEncodedGiven } = args;
-            const { str: encodedTitleLc, isEncoded } = encodeIfNeeded({ str: titleLc, isEncoded: isEncodedGiven });
-            this.encodedTitleLc = encodedTitleLc;
-            this.titleLc = decodeIfNeeded({ str: titleLc, isEncoded }).str;
-            this.projectName = projectName ?? tsgProjectName;
-            this.hash = hash;
-        } else if ('url' in args) {
-            // specified url
-            const { url, isEncoded: isEncodedGiven } = args;
-            const { titleLc, projectName, hash } = parsePageUrl(url);
-            const { str: encodedTitleLc, isEncoded } = encodeIfNeeded({ str: titleLc, isEncoded: isEncodedGiven });
-            this.encodedTitleLc = encodedTitleLc;
-            this.projectName = projectName;
-            this.hash = hash;
-            this.titleLc = decodeIfNeeded({ str: titleLc, isEncoded: isEncoded }).str;
-        } else {
-            // TODO: do exhaustive check
-            // this check fails because of a bug of TypeScript (#37039)
-            /*
-            this.projectName = args;
-            this.encodedTitleLc = args;
-            this.titleLc = args;
-            */
-        }
+        const { isEncoded: isEncodedGiven } = args;
+        const { titleLc, projectName, hash } =
+            'titleLc' in args ? args :
+            'url' in args ? parsePageUrl(args.url) :
+            args as never; // exhaustive check
+            // TODO: remove `as never`
+            // args should be but is not never here because of a bug of TypeScript (#37039)
+        const { str: encodedTitleLc, isEncoded } = encodeIfNeeded({ str: titleLc, isEncoded: isEncodedGiven });
+        this.projectName = projectName ?? tsgProjectName;
+        this.encodedTitleLc = encodedTitleLc;
+        this.titleLc = decodeIfNeeded({ str: titleLc, isEncoded }).str;
+        this.hash = hash;
     }
 
     /**
