@@ -81,9 +81,13 @@ describe('mute notification', () => {
 				text: gen.get('text'),
 				images: [gen.get('img')],
 			}];
-			const splittedAttachments = splitAttachments(attachments);
-			expect(splittedAttachments).toMatchObject(expected);
-			splittedAttachments.forEach(({images}) => images.forEach(a => expect(a.text).toBe('')));
+			const actual = splitAttachments(attachments);
+			expect(actual).toMatchObject(expected);
+			for (const {images} of actual) {
+				for (const attachment of images) {
+					expect(attachment.text).toBe('');
+				}
+			}
 		});
 	});
 
