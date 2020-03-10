@@ -407,7 +407,11 @@ interface Transformation {
   filters: [string, string[]][];
 }
 
-type ParseResult = Transformation | EmodiError;
+interface HelpRequest {
+  kind: 'help';
+}
+
+type ParseResult = Transformation | EmodiError | HelpRequest;
 // TODO: allow string arguments to contain spaces
 const parse = (message: string): ParseResult => {
   const parseError = errorOfKind('ParseError');
@@ -415,6 +419,8 @@ const parse = (message: string): ParseResult => {
   logger.info(parts);
   if (parts.length < 1)
     return parseError('Expected emoji');
+  if (parts[0] == 'help')
+    return {kind: 'help'}
   const nameMatch = /^:([^!:\s]+):$/.exec(parts[0]);
   if (nameMatch == null)
     return parseError(`\`${parts[0]}\` is not a valid emoji name`);
@@ -438,6 +444,8 @@ const parse = (message: string): ParseResult => {
 const runTransformation = async (message: string): Promise<Emoji | EmodiError> => {
   const parseResult = parse(message);
   if (parseResult.kind === 'error')
+    return parseResult;
+  if (parseResult.kind === 'help')
     return parseResult;
   const nameError = errorOfKind('NameError');
   const emoji = await lookupEmoji(parseResult.emojiName);
