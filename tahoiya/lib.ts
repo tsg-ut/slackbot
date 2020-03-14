@@ -8,12 +8,12 @@ import axios from 'axios';
 // @ts-ignore
 import download from 'download';
 import {hiraganize} from 'japanese';
+import moment from 'moment';
+import logger from '../lib/logger.js';
 import get from 'lodash/get';
 import last from 'lodash/last';
 import shuffle from 'lodash/shuffle';
-import moment from 'moment';
 // @ts-ignore
-import logger from '../lib/logger.js';
 
 export const getPageTitle = (url: string) => {
 	const urlTitle = decodeURI(url.match(/([^/]+)$/)[1]);

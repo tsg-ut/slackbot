@@ -1,21 +1,18 @@
 import {constants, promises as fs} from 'fs';
-// @ts-ignore
-import download from 'download';
 import path from 'path';
 import {KnownBlock, MrkdwnElement, PlainTextElement, RTMClient, WebClient} from '@slack/client';
-import sql from 'sql-template-strings';
-import sqlite from 'sqlite';
 import {Mutex} from 'async-mutex';
-import {chunk, flatten, isEmpty, sampleSize, size, minBy, times, sample, shuffle, map} from 'lodash';
 // @ts-ignore
-import {stripIndent} from 'common-tags';
+import download from 'download';
 // @ts-ignore
 import levenshtein from 'fast-levenshtein';
-import {Deferred, overflowText} from '../lib/utils';
-import {getMemberIcon, getMemberName} from '../lib/slackUtils';
-import {Message} from '../lib/slackTypes';
+import sql from 'sql-template-strings';
+import sqlite from 'sqlite';
 // @ts-ignore
 import logger from '../lib/logger.js';
+import {Message} from '../lib/slackTypes';
+import {getMemberIcon, getMemberName} from '../lib/slackUtils';
+import {Deferred, overflowText} from '../lib/utils';
 import {
 	getCandidateWords,
 	getIconUrl,
@@ -25,6 +22,8 @@ import {
 	getWordUrl,
 	normalizeMeaning,
 } from './lib';
+import {stripIndent} from 'common-tags';
+import {chunk, flatten, isEmpty, sampleSize, size, minBy, times, sample, shuffle, map} from 'lodash';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
