@@ -8,13 +8,7 @@ const slacklogAPIDomain = 'localhost:9292';
 const slacklogURLRegexp = new RegExp('^https?://slack-log.tsg.ne.jp/([A-Z0-9]+)/([0-9]+\.[0-9]+)');
 const getAroundMessagesUrl = (channel: string) => `http://${slacklogAPIDomain}/around_messages/${channel}.json`;
 
-import {WebClient, RTMClient} from '@slack/client';
-
-interface SlackInterface {
-    rtmClient: RTMClient,
-    webClient: WebClient,
-    eventClient: any,
-}
+import type {SlackInterface} from '../lib/slack';
 
 export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
     const users = await axios.get(`http://${slacklogAPIDomain}/users.json`).then(({data}) => data);
@@ -68,7 +62,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 
             const {text, user: userid} = message;
             const user = userid && users[userid];
-            const username = user && user.name;
+            const username = user && (user.profile.display_name || user.name);
             const channel = chanid && channels[chanid];
             const channame = channel && channel.name;
             const imageUrl = user && user.profile && (user.profile.image_original || user.profile.image_512);

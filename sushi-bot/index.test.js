@@ -1,7 +1,8 @@
 /* eslint-env node, jest */
-
 jest.mock('../achievements');
+jest.mock('moment');
 
+const moment = require('moment');
 const sushi = require('./index.js');
 const Slack = require('../lib/slackMock.js');
 
@@ -10,6 +11,12 @@ let slack = null;
 beforeEach(() => {
 	slack = new Slack();
 	sushi(slack);
+
+	moment.mockImplementation(() => ({
+		utcOffset: () => ({
+			day: () => 1,
+		})
+	}));
 });
 
 it('reacts to "おすし"', () => new Promise((resolve) => {
@@ -161,3 +168,50 @@ it('reacts to "凍結ランキング 確認"', () => new Promise((resolve) => {
 	})();
 }));
 
+it('reacts to "あさ！" with :100: at 8:59:59', () => new Promise((resolve) => {
+	moment.mockImplementation(() => ({
+		utcOffset: () => ({
+			hour: () => 8,
+			minutes: () => 59,
+			seconds: () => 59,
+		})
+	}));
+
+	slack.on('reactions.add', ({name, channel, timestamp}) => {
+		expect(name).toBe('100');
+		expect(channel).toBe(slack.fakeChannel);
+		expect(timestamp).toBe(slack.fakeTimestamp);
+		resolve();
+	});
+
+	slack.rtmClient.emit('message', {
+		channel: slack.fakeChannel,
+		text: 'あさ！',
+		user: slack.fakeUser,
+		ts: slack.fakeTimestamp,
+	});
+}));
+
+it('reacts to "あさ！" with :95: at 9:00:01', () => new Promise((resolve) => {
+	moment.mockImplementation(() => ({
+		utcOffset: () => ({
+			hour: () => 9,
+			minutes: () => 0,
+			seconds: () => 1,
+		})
+	}));
+
+	slack.on('reactions.add', ({name, channel, timestamp}) => {
+		expect(name).toBe('95');
+		expect(channel).toBe(slack.fakeChannel);
+		expect(timestamp).toBe(slack.fakeTimestamp);
+		resolve();
+	});
+
+	slack.rtmClient.emit('message', {
+		channel: slack.fakeChannel,
+		text: 'あさ！',
+		user: slack.fakeUser,
+		ts: slack.fakeTimestamp,
+	});
+}));

@@ -1,17 +1,17 @@
-import path from 'path';
+import assert from 'assert';
 import fs from 'fs';
+import path from 'path';
+import querystring from 'querystring';
 import {promisify} from 'util';
 // @ts-ignore
-import {hiraganize} from 'japanese';
-import moment from 'moment';
 import axios from 'axios';
 // @ts-ignore
 import download from 'download';
-import querystring from 'querystring';
-import assert from 'assert';
+import {hiraganize} from 'japanese';
+import get from 'lodash/get';
 import last from 'lodash/last';
 import shuffle from 'lodash/shuffle';
-import get from 'lodash/get';
+import moment from 'moment';
 // @ts-ignore
 import logger from '../lib/logger.js';
 
@@ -224,7 +224,7 @@ export const getMeaning = async ([word, , source, rawMeaning]: string[]) => {
 	return meaning;
 };
 
-export const getCandidateWords = async () => {
+export const getCandidateWords = async ({min = 3, max = 7} = {}) => {
 	const [
 		wikipediaText,
 		wiktionaryText,
@@ -305,7 +305,7 @@ export const getCandidateWords = async () => {
 		]),
 	];
 
-	const candidateWords = shuffle(databaseWords.filter(([, ruby]) => ruby.length >= 3 && ruby.length <= 7));
+	const candidateWords = shuffle(databaseWords.filter(([, ruby]) => ruby.length >= min && ruby.length <= max));
 
 	return candidateWords;
 };

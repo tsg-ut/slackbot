@@ -4,7 +4,7 @@ import tts from 'google-tts-api';
 import moment from 'moment';
 import { stringify } from 'querystring';
 import assert from 'assert';
-import {RTMClient, WebClient} from '@slack/client';
+import type { SlackInterface } from '../lib/slack';
 
 import {unlock} from '../achievements';
 import Mutex from './mutex';
@@ -100,11 +100,6 @@ const hitblow = (seq1: string[], seq2: string[]) => {
 		blow,
 	};
 };
-
-interface SlackInterface {
-	rtmClient: RTMClient;
-	webClient: WebClient;
-}
 
 export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	rtm.on('message', async (message: any) => {

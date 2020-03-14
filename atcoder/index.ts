@@ -1,17 +1,22 @@
-import {promises as fs, constants} from 'fs';
+import {constants, promises as fs} from 'fs';
 import path from 'path';
-import axios from 'axios';
 import qs from 'querystring';
+import axios from 'axios';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
-import scrapeIt from 'scrape-it';
+import moment from 'moment';
+// @ts-ignore
+import schedule from 'node-schedule';
 // @ts-ignore
 import prime from 'primes-and-factors';
+import scrapeIt from 'scrape-it';
+import {increment, unlock} from '../achievements/index.js';
 // @ts-ignore
 import logger from '../lib/logger.js';
+import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
-import {SlackInterface, Standings, Results} from './types';
-import {unlock} from '../achievements';
+// eslint-disable-next-line no-unused-vars
+import {Results, Standings} from './types';
 
 const getRatingColor = (rating: number | null) => {
 	// gray
@@ -50,6 +55,34 @@ const getRatingColor = (rating: number | null) => {
 	return '#000000';
 };
 
+const getRatingColorName = (rating: number | null) => {
+	if (rating === null || rating < 400) {
+		return '灰';
+	}
+	if (rating < 800) {
+		return '茶';
+	}
+	if (rating < 1200) {
+		return '緑';
+	}
+	if (rating < 1600) {
+		return '水';
+	}
+	if (rating < 2000) {
+		return '青';
+	}
+	if (rating < 2400) {
+		return '黄';
+	}
+	if (rating < 2800) {
+		return '橙';
+	}
+	if (rating < 3200) {
+		return '赤';
+	}
+	return '???';
+};
+
 const formatTime = (seconds: number) => (
 	`${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`
 );
@@ -62,20 +95,28 @@ const formatNumber = (number: number) => {
 		return `+${number}`;
 	}
 	return number.toString();
-}
+};
 
 interface State {
 	users: {atcoder: string, slack: string}[],
 	contests: {id: string, date: number, title: string, duration: number, isPosted: boolean, isPreposted: boolean}[],
 }
 
+interface ContestEntry {
+	date: number,
+	title: string,
+	id: string,
+	duration: number,
+}
+
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const statePath = path.resolve(__dirname, 'state.json');
 	const exists = await fs.access(statePath, constants.F_OK).then(() => true).catch(() => false);
-	const state: State = Object.assign({
+	const state: State = {
 		users: [],
 		contests: [],
-	}, exists ? JSON.parse((await fs.readFile(statePath)).toString()) : {})
+		...(exists ? JSON.parse((await fs.readFile(statePath)).toString()) : {}),
+	};
 
 	await fs.writeFile(statePath, JSON.stringify(state));
 	const setState = (object: {[key: string]: any}) => {
@@ -90,7 +131,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				'Accept-Language': 'ja-JP',
 			},
 		});
-		const {contests}: {contests: {date: number, title: string, id: string, duration: number}[]} = await scrapeIt.scrapeHTML(html, {
+		const {contests} = await scrapeIt.scrapeHTML<{contests: ContestEntry[]}>(html, {
 			contests: {
 				listItem: 'tbody tr',
 				data: {
@@ -98,7 +139,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						selector: 'td:nth-child(1) time',
 						convert: (time) => new Date(time).getTime(),
 					},
-					title: 'td:nth-child(2)',
+					title: {
+						selector: 'td:nth-child(2)',
+						convert: (title) => title.replace('◉', '').trim(),
+					},
 					id: {
 						selector: 'td:nth-child(2) a',
 						attr: 'href',
@@ -120,17 +164,42 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		logger.info(`Fetched ${contests.length} contests`);
 		if (contests.length > 0) {
 			const oldContests = state.contests;
+			const newContests: ContestEntry[] = [];
 			setState({
-				contests: contests.filter(({date}: any) => !Number.isNaN(date)).map((contest) => ({
-					...contest,
-					isPosted: (oldContests.find(({id}) => id === contest.id) || {isPosted: false}).isPosted,
-					isPreposted: (oldContests.find(({id}) => id === contest.id) || {isPreposted: false}).isPreposted,
-				})),
+				contests: contests.filter(({date}: any) => !Number.isNaN(date)).map((contest) => {
+					const oldContest = oldContests.find(({id}) => id === contest.id);
+					if (!oldContest) {
+						newContests.push(contest);
+					}
+					return {
+						...contest,
+						isPosted: oldContest ? oldContest.isPosted : false,
+						isPreposted: oldContest ? oldContest.isPreposted : false,
+					};
+				}),
 			});
+			for (const contest of newContests) {
+				await postNewContest(contest.id);
+			}
 		}
 	};
 
-	const postPreroll = async (id: string) => {
+	const postNewContest = (id: string) => {
+		const contest = state.contests.find((contest) => contest.id === id);
+		logger.info(`Posting notification of new contest ${id}...`);
+
+		slack.chat.postMessage({
+			username: 'atcoder',
+			icon_emoji: ':atcoder:',
+			channel: process.env.CHANNEL_PROCON,
+			text: stripIndent`
+				新しいコンテスト *${contest.title}* が追加されたよ！
+				https://atcoder.jp/contests/${contest.id}
+			`,
+		});
+	};
+
+	const postPreroll = (id: string) => {
 		const contest = state.contests.find((contest) => contest.id === id);
 		logger.info(`Posting preroll of contest ${id}...`);
 
@@ -145,7 +214,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 	};
 
-	const postStart = async (id: string) => {
+	const postStart = (id: string) => {
 		const contest = state.contests.find((contest) => contest.id === id);
 		logger.info(`Posting start of contest ${id}...`);
 
@@ -177,7 +246,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		logger.info(`Preposting result of contest ${id}...`);
 
-		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`);
+		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`, {
+			headers: {
+				Cookie: `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+			},
+		});
 
 		const userStandings = state.users.map(({atcoder, slack}) => {
 			const standing = standings.StandingsData.find(({UserName, UserScreenName}) => UserName === atcoder || UserScreenName === atcoder);
@@ -193,17 +266,17 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				*${contest.title}* お疲れさまでした！
 			`,
 			attachments: [
-				...(await Promise.all(userStandings.map(async ({user, atcoder, standing}) => {
-					const score = standing && (standing.TotalResult.Score / 100);
-					const lastSubmission = standing && formatTime(standing.TotalResult.Elapsed / 1000000000);
+				...(await Promise.all(userStandings.filter(({standing}) => standing).map(async ({user, atcoder, standing}) => {
+					const score = standing.TotalResult.Score / 100;
+					const lastSubmission = formatTime(standing.TotalResult.Elapsed / 1000000000);
 
 					return {
-						color: getRatingColor(standing ? standing.Rating : null),
-						author_name: `${await getMemberName(user)}: ${standing ? `${standing.Rank}位 (暫定)` : '不参加'}`,
+						color: getRatingColor(standing.Rating),
+						author_name: `${await getMemberName(user)}: ${standing.Rank}位 (暫定)`,
 						author_icon: await getMemberIcon(user),
 						author_link: `https://atcoder.jp/contests/${contest.id}/standings?${qs.encode({watching: atcoder})}`,
-						text: standing ? Object.entries(standing.TaskResults).filter(([, task]) => task.Status === 1).map(([id, task]) => `[ *${tasks.get(id).Assignment}*${task.Penalty ? ` (${task.Penalty})` : ''} ]`).join(' ') : '',
-						footer: standing ? `${score}点 (最終提出: ${lastSubmission})` : '',
+						text: Object.entries(standing.TaskResults).filter(([, task]) => task.Status === 1).map(([id, task]) => `[ *${tasks.get(id).Assignment}*${task.Penalty ? ` (${task.Penalty})` : ''} ]`).join(' '),
+						footer: `${score}点 (最終提出: ${lastSubmission})`,
 					};
 				}))),
 				{
@@ -215,18 +288,16 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		contest.isPreposted = true;
 		setState({contests: state.contests});
-
-		for (const {user, standing} of userStandings) {
-			if (standing) {
-				await unlock(user, 'atcoder-participate');
-			}
-		}
 	};
 
 	const postResult = async (id: string) => {
 		const contest = state.contests.find((contest) => contest.id === id);
 
-		const {data: results}: {data: Results} = await axios.get(`https://atcoder.jp/contests/${id}/results/json`);
+		const {data: results}: {data: Results} = await axios.get(`https://atcoder.jp/contests/${id}/results/json`, {
+			headers: {
+				Cookie: `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+			},
+		});
 		if (results.length === 0) {
 			return;
 		}
@@ -238,13 +309,19 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return [slack, result];
 		}));
 
-		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`);
+		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`, {
+			headers: {
+				Cookie: `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+			},
+		});
 		const userStandings = state.users.map(({atcoder, slack}) => {
 			const standing = standings.StandingsData.find(({UserName, UserScreenName}) => UserName === atcoder || UserScreenName === atcoder);
 			return {user: slack, atcoder, standing};
 		}).sort((a, b) => (a.standing ? a.standing.Rank : 1e9) - (b.standing ? b.standing.Rank : 1e9));
 
 		const tasks = new Map(standings.TaskInfo.map((task) => [task.TaskScreenName, task]));
+
+		const colorUpdates: {user: string, oldRating: number, newRating: number}[] = [];
 
 		await slack.chat.postMessage({
 			username: 'atcoder',
@@ -254,9 +331,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				*${contest.title}* の順位が確定したよ～:checkered_flag:
 			`,
 			attachments: [
-				...(await Promise.all(userStandings.map(async ({user, atcoder, standing}) => {
-					const score = standing && standing.TotalResult.Score / 100;
-					const lastSubmission = standing && formatTime(standing.TotalResult.Elapsed / 1000000000);
+				...(await Promise.all(userStandings.filter(({standing}) => standing).map(async ({user, atcoder, standing}) => {
+					const score = standing.TotalResult.Score / 100;
+					const lastSubmission = formatTime(standing.TotalResult.Elapsed / 1000000000);
 					const result = resultMap.get(user);
 					const stats = (result && result.IsRated) ? [
 						{
@@ -269,16 +346,24 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						},
 					] : [];
 
+					if (result && getRatingColor(result.OldRating) !== getRatingColor(result.NewRating)) {
+						colorUpdates.push({
+							user,
+							newRating: result.NewRating,
+							oldRating: result.OldRating,
+						});
+					}
+
 					return {
-						color: getRatingColor(standing && standing.Rating),
-						author_name: `${await getMemberName(user)}: ${standing ? `${standing.Rank}位` : '不参加'}`,
+						color: getRatingColor(standing.Rating),
+						author_name: `${await getMemberName(user)}: ${standing.Rank}位`,
 						author_icon: await getMemberIcon(user),
 						author_link: `https://atcoder.jp/contests/${contest.id}/standings?${qs.encode({watching: atcoder})}`,
-						text: standing ? [
+						text: [
 							Object.entries(standing.TaskResults).filter(([, task]) => task.Status === 1).map(([id, task]) => `[ *${tasks.get(id).Assignment}*${task.Penalty ? ` (${task.Penalty})` : ''} ]`).join(' '),
 							stats.map(({title, value}) => `*${title}* ${value}`).join(', '),
-						].join('\n') : '',
-						footer: result ? `${score}点 (最終提出: ${lastSubmission})` : '',
+						].join('\n'),
+						footer: `${score}点 (最終提出: ${lastSubmission})`,
 					};
 				}))),
 				{
@@ -288,6 +373,20 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			],
 		});
 
+		for (const {user, newRating, oldRating} of colorUpdates) {
+			const verb = newRating > oldRating ? '昇格しました！🎉🎉🎉🎉🎉🎉🎉' : '降格しました⋯😢😢😢😢😢😢😢';
+			await slack.chat.postMessage({
+				username: 'atcoder',
+				icon_emoji: ':atcoder:',
+				channel: process.env.CHANNEL_PROCON,
+				text: stripIndent`
+					<@${user}>が${getRatingColorName(newRating)}コーダーに${verb}
+				`,
+			});
+		}
+
+		const isContestRated = standings.StandingsData.some((standing) => standing.IsRated);
+
 		contest.isPosted = true;
 		setState({contests: state.contests});
 
@@ -295,8 +394,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const result = resultMap.get(user);
 			if (standing) {
 				const rank = standing.Rank.toString();
-				const frequency = prime.getFrequency(standing.Rank);
-				const isPrime = frequency.length === 1 && frequency[0].times === 1 && result.Place >= 2;
+				const frequencies = prime.getFrequency(standing.Rank);
+				const isPrime = frequencies.length === 1 && frequencies[0].times === 1 && standing.Rank >= 2;
+				if (isContestRated) {
+					await increment(user, 'atcoder-participate');
+				}
 				if (rank.length >= 3 && new Set(rank.split('')).size === 1) {
 					await unlock(user, 'atcoder-repdigit');
 				}
@@ -311,6 +413,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				if (result.NewRating - result.OldRating >= 50) {
 					await unlock(user, 'atcoder-rating-plus-50');
 				}
+				if (result.NewRating === result.OldRating) {
+					await unlock(user, 'atcoder-rating-plus-minus-zero');
+				}
 				if (result.NewRating - result.OldRating < 0) {
 					await unlock(user, 'atcoder-rating-minus');
 				}
@@ -320,18 +425,45 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				if (result.NewRating >= 2400) {
 					await unlock(user, 'atcoder-rating-over-2400');
 				}
+				if (Object.values(standing.TaskResults).every((result) => result.Score === 0)) {
+					await unlock(user, 'atcoder-no-solve');
+				}
+			}
+			if (isContestRated) {
 				if (standings.TaskInfo.every((task) => (
 					standing.TaskResults[task.TaskScreenName] &&
 					standing.TaskResults[task.TaskScreenName].Score > 0
 				))) {
 					await unlock(user, 'atcoder-all-solve');
 				}
-				if (Object.values(standing.TaskResults).every((result) => result.Score === 0)) {
-					await unlock(user, 'atcoder-no-solve');
-				}
 			}
 		}
-	}
+	};
+
+	const postDaily = async () => {
+		const now = moment().utcOffset(9).startOf('day').hours(9);
+		const oneDayLater = now.clone().add(1, 'day');
+
+		const contests = state.contests.filter((contest) => now.valueOf() < contest.date && contest.date <= oneDayLater.valueOf());
+
+		logger.info(`Posting daily notifications of ${contests.length} contests...`);
+
+		for (const contest of contests) {
+			const date = moment(contest.date).utcOffset(9);
+			const hour = (date.hour() < 9 ? date.hour() + 24 : date.hour()).toString().padStart(2, '0');
+			const minute = date.minute().toString().padStart(2, '0');
+
+			await slack.chat.postMessage({
+				username: 'atcoder',
+				icon_emoji: ':atcoder:',
+				channel: process.env.CHANNEL_PROCON,
+				text: stripIndent`
+					本日${hour}:${minute}から＊${contest.title}＊開催です🙋
+					https://atcoder.jp/contests/${contest.id}
+				`,
+			});
+		}
+	};
 
 	rtm.on('message', async (message) => {
 		if (message.text && message.subtype === undefined && message.text.startsWith('@atcoder ')) {
@@ -417,4 +549,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 		}
 	}, 30 * 1000);
+
+	schedule.scheduleJob('0 9 * * *', () => {
+		postDaily();
+	});
 };

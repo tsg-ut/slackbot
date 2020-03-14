@@ -2,11 +2,10 @@ import fs from 'fs';
 import {promisify} from 'util';
 import path from 'path';
 import assert from 'assert';
-import {WebClient, RTMClient} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 import {flatten, sum, sample, random, sortBy, maxBy, sumBy, shuffle} from 'lodash';
 // @ts-ignore
 import trie from './trie';
-// @ts-ignore
 import cloudinary from 'cloudinary';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
@@ -17,11 +16,6 @@ import download from 'download';
 import sqlite from 'sqlite';
 import render from './render';
 import {Deferred} from '../lib/utils';
-
-interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-}
 
 const hiraganaLetters = 'ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろわをんー'.split('');
 
@@ -297,7 +291,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const imageData = await render(board, {color: isHard ? '#D50000' : 'black'});
 			const cloudinaryData: any = await new Promise((resolve, reject) => {
 				cloudinary.v2.uploader
-					.upload_stream({resource_type: 'image'}, (error: any, response: any) => {
+					// @ts-ignore ref: https://github.com/cloudinary/cloudinary_npm/pull/327
+					.upload_stream({resource_type: 'image'}, (error, response) => {
 						if (error) {
 							reject(error);
 						} else {
