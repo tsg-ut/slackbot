@@ -3,17 +3,17 @@ import fs from 'fs';
 import path from 'path';
 import querystring from 'querystring';
 import {promisify} from 'util';
-// @ts-ignore
 import axios from 'axios';
 // @ts-ignore
 import download from 'download';
+// @ts-ignore
 import {hiraganize} from 'japanese';
 import moment from 'moment';
+// @ts-ignore
 import logger from '../lib/logger.js';
 import get from 'lodash/get';
 import last from 'lodash/last';
 import shuffle from 'lodash/shuffle';
-// @ts-ignore
 
 export const getPageTitle = (url: string) => {
 	const urlTitle = decodeURI(url.match(/([^/]+)$/)[1]);

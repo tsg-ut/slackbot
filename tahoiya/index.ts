@@ -1,6 +1,7 @@
+import assert from 'assert';
 import {constants, promises as fs} from 'fs';
 import path from 'path';
-import {KnownBlock, MrkdwnElement, PlainTextElement, RTMClient, WebClient} from '@slack/client';
+import {KnownBlock, MrkdwnElement, PlainTextElement, SectionBlock, RTMClient, WebClient} from '@slack/client';
 import {Mutex} from 'async-mutex';
 // @ts-ignore
 import download from 'download';
@@ -23,7 +24,7 @@ import {
 	normalizeMeaning,
 } from './lib';
 import {stripIndent} from 'common-tags';
-import {chunk, flatten, isEmpty, sampleSize, size, minBy, times, sample, shuffle, map} from 'lodash';
+import {chunk, flatten, has, isEmpty, sampleSize, size, minBy, times, sample, shuffle, map} from 'lodash';
 
 interface SlackInterface {
 	rtmClient: RTMClient,
@@ -75,7 +76,7 @@ interface Game {
 	},
 	bettings: {
 		[user: string]: {
-			choice: number,
+			choice: number, // 0-indexed
 			coins: number,
 			comment: string,
 		},
@@ -232,6 +233,22 @@ class Tahoiya {
 					word,
 					choice: Number.isNaN(choice) ? null : choice,
 					user: payload.user.id,
+					respond,
+				})
+			));
+		});
+
+		this.slackInteractions.action({
+			type: 'dialog_submission',
+			callbackId: 'tahoiya_betting_dialog',
+		}, (payload: any, respond: any) => {
+			mutex.runExclusive(() => (
+				this.registerBetting({
+					word: payload.state,
+					user: payload.user.id,
+					choice: parseInt(payload.submission.choice) || 0,
+					coins: parseInt(payload.submission.coins) || 1,
+					comment: payload.submission.comment,
 					respond,
 				})
 			));
@@ -485,7 +502,7 @@ class Tahoiya {
 	}
 
 	async registerMeaning({word, user, text, comment, respond}: {word: string, user: string, text: string, comment: string, respond: any}) {
-		const game = this.state.games.find((g) => g.theme.ruby === word);
+		const game = this.state.games.find((g) => g.status === 'meaning' && g.theme.ruby === word);
 		if (!game) {
 			respond({
 				text: 'このたほいやの意味登録は終了しているよ😢',
@@ -495,25 +512,84 @@ class Tahoiya {
 			return null;
 		}
 
+		const isFirstRegstration = !has(game.meanings, user);
 		game.meanings[user] = {text, comment};
 		await this.setState({
 			games: this.state.games,
 		});
 
-		const humanCount = Object.keys(game.meanings).filter((u) => u.startsWith('U')).length;
-		const remainingText = game.isDaily ? (
-			humanCount > 3 ? '' : (
-				humanCount === 3 ? '(決行決定🎉)'
-					: `(決行まであと${3 - humanCount}人)`
-			)
-		) : '';
+		if (isFirstRegstration) {
+			const humanCount = Object.keys(game.meanings).filter((u) => u.startsWith('U')).length;
+			const remainingText = game.isDaily ? (
+				humanCount > 3 ? '' : (
+					humanCount === 3 ? '(決行決定🎉)'
+						: `(決行まであと${3 - humanCount}人)`
+				)
+			) : '';
 
-		await this.postMessage({
-			text: stripIndent`
-				${this.getMention(user)} が意味を登録したよ💪
-				現在の参加者: ${humanCount}人 ${remainingText}
-			`,
+			await this.postMessage({
+				text: stripIndent`
+					${this.getMention(user)}が意味を登録したよ💪
+					現在の参加者: ${humanCount}人 ${remainingText}
+				`,
+			});
+		}
+
+		return this.updateAnnounces();
+	}
+
+	async registerBetting({
+		word,
+		user,
+		choice,
+		coins,
+		comment,
+		respond,
+	}: {
+		word: string,
+		user: string,
+		choice: number, // 0-indexed
+		coins: number,
+		comment: string,
+		respond: any,
+	}) {
+		const game = this.state.games.find((g) => g.status === 'betting' && g.theme.ruby === word);
+
+		try {
+			assert(game !== undefined, 'このたほいやのBETは終了しているよ😢');
+			assert(has(game.meanings, user), `${this.getMention(user)}は参加登録していないのでベッティングできないよ😇`);
+			assert(choice > 0);
+			assert(choice <= game.choices.length);
+			assert(
+				game.choices[choice].type !== 'user' ||
+				(game.choices[choice] as UserChoice).user !== user,
+				'自分自身には投票できないよ😠',
+			);
+			const humanCount = Object.keys(game.meanings).filter((user) => user.startsWith('U')).length;
+			assert(coins <= humanCount);
+			assert([1, 2, 3, 4, 5].includes(coins));
+		} catch (error) {
+			respond({
+				text: error.message,
+				response_type: 'ephemeral',
+				replace_original: false,
+			});
+			return null;
+		}
+
+		const isFirstRegstration = !game.bettings.hasOwnProperty(user);
+		game.bettings[user] = {choice, coins, comment};
+		await this.setState({
+			games: this.state.games,
 		});
+
+		if (isFirstRegstration) {
+			await this.postMessage({
+				text: stripIndent`
+					${this.getMention(user)}がBETしたよ💰
+				`,
+			});
+		}
 
 		return this.updateAnnounces();
 	}
@@ -685,8 +761,8 @@ class Tahoiya {
 							text: {
 								type: 'mrkdwn',
 								text: announce.message,
-							} as MrkdwnElement,
-						},
+							},
+						} as KnownBlock,
 						{type: 'divider'},
 					]),
 					...(await this.getGameBlocks()),
