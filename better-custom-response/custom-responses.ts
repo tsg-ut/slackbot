@@ -9,6 +9,7 @@ interface CustomResponse {
     username?: string,
     icon_emoji?: string,
     reaction?: true,
+    muteCommand?: string,
 }
 
 const customResponses: CustomResponse[] = [
@@ -44,12 +45,14 @@ const customResponses: CustomResponse[] = [
     {
         input: [/^(.*)(てます|でます|ています|でいます|ちゃった|じゃった)[。⋯・…!！]*$/],
         outputFunction: hontouni,
+        muteCommand: 'hontouni',
     },
     {
         input: [/^(.*)(てくれや|でくれや)[。⋯・…！!]*$/],
         outputFunction: burgerking,
         username: 'バーガーキング・ジャパン',
         icon_emoji: ':burger-king:',
+        muteCommand: 'burgerking',
     },
     {
         input: [/^(おじぎねこ)?ファミリー$/],
