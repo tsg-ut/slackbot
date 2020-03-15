@@ -18,8 +18,8 @@ const muteList = async (): Promise<Map<string, Set<string>>> => {
     }
     const contents = await fs.readFile(muteListFile, 'utf8');
     return new Map(
-      Object.entries(JSON.parse(contents))
-        .map(([user, mutes]: [string, string[]]) => [user, new Set(mutes)])
+        Object.entries(JSON.parse(contents))
+            .map(([user, mutes]: [string, string[]]) => [user, new Set(mutes)])
     );
 };
 
@@ -81,7 +81,7 @@ const mute = async (text: string, user: string) => {
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     const defaultTo = (def: string) =>
-      (candidate?: string) => candidate == null ? def : candidate;
+        (candidate?: string) => candidate == null ? def : candidate;
     const properUsername = defaultTo('better-custom-response');
     const properIcon = defaultTo(':slack:');
     rtm.on('message', async (message) => {
