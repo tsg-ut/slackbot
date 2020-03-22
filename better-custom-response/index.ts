@@ -6,26 +6,23 @@ import type {SlackInterface} from '../lib/slack';
 // @ts-ignore
 import logger from '../lib/logger.js';
 
-const muteListFile = path.resolve(__dirname, 'muteList.json');
+const muteListFile = path.resolve(__dirname, 'muteList.txt');
 
-const muteList = async (): Promise<Map<string, Set<string>>> => {
+const muteList = async (): Promise<Set<string>> => {
     const listExist = await fs.access(muteListFile)
         .then(() => true)
         .catch(() => false);
     if (!listExist) {
         logger.error(`${muteListFile} not found`);
-        return new Map()
+        return new Set();
     }
     const contents = await fs.readFile(muteListFile, 'utf8');
-    return new Map(
-        Object.entries(JSON.parse(contents))
-            .map(([user, mutes]: [string, string[]]) => [user, new Set(mutes)])
-    );
+    return new Set(contents.split('\n'));
 };
 
 
-const response = async (text:string, user: string) => {
-    const muted: Set<string> = (await muteList()).get(user) || new Set();
+const response = async (text:string) => {
+    const muted: Set<string> = (await muteList()) || new Set();
     for (const resp of customResponses.filter((response) => !response.reaction)) {
         if (muted.has(resp.muteCommand)) continue;
         for (const regexp of resp.input) {
@@ -55,27 +52,22 @@ const reaction = async (text:string) => {
     return null;
 };
 
-const mute = async (text: string, user: string) => {
+const mute = async (text: string) => {
   const match = /^@(\w+)\s*:(ohayou|urusee):\s*$/.exec(text);
   if (match == null) return null;
   const response = customResponses.find((response) => response.muteCommand === match[1]);
   if (response == null) return null;
   const muted = await muteList();
-  const responses: Set<string> = muted.get(user) || new Set();
   let answer: string;
   if (match[2] === 'urusee') {
-      answer = responses.has(response.muteCommand) ? ':kichi:' : ':cry:';
-      responses.add(response.muteCommand);
+      answer = muted.has(response.muteCommand) ? ':kichi:' : ':cry:';
+      muted.add(response.muteCommand);
   }
   else {
-      answer = responses.has(response.muteCommand) ? ':ohayou:' : ':kichi:';
-      responses.delete(response.muteCommand);
+      answer = muted.has(response.muteCommand) ? ':ohayou:' : ':kichi:';
+      muted.delete(response.muteCommand);
   }
-  muted.set(user, responses);
-  const converted = Object.fromEntries(
-      Array.from(muted.entries(), ([user, reactions]) => [user, Array.from(reactions.values())])
-  );
-  fs.writeFile(muteListFile, JSON.stringify(converted), 'utf8');
+  fs.writeFile(muteListFile, Array.from(muted.values()).join('\n'), 'utf8');
   return [answer, response.username, response.icon_emoji];
 };
 
@@ -86,9 +78,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     const properIcon = defaultTo(':slack:');
     rtm.on('message', async (message) => {
         if (!message.user || message.user.startsWith('B') || message.user === 'UEJTPN6R5' || message.user === 'USLACKBOT') return;
-        const {channel, text, user, ts: timestamp} = message;
+        const {channel, text, ts: timestamp} = message;
         if (!text) return;
-        const resp = await response(text, user);
+        const resp = await response(text);
         if (resp[0]) {
             const username = properUsername(resp[1]);
             const icon_emoji = properIcon(resp[2]);
@@ -109,7 +101,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
                 }
             }
         }
-        const mut = await mute(text, user);
+        const mut = await mute(text);
         if (mut != null) {
             const username = properUsername(mut[1]);
             const icon_emoji = properIcon(mut[2]);
