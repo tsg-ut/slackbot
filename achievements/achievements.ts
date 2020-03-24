@@ -1557,7 +1557,7 @@ const achievements: Achievement[] = [
 		id: 'anime-song-answer-first-hint-5',
 		difficulty: 'professional',
 		title: 'アニソン神',
-		condition: 'アニメ当てクイズでヒント1回以内で5回正解する',
+		condition: 'アニソン当てクイズでヒント1回以内で5回正解する',
 		category: 'anime',
 		counter: 'anime-song-answer-first-hint',
 		value: 5,
