@@ -55,6 +55,7 @@ const allBots = [
 	'emoji-modifier',
 	'context-free',
 	'room-gacha',
+	'taiko',
 ];
 
 const argv = yargs
