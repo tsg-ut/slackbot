@@ -88,8 +88,8 @@ interface State {
 const getQuestionChars = (question: string): QuestionChar[] => {
 	const chars = Array.from(question);
 	const letters = chars.filter((char) => char.match(/^[\p{Letter}\p{Number}]+$/u)).length;
-	const hintCounts = [0, 0.1, 0.2, 0.35, 0.55, 0.8, 0.9, 1].map((n) => Math.floor(letters * n));
-	const hints = shuffle(flatten(times(7, (n) => (
+	const hintCounts = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.35, 0.45, 0.55, 0.7, 0.8, 0.9, 0.95, 1].map((n) => Math.floor(letters * n));
+	const hints = shuffle(flatten(times(13, (n) => (
 		times(hintCounts[n + 1] - hintCounts[n], constant(n + 1))
 	))));
 
@@ -122,12 +122,12 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const onTick = () => {
 		mutex.runExclusive(async () => {
 			const now = Date.now();
-			const nextHint = state.previousHint + (state.hintCount === 7 ? 15 : 10) * 1000;
+			const nextHint = state.previousHint + (state.hintCount === 13 ? 15 : 5) * 1000;
 
 			if (state.answer !== null && nextHint <= now) {
 				state.previousHint = now;
 
-				if (state.hintCount < 7) {
+				if (state.hintCount < 13) {
 					state.hintCount++;
 					await slack.chat.update({
 						channel: process.env.CHANNEL_SANDBOX,
@@ -203,7 +203,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 				slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
-					text: '10秒経過でヒントを出すよ♫',
+					text: '5秒経過でヒントを出すよ♫',
 					username: 'hayaoshi',
 					icon_emoji: ':question:',
 					thread_ts: ts as string,
@@ -232,7 +232,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				if (distance <= answer.length / 3) {
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
-						text: `<@${message.user}> 正解🎉\nQ. ＊${getQuestionText(state.question, 7)}＊\n答えは＊${state.answer}＊だよ💪`,
+						text: `<@${message.user}> 正解🎉\nQ. ＊${getQuestionText(state.question, 13)}＊\n答えは＊${state.answer}＊だよ💪`,
 						username: 'hayaoshi',
 						icon_emoji: ':question:',
 						thread_ts: state.thread,
