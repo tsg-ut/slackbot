@@ -172,8 +172,8 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
-		if (message.text && message.text === '早押しクイズ' && state.answer === null) {
-			mutex.runExclusive(async () => {
+		mutex.runExclusive(async () => {
+			if (message.text && message.text === '早押しクイズ' && state.answer === null) {
 				const quiz = await getQuiz();
 
 				if (quiz === undefined) {
@@ -208,11 +208,9 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					icon_emoji: ':question:',
 					thread_ts: ts as string,
 				});
-			});
-		}
+			}
 
-		if (state.answer !== null && message.text && message.thread_ts === state.thread && message.username !== 'hayaoshi') {
-			mutex.runExclusive(async () => {
+			if (state.answer !== null && message.text && message.thread_ts === state.thread && message.username !== 'hayaoshi') {
 				if (!{}.hasOwnProperty.call(state.misses, message.user)) {
 					state.misses[message.user] = 0;
 				}
@@ -255,7 +253,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						timestamp: message.ts,
 					});
 				}
-			});
-		}
+			}
+		});
 	});
 };
