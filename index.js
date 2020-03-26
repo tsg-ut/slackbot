@@ -56,6 +56,7 @@ const allBots = [
 	'context-free',
 	'room-gacha',
 	'taiko',
+	'hayaoshi',
 ];
 
 const argv = yargs
