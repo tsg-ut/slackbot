@@ -229,10 +229,16 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 				const distance = levenshtein.get(answer, userAnswer);
 
-				if (distance <= answer.length / 4) {
+				if (distance <= answer.length / 3) {
+					const questionText = state.question.map(({char, hint}) => {
+						if (hint <= state.hintCount) {
+							return `＊${char}＊`;
+						}
+						return char;
+					}).join('');
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
-						text: `<@${message.user}> 正解🎉\nQ. ＊${getQuestionText(state.question, 7)}＊\n答えは＊${state.answer}＊だよ💪`,
+						text: `<@${message.user}> 正解🎉\nQ. ＊${questionText}＊\n答えは＊${state.answer}＊だよ💪`,
 						username: 'hayaoshi',
 						icon_emoji: ':question:',
 						thread_ts: state.thread,
