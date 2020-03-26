@@ -122,7 +122,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const onTick = () => {
 		mutex.runExclusive(async () => {
 			const now = Date.now();
-			const nextHint = state.previousHint + (state.hintCount === 7 ? 30 : 10) * 1000;
+			const nextHint = state.previousHint + (state.hintCount === 7 ? 15 : 10) * 1000;
 
 			if (state.answer !== null && nextHint <= now) {
 				state.previousHint = now;
@@ -131,7 +131,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					state.hintCount++;
 					await slack.chat.update({
 						channel: process.env.CHANNEL_SANDBOX,
-						text: `問題です！\nQ. ${getQuestionText(state.question, state.hintCount)}\n\n⚠3回間違えると失格です！`,
+						text: `問題です！\nQ. ${getQuestionText(state.question, state.hintCount)}\n\n⚠3回間違えると失格です！\n⚠「?」でメッセージを始めるとコメントできます`,
 						username: 'hayaoshi',
 						icon_emoji: ':question:',
 						ts: state.thread,
@@ -187,11 +187,11 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}
 
 				state.question = getQuestionChars(quiz.question);
-				state.answer = quiz.answer;
+				state.answer = quiz.answer.replace(/\(.+?\)/g, '').replace(/（.+?）/g, '');
 
 				const {ts} = await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
-					text: `問題です！\nQ. ${getQuestionText(state.question, 1)}\n\n⚠3回間違えると失格です！`,
+					text: `問題です！\nQ. ${getQuestionText(state.question, 1)}\n\n⚠3回間違えると失格です！\n⚠「?」でメッセージを始めるとコメントできます`,
 					username: 'hayaoshi',
 					icon_emoji: ':question:',
 				});
@@ -210,7 +210,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				});
 			}
 
-			if (state.answer !== null && message.text && message.thread_ts === state.thread && message.username !== 'hayaoshi') {
+			if (state.answer !== null && message.text && !message.text.match(/^[?？]/) && message.thread_ts === state.thread && message.username !== 'hayaoshi') {
 				if (!{}.hasOwnProperty.call(state.misses, message.user)) {
 					state.misses[message.user] = 0;
 				}
@@ -230,15 +230,9 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				const distance = levenshtein.get(answer, userAnswer);
 
 				if (distance <= answer.length / 3) {
-					const questionText = state.question.map(({char, hint}) => {
-						if (hint <= state.hintCount) {
-							return `＊${char}＊`;
-						}
-						return char;
-					}).join('');
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
-						text: `<@${message.user}> 正解🎉\nQ. ＊${questionText}＊\n答えは＊${state.answer}＊だよ💪`,
+						text: `<@${message.user}> 正解🎉\nQ. ＊${getQuestionText(state.question, 7)}＊\n答えは＊${state.answer}＊だよ💪`,
 						username: 'hayaoshi',
 						icon_emoji: ':question:',
 						thread_ts: state.thread,
