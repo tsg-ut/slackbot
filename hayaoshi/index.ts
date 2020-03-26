@@ -81,6 +81,7 @@ interface State {
 	previousTick: number,
 	previousHint: number,
 	hintCount: number,
+	misses: {[user: string]: number},
 	thread: string,
 }
 
@@ -114,6 +115,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		previousTick: 0,
 		previousHint: 0,
 		hintCount: 0,
+		misses: {},
 		thread: null,
 	};
 
@@ -155,6 +157,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					state.previousHint = 0;
 					state.hintCount = 0;
 					state.thread = null;
+					state.misses = {};
 				}
 			}
 
@@ -188,7 +191,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 				const {ts} = await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
-					text: `問題です！\nQ. ${getQuestionText(state.question, 1)}`,
+					text: `問題です！\nQ. ${getQuestionText(state.question, 1)}\n\n⚠2回間違えると失格です！`,
 					username: 'hayaoshi',
 					icon_emoji: ':question:',
 				});
@@ -196,8 +199,9 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				state.thread = ts as string;
 				state.hintCount = 1;
 				state.previousHint = Date.now();
+				state.misses = {};
 
-				await slack.chat.postMessage({
+				slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: '10秒経過でヒントを出すよ♫',
 					username: 'hayaoshi',
@@ -209,6 +213,19 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		if (state.answer !== null && message.text && message.thread_ts === state.thread && message.username !== 'hayaoshi') {
 			mutex.runExclusive(async () => {
+				if (!{}.hasOwnProperty.call(state.misses, message.user)) {
+					state.misses[message.user] = 0;
+				}
+
+				if (state.misses[message.user] >= 2) {
+					slack.reactions.add({
+						name: 'no_entry_sign',
+						channel: message.channel,
+						timestamp: message.ts,
+					});
+					return;
+				}
+
 				const answer = normalize(state.answer);
 				const userAnswer = normalize(message.text);
 
@@ -229,7 +246,9 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					state.previousHint = 0;
 					state.hintCount = 0;
 					state.thread = null;
+					state.misses = {};
 				} else {
+					state.misses[message.user]++;
 					slack.reactions.add({
 						name: 'no_good',
 						channel: message.channel,
