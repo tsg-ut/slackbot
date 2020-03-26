@@ -129,12 +129,12 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 				if (state.hintCount < 7) {
 					state.hintCount++;
-					await slack.chat.postMessage({
+					await slack.chat.update({
 						channel: process.env.CHANNEL_SANDBOX,
-						text: `Q. ${getQuestionText(state.question, state.hintCount)}`,
+						text: `問題です！\nQ. ${getQuestionText(state.question, state.hintCount)}\n\n⚠3回間違えると失格です！`,
 						username: 'hayaoshi',
 						icon_emoji: ':question:',
-						thread_ts: state.thread,
+						ts: state.thread,
 					});
 				} else {
 					const anger = sample([
@@ -191,7 +191,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 				const {ts} = await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
-					text: `問題です！\nQ. ${getQuestionText(state.question, 1)}\n\n⚠2回間違えると失格です！`,
+					text: `問題です！\nQ. ${getQuestionText(state.question, 1)}\n\n⚠3回間違えると失格です！`,
 					username: 'hayaoshi',
 					icon_emoji: ':question:',
 				});
@@ -217,7 +217,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					state.misses[message.user] = 0;
 				}
 
-				if (state.misses[message.user] >= 2) {
+				if (state.misses[message.user] >= 3) {
 					slack.reactions.add({
 						name: 'no_entry_sign',
 						channel: message.channel,
