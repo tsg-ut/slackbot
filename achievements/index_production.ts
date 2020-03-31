@@ -135,7 +135,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		});
 	});
 
-	rtm.on('member_joined_channel', (event) => {
+	rtm.on('team_join', (event) => {
 		db.collection('users').doc(event.user.id).set({
 			info: event.user,
 		});
