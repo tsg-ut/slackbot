@@ -1313,6 +1313,34 @@ const achievements: Achievement[] = [
 		condition: '寿司スライドパズルを一発かつ89秒以内にクリアする',
 		category: 'ahokusa',
 	},
+	{
+		id: 'ahokusa-chiya-clear',
+		difficulty: 'hard',
+		title: '見習いうらら',
+		condition: '千矢スライドパズルをクリアする',
+		category: 'ahokusa',
+	},
+	{
+		id: 'ahokusa-chiya-clear-200s',
+		difficulty: 'hard',
+		title: 'におい占いで！',
+		condition: '千矢スライドパズルを200秒以内にクリアする',
+		category: 'ahokusa',
+	},
+	{
+		id: 'ahokusa-chiya-impossible-once',
+		difficulty: 'hard',
+		title: 'おなかが＜・＞＜・＞でてない',
+		condition: '千矢スライドパズルの不成立を一発で指摘する',
+		category: 'ahokusa',
+	},
+	{
+		id: 'ahokusa-chiya-clear-once-1008s',
+		difficulty: 'professional',
+		title: '視えた！',
+		condition: '千矢スライドパズルを一発で1008秒以内にクリアする',
+		category: 'ahokusa',
+	},
 
 	// atcoder
 
