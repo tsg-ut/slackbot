@@ -292,7 +292,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await slack.chat.postMessage({
 				channel: message.channel,
 				text,
-				username: state.boardName === 'ahokusa' ? 'ahokusa' : 'chiya' ? 'chiya' : 'sushi-puzzle',
+				username: state.boardName === 'ahokusa' ? 'ahokusa' : state.boardName === 'chiya' ? 'chiya' : 'sushi-puzzle',
 				icon_emoji: state.lackedPiece,
 				thread_ts: message.thread_ts || message.ts,
 				...opt,
