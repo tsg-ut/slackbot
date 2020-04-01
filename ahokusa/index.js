@@ -453,6 +453,8 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						await unlock(user, 'ahokusa-impossible');
 						if (state.seen === 0) await unlock(user, 'ahokusa-impossible-once');
 						if (time < 5) await unlock(user, 'ahokusa-impossible-5s');
+					} else if (state.boardName === 'chiya') {
+						if (state.seen === 0) await unlock(user, 'ahokusa-chiya-impossible-once');
 					}
 				}
 			}
@@ -496,6 +498,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						if (time < 8) await unlock(user, 'ahokusa-clear-8s');
 					} else if (state.boardName === 'sushi3' || state.boardName === 'sushi4' || state.boardName === 'sushi5' || state.boardName === 'sushi6') {
 						if (state.seen === 1 && time < 89) await unlock(user, 'ahokusa-sushi-clear-once-89s');
+					} else if (state.boardName === 'chiya') {
+						await unlock(user, 'ahokusa-chiya-clear');
+						if (time < 200) await unlock(user, 'ahokusa-chiya-clear-200s');
+						if (state.seen === 1 && time < 1008) await unlock(user, 'ahokusa-chiya-clear-once-1008s');
 					}
 				}
 				await setState({
