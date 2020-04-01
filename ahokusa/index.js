@@ -37,6 +37,7 @@ const completeBoards = {
 	sushi4: Array(4).fill().map((_, y) => Array(4).fill().map((_, x) => `:sushi-4-${x}-${y}:`)),
 	sushi5: Array(5).fill().map((_, y) => Array(5).fill().map((_, x) => `:sushi-5_${x}_${y}:`)),
 	sushi6: Array(6).fill().map((_, y) => Array(6).fill().map((_, x) => `:sushi-6-${x}-${y}:`)),
+	chiya: Array(4).fill().map((_, y) => Array(3).fill().map((_, x) => `:chiya-kirarafantasia-${x}-${y}:`)),
 };
 
 const state = (() => {
@@ -281,7 +282,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if (message.username === 'ahokusa' || message.username === 'sushi-puzzle') {
+		if (message.username === 'ahokusa' || message.username === 'sushi-puzzle' || message.username === 'chiya') {
 			return;
 		}
 
@@ -291,7 +292,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await slack.chat.postMessage({
 				channel: message.channel,
 				text,
-				username: state.boardName === 'ahokusa' ? 'ahokusa' : 'sushi-puzzle',
+				username: state.boardName === 'ahokusa' ? 'ahokusa' : state.boardName === 'chiya' ? 'chiya' : 'sushi-puzzle',
 				icon_emoji: state.lackedPiece,
 				thread_ts: message.thread_ts || message.ts,
 				...opt,
@@ -323,6 +324,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			const {size} = match.groups;
 			await setState({thread: message.thread_ts || message.ts});
 			await shuffleBoard(`sushi${size}`);
+			await postBoard({reply_broadcast: true});
+			return;
+		}
+
+		if (message.text === '千矢スライドパズル') {
+			await setState({thread: message.thread_ts || message.ts});
+			await shuffleBoard('chiya');
 			await postBoard({reply_broadcast: true});
 			return;
 		}
