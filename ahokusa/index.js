@@ -282,7 +282,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			return;
 		}
 
-		if (message.username === 'ahokusa' || message.username === 'sushi-puzzle') {
+		if (message.username === 'ahokusa' || message.username === 'sushi-puzzle' || message.username === 'chiya') {
 			return;
 		}
 
@@ -292,7 +292,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			await slack.chat.postMessage({
 				channel: message.channel,
 				text,
-				username: state.boardName === 'ahokusa' ? 'ahokusa' : 'sushi-puzzle',
+				username: state.boardName === 'ahokusa' ? 'ahokusa' : 'chiya' ? 'chiya' : 'sushi-puzzle',
 				icon_emoji: state.lackedPiece,
 				thread_ts: message.thread_ts || message.ts,
 				...opt,
