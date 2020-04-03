@@ -501,6 +501,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					} else if (state.boardName === 'chiya') {
 						await unlock(user, 'ahokusa-chiya-clear');
 						if (time < 200) await unlock(user, 'ahokusa-chiya-clear-200s');
+						if (time < 50) await unlock(user, 'ahokusa-chiya-clear-50s');
 						if (state.seen === 1 && time < 1008) await unlock(user, 'ahokusa-chiya-clear-once-1008s');
 					}
 				}
