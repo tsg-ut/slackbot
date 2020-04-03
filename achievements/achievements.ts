@@ -1423,6 +1423,13 @@ const achievements: Achievement[] = [
 		condition: '千矢スライドパズルを一発で1008秒以内にクリアする',
 		category: 'ahokusa',
 	},
+	{
+		id: 'ahokusa-chiya-clear-50s',
+		difficulty: 'professional',
+		title: '伝説の一番占',
+		condition: '千矢スライドパズルを50秒以内にクリアする',
+		category: 'ahokusa',
+	},
 
 	// atcoder
 
