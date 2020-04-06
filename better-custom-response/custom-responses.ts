@@ -1,3 +1,5 @@
+import { stripIndent } from 'common-tags';
+
 interface CustomResponse {
     input: RegExp[],
     outputArray?: string[],
@@ -54,6 +56,17 @@ const customResponses: CustomResponse[] = [
         outputArray: ['ねこ〜', 'すぴー'],
         icon_emoji: ':cat2:',
         username: 'tsgcat',
+    },
+    {
+        input: [/^(.+)っちへ$/],
+        outputFunction: input => [ stripIndent`
+            ${input[1]}っちへ
+            
+            ういっすー!
+            朝から、完全にぽんぽんぺいんで、つらみが深いので、1日おふとんでスヤァしておきます。
+            明日は行けたら行くマンです!` ],
+        icon_emoji: ':shakaijin-ichinensei:',
+        username: '社会人一年生',
     },
 ];
 
