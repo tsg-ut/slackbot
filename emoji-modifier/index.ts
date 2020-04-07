@@ -94,27 +94,36 @@ const uploadImage = async (image: Buffer): Promise<string> => {
   return response.secure_url;
 };
 
-const quantizeColor = async (frame: GifFrame): Promise<GifFrame> => {
-  const {colors, usesTransparency, indexCount} = frame.getPalette();
-  if (indexCount <= 256) return frame;
-  const maxColors = usesTransparency ? 255 : 256;
-  const pointContainer = iq.utils.PointContainer.fromBuffer(
-    frame.bitmap.data,
-    frame.bitmap.height,
-    frame.bitmap.width);
-  const palette = await iq.buildPalette([pointContainer], {colors: maxColors});
-  const processed = await iq.applyPalette(pointContainer, palette);
-  frame.bitmap.data = Buffer.from(processed.toUint8Array());
-  return frame;
+const quantizeColor = async (frames: GifFrame[]): Promise<GifFrame[]> => {
+  const quantizedFrames = new Array(frames.length);
+  let palette = null;
+  for (const i of quantizedFrames.keys()) {
+    const frame = frames[i];
+    const {colors, usesTransparency, indexCount} = frame.getPalette();
+    if (indexCount <= 256) {
+      quantizedFrames[i] = frame;
+      continue;
+    }
+    const maxColors = usesTransparency ? 255 : 256;
+    const pointContainer = iq.utils.PointContainer.fromBuffer(
+      frame.bitmap.data,
+      frame.bitmap.height,
+      frame.bitmap.width);
+    if (!palette)
+      palette = await iq.buildPalette([pointContainer], {colors: maxColors});
+
+    const processed = await iq.applyPalette(pointContainer, palette);
+    frame.bitmap.data = Buffer.from(processed.toUint8Array());
+    quantizedFrames[i] = frame;
+  }
+  return quantizedFrames;
 };
 
 const uploadEmoji = async (emoji: Emoji): Promise<string>  => {
   if (emoji.kind === 'static')
       return await uploadImage(emoji.image);
   else {
-    const quantizedFrames = new Array(emoji.frames.length);
-    for (const i of quantizedFrames.keys())
-      quantizedFrames[i] = await quantizeColor(emoji.frames[i]);
+    const quantizedFrames = await quantizeColor(emoji.frames);
     const codec = new GifCodec;
     const gif = await codec.encodeGif(quantizedFrames, emoji.options);
     return await uploadImage(gif.buffer);
