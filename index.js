@@ -63,6 +63,7 @@ const argv = yargs
 	.array('only')
 	.choices('only', allBots)
 	.default('only', allBots)
+	.default('startup', 'ｼｭｯｼｭｯ (起動音)')
 	.argv;
 
 const plugins = argv.only.map((name) => require(`./${name}`));
@@ -89,7 +90,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 	logger.info('Launched');
 	webClient.chat.postMessage({
 		channel: process.env.CHANNEL_SANDBOX,
-		text: 'ｼｭｯｼｭｯ (起動音)',
+		text: argv.startup,
 	});
 })();
 
