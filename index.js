@@ -66,7 +66,7 @@ const argv = yargs
 	.default('startup', 'ｼｭｯｼｭｯ (起動音)')
 	.argv;
 
-const plugins = argv.only.map((name) => require(`./${name}`));
+const plugins = Object.fromEntries(argv.only.map((name) => [name, require(`./${name}`)]));
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
 	logger.error(error.stack);
@@ -75,7 +75,7 @@ eventClient.on('error', (error) => {
 const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 
 (async () => {
-	await Promise.all(plugins.map(async (plugin) => {
+	await Promise.all(Object.entries(plugins).map(async ([name, plugin]) => {
 		if (typeof plugin === 'function') {
 			await plugin({rtmClient, webClient, eventClient, messageClient});
 		}
@@ -85,6 +85,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 		if (typeof plugin.server === 'function') {
 			await fastify.register(plugin.server({rtmClient, webClient, eventClient, messageClient}));
 		}
+		logger.info(`plugin "${name}" successfully loaded`);
 	}));
 
 	logger.info('Launched');
