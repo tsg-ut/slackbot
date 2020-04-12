@@ -1,14 +1,14 @@
 import qs from 'querystring';
 // eslint-disable-next-line no-unused-vars
 import {WebClient} from '@slack/client';
-// eslint-disable-next-line no-unused-vars
-import type {SlackInterface} from '../lib/slack';
 import axios from 'axios';
 import {stripIndent} from 'common-tags';
 import {countBy, throttle, groupBy, get as getter, chunk} from 'lodash';
 import moment from 'moment';
 // @ts-ignore
 import db from '../lib/firestore';
+// eslint-disable-next-line no-unused-vars
+import type {SlackInterface} from '../lib/slack';
 import {Deferred} from '../lib/utils';
 import achievements, {Difficulty} from './achievements';
 
@@ -131,6 +131,12 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 
 	rtm.on('user_change', (event) => {
 		db.collection('users').doc(event.user.id).update({
+			info: event.user,
+		});
+	});
+
+	rtm.on('team_join', (event) => {
+		db.collection('users').doc(event.user.id).set({
 			info: event.user,
 		});
 	});
