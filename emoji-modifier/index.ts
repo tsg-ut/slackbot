@@ -408,7 +408,7 @@ interface Transformation {
 }
 
 interface HelpRequest {
-  kind: 'help';
+  kind: 'help request';
 }
 
 type ParseResult = Transformation | EmodiError | HelpRequest;
@@ -419,8 +419,8 @@ const parse = (message: string): ParseResult => {
   logger.info(parts);
   if (parts.length < 1)
     return parseError('Expected emoji');
-  if (parts[0] == 'help')
-    return {kind: 'help'}
+  if (parts[0] === 'help')
+    return {kind: 'help request'}
   const nameMatch = /^:([^!:\s]+):$/.exec(parts[0]);
   if (nameMatch == null)
     return parseError(`\`${parts[0]}\` is not a valid emoji name`);
@@ -441,11 +441,9 @@ const parse = (message: string): ParseResult => {
   };
 };
 
-const runTransformation = async (message: string): Promise<Emoji | EmodiError> => {
+const runTransformation = async (message: string): Promise<Emoji | EmodiError | HelpRequest> => {
   const parseResult = parse(message);
-  if (parseResult.kind === 'error')
-    return parseResult;
-  if (parseResult.kind === 'help')
+  if (parseResult.kind === 'error' || parseResult.kind === 'help request')
     return parseResult;
   const nameError = errorOfKind('NameError');
   const emoji = await lookupEmoji(parseResult.emojiName);
@@ -516,6 +514,19 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       text: message,
     });
   }
+  const postHelp = (): void => {
+    slack.chat.postMessage({
+      channel: process.env.CHANNEL_SANDBOX,
+      username: 'emoji-modifier',
+      icon_emoji: ':essential-information:',
+      text: [...filters.entries()].map((key_value: [string, Filter]): string => {
+        if (key_value[1].arguments.length === 0)
+          return key_value[0];
+        else
+        return key_value[0] + ' ' + key_value[1].arguments.map((s: string) => "[" + s + "]").join(' ');
+      }).join('\n'),
+    });
+  }
 
   rtm.on('message', async message => {
     if (message.channel !== process.env.CHANNEL_SANDBOX
@@ -534,6 +545,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       });
     if (result.kind == 'error')
       postError(result.message);
+    else if (result.kind == 'help request')
+      postHelp();
     else {
       const url = await uploadEmoji(result);
       postImage(url);
