@@ -5,6 +5,7 @@ import {Mutex} from 'async-mutex';
 import axios from 'axios';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
+import {sumBy} from 'lodash';
 import moment from 'moment';
 // @ts-ignore
 import schedule from 'node-schedule';
@@ -102,7 +103,7 @@ const formatNumber = (number: number) => {
 
 interface State {
 	users: {atcoder: string, slack: string}[],
-	contests: {id: string, date: number, title: string, duration: number, isPosted: boolean, isPreposted: boolean}[],
+	contests: {id: string, date: number, title: string, duration: number, isPosted: boolean, isPreposted: boolean, ratedCount: number}[],
 }
 
 interface ContestEntry {
@@ -178,6 +179,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						...contest,
 						isPosted: oldContest ? oldContest.isPosted : false,
 						isPreposted: oldContest ? oldContest.isPreposted : false,
+						ratedCount: 0,
 					};
 				}),
 			});
@@ -291,6 +293,15 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		contest.isPreposted = true;
 		setState({contests: state.contests});
+	};
+
+	const getRatedCount = async (id: string) => {
+		const {data: results}: {data: Results} = await axios.get(`https://atcoder.jp/contests/${id}/results/json`, {
+			headers: {
+				Cookie: `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+			},
+		});
+		return sumBy(results, ({IsRated}) => IsRated ? 1 : 0);
 	};
 
 	const postResult = async (id: string) => {
@@ -553,7 +564,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			for (const contest of state.contests) {
 				const endTime = contest.date + contest.duration;
 				if (contest.isPreposted && !contest.isPosted && endTime < now && now < endTime + 60 * 60 * 1000) {
-					await postResult(contest.id);
+					const ratedCount = await getRatedCount(contest.id);
+					if (ratedCount > 10 && contest.ratedCount === ratedCount) {
+						await postResult(contest.id);
+					}
+					contest.ratedCount = ratedCount;
 				}
 			}
 		});
