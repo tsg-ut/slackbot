@@ -419,8 +419,12 @@ const parse = (message: string): ParseResult => {
   logger.info(parts);
   if (parts.length < 1)
     return parseError('Expected emoji');
-  if (parts[0] === 'help')
-    return {kind: 'help request'}
+  if (parts[0] === 'help'){
+    if (parts.length > 1)
+      return parseError('`help` needs no argument');
+    else
+      return {kind: 'help request'}
+  }
   const nameMatch = /^:([^!:\s]+):$/.exec(parts[0]);
   if (nameMatch == null)
     return parseError(`\`${parts[0]}\` is not a valid emoji name`);
