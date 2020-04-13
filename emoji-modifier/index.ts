@@ -408,7 +408,7 @@ interface Transformation {
 }
 
 interface HelpRequest {
-  kind: 'help request';
+  kind: 'help';
 }
 
 type ParseResult = Transformation | EmodiError | HelpRequest;
@@ -423,7 +423,7 @@ const parse = (message: string): ParseResult => {
     if (parts.length > 1)
       return parseError('`help` needs no argument');
     else
-      return {kind: 'help request'}
+      return {kind: 'help'}
   }
   const nameMatch = /^:([^!:\s]+):$/.exec(parts[0]);
   if (nameMatch == null)
@@ -447,7 +447,7 @@ const parse = (message: string): ParseResult => {
 
 const runTransformation = async (message: string): Promise<Emoji | EmodiError | HelpRequest> => {
   const parseResult = parse(message);
-  if (parseResult.kind === 'error' || parseResult.kind === 'help request')
+  if (parseResult.kind === 'error' || parseResult.kind === 'help')
     return parseResult;
   const nameError = errorOfKind('NameError');
   const emoji = await lookupEmoji(parseResult.emojiName);
@@ -549,7 +549,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       });
     if (result.kind == 'error')
       postError(result.message);
-    else if (result.kind == 'help request')
+    else if (result.kind == 'help')
       postHelp();
     else {
       const url = await uploadEmoji(result);
