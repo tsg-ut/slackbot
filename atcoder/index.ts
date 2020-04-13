@@ -1,6 +1,7 @@
 import {constants, promises as fs} from 'fs';
 import path from 'path';
 import qs from 'querystring';
+import {Mutex} from 'async-mutex';
 import axios from 'axios';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
@@ -17,6 +18,8 @@ import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 // eslint-disable-next-line no-unused-vars
 import {Results, Standings} from './types';
+
+const mutex = new Mutex();
 
 const getRatingColor = (rating: number | null) => {
 	// gray
@@ -515,7 +518,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	});
 
 	setInterval(() => {
-		updateContests();
+		mutex.runExclusive(() => {
+			updateContests();
+		});
 	}, 30 * 60 * 1000);
 	updateContests();
 
@@ -525,32 +530,38 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		const newTime = Date.now();
 		time = newTime;
 
-		for (const contest of state.contests) {
-			const prerollTime = contest.date - 15 * 60 * 1000;
-			const endTime = contest.date + contest.duration;
-			if (oldTime <= prerollTime && prerollTime < newTime) {
-				postPreroll(contest.id);
+		mutex.runExclusive(async () => {
+			for (const contest of state.contests) {
+				const prerollTime = contest.date - 15 * 60 * 1000;
+				const endTime = contest.date + contest.duration;
+				if (oldTime <= prerollTime && prerollTime < newTime) {
+					await postPreroll(contest.id);
+				}
+				if (oldTime <= contest.date && contest.date < newTime) {
+					await postStart(contest.id);
+				}
+				if (oldTime <= endTime && endTime < newTime) {
+					await prepostResult(contest.id);
+				}
 			}
-			if (oldTime <= contest.date && contest.date < newTime) {
-				postStart(contest.id);
-			}
-			if (oldTime <= endTime && endTime < newTime) {
-				prepostResult(contest.id);
-			}
-		}
+		});
 	}, 5 * 1000);
 
 	setInterval(() => {
 		const now = Date.now();
-		for (const contest of state.contests) {
-			const endTime = contest.date + contest.duration;
-			if (contest.isPreposted && !contest.isPosted && endTime < now && now < endTime + 60 * 60 * 1000) {
-				postResult(contest.id);
+		mutex.runExclusive(async () => {
+			for (const contest of state.contests) {
+				const endTime = contest.date + contest.duration;
+				if (contest.isPreposted && !contest.isPosted && endTime < now && now < endTime + 60 * 60 * 1000) {
+					await postResult(contest.id);
+				}
 			}
-		}
+		});
 	}, 30 * 1000);
 
 	schedule.scheduleJob('0 9 * * *', () => {
-		postDaily();
+		mutex.runExclusive(() => {
+			postDaily();
+		});
 	});
 };
