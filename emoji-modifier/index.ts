@@ -523,11 +523,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       channel: process.env.CHANNEL_SANDBOX,
       username: 'emoji-modifier',
       icon_emoji: ':essential-information:',
-      text: [...filters.entries()].map((key_value: [string, Filter]): string => {
-        if (key_value[1].arguments.length === 0)
-          return key_value[0];
+      text: [...filters.entries()].map(([name, filter]: [string, Filter]): string => {
+        if (filter.arguments.length === 0)
+          return name;
         else
-        return key_value[0] + ' ' + key_value[1].arguments.map((s: string) => "[" + s + "]").join(' ');
+          return name + ' ' + filter.arguments.map((s: string) => "[" + s + "]").join(' ');
       }).join('\n'),
     });
   }
