@@ -407,7 +407,11 @@ interface Transformation {
   filters: [string, string[]][];
 }
 
-type ParseResult = Transformation | EmodiError;
+interface HelpRequest {
+  kind: 'help';
+}
+
+type ParseResult = Transformation | EmodiError | HelpRequest;
 // TODO: allow string arguments to contain spaces
 const parse = (message: string): ParseResult => {
   const parseError = errorOfKind('ParseError');
@@ -415,6 +419,12 @@ const parse = (message: string): ParseResult => {
   logger.info(parts);
   if (parts.length < 1)
     return parseError('Expected emoji');
+  if (parts[0] === 'help'){
+    if (parts.length > 1)
+      return parseError('`help` needs no argument');
+    else
+      return {kind: 'help'}
+  }
   const nameMatch = /^:([^!:\s]+):$/.exec(parts[0]);
   if (nameMatch == null)
     return parseError(`\`${parts[0]}\` is not a valid emoji name`);
@@ -435,9 +445,9 @@ const parse = (message: string): ParseResult => {
   };
 };
 
-const runTransformation = async (message: string): Promise<Emoji | EmodiError> => {
+const runTransformation = async (message: string): Promise<Emoji | EmodiError | HelpRequest> => {
   const parseResult = parse(message);
-  if (parseResult.kind === 'error')
+  if (parseResult.kind === 'error' || parseResult.kind === 'help')
     return parseResult;
   const nameError = errorOfKind('NameError');
   const emoji = await lookupEmoji(parseResult.emojiName);
@@ -508,6 +518,19 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       text: message,
     });
   }
+  const postHelp = (): void => {
+    slack.chat.postMessage({
+      channel: process.env.CHANNEL_SANDBOX,
+      username: 'emoji-modifier',
+      icon_emoji: ':essential-information:',
+      text: [...filters.entries()].map(([name, filter]: [string, Filter]): string => {
+        if (filter.arguments.length === 0)
+          return name;
+        else
+          return name + ' ' + filter.arguments.map((s: string) => "[" + s + "]").join(' ');
+      }).join('\n'),
+    });
+  }
 
   rtm.on('message', async message => {
     if (message.channel !== process.env.CHANNEL_SANDBOX
@@ -526,6 +549,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       });
     if (result.kind == 'error')
       postError(result.message);
+    else if (result.kind == 'help')
+      postHelp();
     else {
       const url = await uploadEmoji(result);
       postImage(url);
