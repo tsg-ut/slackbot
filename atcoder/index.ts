@@ -1,9 +1,11 @@
 import {constants, promises as fs} from 'fs';
 import path from 'path';
 import qs from 'querystring';
+import {Mutex} from 'async-mutex';
 import axios from 'axios';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
+import {sumBy} from 'lodash';
 import moment from 'moment';
 // @ts-ignore
 import schedule from 'node-schedule';
@@ -17,6 +19,8 @@ import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 // eslint-disable-next-line no-unused-vars
 import {Results, Standings} from './types';
+
+const mutex = new Mutex();
 
 const getRatingColor = (rating: number | null) => {
 	// gray
@@ -99,7 +103,7 @@ const formatNumber = (number: number) => {
 
 interface State {
 	users: {atcoder: string, slack: string}[],
-	contests: {id: string, date: number, title: string, duration: number, isPosted: boolean, isPreposted: boolean}[],
+	contests: {id: string, date: number, title: string, duration: number, isPosted: boolean, isPreposted: boolean, ratedCount: number}[],
 }
 
 interface ContestEntry {
@@ -175,6 +179,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						...contest,
 						isPosted: oldContest ? oldContest.isPosted : false,
 						isPreposted: oldContest ? oldContest.isPreposted : false,
+						ratedCount: 0,
 					};
 				}),
 			});
@@ -288,6 +293,15 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		contest.isPreposted = true;
 		setState({contests: state.contests});
+	};
+
+	const getRatedCount = async (id: string) => {
+		const {data: results}: {data: Results} = await axios.get(`https://atcoder.jp/contests/${id}/results/json`, {
+			headers: {
+				Cookie: `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+			},
+		});
+		return sumBy(results, ({IsRated}) => IsRated ? 1 : 0);
 	};
 
 	const postResult = async (id: string) => {
@@ -515,7 +529,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	});
 
 	setInterval(() => {
-		updateContests();
+		mutex.runExclusive(() => {
+			updateContests();
+		});
 	}, 30 * 60 * 1000);
 	updateContests();
 
@@ -525,32 +541,42 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		const newTime = Date.now();
 		time = newTime;
 
-		for (const contest of state.contests) {
-			const prerollTime = contest.date - 15 * 60 * 1000;
-			const endTime = contest.date + contest.duration;
-			if (oldTime <= prerollTime && prerollTime < newTime) {
-				postPreroll(contest.id);
+		mutex.runExclusive(async () => {
+			for (const contest of state.contests) {
+				const prerollTime = contest.date - 15 * 60 * 1000;
+				const endTime = contest.date + contest.duration;
+				if (oldTime <= prerollTime && prerollTime < newTime) {
+					await postPreroll(contest.id);
+				}
+				if (oldTime <= contest.date && contest.date < newTime) {
+					await postStart(contest.id);
+				}
+				if (oldTime <= endTime && endTime < newTime) {
+					await prepostResult(contest.id);
+				}
 			}
-			if (oldTime <= contest.date && contest.date < newTime) {
-				postStart(contest.id);
-			}
-			if (oldTime <= endTime && endTime < newTime) {
-				prepostResult(contest.id);
-			}
-		}
+		});
 	}, 5 * 1000);
 
 	setInterval(() => {
 		const now = Date.now();
-		for (const contest of state.contests) {
-			const endTime = contest.date + contest.duration;
-			if (contest.isPreposted && !contest.isPosted && endTime < now && now < endTime + 60 * 60 * 1000) {
-				postResult(contest.id);
+		mutex.runExclusive(async () => {
+			for (const contest of state.contests) {
+				const endTime = contest.date + contest.duration;
+				if (contest.isPreposted && !contest.isPosted && endTime < now && now < endTime + 60 * 60 * 1000) {
+					const ratedCount = await getRatedCount(contest.id);
+					if (ratedCount > 10 && contest.ratedCount === ratedCount) {
+						await postResult(contest.id);
+					}
+					contest.ratedCount = ratedCount;
+				}
 			}
-		}
+		});
 	}, 30 * 1000);
 
 	schedule.scheduleJob('0 9 * * *', () => {
-		postDaily();
+		mutex.runExclusive(() => {
+			postDaily();
+		});
 	});
 };
