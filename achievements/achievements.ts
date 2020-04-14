@@ -619,7 +619,6 @@ const achievements: Achievement[] = [
 		reaction: 'nanachi',
 		value: 5,
 	},
-
 	{
 		id: 'reaction-reizoukotte-5',
 		difficulty: 'hard',
@@ -708,6 +707,15 @@ const achievements: Achievement[] = [
 		condition: '1つのメッセージに対し5人以上から:kyoudai-kanjo:リアクションをもらう',
 		category: 'reactions',
 		reaction: 'kyoudai-kanjo',
+		value: 5,
+	},
+	{
+		id: 'reaction-masaka-sakasama-5',
+		difficulty: 'hard',
+		title: '女医解除',
+		condition: '1つのメッセージに対し5人以上から:masaka-sakasama:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'masaka-sakasama',
 		value: 5,
 	},
 	
