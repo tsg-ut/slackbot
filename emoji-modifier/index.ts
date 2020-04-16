@@ -259,7 +259,7 @@ const moveFromTo = async (emoji: Emoji, [from, to]: [string, string]): Promise<E
     return runtimeError('move: expected direction (top | bottom | left | right)');
   const {width, height} = await sharp(emoji.image).metadata();
   const side = Math.max(width, height);
-  const resized = await toSquare(emoji.image);
+  const resized = await sharp(await toSquare(emoji.image)).png().toBuffer();
   const shift = async (pos: position, img: Buffer, frame: number): Promise<Buffer> => {
     const step = Math.round(frame * side / 12);
     const opposites = new Map<position, position>([
