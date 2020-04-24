@@ -594,7 +594,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					.sort((a, b) => b.from.x - a.from.x);
 
 				if (yFilteredMoves.length >= 1) {
-					const filteredMoves = moves.filter((move, index) => {
+					const filteredMoves = yFilteredMoves.filter((move, index) => {
 						if (['HI', 'KA', 'RY', 'UM'].includes(piece)) {
 							if (xFlag === '右') {
 								return index === moves.length - 1;
