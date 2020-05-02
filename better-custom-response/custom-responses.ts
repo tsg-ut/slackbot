@@ -1,4 +1,6 @@
 import { stripIndent } from 'common-tags';
+// @ts-ignore
+import { romanize, katakanize } from 'japanese';
 
 interface CustomResponse {
     input: RegExp[],
@@ -68,6 +70,21 @@ const customResponses: CustomResponse[] = [
         icon_emoji: ':shakaijin-ichinensei:',
         username: '社会人一年生',
     },
+    {
+        input: [/(sa|さ|サ)(l|ー)?(mo|も|モ)(n|ん|ン)/i],
+        outputArray: ['sushi-salmon'],
+        reaction: true,
+    },
+    ... ['とろ', 'まぐろ', 'うに', 'いくら', 'えび', 'いか', 'たまご'].map((neta): CustomResponse => {
+        const regexStr = Array.from(neta)
+            .map((char) => `(${char}|${romanize(char)}|${katakanize(char)})`)
+            .join('');
+        return {
+            input: [new RegExp(regexStr, 'i')],
+            outputArray: [`sushi-${romanize(neta)}`],
+            reaction: true,
+        };
+    }),
 ];
 
 export default customResponses;
