@@ -57,6 +57,7 @@ const allBots = [
 	'room-gacha',
 	'taiko',
 	'hayaoshi',
+	'twitter-dm-notifier',
 ];
 
 const argv = yargs
