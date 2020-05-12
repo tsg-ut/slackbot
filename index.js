@@ -7,7 +7,10 @@ process.on('unhandledRejection', (error) => {
 const {rtmClient, webClient} = require('./lib/slack.ts');
 const {createEventAdapter} = require('@slack/events-api');
 const {createMessageAdapter} = require('@slack/interactive-messages');
-const fastify = require('fastify')({logger: true});
+const fastify = require('fastify')({
+	logger: true,
+	pluginTimeout: 50000,
+});
 const logger = require('./lib/logger.js');
 const yargs = require('yargs');
 
