@@ -5,7 +5,7 @@ import {Mutex} from 'async-mutex';
 import axios from 'axios';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
-import {sumBy} from 'lodash';
+import {sumBy, minBy} from 'lodash';
 import moment from 'moment';
 // @ts-ignore
 import schedule from 'node-schedule';
@@ -451,6 +451,20 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					await unlock(user, 'atcoder-all-solve');
 				}
 			}
+		}
+		if (isContestRated && standings.TaskInfo.length > 0 && userStandings.filter(({standing}) => standing).length >= 10) {
+			const taskName = standings.TaskInfo[0].TaskScreenName;
+			const {user} = minBy(
+				userStandings.filter(({standing}) => standing),
+				({standing}) => {
+					const taskResult = standing.TaskResults[taskName];
+					if (taskResult.Score > 0) {
+						return taskResult.Elapsed;
+					}
+					return Infinity;
+				},
+			);
+			await increment(user, 'atcoder-fastest');
 		}
 	};
 
