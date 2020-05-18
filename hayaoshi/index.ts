@@ -6,6 +6,7 @@ import axios from 'axios';
 import cheerio from 'cheerio';
 // @ts-ignore
 import levenshtein from 'fast-levenshtein';
+import {AllHtmlEntities} from 'html-entities';
 import iconv from 'iconv-lite';
 // @ts-ignore
 import {hiraganize} from 'japanese';
@@ -83,14 +84,19 @@ const getHardQuiz = async () => {
 		formname: 'lite_search',
 	})}`;
 
+	const entities = new AllHtmlEntities();
 	const {data: quiz} = await scrapeIt<Quiz>(url, {
 		id: 'tbody td:nth-child(1)',
-		question: 'tbody td:nth-child(3) > a',
+		question: {
+			selector: 'tbody td:nth-child(3) > a',
+			how: 'html',
+			convert: (x) => entities.decode(x),
+		},
 		answer: 'tbody td:nth-child(4)',
 	});
 
 	// eslint-disable-next-line prefer-destructuring
-	quiz.question = quiz.question.split('\n')[0];
+	quiz.question = quiz.question.split('<br>')[0];
 	quiz.answer = quiz.answer.replace(/(?:\(.+\)|（.+）|\[.+\]|【.+】)/g, '').trim();
 
 	return quiz;
