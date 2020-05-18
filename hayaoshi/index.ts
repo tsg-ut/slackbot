@@ -1,5 +1,6 @@
 import {constants, promises as fs} from 'fs';
 import path from 'path';
+import {encode} from 'querystring';
 import {Mutex} from 'async-mutex';
 import axios from 'axios';
 import cheerio from 'cheerio';
@@ -8,19 +9,22 @@ import levenshtein from 'fast-levenshtein';
 import iconv from 'iconv-lite';
 // @ts-ignore
 import {hiraganize} from 'japanese';
-import {sample, shuffle, flatten, times, constant, range} from 'lodash';
+import {random, sample, shuffle, flatten, times, constant, range} from 'lodash';
 import scrapeIt from 'scrape-it';
 import type {SlackInterface} from '../lib/slack';
 
 const mutex = new Mutex();
 
-interface Data {
-	quizes: {
-		id: number,
-		question: string,
-		answer: string,
-	}[],
+interface Quiz {
+	id: number,
+	question: string,
+	answer: string,
 }
+
+interface Data {
+	quizes: Quiz[],
+}
+
 const statePath = path.resolve(__dirname, 'candidates.json');
 
 const fullwidth2halfwidth = (string: string) => (
@@ -66,6 +70,28 @@ const getQuiz = async () => {
 	const quiz = quizes.find((q) => q.id === id);
 
 	await fs.writeFile(statePath, JSON.stringify(candidates.filter((candidate) => candidate !== id)));
+
+	return quiz;
+};
+
+const getHardQuiz = async () => {
+	const id = random(1, 18191);
+	const url = `http://qss.quiz-island.site/abcgo?${encode({
+		ipp: 1,
+		page: id,
+		target: 0,
+		formname: 'lite_search',
+	})}`;
+
+	const {data: quiz} = await scrapeIt<Quiz>(url, {
+		id: 'tbody td:nth-child(1)',
+		question: 'tbody td:nth-child(3) > a',
+		answer: 'tbody td:nth-child(4)',
+	});
+
+	// eslint-disable-next-line prefer-destructuring
+	quiz.question = quiz.question.split('\n')[0];
+	quiz.answer = quiz.answer.replace(/(?:\(.+\)|（.+）|\[.+\]|【.+】)/g, '').trim();
 
 	return quiz;
 };
@@ -173,8 +199,8 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}
 
 		mutex.runExclusive(async () => {
-			if (message.text && message.text === '早押しクイズ' && state.answer === null) {
-				const quiz = await getQuiz();
+			if (message.text && (message.text === '早押しクイズ' || message.text === '早押しクイズhard') && state.answer === null) {
+				const quiz = await (message.text === '早押しクイズ' ? getQuiz() : getHardQuiz());
 
 				if (quiz === undefined) {
 					await slack.chat.postMessage({
