@@ -718,7 +718,7 @@ const achievements: Achievement[] = [
 		reaction: 'masaka-sakasama',
 		value: 5,
 	},
-	
+
 	// sushi-bot
 
 	{
@@ -1555,6 +1555,33 @@ const achievements: Achievement[] = [
 		title: '器物損壊！高橋君',
 		condition: 'AtCoderのレーティング更新対象の大会で1問も解かずにレーティングを確定させる',
 		category: 'atcoder',
+	},
+	{
+		id: 'atcoder-fastest-1',
+		difficulty: 'medium',
+		title: 'ウサギとカメ',
+		condition: '10人以上が参加したAtCoderのレーティング更新対象の大会で、最初の問題をatcoderボット登録ユーザーの中で一番早く (ペナルティは考慮しない) 回答する',
+		category: 'atcoder',
+		counter: 'atcoder-fastest',
+		value: 1,
+	},
+	{
+		id: 'atcoder-fastest-5',
+		difficulty: 'hard',
+		title: '連射王高橋君',
+		condition: '10人以上が参加したAtCoderのレーティング更新対象の大会で、最初の問題をatcoderボット登録ユーザーの中で一番早く (ペナルティは考慮しない) 回答する、を5回達成する',
+		category: 'atcoder',
+		counter: 'atcoder-fastest',
+		value: 5,
+	},
+	{
+		id: 'atcoder-fastest-20',
+		difficulty: 'professional',
+		title: '覚醒ノ高橋君',
+		condition: '10人以上が参加したAtCoderのレーティング更新対象の大会で、最初の問題をatcoderボット登録ユーザーの中で一番早く (ペナルティは考慮しない) 回答する、を20回達成する',
+		category: 'atcoder',
+		counter: 'atcoder-fastest',
+		value: 20,
 	},
 
 	// anime
