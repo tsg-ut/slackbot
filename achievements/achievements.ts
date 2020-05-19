@@ -1714,6 +1714,13 @@ const achievements: Achievement[] = [
 		counter: 'anime-song-answer-first-hint',
 		value: 5,
 	},
+	{
+		id: 'anime-song-hard-answer',
+		difficulty: 'medium',
+		title: '学士: アニソン学',
+		condition: 'アニソン当てクイズhardで正解する',
+		category: 'anime',
+	},
 
 	// crossword
 
