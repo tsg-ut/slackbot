@@ -20,9 +20,10 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
             return;
         }
 
-        const trim = text.trim();
-        const [command, url] = trim.split(' ');
+        const trim = (text as string).trim();
+        const [command, ...queries] = trim.split(/\s+/);
         if (command === 'slacklog') {
+            const url = queries.join(' ');
             const slackURLRegexp = new RegExp('^<https?://tsg-ut.slack.com/archives/([A-Z0-9]+)/p([0-9]+)([0-9]{6})>');
 
             if (slackURLRegexp.test(url)) {
@@ -33,6 +34,25 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
                     text: `<https://slack-log.tsg.ne.jp/${chanid}/${ts1}.${ts2}>`,
                     unfurl_links: true,
                 });
+            } else if (queries.length > 0) {
+                const convertedQueries = queries.map((query) => {
+                    let matches: RegExpMatchArray;
+                    if ((matches = query.match(/^<@(?<userId>.+?)>$/))) {
+                        const {userId} = matches.groups;
+                        return `user:${userId}`;
+                    }
+                    if ((matches = query.match(/^<#(?<channelId>.+?)(:?\|.+?)?>$/))) {
+                        const {channelId} = matches.groups;
+                        return `channel:${channelId}`;
+                    }
+                    if ((matches = query.match(/^\+:(?<emojiName>.+?):$/))) {
+                        const {emojiName} = matches.groups;
+                        return `reactions.name:${emojiName}`;
+                    }
+                    return query;
+                });
+                const url = `<https://slack-log.tsg.ne.jp/search/${encodeURIComponent(convertedQueries.join(' '))}>`;
+                slack.chat.postMessage({icon_emoji: 'slack', channel, text: url});
             } else {
                 const here = `<https://slack-log.tsg.ne.jp/${channel}>`;
                 slack.chat.postMessage({icon_emoji: 'slack', channel, text: here});
