@@ -443,7 +443,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					await unlock(user, 'atcoder-no-solve');
 				}
 			}
-			if (isContestRated) {
+			if (isContestRated && standing) {
 				if (standings.TaskInfo.every((task) => (
 					standing.TaskResults[task.TaskScreenName] &&
 					standing.TaskResults[task.TaskScreenName].Score > 0
