@@ -458,7 +458,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				userStandings.filter(({standing}) => standing),
 				({standing}) => {
 					const taskResult = standing.TaskResults[taskName];
-					if (taskResult.Score > 0) {
+					if (taskResult && taskResult.Score > 0) {
 						return taskResult.Elapsed;
 					}
 					return Infinity;
