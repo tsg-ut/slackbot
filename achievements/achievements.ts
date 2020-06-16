@@ -1969,6 +1969,14 @@ const achievements: Achievement[] = [
 		category: 'manual',
 		manual: true,
 	},
+	{
+		id: 'hakatashi-typo',
+		difficulty: 'medium',
+		title: 'urusee',
+		condition: 'sandboxでhakatashiのtypoを指摘する',
+		category: 'manual',
+		manual: true,
+	},
 ];
 
 const achievementMap = new Map(achievements.map((achievement) => [achievement.id, achievement]));
