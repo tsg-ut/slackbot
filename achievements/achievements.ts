@@ -1973,7 +1973,7 @@ const achievements: Achievement[] = [
 		id: 'hakatashi-typo',
 		difficulty: 'medium',
 		title: 'urusee',
-		condition: 'sandboxでhakatashiのtypoを指摘する',
+		condition: 'sandboxでhakatashiのtypoを一番目に指摘し、:urusee:で反応される',
 		category: 'manual',
 		manual: true,
 	},
