@@ -118,53 +118,76 @@ const getDMs = async (options: { after?: string; count: number; } = { count: 50 
     return after ? events.filter(event => event.id > after) : events;
 };
 
+interface UserInfo {
+    id: string;
+    name: string;
+    screen_name: string;
+    profile: string;
+    iconImageUrl: string;
+    isProtected: boolean;
+}
+
 const getUserInfo = async (id: string) => {
     const user = await twitterClient.get('users/show', { user_id: id }) as User;
     return {
+        id: user.id_str,
         name: user.name,
         screen_name: user.screen_name,
         profile: user.description,
         iconImageUrl: user.profile_image_url_https,
         isProtected: user.protected,
-    };
+    } as UserInfo;
 };
 
-export default async ({rtmClient, webClient}: SlackInterface) => {
+export default async ({ webClient }: SlackInterface) => {
     const job = async () => {
         const dms = await getDMs();
         const newDMs = dms.filter(dm =>
             moment(dm.created_timestamp, 'x') > moment().subtract(2, 'minutes')
         ).reverse();
+        let latestUser: UserInfo | undefined;
         for (const dm of newDMs) {
-            const user = await getUserInfo(dm.message_create.sender_id);
+            const userId = dm.message_create.sender_id;
+            const isUserUpdated = latestUser?.id !== userId;
+            const user = isUserUpdated ? await getUserInfo(dm.message_create.sender_id) : latestUser;
+            latestUser = user;
             let text = dm.message_create.message_data.text;
             for (const url of dm.message_create.message_data.entities.urls) {
                 text = text.replace(url.url, url.expanded_url);
             }
-            await webClient.chat.postMessage({
-                channel: process.env.CHANNEL_PUBLIC_OFFICE,
-                username: `${user.name} (@${user.screen_name})`
-                    + (user.isProtected ? ' :lock:' : ''),
-                icon_url: user.iconImageUrl,
-                text: dm.message_create.message_data.text,
-                blocks: [
+            const blocks: any = [{
+                type: 'section',
+                text: {
+                    type: 'plain_text',
+                    text: text,
+                },
+            }];
+            const userDescription = (user.isProtected ? ':lock:' : '')
+                + `<https://twitter.com/${user.screen_name}|@${user.screen_name}>`;
+            if (isUserUpdated) {
+                blocks.unshift(
                     {
                         type: 'context',
                         elements: [
                             {
-                                type: 'plain_text',
-                                text: user.profile,
+                                type: 'image',
+                                image_url: user.iconImageUrl,
+                                alt_text: `@${user.screen_name}'s icon`,
+                            },
+                            {
+                                type: 'mrkdwn',
+                                text: userDescription + '\n' + user.profile,
                             },
                         ],
                     },
-                    {
-                        type: 'section',
-                        text: {
-                            type: 'plain_text',
-                            text: text,
-                        },
-                    },
-                ],
+                );
+            }
+            await webClient.chat.postMessage({
+                channel: process.env.CHANNEL_PUBLIC_OFFICE,
+                username: 'Direct message to @tsg_ut',
+                icon_emoji: ':twitter:',
+                text: dm.message_create.message_data.text,
+                blocks,
             });
         }
     };
