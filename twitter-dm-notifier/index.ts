@@ -1,6 +1,7 @@
 import Twitter from 'twitter';
-import schedule from 'node-schedule';
 import dotenv from 'dotenv';
+import moment from 'moment';
+import type { SlackInterface } from '../lib/slack';
 dotenv.config();
 
 const twitterClient = new Twitter({
@@ -128,15 +129,45 @@ const getUserInfo = async (id: string) => {
     };
 };
 
-(async () => {
-    const dms = await getDMs();
-    for (const dm of dms) {
-        const senderId = dm.message_create.sender_id;
-        const sender = await getUserInfo(senderId);
-        const messageData = dm.message_create.message_data;
-        const messageBody = messageData.text;
-        console.log(dm.id);
-        console.log(sender.screen_name);
-        console.log(messageBody);
-    }
-})();
+export default async ({rtmClient, webClient}: SlackInterface) => {
+    const job = async () => {
+        const dms = await getDMs();
+        const newDMs = dms.filter(dm =>
+            moment(dm.created_timestamp, 'x') > moment().subtract(2, 'minutes')
+        ).reverse();
+        for (const dm of newDMs) {
+            const user = await getUserInfo(dm.message_create.sender_id);
+            let text = dm.message_create.message_data.text;
+            for (const url of dm.message_create.message_data.entities.urls) {
+                text = text.replace(url.url, url.expanded_url);
+            }
+            await webClient.chat.postMessage({
+                channel: process.env.CHANNEL_PUBLIC_OFFICE,
+                username: `${user.name} (@${user.screen_name})`
+                    + (user.isProtected ? ' :lock:' : ''),
+                icon_url: user.iconImageUrl,
+                text: dm.message_create.message_data.text,
+                blocks: [
+                    {
+                        type: 'context',
+                        elements: [
+                            {
+                                type: 'plain_text',
+                                text: user.profile,
+                            },
+                        ],
+                    },
+                    {
+                        type: 'section',
+                        text: {
+                            type: 'plain_text',
+                            text: text,
+                        },
+                    },
+                ],
+            });
+        }
+    };
+
+    setInterval(job, 2 * 60 * 1000);
+};
