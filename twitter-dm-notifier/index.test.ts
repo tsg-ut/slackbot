@@ -1,6 +1,13 @@
 import { createSlackPostParams } from './index';
 import moment from 'moment';
 
+beforeAll(() => {
+    process.env.TWITTER_CONSUMER_KEY = 'XXXXXXXXXXXXXXXXXXXXX';
+    process.env.TWITTER_CONSUMER_SECRET = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
+    process.env.TWITTER_ACCESS_TOKEN_KEY = '000000000-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
+    process.env.TWITTER_ACCESS_TOKEN_SECRET = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
+});
+
 describe('twitter-dm-notifier', () => {
     it('Create Slack Blocks for Twitter DMs', async () => {
         const params = await createSlackPostParams(moment().subtract(2, 'minutes'));
