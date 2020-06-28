@@ -64,6 +64,7 @@ export const createSlackPostParams = async (after: Moment) => {
             },
         }];
         const userDescription = (user.isProtected ? ':lock:' : '')
+            + ` ${user.name} `
             + `<https://twitter.com/${user.screen_name}|@${user.screen_name}>`;
         if (isUserUpdated) {
             blocks.unshift(

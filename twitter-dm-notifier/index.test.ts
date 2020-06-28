@@ -21,7 +21,7 @@ describe('twitter-dm-notifier', () => {
                             },
                             {
                                 type: 'mrkdwn',
-                                text: '<https://twitter.com/somebody54|@somebody54>'
+                                text: ' 誰か54 <https://twitter.com/somebody54|@somebody54>'
                                     + '\n'
                                     + '何かが得意 何かが苦手',
                             },
