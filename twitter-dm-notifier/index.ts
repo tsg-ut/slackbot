@@ -105,6 +105,8 @@ export default async ({ webClient }: SlackInterface) => {
                 blocks: param.blocks,
             });
         }
-        after = moment(slackPostParams[slackPostParams.length - 1].time);
+        if (slackPostParams.length > 0) {
+            after = moment(slackPostParams[slackPostParams.length - 1].time, 'x');
+        }
     }, 2 * 60 * 1000);
 };
