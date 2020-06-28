@@ -1,6 +1,6 @@
 import Twitter from 'twitter';
 import dotenv from 'dotenv';
-import moment from 'moment';
+import moment, { Moment } from 'moment';
 import type { MessageCreateEvent, User } from '../lib/twitter';
 import type { SlackInterface } from '../lib/slack';
 dotenv.config();
@@ -40,10 +40,10 @@ const getUserInfo = async (id: string) => {
     } as UserInfo;
 };
 
-export const createSlackPostParams = async () => {
+export const createSlackPostParams = async (after: Moment) => {
     const dms = await getDMs();
     const newDMs = dms.filter(dm =>
-        moment(dm.created_timestamp, 'x') > moment().subtract(2, 'minutes')
+        moment(dm.created_timestamp, 'x') > after
     ).reverse();
     let latestUser: UserInfo | undefined;
     let params = [];
@@ -84,6 +84,7 @@ export const createSlackPostParams = async () => {
             );
         }
         params.push({
+            time: dm.created_timestamp,
             text: dm.message_create.message_data.text,
             blocks,
         });
@@ -92,15 +93,18 @@ export const createSlackPostParams = async () => {
 };
 
 export default async ({ webClient }: SlackInterface) => {
+    let after = moment();
     setInterval(async () => {
-        const slackPostParams = await createSlackPostParams();
+        const slackPostParams = await createSlackPostParams(after);
         for (const param of slackPostParams) {
             await webClient.chat.postMessage({
                 channel: process.env.CHANNEL_PUBLIC_OFFICE,
                 username: 'Direct message',
                 icon_emoji: ':twitter:',
-                ...param,
+                text: param.text,
+                blocks: param.blocks,
             });
         }
+        after = moment(slackPostParams[slackPostParams.length - 1].time);
     }, 2 * 60 * 1000);
 };

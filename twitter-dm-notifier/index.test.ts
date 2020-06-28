@@ -1,9 +1,13 @@
 import { createSlackPostParams } from './index';
+import moment from 'moment';
 
 describe('twitter-dm-notifier', () => {
     it('Create Slack Blocks for Twitter DMs', async () => {
-        const params = await createSlackPostParams();
-        expect(params).toStrictEqual([
+        const params = await createSlackPostParams(moment().subtract(2, 'minutes'));
+        expect(params.map(param => ({
+            text: param.text,
+            blocks: param.blocks,
+        }))).toStrictEqual([
             {
                 text: 'I wanna join TSG',
                 blocks: [
@@ -12,7 +16,7 @@ describe('twitter-dm-notifier', () => {
                         elements: [
                             {
                                 type: 'image',
-                                image_url: 'https://pbs.twimg.com/profile_images/123456789012/XXXXXXXX_normal.jpg',
+                                image_url: 'https://pbs.twimg.com/profile_images/123456789/XXXXXXXX_normal.jpg',
                                 alt_text: "@somebody54's icon",
                             },
                             {
