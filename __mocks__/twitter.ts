@@ -15,7 +15,7 @@ const somebody54: User = {
     favourites_count: 8,
     statuses_count: 9,
     created_at: 'Wed Nov 07 13:12:58 +0000 2012',
-    profile_image_url_https: 'https://pbs.twimg.com/profile_images/123456789012/XXXXXXXX_normal.jpg',
+    profile_image_url_https: 'https://pbs.twimg.com/profile_images/123456789/XXXXXXXX_normal.jpg',
     default_profile: false,
     default_profile_image: false,
 } as User;
