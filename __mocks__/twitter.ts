@@ -56,6 +56,7 @@ class Twitter {
         if (!this.initialized) throw 'Init with token required';
 
         if (path === 'direct_messages/events/list') {
+            // https://developer.twitter.com/en/docs/direct-messages/sending-and-receiving/api-reference/list-events
             // Ignoring count
             return {
                 events: [
