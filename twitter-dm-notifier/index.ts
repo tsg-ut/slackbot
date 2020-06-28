@@ -1,9 +1,7 @@
 import Twitter from 'twitter';
-import dotenv from 'dotenv';
 import moment, { Moment } from 'moment';
 import type { MessageCreateEvent, User } from '../lib/twitter';
 import type { SlackInterface } from '../lib/slack';
-dotenv.config();
 
 const twitterClient = new Twitter({
     consumer_key: process.env.TWITTER_CONSUMER_KEY!,

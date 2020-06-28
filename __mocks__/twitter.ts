@@ -1,5 +1,3 @@
-import twitter from 'twitter';
-import { clone } from 'lodash';
 import type { User, MessageCreateEvent } from '../lib/twitter';
 
 const somebody54: User = {
@@ -43,18 +41,7 @@ const dummyMessageGenerator = (time: string, sender_id: string, text: string) =>
 };
 
 class Twitter {
-    initialized = false;
-
-    constructor(options: twitter.AccessTokenOptions) {
-        this.initialized = Boolean(options.consumer_key
-            && options.consumer_secret
-            && options.access_token_key
-            && options.access_token_secret);
-    }
-
     async get(path: string, options: any) {
-        if (!this.initialized) throw 'Init with token required';
-
         if (path === 'direct_messages/events/list') {
             // https://developer.twitter.com/en/docs/direct-messages/sending-and-receiving/api-reference/list-events
             // Ignoring count
@@ -82,14 +69,11 @@ class Twitter {
             if ((options.user_id || options.screen_name) === undefined) {
                 throw 'Either a id or screen_name is required for this method.';
             }
-            let user = clone(somebody54);
-            if (options.user_id) {
-                user.id_str = options.user_id;
-            }
-            if (options.screen_name) {
-                user.screen_name = options.screen_name;
-            }
-            return user;
+            return {
+                ...somebody54,
+                ...(options.user_id ? { id_str: options.user_id } : {}),
+                ...(options.screen_name ? { screen_name: options.screen_name } : {}),
+            };
         }
     }
 }
