@@ -1,7 +1,7 @@
 // https://developer.twitter.com/en/docs/direct-messages/sending-and-receiving/api-reference/list-events
 interface Event {
     id: string; // Numeric
-    created_timestamp: string; // Numeric
+    created_timestamp: string; // UNIX time in ms
 }
 export interface MessageCreateEvent extends Event {
     type: 'message_create';
@@ -61,12 +61,11 @@ interface Media {
 
 // https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/user-object
 export interface User {
-    id: number; // greater than 53 bits
     id_str: string;
     name: string;
     screen_name: string;
     location?: string;
-    derived: ProfileGeo;
+    derived?: ProfileGeo;
     url?: string;
     description?: string;
     protected: boolean;
@@ -77,12 +76,9 @@ export interface User {
     favourites_count: number;
     statuses_count: number;
     created_at: string;
-    profile_banner_url: string;
     profile_image_url_https: string;
     default_profile: boolean;
     default_profile_image: boolean;
-    withheld_in_countries: string[];
-    withheld_scope: string;
 }
 
 interface ProfileGeo {

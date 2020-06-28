@@ -40,58 +40,67 @@ const getUserInfo = async (id: string) => {
     } as UserInfo;
 };
 
-export default async ({ webClient }: SlackInterface) => {
-    const job = async () => {
-        const dms = await getDMs();
-        const newDMs = dms.filter(dm =>
-            moment(dm.created_timestamp, 'x') > moment().subtract(2, 'minutes')
-        ).reverse();
-        let latestUser: UserInfo | undefined;
-        for (const dm of newDMs) {
-            const userId = dm.message_create.sender_id;
-            const isUserUpdated = latestUser?.id !== userId;
-            const user = isUserUpdated ? await getUserInfo(dm.message_create.sender_id) : latestUser;
-            latestUser = user;
-            let text = dm.message_create.message_data.text;
-            for (const url of dm.message_create.message_data.entities.urls) {
-                text = text.replace(url.url, url.expanded_url);
-            }
-            const blocks: any = [{
-                type: 'section',
-                text: {
-                    type: 'plain_text',
-                    text: text,
+export const createSlackPostParams = async () => {
+    const dms = await getDMs();
+    const newDMs = dms.filter(dm =>
+        moment(dm.created_timestamp, 'x') > moment().subtract(2, 'minutes')
+    ).reverse();
+    let latestUser: UserInfo | undefined;
+    let params = [];
+    for (const dm of newDMs) {
+        const userId = dm.message_create.sender_id;
+        const isUserUpdated = latestUser?.id !== userId;
+        const user = isUserUpdated ? await getUserInfo(dm.message_create.sender_id) : latestUser;
+        latestUser = user;
+        let text = dm.message_create.message_data.text;
+        for (const url of dm.message_create.message_data.entities.urls) {
+            text = text.replace(url.url, url.expanded_url);
+        }
+        const blocks: any = [{
+            type: 'section',
+            text: {
+                type: 'plain_text',
+                text: text,
+            },
+        }];
+        const userDescription = (user.isProtected ? ':lock:' : '')
+            + `<https://twitter.com/${user.screen_name}|@${user.screen_name}>`;
+        if (isUserUpdated) {
+            blocks.unshift(
+                {
+                    type: 'context',
+                    elements: [
+                        {
+                            type: 'image',
+                            image_url: user.iconImageUrl,
+                            alt_text: `@${user.screen_name}'s icon`,
+                        },
+                        {
+                            type: 'mrkdwn',
+                            text: userDescription + '\n' + user.profile,
+                        },
+                    ],
                 },
-            }];
-            const userDescription = (user.isProtected ? ':lock:' : '')
-                + `<https://twitter.com/${user.screen_name}|@${user.screen_name}>`;
-            if (isUserUpdated) {
-                blocks.unshift(
-                    {
-                        type: 'context',
-                        elements: [
-                            {
-                                type: 'image',
-                                image_url: user.iconImageUrl,
-                                alt_text: `@${user.screen_name}'s icon`,
-                            },
-                            {
-                                type: 'mrkdwn',
-                                text: userDescription + '\n' + user.profile,
-                            },
-                        ],
-                    },
-                );
-            }
+            );
+        }
+        params.push({
+            text: dm.message_create.message_data.text,
+            blocks,
+        });
+    }
+    return params;
+};
+
+export default async ({ webClient }: SlackInterface) => {
+    setInterval(async () => {
+        const slackPostParams = await createSlackPostParams();
+        for (const param of slackPostParams) {
             await webClient.chat.postMessage({
                 channel: process.env.CHANNEL_PUBLIC_OFFICE,
-                username: 'Direct message to @tsg_ut',
+                username: 'Direct message',
                 icon_emoji: ':twitter:',
-                text: dm.message_create.message_data.text,
-                blocks,
+                ...param,
             });
         }
-    };
-
-    setInterval(job, 2 * 60 * 1000);
+    }, 2 * 60 * 1000);
 };
