@@ -14,9 +14,9 @@ export interface MessageCreateEvent extends Event {
         message_data: {
             text: string; // DM 本文
             entities: {
-                hashtags: any[]; // 使わんので略
-                symbols: any[]; // 使わんので略
-                user_mentions: any[]; // 使わんので略
+                hashtags: unknown[]; // 使わんので略
+                symbols: unknown[]; // 使わんので略
+                user_mentions: unknown[]; // 使わんので略
                 urls: URL[];
             };
             attachment?: {
