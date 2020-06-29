@@ -75,7 +75,7 @@ const customResponses: CustomResponse[] = [
         outputArray: ['sushi-salmon'],
         reaction: true,
     },
-    ... ['とろ', 'まぐろ', 'うに', 'いくら', 'えび', 'いか', 'たまご'].map((neta): CustomResponse => {
+    ... ['まぐろ', 'たまご', 'えび', 'とろ', 'いくら', 'たい', 'うに', 'いか'].map((neta): CustomResponse => {
         const regexStr = Array.from(neta)
             .map((char) => `(${char}|${romanize(char)}|${katakanize(char)})`)
             .join('');
