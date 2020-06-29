@@ -306,7 +306,7 @@ class Oogiri {
 					},
 					{
 						type: 'mrkdwn',
-						text: `＊BET可能枚数＊ ${game.maxMeanings}枚`,
+						text: `＊BET可能枚数＊ ${game.maxCoins}枚`,
 					},
 				],
 				accessory: {
