@@ -71,11 +71,6 @@ const customResponses: CustomResponse[] = [
         username: '社会人一年生',
     },
     {
-        input: [/(sa|さ|サ)(l|ー)?(mo|も|モ)(n|ん|ン)/i],
-        outputArray: ['sushi-salmon'],
-        reaction: true,
-    },
-    {
         input: [/^:question:$/],
         outputFunction: (input: string[]) => {
             let thres = 0.83;
@@ -88,6 +83,11 @@ const customResponses: CustomResponse[] = [
         },
         icon_emoji: ':kadokawa:',
         username: 'KADOKAWA',
+    },
+    {
+        input: [/(sa|さ|サ)(l|ー)?(mo|も|モ)(n|ん|ン)/i],
+        outputArray: ['sushi-salmon'],
+        reaction: true,
     },
     ... ['とろ', 'まぐろ', 'うに', 'いくら', 'えび', 'いか', 'たまご'].map((neta): CustomResponse => {
         const regexStr = Array.from(neta)
