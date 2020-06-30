@@ -71,20 +71,6 @@ const customResponses: CustomResponse[] = [
         username: '社会人一年生',
     },
     {
-        input: [/^:question:$/],
-        outputFunction: (input: string[]) => {
-            let thres = 0.83;
-            let randv = Math.random();
-            if(randv < thres){
-                return [':exclamation:'];
-            } else {
-                return [':exclamation_w:'];
-            }
-        },
-        icon_emoji: ':kadokawa:',
-        username: 'KADOKAWA',
-    },
-    {
         input: [/(sa|さ|サ)(l|ー)?(mo|も|モ)(n|ん|ン)/i],
         outputArray: ['sushi-salmon'],
         reaction: true,
@@ -98,7 +84,21 @@ const customResponses: CustomResponse[] = [
             outputArray: [`sushi-${romanize(neta)}`],
             reaction: true,
         };
-    }), 
+    }),
+    {
+        input: [/^:question:$/],
+        outputFunction: (input: string[]) => {
+            let thres = 0.83;
+            let randv = Math.random();
+            if(randv < thres){
+                return [':exclamation:'];
+            } else {
+                return [':exclamation_w:'];
+            }
+        },
+        icon_emoji: ':kadokawa:',
+        username: 'KADOKAWA',
+    },
 ];
 
 export default customResponses;
