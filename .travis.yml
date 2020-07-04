@@ -4,6 +4,8 @@ node_js:
 before_install:
   - mkdir -p shogi/boards
   - touch shogi/boards/temp.sqlite3
+before_script:
+  - sed -i 's/:$/;/g' node_modules/Cloudstorm/index.d.ts
 script:
   # Typecheck files not covered by tests
   - tsc --noEmit
