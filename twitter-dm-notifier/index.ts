@@ -103,6 +103,10 @@ const getAfterValue = async () => {
     });
 };
 
+const saveAfterValue = async (after: Moment) => {
+    await fs.writeFile(cacheFilePath, after.format());
+};
+
 export default async ({ webClient }: SlackInterface) => {
     let after = await getAfterValue();
     setInterval(async () => {
@@ -117,7 +121,9 @@ export default async ({ webClient }: SlackInterface) => {
             });
         }
         if (slackPostParams.length > 0) {
-            after = moment(slackPostParams[slackPostParams.length - 1].time, 'x');
+            const latest = moment(slackPostParams[slackPostParams.length - 1].time, 'x');
+            after = latest;
+            await saveAfterValue(latest);
         }
     }, 2 * 60 * 1000);
 };
