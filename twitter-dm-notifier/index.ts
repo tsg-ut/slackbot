@@ -1,5 +1,6 @@
 import Twitter from 'twitter';
 import moment, { Moment } from 'moment';
+import { promises as fs } from 'fs';
 import type { MessageCreateEvent, User } from '../lib/twitter';
 import type { SlackInterface } from '../lib/slack';
 
@@ -91,8 +92,20 @@ export const createSlackPostParams = async (after: Moment) => {
     return params;
 };
 
+const cacheFilePath = 'twitter-dm-notifier/after.txt';
+
+const getAfterValue = async () => {
+    return fs.readFile(cacheFilePath, 'utf-8').then(data => {
+        return moment(data);
+    }).catch(async () => {
+        const now = moment();
+        await fs.writeFile(cacheFilePath, now.format());
+        return now;
+    });
+};
+
 export default async ({ webClient }: SlackInterface) => {
-    let after = moment();
+    let after = await getAfterValue();
     setInterval(async () => {
         const slackPostParams = await createSlackPostParams(after);
         for (const param of slackPostParams) {

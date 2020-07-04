@@ -58,6 +58,7 @@ typings/
 .env
 
 mahjong/current-point.json
+twitter-dm-notifier/after.txt
 .restart-trigger
 __cache__
 __state__
