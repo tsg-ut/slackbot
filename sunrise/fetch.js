@@ -96,14 +96,16 @@ const getEntries = () => (
 );
 
 const getHaiku = async () => {
-	const {data} = await axios.get('http://sendan.kaisya.co.jp/index3.html', {
-		responseType: 'arraybuffer',
+	const {data} = await axios.get('https://www.haijinkyokai.jp/');
+	const $ = cheerio.load(data);
+	$('rt').each((i, element) => {
+		$(element).remove(); // Remove ruby
 	});
-	const $ = cheerio.load(iconv.decode(data, 'sjis'));
-	const text = $('td[rowspan=9][width=600] center font').text();
-	const author = $('td[rowspan=9][width=600] center b').text();
+	const text = $('#poem1').text();
+	const author = $('#author').text();
+	const note = $('#notes > p').text();
 
-	return {text, author};
+	return {text, author, note};
 };
 
 const getWeather = async (location) => {

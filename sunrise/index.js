@@ -377,9 +377,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				}] : []), {
 					color: '#6D4C41',
 					title: '本日の一句',
-					title_link: 'http://sendan.kaisya.co.jp/',
+					title_link: 'https://www.haijinkyokai.jp/',
 					text: haiku.text,
-					footer: haiku.author,
+					footer: haiku.note + '\n' + haiku.author,
 				}],
 			});
 
