@@ -11,8 +11,7 @@ const twitterClient = new Twitter({
     access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET!,
 });
 
-const getDMs = async (options: { after?: string; count: number; } = { count: 50 }) => {
-    const { after, count } = options;
+const getDMs = async ({ after, count }: { after?: string; count: number; } = { count: 50 }) => {
     const response = await twitterClient.get('direct_messages/events/list', { count });
     const events = response.events as MessageCreateEvent[];
     return after ? events.filter(event => event.id > after) : events;
