@@ -62,7 +62,7 @@ export const server = ({webClient: slack}: SlackInterface) => plugin(async (fast
 		}
 
 		const ts = channelInfos.has(data.channel_id) ? channelInfos.get(data.channel_id).ts : undefined;
-		const icon = `https://cdn.discordapp.com/avatars/${data.author.id}/${data.author.avatar}.png?size=128`;
+		const icon = data.author.avatar ? `https://cdn.discordapp.com/avatars/${data.author.id}/${data.author.avatar}.png?size=128` : `https://cdn.discordapp.com/embed/avatars/${data.author.discriminator % 5}.png`;
 
 		const message = await slack.chat.postMessage({
 			...(ts ? {thread_ts: ts, reply_broadcast: true} : {}),
