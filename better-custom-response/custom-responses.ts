@@ -71,6 +71,24 @@ const customResponses: CustomResponse[] = [
         username: '社会人一年生',
     },
     {
+        input: [/^(.+)ぴへ$/],
+        outputFunction: input => [ stripIndent`
+            ${input[1]}ぴへ
+
+            なんかバイブス上げてくの
+            最近ムリムリのムリで
+            ぴえんこえてぱおん🐘💔
+
+            もうまじ退職しか勝たんから
+            明日からはおうちカフェで
+            働くことにしました🐰
+            
+            いままで397❤❤
+            また会おーね👋😃` ],
+        icon_emoji: ':shakaijin-ichinensei:',
+        username: '社会人一年生',
+    },
+    {
         input: [/(sa|さ|サ)(l|ー)?(mo|も|モ)(n|ん|ン)/i],
         outputArray: ['sushi-salmon'],
         reaction: true,
