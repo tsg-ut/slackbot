@@ -1102,9 +1102,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						await postDM('出題者はたほいやに参加できないよ:fearful:');
 						return;
 					}
-					const registerdMeaning = text.slice(4).trim();
+					const registeredMeaning = text.slice(4).trim();
 					const isUpdate = state.meanings.has(message.user);
-					state.meanings.set(message.user, normalizeMeaning(registerdMeaning));
+					state.meanings.set(message.user, normalizeMeaning(registeredMeaning));
 					await setState({meanings: state.meanings});
 
 					await slack.reactions.add({name: '+1', channel: message.channel, timestamp: message.ts});
