@@ -861,8 +861,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					) : text.startsWith('@tahoiya') ? (
 						['tahoiyabot-01', 'model.ckpt-455758']
 					) : (
-								['tahoiyabot-02', 'model.ckpt-600001-ver2']
-							);
+						['tahoiyabot-02', 'model.ckpt-600001-ver2']
+					);
 
 					if (ruby.length > 0 && ruby.length <= 25) {
 						if (state.theme && levenshtein.get(state.theme.ruby, ruby) <= 2) {
