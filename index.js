@@ -62,6 +62,7 @@ const allBots = [
 	'hayaoshi',
 	'twitter-dm-notifier',
 	'tsgctf',
+	'jitsi',
 ];
 
 const argv = yargs
