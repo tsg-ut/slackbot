@@ -1,7 +1,10 @@
 import {times, sample} from 'lodash';
+// @ts-ignore
 import {$pres, $iq, Strophe} from 'strophe.js';
 import xmldom from 'xmldom';
+// @ts-ignore
 import {XMLHttpRequest} from 'xmlhttprequest';
+// @ts-ignore
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 
@@ -25,7 +28,7 @@ export default ({webClient: slack}: SlackInterface) => {
 	global.XMLHttpRequest = XMLHttpRequest;
 
 	const con = new Strophe.Connection('http://localhost:25252/http-bind?room=sandbox');
-	con.connect('meet.tsg.ne.jp', '', (status) => {
+	con.connect('meet.tsg.ne.jp', '', (status: number) => {
 		const connectionTime = Date.now();
 
 		if (status === Strophe.Status.CONNECTED) {
