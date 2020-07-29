@@ -49,12 +49,14 @@ export default ({webClient: slack}: SlackInterface) => {
 								return true;
 							}
 
-							slack.chat.postMessage({
-								channel: process.env.CHANNEL_SANDBOX,
-								username: nick,
-								icon_emoji: ':jitsi:',
-								text: body,
-							});
+							if (body.startsWith('/sandbox')) {
+								slack.chat.postMessage({
+									channel: process.env.CHANNEL_SANDBOX,
+									username: nick,
+									icon_emoji: ':jitsi:',
+									text: body,
+								});
+							}
 						}
 					}
 				} catch (e) {
