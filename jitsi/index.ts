@@ -1,6 +1,6 @@
 import {times, sample} from 'lodash';
 // @ts-ignore
-import {$pres, $iq, Strophe} from 'strophe.js';
+import {$pres, $msg, $iq, Strophe} from 'strophe.js';
 // @ts-ignore
 import xmldom from 'strophe.js/node_modules/xmldom';
 // @ts-ignore
@@ -8,6 +8,7 @@ import {XMLHttpRequest} from 'xmlhttprequest';
 // @ts-ignore
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
+import {getMemberName} from '../lib/slackUtils';
 
 const getTimestamp = (delayEls: HTMLCollectionOf<Element>) => {
 	if (delayEls.length > 0) {
@@ -17,7 +18,7 @@ const getTimestamp = (delayEls: HTMLCollectionOf<Element>) => {
 	return Date.now();
 };
 
-export default ({webClient: slack}: SlackInterface) => {
+export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	// Insane hacks...
 	const parser = new xmldom.DOMParser();
 	const doc = parser.parseFromString('<x/>');
@@ -106,5 +107,26 @@ export default ({webClient: slack}: SlackInterface) => {
 				await con.sendIQ(iq, {timeout: 15000});
 			}, 10000);
 		}
+	});
+
+	rtm.on('message', async (message) => {
+		const {channel, text, user, subtype} = message;
+		if (!text || channel !== process.env.CHANNEL_SANDBOX || subtype !== undefined) {
+			return;
+		}
+
+		if (text.split('\n').length > 3 || text.length > 100) {
+			return;
+		}
+
+		const nickname = await getMemberName(user);
+
+		const msg = $msg({
+			to: 'sandbox@conference.meet.tsg.ne.jp',
+			type: 'groupchat',
+		});
+		msg.c('body', text).up();
+		msg.c('nick', {xmlns: 'http://jabber.org/protocol/nick'}).t(nickname).up().up();
+		con.send(msg);
 	});
 };
