@@ -46,7 +46,7 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 							const nick = nickEls.item(0).firstChild.nodeValue;
 							const stamp = getTimestamp(delayEls);
 
-							if (stamp < connectionTime) {
+							if (stamp < connectionTime || nick.startsWith('[slack]')) {
 								return true;
 							}
 
@@ -126,7 +126,7 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 			type: 'groupchat',
 		});
 		msg.c('body', text).up();
-		msg.c('nick', {xmlns: 'http://jabber.org/protocol/nick'}).t(nickname).up().up();
+		msg.c('nick', {xmlns: 'http://jabber.org/protocol/nick'}).t(`[slack] ${nickname}`).up().up();
 		con.send(msg);
 	});
 };
