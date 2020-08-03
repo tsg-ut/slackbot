@@ -18,6 +18,8 @@ const getTimestamp = (delayEls: HTMLCollectionOf<Element>) => {
 	return Date.now();
 };
 
+const members: Map<string, {nick: string, avatarId: string}> = new Map();
+
 export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	// Insane hacks...
 	const parser = new xmldom.DOMParser();
@@ -56,6 +58,49 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 								icon_emoji: ':jitsi:',
 								text: body,
 							});
+						}
+					}
+				} catch (e) {
+					logger.error(e);
+				}
+
+				try {
+					if (data.tagName === 'presence') {
+						const itemEls = data.getElementsByTagName('item');
+						const nickEls = data.getElementsByTagName('nick');
+						const avatarIdEls = data.getElementsByTagName('avatar-id');
+						const type = data.getAttribute('type');
+						const roomId = data.getAttribute('from').split('@')[0];
+
+						if (type === '' && itemEls.length > 0 && nickEls.length > 0) {
+							const nick = nickEls.item(0).firstChild.nodeValue;
+							const avatarId = avatarIdEls.item(0).firstChild.nodeValue;
+							const jid = itemEls.item(0).getAttribute('jid');
+
+							if (!members.has(jid)) {
+								members.set(jid, {nick, avatarId});
+								slack.chat.postMessage({
+									channel: process.env.CHANNEL_SANDBOX,
+									username: 'jitsi',
+									icon_emoji: ':jitsi-join:',
+									text: `＊${nick}＊が<https://meet.tsg.ne.jp/${roomId}|${roomId}>にログインしました\n現在のアクティブ人数 ${members.size}人`,
+								});
+							}
+						}
+
+						if (type === 'unavailable' && itemEls.length > 0) {
+							const jid = itemEls.item(0).getAttribute('jid');
+							if (members.has(jid)) {
+								const {nick} = members.get(jid);
+								members.delete(jid);
+
+								slack.chat.postMessage({
+									channel: process.env.CHANNEL_SANDBOX,
+									username: 'jitsi',
+									icon_emoji: ':jitsi-leave:',
+									text: `＊${nick}＊が<https://meet.tsg.ne.jp/${roomId}|${roomId}>からログアウトしました\n現在のアクティブ人数 ${members.size}人`,
+								});
+							}
 						}
 					}
 				} catch (e) {
@@ -110,8 +155,8 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	});
 
 	rtm.on('message', async (message) => {
-		const {channel, text, user, subtype} = message;
-		if (!text || channel !== process.env.CHANNEL_SANDBOX || subtype !== undefined) {
+		const {channel, text, user, subtype, thread_ts} = message;
+		if (!text || channel !== process.env.CHANNEL_SANDBOX || subtype !== undefined || thread_ts !== undefined) {
 			return;
 		}
 
