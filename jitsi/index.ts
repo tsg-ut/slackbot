@@ -1,8 +1,7 @@
 import {times, sample} from 'lodash';
 // @ts-ignore
 import {$pres, $msg, $iq, Strophe} from 'strophe.js';
-// @ts-ignore
-import xmldom from 'strophe.js/node_modules/xmldom';
+import xmldom from 'xmldom';
 // @ts-ignore
 import {XMLHttpRequest} from 'xmlhttprequest';
 // @ts-ignore
