@@ -27,9 +27,9 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	const Element = doc.documentElement.constructor;
 	Element.prototype.querySelector = () => null as null;
 	// @ts-ignore
-	global.window = {XMLHttpRequest};
-	// @ts-ignore
 	global.XMLHttpRequest = XMLHttpRequest;
+	// @ts-ignore
+	global.window = global;
 
 	const con = new Strophe.Connection('http://localhost:25252/http-bind?room=sandbox');
 	con.connect('meet.tsg.ne.jp', '', (status: number) => {
