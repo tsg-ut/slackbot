@@ -1,13 +1,11 @@
 /* eslint-env node, jest */
 
-jest.unmock('fs');
-const fs = require('fs');
+const fs = jest.genMockFromModule('fs');
 const Path = require('path');
 const {PassThrough} = require('stream');
 
 fs.virtualFiles = {};
 
-fs._readFile = fs.readFile;
 fs.readFile = jest.fn((...args) => {
 	const [path, callback] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
@@ -20,7 +18,6 @@ fs.readFile = jest.fn((...args) => {
 	}
 });
 
-fs._readFileSync = fs.readFileSync;
 fs.readFileSync = jest.fn((...args) => {
 	const [path] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
@@ -32,7 +29,6 @@ fs.readFileSync = jest.fn((...args) => {
 	}
 });
 
-fs._access = fs.access;
 fs.access = jest.fn((...args) => {
 	const [path, , callback] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
@@ -73,7 +69,6 @@ fs.createReadStream = jest.fn((...args) => {
 	}
 });
 
-fs._writeFile = fs.writeFile;
 fs.writeFile = jest.fn((file, data, ...rest) => {
 	let options, callback;
 	if (rest.length === 1) {
