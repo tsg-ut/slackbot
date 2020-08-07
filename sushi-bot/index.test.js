@@ -5,10 +5,25 @@ jest.mock('moment');
 const moment = require('moment');
 const sushi = require('./index.js');
 const Slack = require('../lib/slackMock.js');
+const fs = require('fs').promises;
 
 let slack = null;
 
-beforeEach(() => {
+beforeEach(async () => {
+	await Promise.all(
+		['sushi', 'suspend', 'dailyAsa', 'asa'].map(async (counter) => {
+			const path = `sushi-bot/${counter}.json`;
+			try {
+				await fs.unlink(path);
+			} catch (err) {
+				if (!err.message.startsWith('ENOENT')) {
+					console.log(err);
+					throw err;
+				}
+			}
+		})
+	);
+
 	slack = new Slack();
 	sushi(slack);
 
@@ -231,6 +246,7 @@ it('reacts to "起床ランキング 確認', () => new Promise((resolve) => {
 		expect(text).toContain('現在の順位は');
 		resolve();
 	});
+
 
 	(async () => {
 		const promise = new Promise(resolve => {
