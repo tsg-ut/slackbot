@@ -146,6 +146,19 @@ module.exports = (clients) => {
 					currentRank++;
 				}
 			}
+
+			if (tokens[0] === '起床ランキング' && tokens[1] === '確認') {
+				const total = new Map(weeklyAsaCounter.entries());
+				dailyAsaCounter.entries().map(([user, score]) => {
+					if (!total.has(user)) {
+						total.set(user, 0);
+					}
+					total.set(user, score + total.get(user));
+				});
+				const scores = Array.from(total.entries()).sort(([u1, s1], [u2, s2]) => s2 - s1);
+				const index = scores.findIndex(([u, _]) => u === user);
+				postDM(`あなたの起床点数は${scores[index][1]}点、現在の順位は${index + 1}位`);
+			}
 		}
 
 		{
