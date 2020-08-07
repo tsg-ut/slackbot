@@ -73,4 +73,18 @@ fs.createReadStream = jest.fn((...args) => {
 	}
 });
 
+fs._writeFile = fs.writeFile;
+fs.writeFile = jest.fn((file, data, ...rest) => {
+	let options, callback;
+	if (rest.length === 1) {
+		callback = rest[0];
+	}
+	else {
+		[options, callback] = rest;
+	}
+	const fullPath = Path.resolve(process.cwd(), file);
+	fs.virtualFiles[fullPath] = data;
+	callback(null);
+});
+
 module.exports = fs;

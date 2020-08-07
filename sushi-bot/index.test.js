@@ -1,29 +1,19 @@
 /* eslint-env node, jest */
 jest.mock('../achievements');
 jest.mock('moment');
+jest.mock('fs');
 
 const moment = require('moment');
 const sushi = require('./index.js');
 const Slack = require('../lib/slackMock.js');
-const fs = require('fs').promises;
+const fs = require('fs');
+
+jest.unmock('fs');
 
 let slack = null;
 
 beforeEach(async () => {
-	await Promise.all(
-		['sushi', 'suspend', 'dailyAsa', 'asa'].map(async (counter) => {
-			const path = `sushi-bot/${counter}.json`;
-			try {
-				await fs.unlink(path);
-			} catch (err) {
-				if (!err.message.startsWith('ENOENT')) {
-					console.log(err);
-					throw err;
-				}
-			}
-		})
-	);
-
+	fs.virtualFiles = {};
 	slack = new Slack();
 	sushi(slack);
 
