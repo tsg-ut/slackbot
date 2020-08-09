@@ -74,7 +74,7 @@ fs.writeFile = jest.fn((file, data, ...rest) => {
 		callback = rest[0];
 	}
 	else {
-		[options, callback] = rest;
+		[, callback] = rest;
 	}
 	const fullPath = Path.resolve(process.cwd(), file);
 	fs.virtualFiles[fullPath] = data;
