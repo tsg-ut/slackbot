@@ -13,6 +13,7 @@ const fastify = require('fastify')({
 });
 const logger = require('./lib/logger.js');
 const yargs = require('yargs');
+const _ = require('lodash');
 
 fastify.register(require('fastify-formbody'));
 
@@ -125,7 +126,20 @@ rtmClient.on('authenticated', (data) => {
 	if (!firstLogin) {
 		webClient.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
-			text: '再接続しました',
+			username: 'tsgbot (reconnected)',
+			text: _.sample([
+				':yosasou:',
+				':naruhodo:',
+				':seyana:',
+				':ha:',
+				':honmaka:',
+				':sorehasou:',
+				':sorehauso:',
+				':wakari:',
+				':maxa:',
+				':iihanashi:',
+				':waiwai:',
+			]),
 		});
 	}
 	firstLogin = false;
