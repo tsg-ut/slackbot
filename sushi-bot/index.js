@@ -288,6 +288,12 @@ module.exports = (clients) => {
 						best_name = name;
 					}
 				}
+				if (best_score > 0) {
+					unlock(user, 'asa');
+				}
+				if (best_score > 80) {
+					unlock(user, 'asa-over80');
+				}
 				slack.reactions.add({name: best_name, channel, timestamp});
 				dailyAsaCounter.max(user, best_score);
 			}
@@ -360,6 +366,9 @@ module.exports = (clients) => {
 						return null;
 					}
 					const name = member.profile.display_name || member.name;
+					if (index === 0) {
+						unlock(user, 'asa-master');
+					}
 
 					return {
 						author_name: `${index + 1}位: ${name} (${count}点)`,

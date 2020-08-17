@@ -763,6 +763,27 @@ const achievements: Achievement[] = [
 		condition: '週間凍結ランキングで1位を獲得する',
 		category: 'sushi-bot',
 	},
+	{
+		id: 'asa',
+		difficulty: 'easy',
+		title: '新しい朝が来た',
+		condition: 'あさ宣言で正の得点を獲得する',
+		category: 'sushi-bot',
+	},
+	{
+		id: 'asa-over80',
+		difficulty: 'medium',
+		title: '生活リズムゲームノルマクリア',
+		condition: 'あさ宣言で80点以上の得点を獲得する',
+		category: 'sushi-bot',
+	},
+	{
+		id: 'asa-master',
+		difficulty: 'hard',
+		title: '布団時代の終焉を告げる者',
+		condition: '週間起床ランキングで1位を獲得する',
+		category: 'sushi-bot',
+	},
 
 	// dajare
 
