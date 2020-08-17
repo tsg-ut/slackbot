@@ -15,7 +15,7 @@ const render = async (board: string[], {color = 'black'}: {color: string}) => {
 		).toSVG(2).replace('<path', `<path fill="${color}"`)
 	)).join('');
 	const svg = Buffer.from(`<svg width="400" height="400">${fontPath}</svg>`);
-	const png = await sharp(svg,{density:32}).png().toBuffer();
+	const png = await sharp(svg).png().toBuffer();
 	return png;
 };
 
@@ -33,6 +33,6 @@ export const renderCrossword = async (board: {letter: string, color: string}[], 
 	)).join('');
 	const cells = board.map((cell, index) => (cell === null || cell.letter === null) ? {x: 0, y: 0} : {x: index % 6 + 1, y: Math.floor(index / 6) + 1});
 	const svg = Buffer.from(`<svg width="${max(cells.map(({x}) => x)) * 100 + 30}" height="${max(cells.map(({y}) => y)) * 100 + 30}">${fontPath}</svg>`);
-	const png = await sharp(path.join(__dirname, `crossword-board-${boardIndex + 1}.png`)).composite([{input: svg, top: 0, left: 0, density: 32}]).png().toBuffer();
+	const png = await sharp(path.join(__dirname, `crossword-board-${boardIndex + 1}.png`)).composite([{input: svg, top: 0, left: 0}]).png().toBuffer();
 	return png;
 };
