@@ -291,7 +291,7 @@ module.exports = (clients) => {
 				if (best_score > 0) {
 					unlock(user, 'asa');
 				}
-				if (best_score > 80) {
+				if (best_score >= 80) {
 					unlock(user, 'asa-over80');
 				}
 				slack.reactions.add({name: best_name, channel, timestamp});
