@@ -103,6 +103,20 @@ const customResponses: CustomResponse[] = [
             reaction: true,
         };
     }),
+    {
+        input: [/^:question:$/],
+        outputFunction: (input: string[]) => {
+            let thres = 0.83;
+            let randv = Math.random();
+            if(randv < thres){
+                return [':exclamation:'];
+            } else {
+                return [':exclamation_w:'];
+            }
+        },
+        icon_emoji: ':kadokawa:',
+        username: 'KADOKAWA',
+    },
 ];
 
 export default customResponses;
