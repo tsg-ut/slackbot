@@ -41,7 +41,7 @@ const getUserInfo = async (id: string) => {
 export const createSlackPostParams = async (after: Moment) => {
     const dms = await getDMs();
     const newDMs = dms.filter(dm =>
-        moment(dm.created_timestamp, 'x') > after
+        moment(dm.created_timestamp, 'x').unix() > after.unix()
     ).reverse();
     let latestUser: UserInfo | undefined;
     let params = [];
@@ -57,7 +57,7 @@ export const createSlackPostParams = async (after: Moment) => {
         const blocks: any = [{
             type: 'section',
             text: {
-                type: 'plain_text',
+                type: 'mrkdwn',
                 text: text,
             },
         }];
