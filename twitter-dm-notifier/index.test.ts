@@ -30,7 +30,7 @@ describe('twitter-dm-notifier', () => {
                     {
                         type: 'section',
                         text: {
-                            type: 'plain_text',
+                            type: 'mrkdwn',
                             text: 'I wanna join TSG',
                         },
                     },
@@ -42,7 +42,7 @@ describe('twitter-dm-notifier', () => {
                     {
                         type: 'section',
                         text: {
-                            type: 'plain_text',
+                            type: 'mrkdwn',
                             text: 'What should I do?',
                         },
                     },
