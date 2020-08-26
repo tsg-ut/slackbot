@@ -1,3 +1,4 @@
+import type {WebClient} from '@slack/client';
 import {times, sample} from 'lodash';
 // @ts-ignore
 import {$pres, $msg, $iq, Strophe} from 'strophe.js';
@@ -19,14 +20,8 @@ const getTimestamp = (delayEls: HTMLCollectionOf<Element>) => {
 
 const members: Map<string, {nick: string, avatarId: string}> = new Map();
 
-export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
-	// Insane hacks...
-	const parser = new xmldom.DOMParser();
-	const doc = parser.parseFromString('<x/>');
-	const Element = doc.documentElement.constructor;
-	Element.prototype.querySelector = () => null as null;
-	// @ts-ignore
-	global.XMLHttpRequest = XMLHttpRequest;
+const connect = (slack: WebClient) => {
+	let intervalId: NodeJS.Timer = null;
 
 	const con = new Strophe.Connection('http://localhost:25252/http-bind?room=sandbox');
 	con.connect('meet.tsg.ne.jp', '', (status: number) => {
@@ -140,7 +135,7 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 			pres.up();
 			con.send(pres);
 
-			setInterval(async () => {
+			intervalId = setInterval(async () => {
 				const iq = $iq({
 					type: 'get',
 					to: 'meet.tsg.ne.jp',
@@ -150,6 +145,36 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 			}, 10000);
 		}
 	});
+
+	const disconnect = () => {
+		clearInterval(intervalId);
+		con.disconnect('relaunch');
+	};
+
+	return {
+		connection: con,
+		disconnect,
+	};
+};
+
+export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
+	// Insane hacks...
+	const parser = new xmldom.DOMParser();
+	const doc = parser.parseFromString('<x/>');
+	const Element = doc.documentElement.constructor;
+	Element.prototype.querySelector = () => null as null;
+	// @ts-ignore
+	global.XMLHttpRequest = XMLHttpRequest;
+
+	let {connection, disconnect} = connect(slack);
+	setInterval(() => {
+		disconnect();
+		setTimeout(() => {
+			const config = connect(slack);
+			connection = config.connection;
+			disconnect = config.disconnect;
+		}, 5000);
+	}, 30 * 60 * 1000);
 
 	rtm.on('message', async (message) => {
 		const {channel, text, user, subtype, thread_ts} = message;
@@ -169,6 +194,6 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 		});
 		msg.c('body', `${nickname}: ${text}`).up();
 		msg.c('nick', {xmlns: 'http://jabber.org/protocol/nick'}).t('slackbot').up().up();
-		con.send(msg);
+		connection.send(msg);
 	});
 };
