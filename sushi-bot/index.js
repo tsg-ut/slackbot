@@ -278,6 +278,7 @@ module.exports = (clients) => {
 					'80':   80,
 					'95':   95,
 					'100': 100,
+					'108': 108,
 				};
 				let best_score = 0;
 				let best_name = "0ten";
@@ -368,6 +369,9 @@ module.exports = (clients) => {
 					const name = member.profile.display_name || member.name;
 					if (index === 0) {
 						unlock(user, 'asa-master');
+					}
+					if (count >= 720) {
+						unlock(user, 'asa-week-720');
 					}
 
 					return {
