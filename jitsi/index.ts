@@ -69,7 +69,7 @@ const connect = (slack: WebClient) => {
 							const avatarId = avatarIdEls.item(0).firstChild.nodeValue;
 							const jid = itemEls.item(0).getAttribute('jid');
 
-							if (!members.has(jid)) {
+							if (!members.has(jid) && nick !== 'slackbot') {
 								members.set(jid, {nick, avatarId});
 								slack.chat.postMessage({
 									channel: process.env.CHANNEL_SANDBOX,
