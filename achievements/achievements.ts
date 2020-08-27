@@ -718,6 +718,15 @@ const achievements: Achievement[] = [
 		reaction: 'masaka-sakasama',
 		value: 5,
 	},
+	{
+		id: 'reaction-masaka-sakasama-5',
+		difficulty: 'hard',
+		title: '実績を解除したいという煩悩',
+		condition: '1つのメッセージに対し5人以上から:108:リアクションをもらう',
+		category: 'reactions',
+		reaction: '108',
+		value: 5,
+	},
 
 	// sushi-bot
 
@@ -782,6 +791,13 @@ const achievements: Achievement[] = [
 		difficulty: 'hard',
 		title: '布団時代の終焉を告げる者',
 		condition: '週間起床ランキングで1位を獲得する',
+		category: 'sushi-bot',
+	},
+	{
+		id: 'asa-week-720',
+		difficulty: 'professional',
+		title: '生活リズム・パーフェクトゲーム',
+		condition: '週間起床ランキングで720点以上を獲得する',
 		category: 'sushi-bot',
 	},
 
