@@ -367,7 +367,7 @@ module.exports = (clients) => {
 						return null;
 					}
 					const name = member.profile.display_name || member.name;
-					if (index === 0) {
+					if (index === 0 && weeklyAsaCounter.entries().filter(([, c]) => c === count).length === 1) {
 						unlock(user, 'asa-master');
 					}
 					if (count >= 720) {

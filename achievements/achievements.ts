@@ -790,7 +790,7 @@ const achievements: Achievement[] = [
 		id: 'asa-master',
 		difficulty: 'hard',
 		title: '布団時代の終焉を告げる者',
-		condition: '週間起床ランキングで1位を獲得する',
+		condition: '週間起床ランキングで単独1位を獲得する',
 		category: 'sushi-bot',
 	},
 	{
