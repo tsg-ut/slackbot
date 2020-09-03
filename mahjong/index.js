@@ -1,14 +1,15 @@
-const {stripIndent} = require('common-tags');
+const assert = require('assert');
 const fs = require('fs');
+const path = require('path');
 const qs = require('querystring');
 const {promisify} = require('util');
+const {stripIndent} = require('common-tags');
 const {chunk, shuffle} = require('lodash');
-const path = require('path');
-const assert = require('assert');
 const {unlock} = require('../achievements');
 const {blockDeploy} = require('../deploy/index.ts');
 
 const calculator = require('./calculator.js');
+
 const savedState = (() => {
 	try {
 		// eslint-disable-next-line global-require
@@ -307,6 +308,9 @@ module.exports = (clients) => {
 
 		if (message.thread_ts && state.thread === message.thread_ts) {
 			if (['カン', 'ポン', 'チー', 'ロン'].includes(text)) {
+				if (text === 'カン') {
+					await unlock(message.user, 'mahjong-invalid-kan');
+				}
 				perdon();
 				return;
 			}

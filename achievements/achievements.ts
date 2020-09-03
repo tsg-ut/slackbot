@@ -1078,6 +1078,13 @@ const achievements: Achievement[] = [
 		condition: '麻雀BOTの四麻モードで、6巡以内に一四索の両面待ちで立直を行った上で和了する',
 		category: 'mahjong',
 	},
+	{
+		id: 'mahjong-invalid-kan',
+		difficulty: 'easy',
+		title: 'その嶺上取る必要なし',
+		condition: '麻雀BOTでカンを試みる',
+		category: 'mahjong',
+	},
 
 	// shogi
 
