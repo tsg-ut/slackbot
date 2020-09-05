@@ -20,10 +20,10 @@ const getTimestamp = (delayEls: HTMLCollectionOf<Element>) => {
 
 const members: Map<string, {nick: string, avatarId: string}> = new Map();
 
-const connect = (slack: WebClient, jitsiChannel: string) => {
+const connect = (slack: WebClient) => {
 	let intervalId: NodeJS.Timer = null;
 
-	const con = new Strophe.Connection(`http://localhost:25252/http-bind?room=${jitsiChannel}$`);
+	const con = new Strophe.Connection('http://localhost:25252/http-bind?room=sandbox');
 	con.connect('meet.tsg.ne.jp', '', (status: number) => {
 		const connectionTime = Date.now();
 
@@ -107,7 +107,7 @@ const connect = (slack: WebClient, jitsiChannel: string) => {
 			const uid = times(8, () => sample(Array.from('0123456789abcdef'))).join('');
 
 			const pres = $pres({
-				to: `${jitsiChannel}@conference.meet.tsg.ne.jp/${uid}`,
+				to: `sandbox@conference.meet.tsg.ne.jp/${uid}`,
 			});
 			pres.c('x', {
 				xmlns: 'http://jabber.org/protocol/muc',
@@ -166,18 +166,16 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	// @ts-ignore
 	global.XMLHttpRequest = XMLHttpRequest;
 
-	let {connection: con_sandbox, disconnect} = connect(slack, 'sandbox');
+	let {connection, disconnect} = connect(slack);
 	setInterval(() => {
 		disconnect();
 		setTimeout(() => {
-			const config = connect(slack, 'sandbox');
-			con_sandbox = config.connection;
+			const config = connect(slack);
+			connection = config.connection;
 			disconnect = config.disconnect;
 		}, 5000);
 	}, 30 * 60 * 1000);
 
-
-	// from slack-sandbox to jitsi-sandbox post
 	rtm.on('message', async (message) => {
 		const {channel, text, user, subtype, thread_ts} = message;
 		if (!text || channel !== process.env.CHANNEL_SANDBOX || subtype !== undefined || thread_ts !== undefined) {
@@ -196,6 +194,6 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 		});
 		msg.c('body', `${nickname}: ${text}`).up();
 		msg.c('nick', {xmlns: 'http://jabber.org/protocol/nick'}).t('slackbot').up().up();
-		con_sandbox.send(msg);
+		connection.send(msg);
 	});
 };
