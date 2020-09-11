@@ -174,8 +174,8 @@ module.exports = (clients) => {
 			postMessage(':ha:');
 		};
 
-		const perdon_broadcast = () => {
-			postMessage(':ha:', {mode: 'initial'});
+		const perdonBroadcast = () => {
+			postMessage(':ha:', {mode: 'broadcast'});
 		};
 
 		const generate王牌 = (裏ドラ表示牌s = []) => {
@@ -235,7 +235,7 @@ module.exports = (clients) => {
 
 		if (text === '配牌') {
 			if (state.phase !== 'waiting') {
-				perdon_broadcast();
+				perdonBroadcast();
 				return;
 			}
 
@@ -273,7 +273,7 @@ module.exports = (clients) => {
 
 		if (text === 'サンマ') {
 			if (state.phase !== 'waiting') {
-				perdon_broadcast();
+				perdonBroadcast();
 				return;
 			}
 
