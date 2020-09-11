@@ -175,6 +175,10 @@ module.exports = (clients) => {
 			postMessage(':ha:');
 		};
 
+		const perdonBroadcast = () => {
+			postMessage(':ha:', {mode: 'broadcast'});
+		};
+
 		const generate王牌 = (裏ドラ表示牌s = []) => {
 			const 嶺上牌s = [
 				...Array((state.mode === '四人' ? 4 : 8) - state.嶺上牌Count).fill('\u2003'),
@@ -232,7 +236,7 @@ module.exports = (clients) => {
 
 		if (text === '配牌') {
 			if (state.phase !== 'waiting') {
-				perdon();
+				perdonBroadcast();
 				return;
 			}
 
@@ -270,7 +274,7 @@ module.exports = (clients) => {
 
 		if (text === 'サンマ') {
 			if (state.phase !== 'waiting') {
-				perdon();
+				perdonBroadcast();
 				return;
 			}
 
