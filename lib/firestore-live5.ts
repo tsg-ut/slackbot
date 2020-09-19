@@ -6,7 +6,7 @@ firebase.initializeApp({
     // @ts-ignore
     credential: firebase.credential.cert(serviceAccount),
     databaseURL: process.env.FIREBASE_ENDPOINT_LIVE5,
-});
+}, 'tsg-live-5');
 
 const db = firebase.firestore();
 
