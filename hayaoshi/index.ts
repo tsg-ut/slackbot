@@ -97,7 +97,7 @@ const getHardQuiz = async () => {
 
 	// eslint-disable-next-line prefer-destructuring
 	quiz.question = quiz.question.split('<br>')[0];
-	quiz.answer = quiz.answer.replace(/(?:\(.+\)|（.+）|\[.+\]|【.+】)/g, '').trim();
+	quiz.answer = quiz.answer.replace(/(?:\(.+?\)|（.+?）|\[.+?\]|【.+?】)/g, '').trim();
 
 	return quiz;
 };
