@@ -1,5 +1,5 @@
 import type {SlackInterface} from '../lib/slack';
-import db from '../lib/firestore';
+import db from '../lib/firestore-live5';
 import {getMemberName} from '../lib/slackUtils';
 import plugin from 'fastify-plugin';
 
@@ -17,12 +17,12 @@ export const server = ({webClient: slack}: SlackInterface) => plugin(async (fast
 		}
 
 		let teamId = null;
-		if (req.body.channel_name === 'live-players-hongo') {
+		if (req.body.channel_name === 'live-players-kanto') {
 			teamId = 0;
-		} else if (req.body.channel_name === 'live-players-komaba') {
+		} else if (req.body.channel_name === 'live-players-kansai') {
 			teamId = 1;
 		} else {
-			return '#live-players-hongo もしくは #live-players-komaba チャンネルから実行してください';
+			return '#live-players-kanto もしくは #live-players-kansai チャンネルから実行してください';
 		}
 
 		const name = await getMemberName(req.body.user_id);
@@ -35,7 +35,7 @@ export const server = ({webClient: slack}: SlackInterface) => plugin(async (fast
 			team: teamId,
 		});
 
-		const emoji = teamId === 0 ? ':red_circle:' : ':large_blue_circle:';
+		const emoji = teamId === 0 ? ':large_blue_circle:' : ':red_circle:';
 
 		await slack.chat.postMessage({
 			channel: req.body.channel_id,
