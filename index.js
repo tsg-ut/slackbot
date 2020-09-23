@@ -12,7 +12,6 @@ const fastify = require('fastify')({
 	pluginTimeout: 50000,
 });
 const logger = require('./lib/logger.js');
-const _ = require('lodash');
 const yargs = require('yargs');
 
 fastify.register(require('fastify-formbody'));
@@ -130,7 +129,7 @@ rtmClient.on('authenticated', (data) => {
 		let comboStr = '';
 		if (now - lastLogin <= 2 * 60 * 1000) {
 			combos++;
-			comboStr = `(${combos}コンボ${_.repeat('!', combos)})`
+			comboStr = `(${combos}コンボ${'!'.repeat(combos)})`
 		}
 		else {
 			combos = 1;
