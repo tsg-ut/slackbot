@@ -127,7 +127,7 @@ rtmClient.on('authenticated', (data) => {
 	const now = new Date();
 	if (!firstLogin) {
 		let comboStr = '';
-		if (now - lastLogin <= 2 * 60 * 1000) {
+		if (now - lastLogin <= 60 * 1000) {
 			combos++;
 			comboStr = `(${combos}コンボ${'!'.repeat(combos)})`
 		}
