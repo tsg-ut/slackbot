@@ -12,6 +12,7 @@ const fastify = require('fastify')({
 	pluginTimeout: 50000,
 });
 const logger = require('./lib/logger.js');
+const _ = require('lodash');
 const yargs = require('yargs');
 
 fastify.register(require('fastify-formbody'));
@@ -120,13 +121,25 @@ fastify.listen(process.env.PORT || 21864, (error, address) => {
 });
 
 let firstLogin = true;
+let lastLogin = null;
+let combos = 1;
 rtmClient.on('authenticated', (data) => {
 	logger.info(`Logged in as ${data.self.name} of team ${data.team.name}`);
+	const now = new Date();
 	if (!firstLogin) {
+		let comboStr = '';
+		if (now - lastLogin <= 2 * 60 * 1000) {
+			combos++;
+			comboStr = `(${combos}コンボ${_.repeat('!', combos)})`
+		}
+		else {
+			combos = 1;
+		}
 		webClient.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
-			text: '再接続しました',
+			text: `再接続しました ${comboStr}`,
 		});
 	}
 	firstLogin = false;
+	lastLogin = now;
 });
