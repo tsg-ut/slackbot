@@ -120,13 +120,7 @@ const customResponses: CustomResponse[] = [
 	{
 		input: [/デニム/],
 		outputFunction: (input: string[]) => {
-			let lane = [1,2,3,4,5,6,7];
-			for(let i = 6; i > 0; i--){
-				let r = Math.floor(Math.random() * (i + 1));
-				let tmp = lane[i];
-				lane[i] = lane[r];
-				lane[r] = tmp;
-			}
+			const lane = shuffle([1, 2, 3, 4, 5, 6, 7]);
 			let white = "|　　|";
 			let black = "|　　|";
 			for(let i = 0; i < 7; i++){
