@@ -118,6 +118,18 @@ const customResponses: CustomResponse[] = [
         icon_emoji: ':kadokawa:',
         username: 'KADOKAWA',
     },
+    {
+        input: [/デニム/],
+        outputFunction: (input: string[]) => {
+            const lane = shuffle([1, 2, 3, 4, 5, 6, 7]);
+            const white = "|　　|" + lane.map((i: number) => (i % 2 === 1) ? "＿|" : "　|").join("");
+            const black = "|　　|" + lane.map((i: number) => (i % 2 === 0) ? "＿|" : "　|").join("");
+            const resultString = `${black}\n${white}\n`.repeat(4);
+            return [resultString];
+        },
+        icon_emoji: ":iidx-muri-1p:",
+        username: "ガチ割れ行くぜ！",
+    },
 ];
 
 export default customResponses;
