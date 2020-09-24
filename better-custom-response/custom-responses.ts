@@ -117,6 +117,34 @@ const customResponses: CustomResponse[] = [
         icon_emoji: ':kadokawa:',
         username: 'KADOKAWA',
     },
+	{
+		input: [/デニム/],
+		outputFunction: (input: string[]) => {
+			let lane = [1,2,3,4,5,6,7];
+			for(let i = 6; i > 0; i--){
+				let r = Math.floor(Math.random() * (i + 1));
+				let tmp = lane[i];
+				lane[i] = lane[r];
+				lane[r] = tmp;
+			}
+			let white = "|　　|";
+			let black = "|　　|";
+			for(let i = 0; i < 7; i++){
+				white += ((lane[i] % 2 == 1) ? "＿|" : "　|");
+				black += ((lane[i] % 2 == 0) ? "＿|" : "　|");
+			}
+			let resultString = "";
+			for(let a = 0; a < 4; a++){
+				resultString += black;
+				resultString += "\n";
+				resultString += white;
+				resultString += "\n";
+			}
+			return [resultString];
+		},
+		icon_emoji: ":iidx-muri-1p:",
+		username: "ガチ割れ行くぜ！",
+	},
 ];
 
 export default customResponses;
