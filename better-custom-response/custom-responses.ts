@@ -133,13 +133,7 @@ const customResponses: CustomResponse[] = [
 				white += ((lane[i] % 2 == 1) ? "＿|" : "　|");
 				black += ((lane[i] % 2 == 0) ? "＿|" : "　|");
 			}
-			let resultString = "";
-			for(let a = 0; a < 4; a++){
-				resultString += black;
-				resultString += "\n";
-				resultString += white;
-				resultString += "\n";
-			}
+			const resultString = `${black}\n${white}\n`.repeat(4);
 			return [resultString];
 		},
 		icon_emoji: ":iidx-muri-1p:",
