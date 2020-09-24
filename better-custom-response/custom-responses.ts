@@ -1,6 +1,7 @@
 import { stripIndent } from 'common-tags';
 // @ts-ignore
 import { romanize, katakanize } from 'japanese';
+import { shuffle } from 'lodash';
 
 interface CustomResponse {
     input: RegExp[],
