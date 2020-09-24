@@ -122,12 +122,8 @@ const customResponses: CustomResponse[] = [
         input: [/デニム/],
         outputFunction: (input: string[]) => {
             const lane = shuffle([1, 2, 3, 4, 5, 6, 7]);
-            let white = "|　　|";
-            let black = "|　　|";
-            for(let i = 0; i < 7; i++){
-                white += ((lane[i] % 2 === 1) ? "＿|" : "　|");
-                black += ((lane[i] % 2 === 0) ? "＿|" : "　|");
-            }
+			const white = "|　　|" + lane.map((i: number) => (i % 2 == 1) ? "＿|" : "　|").join("");
+			const black = "|　　|" + lane.map((i: number) => (i % 2 == 0) ? "＿|" : "　|").join("");
             const resultString = `${black}\n${white}\n`.repeat(4);
             return [resultString];
         },
