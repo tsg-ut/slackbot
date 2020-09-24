@@ -175,6 +175,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						'次は絶対正解してよ？',
 						'やる気が足りないんじゃない？',
 						'もっと集中して！',
+						'こんなの当たり前だよね？',
 					]);
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
