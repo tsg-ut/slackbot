@@ -1,12 +1,10 @@
+import qs from 'querystring';
+import {LinkUnfurls} from '@slack/client';
 import axios from 'axios';
 // @ts-ignore
 import logger from '../lib/logger.js';
-import {LinkUnfurls} from '@slack/client';
+import {Page, tsgProjectName} from '../lib/scrapbox';
 import type {SlackInterface} from '../lib/slack';
-import qs from 'querystring';
-
-const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
-
 
 export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
 	event.on('link_shared', async (e: any) => {
@@ -16,18 +14,16 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 		const unfurls: LinkUnfurls = {};
 		for (const link of links) {
 			const {url} = link;
-			if (!(/^https?:\/\/scrapbox.io\/tsg\/.+/).test(url)) {
+			let page: Page | null = null;
+			try {
+				page = new Page({url});
+			} catch {
 				continue;
 			}
-			let pageName = url.replace(/^https?:\/\/scrapbox.io\/tsg\/(.+)$/, '$1');
-			try {
-				if (decodeURI(pageName) === pageName) {
-					pageName = encodeURI(pageName);
-				}
-			} catch {}
-			const scrapboxUrl = getScrapboxUrl(pageName);
-			const response = await axios.get(scrapboxUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
-			const {data} = response;
+			if (page.projectName !== tsgProjectName) {
+				continue;
+			}
+			const data = await page.fetchInfo();
 
 			unfurls[url] = {
 				title: data.title,

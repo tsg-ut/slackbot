@@ -34,6 +34,7 @@ const allBots = [
 	// ...(word2vecInstalled ? ['vocabwar'] : []),
 	'ricochet-robots',
 	'scrapbox',
+	'scrapbox/mute',
 	'slack-log',
 	'welcome',
 	'deploy',

@@ -1,23 +1,35 @@
-jest.mock('axios');
-
-import scrapbox from './index';
+import qs from 'querystring';
+import axios from 'axios';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
-import axios from 'axios';
-import qs from 'querystring';
-
-// @ts-ignore
-axios.response = {data: {title: 'hoge', descriptions: ['fuga', 'piyo']}};
 
 let slack: Slack = null;
 
-beforeEach(async () => {
-	slack = new Slack();
-	process.env.CHANNEL_SANDBOX = slack.fakeChannel;
-	await scrapbox(slack);
-});
+const projectName = 'PROJECTNAME';
+process.env.SCRAPBOX_PROJECT_NAME = projectName;
 
-describe('scrapbox', () => {
+
+// eslint-disable-next-line import/first, import/imports-first, import/order
+import {Page, PageInfo} from '../lib/scrapbox';
+// eslint-disable-next-line import/first, import/imports-first
+import scrapbox from './index';
+
+describe('unfurl', () => {
+	let fetchInfoSpy: jest.SpyInstance<Promise<PageInfo>> | null = null;
+
+	beforeEach(async () => {
+		fetchInfoSpy = jest.spyOn(Page.prototype, 'fetchInfo')
+			.mockImplementation(() => Promise.resolve({title: 'hoge', descriptions: ['fuga', 'piyo']} as PageInfo));
+		// cast this because it is too demanding to completely write down all properties
+		slack = new Slack();
+		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
+		await scrapbox(slack);
+	});
+
+	afterEach(() => {
+		fetchInfoSpy!.mockRestore();
+	});
+
 	it('respond to slack hook of scrapbox unfurling', async () => {
 		const done = new Promise((resolve) => {
 			// @ts-ignore
@@ -25,13 +37,12 @@ describe('scrapbox', () => {
 				if (url === 'https://slack.com/api/chat.unfurl') {
 					const parsed = qs.parse(data);
 					const unfurls = JSON.parse(Array.isArray(parsed.unfurls) ? parsed.unfurls[0] : parsed.unfurls);
-					expect(unfurls['https://scrapbox.io/tsg/hoge']).toBeTruthy();
-					expect(unfurls['https://scrapbox.io/tsg/hoge'].text).toBe('fuga\npiyo');
+					expect(unfurls[`https://scrapbox.io/${projectName}/hoge`]).toBeTruthy();
+					expect(unfurls[`https://scrapbox.io/${projectName}/hoge`].text).toBe('fuga\npiyo');
 					resolve();
 					return Promise.resolve({data: {ok: true}});
 				}
-				// @ts-ignore
-				return Promise.resolve(axios.response);
+				throw Error(`axios-mock: unknown URL: ${url}`);
 			});
 		});
 
@@ -44,7 +55,7 @@ describe('scrapbox', () => {
 			links: [
 				{
 					domain: 'scrapbox.io',
-					url: 'https://scrapbox.io/tsg/hoge',
+					url: `https://scrapbox.io/${projectName}/hoge`,
 				},
 			],
 		});

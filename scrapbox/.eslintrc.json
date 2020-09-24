@@ -1,8 +1,17 @@
 {
-    "extends": "@hakatashi",
+    "extends": ["plugin:jest/recommended", "@hakatashi"],
     "parser": "@typescript-eslint/parser",
+    "plugins": [
+        "jest"
+    ],
     "rules": {
         "no-console": "off",
-        "camelcase": "off"
+        "camelcase": "off",
+        "valid-jsdoc": [
+            "error", {
+                "requireParamType": false,
+                "requireReturnType": false
+            }
+        ]
     }
 }

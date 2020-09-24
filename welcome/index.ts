@@ -1,15 +1,14 @@
 import axios from 'axios';
+import {WebClient} from '@slack/client';
 // @ts-ignore
 import logger from '../lib/logger.js';
 
-const welcomeScrapboxUrl = `https://scrapbox.io/api/pages/tsg/welcome`;
-
-import {WebClient} from '@slack/client';
+import {Page} from '../lib/scrapbox';
 import type {SlackInterface} from '../lib/slack';
 
 async function postWelcomeMessage(slack: WebClient, channel: string) {
-	const {data} = await axios.get(welcomeScrapboxUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
-	const text = data.lines.map(({text}: {text: string}) => text).slice(1).join('\n');
+	const welcomePage = new Page({ titleLc: 'welcome', isEncoded: false });
+	const text = (await welcomePage.fetchInfo()).lines.map(({text}: {text: string}) => text).slice(1).join('\n');
 
 	return slack.chat.postMessage({
 		channel,
