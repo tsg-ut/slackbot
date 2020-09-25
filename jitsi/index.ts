@@ -23,7 +23,7 @@ const members: Map<string, {nick: string, avatarId: string}> = new Map();
 const connect = (slack: WebClient) => {
 	let intervalId: NodeJS.Timer = null;
 
-	const con = new Strophe.Connection('http://localhost:25252/http-bind?room=sandbox');
+	const con = new Strophe.Connection('http://localhost:25252/http-bind?room=sb');
 	con.connect('meet.tsg.ne.jp', '', (status: number) => {
 		const connectionTime = Date.now();
 
@@ -107,7 +107,7 @@ const connect = (slack: WebClient) => {
 			const uid = times(8, () => sample(Array.from('0123456789abcdef'))).join('');
 
 			const pres = $pres({
-				to: `sandbox@conference.meet.tsg.ne.jp/${uid}`,
+				to: `sb@conference.meet.tsg.ne.jp/${uid}`,
 			});
 			pres.c('x', {
 				xmlns: 'http://jabber.org/protocol/muc',
@@ -189,7 +189,7 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 		const nickname = await getMemberName(user);
 
 		const msg = $msg({
-			to: 'sandbox@conference.meet.tsg.ne.jp',
+			to: 'sb@conference.meet.tsg.ne.jp',
 			type: 'groupchat',
 		});
 		msg.c('body', `${nickname}: ${text}`).up();
