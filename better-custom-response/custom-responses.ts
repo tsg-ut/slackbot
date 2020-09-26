@@ -131,7 +131,7 @@ const customResponses: CustomResponse[] = [
         username: "ガチ割れ行くぜ！",
     },
     {
-        input: [/(.+)花火/],
+        input: [/^([^:]+)花火$/],
         outputFunction: (input: string[]) => {
             const matchedReaction = `:${input[1]}:`;
             const resultString = `\
