@@ -37,7 +37,7 @@ const customResponses: CustomResponse[] = [
                 retString += face.toString() + " ";
                 result += face;
             }
-            if(retString.length > 3000)retString = retString.slice(0, 1997) + "... ";
+            if (retString.length > 3000) retString = retString.slice(0, 1997) + "... ";
             retString += "= " + result.toString();
             return [retString];
         },
@@ -62,7 +62,7 @@ const customResponses: CustomResponse[] = [
     },
     {
         input: [/^(.+)っちへ$/],
-        outputFunction: input => [ stripIndent`
+        outputFunction: input => [stripIndent`
             ${input[1]}っちへ
             
             ういっすー!
@@ -73,7 +73,7 @@ const customResponses: CustomResponse[] = [
     },
     {
         input: [/^(.+)ぴへ$/],
-        outputFunction: input => [ stripIndent`
+        outputFunction: input => [stripIndent`
             ${input[1]}ぴへ
 
             なんかバイブス上げてくの
@@ -94,7 +94,7 @@ const customResponses: CustomResponse[] = [
         outputArray: ['sushi-salmon'],
         reaction: true,
     },
-    ... ['まぐろ', 'たまご', 'えび', 'とろ', 'いくら', 'たい', 'うに', 'いか'].map((neta): CustomResponse => {
+    ...['まぐろ', 'たまご', 'えび', 'とろ', 'いくら', 'たい', 'うに', 'いか'].map((neta): CustomResponse => {
         const regexStr = Array.from(neta)
             .map((char) => `(${char}|${romanize(char)}|${katakanize(char)})`)
             .join('');
@@ -109,7 +109,7 @@ const customResponses: CustomResponse[] = [
         outputFunction: (input: string[]) => {
             let thres = 0.83;
             let randv = Math.random();
-            if(randv < thres){
+            if (randv < thres) {
                 return [':exclamation:'];
             } else {
                 return [':exclamation_w:'];
@@ -129,6 +129,31 @@ const customResponses: CustomResponse[] = [
         },
         icon_emoji: ":iidx-muri-1p:",
         username: "ガチ割れ行くぜ！",
+    },
+    {
+        input: [/(.*)花火/],
+        outputFunction: (input: string[]) => {
+            const matchedReaction = `:${input[1]}:`;
+            const resultString = `\
+.            ・∵∴∵・\n\
+　　∴※※◎※※∴\n\
+　∴※◎☆${matchedReaction}☆◎※∴\n\
+・※◎${matchedReaction}＼川／${matchedReaction}◎※・\n\
+∵※☆＼＼Ｖ／／☆※∵\n\
+∴◎${matchedReaction}三＞${matchedReaction}＜三${matchedReaction}◎∴\n\
+∴※☆／／∧＼＼☆※∴\n\
+・※◎${matchedReaction}／川＼${matchedReaction}◎※・\n\
+　∵※◎☆${matchedReaction}☆◎※∵\n\
+　　∵※※◎※※∵\n\
+　　　・∴∵∴・\n\
+　　　　　ｉ\n\
+　　　　　ｉ\n\
+　　　　　ｉ\n\
+　　＿　　　　　　　＿`;
+            return [resultString];
+        },
+        icon_emoji: ":fireworks:",
+        username: "鍵屋",
     },
 ];
 
