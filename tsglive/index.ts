@@ -1,5 +1,5 @@
 import type {SlackInterface} from '../lib/slack';
-import db from '../lib/firestore-live5';
+import { liveDb as db } from '../lib/firestore';
 import {getMemberName} from '../lib/slackUtils';
 import plugin from 'fastify-plugin';
 
