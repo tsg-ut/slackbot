@@ -63,7 +63,7 @@ twitter-dm-notifier/after.txt
 __cache__
 __state__
 google_application_credentials.json
-google_application_credentials_live5.json
+google_application_credentials_live.json
 target
 
 tokens.sqlite3
