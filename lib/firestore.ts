@@ -5,7 +5,6 @@ const defaultApp = firebase.initializeApp({
 	databaseURL: process.env.FIREBASE_ENDPOINT,
 });
 const liveApp = firebase.initializeApp({
-    // @ts-ignore
     credential: firebase.credential.cert(process.env.GOOGLE_APPLICATION_CREDENTIALS_LIVE),
     databaseURL: process.env.FIREBASE_ENDPOINT_LIVE,
 }, 'tsg-live');
