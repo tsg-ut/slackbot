@@ -135,20 +135,20 @@ const customResponses: CustomResponse[] = [
         outputFunction: (input: string[]) => {
             const matchedReaction = `:${input[1]}:`;
             const resultString = `\
-.            ・∵∴∵・\n\
-　　∴※※◎※※∴\n\
-　∴※◎☆${matchedReaction}☆◎※∴\n\
-・※◎${matchedReaction}＼川／${matchedReaction}◎※・\n\
-∵※☆＼＼Ｖ／／☆※∵\n\
-∴◎${matchedReaction}三＞${matchedReaction}＜三${matchedReaction}◎∴\n\
-∴※☆／／∧＼＼☆※∴\n\
-・※◎${matchedReaction}／川＼${matchedReaction}◎※・\n\
-　∵※◎☆${matchedReaction}☆◎※∵\n\
-　　∵※※◎※※∵\n\
-　　　・∴∵∴・\n\
-　　　　　ｉ\n\
-　　　　　ｉ\n\
-　　　　　ｉ\n\
+.            ・∵∴∵・
+　　∴※※◎※※∴
+　∴※◎☆${matchedReaction}☆◎※∴
+・※◎${matchedReaction}＼川／${matchedReaction}◎※・
+∵※☆＼＼Ｖ／／☆※∵
+∴◎${matchedReaction}三＞${matchedReaction}＜三${matchedReaction}◎∴
+∴※☆／／∧＼＼☆※∴
+・※◎${matchedReaction}／川＼${matchedReaction}◎※・
+　∵※◎☆${matchedReaction}☆◎※∵
+　　∵※※◎※※∵
+　　　・∴∵∴・
+　　　　　ｉ
+　　　　　ｉ
+　　　　　ｉ
 　　＿　　　　　　　＿`;
             return [resultString];
         },
