@@ -4,13 +4,34 @@
       "plugin:import/typescript"
     ],
     "rules": {
-        "no-console": "off",
-        "no-restricted-imports": "off",
-        "camelcase": "off",
-        "indent": ["error", 2, {"SwitchCase": 1}],
-        "no-eq-null": "off",
-        "eqeqeq": ["error", "always", {"null": "ignore"}],
-        "prefer-template": "off",
-        "implicit-arrow-linebreak": "off"
+      "import/extensions": [
+        "error",
+        "ignorePackages",
+        {
+          "js": "never",
+          "jsx": "never",
+          "ts": "never",
+          "tsx": "never"
+        }
+      ],
+      "no-console": "off",
+      "no-restricted-imports": "off",
+      "camelcase": "off",
+      "indent": ["error", 2, {"SwitchCase": 1}],
+      "no-eq-null": "off",
+      "eqeqeq": ["error", "always", {"null": "ignore"}],
+      "prefer-template": "off",
+      "implicit-arrow-linebreak": "off",
+      "brace-style": ["error", "stroustrup"],
+      "comma-dangle": ["error",
+        {
+          "arrays": "always-multiline",
+          "objects": "always-multiline",
+          "imports": "always-multiline",
+          "exports": "always-multiline",
+          "functions": "only-multiline"
+        }
+      ],
+      "wrap-regex": "off"
     }
 }
