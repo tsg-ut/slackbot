@@ -33,6 +33,7 @@
         }
       ],
       "wrap-regex": "off",
-      "import/prefer-default-export": "off"
+      "import/prefer-default-export": "off",
+      "require-atomic-updates": "warn"
     }
 }
