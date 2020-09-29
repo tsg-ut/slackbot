@@ -139,7 +139,7 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
         message.subtype === 'bot_message') {
       return;
     }
-    if (/^\s*@cfbdev(?:\s.*)?$/.exec(message.text) != null) {
+    if (/^\s*@cfb(?:\s.*)?$/.exec(message.text) != null) {
       postWord();
     }
   });
