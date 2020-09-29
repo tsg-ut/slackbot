@@ -1,11 +1,12 @@
-import fs from 'fs';
+import {promises as fs} from 'fs';
 import path from 'path';
-// @ts-ignore
-import logger from '../lib/logger.js';
-import type {SlackInterface} from '../lib/slack';
-import * as _ from 'lodash';
 import plugin from 'fastify-plugin';
-import {getMemberName, getMemberIcon} from '../lib/slackUtils'
+import _ from 'lodash';
+// @ts-ignore
+import logger from '../lib/logger';
+/* eslint-disable no-unused-vars */
+import type {SlackInterface} from '../lib/slack';
+import {getMemberName, getMemberIcon} from '../lib/slackUtils';
 
 type EmojiName = string;
 type EmojiContent = EmojiName[][];
@@ -22,7 +23,7 @@ const emojiFromContent = (content: EmojiContent): BigEmoji => (
   {
     content,
     height: content.length,
-    width: Math.max(...content.map(x => x.length)),
+    width: Math.max(...content.map((x) => x.length)),
   }
 );
 
@@ -37,62 +38,55 @@ const logError = (err: Error, mesg: string): void => {
 const emojiData = 'bigemojis.json';
 const emojiPath = path.resolve(__dirname, emojiData);
 
-let emojis : EmojiTable = new Map;
+let allEmojis : EmojiTable = new Map();
 
-const loadEmojis = () => {
-  emojis = new Map;
-  fs.readFile(emojiPath, 'utf8', (err, data) => {
-    if (err) {
-      logError(err, 'could not read emojis');
-      return;
-    }
-    const obj = JSON.parse(data);
-    logger.info('emoxpand: loading big emojis...');
-    for (const name in obj)
-      emojis.set(name, emojiFromContent(obj[name]));
-    return emojis;
-  });
+const loadEmojis = async () => {
+  allEmojis = new Map();
+  const data = await fs.readFile(emojiPath, {encoding: 'utf8'});
+  const obj: {[key: string]: EmojiContent} = JSON.parse(data);
+  logger.info('emoxpand: loading big emojis...');
+  for (const [name, content] of Object.entries(obj)) {
+    allEmojis.set(name, emojiFromContent(content));
+  }
+  return allEmojis;
 };
 
 loadEmojis();
 
 const emojisToJson = (emojis: EmojiTable): string => {
   const obj = Object.fromEntries(
-    Array.from(emojis, ([name, emoji]) => [name, emoji.content]));
+    Array.from(emojis, ([name, emoji]) => [name, emoji.content])
+  );
   return JSON.stringify(obj);
-}
+};
 
 const storeEmojis = (emojis: EmojiTable): void => {
-  fs.writeFile(emojiPath, emojisToJson(emojis), err => {
-    if (err !== null) {
-      logError(err, 'failed to write big emojis');
-      return;
-    }
-    logger.info('emoxpand: saving big emojis...');
-  });
+  fs.writeFile(emojiPath, emojisToJson(emojis));
 };
 
 
 const addEmoji = (name: EmojiName, emoji: BigEmoji): void => {
-  emojis.set(name, emoji);
-  storeEmojis(emojis);
+  allEmojis.set(name, emoji);
+  storeEmojis(allEmojis);
 };
 // }}}
 
 // expansion {{{
 const alignEmojis = (es: BigEmoji[]): string[] => {
-  if (es.length === 0) return [''];
-  const wholeHeight = Math.max(...es.map(e => e.height));
+  if (es.length === 0) {
+    return [''];
+  }
+  const wholeHeight = Math.max(...es.map((e) => e.height));
   const voids = (width: number) => Array(width).fill('_');
-  const filled = es
+  const emojiBlocks = es
     .map(({width, height, content}) =>
       content
-        .concat(Array(wholeHeight - height).fill(0).map(x => []))
-        .map(row => row
-          .concat(Array(width - row.length).fill('_'))
-          .map(emoji => `:${emoji}:`)
+        .concat(Array(wholeHeight - height).fill(0).map((_) => []))
+        .map((row) => row
+          .concat(voids(width - row.length))
+          .map((emoji) => `:${emoji}:`)
           .join('')));
-  return _.zipWith(...filled, (...rows) => rows.join(''));
+  return _.zipWith(...emojiBlocks, (...rows) => rows.join(''));
 };
 
 type TokenType = 'Plain' | 'Emoji' | 'BigEmoji';
@@ -103,16 +97,18 @@ interface Token {
 
 
 const expandEmoji = (text: string): string =>
-  _.flatMap(text.split('\n'), line => {
-    const tokens: Token[] = (line + '\n').split('').reduce<[TokenType, string[], Token[]]>(
+  _.flatMap(text.split('\n'), (line) => {
+    const [, , tokens] = (line + '\n').split('').reduce<[TokenType, string[], Token[]]>(
       ([parsing, chars, parsed], ch) => {
         const push = () => {
-          if (chars.length === 0) return;
+          if (chars.length === 0) {
+            return;
+          }
           const content = chars.join('');
-          if (parsing === 'BigEmoji' && !emojis.has(content)) {
+          if (parsing === 'BigEmoji' && !allEmojis.has(content)) {
             parsed.push({
               kind: 'Plain',
-              content: '!' + content + '!'
+              content: '!' + content + '!',
             });
           }
           else {
@@ -146,33 +142,36 @@ const expandEmoji = (text: string): string =>
           case '\n':
             push();
             return ['Plain', [], parsed];
-            break;
         }
         chars.push(ch);
         return [parsing, chars, parsed];
       },
-      ['Plain', [], []])[2];
-    if (tokens[tokens.length - 1].kind !== 'Plain')
-      tokens.push({ kind: 'Plain', content: '', });
+      ['Plain', [], []]
+    );
+    if (tokens[tokens.length - 1].kind !== 'Plain') {
+      tokens.push({kind: 'Plain', content: ''});
+    }
     return tokens.reduce(
       ([inLine, lines], tok: Token) => {
         if (tok.kind === 'Plain') {
-          const emojiStr = alignEmojis(
-            inLine.map(({kind, content}) => 
-              kind === 'Emoji' ? bigemojify(content) : emojis.get(content)))
-          emojiStr[0] += tok.content;
-          lines.push(emojiStr.join('\n'));
+          const emojiLines = alignEmojis(
+            inLine.map(({kind, content}) =>
+              kind === 'Emoji' ? bigemojify(content) : allEmojis.get(content))
+          );
+          emojiLines[0] += tok.content;
+          lines.push(emojiLines.join('\n'));
           return [[], lines];
         }
         inLine.push(tok);
         return [inLine, lines];
       },
-      [[], []])[1];
+      [[], []]
+    )[1];
   }).join('\n');
 
-//}}}
+// }}}
 
-export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => plugin(async (fastify, opts, next) => {
+export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => plugin(async (fastify) => {
   const postMessage = (text: string): void => {
     slack.chat.postMessage({
       channel: process.env.CHANNEL_SANDBOX,
@@ -181,7 +180,7 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
       icon_emoji: ':chian-ga-aru:',
     });
   };
-  
+
   // Big Emoji expansion {{{
   const {team: tsgTeam}: any = await slack.team.info();
   fastify.post('/slash/emoxpand', async (request, response) => {
@@ -204,12 +203,12 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
   // }}}
 
   // Emoji list API {{{
-  fastify.get('/emoxpand/list', async (request, response) => {
+  fastify.get('/emoxpand/list', (_, response) => {
     response.header('Content-Type', 'applicaton/json').code(200);
-    return emojisToJson(emojis);
+    return Promise.resolve(emojisToJson(allEmojis));
   });
   // }}}
-  
+
   // Big Emoji registration {{{
   interface WaitingContent {
     name: EmojiName;
@@ -219,9 +218,11 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
 
   let state: RegistrationState = 'WaitingRegistration';
 
-  rtm.on('message', async message => {
-    if (message.channel !== process.env.CHANNEL_SANDBOX)
+  /* eslint-disable require-await */
+  rtm.on('message', async (message) => {
+    if (message.channel !== process.env.CHANNEL_SANDBOX) {
       return;
+    }
 
     if (state !== 'WaitingRegistration' &&
         message.text === 'やーめた') {
@@ -232,37 +233,41 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
 
     switch (state) {
       case 'WaitingRegistration':
-        if (!/^大(絵文字|emoji)登録$/.test(message.text))
+        if (!/^大(?:絵文字|emoji)登録$/.test(message.text)) {
           return;
+        }
         state = 'WaitingName';
         postMessage(':wai: 絵文字の名前:ha:');
         break;
       case 'WaitingName':
         {
-          const match = /^!([^!:\s]+)!$/.exec(message.text);
-          if (!match) return;
-          state = { name: match[1] }
+          const match = /^!(?<name>[^!:\s]+)!$/.exec(message.text);
+          if (!match) {
+            return;
+          }
+          state = {name: match.groups.name};
           postMessage(':waiwai: 本体:ha:');
         }
         break;
       default:
         {
-          const match = /^(:[^:!\s]+:(\n?:[^:!\s]+:)*)$/.exec(message.text);
-          if (!match) return;
-          const content = match[1]
+          const match = /^(?<content>:[^:!\s]+:(?:\n?:[^:!\s]+:)*)$/.exec(message.text);
+          if (!match) {
+            return;
+          }
+          const contentLines = match.groups.content
             .split('\n')
-            .map(row =>
+            .map((row) =>
               row.slice(1, row.length - 1).split('::'));
-          addEmoji(state.name, emojiFromContent(content));
+          addEmoji(state.name, emojiFromContent(contentLines));
           postMessage(`大絵文字 \`!${state.name}!\`
-${match[1]}
+${match.groups.content}
 が登録されました:sushi-go-left::waiwai::saikou::chian-ga-aru::sushi-go-right:`);
           state = 'WaitingRegistration';
         }
         break;
     }
     // }}}
-
   });
 });
 
