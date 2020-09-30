@@ -338,20 +338,26 @@ module.exports = (clients) => {
 				return;
 			}
 
-			if (text.startsWith('打') || text === 'ツモ切り') {
+			if (text.startsWith('打') || text.startsWith('d') || text === 'ツモ切り') {
 				if (state.phase !== 'gaming') {
 					perdon();
 					return;
 				}
 
-				if (text === 'ツモ切り') {
+				if (text === 'ツモ切り' || text === 'd') {
 					if (state.mode === '四人' && state.手牌[state.手牌.length - 1] === '🀟') {
 						await unlock(message.user, 'mahjong-ikeda');
 					}
 
 					state.手牌 = state.手牌.slice(0, -1);
 				} else {
-					let 牌Name = text.slice(1);
+					let 牌Name = text.slice(1)
+						.replace('r', '赤')
+						.replace(/[1-7]z/g, (match) => 牌Names[parseInt(match) - 1])
+						.replace(/[1-9]/g, (match) => 漢数字s[parseInt(match) - 1])
+						.replace('m', '萬').replace('s', '索').replace('p', '筒')
+						.replace('E', '東').replace('S', '南').replace('W', '西').replace('N', '北')
+						.replace('D', '白').replace('F', '發').replace('C', '中');
 					if (牌Name === ':nanyanen-nannanode:' || 牌Name === ':ナンやねん-ナンなので:') {
 						牌Name = '南';
 					}
