@@ -355,7 +355,7 @@ module.exports = (clients) => {
 				return;
 			}
 
-			if (text.startsWith('打') || text.startWith('d') || text === 'ツモ切り') {
+			if (text.startsWith('打') || text.startsWith('d') || text === 'ツモ切り') {
 				const instruction = normalize打牌Command(text);
 
 				if (state.phase !== 'gaming') {
@@ -431,7 +431,7 @@ module.exports = (clients) => {
 				});
 			}
 
-			if (text === 'ペー' || text === 'ぺー') {
+			if (text === 'ペー' || text === 'ぺー' || text === 'p') {
 				if (state.phase !== 'gaming' || state.mode !== '三人') {
 					perdon();
 					return;
@@ -459,15 +459,15 @@ module.exports = (clients) => {
 				return;
 			}
 
-			if (text.startsWith('リーチ ')) {
+			if (text.startsWith('リーチ ') || text.startsWith('r')) {
 				if (state.phase !== 'gaming') {
 					perdon();
 					return;
 				}
 
-				const rawInstruction = text.slice('リーチ '.length);
+				const rawInstruction = text.slice(text.startsWith('リーチ ') ? 'リーチ '.length : 'r'.length);
 
-				if (!(rawInstruction.startsWith('打') || rawInstruction.startWith('d') || rawInstruction === 'ツモ切り')) {
+				if (!(rawInstruction.startsWith('打') || rawInstruction.startsWith('d') || rawInstruction === 'ツモ切り')) {
 					perdon();
 					return;
 				}
