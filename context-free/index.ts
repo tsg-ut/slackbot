@@ -106,7 +106,7 @@ const composePost = async (message: string): Promise<string> => {
       response = response.replace(new RegExp(escapeRegExp(placeholder), 'g'), word);
     }
   }
-  return message;
+  return response;
 };
 
 const randomInterval = () =>
