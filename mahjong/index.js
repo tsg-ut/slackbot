@@ -356,7 +356,8 @@ module.exports = (clients) => {
 						.replace(/[1-7]z/g, (match) => 牌Names[parseInt(match) - 1])
 						.replace(/[1-9]/g, (match) => 漢数字s[parseInt(match) - 1])
 						.replace('m', '萬').replace('s', '索').replace('p', '筒')
-						.replace('E', '東').replace('S', '南').replace('W', '西').replace('N', '北');
+						.replace('E', '東').replace('S', '南').replace('W', '西').replace('N', '北')
+						.replace('D', '白').replace('F', '發').replace('C', '中');
 					if (牌Name === ':nanyanen-nannanode:' || 牌Name === ':ナンやねん-ナンなので:') {
 						牌Name = '南';
 					}
