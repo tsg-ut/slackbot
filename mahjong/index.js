@@ -58,7 +58,8 @@ const 牌Names = [
 	'赤五萬', '赤五索', '赤五筒',
 ];
 
-const nameTo牌 = (name) => {
+const nameTo牌 = (_name) => {
+	const name = _name.replace(/[1-9]/g, (match) => 漢数字s[parseInt(match) - 1]).replace('m', '萬').replace('s', '索').replace('p', '筒');
 	const normalized = name.startsWith('赤') ? name.slice(1) : name;
 	const 牌 = String.fromCodePoint(0x1F000 + 牌Names.indexOf(normalized));
 	if (name.startsWith('赤')) {
