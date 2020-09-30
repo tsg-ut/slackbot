@@ -474,20 +474,10 @@ module.exports = (clients) => {
 				}
 
 				let new手牌 = null;
-				if (instruction === 'ツモ切り' || instruction === 'd') {
+				if (instruction === 'ツモ切り') {
 					new手牌 = state.手牌.slice(0, -1);
 				} else {
-					const 牌Name = instruction.slice(1)
-						.replace('r', '赤')
-						.replace(/[1-7]z/g, (match) => 牌Names[parseInt(match) - 1])
-						.replace(/[1-9]/g, (match) => 漢数字s[parseInt(match) - 1])
-						.replace('m', '萬').replace('s', '索').replace('p', '筒')
-						.replace('E', '東').replace('S', '南').replace('W', '西').replace('N', '北')
-						.replace('D', '白').replace('F', '發').replace('C', '中');
-					if (牌Name === ':nanyanen-nannanode:' || 牌Name === ':ナンやねん-ナンなので:') {
-						牌Name = '南';
-					}
-
+					const 牌Name = instruction.slice(1);
 					if (!牌Names.includes(牌Name)) {
 						perdon();
 						return;
