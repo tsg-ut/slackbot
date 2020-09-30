@@ -76,6 +76,23 @@ const 牌ToName = (牌) => {
 	return name;
 };
 
+const normalize打牌Command = (text) => {
+	if (text === 'd') {
+		return 'ツモ切り';
+	}
+	const 打牌Command = text
+		.replace(':nanyanen-nannanode:', '南').replace(':ナンやねん-ナンなので:', '南')
+		.replace('d', '打')
+		.replace('r', '赤')
+		.replace(/[1-7]z/g, (match) => 牌Names[parseInt(match) - 1])
+		.replace(/[1-9]/g, (match) => 漢数字s[parseInt(match) - 1])
+		.replace('m', '萬').replace('s', '索').replace('p', '筒')
+		.replace('E', '東').replace('S', '南').replace('W', '西').replace('N', '北')
+		.replace('D', '白').replace('F', '發').replace('C', '中');
+	return 打牌Command;
+};
+
+
 const sort = (牌s) => (
 	牌s.sort((牌A, 牌B) => {
 		const 牌AIndex = 牌Orders.indexOf(get牌Type(牌A));
@@ -476,7 +493,7 @@ module.exports = (clients) => {
 					if (牌Name === ':nanyanen-nannanode:' || 牌Name === ':ナンやねん-ナンなので:') {
 						牌Name = '南';
 					}
-					
+
 					if (!牌Names.includes(牌Name)) {
 						perdon();
 						return;
