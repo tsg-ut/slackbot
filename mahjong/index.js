@@ -457,7 +457,7 @@ module.exports = (clients) => {
 
 				const instruction = text.slice('リーチ '.length);
 
-				if (!instruction.startsWith('打') && instruction !== 'ツモ切り') {
+				if (!instruction.startsWith('打') && !instruction.startWith('d') && instruction !== 'ツモ切り') {
 					perdon();
 					return;
 				}
