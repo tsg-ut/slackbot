@@ -355,23 +355,22 @@ module.exports = (clients) => {
 				return;
 			}
 
-			if (text.startsWith('打') || text === 'ツモ切り') {
+			if (text.startsWith('打') || text.startWith('d') || text === 'ツモ切り') {
+				const instruction = normalize打牌Command(text);
+
 				if (state.phase !== 'gaming') {
 					perdon();
 					return;
 				}
 
-				if (text === 'ツモ切り') {
+				if (instruction === 'ツモ切り') {
 					if (state.mode === '四人' && state.手牌[state.手牌.length - 1] === '🀟') {
 						await unlock(message.user, 'mahjong-ikeda');
 					}
 
 					state.手牌 = state.手牌.slice(0, -1);
 				} else {
-					let 牌Name = text.slice(1);
-					if (牌Name === ':nanyanen-nannanode:' || 牌Name === ':ナンやねん-ナンなので:') {
-						牌Name = '南';
-					}
+					const 牌Name = instruction.slice(1);
 					if (!牌Names.includes(牌Name)) {
 						perdon();
 						return;
@@ -466,12 +465,13 @@ module.exports = (clients) => {
 					return;
 				}
 
-				const instruction = text.slice('リーチ '.length);
+				const rawInstruction = text.slice('リーチ '.length);
 
-				if (!instruction.startsWith('打') && instruction !== 'ツモ切り') {
+				if (!(rawInstruction.startsWith('打') || rawInstruction.startWith('d') || rawInstruction === 'ツモ切り')) {
 					perdon();
 					return;
 				}
+				const instruction = normalize打牌Command(rawInstruction);
 
 				let new手牌 = null;
 				if (instruction === 'ツモ切り') {
