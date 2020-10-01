@@ -26,7 +26,6 @@
   "homepage": "https://github.com/tsg-ut/slackbot#readme",
   "dependencies": {
     "@hakatashi/riichi-core": "^1.0.4",
-    "@slack/client": "^5.0.2",
     "@slack/events-api": "^2.3.4",
     "@slack/interactive-messages": "^1.7.0",
     "@slack/rtm-api": "^5.0.5",
