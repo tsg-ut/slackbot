@@ -23,6 +23,16 @@ class Counter {
 		this.save();
 	}
 
+	max(key, value) {
+		if (this.map.has(key)) {
+			this.map.set(key, Math.max(value, this.map.get(key)));
+		} else {
+			this.map.set(key, value);
+		}
+
+		this.save();
+	}
+
 	clear() {
 		this.map = new Map();
 		this.save();
@@ -95,6 +105,8 @@ module.exports = (clients) => {
 
 	const sushiCounter = new Counter('sushi');
 	const suspendCounter = new Counter('suspend');
+	const dailyAsaCounter = new Counter('dailyAsa');
+	const weeklyAsaCounter = new Counter('asa');
 
 	rtm.on('message', async (message) => {
 		const { channel, text, user, ts: timestamp } = message;
@@ -133,6 +145,19 @@ module.exports = (clients) => {
 					}
 					currentRank++;
 				}
+			}
+
+			if (tokens[0] === '起床ランキング' && tokens[1] === '確認') {
+				const total = new Map(weeklyAsaCounter.entries());
+				dailyAsaCounter.entries().map(([user, score]) => {
+					if (!total.has(user)) {
+						total.set(user, 0);
+					}
+					total.set(user, score + total.get(user));
+				});
+				const scores = Array.from(total.entries()).sort(([u1, s1], [u2, s2]) => s2 - s1);
+				const index = scores.findIndex(([u, _]) => u === user);
+				postDM(`あなたの起床点数は${scores[index][1]}点、現在の順位は${index + 1}位`);
 			}
 		}
 
@@ -253,6 +278,7 @@ module.exports = (clients) => {
 					'80':   80,
 					'95':   95,
 					'100': 100,
+					'108': 108,
 				};
 				let best_score = 0;
 				let best_name = "0ten";
@@ -263,57 +289,99 @@ module.exports = (clients) => {
 						best_name = name;
 					}
 				}
+				if (best_score > 0) {
+					unlock(user, 'asa');
+				}
+				if (best_score >= 80) {
+					unlock(user, 'asa-over80');
+				}
 				slack.reactions.add({name: best_name, channel, timestamp});
+				dailyAsaCounter.max(user, best_score);
 			}
 		}
 	});
 
-	schedule.scheduleJob('0 19 * * 0', async () => {
-		const {members} = await slack.users.list();
-
-		await slack.chat.postMessage({
-			channel: process.env.CHANNEL_SANDBOX,
-			username: 'sushi-bot',
-			text: '今週の凍結ランキング',
-			icon_emoji: ':cookies146:',
-			attachments: suspendCounter.entries().map(([user, count], index) => {
-				const member = members.find(({id}) => id === user);
-				if (!member) {
-					return null;
-				}
-				const name = member.profile.display_name || member.name;
-				if (index === 0) {
-					unlock(user, 'freezing-master');
-				}
-
-				return {
-					author_name: `${index + 1}位: ${name} (${count}回)`,
-					author_icon: member.profile.image_24,
-				};
-			}).filter((attachment) => attachment !== null),
+	schedule.scheduleJob('0 19 * * *', async (date) => {
+		dailyAsaCounter.entries().map(([user, score]) => {
+			weeklyAsaCounter.add(user, score);
 		});
+		dailyAsaCounter.clear();
 
-		suspendCounter.clear();
+		// on Sundays
+		if (date.getDay() === 0) {
+			const {members} = await slack.users.list();
 
-		await slack.chat.postMessage({
-			channel: process.env.CHANNEL_SANDBOX,
-			username: 'sushi-bot',
-			text: '今週の寿司ランキング',
-			icon_emoji: ':sushi:',
-			attachments: sushiCounter.entries().map(([user, count], index) => {
-				const member = members.find(({id}) => id === user);
-				if (!member) {
-					return null;
-				}
-				const name = member.profile.display_name || member.name;
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				username: 'sushi-bot',
+				text: '今週の凍結ランキング',
+				icon_emoji: ':cookies146:',
+				attachments: suspendCounter.entries().map(([user, count], index) => {
+					const member = members.find(({id}) => id === user);
+					if (!member) {
+						return null;
+					}
+					const name = member.profile.display_name || member.name;
+					if (index === 0) {
+						unlock(user, 'freezing-master');
+					}
 
-				return {
-					author_name: `${index + 1}位: ${name} (${count}回)`,
-					author_icon: member.profile.image_24,
-				};
-			}).filter((attachment) => attachment !== null),
-		});
+					return {
+						author_name: `${index + 1}位: ${name} (${count}回)`,
+						author_icon: member.profile.image_24,
+					};
+				}).filter((attachment) => attachment !== null),
+			});
 
-		sushiCounter.clear();
+			suspendCounter.clear();
+
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				username: 'sushi-bot',
+				text: '今週の寿司ランキング',
+				icon_emoji: ':sushi:',
+				attachments: sushiCounter.entries().map(([user, count], index) => {
+					const member = members.find(({id}) => id === user);
+					if (!member) {
+						return null;
+					}
+					const name = member.profile.display_name || member.name;
+
+					return {
+						author_name: `${index + 1}位: ${name} (${count}回)`,
+						author_icon: member.profile.image_24,
+					};
+				}).filter((attachment) => attachment !== null),
+			});
+
+			sushiCounter.clear();
+
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				username: 'sushi-bot',
+				text: '今週の起床ランキング',
+				icon_emoji: ':sunrise:',
+				attachments: weeklyAsaCounter.entries().map(([user, count], index) => {
+					const member = members.find(({id}) => id === user);
+					if (!member) {
+						return null;
+					}
+					const name = member.profile.display_name || member.name;
+					if (index === 0 && weeklyAsaCounter.entries().filter(([, c]) => c === count).length === 1) {
+						unlock(user, 'asa-master');
+					}
+					if (count >= 720) {
+						unlock(user, 'asa-week-720');
+					}
+
+					return {
+						author_name: `${index + 1}位: ${name} (${count}点)`,
+						author_icon: member.profile.image_24,
+					};
+				}).filter((attachment) => attachment !== null),
+			});
+
+			weeklyAsaCounter.clear();
+		}
 	});
 }

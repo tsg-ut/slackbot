@@ -1,12 +1,11 @@
 jest.mock('axios');
 jest.mock('../lib/slackUtils');
 jest.mock('../lib/download');
-jest.mock('fs');
 
 import path from 'path';
 import fs from 'fs';
 
-jest.unmock('fs');
+jest.mock('fs');
 
 // @ts-ignore
 fs.virtualFiles = {
@@ -34,4 +33,3 @@ describe('ponpe', () => {
 		expect(text).toMatch(/^ぽんぺをはじめるよ:waiwai:。/);
 	});
 });
-

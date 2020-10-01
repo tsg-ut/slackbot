@@ -1,13 +1,12 @@
 /* eslint-env node, jest */
 
-jest.unmock('fs');
-const fs = require('fs');
+const fs = jest.genMockFromModule('fs');
+const realFs = jest.requireActual('fs');
 const Path = require('path');
 const {PassThrough} = require('stream');
 
 fs.virtualFiles = {};
 
-fs._readFile = fs.readFile;
 fs.readFile = jest.fn((...args) => {
 	const [path, callback] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
@@ -16,11 +15,10 @@ fs.readFile = jest.fn((...args) => {
 		callback(null, fs.virtualFiles[fullPath]);
 		return null;
 	} else {
-		return fs._readFile(...args);
+		return realFs.readFile(...args);
 	}
 });
 
-fs._readFileSync = fs.readFileSync;
 fs.readFileSync = jest.fn((...args) => {
 	const [path] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
@@ -28,11 +26,10 @@ fs.readFileSync = jest.fn((...args) => {
 	if (fs.virtualFiles.hasOwnProperty(fullPath)) {
 		return fs.virtualFiles[fullPath];
 	} else {
-		return fs._readFileSync(...args);
+		return realFs.readFileSync(...args);
 	}
 });
 
-fs._access = fs.access;
 fs.access = jest.fn((...args) => {
 	const [path, , callback] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
@@ -41,11 +38,10 @@ fs.access = jest.fn((...args) => {
 		callback(null);
 		return null;
 	} else {
-		return fs._access(...args);
+		return realFs.access(...args);
 	}
 });
 
-fs._accessSync = fs.accessSync;
 fs.accessSync = jest.fn((...args) => {
 	const [path] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
@@ -53,11 +49,10 @@ fs.accessSync = jest.fn((...args) => {
 	if (fs.virtualFiles.hasOwnProperty(fullPath)) {
 		return null;
 	} else {
-		return fs._accessSync(...args);
+		return realFs.accessSync(...args);
 	}
 });
 
-fs._createReadStream = fs.createReadStream;
 fs.createReadStream = jest.fn((...args) => {
 	const [path, options] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
@@ -69,8 +64,21 @@ fs.createReadStream = jest.fn((...args) => {
 		})
 		return stream;
 	} else {
-		return fs._createReadStream(...args);
+		return realFs.createReadStream(...args);
 	}
+});
+
+fs.writeFile = jest.fn((file, data, ...rest) => {
+	let options, callback;
+	if (rest.length === 1) {
+		callback = rest[0];
+	}
+	else {
+		[, callback] = rest;
+	}
+	const fullPath = Path.resolve(process.cwd(), file);
+	fs.virtualFiles[fullPath] = data;
+	callback(null);
 });
 
 module.exports = fs;

@@ -3,6 +3,7 @@
 /* eslint-disable react/no-access-state-in-setstate */
 // eslint-disable-next-line no-unused-vars
 import {KnownBlock, RTMClient, WebClient} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 import {constants, promises as fs} from 'fs';
 import {flatten, isEmpty, range, shuffle, times, uniq} from 'lodash';
 import {Deferred} from '../lib/utils';
@@ -12,12 +13,6 @@ import path from 'path';
 import plugin from 'fastify-plugin';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
-
-interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-	messageClient: any,
-}
 
 interface Meaning {
 	user: string,
@@ -311,7 +306,7 @@ class Oogiri {
 					},
 					{
 						type: 'mrkdwn',
-						text: `＊BET可能枚数＊ ${game.maxMeanings}枚`,
+						text: `＊BET可能枚数＊ ${game.maxCoins}枚`,
 					},
 				],
 				accessory: {

@@ -1,5 +1,5 @@
 import {FastifyInstance} from 'fastify';
-import {WebClient} from '@slack/client';
+import type {SlackInterface} from '../lib/slack';
 // @ts-ignore
 import logger from '../lib/logger.js';
 import sqlite from 'sqlite';
@@ -7,7 +7,7 @@ import path from 'path';
 import sql from 'sql-template-strings';
 import {get} from 'lodash';
 
-export const server = ({webClient: slack}: {webClient: WebClient}) => async (fastify: FastifyInstance) => {
+export const server = ({webClient: slack}: SlackInterface) => async (fastify: FastifyInstance) => {
 	const db = await sqlite.open(path.join(__dirname, '..', 'tokens.sqlite3'));
 	await db.run(`
 		CREATE TABLE IF NOT EXISTS tokens (

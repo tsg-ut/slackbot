@@ -772,7 +772,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			出題者: ${getMention(theme.user)}
 
 			今日のお題は *「${state.theme.ruby}」* だよ:v:
-			参加者は90分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
+			参加者は90分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> に「たほいや hoge」とDMしてね:relaxed:
 			終了予定時刻: ${getTimeLink(end)}
 			${meanings.size === 0 ? '' : `登録済み: ${[...meanings.keys()].map((user) => getMention(user)).join(', ')}`}
 		`);
@@ -831,7 +831,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 					await postMessage(stripIndent`
 						お題を *「${ruby}」* にセットしたよ:v:
-						参加者は3分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> にDMしてね:relaxed:
+						参加者は3分以内にこの単語の意味を考えて <@${process.env.USER_TSGBOT}> に「たほいや hoge」とDMしてね:relaxed:
 						終了予定時刻: ${getTimeLink(end)}
 					`);
 
@@ -1097,14 +1097,14 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					return;
 				}
 
-				if (state.phase === 'collect_meanings' && text.length <= 256) {
+				if (text.startsWith('たほいや') && state.phase === 'collect_meanings' && text.length <= 256) {
 					if (state.author === message.user) {
 						await postDM('出題者はたほいやに参加できないよ:fearful:');
 						return;
 					}
-
+					const registeredMeaning = text.slice(4).trim();
 					const isUpdate = state.meanings.has(message.user);
-					state.meanings.set(message.user, normalizeMeaning(text));
+					state.meanings.set(message.user, normalizeMeaning(registeredMeaning));
 					await setState({meanings: state.meanings});
 
 					await slack.reactions.add({name: '+1', channel: message.channel, timestamp: message.ts});

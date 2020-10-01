@@ -1,5 +1,7 @@
-import hontouni from './responses/hontouni';
-import burgerking from './responses/burgerking';
+import { stripIndent } from 'common-tags';
+// @ts-ignore
+import { romanize, katakanize } from 'japanese';
+import { shuffle } from 'lodash';
 
 interface CustomResponse {
     input: RegExp[],
@@ -42,16 +44,6 @@ const customResponses: CustomResponse[] = [
         username: 'dice response',
     },
     {
-        input: [/^(.*)(てます|でます|ています|でいます|ちゃった|じゃった)[。⋯・…!！]*$/],
-        outputFunction: hontouni,
-    },
-    {
-        input: [/^(.*)(てくれや|でくれや)[。⋯・…！!]*$/],
-        outputFunction: burgerking,
-        username: 'バーガーキング・ジャパン',
-        icon_emoji: ':burger-king:',
-    },
-    {
         input: [/^(おじぎねこ)?ファミリー$/],
         outputArray: [":ojigineko:", ":party-ojigineko-line:", ":ojigineko-superfast:", ":nameraka-ojigineko-extreme-fast:", ":ojigineko-fast:", ":ojigineko-extremefast:", ":ojigineko-pi:", ":iceojigineko:", ":ojigineko-hd:", ":ojigineko-drug:", ":dot-ojigineko:", ":ojigineko-waking:", ":party-ojigineko:", ":ojigineko-mirror:", ":ojigineko-sleeping:", ":space-ojigineko:", ":ojigiharassment:", ":ojigineko-mirror-pi:", ":magao-ojigineko:", ":nameraka-ojigineko:", ":party-ojigineko-fast:", ":quantum-ojigineko:", ":fukigen-ojigineko:", ":ojigineko-with-satos:", ":haritsuita-ojigineko:", ":harassment-ojigineko:", ":ojigineko-gokyu-kaiken:", ":ojigineko-muscle-exercise:", ":tosshutsu-symmetry-ojigineko:", ":ojigineko-upside-down:", ":ojikineko:", ":ojigineko-tired:", ":ojigineko-twin-sleeping:", ":nameraka-party-ojigineko-extremefast:", ":nameraka-ojigineko-ultraextreme-fast:", ":ojigiodoshi:", ":tashigineko:", ":dot-ojigineko:", ":tosshutsu-symmetry-rotating:", ":tosshutsu-symmetry-rotating-fast:", ":tosshutsu-symmetry-rotating-extremefast:", ":ojigineko-distorted:"],
         shuffle: true,
@@ -67,6 +59,76 @@ const customResponses: CustomResponse[] = [
         outputArray: ['ねこ〜', 'すぴー'],
         icon_emoji: ':cat2:',
         username: 'tsgcat',
+    },
+    {
+        input: [/^(.+)っちへ$/],
+        outputFunction: input => [ stripIndent`
+            ${input[1]}っちへ
+            
+            ういっすー!
+            朝から、完全にぽんぽんぺいんで、つらみが深いので、1日おふとんでスヤァしておきます。
+            明日は行けたら行くマンです!` ],
+        icon_emoji: ':shakaijin-ichinensei:',
+        username: '社会人一年生',
+    },
+    {
+        input: [/^(.+)ぴへ$/],
+        outputFunction: input => [ stripIndent`
+            ${input[1]}ぴへ
+
+            なんかバイブス上げてくの
+            最近ムリムリのムリで
+            ぴえんこえてぱおん🐘💔
+
+            もうまじ退職しか勝たんから
+            明日からはおうちカフェで
+            働くことにしました🐰
+            
+            いままで397❤❤
+            また会おーね👋😃` ],
+        icon_emoji: ':shakaijin-ichinensei:',
+        username: '社会人一年生',
+    },
+    {
+        input: [/(sa|さ|サ)(l|ー)?(mo|も|モ)(n|ん|ン)/i],
+        outputArray: ['sushi-salmon'],
+        reaction: true,
+    },
+    ... ['まぐろ', 'たまご', 'えび', 'とろ', 'いくら', 'たい', 'うに', 'いか'].map((neta): CustomResponse => {
+        const regexStr = Array.from(neta)
+            .map((char) => `(${char}|${romanize(char)}|${katakanize(char)})`)
+            .join('');
+        return {
+            input: [new RegExp(regexStr, 'i')],
+            outputArray: [`sushi-${romanize(neta)}`],
+            reaction: true,
+        };
+    }),
+    {
+        input: [/^:question:$/],
+        outputFunction: (input: string[]) => {
+            let thres = 0.83;
+            let randv = Math.random();
+            if(randv < thres){
+                return [':exclamation:'];
+            } else {
+                return [':exclamation_w:'];
+            }
+        },
+        icon_emoji: ':kadokawa:',
+        username: 'KADOKAWA',
+    },
+    {
+        input: [/デニム/],
+        outputFunction: (input: string[]) => {
+            const lane = shuffle([1, 2, 3, 4, 5, 6, 7]);
+            const white = "|　　|" + lane.map((i: number) => (i % 2 === 1) ? "＿|" : "　|").join("");
+            const black = "|　　|" + lane.map((i: number) => (i % 2 === 0) ? "＿|" : "　|").join("");
+            const resultString = `${black}\n${white}\n`.repeat(4);
+            return [resultString];
+        },
+        icon_emoji: ":iidx-muri-1p:",
+        username: "ガチ割れ行くぜ！",
     },
 ];
 

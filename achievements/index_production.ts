@@ -1,20 +1,16 @@
 import qs from 'querystring';
 // eslint-disable-next-line no-unused-vars
-import {WebClient, RTMClient} from '@slack/client';
+import {WebClient} from '@slack/client';
 import axios from 'axios';
 import {stripIndent} from 'common-tags';
 import {countBy, throttle, groupBy, get as getter, chunk} from 'lodash';
 import moment from 'moment';
 // @ts-ignore
 import db from '../lib/firestore';
+// eslint-disable-next-line no-unused-vars
+import type {SlackInterface} from '../lib/slack';
 import {Deferred} from '../lib/utils';
 import achievements, {Difficulty} from './achievements';
-
-interface SlackInterface {
-	rtmClient: RTMClient,
-	webClient: WebClient,
-	messageClient: any,
-}
 
 type users = {
 	chats?: number,
@@ -135,6 +131,12 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 
 	rtm.on('user_change', (event) => {
 		db.collection('users').doc(event.user.id).update({
+			info: event.user,
+		});
+	});
+
+	rtm.on('team_join', (event) => {
+		db.collection('users').doc(event.user.id).set({
 			info: event.user,
 		});
 	});
@@ -353,6 +355,29 @@ export const unlock = async (user: string, name: string, additionalInfo?: string
 	for (const newAchievement of newAchievements) {
 		await unlock(user, newAchievement);
 	}
+};
+
+// migration purpose only. not modifying local state
+export const lock = async (user: string, name: string) => {
+	const achievement = achievements.get(name);
+	if (!achievement) {
+		throw new Error(`Unknown achievement name ${name}`);
+	}
+
+	if (!user || !user.startsWith('U') || user === 'USLACKBOT') {
+		throw new Error(`Invalid user name ${user}`);
+	}
+
+	const existingAchievement = await db.collection('achievements').where('name', '==', name).where('user', '==', user).get();
+	if (existingAchievement.empty) {
+		console.error(`${user} is not unlocking ${name} on db`);
+	} else {
+		for (const doc of existingAchievement.docs) {
+			await doc.ref.delete();
+		}
+	}
+
+	console.log(`DEBUG: @${user}の実績「${achievement.title}」を削除しました`);
 };
 
 export const isUnlocked = async (user: string, name: string) => {

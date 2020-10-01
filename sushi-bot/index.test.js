@@ -1,14 +1,19 @@
 /* eslint-env node, jest */
 jest.mock('../achievements');
 jest.mock('moment');
+jest.mock('fs');
 
 const moment = require('moment');
 const sushi = require('./index.js');
 const Slack = require('../lib/slackMock.js');
+const fs = require('fs');
+
+jest.unmock('fs');
 
 let slack = null;
 
-beforeEach(() => {
+beforeEach(async () => {
+	fs.virtualFiles = {};
 	slack = new Slack();
 	sushi(slack);
 
@@ -214,4 +219,48 @@ it('reacts to "あさ！" with :95: at 9:00:01', () => new Promise((resolve) => 
 		user: slack.fakeUser,
 		ts: slack.fakeTimestamp,
 	});
+}));
+
+it('reacts to "起床ランキング 確認', () => new Promise((resolve) => {
+	moment.mockImplementation(() => ({
+		utcOffset: () => ({
+			hour: () => 10,
+			minutes: () => 0,
+			seconds: () => 0,
+		})
+	}));
+	slack.on('chat.postMessage', ({username, channel, text}) => {
+		expect(username).toBe('sushi-bot');
+		expect(channel).toBe("D00000000");
+		expect(text).toContain('あなたの起床点数は80点');
+		expect(text).toContain('現在の順位は');
+		resolve();
+	});
+
+
+	(async () => {
+		const promise = new Promise(resolve => {
+			slack.on('reactions.add', ({name, timestamp}) => {
+				if (timestamp === slack.fakeTimestamp && name === '80') {
+					resolve();
+				}
+			});
+		});
+
+		slack.rtmClient.emit('message', {
+			channel: slack.fakeChannel,
+			text: 'あさ',
+			user: slack.fakeUser,
+			ts: slack.fakeTimestamp,
+		});
+
+		await promise;
+
+		slack.rtmClient.emit('message', {
+			channel: "D00000000",
+			text: '起床ランキング 確認',
+			user: slack.fakeUser,
+			ts: slack.fakeTimestamp,
+		});
+	})();
 }));
