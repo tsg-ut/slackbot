@@ -1,13 +1,13 @@
-import {WebClient} from '@slack/client';
-import type {SlackInterface} from '../lib/slack';
-import {flatten, uniq} from 'lodash';
-import {getEmoji, getMemberIcon, getMemberName} from '../lib/slackUtils';
-import {EmojiData} from 'emoji-data-ts';
-import {getRtmClient} from '../lib/slack';
 import path from 'path';
+import {WebClient} from '@slack/web-api';
+import {EmojiData} from 'emoji-data-ts';
 import plugin from 'fastify-plugin';
+import {flatten, uniq} from 'lodash';
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
+import {getRtmClient, SlackInterface} from '../lib/slack';
+
+import {getEmoji, getMemberIcon, getMemberName} from '../lib/slackUtils';
 
 const messages = new Map();
 

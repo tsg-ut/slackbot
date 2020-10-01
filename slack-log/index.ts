@@ -1,7 +1,7 @@
 import axios from 'axios';
 // @ts-ignore
 import logger from '../lib/logger.js';
-import {LinkUnfurls} from '@slack/client';
+import type {LinkUnfurls} from '@slack/web-api';
 import qs from 'querystring';
 
 const slacklogAPIDomain = 'localhost:9292';

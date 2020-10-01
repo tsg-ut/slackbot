@@ -4,7 +4,7 @@ import logger from '../lib/logger.js';
 
 const welcomeScrapboxUrl = `https://scrapbox.io/api/pages/tsg/welcome`;
 
-import {WebClient} from '@slack/client';
+import {WebClient} from '@slack/web-api';
 import type {SlackInterface} from '../lib/slack';
 
 async function postWelcomeMessage(slack: WebClient, channel: string) {

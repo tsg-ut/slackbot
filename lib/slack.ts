@@ -1,4 +1,5 @@
-import {RTMClient, WebClient} from '@slack/client';
+import {WebClient} from '@slack/web-api';
+import {RTMClient} from '@slack/rtm-api';
 import {createEventAdapter} from '@slack/events-api';
 import {createMessageAdapter} from '@slack/interactive-messages';
 import {Deferred} from './utils';
