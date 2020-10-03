@@ -7,7 +7,7 @@ const {
 	getCandidateWords,
 } = require('../tahoiya/lib');
 
-const BOTNAME = 'sort-nazonazo';
+const BOTNAME = 'ソートなぞなぞ';
 const BOTICON = ':abc:';
 const TIMEOUT = 1000 * 60;
 
