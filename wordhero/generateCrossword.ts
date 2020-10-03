@@ -1,4 +1,4 @@
-import sqlite from 'sqlite';
+import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import {spawn} from 'child_process';

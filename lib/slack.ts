@@ -5,7 +5,7 @@ import {createMessageAdapter} from '@slack/interactive-messages';
 import {Deferred} from './utils';
 import {Token} from '../oauth/tokens';
 import sql from 'sql-template-strings';
-import sqlite from 'sqlite';
+import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 

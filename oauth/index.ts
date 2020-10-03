@@ -2,7 +2,7 @@ import {FastifyInstance} from 'fastify';
 import type {SlackInterface, SlackOauthEndpoint} from '../lib/slack';
 // @ts-ignore
 import logger from '../lib/logger.js';
-import sqlite from 'sqlite';
+import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import sql from 'sql-template-strings';

@@ -13,7 +13,7 @@ import {stripIndent} from 'common-tags';
 import {hiraganize} from 'japanese';
 // @ts-ignore
 import download from 'download';
-import sqlite from 'sqlite';
+import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import render from './render';
 import {Deferred} from '../lib/utils';
