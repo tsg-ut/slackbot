@@ -14,6 +14,7 @@ import {hiraganize} from 'japanese';
 // @ts-ignore
 import download from 'download';
 import sqlite from 'sqlite';
+import sqlite3 from 'sqlite3';
 import render from './render';
 import {Deferred} from '../lib/utils';
 
@@ -223,7 +224,10 @@ const load = async () => {
 	};
 	const tree = trie(rawTrie);
 
-	const db = await sqlite.open(path.join(__dirname, 'dictionary.sqlite3'));
+	const db = await sqlite.open({
+		filename: path.join(__dirname, 'dictionary.sqlite3'),
+		driver: sqlite3.Database,
+	});
 
 	return loadDeferred.resolve({seedWords, hardSeedWords, tree, db});
 };

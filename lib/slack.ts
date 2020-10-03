@@ -6,6 +6,7 @@ import {Deferred} from './utils';
 import {Token} from '../oauth/tokens';
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
+import sqlite3 from 'sqlite3';
 import path from 'path';
 
 export interface SlackInterface {
@@ -49,7 +50,10 @@ rtmClients.set(process.env.TEAM_ID, rtmClient);
 
 const loadTokensDeferred = new Deferred();
 const loadTokens = async () => {
-	const db = await sqlite.open(path.join(__dirname, '..', 'tokens.sqlite3'));
+	const db = await sqlite.open({
+		filename: path.join(__dirname, '..', 'tokens.sqlite3'),
+		driver: sqlite3.Database,
+	});
 	const tokens = await db.all(sql`SELECT * FROM tokens WHERE bot_access_token <> ''`).catch(() => []);
 	await db.close();
 

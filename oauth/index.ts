@@ -3,12 +3,16 @@ import type {SlackInterface, SlackOauthEndpoint} from '../lib/slack';
 // @ts-ignore
 import logger from '../lib/logger.js';
 import sqlite from 'sqlite';
+import sqlite3 from 'sqlite3';
 import path from 'path';
 import sql from 'sql-template-strings';
 import {get} from 'lodash';
 
 export const server = ({webClient: slack}: SlackInterface) => async (fastify: FastifyInstance) => {
-	const db = await sqlite.open(path.join(__dirname, '..', 'tokens.sqlite3'));
+	const db = await sqlite.open({
+		filename: path.join(__dirname, '..', 'tokens.sqlite3'),
+		driver: sqlite3.Database,
+	});
 	await db.run(`
 		CREATE TABLE IF NOT EXISTS tokens (
 			team_id string PRIMARY KEY,

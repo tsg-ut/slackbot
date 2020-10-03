@@ -91,6 +91,7 @@
     "shogi9.js": "^1.0.2",
     "sql-template-strings": "^2.2.2",
     "sqlite": "^4.0.15",
+    "sqlite3": "^5.0.0",
     "strophe.js": "github:hakatashi/strophejs",
     "suncalc": "^1.8.0",
     "trie-prefix-tree": "^1.5.1",

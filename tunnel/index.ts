@@ -5,6 +5,7 @@ import plugin from 'fastify-plugin';
 import {flatten, uniq} from 'lodash';
 import sql from 'sql-template-strings';
 import sqlite from 'sqlite';
+import sqlite3 from 'sqlite3';
 import {getRtmClient, SlackInterface} from '../lib/slack';
 
 import {getEmoji, getMemberIcon, getMemberName} from '../lib/slackUtils';
@@ -28,7 +29,10 @@ const getEmojiImageUrl = async (name: string, team: string): Promise<string> => 
 };
 
 export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface) => plugin(async (fastify, opts, next) => {
-	const db = await sqlite.open(path.join(__dirname, '..', 'tokens.sqlite3'));
+	const db = await sqlite.open({
+		filename: path.join(__dirname, '..', 'tokens.sqlite3'),
+		driver: sqlite3.Database,
+	});
 	const kmcToken = await db.get(sql`SELECT * FROM tokens WHERE team_id = ${process.env.KMC_TEAM_ID}`).catch(() => null);
 	await db.close();
 
