@@ -1,5 +1,5 @@
 import {FastifyInstance} from 'fastify';
-import type {SlackInterface} from '../lib/slack';
+import type {SlackInterface, SlackOauthEndpoint} from '../lib/slack';
 // @ts-ignore
 import logger from '../lib/logger.js';
 import sqlite from 'sqlite';
@@ -19,7 +19,7 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 		)
 	`);
 
-	fastify.get('/oauth', async (req, res) => {
+	fastify.get<SlackOauthEndpoint>('/oauth', async (req, res) => {
 		const data = await slack.oauth.access({
 			code: req.query.code,
 			client_id: process.env.CLIENT_ID,

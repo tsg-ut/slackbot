@@ -1,12 +1,12 @@
-import type {SlackInterface} from '../lib/slack';
-import { liveDb as db } from '../lib/firestore';
-import {getMemberName} from '../lib/slackUtils';
 import plugin from 'fastify-plugin';
+import {liveDb as db} from '../lib/firestore';
+import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
+import {getMemberName} from '../lib/slackUtils';
 
 export const server = ({webClient: slack}: SlackInterface) => plugin(async (fastify, opts, next) => {
 	const {team}: any = await slack.team.info();
 
-	fastify.post('/slash/tsglive', async (req, res) => {
+	fastify.post<SlashCommandEndpoint>('/slash/tsglive', async (req, res) => {
 		if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
 			res.code(400);
 			return 'Bad Request';

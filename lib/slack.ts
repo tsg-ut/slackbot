@@ -15,6 +15,31 @@ export interface SlackInterface {
 	messageClient: ReturnType<typeof createMessageAdapter>;
 };
 
+export interface SlashCommandEndpoint {
+	Body: {
+		token: string;
+		team_id: string;
+		team_domain: string;
+		enterprise_id: string;
+		enterprise_name: string;
+		channel_id: string;
+		channel_name: string;
+		user_id: string;
+		user_name: string;
+		command: string;
+		text: string;
+		response_url: string;
+		trigger_id: string;
+		api_app_id: string;
+	};
+}
+
+export interface SlackOauthEndpoint {
+	Querystring: {
+		code: string;
+	};
+}
+
 export const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
 export const webClient = new WebClient(process.env.SLACK_TOKEN);
 
