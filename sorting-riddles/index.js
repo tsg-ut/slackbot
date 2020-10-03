@@ -50,7 +50,7 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 
 	const candidateWords = await getCandidateWords({ min: 0, max: Infinity });
 
-	const command = /^ソートなぞなぞ\s*(?:(?<length>[1-9][0-9]?)文字)?$/;
+	const command = /^(?:ソート|そーと)なぞなぞ\s*(?:(?<length>[1-9][0-9]?)(?:(?:文)?字)?)?$/;
 
 	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
