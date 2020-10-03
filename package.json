@@ -58,6 +58,7 @@
     "encoding-japanese": "^1.0.30",
     "fast-levenshtein": "^3.0.0",
     "fastify": "^3.5.0",
+    "fastify-express": "^0.1.0",
     "fastify-formbody": "^5.0.0",
     "fastify-plugin": "^2.3.4",
     "firebase-admin": "^9.2.0",
