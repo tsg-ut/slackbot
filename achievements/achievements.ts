@@ -1869,6 +1869,16 @@ const achievements: Achievement[] = [
 		category: 'crossword',
 	},
 
+	// denim (bcr)
+	{
+		id: 'fullsplit',
+		difficulty: 'medium',
+		title: 'ガチ割れ行くぜ！',
+		condition: '白鍵を4567鍵に寄せ、デニム譜面を割る',
+		category: 'bcr'
+	},
+
+
 	// achievements
 
 	{

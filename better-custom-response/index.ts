@@ -1,6 +1,8 @@
 import customResponses from './custom-responses';
+import responseAchievements from './response-achievements';
 import {sample, shuffle} from 'lodash';
 import type {SlackInterface} from '../lib/slack';
+const {unlock} = require('../achievements');
 
 
 const response = async (text:string) => {
@@ -46,6 +48,14 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
                 username,
                 icon_emoji,
             });
+            for (const achieve of responseAchievements) {
+                for (const regexp of achieve.trigger) {
+                    const matches = resp[0].match(regexp);
+                    if (matches !== null) {
+                        await unlock(message.user, achieve.name);
+                    }
+                }
+            }
         }
         const reac = await reaction(text);
         if (!reac) return;
