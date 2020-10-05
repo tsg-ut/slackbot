@@ -378,7 +378,7 @@ module.exports = (clients) => {
 			state.手牌 = sort(shuffled牌s.slice(0, 14));
 			state.ドラ表示牌s = shuffled牌s.slice(14, 15);
 			state.壁牌 = shuffled牌s.slice(15);
-			state.remaining自摸 = 19;
+			state.remaining自摸 = 20;
 			state.大麻雀Points -= 6000;
 			state.大麻雀 = true;
 			await saveState();
@@ -606,7 +606,7 @@ module.exports = (clients) => {
 							isHaitei: state.remaining自摸 === 0 && 当たり牌Index === 河牌Count - 1,
 							isVirgin: false,
 							isRiichi: true,
-							isDoubleRiichi: state.リーチTurn === (state.大麻雀 ? 19 : 17),
+							isDoubleRiichi: state.リーチTurn === (state.大麻雀 ? 20 : 17),
 							isIppatsu: state.リーチTurn - state.remaining自摸 === 1,
 							isRon: 当たり牌Index !== 河牌Count - 1,
 							additionalDora: 抜きドラ,
@@ -753,7 +753,7 @@ module.exports = (clients) => {
 				const {agari, 役s} = calculator.agari(state.手牌, {
 					doraHyouji: state.ドラ表示牌s,
 					isHaitei: state.remaining自摸 === 0,
-					isVirgin: state.remaining自摸 === (state.大麻雀 ? 19 : 17),
+					isVirgin: state.remaining自摸 === (state.大麻雀 ? 20 : 17),
 					additionalDora: state.抜きドラCount,
 				});
 
