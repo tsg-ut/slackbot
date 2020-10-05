@@ -135,6 +135,16 @@ const customResponses: CustomResponse[] = [
         },
         icon_emoji: ":iidx-muri-1p:",
         username: "ガチ割れ行くぜ！",
+        achievements: [
+            {
+                trigger: [/\|　　\|　\|　\|　\|＿\|＿\|＿\|＿\|/],
+                name: "bcr-denim-fullsplit"
+            },
+            {
+                trigger: [/\|　　\|＿\|＿\|＿\|＿\|　\|　\|　\|/],
+                name: "bcr-denim-reversplit"
+            },
+        ],
     },
 ];
 
