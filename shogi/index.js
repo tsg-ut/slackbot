@@ -1,8 +1,9 @@
+const path = require('path');
 const {default: Shogi} = require('shogi9.js');
 const {default: Color} = require('shogi9.js/lib/Color.js');
 const {default: Piece} = require('shogi9.js/lib/Piece.js');
 const sqlite = require('sqlite');
-const path = require('path');
+const sqlite3 = require('sqlite3');
 const fs = require('fs').promises;
 const assert = require('assert');
 const minBy = require('lodash/minBy');
@@ -13,6 +14,7 @@ const flatten = require('lodash/flatten');
 const oneLine = require('common-tags/lib/oneLine');
 const {unlock, increment} = require('../achievements');
 
+const {upload} = require('./image.js');
 const {
 	serialize,
 	deserialize,
@@ -21,7 +23,6 @@ const {
 	pieceToChar,
 	transitionToText,
 } = require('./util.js');
-const {upload} = require('./image.js');
 
 const iconUrl =
 	'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/kenNldpvFDI6baHIW0XnB6JzITdh3hB2gCLcBGAs/s400/character_game_syougi.png';
@@ -52,6 +53,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		log: [],
 		thread: null,
 		flags: new Set(),
+		db: null,
 	};
 
 	let match = null;
@@ -179,13 +181,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		const inversedBoard = state.board.inverse();
 
-		const currentResult = await sqlite.get(
+		const currentResult = await state.db.get(
 			oneLine`
 				SELECT board, result, depth
 				FROM boards
 				WHERE board = ?
 			`,
-			serialize(inversedBoard)
+			serialize(inversedBoard),
 		);
 
 		// 先手自殺手
@@ -207,7 +209,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		const transitions = getTransitions(inversedBoard);
 
-		const transitionResults = await sqlite.all(
+		const transitionResults = await state.db.all(
 			oneLine`
 				SELECT board, result, depth
 				FROM boards
@@ -216,27 +218,27 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		.join(', ')})
 				ORDER BY RANDOM()
 			`,
-			transitions.map((transition) => serialize(transition.board))
+			transitions.map((transition) => serialize(transition.board)),
 		);
 
 		const loseResults = transitionResults.filter(({result}) => result === 0);
 		const winResults = transitionResults.filter(({result}) => result === 1);
 		const unknownResults = transitionResults.filter(
-			({result}) => result === null
+			({result}) => result === null,
 		);
 		state.isPrevious打ち歩 = false;
 
 		if (loseResults.length > 0) {
 			const transitionResult = minBy(loseResults, 'depth');
 			const transition = transitions.find(
-				({board}) => Buffer.compare(serialize(board), transitionResult.board) === 0
+				({board}) => Buffer.compare(serialize(board), transitionResult.board) === 0,
 			);
 			state.board = deserialize(transitionResult.board);
 			state.turn = Color.Black;
 			const logText = transitionToText(
 				transition,
 				Color.White,
-				state.previousPosition
+				state.previousPosition,
 			);
 			state.previousPosition = {
 				x: 4 - transition.data.to.x,
@@ -255,14 +257,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					? sample(unknownResults)
 					: maxBy(winResults, 'depth');
 			const transition = transitions.find(
-				({board}) => Buffer.compare(serialize(board), transitionResult.board) === 0
+				({board}) => Buffer.compare(serialize(board), transitionResult.board) === 0,
 			);
 			state.board = deserialize(transitionResult.board);
 			state.turn = Color.Black;
 			const logText = transitionToText(
 				transition,
 				Color.White,
-				state.previousPosition
+				state.previousPosition,
 			);
 			state.previousPosition = {
 				x: 4 - transition.data.to.x,
@@ -305,13 +307,13 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			let condition = '';
 			if ((matches = text.match(/^(?<count>\d+)手(?:詰め|必勝将棋)$/))) {
 				condition = `depth = ${(parseInt(
-					matches.groups.count.replace(/^0+/, '')
+					matches.groups.count.replace(/^0+/, ''),
 				) || 0) + 1}`;
 			} else if (
 				(matches = text.match(/^(?<count>\d+)手以上(?:詰め|必勝将棋)$/))
 			) {
 				condition = `depth > ${parseInt(
-					matches.groups.count.replace(/^0+/, '')
+					matches.groups.count.replace(/^0+/, ''),
 				) || 0}`;
 			} else {
 				condition = 'depth > 5';
@@ -319,8 +321,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 			const databases = await fs.readdir(path.resolve(__dirname, 'boards'));
 			const database = sample(databases);
-			await sqlite.open(path.resolve(__dirname, 'boards', database));
-			const data = await sqlite.get(oneLine`
+			state.db = await sqlite.open({
+				filename: path.join(__dirname, 'boards', database),
+				driver: sqlite3.Database,
+			});
+			const data = await state.db.get(oneLine`
 				SELECT *
 				FROM boards
 				WHERE result = 1 AND ${condition}
@@ -374,9 +379,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				await end(Color.White);
 			}
 
-			await sqlite.open(
-				path.resolve(__dirname, 'boards', state.previousDatabase)
-			);
+			state.db = await sqlite.open({
+				filename: path.resolve(__dirname, 'boards', state.previousDatabase),
+				driver: sqlite3.Database,
+			});
 			state.board = state.previousBoard;
 			state.previousBoard = state.board.clone();
 			state.isPrevious打ち歩 = false;
@@ -421,7 +427,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				{
 					const transitions = getTransitions(board);
 
-					const transitionResults = await sqlite.all(
+					const transitionResults = await state.db.all(
 						oneLine`
 							SELECT board, result, depth
 							FROM boards
@@ -430,21 +436,21 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		.join(', ')})
 							ORDER BY RANDOM()
 						`,
-						transitions.map((transition) => serialize(transition.board))
+						transitions.map((transition) => serialize(transition.board)),
 					);
 
 					const transitionResult = minBy(
 						transitionResults.filter(({result}) => result === 0),
-						'depth'
+						'depth',
 					);
 					const transition = transitions.find(
-						({board: b}) => Buffer.compare(serialize(b), transitionResult.board) === 0
+						({board: b}) => Buffer.compare(serialize(b), transitionResult.board) === 0,
 					);
 					board = deserialize(transitionResult.board);
 					const logText = transitionToText(
 						transition,
 						Color.Black,
-						previousPosition
+						previousPosition,
 					);
 					logs.push(logText);
 
@@ -462,7 +468,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				{
 					const transitions = getTransitions(board);
 
-					const transitionResults = await sqlite.all(
+					const transitionResults = await state.db.all(
 						oneLine`
 							SELECT board, result, depth
 							FROM boards
@@ -471,22 +477,22 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		.join(', ')})
 							ORDER BY RANDOM()
 						`,
-						transitions.map((transition) => serialize(transition.board))
+						transitions.map((transition) => serialize(transition.board)),
 					);
 
 					const transitionResult = maxBy(
 						transitionResults.filter(({result}) => result === 1),
-						'depth'
+						'depth',
 					);
 					const transition = transitions.find(
-						({board: b}) => Buffer.compare(serialize(b), transitionResult.board) === 0
+						({board: b}) => Buffer.compare(serialize(b), transitionResult.board) === 0,
 					);
 					board = deserialize(transitionResult.board);
 
 					const logText = transitionToText(
 						transition,
 						Color.White,
-						previousPosition
+						previousPosition,
 					);
 					logs.push(logText);
 
@@ -523,7 +529,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			message.thread_ts &&
 			state.thread === message.thread_ts &&
 			(match = text.match(
-				/^(?<position>[123１２３一二三][123１２３一二三]|同)(?<pieceChar>歩|歩兵|香|香車|桂|桂馬|銀|銀将|金|金将|飛|飛車|角|角行|王|王将|玉|玉将|と|と金|成香|杏|成桂|圭|成銀|全|龍|竜|龍王|竜王|馬|龍馬|竜馬)(?:(?<xFlag>[右左直]?)(?<yFlag>[寄引上]?)(?<promoteFlag>成|不成)?|(?<dropFlag>打))?$/
+				/^(?<position>[123１２３一二三][123１２３一二三]|同)(?<pieceChar>歩|歩兵|香|香車|桂|桂馬|銀|銀将|金|金将|飛|飛車|角|角行|王|王将|玉|玉将|と|と金|成香|杏|成桂|圭|成銀|全|龍|竜|龍王|竜王|馬|龍馬|竜馬)(?:(?<xFlag>[右左直]?)(?<yFlag>[寄引上]?)(?<promoteFlag>成|不成)?|(?<dropFlag>打))?$/,
 			))
 		) {
 			const {
@@ -640,7 +646,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 							move.from.y,
 							move.to.x,
 							move.to.y,
-							isPromotable && promoteFlag === '成'
+							isPromotable && promoteFlag === '成',
 						);
 
 						const didPromote =

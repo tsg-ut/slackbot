@@ -1,4 +1,4 @@
-import type {WebClient} from '@slack/client';
+import type {WebClient} from '@slack/web-api';
 import {times, sample} from 'lodash';
 // @ts-ignore
 import {$pres, $msg, $iq, Strophe} from 'strophe.js';

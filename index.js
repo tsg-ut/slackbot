@@ -14,7 +14,8 @@ const fastify = require('fastify')({
 const logger = require('./lib/logger.js');
 const yargs = require('yargs');
 
-fastify.register(require('fastify-formbody'));
+const fastifyFormbody = require('fastify-formbody');
+const fastifyExpress = require('fastify-express');
 
 const allBots = [
 	'summary',
@@ -81,6 +82,27 @@ eventClient.on('error', (error) => {
 const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 
 (async () => {
+	await fastify.register(fastifyFormbody);
+	await fastify.register(fastifyExpress);
+
+	fastify.use('/slack-event', (req, res, next) => {
+		if (!{}.hasOwnProperty.call(req.headers, 'x-slack-signature')) {
+			res.statusCode = 400;
+			res.end('Bad Request');
+			return;
+		}
+		next();
+	});
+	fastify.use('/slack-event', eventClient.expressMiddleware());
+	fastify.use('/slack-message', messageClient.requestListener());
+	fastify.listen(process.env.PORT || 21864, (error, address) => {
+		if (error) {
+			logger.error(error);
+		} else {
+			logger.info(`Server launched at ${address}`);
+		}
+	});
+
 	await Promise.all(Object.entries(plugins).map(async ([name, plugin]) => {
 		if (typeof plugin === 'function') {
 			await plugin({rtmClient, webClient, eventClient, messageClient});
@@ -99,46 +121,28 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 		channel: process.env.CHANNEL_SANDBOX,
 		text: argv.startup,
 	});
+
+	let firstLogin = true;
+	let lastLogin = null;
+	let combos = 1;
+	rtmClient.on('authenticated', (data) => {
+		logger.info(`Logged in as ${data.self.name} of team ${data.team.name}`);
+		const now = new Date();
+		if (!firstLogin) {
+			let comboStr = '';
+			if (now - lastLogin <= 2 * 60 * 1000) {
+				combos++;
+				comboStr = `(${combos}コンボ${'!'.repeat(combos)})`
+			}
+			else {
+				combos = 1;
+			}
+			webClient.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: `再接続しました ${comboStr}`,
+			});
+		}
+		firstLogin = false;
+		lastLogin = now;
+	});
 })();
-
-fastify.use('/slack-event', (req, res, next) => {
-	if (!{}.hasOwnProperty.call(req.headers, 'x-slack-signature')) {
-		res.statusCode = 400;
-		res.end('Bad Request');
-		return;
-	}
-	next();
-});
-fastify.use('/slack-event', eventClient.expressMiddleware());
-fastify.use('/slack-message', messageClient.requestListener());
-fastify.listen(process.env.PORT || 21864, (error, address) => {
-	if (error) {
-		logger.error(error);
-	} else {
-		logger.info(`Server launched at ${address}`);
-	}
-});
-
-let firstLogin = true;
-let lastLogin = null;
-let combos = 1;
-rtmClient.on('authenticated', (data) => {
-	logger.info(`Logged in as ${data.self.name} of team ${data.team.name}`);
-	const now = new Date();
-	if (!firstLogin) {
-		let comboStr = '';
-		if (now - lastLogin <= 2 * 60 * 1000) {
-			combos++;
-			comboStr = `(${combos}コンボ${'!'.repeat(combos)})`
-		}
-		else {
-			combos = 1;
-		}
-		webClient.chat.postMessage({
-			channel: process.env.CHANNEL_SANDBOX,
-			text: `再接続しました ${comboStr}`,
-		});
-	}
-	firstLogin = false;
-	lastLogin = now;
-});

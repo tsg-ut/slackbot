@@ -1,6 +1,6 @@
 import qs from 'querystring';
 // eslint-disable-next-line no-unused-vars
-import {WebClient} from '@slack/client';
+import {WebClient} from '@slack/web-api';
 import axios from 'axios';
 import {stripIndent} from 'common-tags';
 import {countBy, throttle, groupBy, get as getter, chunk} from 'lodash';

@@ -1,9 +1,9 @@
+import qs from 'querystring';
+import type {LinkUnfurls} from '@slack/web-api';
 import axios from 'axios';
 // @ts-ignore
 import logger from '../lib/logger.js';
-import {LinkUnfurls} from '@slack/client';
 import type {SlackInterface} from '../lib/slack';
-import qs from 'querystring';
 
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
 
