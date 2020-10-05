@@ -1871,17 +1871,17 @@ const achievements: Achievement[] = [
 
 	// denim (bcr)
 	{
-		id: 'fullsplit',
+		id: 'bcr-denim-fullsplit',
 		difficulty: 'medium',
 		title: 'ガチ割れ行くぜ！',
 		condition: '白鍵を4567鍵に寄せ、デニム譜面を割る',
 		category: 'bcr'
 	},
 	{
-		id: 'reversplit',
+		id: 'bcr-denim-reversplit',
 		difficulty: 'medium',
-		title: 'ガチ割れ行かないぜ！',
-		condition: '白鍵を1234鍵に寄せ、2P割れにする',
+		title: '逆割れ行くぜ！',
+		condition: '白鍵を1234鍵に寄せ、デニム譜面を2P割れにする',
 		category: 'bcr'
 	},
 

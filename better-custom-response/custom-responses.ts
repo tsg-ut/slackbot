@@ -3,6 +3,11 @@ import { stripIndent } from 'common-tags';
 import { romanize, katakanize } from 'japanese';
 import { shuffle } from 'lodash';
 
+interface Achievement {
+    trigger: RegExp[],
+    name: string,
+}
+
 interface CustomResponse {
     input: RegExp[],
     outputArray?: string[],
@@ -11,6 +16,7 @@ interface CustomResponse {
     username?: string,
     icon_emoji?: string,
     reaction?: true,
+    achievements?: Achievement[],
 }
 
 const customResponses: CustomResponse[] = [
