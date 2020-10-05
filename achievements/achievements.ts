@@ -1877,6 +1877,13 @@ const achievements: Achievement[] = [
 		condition: '白鍵を4567鍵に寄せ、デニム譜面を割る',
 		category: 'bcr'
 	},
+	{
+		id: 'reversplit',
+		difficulty: 'medium',
+		title: '',
+		condition: '白鍵を1234鍵に寄せ、2P割れにする',
+		category: 'bcr'
+	},
 
 
 	// achievements

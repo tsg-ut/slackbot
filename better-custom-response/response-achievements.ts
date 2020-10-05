@@ -10,6 +10,10 @@ const responseAchievements: Achievement[] = [
         trigger: [/\|　　\|　\|　\|　\|＿\|＿\|＿\|＿\|/],
         name: "fullsplit"
     },
+    {
+        trigger: [/\|　　\|＿\|＿\|＿\|＿\|　\|　\|　\|/],
+        name: "fullsplit"
+    },
 ];
 
 export default responseAchievements;
