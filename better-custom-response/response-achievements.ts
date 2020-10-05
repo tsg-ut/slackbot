@@ -12,7 +12,7 @@ const responseAchievements: Achievement[] = [
     },
     {
         trigger: [/\|　　\|＿\|＿\|＿\|＿\|　\|　\|　\|/],
-        name: "fullsplit"
+        name: "reversplit"
     },
 ];
 

@@ -1880,7 +1880,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'reversplit',
 		difficulty: 'medium',
-		title: '',
+		title: 'ガチ割れ行かないぜ！',
 		condition: '白鍵を1234鍵に寄せ、2P割れにする',
 		category: 'bcr'
 	},
