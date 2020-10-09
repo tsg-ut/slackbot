@@ -146,6 +146,14 @@ const customResponses: CustomResponse[] = [
             },
         ],
     },
+    {
+        input: [/^実績一覧 <@(U[A-Z0-9]+)>$/],
+        outputFunction: (input: string[]) => {
+            return [`https://achievements.tsg.ne.jp/users/${input[1]}`];
+        },
+        icon_emoji: ":achievement:",
+        username: "実績一覧",
+    },
 ];
 
 export default customResponses;
