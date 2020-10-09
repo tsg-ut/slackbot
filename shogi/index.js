@@ -3,6 +3,7 @@ const {default: Shogi} = require('shogi9.js');
 const {default: Color} = require('shogi9.js/lib/Color.js');
 const {default: Piece} = require('shogi9.js/lib/Piece.js');
 const sqlite = require('sqlite');
+const sqlite3 = require('sqlite3');
 const fs = require('fs').promises;
 const assert = require('assert');
 const minBy = require('lodash/minBy');
@@ -52,6 +53,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		log: [],
 		thread: null,
 		flags: new Set(),
+		db: null,
 	};
 
 	let match = null;
@@ -200,7 +202,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		const inversedBoard = state.board.inverse();
 
-		const currentResult = await sqlite.get(
+		const currentResult = await state.db.get(
 			oneLine`
 				SELECT board, result, depth
 				FROM boards
@@ -228,7 +230,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 		const transitions = getTransitions(inversedBoard);
 
-		const transitionResults = await sqlite.all(
+		const transitionResults = await state.db.all(
 			oneLine`
 				SELECT board, result, depth
 				FROM boards
@@ -340,8 +342,11 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 			const databases = await fs.readdir(path.resolve(__dirname, 'boards'));
 			const database = sample(databases);
-			await sqlite.open(path.resolve(__dirname, 'boards', database));
-			const data = await sqlite.get(oneLine`
+			state.db = await sqlite.open({
+				filename: path.join(__dirname, 'boards', database),
+				driver: sqlite3.Database,
+			});
+			const data = await state.db.get(oneLine`
 				SELECT *
 				FROM boards
 				WHERE result = 1 AND ${condition}
@@ -395,9 +400,10 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				await end(Color.White);
 			}
 
-			await sqlite.open(
-				path.resolve(__dirname, 'boards', state.previousDatabase),
-			);
+			state.db = await sqlite.open({
+				filename: path.resolve(__dirname, 'boards', state.previousDatabase),
+				driver: sqlite3.Database,
+			});
 			state.board = state.previousBoard;
 			state.previousBoard = state.board.clone();
 			state.isPrevious打ち歩 = false;
@@ -442,7 +448,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				{
 					const transitions = getTransitions(board);
 
-					const transitionResults = await sqlite.all(
+					const transitionResults = await state.db.all(
 						oneLine`
 							SELECT board, result, depth
 							FROM boards
@@ -483,7 +489,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				{
 					const transitions = getTransitions(board);
 
-					const transitionResults = await sqlite.all(
+					const transitionResults = await state.db.all(
 						oneLine`
 							SELECT board, result, depth
 							FROM boards

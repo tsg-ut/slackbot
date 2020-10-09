@@ -1,8 +1,9 @@
-import scrapeIt from 'scrape-it';
-import type {SlackInterface} from '../lib/slack';
-import {last, escapeRegExp} from 'lodash';
 import plugin from 'fastify-plugin';
-import {getMemberName, getMemberIcon} from '../lib/slackUtils'
+import {escapeRegExp} from 'lodash';
+import scrapeIt from 'scrape-it';
+/* eslint-disable no-unused-vars */
+import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
+import {getMemberName, getMemberIcon} from '../lib/slackUtils';
 
 const normalizeMeaning = (input: string) => {
   let meaning = input;
@@ -15,30 +16,33 @@ const normalizeMeaning = (input: string) => {
   meaning = meaning.replace(/【.+?】/g, '');
   if (meaning.includes('とは、')) {
     meaning = meaning.replace(/^.*?とは、/, '');
-  } else if (meaning.includes('とは，')) {
+  }
+  else if (meaning.includes('とは，')) {
     meaning = meaning.replace(/^.*?とは，/, '');
-  } else if (meaning.includes('は、')) {
+  }
+  else if (meaning.includes('は、')) {
     meaning = meaning.replace(/^.*?は、/, '');
-  } else if (meaning.includes('とは')) {
+  }
+  else if (meaning.includes('とは')) {
     meaning = meaning.replace(/^.*?とは/, '');
   }
   meaning = meaning.replace(/であり、.+$/, '');
   meaning = meaning.replace(/であるが、.+$/, '');
   meaning = meaning.replace(/のこと(?!わざ).+$/, '');
   meaning = meaning.replace(/を指す.+$/, '');
-  meaning = meaning.replace(/^== (.+?) ==$/g, '$1');
+  meaning = meaning.replace(/^== (?<content>.+?) ==$/g, '$<content>');
   meaning = meaning.replace(/。[^」』].*$/, '');
   meaning = meaning.replace(/^\*/, '');
-  meaning = meaning.replace(/^[\d０-９][\.．\s]/, '');
-  meaning = meaning.trim().replace(/(のこと|の事|をいう|である|です|を指す|とされ(る|ます)|とされてい(る|ます)|、|。)+$/, '');
-  meaning = meaning.replace(/(の一つ|のひとつ|の１つ)$/, 'の1つ');
-  meaning = meaning.replace(/(の1人|のひとり|の１人)$/, 'の一人');
-  meaning = meaning.replace(/(の1種|の１種)$/, 'の一種');
+  meaning = meaning.replace(/^[\d０-９][.．\s]/, '');
+  meaning = meaning.trim().replace(/(?:のこと|の事|をいう|である|です|を指す|とされ(?:る|ます)|とされてい(?:る|ます)|、|。)+$/, '');
+  meaning = meaning.replace(/(?:の一つ|のひとつ|の１つ)$/, 'の1つ');
+  meaning = meaning.replace(/(?:の1人|のひとり|の１人)$/, 'の一人');
+  meaning = meaning.replace(/(?:の1種|の１種)$/, 'の一種');
   return meaning.trim();
 };
 
 const extractMeaning = (description: string): string => {
-  const match = description.match(/^.+?(とは\?(?<reference>.+?)。|の意味は)(?<meaning>.+)$/);
+  const match = description.match(/^.+?(?:とは\?(?<reference>.+?)。|の意味は)(?<meaning>.+)$/);
   if (match === null) {
     return 'わからん';
   }
@@ -76,7 +80,9 @@ const randomWord = async (): Promise<Word> => {
 };
 
 const sleepFor = (duration: number): Promise<void> =>
-  new Promise(resolve => { setTimeout(resolve, duration) });
+  new Promise((resolve) => {
+    setTimeout(resolve, duration);
+  });
 
 const composePost = async (message: string): Promise<string> => {
   if (message === '') {
@@ -84,24 +90,29 @@ const composePost = async (message: string): Promise<string> => {
     return word;
   }
   let first = true;
-  let match;
-  while ((match = /{[^{}]*}/.exec(message)) != null) {
-    if (!first)
+  let response = message;
+  let match = null;
+  while ((match = /{[^{}]*}/.exec(response)) != null) {
+    if (!first) {
       await sleepFor(5000);
+    }
     first = false;
     const {word} = await randomWord();
-    if (match[0] === '{}')
-      message = message.replace('{}', word);
-    else
-      message = message.replace(new RegExp(escapeRegExp(match[0]), 'g'), word);
+    const [placeholder] = match;
+    if (placeholder === '{}') {
+      response = response.replace('{}', word);
+    }
+    else {
+      response = response.replace(new RegExp(escapeRegExp(placeholder), 'g'), word);
+    }
   }
-  return message;
+  return response;
 };
 
 const randomInterval = () =>
   1000 * 60 * (90 + (Math.random() - 0.5) * 2 * 60);
 
-export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => plugin (async (fastify, opts, next) => {
+export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => plugin(async (fastify) => {
   const postWord = async () => {
     const {word, description} = await randomWord();
     await slack.chat.postMessage({
@@ -122,16 +133,19 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
     postWord();
     setTimeout(repeatPost, randomInterval());
   };
-  rtm.on('message', async message => {
-    if (message.channel !== process.env.CHANNEL_SANDBOX
-        || message.subtype === 'bot_message')
+  /* eslint-disable require-await */
+  rtm.on('message', async (message) => {
+    if (message.channel !== process.env.CHANNEL_SANDBOX ||
+        message.subtype === 'bot_message') {
       return;
-    if (/^\s*@cfb(\s.*)?$/.exec(message.text) != null)
+    }
+    if (/^\s*@cfb(?:\s.*)?$/.exec(message.text) != null) {
       postWord();
+    }
   });
   setTimeout(repeatPost, randomInterval());
   const {team: tsgTeam}: any = await slack.team.info();
-  fastify.post('/slash/context-free-post', async (request, response) => {
+  fastify.post<SlashCommandEndpoint>('/slash/context-free-post', async (request, response) => {
     if (request.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
       response.code(400);
       return 'Bad Request';
@@ -142,7 +156,7 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
     }
     const username = await getMemberName(request.body.user_id);
     const icon_url = await getMemberIcon(request.body.user_id, 512);
-    composePost(request.body.text).then(text => {
+    composePost(request.body.text).then((text) => {
       slack.chat.postMessage({
         username,
         icon_url,

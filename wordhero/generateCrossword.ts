@@ -1,5 +1,5 @@
-// @ts-ignore
-import sqlite from 'sqlite';
+import * as sqlite from 'sqlite';
+import sqlite3 from 'sqlite3';
 import path from 'path';
 import {spawn} from 'child_process';
 // @ts-ignore
@@ -31,7 +31,10 @@ const generate = async () => {
 		cells.map((cell) => board[cell]).join('')
 	));
 
-	const db = await sqlite.open(path.join(__dirname, 'crossword.sqlite3'));
+	const db = await sqlite.open({
+		filename: path.join(__dirname, 'crossword.sqlite3'),
+		driver: sqlite3.Database,
+	});
 	const descriptions = await Promise.all(words.map((word) => (
 		db.get('SELECT * FROM words WHERE ruby = ? ORDER BY RANDOM() LIMIT 1', word)
 	)));

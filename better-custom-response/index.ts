@@ -1,7 +1,7 @@
 import customResponses from './custom-responses';
 import {sample, shuffle} from 'lodash';
 import type {SlackInterface} from '../lib/slack';
-
+const {unlock} = require('../achievements');
 
 const response = async (text:string) => {
     for (const resp of customResponses.filter((response) => !response.reaction)) {
@@ -10,11 +10,23 @@ const response = async (text:string) => {
             if (matches !== null) {
                 const responses = {}.hasOwnProperty.call(resp, 'outputArray') ? resp.outputArray : await resp.outputFunction(matches);
                 if (!responses) continue;
-                return [resp.shuffle ? shuffle(responses).join('') : sample(responses), resp.username, resp.icon_emoji];
+                const respText = resp.shuffle ? shuffle(responses).join('') : sample(responses);
+                const respAchievements: string[] = [];
+                if (resp.achievements) {
+                    for (const achieve of resp.achievements) {
+                        for (const trigger of achieve.trigger){
+                            const achieveMatches = respText.match(trigger);
+                            if (achieveMatches !== null) {
+                                respAchievements.push(achieve.name);
+                            }
+                        }
+                    }
+                }
+                return {text: respText, username: resp.username, icon_emoji: resp.icon_emoji, achievements: respAchievements};
             }
         }
     }
-    return [null, null, null];
+    return null;
 };
 
 const reaction = async (text:string) => {
@@ -37,15 +49,18 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
         const {channel, text, ts: timestamp} = message;
         if (!text) return;
         const resp = await response(text);
-        if (resp[0]) {
-            const username = !resp[1] ? 'better-custom-response' : resp[1];
-            const icon_emoji = !resp[2] ? ':slack:' : resp[2];
+        if (resp) {
+            const username = !resp.username ? 'better-custom-response' : resp.username;
+            const icon_emoji = !resp.icon_emoji ? ':slack:' : resp.icon_emoji;
             await slack.chat.postMessage({
                 channel: message.channel,
-                text: resp[0],
+                text: resp.text,
                 username,
                 icon_emoji,
             });
+            for (const achievementID of resp.achievements) {
+                await unlock(message.user, achievementID);
+            }
         }
         const reac = await reaction(text);
         if (!reac) return;
