@@ -58,13 +58,14 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 	let match = null;
 
-	const perdon = async (description = '') => {
+	const perdon = async (description = '', broadcast = false) => {
 		await slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			text: ':ha:',
 			username: 'shogi',
 			icon_url: iconUrl,
 			thread_ts: state.thread,
+			reply_broadcast: broadcast,
 		});
 		if (description !== '') {
 			await slack.chat.postMessage({
@@ -73,6 +74,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 				username: 'shogi',
 				icon_url: iconUrl,
 				thread_ts: state.thread,
+				reply_broadcast: broadcast,
 			});
 		}
 	};
@@ -296,7 +298,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			text.match(/^\d+手以上(?:詰め|必勝将棋)$/)
 		) {
 			if (state.board !== null || state.isLocked) {
-				perdon();
+				perdon('', true);
 				return;
 			}
 			if (message.thread_ts) {
