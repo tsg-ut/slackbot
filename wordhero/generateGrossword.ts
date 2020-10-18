@@ -88,6 +88,13 @@ export const parseBoard = (board: string) => {
 		}
 	}
 
+	constraints.sort((a, b) => {
+		if (a.descriptionId !== b.descriptionId) {
+			return a.descriptionId === 'ヨコ' ? 1 : -1;
+		}
+		return a.cells[0] - b.cells[0];
+	});
+
 	const startingCells = constraints.map(({cells}) => cells[0]);
 	const uniqueStartingCells = Array.from(new Set(startingCells)).sort((a, b) => a - b);
 

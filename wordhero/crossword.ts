@@ -307,8 +307,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					attachments: [{
 						title: 'Crossword',
 						image_url: cloudinaryData.secure_url,
-					}, ...state.crossword.descriptions.map(({word, ruby, description}, index) => ({
-						text: `${index + 1}. ${word} (${ruby}): ${description}`,
+					}, ...state.crossword.descriptions.map(({word, ruby, description, descriptionId}) => ({
+						text: `${descriptionId}. ${word} (${ruby}): ${description}`,
 						color: state.hitWords.includes(ruby) ? '#FF6F00' : '',
 					}))],
 				});
