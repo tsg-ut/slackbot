@@ -192,15 +192,15 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						await increment(user, 'grossword-wins');
 					}
 					if (state.contributors.size >= 11) {
-						await unlock(message.user, 'crossword-contributors-ge-11');
+						await unlock(user, 'crossword-contributors-ge-11');
 					}
 					if (remainingTime >= state.crossword.constraints.length * 10000 * 0.75) {
-						await unlock(message.user, 'crossword-game-time-le-quarter');
+						await unlock(user, 'crossword-game-time-le-quarter');
 					}
 				}
 				for (const [user, misses] of state.misses) {
 					if (misses >= 20 && !state.contributors.has(user)) {
-						await unlock(message.user, 'crossword-misses-ge-20');
+						await unlock(user, 'crossword-misses-ge-20');
 					}
 				}
 				if (state.contributors.size === 1) {
