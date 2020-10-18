@@ -88,6 +88,13 @@ export const parseBoard = (board: string) => {
 		}
 	}
 
+	const startingCells = constraints.map(({cells}) => cells[0]);
+	const uniqueStartingCells = Array.from(new Set(startingCells)).sort((a, b) => a - b);
+
+	for (const constraint of constraints) {
+		constraint.descriptionId += (uniqueStartingCells.findIndex((c) => c === constraint.cells[0]) + 1).toString();
+	}
+
 	const normalizedBoard = Array(400).fill(null).map((cell, i) => {
 		const x = i % 20;
 		const y = Math.floor(i / 20);

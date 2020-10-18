@@ -76,6 +76,13 @@ const colors = [
 	'#E65100',
 ];
 
+const getColor = (isGrossword: boolean, descriptionId: string) => {
+	if (isGrossword) {
+		return descriptionId.startsWith('タテ') ? colors[2] : colors[4];
+	}
+	return colors[parseInt(descriptionId) % colors.length];
+};
+
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const state: State = {
 		thread: null,
@@ -214,7 +221,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 							return {
 								text: `${descriptionId}. ${cells.map((cell) => state.board[cell] || '◯').join('')}: ${description}`,
 								ruby,
-								color: colors[index],
+								color: getColor(state.isGrossword, descriptionId),
 							};
 						}).filter(({ruby}) => (
 							!state.hitWords.includes(ruby)
@@ -257,11 +264,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				attachments: [{
 					title: 'Crossword',
 					image_url: cloudinaryData.secure_url,
-				}, ...state.crossword.descriptions.map(({description, descriptionId}, index) => {
+				}, ...state.crossword.descriptions.map(({description, descriptionId}) => {
 					const cells = state.crossword.constraints.find((constraint) => constraint.descriptionId === descriptionId).cells;
 					return {
 						text: `${descriptionId}. ${cells.map((cell) => state.board[cell] || '◯').join('')}: ${description}`,
-						color: colors[index],
+						color: getColor(state.isGrossword, descriptionId),
 					};
 				})],
 			});
