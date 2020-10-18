@@ -177,7 +177,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					thread_ts: thread,
 					reply_broadcast: true,
 					attachments: [{
-						title: 'Crossword',
+						title: state.isGrossword ? 'Grossword' : 'Crossword',
 						image_url: cloudinaryData.secure_url,
 					}, ...state.crossword.descriptions.map(({word, ruby, description}, index) => ({
 						text: `${index + 1}. ${word} (${ruby}): ${description}`,
@@ -235,7 +235,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						`,
 						ts: state.thread,
 						attachments: [{
-							title: 'Crossword',
+							title: state.isGrossword ? 'Grossword' : 'Crossword',
 							image_url: cloudinaryData.secure_url,
 						}, ...state.crossword.descriptions.map(({description, ruby, descriptionId}, index) => {
 							const cells = state.crossword.constraints.find((constraint) => constraint.descriptionId === descriptionId).cells;
@@ -284,7 +284,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				icon_emoji: ':capital_abcd:',
 				reply_broadcast: true,
 				attachments: [{
-					title: 'Crossword',
+					title: state.isGrossword ? 'Grossword' : 'Crossword',
 					image_url: cloudinaryData.secure_url,
 				}, ...state.crossword.descriptions.map(({description, descriptionId}) => {
 					const cells = state.crossword.constraints.find((constraint) => constraint.descriptionId === descriptionId).cells;
@@ -327,7 +327,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					icon_emoji: ':capital_abcd:',
 					reply_broadcast: true,
 					attachments: [{
-						title: 'Crossword',
+						title: state.isGrossword ? 'Grossword' : 'Crossword',
 						image_url: cloudinaryData.secure_url,
 					}, ...state.crossword.descriptions.map(({word, ruby, description, descriptionId}) => ({
 						text: `${descriptionId}. ${word} (${ruby}): ${description}`,

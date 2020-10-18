@@ -1881,7 +1881,7 @@ const achievements: Achievement[] = [
 		id: 'crossword-game-time-le-quarter',
 		difficulty: 'hard',
 		title: 'クロスワード・ゲームセッター',
-		condition: 'crosswordで制限時間の1/4以下の時間でクリアしたゲームに置いて、1マス以上のマスを開ける',
+		condition: 'crosswordで制限時間の1/4以下の時間でクリアしたゲームにおいて、1マス以上のマスを開ける',
 		category: 'crossword',
 	},
 	{
