@@ -17,9 +17,9 @@ serde_json = "1.0.39"
 serde_repr = "0.1.4"
 
 [[bin]]
-name = "main"
+name = "crossword_generator_main"
 path = "src/main.rs"
 
 [[bin]]
-name = "bench"
+name = "crossword_generator_bench"
 path = "src/bench.rs"

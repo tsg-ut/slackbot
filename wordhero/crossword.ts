@@ -9,16 +9,38 @@ import {renderCrossword} from './render';
 import generateCrossword from './generateCrossword';
 import boardConfigs from './boards.json';
 import {unlock, increment} from '../achievements';
+import db from '../lib/firestore';
+import {sample} from 'lodash';
 
 
 interface Description {
 	word: string,
 	description: string,
 	ruby: string,
-};
+}
+
+interface State {
+	thread: string,
+	isHolding: boolean,
+	crossword: {
+		words: string[],
+		descriptions: Description[],
+		board: string[],
+		index: number,
+	},
+	board: string[],
+	hitWords: string[],
+	timeouts: NodeJS.Timeout[],
+	users: Set<string>,
+	contributors: Set<string>,
+	endTime: number,
+	isGrossword: boolean,
+}
+
+const Boards = db.collection('crossword_boards');
 
 const uploadImage = async (board: {color: string, letter: string}[], boardIndex: number) => {
-	const imageData = await renderCrossword(board, boardIndex);
+	const imageData = await renderCrossword(board, `crossword-board-${boardIndex + 1}`);
 	const cloudinaryData: any = await new Promise((resolve, reject) => {
 		cloudinary.v2.uploader
 			// @ts-ignore ref: https://github.com/cloudinary/cloudinary_npm/pull/327
@@ -55,25 +77,21 @@ const colors = [
 	'#E65100',
 ];
 
+const getGrosswordBoard = async () => {
+	const results = await Boards.where('category', '==', 'grossword').where('used_at', '==', null).get();
+
+	if (results.size === 0) {
+		return null;
+	}
+
+	return sample(results.docs).data();
+};
+
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
-	const state: {
-		thread: string,
-		isHolding: boolean,
-		crossword: {
-			words: string[],
-			descriptions: Description[],
-			board: string[],
-			index: number,
-		},
-		board: string[],
-		hitWords: string[],
-		timeouts: NodeJS.Timeout[],
-		users: Set<string>,
-		contributors: Set<string>,
-		endTime: number,
-	} = {
+	const state: State = {
 		thread: null,
 		isHolding: false,
+		isGrossword: false,
 		crossword: null,
 		board: [],
 		hitWords: [],
@@ -219,13 +237,15 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
-		if (message.text.match(/^crossword$/i)) {
+		if (message.text.match(/^crossword$/i) || message.text.match(/^grossword$/i)) {
 			if (state.isHolding) {
 				return;
 			}
 
+
+			state.isGrossword = message.text.match(/^grossword$/i);
 			state.isHolding = true;
-			state.board = Array(36).fill(null);
+			state.board = Array(400).fill(null);
 			state.hitWords = [];
 			state.timeouts = [];
 			state.users = new Set();
@@ -233,7 +253,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const crossword = await generateCrossword();
 			state.crossword = crossword;
 
-			const cloudinaryData: any = await uploadImage(Array(16).fill(null), state.crossword.index);
+			const cloudinaryData: any = await uploadImage([], state.crossword.index);
 			const seconds = boardConfigs[state.crossword.index].length * 10;
 
 			const {ts}: any = await slack.chat.postMessage({
