@@ -29,7 +29,6 @@ const generate = async () => {
 				resolve(data);
 			}));
 		});
-		console.log(output);
 
 		const lines = output.toString().split('\n').filter((line) => line);
 		for (const line of lines) {
@@ -51,7 +50,21 @@ const generate = async () => {
 	const descriptions = await Promise.all(words.map((word) => (
 		db.get('SELECT * FROM words WHERE ruby = ? ORDER BY RANDOM() LIMIT 1', word)
 	)));
-	return {words, descriptions, board: convertToNewFormat(board), index};
+
+	return {
+		words,
+		descriptions,
+		board: convertToNewFormat(board),
+		boardId: `crossword-board-${index + 1}`,
+		constraints: constraints.map((constraint) => ({
+			cells: constraint.cells.map((cell) => {
+				const x = cell % 6;
+				const y = Math.floor(cell / 6);
+				return y * 20 + x;
+			}),
+			index: constraint.index,
+		})),
+	};
 };
 
 export default generate;

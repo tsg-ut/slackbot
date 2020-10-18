@@ -7,10 +7,10 @@ import {hiraganize} from 'japanese';
 import Queue from 'p-queue';
 import {renderCrossword} from './render';
 import generateCrossword from './generateCrossword';
-import boardConfigs from './boards.json';
+import generateGrossword from './generateGrossword';
 import {unlock, increment} from '../achievements';
-import db from '../lib/firestore';
-import {sample} from 'lodash';
+
+generateCrossword().then((d) => console.log(d));
 
 
 interface Description {
@@ -26,7 +26,8 @@ interface State {
 		words: string[],
 		descriptions: Description[],
 		board: string[],
-		index: number,
+		boardId: string,
+		constraints: {cells: number[], index: number}[],
 	},
 	board: string[],
 	hitWords: string[],
@@ -37,10 +38,8 @@ interface State {
 	isGrossword: boolean,
 }
 
-const Boards = db.collection('crossword_boards');
-
-const uploadImage = async (board: {color: string, letter: string}[], boardIndex: number) => {
-	const imageData = await renderCrossword(board, `crossword-board-${boardIndex + 1}`);
+const uploadImage = async (board: {color: string, letter: string}[], boardId: string) => {
+	const imageData = await renderCrossword(board, boardId);
 	const cloudinaryData: any = await new Promise((resolve, reject) => {
 		cloudinary.v2.uploader
 			// @ts-ignore ref: https://github.com/cloudinary/cloudinary_npm/pull/327
@@ -76,16 +75,6 @@ const colors = [
 	'#827717',
 	'#E65100',
 ];
-
-const getGrosswordBoard = async () => {
-	const results = await Boards.where('category', '==', 'grossword').where('used_at', '==', null).get();
-
-	if (results.size === 0) {
-		return null;
-	}
-
-	return sample(results.docs).data();
-};
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const state: State = {
@@ -128,7 +117,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 			for (const [index, correctWord] of state.crossword.words.entries()) {
 				if (word === correctWord) {
-					for (const letterIndex of boardConfigs[state.crossword.index].find((constraint) => constraint.index === index + 1).cells) {
+					for (const letterIndex of state.crossword.constraints.find((constraint) => constraint.index === index + 1).cells) {
 						newIndices.add(letterIndex);
 						state.board[letterIndex] = state.crossword.board[letterIndex];
 					}
@@ -138,7 +127,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const newOpenCells = state.board.filter((cell) => cell !== null).length;
 
 			state.hitWords = state.crossword.words.filter((_, index) => {
-				const cells = boardConfigs[state.crossword.index].find((constraint) => constraint.index === index + 1).cells;
+				const cells = state.crossword.constraints.find((constraint) => constraint.index === index + 1).cells;
 				return cells.every((cell) => state.board[cell] !== null);
 			});
 
@@ -162,7 +151,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				const cloudinaryData: any = await uploadImage(state.crossword.board.map((letter) => ({
 					color: 'red',
 					letter,
-				})), state.crossword.index);
+				})), state.crossword.boardId);
 
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
@@ -206,9 +195,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					const cloudinaryData = await uploadImage(state.board.map((letter, index) => (letter === null ? null : {
 						color: newIndices.has(index) ? 'red' : 'black',
 						letter,
-					})), state.crossword.index);
+					})), state.crossword.boardId);
 
-					const seconds = boardConfigs[state.crossword.index].length * 10;
+					const seconds = state.crossword.constraints.length * 10;
 
 					await slack.chat.update({
 						channel: process.env.CHANNEL_SANDBOX,
@@ -221,7 +210,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 							title: 'Crossword',
 							image_url: cloudinaryData.secure_url,
 						}, ...state.crossword.descriptions.map(({description, ruby}, index) => {
-							const cells = boardConfigs[state.crossword.index].find((constraint) => constraint.index === index + 1).cells;
+							const cells = state.crossword.constraints.find((constraint) => constraint.index === index + 1).cells;
 							return {
 								text: `${index + 1}. ${cells.map((cell) => state.board[cell] || '◯').join('')}: ${description}`,
 								ruby,
@@ -253,8 +242,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const crossword = await generateCrossword();
 			state.crossword = crossword;
 
-			const cloudinaryData: any = await uploadImage([], state.crossword.index);
-			const seconds = boardConfigs[state.crossword.index].length * 10;
+			const cloudinaryData: any = await uploadImage([], state.crossword.boardId);
+			const seconds = state.crossword.constraints.length * 10;
 
 			const {ts}: any = await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
@@ -269,7 +258,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					title: 'Crossword',
 					image_url: cloudinaryData.secure_url,
 				}, ...state.crossword.descriptions.map(({description}, index) => {
-					const cells = boardConfigs[state.crossword.index].find((constraint) => constraint.index === index + 1).cells;
+					const cells = state.crossword.constraints.find((constraint) => constraint.index === index + 1).cells;
 					return {
 						text: `${index + 1}. ${cells.map((cell) => state.board[cell] || '◯').join('')}: ${description}`,
 						color: colors[index],
@@ -299,7 +288,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				const cloudinaryData: any = await uploadImage(state.crossword.board.map((letter, index) => ({
 					color: state.board[index] === null ? 'gray' : 'black',
 					letter,
-				})), state.crossword.index);
+				})), state.crossword.boardId);
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
