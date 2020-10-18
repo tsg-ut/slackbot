@@ -219,6 +219,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					timestamp: message.ts,
 				});
 
+				const ts = state.thread;
 				await updatesQueue.add(async () => {
 					const cloudinaryData = await uploadImage(state.board.map((letter, index) => (letter === null ? null : {
 						color: newIndices.has(index) ? 'red' : 'black',
@@ -233,7 +234,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 							楽しいクロスワードパズルを始めるよ～
 							マスに入ると思う単語を${seconds}秒以内に *スレッドで* 返信してね!
 						`,
-						ts: state.thread,
+						ts,
 						attachments: [{
 							title: state.isGrossword ? 'Grossword' : 'Crossword',
 							image_url: cloudinaryData.secure_url,

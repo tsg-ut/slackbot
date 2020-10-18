@@ -106,7 +106,11 @@ export const parseBoard = (board: string) => {
 		const x = i % 20;
 		const y = Math.floor(i / 20);
 		if (y < height) {
-			return lines[y][x] || null;
+			const cell = lines[y][x];
+			if (cell === undefined || cell === '　') {
+				return null;
+			}
+			return lines[y][x];
 		}
 		return null;
 	});
