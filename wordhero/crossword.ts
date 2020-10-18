@@ -194,7 +194,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					if (state.contributors.size >= 11) {
 						await unlock(message.user, 'crossword-contributors-ge-11');
 					}
-					if (remainingTime >= state.crossword.constraints.length * 10 * 0.75) {
+					if (remainingTime >= state.crossword.constraints.length * 10000 * 0.75) {
 						await unlock(message.user, 'crossword-game-time-le-quarter');
 					}
 				}
