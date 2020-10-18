@@ -1908,7 +1908,7 @@ const achievements: Achievement[] = [
 		value: 1,
 	},
 	{
-		id: 'crossword-wins-12',
+		id: 'grossword-wins-12',
 		difficulty: 'hard',
 		title: 'ダズン・グロス',
 		condition: 'grosswordで1マス以上のマスを開け、盤面を12回クリアする',
@@ -1917,13 +1917,22 @@ const achievements: Achievement[] = [
 		value: 12,
 	},
 	{
-		id: 'crossword-wins-144',
+		id: 'grossword-wins-144',
 		difficulty: 'professional',
 		title: 'グロス・グロス',
 		condition: 'grosswordで1マス以上のマスを開け、盤面を144回クリアする',
 		category: 'crossword',
 		counter: 'grossword-wins',
 		value: 144,
+	},
+	{
+		id: 'grossword-wins-1728',
+		difficulty: 'professional',
+		title: 'グレート・グロス・グロス',
+		condition: 'grosswordで1マス以上のマスを開け、盤面を1728回クリアする',
+		category: 'crossword',
+		counter: 'grossword-wins',
+		value: 1728,
 	},
 
 	// denim (bcr)
