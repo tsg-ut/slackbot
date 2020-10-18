@@ -14,18 +14,21 @@ interface Description {
 	word: string,
 	description: string,
 	ruby: string,
+	descriptionId: string,
+}
+
+export interface Crossword {
+	words: string[],
+	descriptions: Description[],
+	board: string[],
+	boardId: string,
+	constraints: {cells: number[], descriptionId: string}[],
 }
 
 interface State {
 	thread: string,
 	isHolding: boolean,
-	crossword: {
-		words: string[],
-		descriptions: Description[],
-		board: string[],
-		boardId: string,
-		constraints: {cells: number[], index: number}[],
-	},
+	crossword: Crossword,
 	board: string[],
 	hitWords: string[],
 	timeouts: NodeJS.Timeout[],
@@ -112,9 +115,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 			const newIndices = new Set();
 
-			for (const [index, correctWord] of state.crossword.words.entries()) {
-				if (word === correctWord) {
-					for (const letterIndex of state.crossword.constraints.find((constraint) => constraint.index === index + 1).cells) {
+			for (const description of state.crossword.descriptions) {
+				if (word === description.ruby) {
+					for (const letterIndex of state.crossword.constraints.find((constraint) => constraint.descriptionId === description.descriptionId).cells) {
 						newIndices.add(letterIndex);
 						state.board[letterIndex] = state.crossword.board[letterIndex];
 					}
@@ -123,10 +126,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 			const newOpenCells = state.board.filter((cell) => cell !== null).length;
 
-			state.hitWords = state.crossword.words.filter((_, index) => {
-				const cells = state.crossword.constraints.find((constraint) => constraint.index === index + 1).cells;
+			state.hitWords = state.crossword.descriptions.filter((description) => {
+				const cells = state.crossword.constraints.find((constraint) => constraint.descriptionId === description.descriptionId).cells;
 				return cells.every((cell) => state.board[cell] !== null);
-			});
+			}).map((description) => description.ruby);
 
 			increment(message.user, 'crossword-cells', newOpenCells - oldOpenCells);
 			state.contributors.add(message.user);
@@ -206,10 +209,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						attachments: [{
 							title: 'Crossword',
 							image_url: cloudinaryData.secure_url,
-						}, ...state.crossword.descriptions.map(({description, ruby}, index) => {
-							const cells = state.crossword.constraints.find((constraint) => constraint.index === index + 1).cells;
+						}, ...state.crossword.descriptions.map(({description, ruby, descriptionId}, index) => {
+							const cells = state.crossword.constraints.find((constraint) => constraint.descriptionId === descriptionId).cells;
 							return {
-								text: `${index + 1}. ${cells.map((cell) => state.board[cell] || '◯').join('')}: ${description}`,
+								text: `${descriptionId}. ${cells.map((cell) => state.board[cell] || '◯').join('')}: ${description}`,
 								ruby,
 								color: colors[index],
 							};
@@ -254,10 +257,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				attachments: [{
 					title: 'Crossword',
 					image_url: cloudinaryData.secure_url,
-				}, ...state.crossword.descriptions.map(({description}, index) => {
-					const cells = state.crossword.constraints.find((constraint) => constraint.index === index + 1).cells;
+				}, ...state.crossword.descriptions.map(({description, descriptionId}, index) => {
+					const cells = state.crossword.constraints.find((constraint) => constraint.descriptionId === descriptionId).cells;
 					return {
-						text: `${index + 1}. ${cells.map((cell) => state.board[cell] || '◯').join('')}: ${description}`,
+						text: `${descriptionId}. ${cells.map((cell) => state.board[cell] || '◯').join('')}: ${description}`,
 						color: colors[index],
 					};
 				})],

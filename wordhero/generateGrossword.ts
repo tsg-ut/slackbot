@@ -1,9 +1,9 @@
 import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
-import {sortBy} from 'lodash';
 import db from '../lib/firestore';
 import {sample, negate, isEmpty, maxBy} from 'lodash';
+import type {Crossword} from './crossword';
 
 const Boards = db.collection('crossword_boards');
 
@@ -12,13 +12,10 @@ interface Cell {
 	y: number,
 }
 
-interface CrosswordData {
-	board: string,
-	type: string,
-	used_at: Date | null,
+interface Constraint {
+	cells: number[],
+	descriptionId: string,
 }
-
-type Constraint = number[];
 
 export const parseBoard = (board: string) => {
 	const lines = board.split('\n').filter(negate(isEmpty));
@@ -38,7 +35,7 @@ export const parseBoard = (board: string) => {
 	const constraints: Constraint[] = [];
 
 	for (const y of Array(height).keys()) {
-		let consecutiveCells: Constraint = [];
+		let consecutiveCells: number[] = [];
 
 		for (const x of Array(width).keys()) {
 			const char = lines[y][x] || '　';
@@ -47,19 +44,25 @@ export const parseBoard = (board: string) => {
 				consecutiveCells.push(y * 20 + x);
 			} else {
 				if (consecutiveCells.length >= 3) {
-					constraints.push(consecutiveCells);
+					constraints.push({
+						cells: consecutiveCells,
+						descriptionId: 'ヨコ',
+					});
 				}
 				consecutiveCells = [];
 			}
 		}
 
 		if (consecutiveCells.length >= 3) {
-			constraints.push(consecutiveCells);
+			constraints.push({
+				cells: consecutiveCells,
+				descriptionId: 'ヨコ',
+			});
 		}
 	}
 
 	for (const x of Array(width).keys()) {
-		let consecutiveCells: Constraint = [];
+		let consecutiveCells: number[] = [];
 
 		for (const y of Array(height).keys()) {
 			const char = lines[y][x] || '　';
@@ -68,14 +71,20 @@ export const parseBoard = (board: string) => {
 				consecutiveCells.push(y * 20 + x);
 			} else {
 				if (consecutiveCells.length >= 3) {
-					constraints.push(consecutiveCells);
+					constraints.push({
+						cells: consecutiveCells,
+						descriptionId: 'タテ',
+					});
 				}
 				consecutiveCells = [];
 			}
 		}
 
 		if (consecutiveCells.length >= 3) {
-			constraints.push(consecutiveCells);
+			constraints.push({
+				cells: consecutiveCells,
+				descriptionId: 'タテ',
+			});
 		}
 	}
 
@@ -89,13 +98,13 @@ export const parseBoard = (board: string) => {
 	});
 
 	return {
-		constraints: constraints.map((cells, index) => ({cells, index: index + 1})),
+		constraints: constraints,
 		board: normalizedBoard,
 	};
 };
 
 
-const generate = async (usedAt: string) => {
+const generate = async (usedAt: string): Promise<Crossword> => {
 	const crosswordData = await db.runTransaction(async (transaction) => {
 		const query = Boards.where('category', '==', 'grossword').where('used_at', '==', null);
 		const results = await transaction.get(query);
@@ -111,7 +120,7 @@ const generate = async (usedAt: string) => {
 	});
 
 	const {board, constraints} = parseBoard(crosswordData.board);
-	const words = sortBy(constraints, ({index}) => index).map(({cells}) => (
+	const words = constraints.map(({cells}) => (
 		cells.map((cell) => board[cell]).join('')
 	));
 
@@ -125,7 +134,10 @@ const generate = async (usedAt: string) => {
 
 	return {
 		words,
-		descriptions,
+		descriptions: descriptions.map((description, index) => ({
+			...description,
+			descriptionId: constraints[index].descriptionId,
+		})),
 		board,
 		boardId: crosswordData.type.replace('-', '-board-'),
 		constraints,

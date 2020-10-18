@@ -6,6 +6,7 @@ import {spawn} from 'child_process';
 import concat from 'concat-stream';
 import {sortBy} from 'lodash';
 import boardConfigs from './boards.json';
+import type {Crossword} from './crossword';
 
 const stocks: any[] = [];
 
@@ -21,7 +22,7 @@ const convertToNewFormat = (board: string[]) => (
 	})
 );
 
-const generate = async (usedAt: string) => {
+const generate = async (usedAt: string): Promise<Crossword> => {
 	if (stocks.length === 0) {
 		const generator = spawn('../target/release/crossword_generator_main', {cwd: __dirname});
 		const output = await new Promise<Buffer>((resolve) => {
@@ -53,7 +54,10 @@ const generate = async (usedAt: string) => {
 
 	return {
 		words,
-		descriptions,
+		descriptions: descriptions.map((description, index) => ({
+			...description,
+			descriptionId: (index + 1).toString(),
+		})),
 		board: convertToNewFormat(board),
 		boardId: `crossword-board-${index + 1}`,
 		constraints: constraints.map((constraint) => ({
@@ -62,7 +66,7 @@ const generate = async (usedAt: string) => {
 				const y = Math.floor(cell / 6);
 				return y * 20 + x;
 			}),
-			index: constraint.index,
+			descriptionId: constraint.index.toString(),
 		})),
 	};
 };
