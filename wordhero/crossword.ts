@@ -36,6 +36,7 @@ interface State {
 	contributors: Set<string>,
 	endTime: number,
 	isGrossword: boolean,
+	misses: Map<string, number>,
 }
 
 const uploadImage = async (board: {color: string, letter: string}[], boardId: string) => {
@@ -95,6 +96,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		users: new Set(),
 		contributors: new Set(),
 		endTime: 0,
+		misses: new Map(),
 	};
 
 	rtm.on('message', async (message) => {
@@ -110,6 +112,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			state.users.add(message.user);
 
 			if (!state.crossword.words.includes(word) || state.hitWords.includes(word)) {
+				if (!state.misses.has(message.user)) {
+					state.misses.set(message.user, 0);
+				}
+				state.misses.set(message.user, state.misses.get(message.user) + 1);
+
 				await slack.reactions.add({
 					name: 'no_good',
 					channel: message.channel,
@@ -181,6 +188,20 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				await unlock(message.user, 'crossword-clear');
 				for (const user of state.contributors) {
 					await increment(user, 'crossword-wins');
+					if (state.isGrossword) {
+						await increment(user, 'grossword-wins');
+					}
+					if (state.contributors.size >= 11) {
+						await unlock(message.user, 'crossword-contributors-ge-11');
+					}
+					if (remainingTime >= state.crossword.constraints.length * 10 * 0.75) {
+						await unlock(message.user, 'crossword-game-time-le-quarter');
+					}
+				}
+				for (const [user, misses] of state.misses) {
+					if (misses >= 20 && !state.contributors.has(user)) {
+						await unlock(message.user, 'crossword-misses-ge-20');
+					}
 				}
 				if (state.contributors.size === 1) {
 					await unlock(message.user, 'crossword-solo');
@@ -248,6 +269,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			state.contributors = new Set();
 			const crossword = await (state.isGrossword ? generateGrossword(message.ts) : generateCrossword(message.ts));
 			state.crossword = crossword;
+			state.misses = new Map();
 
 			const cloudinaryData: any = await uploadImage([], state.crossword.boardId);
 			const seconds = state.crossword.constraints.length * 10;

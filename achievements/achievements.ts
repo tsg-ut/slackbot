@@ -1841,6 +1841,15 @@ const achievements: Achievement[] = [
 		value: 150,
 	},
 	{
+		id: 'crossword-wins-1000',
+		difficulty: 'professional',
+		title: 'サザンクロス',
+		condition: 'crosswordで1マス以上のマスを開け、盤面を1000回クリアする',
+		category: 'crossword',
+		counter: 'crossword-wins',
+		value: 1000,
+	},
+	{
 		id: 'crossword-solo',
 		difficulty: 'hard',
 		title: 'クロスワード・完投勝利',
@@ -1868,6 +1877,54 @@ const achievements: Achievement[] = [
 		condition: 'crosswordで制限時間が切れる2秒以内に、クリアを決定する最後の単語を回答する',
 		category: 'crossword',
 	},
+	{
+		id: 'crossword-game-time-le-quarter',
+		difficulty: 'hard',
+		title: 'クロスワード・ゲームセッター',
+		condition: 'crosswordで制限時間の1/4以下の時間でクリアしたゲームに置いて、1マス以上のマスを開ける',
+		category: 'crossword',
+	},
+	{
+		id: 'crossword-misses-ge-20',
+		difficulty: 'medium',
+		title: 'クロスワード・フリースインガー',
+		condition: 'crosswordで1ゲームに20個以上の誤答を行い、一度も正解しない',
+		category: 'crossword',
+	},
+	{
+		id: 'crossword-contributors-ge-11',
+		difficulty: 'professional',
+		title: 'クロスワード・オールスターゲーム',
+		condition: 'crosswordで1ゲームに11人以上が正答した状態でクリアしたゲームにおいて、1マス以上のマスを開ける',
+		category: 'crossword',
+	},
+	{
+		id: 'grossword-wins-1',
+		difficulty: 'hard',
+		title: 'シングル・グロス',
+		condition: 'grosswordで1マス以上のマスを開け、盤面をクリアする',
+		category: 'crossword',
+		counter: 'grossword-wins',
+		value: 1,
+	},
+	{
+		id: 'crossword-wins-12',
+		difficulty: 'hard',
+		title: 'ダズン・グロス',
+		condition: 'grosswordで1マス以上のマスを開け、盤面を12回クリアする',
+		category: 'crossword',
+		counter: 'grossword-wins',
+		value: 12,
+	},
+	{
+		id: 'crossword-wins-144',
+		difficulty: 'professional',
+		title: 'グロス・グロス',
+		condition: 'grosswordで1マス以上のマスを開け、盤面を144回クリアする',
+		category: 'crossword',
+		counter: 'grossword-wins',
+		value: 144,
+	},
 
 	// denim (bcr)
 	{
@@ -1875,16 +1932,15 @@ const achievements: Achievement[] = [
 		difficulty: 'medium',
 		title: 'ガチ割れ行くぜ！',
 		condition: '白鍵を4567鍵に寄せ、デニム譜面を割る',
-		category: 'bcr'
+		category: 'bcr',
 	},
 	{
 		id: 'bcr-denim-reversplit',
 		difficulty: 'medium',
 		title: '逆割れ行くぜ！',
 		condition: '白鍵を1234鍵に寄せ、デニム譜面を2P割れにする',
-		category: 'bcr'
+		category: 'bcr',
 	},
-
 
 	// achievements
 
