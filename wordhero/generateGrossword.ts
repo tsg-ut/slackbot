@@ -89,35 +89,47 @@ export const parseBoard = (board: string) => {
 	});
 
 	return {
-		constraints: constraints.map((cells, index) => ({cells, index})),
+		constraints: constraints.map((cells, index) => ({cells, index: index + 1})),
 		board: normalizedBoard,
 	};
 };
 
 
-const generate = async () => {
-	const results = await Boards.where('category', '==', 'grossword').where('used_at', '==', null).get();
+const generate = async (usedAt: string) => {
+	const crosswordData = await db.runTransaction(async (transaction) => {
+		const query = Boards.where('category', '==', 'grossword').where('used_at', '==', null);
+		const results = await transaction.get(query);
 
-	if (results.size === 0) {
-		return null;
-	}
+		if (results.size === 0) {
+			return null;
+		}
 
-	const crosswordData = sample(results.docs).data();
+		const crossword = sample(results.docs);
+		transaction.update(crossword.ref, {used_at: usedAt});
+
+		return crossword.data();
+	});
 
 	const {board, constraints} = parseBoard(crosswordData.board);
 	const words = sortBy(constraints, ({index}) => index).map(({cells}) => (
 		cells.map((cell) => board[cell]).join('')
 	));
 
-	const db = await sqlite.open({
+	const crosswordDb = await sqlite.open({
 		filename: path.join(__dirname, 'crossword.sqlite3'),
 		driver: sqlite3.Database,
 	});
 	const descriptions = await Promise.all(words.map((word) => (
-		db.get('SELECT * FROM words WHERE ruby = ? ORDER BY RANDOM() LIMIT 1', word)
+		crosswordDb.get('SELECT * FROM words WHERE ruby = ? ORDER BY RANDOM() LIMIT 1', word)
 	)));
 
-	return {words, descriptions, board, boardId: crosswordData.type.replace('-', '-board-')};
+	return {
+		words,
+		descriptions,
+		board,
+		boardId: crosswordData.type.replace('-', '-board-'),
+		constraints,
+	};
 };
 
 export default generate;

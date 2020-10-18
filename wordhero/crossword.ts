@@ -10,9 +10,6 @@ import generateCrossword from './generateCrossword';
 import generateGrossword from './generateGrossword';
 import {unlock, increment} from '../achievements';
 
-generateCrossword().then((d) => console.log(d));
-
-
 interface Description {
 	word: string,
 	description: string,
@@ -232,14 +229,14 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 
 
-			state.isGrossword = message.text.match(/^grossword$/i);
+			state.isGrossword = Boolean(message.text.match(/^grossword$/i));
 			state.isHolding = true;
 			state.board = Array(400).fill(null);
 			state.hitWords = [];
 			state.timeouts = [];
 			state.users = new Set();
 			state.contributors = new Set();
-			const crossword = await generateCrossword();
+			const crossword = await (state.isGrossword ? generateGrossword(message.ts) : generateCrossword(message.ts));
 			state.crossword = crossword;
 
 			const cloudinaryData: any = await uploadImage([], state.crossword.boardId);

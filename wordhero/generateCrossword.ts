@@ -21,7 +21,7 @@ const convertToNewFormat = (board: string[]) => (
 	})
 );
 
-const generate = async () => {
+const generate = async (usedAt: string) => {
 	if (stocks.length === 0) {
 		const generator = spawn('../target/release/crossword_generator_main', {cwd: __dirname});
 		const output = await new Promise<Buffer>((resolve) => {
