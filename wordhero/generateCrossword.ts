@@ -6,12 +6,25 @@ import {spawn} from 'child_process';
 import concat from 'concat-stream';
 import {sortBy} from 'lodash';
 import boardConfigs from './boards.json';
+import type {Crossword} from './crossword';
 
 const stocks: any[] = [];
 
-const generate = async () => {
+// 6x6 format to 20x20 format
+const convertToNewFormat = (board: string[]) => ( 
+	Array(400).fill(null).map((e, i) => {
+		const x = i % 20;
+		const y = Math.floor(i / 20);
+		if (x < 6 && y < 6 && board[y * 6 + x] !== undefined) {
+			return board[y * 6 + x];
+		}
+		return null;
+	})
+);
+
+const generate = async (usedAt: string): Promise<Crossword> => {
 	if (stocks.length === 0) {
-		const generator = spawn('../target/release/main', {cwd: __dirname});
+		const generator = spawn('../target/release/crossword_generator_main', {cwd: __dirname});
 		const output = await new Promise<Buffer>((resolve) => {
 			generator.stdout.pipe(concat({encoding: 'buffer'}, (data: Buffer) => {
 				resolve(data);
@@ -38,7 +51,24 @@ const generate = async () => {
 	const descriptions = await Promise.all(words.map((word) => (
 		db.get('SELECT * FROM words WHERE ruby = ? ORDER BY RANDOM() LIMIT 1', word)
 	)));
-	return {words, descriptions, board, index};
+
+	return {
+		words,
+		descriptions: descriptions.map((description, index) => ({
+			...description,
+			descriptionId: (index + 1).toString(),
+		})),
+		board: convertToNewFormat(board),
+		boardId: `crossword-board-${index + 1}`,
+		constraints: constraints.map((constraint) => ({
+			cells: constraint.cells.map((cell) => {
+				const x = cell % 6;
+				const y = Math.floor(cell / 6);
+				return y * 20 + x;
+			}),
+			descriptionId: constraint.index.toString(),
+		})),
+	};
 };
 
 export default generate;
