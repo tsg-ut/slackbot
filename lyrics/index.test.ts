@@ -78,7 +78,7 @@ describe('lyrics', () => {
             if (url.includes('itunes')) { // iTunes Search API
                 return { data: {
                     resultCount: 1,
-                    results: [{ // 一部パラメータは削りましたが、今後改良で使いそうなパラメータは残しておきました
+                    results: [{
                         wrapperType: 'track',
                         kind: 'song',
                         artistId: 834179764,
@@ -89,12 +89,15 @@ describe('lyrics', () => {
                         trackName: 'とまどい→レシピ',
                         collectionCensoredName: 'とまどい→レシピ - EP',
                         trackCensoredName: 'とまどい→レシピ',
+                        artistViewUrl: 'https://music.apple.com/jp/artist/%E3%81%BF%E3%81%8B%E3%81%8F%E3%81%AB%E3%82%93%E3%81%90%E3%83%83/834179764?uo=4',
+                        collectionViewUrl: 'https://music.apple.com/jp/album/%E3%81%A8%E3%81%BE%E3%81%A9%E3%81%84-%E3%83%AC%E3%82%B7%E3%83%94/977931267?i=977931270&uo=4',
+                        trackViewUrl: 'https://music.apple.com/jp/album/%E3%81%A8%E3%81%BE%E3%81%A9%E3%81%84-%E3%83%AC%E3%82%B7%E3%83%94/977931267?i=977931270&uo=4',
                         previewUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/Music3/v4/b9/89/51/b9895103-3789-c03b-4e0e-988ea41bdb13/mzaf_5579405382980491669.plus.aac.p.m4a',
                         artworkUrl30: 'https://is4-ssl.mzstatic.com/image/thumb/Music5/v4/52/33/6a/52336ad2-e139-98f3-fad8-fcf8edee53ab/source/30x30bb.jpg',
                         artworkUrl60: 'https://is4-ssl.mzstatic.com/image/thumb/Music5/v4/52/33/6a/52336ad2-e139-98f3-fad8-fcf8edee53ab/source/60x60bb.jpg',
                         artworkUrl100: 'https://is4-ssl.mzstatic.com/image/thumb/Music5/v4/52/33/6a/52336ad2-e139-98f3-fad8-fcf8edee53ab/source/100x100bb.jpg',
-                        collectionPrice: 1000,
-                        trackPrice: 250,
+                        collectionPrice: 1020,
+                        trackPrice: 255,
                         releaseDate: '2014-02-19T12:00:00Z',
                         collectionExplicitness: 'notExplicit',
                         trackExplicitness: 'notExplicit',
@@ -107,7 +110,7 @@ describe('lyrics', () => {
                         currency: 'JPY',
                         primaryGenreName: 'アニメ',
                         isStreamable: true
-                    }]
+                    }],
                 }};
             }
         });
