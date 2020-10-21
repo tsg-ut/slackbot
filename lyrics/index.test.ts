@@ -129,6 +129,6 @@ describe('lyrics', () => {
         expect(fields[1].value).toBe('みかくにんぐッ!');
         expect(fields[2].value).toBe('Junky');
         expect(fields[3].value).toBe('Junky');
-        expect(fields[4].value).toBe('https://audio-ssl.itunes.apple.com/itunes-assets/Music3/v4/b9/89/51/b9895103-3789-c03b-4e0e-988ea41bdb13/mzaf_5579405382980491669.plus.aac.p.m4a');
+        expect(fields[4].value).toBe('<https://audio-ssl.itunes.apple.com/itunes-assets/Music3/v4/b9/89/51/b9895103-3789-c03b-4e0e-988ea41bdb13/mzaf_5579405382980491669.plus.aac.p.m4a|試聴>, <https://music.apple.com/jp/album/%E3%81%A8%E3%81%BE%E3%81%A9%E3%81%84-%E3%83%AC%E3%82%B7%E3%83%94/977931267?i=977931270&uo=4|Apple Music>');
     });
 });
