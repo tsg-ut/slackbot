@@ -117,7 +117,7 @@ fn get_board(context: &Context, board: [u8; 36]) -> Option<[u8; 36]> {
         if index == 0 && prefix.len() == 0 {
             let mut new_values: Vec<u8> = (1..(HIRAGANAS.len() as u8 + 1)).collect();
             new_values.shuffle(&mut rng);
-            'values: for new_value in new_values {
+            for new_value in new_values {
                 if is_non_initial(new_value) {
                     continue;
                 }
