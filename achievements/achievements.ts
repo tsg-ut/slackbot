@@ -1888,7 +1888,7 @@ const achievements: Achievement[] = [
 		id: 'crossword-misses-ge-20',
 		difficulty: 'medium',
 		title: 'クロスワード・フリースインガー',
-		condition: 'crosswordで1ゲームに20個以上の誤答を行い、一度も正解しない',
+		condition: 'crosswordでクリアしたゲームにおいて、20個以上の誤答を行い、一度も正解しない',
 		category: 'crossword',
 	},
 	{
