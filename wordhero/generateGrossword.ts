@@ -137,6 +137,10 @@ const generate = async (usedAt: string): Promise<Crossword> => {
 		return crossword.data();
 	});
 
+	if (crosswordData === null) {
+		return null;
+	}
+
 	const {board, constraints} = parseBoard(crosswordData.board);
 	const words = constraints.map(({cells}) => (
 		cells.map((cell) => board[cell]).join('')
