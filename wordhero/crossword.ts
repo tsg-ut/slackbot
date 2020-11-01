@@ -260,15 +260,26 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				return;
 			}
 
-
-			state.isGrossword = Boolean(message.text.match(/^grossword$/i));
+			const isGrossword = Boolean(message.text.match(/^grossword$/i));
+			const crossword = await (state.isGrossword ? generateGrossword(message.ts) : generateCrossword(message.ts));
+			if (crossword === null) {
+				await slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					text: stripIndent`
+						grosswordのタネがないよ:cry:
+					`,
+					username: 'crossword',
+					icon_emoji: ':capital_abcd:',
+				});
+				return;
+			}
+			state.isGrossword = isGrossword;
 			state.isHolding = true;
 			state.board = Array(400).fill(null);
 			state.hitWords = [];
 			state.timeouts = [];
 			state.users = new Set();
 			state.contributors = new Set();
-			const crossword = await (state.isGrossword ? generateGrossword(message.ts) : generateCrossword(message.ts));
 			state.crossword = crossword;
 			state.misses = new Map();
 
