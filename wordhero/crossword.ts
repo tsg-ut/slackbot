@@ -261,7 +261,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 
 			const isGrossword = Boolean(message.text.match(/^grossword$/i));
-			const crossword = await (state.isGrossword ? generateGrossword(message.ts) : generateCrossword(message.ts));
+			const crossword = await (isGrossword ? generateGrossword(message.ts) : generateCrossword(message.ts));
 			if (crossword === null) {
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
