@@ -97,7 +97,7 @@ module.exports = (rtm: RTMClient, slack: WebClient) => {
       });
     }
   };
-  rtm.on('message', async (message) => {
+  rtm.on('message', async message => {
     if (message.channel !== process.env.CHANNEL_SANDBOX) {
       return;
     }
@@ -145,7 +145,6 @@ module.exports = (rtm: RTMClient, slack: WebClient) => {
             icon_emoji: '1234',
           });
           state.thread = ts as string;
-          console.log(state.answer);
         }
       }
     }
