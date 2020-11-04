@@ -64,6 +64,7 @@ const allBots = [
 	'twitter-dm-notifier',
 	'tsgctf',
 	'jitsi',
+	'hitandblow',
 ];
 
 const argv = yargs
