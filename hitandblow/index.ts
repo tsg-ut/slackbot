@@ -44,9 +44,6 @@ const countBlow = (call: number[], answer: number[]) => {
     const blows = new Set<number>();
     const callArray = Array<number>(10).fill(0);
     const ansArray = Array<number>(10).fill(0);
-    for (let i = 0; i < 10; i++) {
-      callArray[i] = ansArray[i] = 0;
-    }
     for (let i = 0; i < call.length; i++) {
       callArray[call[i]]++;
       ansArray[answer[i]]++;
