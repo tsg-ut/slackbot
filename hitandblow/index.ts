@@ -10,11 +10,18 @@ interface HitAndBlowHistory {
   blowsCount: number;
 }
 
-interface HitAndBlowState {
+class HitAndBlowState {
   answer: number[];
   history: HitAndBlowHistory[];
   thread?: string;
   inGame: boolean;
+  clear() {
+    this.answer = [];
+    this.history = [];
+    this.thread = undefined;
+    this.inGame = false;
+    return;
+  }
 }
 
 const isValidCall = (call: number[]) => {
@@ -80,12 +87,7 @@ export default ({
   rtmClient: RTMClient;
   webClient: WebClient;
 }) => {
-  const state: HitAndBlowState = {
-    answer: [],
-    history: [],
-    thread: undefined,
-    inGame: false,
-  };
+  const state = new HitAndBlowState();
 
   // call履歴をpostする関数
   const postHistory = async (history: HitAndBlowHistory[]) => {
@@ -246,10 +248,7 @@ export default ({
               }
 
               // 終了処理
-              state.answer = [];
-              state.history = [];
-              state.thread = undefined;
-              state.inGame = false;
+              state.clear();
             }
           }
         }
@@ -270,10 +269,9 @@ export default ({
           reply_broadcast: true,
         });
         postHistory(state.history);
-        state.answer = [];
-        state.history = [];
-        state.thread = undefined;
-        state.inGame = false;
+
+        // 終了処理
+        state.clear();
       }
 
       // history処理
