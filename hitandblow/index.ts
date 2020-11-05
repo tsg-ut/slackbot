@@ -222,7 +222,7 @@ export default ({
               // 実績解除
               await unlock(message.user, 'hitandblow-clear');
               if (state.answer.length >= 6) {
-                await unlock(message.user, 'hitandblow-clear-over-6digits');
+                await unlock(message.user, 'hitandblow-clear-6digits-or-more');
               }
               if (state.answer.length === 10) {
                 await unlock(message.user, 'hitandblow-clear-10digits');
