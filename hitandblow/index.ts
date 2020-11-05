@@ -12,7 +12,7 @@ interface HitAndBlowState {
 }
 
 const isValidCall = (call: number[]) => {
-  const numDict = Array<number>(10);
+  const numDict = Array<number>(10).fill(0);
   for (let i = 0; i < call.length; i++) {
     if (numDict[call[i]] >= 1) {
       return false;
@@ -42,8 +42,8 @@ const countBlow = (call: number[], answer: number[]) => {
     throw new Error('Length of the call does not match the answer.');
   } else {
     const blows = new Set<number>();
-    const callArray = Array<number>(10);
-    const ansArray = Array<number>(10);
+    const callArray = Array<number>(10).fill(0);
+    const ansArray = Array<number>(10).fill(0);
     for (let i = 0; i < 10; i++) {
       callArray[i] = ansArray[i] = 0;
     }
