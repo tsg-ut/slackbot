@@ -230,7 +230,7 @@ export default ({
               if (state.answer.length >= 2 && state.history.length === 1) {
                 await unlock(
                   message.user,
-                  'hitandblow-clear-once-over-2digits'
+                  'hitandblow-clear-once-2digits-or-more'
                 );
               }
 

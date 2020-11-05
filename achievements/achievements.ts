@@ -1496,7 +1496,7 @@ const achievements: Achievement[] = [
 		category: 'hitandblow',
 	},
 	{
-		id: 'hitandblow-clear-once-over-2digits',
+		id: 'hitandblow-clear-once-2digits-or-more',
 		difficulty: 'professional',
 		title: 'guess問が得意',
 		condition: 'Hit & Blow を一発クリアする (2桁以上)',
