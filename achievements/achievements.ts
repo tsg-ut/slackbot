@@ -1482,7 +1482,7 @@ const achievements: Achievement[] = [
 		category: 'hitandblow',
 	},
 	{
-		id: 'hitandblow-clear-over-6digits',
+		id: 'hitandblow-clear-6digits-or-more',
 		difficulty: 'medium',
 		title: '6 Hit 0 Blow',
 		condition: 'Hit & Blow をクリアする (6桁以上)',
