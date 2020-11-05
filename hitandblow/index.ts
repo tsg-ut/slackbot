@@ -4,9 +4,15 @@ import { range, shuffle } from 'lodash';
 import { stripIndent } from 'common-tags';
 import { unlock } from '../achievements';
 
+interface HitAndBlowHistory {
+  call: number[];
+  hitsCount: number;
+  blowsCount: number;
+}
+
 interface HitAndBlowState {
   answer: number[];
-  history: { call: number[]; hitsCount: number; blowsCount: number }[];
+  history: HitAndBlowHistory[];
   thread?: string;
   inGame: boolean;
 }
@@ -57,6 +63,16 @@ const countBlow = (call: number[], answer: number[]) => {
   }
 };
 
+const generateHistoryString = ({
+  call,
+  hitsCount,
+  blowsCount,
+}: HitAndBlowHistory) => {
+  return `${call
+    .map((dig: number) => String(dig))
+    .join('')}: ${hitsCount} Hit ${blowsCount} Blow`;
+};
+
 export default ({
   rtmClient: rtm,
   webClient: slack,
@@ -72,7 +88,7 @@ export default ({
   };
 
   // call履歴をpostする関数
-  const postHistory = async (history: HitAndBlowState['history']) => {
+  const postHistory = async (history: HitAndBlowHistory[]) => {
     if (history.length === 0) {
       await slack.chat.postMessage({
         text: 'コール履歴: なし',
@@ -85,13 +101,7 @@ export default ({
       await slack.chat.postMessage({
         text: stripIndent`
       コール履歴: \`\`\`${history
-        .map(
-          (hist: { call: number[]; hitsCount: number; blowsCount: number }) =>
-            stripIndent`
-          ${hist.call.map((dig: number) => String(dig)).join('')}: ${
-              hist.hitsCount
-            } Hit ${hist.blowsCount} Blow`
-        )
+        .map((hist: HitAndBlowHistory) => generateHistoryString(hist))
         .join('\n')}\`\`\`
       `,
         channel: process.env.CHANNEL_SANDBOX as string,
@@ -106,7 +116,10 @@ export default ({
     if (message.channel !== process.env.CHANNEL_SANDBOX) {
       return;
     }
-    if (message.subtype === 'bot_message') {
+    if (
+      message.subtype === 'bot_message' ||
+      message.subtype === 'slackbot_response'
+    ) {
       return;
     }
     if (!message.text) {
@@ -128,9 +141,7 @@ export default ({
       } else {
         const rawAnswerLength = message.text.match(/^hitandblow( \d+)?$/)[1];
         const answerLength =
-          typeof rawAnswerLength !== 'undefined'
-            ? parseInt(rawAnswerLength)
-            : 4;
+          rawAnswerLength !== undefined ? parseInt(rawAnswerLength) : 4;
         if (answerLength <= 0 || 10 < answerLength) {
           await slack.chat.postMessage({
             text: '桁数は1以上10以下で指定してね:thinking_face:',
@@ -165,6 +176,7 @@ export default ({
           return;
         }
         const call = [...message.text].map((dig: string) => parseInt(dig));
+
         if (call.length !== state.answer.length) {
           await slack.chat.postMessage({
             text: `桁数が違うよ:thinking_face: (${state.answer.length}桁)`,
@@ -192,15 +204,17 @@ export default ({
               hitsCount: hits.size,
               blowsCount: blows.size - hits.size,
             });
+
             await slack.chat.postMessage({
               text: `\`${call.map((dig: number) => String(dig)).join('')}\`: ${
                 hits.size
-              } Hit ${blows.size - hits.size} Blow`,
+              } Hit ${blows.size - hits.size} Blow`, // ここもgenerateHistoryStringとまとめようと思ったけど、ここ一箇所のために``用の分岐を入れるのもなんか違う気がしてる
               channel: process.env.CHANNEL_SANDBOX as string,
               username: 'Hit & Blow',
               icon_emoji: '1234',
               thread_ts: state.thread,
             });
+
             if (hits.size === state.answer.length) {
               await slack.chat.postMessage({
                 text: stripIndent`
