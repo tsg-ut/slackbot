@@ -235,10 +235,10 @@ export default ({
               if (state.answer.length === 10) {
                 await unlock(message.user, 'hitandblow-clear-10digits');
               }
-              if (state.answer.length >= 2 && state.history.length === 1) {
+              if (state.answer.length >= 3 && state.history.length === 1) {
                 await unlock(
                   message.user,
-                  'hitandblow-clear-once-2digits-or-more'
+                  'hitandblow-clear-once-3digits-or-more'
                 );
               }
 
