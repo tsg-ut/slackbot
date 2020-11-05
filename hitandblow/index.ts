@@ -3,6 +3,7 @@ import { WebClient } from '@slack/web-api';
 import { range, shuffle } from 'lodash';
 import { stripIndent } from 'common-tags';
 import { unlock } from '../achievements';
+import assert from 'assert';
 
 interface HitAndBlowHistory {
   call: number[];
@@ -11,10 +12,10 @@ interface HitAndBlowHistory {
 }
 
 class HitAndBlowState {
-  answer: number[];
-  history: HitAndBlowHistory[];
-  thread?: string;
-  inGame: boolean;
+  answer: number[] = [];
+  history: HitAndBlowHistory[] = [];
+  thread?: string = undefined;
+  inGame: boolean = false;
   clear() {
     this.answer = [];
     this.history = [];
@@ -36,38 +37,32 @@ const isValidCall = (call: number[]) => {
 };
 
 const countHit = (call: number[], answer: number[]) => {
-  if (call.length !== answer.length) {
-    throw new Error('Length of the call does not match the answer.');
-  } else {
-    const hits = new Set<number>();
-    for (let i = 0; i < call.length; i++) {
-      if (call[i] === answer[i]) {
-        hits.add(call[i]);
-      }
+  assert(call.length === answer.length);
+  const hits = new Set<number>();
+  for (let i = 0; i < call.length; i++) {
+    if (call[i] === answer[i]) {
+      hits.add(call[i]);
     }
-    return hits;
   }
+  return hits;
 };
 
 // Hitも合わせて数える
 const countBlow = (call: number[], answer: number[]) => {
-  if (call.length !== answer.length) {
-    throw new Error('Length of the call does not match the answer.');
-  } else {
-    const blows = new Set<number>();
-    const callArray = Array<number>(10).fill(0);
-    const ansArray = Array<number>(10).fill(0);
-    for (let i = 0; i < call.length; i++) {
-      callArray[call[i]]++;
-      ansArray[answer[i]]++;
-    }
-    for (let i = 0; i < 10; i++) {
-      if (Math.min(callArray[i], ansArray[i]) >= 1) {
-        blows.add(i);
-      }
-    }
-    return blows;
+  assert(call.length === answer.length);
+  const blows = new Set<number>();
+  const callArray = Array<number>(10).fill(0);
+  const ansArray = Array<number>(10).fill(0);
+  for (let i = 0; i < call.length; i++) {
+    callArray[call[i]]++;
+    ansArray[answer[i]]++;
   }
+  for (let i = 0; i < 10; i++) {
+    if (Math.min(callArray[i], ansArray[i]) >= 1) {
+      blows.add(i);
+    }
+  }
+  return blows;
 };
 
 const generateHistoryString = ({
