@@ -1465,6 +1465,44 @@ const achievements: Achievement[] = [
 		category: 'ricochet-robots',
 	},
 
+	// hitandblow
+
+	{
+		id: 'hitandblow-play',
+		difficulty: 'easy',
+		title: '0 Hit 1 Blow',
+		condition: 'Hit & Blow で遊ぶ',
+		category: 'hitandblow',
+	},
+	{
+		id: 'hitandblow-clear',
+		difficulty: 'easy',
+		title: '1 Hit 0 Blow',
+		condition: 'Hit & Blow をクリアする',
+		category: 'hitandblow',
+	},
+	{
+		id: 'hitandblow-clear-6digits-or-more',
+		difficulty: 'medium',
+		title: '6 Hit 0 Blow',
+		condition: 'Hit & Blow をクリアする (6桁以上)',
+		category: 'hitandblow',
+	},
+	{
+		id: 'hitandblow-clear-10digits',
+		difficulty: 'hard',
+		title: '10 Hit 0 Blow',
+		condition: 'Hit & Blow をクリアする (10桁)',
+		category: 'hitandblow',
+	},
+	{
+		id: 'hitandblow-clear-once-3digits-or-more',
+		difficulty: 'professional',
+		title: 'guess問が得意',
+		condition: 'Hit & Blow を一回のコールでクリアする (3桁以上)',
+		category: 'hitandblow',
+	},
+
 	// ahokusa
 
 	{
