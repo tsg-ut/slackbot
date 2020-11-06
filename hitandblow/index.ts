@@ -14,12 +14,12 @@ interface HitAndBlowHistory {
 class HitAndBlowState {
   answer: number[] = [];
   history: HitAndBlowHistory[] = [];
-  thread?: string = undefined;
+  thread?: string = null;
   inGame: boolean = false;
   clear() {
     this.answer = [];
     this.history = [];
-    this.thread = undefined;
+    this.thread = null;
     this.inGame = false;
     return;
   }
