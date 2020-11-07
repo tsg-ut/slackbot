@@ -1502,6 +1502,13 @@ const achievements: Achievement[] = [
 		condition: 'Hit & Blow を一回のコールでクリアする (3桁以上)',
 		category: 'hitandblow',
 	},
+	{
+		id: 'hitandblow-clear-10digits-within-5min',
+		difficulty: 'professional',
+		title: '実質ソルバ',
+		condition: 'Hit & Blow (10桁) を5分以内にクリアする',
+		category: 'hitandblow',
+	},
 
 	// ahokusa
 

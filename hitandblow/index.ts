@@ -1,6 +1,6 @@
 import { RTMClient } from '@slack/rtm-api';
 import { WebClient } from '@slack/web-api';
-import { range, shuffle } from 'lodash';
+import { range, shuffle, round } from 'lodash';
 import { stripIndent } from 'common-tags';
 import { unlock } from '../achievements';
 import assert from 'assert';
@@ -14,12 +14,19 @@ interface HitAndBlowHistory {
 class HitAndBlowState {
   answer: number[] = [];
   history: HitAndBlowHistory[] = [];
-  thread?: string = undefined;
+  thread: string | null = null;
+  startDate: number | null = null;
+  timer: NodeJS.Timeout | null = null;
   inGame: boolean = false;
   clear() {
     this.answer = [];
     this.history = [];
-    this.thread = undefined;
+    this.thread = null;
+    this.startDate = null;
+    if (this.timer) {
+      clearTimeout(this.timer);
+    }
+    this.timer = null;
     this.inGame = false;
     return;
   }
@@ -75,6 +82,10 @@ const generateHistoryString = ({
     .join('')}: ${hitsCount} Hit ${blowsCount} Blow`;
 };
 
+const answerLength2TimeLimit = (answerLength: number) => {
+  return answerLength * 3 * 60 * 1000;
+};
+
 export default ({
   rtmClient: rtm,
   webClient: slack,
@@ -107,6 +118,33 @@ export default ({
         thread_ts: state.thread,
       });
     }
+  };
+
+  // タイムアップ処理
+  const timeUp = async () => {
+    await slack.chat.postMessage({
+      text: '～～～～～～～～～～おわり～～～～～～～～～～',
+      channel: process.env.CHANNEL_SANDBOX as string,
+      username: 'Hit & Blow',
+      icon_emoji: '1234',
+      thread_ts: state.thread,
+    });
+    await slack.chat.postMessage({
+      text: stripIndent`
+          正解者は出ませんでした:sob:
+          答えは \`${state.answer
+            .map((dig: number) => String(dig))
+            .join('')}\` だよ:cry:`,
+      channel: process.env.CHANNEL_SANDBOX as string,
+      username: 'Hit & Blow',
+      icon_emoji: '1234',
+      thread_ts: state.thread,
+      reply_broadcast: true,
+    });
+    postHistory(state.history);
+
+    // 終了処理
+    state.clear();
   };
 
   rtm.on('message', async message => {
@@ -158,6 +196,16 @@ export default ({
             icon_emoji: '1234',
           });
           state.thread = ts as string;
+          state.startDate = Date.now();
+          const timeLimit = answerLength2TimeLimit(answerLength);
+          state.timer = setTimeout(timeUp, timeLimit);
+          await slack.chat.postMessage({
+            text: `制限時間は${timeLimit / 1000 / 60}分です`,
+            channel: process.env.CHANNEL_SANDBOX as string,
+            username: 'Hit & Blow',
+            icon_emoji: '1234',
+            thread_ts: state.thread,
+          });
 
           // 実績解除
           unlock(message.user, 'hitandblow-play');
@@ -213,12 +261,14 @@ export default ({
             });
 
             if (hits.size === state.answer.length) {
+              const passedTime = Date.now() - state.startDate;
               await slack.chat.postMessage({
                 text: stripIndent`
                 <@${message.user}> 正解です:tada:
                 答えは \`${state.answer
                   .map((dig: number) => String(dig))
-                  .join('')}\` だよ:muscle:`,
+                  .join('')}\` だよ:muscle:
+                経過時間: ${round(passedTime / 1000, 2).toFixed(2)}秒`,
                 channel: process.env.CHANNEL_SANDBOX as string,
                 username: 'Hit & Blow',
                 icon_emoji: '1234',
@@ -241,6 +291,12 @@ export default ({
                   'hitandblow-clear-once-3digits-or-more'
                 );
               }
+              if (state.answer.length === 10 && passedTime <= 5 * 60 * 1000) {
+                await unlock(
+                  message.user,
+                  'hitandblow-clear-10digits-within-5min'
+                );
+              }
 
               // 終了処理
               state.clear();
@@ -250,6 +306,7 @@ export default ({
       }
 
       // ギブアップ処理
+      /*
       if (message.text.match(/^(giveup|ギブアップ)$/)) {
         await slack.chat.postMessage({
           text: stripIndent`
@@ -268,6 +325,7 @@ export default ({
         // 終了処理
         state.clear();
       }
+      */
 
       // history処理
       if (message.text.match(/^(history|コール履歴)$/)) {
