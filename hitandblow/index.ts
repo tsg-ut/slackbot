@@ -14,14 +14,19 @@ interface HitAndBlowHistory {
 class HitAndBlowState {
   answer: number[] = [];
   history: HitAndBlowHistory[] = [];
-  thread?: string = null;
-  startDate?: number = null;
+  thread: string | null = null;
+  startDate: number | null = null;
+  timer: NodeJS.Timeout | null = null;
   inGame: boolean = false;
   clear() {
     this.answer = [];
     this.history = [];
     this.thread = null;
     this.startDate = null;
+    if (this.timer) {
+      clearTimeout(this.timer);
+    }
+    this.timer = null;
     this.inGame = false;
     return;
   }
@@ -193,7 +198,7 @@ export default ({
           state.thread = ts as string;
           state.startDate = Date.now();
           const timeLimit = answerLength2TimeLimit(answerLength);
-          setTimeout(timeUp, timeLimit);
+          state.timer = setTimeout(timeUp, timeLimit);
           await slack.chat.postMessage({
             text: `制限時間は${timeLimit / 1000 / 60}分です`,
             channel: process.env.CHANNEL_SANDBOX as string,
