@@ -157,7 +157,7 @@ export default ({
     }
 
     // game開始処理
-    if (message.text.match(/^hitandblowa( \d+)?$/)) {
+    if (message.text.match(/^hitandblow( \d+)?$/)) {
       if (state.inGame) {
         await slack.chat.postMessage({
           text: '進行中のゲームがあるよ:thinking_face:',
@@ -169,7 +169,7 @@ export default ({
         });
         return;
       } else {
-        const rawAnswerLength = message.text.match(/^hitandblowa( \d+)?$/)[1];
+        const rawAnswerLength = message.text.match(/^hitandblow( \d+)?$/)[1];
         const answerLength =
           rawAnswerLength !== undefined ? parseInt(rawAnswerLength) : 4;
         if (answerLength <= 0 || 10 < answerLength) {
