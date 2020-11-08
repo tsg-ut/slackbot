@@ -1,6 +1,6 @@
 export type Difficulty = 'baby' | 'easy' | 'medium' | 'hard' | 'professional';
 
-interface Achievement {
+export interface Achievement {
 	id: string,
 	difficulty: Difficulty,
 	title: string,

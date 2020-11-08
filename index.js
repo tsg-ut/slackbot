@@ -65,6 +65,7 @@ const allBots = [
 	'tsgctf',
 	'jitsi',
 	'hitandblow',
+	'achievement-quiz',
 ];
 
 const argv = yargs
