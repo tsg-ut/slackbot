@@ -10,6 +10,18 @@ import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
 
+interface JoinParameters {
+	jid: string,
+	nick: string,
+	avatarId: string,
+	roomId: string
+}
+
+interface LeaveParameters {
+	jid: string,
+	roomId: string
+}
+
 const configuredRooms = ['sb', 'workroom', 'recital'];
 
 const getTimestamp = (delayEls: HTMLCollectionOf<Element>) => {
@@ -20,10 +32,13 @@ const getTimestamp = (delayEls: HTMLCollectionOf<Element>) => {
 	return Date.now();
 };
 
-const connect = (slack: WebClient, roomName: string) => {
+const connect = (
+	slack: WebClient,
+	roomName: string,
+	onJoin: (params: JoinParameters) => void,
+	onLeave: (params: LeaveParameters) => void,
+) => {
 	let intervalId: NodeJS.Timer = null;
-
-	const members: Map<string, {nick: string, avatarId: string}> = new Map();
 
 	const con = new Strophe.Connection(`http://localhost:25252/http-bind?room=${roomName}`);
 	con.connect('meet.tsg.ne.jp', '', (status: number) => {
@@ -64,37 +79,18 @@ const connect = (slack: WebClient, roomName: string) => {
 						const nickEls = data.getElementsByTagName('nick');
 						const avatarIdEls = data.getElementsByTagName('avatar-id');
 						const type = data.getAttribute('type');
-						const roomId = data.getAttribute('from').split('@')[0];
+						const [roomId] = data.getAttribute('from').split('@');
 
 						if (type === '' && itemEls.length > 0 && nickEls.length > 0) {
 							const nick = nickEls.item(0).firstChild.nodeValue;
 							const avatarId = avatarIdEls.item(0).firstChild.nodeValue;
 							const jid = itemEls.item(0).getAttribute('jid');
-
-							if (!members.has(jid) && nick !== 'slackbot') {
-								members.set(jid, {nick, avatarId});
-								slack.chat.postMessage({
-									channel: process.env.CHANNEL_SANDBOX,
-									username: 'jitsi',
-									icon_emoji: ':jitsi-join:',
-									text: `＊${nick}＊が<https://meet.tsg.ne.jp/${roomId}|${roomId}>にログインしました\n現在のアクティブ人数 ${members.size}人`,
-								});
-							}
+							onJoin({jid, nick, roomId, avatarId});
 						}
 
 						if (type === 'unavailable' && itemEls.length > 0) {
 							const jid = itemEls.item(0).getAttribute('jid');
-							if (members.has(jid)) {
-								const {nick} = members.get(jid);
-								members.delete(jid);
-
-								slack.chat.postMessage({
-									channel: process.env.CHANNEL_SANDBOX,
-									username: 'jitsi',
-									icon_emoji: ':jitsi-leave:',
-									text: `＊${nick}＊が<https://meet.tsg.ne.jp/${roomId}|${roomId}>からログアウトしました\n現在のアクティブ人数 ${members.size}人`,
-								});
-							}
+							onLeave({jid, roomId});
 						}
 					}
 				} catch (e) {
@@ -179,11 +175,39 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	global.XMLHttpRequest = XMLHttpRequest;
 
 	for (const roomName of configuredRooms) {
-		let {disconnect, postChat} = connect(slack, roomName);
+		const members: Map<string, {nick: string, avatarId: string}> = new Map();
+
+		const onJoin = ({jid, nick, avatarId, roomId}: JoinParameters) => {
+			if (!members.has(jid) && nick !== 'slackbot') {
+				members.set(jid, {nick, avatarId});
+				slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					username: 'jitsi',
+					icon_emoji: ':jitsi-join:',
+					text: `＊${nick}＊が<https://meet.tsg.ne.jp/${roomId}|${roomId}>にログインしました\n現在のアクティブ人数 ${members.size}人`,
+				});
+			}
+		};
+
+		const onLeave = ({jid, roomId}: LeaveParameters) => {
+			if (members.has(jid)) {
+				const {nick} = members.get(jid);
+				members.delete(jid);
+
+				slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					username: 'jitsi',
+					icon_emoji: ':jitsi-leave:',
+					text: `＊${nick}＊が<https://meet.tsg.ne.jp/${roomId}|${roomId}>からログアウトしました\n現在のアクティブ人数 ${members.size}人`,
+				});
+			}
+		};
+
+		let {disconnect, postChat} = connect(slack, roomName, onJoin, onLeave);
 		setInterval(() => {
 			disconnect();
 			setTimeout(() => {
-				const config = connect(slack, roomName);
+				const config = connect(slack, roomName, onJoin, onLeave);
 				disconnect = config.disconnect;
 				postChat = config.postChat;
 			}, 5000);
