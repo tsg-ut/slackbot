@@ -54,8 +54,8 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 			slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: message.content,
-				username: message.member.displayName,
-				icon_emoji: 'discord',
+				username: `${message.member.displayName}@Discord`,
+				icon_url: message.member.user.displayAvatarURL({format: 'png', size: 128}),
 			});
 		}
 	});
