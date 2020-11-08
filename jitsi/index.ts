@@ -10,6 +10,8 @@ import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
 
+const configuredRooms = ['sb', 'workroom', 'recital'];
+
 const getTimestamp = (delayEls: HTMLCollectionOf<Element>) => {
 	if (delayEls.length > 0) {
 		const delayEl = delayEls.item(0);
@@ -18,12 +20,12 @@ const getTimestamp = (delayEls: HTMLCollectionOf<Element>) => {
 	return Date.now();
 };
 
-const members: Map<string, {nick: string, avatarId: string}> = new Map();
-
-const connect = (slack: WebClient) => {
+const connect = (slack: WebClient, roomName: string) => {
 	let intervalId: NodeJS.Timer = null;
 
-	const con = new Strophe.Connection('http://localhost:25252/http-bind?room=sb');
+	const members: Map<string, {nick: string, avatarId: string}> = new Map();
+
+	const con = new Strophe.Connection(`http://localhost:25252/http-bind?room=${roomName}`);
 	con.connect('meet.tsg.ne.jp', '', (status: number) => {
 		const connectionTime = Date.now();
 
@@ -107,7 +109,7 @@ const connect = (slack: WebClient) => {
 			const uid = times(8, () => sample(Array.from('0123456789abcdef'))).join('');
 
 			const pres = $pres({
-				to: `sb@conference.meet.tsg.ne.jp/${uid}`,
+				to: `${roomName}@conference.meet.tsg.ne.jp/${uid}`,
 			});
 			pres.c('x', {
 				xmlns: 'http://jabber.org/protocol/muc',
@@ -151,9 +153,19 @@ const connect = (slack: WebClient) => {
 		con.disconnect('relaunch');
 	};
 
+	const postChat = (nickname: string, text: string) => {
+		const msg = $msg({
+			to: `${roomName}@conference.meet.tsg.ne.jp`,
+			type: 'groupchat',
+		});
+		msg.c('body', `${nickname}: ${text}`).up();
+		msg.c('nick', {xmlns: 'http://jabber.org/protocol/nick'}).t('slackbot').up().up();
+		con.send(msg);
+	};
+
 	return {
-		connection: con,
 		disconnect,
+		postChat,
 	};
 };
 
@@ -166,34 +178,29 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	// @ts-ignore
 	global.XMLHttpRequest = XMLHttpRequest;
 
-	let {connection, disconnect} = connect(slack);
-	setInterval(() => {
-		disconnect();
-		setTimeout(() => {
-			const config = connect(slack);
-			connection = config.connection;
-			disconnect = config.disconnect;
-		}, 5000);
-	}, 30 * 60 * 1000);
+	for (const roomName of configuredRooms) {
+		let {disconnect, postChat} = connect(slack, roomName);
+		setInterval(() => {
+			disconnect();
+			setTimeout(() => {
+				const config = connect(slack, roomName);
+				disconnect = config.disconnect;
+				postChat = config.postChat;
+			}, 5000);
+		}, 30 * 60 * 1000);
 
-	rtm.on('message', async (message) => {
-		const {channel, text, user, subtype, thread_ts} = message;
-		if (!text || channel !== process.env.CHANNEL_SANDBOX || subtype !== undefined || thread_ts !== undefined) {
-			return;
-		}
+		rtm.on('message', async (message) => {
+			const {channel, text, user, subtype, thread_ts} = message;
+			if (!text || channel !== process.env.CHANNEL_SANDBOX || subtype !== undefined || thread_ts !== undefined) {
+				return;
+			}
 
-		if (text.split('\n').length > 3 || text.length > 100) {
-			return;
-		}
+			if (text.split('\n').length > 3 || text.length > 100) {
+				return;
+			}
 
-		const nickname = await getMemberName(user);
-
-		const msg = $msg({
-			to: 'sb@conference.meet.tsg.ne.jp',
-			type: 'groupchat',
+			const nickname = await getMemberName(user);
+			postChat(nickname, text);
 		});
-		msg.c('body', `${nickname}: ${text}`).up();
-		msg.c('nick', {xmlns: 'http://jabber.org/protocol/nick'}).t('slackbot').up().up();
-		connection.send(msg);
-	});
+	}
 };
