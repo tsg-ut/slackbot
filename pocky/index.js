@@ -218,7 +218,7 @@ module.exports = (clients) => {
 					${hints.map((hint) => hint.replace(word, `• ＊${word}＊`)).join('\n')}
 				`, channel);
 				increment(message.user, "pockygame-win");
-				const date = new Date().toLocaleString([], {
+				const date = new Date().toLocaleString('en-US', {
 					timeZone: 'Asia/Tokyo',
 					month: 'numeric',
 					day: 'numeric',
@@ -256,7 +256,7 @@ module.exports = (clients) => {
 			if (Array.from(result).length >= 20) {
 				unlock(message.user, "long-pocky");
 			}
-			const date = new Date().toLocaleString([], {
+			const date = new Date().toLocaleString('en-US', {
 				timeZone: 'Asia/Tokyo',
 				month: 'numeric',
 				day: 'numeric',
