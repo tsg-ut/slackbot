@@ -6,7 +6,7 @@ const path = require("path");
 const {sample, get} = require("lodash");
 const {hiraganize} = require("japanese");
 const {stripIndents} = require("common-tags");
-const {unlock} = require("../achievements");
+const {unlock, increment} = require("../achievements");
 const logger = require('../lib/logger.js');
 
 const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，．…・?!：；:;\s]+$/g;
@@ -207,14 +207,26 @@ module.exports = (clients) => {
 		const { channel, text, thread_ts, ts } = message;
 		if (theme !== null && thread_ts === thread) {
 			if (text === theme.word || hiraganize(text) === hiraganize(theme.ruby)) {
+				const {word, ruby} = theme;
+				theme = null;
+
 				await postMessage(stripIndents`
 					<@${message.user}> 正解:tada:
-					答えは＊${theme.word}＊ (${theme.ruby}) だよ:tada:
+					答えは＊${word}＊ (${ruby}) だよ:tada:
 				`, channel, true);
 				await postMessage(stripIndents`
-					${hints.map((hint) => hint.replace(theme.word, `• ＊${theme.word}＊`)).join('\n')}
+					${hints.map((hint) => hint.replace(word, `• ＊${word}＊`)).join('\n')}
 				`, channel);
-				theme = null;
+				increment(message.user, "pockygame-win");
+				const date = new Date().toLocaleString([], {
+					timeZone: 'Asia/Tokyo',
+					month: 'numeric',
+					day: 'numeric',
+				});
+				if (date === '11/11') {
+					unlock(message.user, "pockygame-on-nov-11");
+				}
+
 				thread = null;
 				return;
 			} else {
@@ -243,6 +255,14 @@ module.exports = (clients) => {
 			unlock(message.user, "pocky");
 			if (Array.from(result).length >= 20) {
 				unlock(message.user, "long-pocky");
+			}
+			const date = new Date().toLocaleString([], {
+				timeZone: 'Asia/Tokyo',
+				month: 'numeric',
+				day: 'numeric',
+			});
+			if (date === '11/11') {
+				unlock(message.user, "pocky-on-nov-11");
 			}
 		}
 	});
