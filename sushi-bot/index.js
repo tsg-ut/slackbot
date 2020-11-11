@@ -334,7 +334,7 @@ module.exports = (clients) => {
 		});
 		dailyAsaCounter.clear();
 		dailyexerciseCounter.entries().map(([user, score]) => {
-			exerciseCounter.add(user, score);
+			exerciseCounter.add(user, 1);
 		});
 		dailyexerciseCounter.clear();
 
