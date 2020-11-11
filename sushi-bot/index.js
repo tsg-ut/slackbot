@@ -315,9 +315,8 @@ module.exports = (clients) => {
 		{
 			if(text.includes(":exercise-done:")||text.includes(":kintore_houkoku:")){
 				await increment(user, 'exercise-cumulative');
-				Promise.resolve()
-				.then(() => slack.reactions.add({name: 'erai', channel, timestamp}))
-				.then(() => slack.reactions.add({name: 'sugoi', channel, timestamp}))
+				slack.reactions.add({name: 'erai', channel, timestamp}))
+				slack.reactions.add({name: 'sugoi', channel, timestamp}))
 	
 				if (channel.startsWith('C')) {
 					unlock(user, 'first-exercise');
