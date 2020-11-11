@@ -4,7 +4,7 @@ const {promisify} = require('util');
 const schedule = require('node-schedule');
 const {sortBy} = require('lodash');
 const moment = require('moment');
-const {unlock} = require('../achievements');
+const {unlock, increment} = require('../achievements');
 
 class Counter {
 	constructor(name) {
@@ -107,6 +107,8 @@ module.exports = (clients) => {
 	const suspendCounter = new Counter('suspend');
 	const dailyAsaCounter = new Counter('dailyAsa');
 	const weeklyAsaCounter = new Counter('asa');
+	const dailyexerciseCounter = new Counter('dailyexercise');
+	const exerciseCounter = new Counter('exercise');
 
 	rtm.on('message', async (message) => {
 		const { channel, text, user, ts: timestamp } = message;
@@ -158,6 +160,16 @@ module.exports = (clients) => {
 				const scores = Array.from(total.entries()).sort(([u1, s1], [u2, s2]) => s2 - s1);
 				const index = scores.findIndex(([u, _]) => u === user);
 				postDM(`あなたの起床点数は${scores[index][1]}点、現在の順位は${index + 1}位`);
+			}
+
+			if (tokens[0] === 'エクササイズランキング' && tokens[1] === '確認') {
+				let currentRank = 1;
+				for (let entry of exerciseCounter.entries()) {
+					if (entry[0] === user) {
+						return postDM(`あなたのエクササイズ回数は${entry[1]}回、現在の順位は${currentRank}位`);
+					}
+					currentRank++;
+				}
 			}
 		}
 
@@ -299,6 +311,21 @@ module.exports = (clients) => {
 				dailyAsaCounter.max(user, best_score);
 			}
 		}
+
+		{
+			if(text.includes(":exercise-done:")||text.includes(":kintore_houkoku:")){
+				await increment(user, 'exercise-cumulative');
+				Promise.resolve()
+				.then(() => slack.reactions.add({name: 'erai', channel, timestamp}))
+				.then(() => slack.reactions.add({name: 'sugoi', channel, timestamp}))
+	
+				if (channel.startsWith('C')) {
+					unlock(user, 'first-exercise');
+					
+					dailyexerciseCounter.add(user, 1);
+				}
+			}
+		}
 	});
 
 	schedule.scheduleJob('0 19 * * *', async (date) => {
@@ -306,6 +333,10 @@ module.exports = (clients) => {
 			weeklyAsaCounter.add(user, score);
 		});
 		dailyAsaCounter.clear();
+		dailyexerciseCounter.entries().map(([user, score]) => {
+			exerciseCounter.add(user, score);
+		});
+		dailyexerciseCounter.clear();
 
 		// on Sundays
 		if (date.getDay() === 0) {
@@ -382,6 +413,30 @@ module.exports = (clients) => {
 			});
 
 			weeklyAsaCounter.clear();
+
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				username: 'exercise-bot',
+				text: '今週のエクササイズランキング',
+				icon_emoji: ':muscle:',
+				attachments: exerciseCounter.entries().map(([user, count], index) => {
+					const member = members.find(({id}) => id === user);
+					if (!member) {
+						return null;
+					}
+					const name = member.profile.display_name || member.name;
+					if (count === 7) {
+						unlock(user, 'everyday-exercise-week');
+					}
+
+					return {
+						author_name: `${index + 1}位: ${name} (${count}回)`,
+						author_icon: member.profile.image_24,
+					};
+				}).filter((attachment) => attachment !== null),
+			});
+
+			exerciseCounter.clear();
 		}
 	});
 }
