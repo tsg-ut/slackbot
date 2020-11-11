@@ -314,10 +314,8 @@ module.exports = (clients) => {
 
 		{
 			if(text.includes(":exercise-done:")||text.includes(":kintore_houkoku:")){
-				await increment(user, 'exercise-cumulative');
-				Promise.resolve()
-				.then(() => slack.reactions.add({name: 'erai', channel, timestamp}))
-				.then(() => slack.reactions.add({name: 'sugoi', channel, timestamp}))
+				slack.reactions.add({name: 'erai', channel, timestamp})
+				slack.reactions.add({name: 'sugoi', channel, timestamp})
 	
 				if (channel.startsWith('C')) {
 					unlock(user, 'first-exercise');
@@ -334,7 +332,8 @@ module.exports = (clients) => {
 		});
 		dailyAsaCounter.clear();
 		dailyexerciseCounter.entries().map(([user, score]) => {
-			exerciseCounter.add(user, score);
+			exerciseCounter.add(user, 1);
+			increment(user, 'exercise-cumulative');
 		});
 		dailyexerciseCounter.clear();
 
