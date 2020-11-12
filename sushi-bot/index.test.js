@@ -269,7 +269,7 @@ it('reacts to "エクササイズランキング 確認"', () => new Promise((re
 	slack.on('chat.postMessage', ({username, channel, text}) => {
 		expect(username).toBe('sushi-bot');
 		expect(channel).toBe("D00000000");
-		expect(text).toContain('あなたのエクササイズ回数は1回');
+		expect(text).toContain('あなたのエクササイズ日数は1日');
 		expect(text).toContain('現在の順位は');
 		resolve();
 	});
