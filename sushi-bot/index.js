@@ -174,7 +174,6 @@ module.exports = (clients) => {
 				const index = scores.findIndex(([u, _]) => u === user);
 				postDM(`あなたのエクササイズ日数は${scores[index][1]}日、現在の順位は${index + 1}位`);
 			}
-			}
 		}
 
 		{
