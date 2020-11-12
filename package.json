@@ -101,6 +101,7 @@
     "typescript": "^4.0.3",
     "utf-8-validate": "^5.0.2",
     "winston": "^3.3.3",
+    "winston-syslog": "^2.4.4",
     "word2vec": "github:pizzacat83/node-word2vec",
     "xml-js": "^1.6.11",
     "xmlhttprequest": "^1.8.0",
