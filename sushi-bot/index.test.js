@@ -269,7 +269,7 @@ it('reacts to "エクササイズランキング 確認"', () => new Promise((re
 	slack.on('chat.postMessage', ({username, channel, text}) => {
 		expect(username).toBe('sushi-bot');
 		expect(channel).toBe("D00000000");
-		expect(text).toContain('あなたのエクササイズ回数は2回');
+		expect(text).toContain('あなたのエクササイズ回数は1回');
 		expect(text).toContain('現在の順位は');
 		resolve();
 	});
@@ -290,13 +290,6 @@ it('reacts to "エクササイズランキング 確認"', () => new Promise((re
 		slack.rtmClient.emit('message', {
 			channel: slack.fakeChannel,
 			text: ':exercise-done:',
-			user: slack.fakeUser,
-			ts: slack.fakeTimestamp,
-		});
-
-		slack.rtmClient.emit('message', {
-			channel: slack.fakeChannel,
-			text: ':kintore_houkoku:',
 			user: slack.fakeUser,
 			ts: slack.fakeTimestamp,
 		});

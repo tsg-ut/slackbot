@@ -163,13 +163,17 @@ module.exports = (clients) => {
 			}
 
 			if (tokens[0] === 'エクササイズランキング' && tokens[1] === '確認') {
-				let currentRank = 1;
-				for (let entry of exerciseCounter.entries()) {
-					if (entry[0] === user) {
-						return postDM(`あなたのエクササイズ回数は${entry[1]}回、現在の順位は${currentRank}位`);
+				const total = new Map(exerciseCounter.entries());
+				dailyexerciseCounter.entries().map(([user, score]) => {
+					if (!total.has(user)) {
+						total.set(user, 0);
 					}
-					currentRank++;
-				}
+					total.set(user, score + total.get(user));
+				});
+				const scores = Array.from(total.entries()).sort(([u1, s1], [u2, s2]) => s2 - s1);
+				const index = scores.findIndex(([u, _]) => u === user);
+				postDM(`あなたのエクササイズ日数は${scores[index][1]}日、現在の順位は${index + 1}位`);
+			}
 			}
 		}
 

@@ -933,7 +933,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'exercise-180',
-		difficulty: 'pro',
+		difficulty: 'professional',
 		title: 'エクササイズ・ハーフイヤー・セレブレーション',
 		condition: '180日運動する',
 		category: 'sushi-bot',
@@ -942,7 +942,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'exercise-365',
-		difficulty: 'pro',
+		difficulty: 'professional',
 		title: 'イチロー・スズキ',
 		condition: '365日運動する',
 		category: 'sushi-bot',
