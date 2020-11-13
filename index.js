@@ -14,6 +14,7 @@ const fastify = require('fastify')({
 const logger = require('./lib/logger.js');
 const yargs = require('yargs');
 
+const qs = require('qs');
 const fastifyFormbody = require('fastify-formbody');
 const fastifyExpress = require('fastify-express');
 
@@ -84,7 +85,9 @@ eventClient.on('error', (error) => {
 const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 
 (async () => {
-	await fastify.register(fastifyFormbody);
+	// Specify qs parser for nested parsing
+	// See https://github.com/fastify/fastify-formbody/blob/v5.0.0/Readme.md#upgrading-from-4x
+	await fastify.register(fastifyFormbody, {parser: str => qs.parse(str)});
 	await fastify.register(fastifyExpress);
 
 	fastify.use('/slack-event', (req, res, next) => {
