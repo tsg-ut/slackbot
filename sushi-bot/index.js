@@ -432,7 +432,7 @@ module.exports = (clients) => {
 					}
 
 					return {
-						author_name: `${index + 1}位: ${name} (${count}回)`,
+						author_name: `${index + 1}位: ${name} (${count}日)`,
 						author_icon: member.profile.image_24,
 					};
 				}).filter((attachment) => attachment !== null),
