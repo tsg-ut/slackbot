@@ -12,8 +12,16 @@ const calculator = require('./calculator.js');
 
 const savedState = (() => {
 	try {
+		const defaultSavedState = {
+			points: 25000,
+			wins: 0,
+			loses: 0,
+			大麻雀Points: 350000,
+			大麻雀Wins: 0,
+			大麻雀Loses: 0,
+		};
 		// eslint-disable-next-line global-require
-		return require('./current-point.json');
+		return Object.assign(defaultSavedState, require('./current-point.json'));
 	} catch (e) {
 		return {
 			points: 25000,
