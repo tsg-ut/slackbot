@@ -268,6 +268,7 @@ export default ({
                 答えは \`${state.answer
                   .map((dig: number) => String(dig))
                   .join('')}\` だよ:muscle:
+                手数: ${state.history.length}手
                 経過時間: ${round(passedTime / 1000, 2).toFixed(2)}秒`,
                 channel: process.env.CHANNEL_SANDBOX as string,
                 username: 'Hit & Blow',
