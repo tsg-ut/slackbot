@@ -72,4 +72,5 @@ npm run dev
 
 このリポジトリでは以下のライブラリを使用しています。
 
-* Shogi Resource by muchonovski is licensed under a Creative Commons 表示-非営利 2.1 日本 License.
+* Shogi Resource by muchonovski licensed under Creative Commons 表示-非営利 2.1 日本 License.
+* Hayaoshi SE by OtoLogic licensed under Creative Commons 表示 4.0 国際 License.
