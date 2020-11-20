@@ -1,10 +1,10 @@
 import type {ContextBlock} from '@slack/web-api';
-import Discord, {TextChannel, Collection, Snowflake, GuildMember} from 'discord.js';
+import Discord, {TextChannel, Collection, Snowflake, GuildMember, VoiceChannel} from 'discord.js';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
+import Hayaoshi from './hayaoshi';
 
 const discord = new Discord.Client();
-
 discord.login(process.env.TSGBOT_DISCORD_TOKEN);
 
 const getMembersBlock = (roomName: string, members: Collection<Snowflake, GuildMember>) => (
@@ -33,6 +33,16 @@ const getMembersBlock = (roomName: string, members: Collection<Snowflake, GuildM
 );
 
 export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
+	const hayaoshi = new Hayaoshi(() => {
+		const discordSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_VOICE_CHANNEL_ID) as VoiceChannel;
+		return discordSandbox.join();
+	});
+
+	hayaoshi.on('message', (message: string) => {
+		const discordTextSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) as TextChannel;
+		return discordTextSandbox.send(message);
+	});
+
 	rtm.on('message', async (message) => {
 		const {channel, text, user, subtype, thread_ts} = message;
 		if (!text || channel !== process.env.CHANNEL_SANDBOX || subtype !== undefined || thread_ts !== undefined) {
@@ -44,12 +54,12 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 		}
 
 		const nickname = await getMemberName(user);
-		const discordSandbox2 = discord.channels.cache.get(process.env.DISCORD_SANDBOX_CHANNEL_ID) as TextChannel;
+		const discordSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_CHANNEL_ID) as TextChannel;
 
-		discordSandbox2.send(`${nickname}: ${text}`);
+		discordSandbox.send(`${nickname}: ${text}`);
 	});
 
-	discord.on('message', (message) => {
+	discord.on('message', async (message) => {
 		if (!message.member.user.bot && message.channel.id === process.env.DISCORD_SANDBOX_CHANNEL_ID && message.content.length < 200) {
 			slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
@@ -57,6 +67,10 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 				username: `${message.member.displayName}@Discord`,
 				icon_url: message.member.user.displayAvatarURL({format: 'png', size: 128}),
 			});
+		}
+
+		if (message.channel.id === process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID && !message.member.user.bot) {
+			hayaoshi.onMessage(message);
 		}
 	});
 

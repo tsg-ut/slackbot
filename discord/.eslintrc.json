@@ -5,6 +5,7 @@
         "no-console": "off",
         "camelcase": "off",
         "no-restricted-imports": "off",
-        "import/extesions": "off"
+        "import/extesions": "off",
+        "require-atomic-updates": "off"
     }
 }

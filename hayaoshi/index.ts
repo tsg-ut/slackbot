@@ -16,7 +16,7 @@ import type {SlackInterface} from '../lib/slack';
 
 const mutex = new Mutex();
 
-interface Quiz {
+export interface Quiz {
 	id: number,
 	question: string,
 	answer: string,
@@ -75,7 +75,7 @@ const getQuiz = async () => {
 	return quiz;
 };
 
-const getHardQuiz = async () => {
+export const getHardQuiz = async () => {
 	const id = random(1, 18191);
 	const url = `http://qss.quiz-island.site/abcgo?${encode({
 		ipp: 1,
@@ -139,6 +139,15 @@ const getQuestionChars = (question: string): QuestionChar[] => {
 const getQuestionText = (questionChars: QuestionChar[], hint: number) => (
 	questionChars.map((char) => char.hint <= hint ? char.char : '○').join('')
 );
+
+export const isCorrectAnswer = (answerText: string, userAnswerText: string) => {
+	const answer = normalize(answerText);
+	const userAnswer = normalize(userAnswerText);
+
+	const distance = levenshtein.get(answer, userAnswer);
+
+	return distance <= answer.length / 3;
+};
 
 export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const state: State = {
@@ -257,12 +266,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					return;
 				}
 
-				const answer = normalize(state.answer);
-				const userAnswer = normalize(message.text);
-
-				const distance = levenshtein.get(answer, userAnswer);
-
-				if (distance <= answer.length / 3) {
+				if (isCorrectAnswer(state.answer, message.text)) {
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
 						text: `<@${message.user}> 正解🎉\nQ. ＊${getQuestionText(state.question, 13)}＊\n答えは＊${state.answer}＊だよ💪`,
