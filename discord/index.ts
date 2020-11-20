@@ -59,7 +59,7 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 		discordSandbox.send(`${nickname}: ${text}`);
 	});
 
-	discord.on('message', async (message) => {
+	discord.on('message', (message) => {
 		if (!message.member.user.bot && message.channel.id === process.env.DISCORD_SANDBOX_CHANNEL_ID && message.content.length < 200) {
 			slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
