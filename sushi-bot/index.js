@@ -370,8 +370,14 @@ module.exports = (clients) => {
 					if (index === 0 && weeklyAsaCounter.entries().filter(([, c]) => c === count).length === 1) {
 						unlock(user, 'asa-master');
 					}
+					if (count <= 0) {
+						unlock(user, 'asa-week-0');
+					}
 					if (count >= 720) {
 						unlock(user, 'asa-week-720');
+					}
+					if (count >= 7 * 108) {
+						unlock(user, 'asa-week-perfect');
 					}
 
 					return {
