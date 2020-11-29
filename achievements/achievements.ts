@@ -891,6 +891,20 @@ const achievements: Achievement[] = [
 		category: 'sushi-bot',
 	},
 	{
+		id: 'asa-week-0',
+		difficulty: 'hard',
+		title: '生活リズム・完全敗北',
+		condition: '週間起床ランキングで0点以下を獲得し、ランキングに掲載される',
+		category: 'sushi-bot',
+	},
+	{
+		id: 'asa-week-perfect',
+		difficulty: 'professional',
+		title: '生活リズム・オールパーフェクト',
+		condition: '週間起床ランキングで満点を獲得する',
+		category: 'sushi-bot',
+	},
+	{
 		id: 'first-exercise',
 		difficulty: 'easy',
 		title: '一日一善体力づくり',
