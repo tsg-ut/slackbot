@@ -1,29 +1,33 @@
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const {promisify} = require('util');
+const axios = require('axios');
 const {stripIndent} = require('common-tags');
 const levenshtein = require('fast-levenshtein');
-const axios = require('axios');
-const assert = require('assert');
+const {hiraganize} = require('japanese');
 const get = require('lodash/get');
-const sample = require('lodash/sample');
-const sampleSize = require('lodash/sampleSize');
-const sum = require('lodash/sum');
 const maxBy = require('lodash/maxBy');
 const minBy = require('lodash/minBy');
-const shuffle = require('lodash/shuffle');
 const random = require('lodash/random');
-const {hiraganize} = require('japanese');
-const path = require('path');
-const fs = require('fs');
-const {promisify} = require('util');
-const schedule = require('node-schedule');
-const sqlite = require('sqlite');
-const sql = require('sql-template-strings');
-const {default: Queue} = require('p-queue');
+const sample = require('lodash/sample');
+const sampleSize = require('lodash/sampleSize');
+const shuffle = require('lodash/shuffle');
+const sum = require('lodash/sum');
 const nodePersist = require('node-persist');
+const schedule = require('node-schedule');
+const {default: Queue} = require('p-queue');
 const rouge = require('rouge');
-const getReading = require('../lib/getReading.js');
+const sql = require('sql-template-strings');
+const sqlite = require('sqlite');
+const sqlite3 = require('sqlite3');
 const {unlock, increment} = require('../achievements');
 const {blockDeploy} = require('../deploy/index.ts');
+const getReading = require('../lib/getReading.js');
 
+const logger = require('../lib/logger.js');
+const bot = require('./bot.js');
+const gist = require('./gist.js');
 const {
 	getPageTitle,
 	getWordUrl,
@@ -33,9 +37,6 @@ const {
 	getCandidateWords,
 	normalizeMeaning,
 } = require('./lib.js');
-const gist = require('./gist.js');
-const logger = require('../lib/logger.js');
-const bot = require('./bot.js');
 
 const state = (() => {
 	try {
@@ -79,7 +80,10 @@ const transaction = (func) => queue.add(func);
 let deployUnblock = null;
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
-	const db = await sqlite.open(path.join(__dirname, 'themes.sqlite3'));
+	const db = await sqlite.open({
+		filename: path.join(__dirname, 'themes.sqlite3'),
+		driver: sqlite3.Database,
+	});
 
 	const storage = nodePersist.create({
 		dir: path.resolve(__dirname, '__cache__'),
@@ -104,13 +108,13 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				deployUnblock();
 				deployUnblock = null;
 			} else {
-				logger.warn("tahoiya: deployUnblock is falthy when running -> waiting");
+				logger.warn('tahoiya: deployUnblock is falthy when running -> waiting');
 			}
 		}
 		if (state.phase === 'waiting' && newState.phase !== 'waiting') {
 			// waiting -> running
 			if (deployUnblock) {
-				logger.warn("tahoiya: deployUnblock is truthy when waiting -> running");
+				logger.warn('tahoiya: deployUnblock is truthy when waiting -> running');
 				deployUnblock();
 				deployUnblock = null;
 			}

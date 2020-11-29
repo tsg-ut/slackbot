@@ -59,7 +59,7 @@ module.exports.server = ({webClient: slack}) => async (fastify) => {
                 text: 'sorry :cry:\n an error occured while processing email.',
             });
 
-            return res.code(500);
+            return res.code(500).send('error');
         }
     });
 };

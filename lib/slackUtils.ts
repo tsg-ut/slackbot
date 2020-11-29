@@ -1,4 +1,4 @@
-import {WebClient} from '@slack/client';
+import {WebClient} from '@slack/web-api';
 import {flatten} from 'lodash';
 import {getTokens, getRtmClient} from './slack';
 import {Deferred} from './utils';

@@ -1,12 +1,12 @@
 # slackbot
 
-[![Build Status][travis-image]][travis-url]
+[![Test][action-image]][action-url]
 [![Coverage Status][codecov-image]][codecov-url]
 
 [![Coverage Graph][codecov-graph]][codecov-url]
 
-[travis-url]: https://travis-ci.org/tsg-ut/slackbot
-[travis-image]: https://travis-ci.org/tsg-ut/slackbot.svg?branch=master
+[action-url]: https://github.com/tsg-ut/slackbot/actions?query=workflow%3ATest
+[action-image]: https://github.com/tsg-ut/slackbot/workflows/Test/badge.svg
 [codecov-url]: https://codecov.io/gh/tsg-ut/slackbot
 [codecov-image]: https://codecov.io/gh/tsg-ut/slackbot/branch/master/graph/badge.svg
 [codecov-graph]: https://codecov.io/gh/tsg-ut/slackbot/branch/master/graphs/tree.svg?width=888&height=150
@@ -72,4 +72,5 @@ npm run dev
 
 このリポジトリでは以下のライブラリを使用しています。
 
-* Shogi Resource by muchonovski is licensed under a Creative Commons 表示-非営利 2.1 日本 License.
+* Shogi Resource by muchonovski licensed under Creative Commons 表示-非営利 2.1 日本 License.
+* Hayaoshi SE by OtoLogic licensed under Creative Commons 表示 4.0 国際 License.

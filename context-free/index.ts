@@ -2,7 +2,7 @@ import plugin from 'fastify-plugin';
 import {escapeRegExp} from 'lodash';
 import scrapeIt from 'scrape-it';
 /* eslint-disable no-unused-vars */
-import type {SlackInterface} from '../lib/slack';
+import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils';
 
 const normalizeMeaning = (input: string) => {
@@ -145,7 +145,7 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
   });
   setTimeout(repeatPost, randomInterval());
   const {team: tsgTeam}: any = await slack.team.info();
-  fastify.post('/slash/context-free-post', async (request, response) => {
+  fastify.post<SlashCommandEndpoint>('/slash/context-free-post', async (request, response) => {
     if (request.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
       response.code(400);
       return 'Bad Request';

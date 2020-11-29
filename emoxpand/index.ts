@@ -5,7 +5,7 @@ import _ from 'lodash';
 // @ts-ignore
 import logger from '../lib/logger';
 /* eslint-disable no-unused-vars */
-import type {SlackInterface} from '../lib/slack';
+import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils';
 
 type EmojiName = string;
@@ -183,7 +183,7 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
 
   // Big Emoji expansion {{{
   const {team: tsgTeam}: any = await slack.team.info();
-  fastify.post('/slash/emoxpand', async (request, response) => {
+  fastify.post<SlashCommandEndpoint>('/slash/emoxpand', async (request, response) => {
     if (request.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
       response.code(400);
       return 'Bad Request';
