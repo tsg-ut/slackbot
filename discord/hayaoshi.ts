@@ -7,7 +7,7 @@ import {stripIndent} from 'common-tags';
 import Discord, {StreamDispatcher, VoiceConnection} from 'discord.js';
 import {tokenize, KuromojiToken} from 'kuromojin';
 import {max} from 'lodash';
-import {getHardQuiz, getItQuiz, Quiz, isCorrectAnswer} from '../hayaoshi';
+import {getHardQuiz, getItQuiz, Quiz, isCorrectAnswer, normalize} from '../hayaoshi';
 
 const {TextToSpeechClient} = GoogleCloudTextToSpeech;
 
@@ -27,6 +27,7 @@ interface State {
 	maximumPushTime: number,
 	clauses: string[],
 	timePoints: number[],
+	isContestMode: boolean,
 }
 
 export default class Hayaoshi extends EventEmitter {
@@ -50,6 +51,7 @@ export default class Hayaoshi extends EventEmitter {
 			maximumPushTime: 0,
 			clauses: [],
 			timePoints: [],
+			isContestMode: false,
 		};
 	}
 
@@ -196,11 +198,12 @@ export default class Hayaoshi extends EventEmitter {
 				}, 10000);
 			}
 
-			if (message.content === '早押しクイズ' && this.state.phase === 'waiting') {
+			if ((message.content === '早押しクイズ' || message.content === '早押しクイズ大会') && this.state.phase === 'waiting') {
 				try {
 					this.state.phase = 'gaming';
 					this.state.playStartTime = 0;
 					this.state.maximumPushTime = 0;
+					this.state.isContestMode = message.content === '早押しクイズ大会';
 
 					this.state.quiz = await (Math.random() < 0.2 ? getItQuiz() : getHardQuiz());
 					const normalizedQuestion = this.state.quiz.question.replace(/\(.+?\)/g, '');
@@ -229,7 +232,7 @@ export default class Hayaoshi extends EventEmitter {
 					)).join('');
 
 					const questionAudio = await this.getTTS(`<speak>${spannedQuestionText}</speak>`);
-					const answerAudio = await this.getTTS(`<speak>答えは、${this.state.quiz.answer}、でした。</speak>`);
+					const answerAudio = await this.getTTS(`<speak>答えは、${normalize(this.state.quiz.answer)}、でした。</speak>`);
 
 					this.state.clauses = clauses;
 					this.state.timePoints = questionAudio.timepoints.map((point) => point.timeSeconds * 1000);
@@ -254,8 +257,8 @@ export default class Hayaoshi extends EventEmitter {
 					});
 					this.readOutText();
 				} catch (error) {
-					await this.emit('message', `エラー😢\n${error.toString()}`);
-					await this.emit('message', `Q. ${this.state.quiz.question}\nA. **${this.state.quiz.answer}**`);
+					this.emit('message', `エラー😢\n${error.toString()}`);
+					this.emit('message', `Q. ${this.state.quiz.question}\nA. **${this.state.quiz.answer}**`);
 					this.endGame();
 				}
 			}

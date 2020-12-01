@@ -34,9 +34,16 @@ const fullwidth2halfwidth = (string: string) => (
 	string.replace(/[\uFF01-\uFF5E]/gu, (char) => String.fromCodePoint(char.codePointAt(0) - 0xFF00 + 0x20))
 );
 
-const normalize = (string: string) => (
-	hiraganize(fullwidth2halfwidth(string.replace(/[^\p{Letter}\p{Number}]/gu, '').toLowerCase()))
-);
+export const normalize = (string: string) => { 
+	let newString = string;
+	newString = newString.replace(/\(.+?\)/g, '');
+	newString = newString.replace(/\[.+?\]/g, '');
+	newString = newString.replace(/（.+?）/g, '');
+	newString = newString.replace(/【.+?】/g, '');
+	newString = newString.replace(/[^\p{Letter}\p{Number}]/gu, '');
+	newString = newString.toLowerCase();
+	return hiraganize(fullwidth2halfwidth(newString))
+};
 
 const getQuiz = async () => {
 	const stateExists = await fs.access(statePath, constants.F_OK).then(() => true).catch(() => false);
@@ -99,7 +106,7 @@ export const getHardQuiz = async () => {
 
 	// eslint-disable-next-line prefer-destructuring
 	quiz.question = quiz.question.split('<br>')[0];
-	quiz.answer = quiz.answer.replace(/(?:\(.+?\)|（.+?）|\[.+?\]|【.+?】)/g, '').trim();
+	quiz.answer = quiz.answer.trim();
 
 	return quiz;
 };
