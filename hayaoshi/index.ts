@@ -13,6 +13,7 @@ import {hiraganize} from 'japanese';
 import {random, sample, shuffle, flatten, times, constant, range} from 'lodash';
 import scrapeIt from 'scrape-it';
 import type {SlackInterface} from '../lib/slack';
+import {google} from 'googleapis';
 
 const mutex = new Mutex();
 
@@ -27,6 +28,7 @@ interface Data {
 }
 
 const statePath = path.resolve(__dirname, 'candidates.json');
+const itStatePath = path.resolve(__dirname, 'candidates-it.json');
 
 const fullwidth2halfwidth = (string: string) => (
 	string.replace(/[\uFF01-\uFF5E]/gu, (char) => String.fromCodePoint(char.codePointAt(0) - 0xFF00 + 0x20))
@@ -101,6 +103,56 @@ export const getHardQuiz = async () => {
 
 	return quiz;
 };
+
+export const getItQuiz = async () => {
+	const stateExists = await fs.access(itStatePath, constants.F_OK).then(() => true).catch(() => false);
+	const candidates = [];
+	if (stateExists) {
+		const stateData = await fs.readFile(itStatePath);
+		candidates.push(...JSON.parse(stateData.toString()));
+	}
+
+	if (candidates.length === 0) {
+		candidates.push(...range(1, 660));
+	}
+
+	const id = sample(candidates);
+
+	const auth = await new google.auth.GoogleAuth({
+		scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+	}).getClient();
+
+	const sheets = google.sheets({version: 'v4', auth});
+
+	const values: [string, string, string][] = await new Promise((resolve, reject) => {
+		sheets.spreadsheets.values.get({
+			spreadsheetId: '1357WnNdRvBlDnh3oDtIde7ptDjm2pFFFb-hbytFX4lk',
+			range: 'A:C',
+		}, (error, response) => {
+			if (error) {
+				reject(error);
+			} else if (response.data.values) {
+				resolve(response.data.values as [string, string, string][]);
+			} else {
+				reject(new Error('values not found'));
+			}
+		});
+	});
+
+	const quizes: Quiz[] = values.map(([id, question, answer]) => ({
+		id: parseInt(id), question, answer,
+	}));
+
+	const quiz = quizes.find((q) => q.id === id);
+
+	await fs.writeFile(itStatePath, JSON.stringify(candidates.filter((candidate) => candidate !== id)));
+
+	return quiz;
+};
+
+getItQuiz().then((q) => {
+	console.log(q);
+});
 
 interface QuestionChar {
 	char: string,
