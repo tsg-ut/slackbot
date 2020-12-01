@@ -118,6 +118,7 @@ export default class Hayaoshi extends EventEmitter {
 			this.emit('message', lines.join('\n'));
 
 			if (this.state.quizThroughCount >= 5) {
+				this.draw();
 				this.endGame();
 				return;
 			}
@@ -138,6 +139,7 @@ export default class Hayaoshi extends EventEmitter {
 
 			if (isPenaltied) {
 				if (liveUsers.length === 0) {
+					this.draw();
 					this.endGame();
 					return;
 				}
@@ -161,6 +163,12 @@ export default class Hayaoshi extends EventEmitter {
 		}
 
 		this.endGame();
+	}
+
+	draw() {
+		this.emit('message', stripIndent`
+			🙁🙁🙁引き分け🙁🙁🙁
+		`);
 	}
 
 	win(user: string) {
