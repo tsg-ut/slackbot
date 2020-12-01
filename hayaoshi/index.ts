@@ -150,10 +150,6 @@ export const getItQuiz = async () => {
 	return quiz;
 };
 
-getItQuiz().then((q) => {
-	console.log(q);
-});
-
 interface QuestionChar {
 	char: string,
 	hint: number,

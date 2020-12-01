@@ -4,10 +4,10 @@ import path from 'path';
 import {v1beta1 as GoogleCloudTextToSpeech} from '@google-cloud/text-to-speech';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-import Discord, {VoiceChannel, TextChannel, StreamDispatcher, VoiceConnection} from 'discord.js';
+import Discord, {StreamDispatcher, VoiceConnection} from 'discord.js';
 import {tokenize, KuromojiToken} from 'kuromojin';
 import {max} from 'lodash';
-import {getHardQuiz, Quiz, isCorrectAnswer} from '../hayaoshi';
+import {getHardQuiz, getItQuiz, Quiz, isCorrectAnswer} from '../hayaoshi';
 
 const {TextToSpeechClient} = GoogleCloudTextToSpeech;
 
@@ -202,7 +202,7 @@ export default class Hayaoshi extends EventEmitter {
 					this.state.playStartTime = 0;
 					this.state.maximumPushTime = 0;
 
-					this.state.quiz = await getHardQuiz();
+					this.state.quiz = await (Math.random() < 0.2 ? getItQuiz() : getHardQuiz());
 					const normalizedQuestion = this.state.quiz.question.replace(/\(.+?\)/g, '');
 
 					const tokens = await tokenize(normalizedQuestion);
@@ -217,10 +217,10 @@ export default class Hayaoshi extends EventEmitter {
 							clauses.push(token.surface_form);
 						} else if (prevPos === '名詞' && token.pos === '名詞') {
 							clauses[clauses.length - 1] += token.surface_form;
-						} else if (!this.isFuzokugo(token)) {
-							clauses.push(token.surface_form);
-						} else {
+						} else if (this.isFuzokugo(token)) {
 							clauses[clauses.length - 1] += token.surface_form;
+						} else {
+							clauses.push(token.surface_form);
 						}
 					}
 
