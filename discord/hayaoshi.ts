@@ -28,6 +28,9 @@ interface State {
 	clauses: string[],
 	timePoints: number[],
 	isContestMode: boolean,
+	quizThroughCount: number,
+	participants: Map<string, {points: number, penalties: number}>,
+	questionCount: number,
 }
 
 export default class Hayaoshi extends EventEmitter {
@@ -52,6 +55,9 @@ export default class Hayaoshi extends EventEmitter {
 			clauses: [],
 			timePoints: [],
 			isContestMode: false,
+			quizThroughCount: 0,
+			participants: new Map(),
+			questionCount: 0,
 		};
 	}
 
@@ -71,6 +77,20 @@ export default class Hayaoshi extends EventEmitter {
 		}).join('');
 	}
 
+	incrementPoint(user: string) {
+		if (!this.state.participants.has(user)) {
+			this.state.participants.set(user, {points: 0, penalties: 0});
+		}
+		this.state.participants.get(user).points++;
+	}
+
+	incrementPenalty(user: string) {
+		if (!this.state.participants.has(user)) {
+			this.state.participants.set(user, {points: 0, penalties: 0});
+		}
+		this.state.participants.get(user).penalties++;
+	}
+
 	endGame() {
 		if (this.state.connection) {
 			this.state.connection.disconnect();
@@ -78,13 +98,95 @@ export default class Hayaoshi extends EventEmitter {
 
 		this.state.phase = 'waiting';
 		this.state.connection = null;
+		this.state.quizThroughCount = 0;
+	}
+
+	endQuiz() {
+		const {penaltyUsers} = this.state;
+
 		this.state.dispatcher = null;
 		this.state.quiz = null;
 		this.state.pusher = null;
 		this.state.penaltyUsers = new Set();
+		this.state.phase = 'gaming';
+
+		if (this.state.isContestMode) {
+			const lines = Array.from(this.state.participants.entries()).map(([userId, participant]) => (
+				`<@${userId}>${participant.penalties >= 3 ? '❌' : ''}: ${participant.points}○${participant.penalties}×`
+			));
+
+			this.emit('message', lines.join('\n'));
+
+			if (this.state.quizThroughCount >= 5) {
+				this.endGame();
+				return;
+			}
+
+			let isPenaltied = false;
+			for (const user of penaltyUsers) {
+				if (this.state.participants.get(user).penalties >= 3) {
+					isPenaltied = true;
+				}
+			}
+
+			const liveUsers = [];
+			for (const [userId, participant] of this.state.participants.entries()) {
+				if (participant.penalties < 3) {
+					liveUsers.push(userId);
+				}
+			}
+
+			if (isPenaltied) {
+				if (liveUsers.length === 0) {
+					this.endGame();
+					return;
+				}
+				if (liveUsers.length === 1) {
+					this.win(liveUsers[0]);
+					this.endGame();
+					return;
+				}
+			}
+
+			for (const [userId, participant] of this.state.participants.entries()) {
+				if (participant.points >= 5) {
+					this.win(userId);
+					this.endGame();
+					return;
+				}
+			}
+
+			this.startQuiz();
+			return;
+		}
+
+		this.endGame();
 	}
 
-	readOutText() {
+	win(user: string) {
+		this.emit('message', stripIndent`
+			🎉🎉🎉優勝🎉🎉🎉
+			<@${user}>
+		`);
+	}
+
+	async readAnswer() {
+		await new Promise((resolve) => {
+			const dispatcher = this.state.connection.play(path.join(__dirname, 'answerText.mp3'));
+			dispatcher.on('finish', () => {
+				resolve();
+			});
+		});
+
+		this.emit('message', `正解者: なし\nQ. ${this.state.quiz.question}\nA. **${this.state.quiz.answer}**`);
+		if (this.state.penaltyUsers.size === 0) {
+			this.state.quizThroughCount++;
+		} else {
+			this.state.quizThroughCount = 0;
+		}
+	}
+
+	readQuestion() {
 		this.state.dispatcher = this.state.connection.play(path.join(__dirname, 'questionText.mp3'));
 		this.state.playStartTime = Date.now();
 		this.state.dispatcher.on('start', () => {
@@ -100,22 +202,13 @@ export default class Hayaoshi extends EventEmitter {
 				}
 				this.state.phase = 'timeup';
 				await new Promise((resolve) => {
-					const dispatcher =
-				this.state.connection.play(path.join(__dirname, 'sounds/timeup.mp3'));
+					const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/timeup.mp3'));
 					dispatcher.on('finish', () => {
 						resolve();
 					});
 				});
-				await new Promise((resolve) => {
-					const dispatcher =
-				this.state.connection.play(path.join(__dirname, 'answerText.mp3'));
-					dispatcher.on('finish', () => {
-						resolve();
-					});
-				});
-
-				this.emit('message', `正解者: なし\nQ. ${this.state.quiz.question}\nA. **${this.state.quiz.answer}**`);
-				this.endGame();
+				await this.readAnswer();
+				this.endQuiz();
 			});
 		});
 	}
@@ -140,8 +233,83 @@ export default class Hayaoshi extends EventEmitter {
 		return response;
 	}
 
+	async speak(text: string) {
+		if (!this.state.connection) {
+			return;
+		}
+
+		const audio = await this.getTTS(text);
+		await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), audio.audioContent, 'binary');
+		await new Promise((resolve) => {
+			const dispatcher = this.state.connection.play(path.join(__dirname, 'tempAudio.mp3'));
+			dispatcher.on('finish', () => {
+				resolve();
+			});
+		});
+	}
+
 	isFuzokugo(token: KuromojiToken) {
 		return token.pos === '助詞' || token.pos === '助動詞' || token.pos_detail_1 === '接尾' || token.pos_detail_1 === '非自立';
+	}
+
+	async startQuiz() {
+		this.state.maximumPushTime = 0;
+		this.state.questionCount++;
+		this.state.quiz = await (Math.random() < 0.2 ? getItQuiz() : getHardQuiz());
+		const normalizedQuestion = this.state.quiz.question.replace(/\(.+?\)/g, '');
+
+		const tokens = await tokenize(normalizedQuestion);
+
+		const clauses: string[] = [];
+		for (const [index, token] of tokens.entries()) {
+			let prevPos: string = null;
+			if (index !== 0) {
+				prevPos = tokens[index - 1].pos;
+			}
+			if (clauses.length === 0 || token.pos === '記号') {
+				clauses.push(token.surface_form);
+			} else if (prevPos === '名詞' && token.pos === '名詞') {
+				clauses[clauses.length - 1] += token.surface_form;
+			} else if (this.isFuzokugo(token)) {
+				clauses[clauses.length - 1] += token.surface_form;
+			} else {
+				clauses.push(token.surface_form);
+			}
+		}
+
+		const spannedQuestionText = clauses.map((clause, index) => (
+			`${clause}<mark name="c${index}"/>`
+		)).join('');
+
+		const questionAudio = await this.getTTS(`<speak>${spannedQuestionText}</speak>`);
+		const answerAudio = await this.getTTS(`<speak>答えは、${normalize(this.state.quiz.answer)}、でした。</speak>`);
+
+		this.state.clauses = clauses;
+		this.state.timePoints = questionAudio.timepoints.map((point) => point.timeSeconds * 1000);
+
+		await fs.writeFile(path.join(__dirname, 'questionText.mp3'), questionAudio.audioContent, 'binary');
+		await fs.writeFile(path.join(__dirname, 'answerText.mp3'), answerAudio.audioContent, 'binary');
+
+		this.state.connection = await this.joinVoiceChannelFn();
+
+		await new Promise((resolve) => setTimeout(resolve, 3000));
+		if (this.state.isContestMode) {
+			await this.speak(`第${this.state.questionCount}問`);
+		} else {
+			await new Promise((resolve) => {
+				const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/mondai.mp3'));
+				dispatcher.on('finish', () => {
+					resolve();
+				});
+			});
+		}
+		await new Promise((resolve) => {
+			const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/question.mp3'));
+			dispatcher.on('finish', () => {
+				resolve();
+			});
+		});
+		this.readQuestion();
 	}
 
 	onMessage(message: Discord.Message) {
@@ -150,6 +318,7 @@ export default class Hayaoshi extends EventEmitter {
 				clearTimeout(this.state.answerTimeoutId);
 				if (isCorrectAnswer(this.state.quiz.answer, message.content)) {
 					this.state.connection.play(path.join(__dirname, 'sounds/correct.mp3'));
+					this.incrementPoint(message.member.user.id);
 
 					this.emit('message', stripIndent`
 						正解者: <@${message.member.user.id}>
@@ -159,18 +328,41 @@ export default class Hayaoshi extends EventEmitter {
 					`);
 
 					await new Promise((resolve) => setTimeout(resolve, 3000));
-					this.endGame();
+
+					this.state.quizThroughCount = 0;
+					this.endQuiz();
 				} else {
-					this.state.connection.play(path.join(__dirname, 'sounds/wrong.mp3'));
+					await new Promise((resolve) => {
+						const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/wrong.mp3'));
+						dispatcher.on('finish', () => {
+							resolve();
+						});
+					});
 					this.state.penaltyUsers.add(this.state.pusher);
+					this.incrementPenalty(this.state.pusher);
 					this.state.pusher = null;
-					await new Promise((resolve) => setTimeout(resolve, 1000));
-					this.state.phase = 'gaming';
-					this.readOutText();
+					if (this.state.isContestMode) {
+						this.state.phase = 'timeup';
+						await this.readAnswer();
+						this.endQuiz();
+					} else {
+						await new Promise((resolve) => setTimeout(resolve, 1000));
+						this.state.phase = 'gaming';
+						this.readQuestion();
+					}
 				}
 			}
 
-			if (message.content === 'p' && this.state.phase === 'gaming' && this.state.connection && !this.state.penaltyUsers.has(message.member.user.id)) {
+			if (
+				message.content === 'p' &&
+				this.state.phase === 'gaming' &&
+				this.state.connection &&
+				!this.state.penaltyUsers.has(message.member.user.id) &&
+				!(
+					this.state.participants.has(message.member.user.id) &&
+					this.state.participants.get(message.member.user.id).penalties >= 3
+				)
+			) {
 				const now = Date.now();
 				const pushTime = now - this.state.playStartTime;
 				this.state.maximumPushTime = Math.max(pushTime, this.state.maximumPushTime);
@@ -183,19 +375,25 @@ export default class Hayaoshi extends EventEmitter {
 				this.state.answerTimeoutId = setTimeout(() => {
 					mutex.runExclusive(async () => {
 						await new Promise((resolve) => {
-							const dispatcher =
-				this.state.connection.play(path.join(__dirname, 'sounds/timeup.mp3'));
+							const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/timeup.mp3'));
 							dispatcher.on('finish', () => {
 								resolve();
 							});
 						});
-						this.state.phase = 'gaming';
 						this.state.penaltyUsers.add(this.state.pusher);
+						this.incrementPenalty(this.state.pusher);
 						this.state.pusher = null;
-						await new Promise((resolve) => setTimeout(resolve, 1000));
-						this.readOutText();
+						if (this.state.isContestMode) {
+							this.state.phase = 'timeup';
+							await this.readAnswer();
+							this.endQuiz();
+						} else {
+							await new Promise((resolve) => setTimeout(resolve, 1000));
+							this.state.phase = 'gaming';
+							this.readQuestion();
+						}
 					});
-				}, 10000);
+				}, this.state.isContestMode ? 20000 : 10000);
 			}
 
 			if ((message.content === '早押しクイズ' || message.content === '早押しクイズ大会') && this.state.phase === 'waiting') {
@@ -203,63 +401,29 @@ export default class Hayaoshi extends EventEmitter {
 					this.state.phase = 'gaming';
 					this.state.playStartTime = 0;
 					this.state.maximumPushTime = 0;
+					this.state.quizThroughCount = 0;
+					this.state.participants = new Map();
 					this.state.isContestMode = message.content === '早押しクイズ大会';
+					this.state.questionCount = 0;
 
-					this.state.quiz = await (Math.random() < 0.2 ? getItQuiz() : getHardQuiz());
-					const normalizedQuestion = this.state.quiz.question.replace(/\(.+?\)/g, '');
+					if (this.state.isContestMode) {
+						this.emit('message', stripIndent`
+							【早押しクイズ大会】
 
-					const tokens = await tokenize(normalizedQuestion);
-
-					const clauses: string[] = [];
-					for (const [index, token] of tokens.entries()) {
-						let prevPos: string = null;
-						if (index !== 0) {
-							prevPos = tokens[index - 1].pos;
-						}
-						if (clauses.length === 0 || token.pos === '記号') {
-							clauses.push(token.surface_form);
-						} else if (prevPos === '名詞' && token.pos === '名詞') {
-							clauses[clauses.length - 1] += token.surface_form;
-						} else if (this.isFuzokugo(token)) {
-							clauses[clauses.length - 1] += token.surface_form;
-						} else {
-							clauses.push(token.surface_form);
-						}
+							ルール
+							* 一番最初に5問正解した人が優勝。ただし3問誤答したら失格。(5○3×)
+							* 誰かが誤答した場合、その問題は終了。
+							* 失格者が出たとき、失格していない参加者がいない場合、引き分けで終了。
+							* 失格者が出たとき、失格していない参加者が1人の場合、その人が優勝。
+							* 正解者も誤答者も出ない問題が5問連続で出題された場合、引き分けで終了。
+						`);
 					}
 
-					const spannedQuestionText = clauses.map((clause, index) => (
-						`${clause}<mark name="c${index}"/>`
-					)).join('');
-
-					const questionAudio = await this.getTTS(`<speak>${spannedQuestionText}</speak>`);
-					const answerAudio = await this.getTTS(`<speak>答えは、${normalize(this.state.quiz.answer)}、でした。</speak>`);
-
-					this.state.clauses = clauses;
-					this.state.timePoints = questionAudio.timepoints.map((point) => point.timeSeconds * 1000);
-
-					await fs.writeFile(path.join(__dirname, 'questionText.mp3'), questionAudio.audioContent, 'binary');
-					await fs.writeFile(path.join(__dirname, 'answerText.mp3'), answerAudio.audioContent, 'binary');
-
-					this.state.connection = await this.joinVoiceChannelFn();
-
-					await new Promise((resolve) => setTimeout(resolve, 3000));
-					await new Promise((resolve) => {
-						const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/mondai.mp3'));
-						dispatcher.on('finish', () => {
-							resolve();
-						});
-					});
-					await new Promise((resolve) => {
-						const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/question.mp3'));
-						dispatcher.on('finish', () => {
-							resolve();
-						});
-					});
-					this.readOutText();
+					await this.startQuiz();
 				} catch (error) {
 					this.emit('message', `エラー😢\n${error.toString()}`);
 					this.emit('message', `Q. ${this.state.quiz.question}\nA. **${this.state.quiz.answer}**`);
-					this.endGame();
+					this.endQuiz();
 				}
 			}
 		});
