@@ -109,6 +109,7 @@ module.exports = (clients) => {
 	const weeklyAsaCounter = new Counter('asa');
 	const dailyexerciseCounter = new Counter('dailyexercise');
 	const exerciseCounter = new Counter('exercise');
+	const kasuCounter = new Counter('kasu');
 
 	rtm.on('message', async (message) => {
 		const { channel, text, user, ts: timestamp } = message;
@@ -173,6 +174,16 @@ module.exports = (clients) => {
 				const scores = Array.from(total.entries()).sort(([u1, s1], [u2, s2]) => s2 - s1);
 				const index = scores.findIndex(([u, _]) => u === user);
 				postDM(`あなたのエクササイズ日数は${scores[index][1]}日、現在の順位は${index + 1}位`);
+			}
+
+			if (tokens[0] === 'カスランキング' && tokens[1] === '確認') {
+				let currentRank = 1;
+				for (let entry of kasuCounter.entries()) {
+					if (entry[0] === user) {
+						return postDM(`あなたのカス数は${entry[1]}回、現在の順位は${currentRank}位`);
+					}
+					currentRank++;
+				}
 			}
 		}
 
@@ -316,6 +327,14 @@ module.exports = (clients) => {
 		}
 
 		{
+			const kasu = 'カス';
+			if (channel === process.env.CHANNEL_SANDBOX && text.includes(kasu)) {
+				slack.reactions.add({name: 'kasukasu_dance', channel, timestamp});
+				kasuCounter.add(user);
+			}
+		}
+
+		{
 			if(text.includes(":exercise-done:")||text.includes(":kintore_houkoku:")){
 				slack.reactions.add({name: 'erai', channel, timestamp})
 				slack.reactions.add({name: 'sugoi', channel, timestamp})
@@ -445,6 +464,27 @@ module.exports = (clients) => {
 			});
 
 			exerciseCounter.clear();
+
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				username: 'kasu',
+				text: '今週のカスランキング',
+				icon_emoji: ':kasu:',
+				attachments: kasuCounter.entries().map(([user, count], index) => {
+					const member = members.find(({id}) => id === user);
+					if (!member) {
+						return null;
+					}
+					const name = member.profile.display_name || member.name;
+
+					return {
+						author_name: `${index + 1}位: ${name} (${count}回)`,
+						author_icon: member.profile.image_24,
+					};
+				}).filter((attachment) => attachment !== null),
+			});
+
+			kasuCounter.clear();
 		}
 	});
 }
