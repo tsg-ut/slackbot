@@ -1,6 +1,5 @@
 import { sample } from 'lodash';
-// @ts-ignore
-import tts from 'google-tts-api';
+import { getAudioUrl } from 'google-tts-api';
 import moment from 'moment';
 import { stringify } from 'querystring';
 import assert from 'assert';
@@ -42,7 +41,10 @@ const phrases = getPhrasesOf('はっつくパンツかひっつくパンツか�
 const voiper = (num = 8) => Array(num).fill(null).map(() => sample(phrases)).join('');
 
 const getTtsLink = async (text: string) => {
-	const link: string = await tts(text, 'ja', 1);
+	const link: string = await getAudioUrl(text, {
+		lang: 'ja-JP',
+		slow: false,
+	});
 	return (`<${link}|${text}>`);
 };
 
