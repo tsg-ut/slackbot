@@ -10,7 +10,7 @@ import {AllHtmlEntities} from 'html-entities';
 import iconv from 'iconv-lite';
 // @ts-ignore
 import {hiraganize} from 'japanese';
-import {random, sample, shuffle, flatten, times, constant, range} from 'lodash';
+import {random, sample, shuffle, flatten, times, constant, range, sortBy} from 'lodash';
 import scrapeIt from 'scrape-it';
 import type {SlackInterface} from '../lib/slack';
 import {google} from 'googleapis';
@@ -163,6 +163,7 @@ interface QuestionChar {
 }
 
 interface State {
+	originalQuestion: string,
 	question: QuestionChar[],
 	answer: string,
 	previousTick: number,
@@ -172,6 +173,8 @@ interface State {
 	thread: string,
 }
 
+const collator = new Intl.Collator('ja');
+
 const getQuestionChars = (question: string): QuestionChar[] => {
 	const chars = Array.from(question);
 	const letters = chars.filter((char) => char.match(/^[\p{Letter}\p{Number}]+$/u)).length;
@@ -180,15 +183,8 @@ const getQuestionChars = (question: string): QuestionChar[] => {
 		times(hintCounts[n + 1] - hintCounts[n], constant(n + 1))
 	))));
 
-	let pointer = 0;
-	return chars.map((char) => {
-		if (char.match(/^[\p{Letter}\p{Number}]+$/u)) {
-			const hint = hints[pointer];
-			pointer++;
-			return {char, hint};
-		}
-		return {char, hint: 1};
-	});
+	const pointer = 0;
+	return chars.map((char) => ({char, hint: 1})).sort(({char: a}, {char: b}) => a.codePointAt(0) - b.codePointAt(0));
 };
 
 const getQuestionText = (questionChars: QuestionChar[], hint: number) => (
@@ -206,6 +202,7 @@ export const isCorrectAnswer = (answerText: string, userAnswerText: string) => {
 
 export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const state: State = {
+		originalQuestion: '',
 		question: [],
 		answer: null,
 		previousTick: 0,
@@ -218,12 +215,12 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const onTick = () => {
 		mutex.runExclusive(async () => {
 			const now = Date.now();
-			const nextHint = state.previousHint + (state.hintCount === 13 ? 15 : 5) * 1000;
+			const nextHint = state.previousHint + (state.hintCount === 1 ? 120 : 5) * 1000;
 
 			if (state.answer !== null && nextHint <= now) {
 				state.previousHint = now;
 
-				if (state.hintCount < 13) {
+				if (state.hintCount < 1) {
 					state.hintCount++;
 					await slack.chat.update({
 						channel: process.env.CHANNEL_SANDBOX,
@@ -243,7 +240,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					]);
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
-						text: `もう、しっかりして！\n\n答えは＊${state.answer}＊だよ:anger:\n${anger}`,
+						text: `もう、しっかりして！\n\n${state.originalQuestion}\n答えは＊${state.answer}＊だよ:anger:\n${anger}`,
 						username: 'hayaoshi',
 						icon_emoji: ':question:',
 						thread_ts: state.thread,
@@ -270,8 +267,8 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}
 
 		mutex.runExclusive(async () => {
-			if (message.text && (message.text === '早押しクイズ' || message.text === '早押しクイズhard') && state.answer === null) {
-				const quiz = await (message.text === '早押しクイズ' ? getQuiz() : getHardQuiz());
+			if (message.text && (message.text === 'ソート早押しクイズ' || message.text === 'ソート早押しクイズhard') && state.answer === null) {
+				const quiz = await (message.text === 'ソート早押しクイズ' ? getQuiz() : getHardQuiz());
 
 				if (quiz === undefined) {
 					await slack.chat.postMessage({
@@ -283,6 +280,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					return;
 				}
 
+				state.originalQuestion = quiz.question;
 				state.question = getQuestionChars(quiz.question);
 				state.answer = quiz.answer.replace(/\(.+?\)/g, '').replace(/（.+?）/g, '');
 
@@ -300,7 +298,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 				slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
-					text: '5秒経過でヒントを出すよ♫',
+					text: '120秒経過で正解発表だよ♫',
 					username: 'hayaoshi',
 					icon_emoji: ':question:',
 					thread_ts: ts as string,
@@ -324,7 +322,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				if (isCorrectAnswer(state.answer, message.text)) {
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
-						text: `<@${message.user}> 正解🎉\nQ. ＊${getQuestionText(state.question, 13)}＊\n答えは＊${state.answer}＊だよ💪`,
+						text: `<@${message.user}> 正解🎉\nQ. ＊${state.originalQuestion}＊\n答えは＊${state.answer}＊だよ💪`,
 						username: 'hayaoshi',
 						icon_emoji: ':question:',
 						thread_ts: state.thread,
