@@ -14,7 +14,7 @@ const testCases: [string, string[]][] = [
 		'サムギョプサル', '三겹살', '삼겹살', 'サムギョッサル',
 	]],
 	['Parental Guidance(ペアレンタル・ガイダンス)', [
-		'Parental Guidance', 'ペアレンタル・ガイダンス)',
+		'Parental Guidance', 'ペアレンタル・ガイダンス',
 	]],
 	['利休箸(利久箸)', ['利休箸', '利久箸']],
 	['外字 [external character]', ['外字', 'external character']],
@@ -34,7 +34,6 @@ const testCases: [string, string[]][] = [
 	['MACアドレス【※MACで◯】', ['MACアドレス', 'MAC']],
 	['ボスが来た【パニックモード、パニック画面】', ['ボスが来た', 'パニックモード', 'パニック画面']],
 	['『伽藍（がらん）とバザール』', ['『伽藍とバザール』']],
-	['うるち米(米でも可。もち米などは不可)', ['うるち米', '米']],
 	['空海【「佐伯真魚(さえきのまお・俗名)」もおまけで○】', ['空海', '佐伯真魚', 'さえきのまお・俗名']],
 	['国際原子力機関 (IAEA: International Atomic Energy Agency)', [
 		'国際原子力機関', 'IAEA', 'International Atomic Energy Agency',
@@ -47,12 +46,17 @@ const testCases: [string, string[]][] = [
 	['ジオメトリ処理【T&L処理】', ['ジオメトリ処理', 'T&L処理']],
 	['JIRA【×Bugzilla】', ['JIRA']],
 	['千原兄弟(ちはらきょうだい) ※千原のみでは×', ['千原兄弟', 'ちはらきょうだい']],
+	['ボビー・バレンタイン【ロバート・ジョン・ヴァレンタイン/Robert John Valentine】', [
+		'ボビー・バレンタイン', 'ロバート・ジョン・ヴァレンタイン', 'Robert John Valentine',
+	]],
 ];
 
 describe('extractValidAnswers', () => {
 	for (const [value, expected] of testCases) {
 		it(`converts ${inspect(value)} to ${inspect(expected)}`, () => {
-			expect(extractValidAnswers(value)).toBe(expected);
+			const sortedResult = extractValidAnswers(value).slice().sort();
+			const sortedExpected = expected.slice().sort();
+			expect(sortedResult).toStrictEqual(sortedExpected);
 		});
 	}
 });
