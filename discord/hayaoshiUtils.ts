@@ -1,3 +1,7 @@
+import {isCorrectAnswer, normalize} from '../hayaoshi';
+// @ts-ignore
+import getReading from '../lib/getReading.js';
+
 const getCompornents = (text: string) => {
 	let mainComponent = text;
 	const descriptiveComponents: string[] = [];
@@ -103,7 +107,6 @@ const parseDescriptiveComponent = (text: string) => {
 	return answers;
 };
 
-// eslint-disable-next-line import/prefer-default-export
 export const extractValidAnswers = (text: string) => {
 	let baseText = text;
 
@@ -124,4 +127,31 @@ export const extractValidAnswers = (text: string) => {
 	}
 
 	return answers.filter((answer) => !answer.endsWith('-') && !answer.startsWith('-'));
+};
+
+export const judgeAnswer = async (validAnswers: string[], answer: string) => {
+	for (const validAnswer of validAnswers) {
+		if (isCorrectAnswer(validAnswer, answer)) {
+			return 'correct';
+		}
+	}
+
+	const validAnswerReadings: string[] = await Promise.all(validAnswers.map((text) => getReading(text)));
+	const answerReading: string = await getReading(answer);
+
+	for (const validAnswerReading of validAnswerReadings) {
+		if (validAnswerReading.length >= 3 && validAnswerReading === answerReading) {
+			return 'correct';
+		}
+	}
+
+	const a = normalize(answer);
+	for (const validAnswer of validAnswers) {
+		const b = normalize(validAnswer);
+		if (a.includes(b) || b.includes(a)) {
+			return 'onechance';
+		}
+	}
+
+	return 'incorrect';
 };

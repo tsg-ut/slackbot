@@ -6,8 +6,9 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord, {StreamDispatcher, VoiceConnection} from 'discord.js';
 import {tokenize, KuromojiToken} from 'kuromojin';
-import {max} from 'lodash';
+import {max, get} from 'lodash';
 import {getHardQuiz, getItQuiz, Quiz, isCorrectAnswer, normalize} from '../hayaoshi';
+import {extractValidAnswers, judgeAnswer} from './hayaoshiUtils';
 
 const {TextToSpeechClient} = GoogleCloudTextToSpeech;
 
@@ -31,6 +32,8 @@ interface State {
 	quizThroughCount: number,
 	participants: Map<string, {points: number, penalties: number}>,
 	questionCount: number,
+	validAnswers: string[],
+	isOneChance: boolean,
 }
 
 export default class Hayaoshi extends EventEmitter {
@@ -58,6 +61,8 @@ export default class Hayaoshi extends EventEmitter {
 			quizThroughCount: 0,
 			participants: new Map(),
 			questionCount: 0,
+			validAnswers: [],
+			isOneChance: false,
 		};
 	}
 
@@ -186,7 +191,12 @@ export default class Hayaoshi extends EventEmitter {
 			});
 		});
 
-		this.emit('message', `正解者: なし\nQ. ${this.state.quiz.question}\nA. **${this.state.quiz.answer}**`);
+		this.emit('message', stripIndent`
+			正解者: なし
+			Q. ${this.state.quiz.question}
+			A. **${this.state.quiz.answer}**
+			有効回答一覧: ${this.state.validAnswers.join(' / ')}
+		`);
 		if (this.state.penaltyUsers.size === 0) {
 			this.state.quizThroughCount++;
 		} else {
@@ -256,6 +266,31 @@ export default class Hayaoshi extends EventEmitter {
 		});
 	}
 
+	setAnswerTimeout() {
+		return setTimeout(() => {
+			mutex.runExclusive(async () => {
+				await new Promise((resolve) => {
+					const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/timeup.mp3'));
+					dispatcher.on('finish', () => {
+						resolve();
+					});
+				});
+				this.state.penaltyUsers.add(this.state.pusher);
+				this.incrementPenalty(this.state.pusher);
+				this.state.pusher = null;
+				if (this.state.isContestMode) {
+					this.state.phase = 'timeup';
+					await this.readAnswer();
+					this.endQuiz();
+				} else {
+					await new Promise((resolve) => setTimeout(resolve, 1000));
+					this.state.phase = 'gaming';
+					this.readQuestion();
+				}
+			});
+		}, this.state.isContestMode ? 20000 : 10000);
+	}
+
 	isFuzokugo(token: KuromojiToken) {
 		return token.pos === '助詞' || token.pos === '助動詞' || token.pos_detail_1 === '接尾' || token.pos_detail_1 === '非自立';
 	}
@@ -264,6 +299,7 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.maximumPushTime = 0;
 		this.state.questionCount++;
 		this.state.quiz = await (Math.random() < 0.2 ? getItQuiz() : getHardQuiz());
+		this.state.validAnswers = extractValidAnswers(this.state.quiz.answer);
 		const normalizedQuestion = this.state.quiz.question.replace(/\(.+?\)/g, '');
 
 		const tokens = await tokenize(normalizedQuestion);
@@ -290,7 +326,7 @@ export default class Hayaoshi extends EventEmitter {
 		)).join('');
 
 		const questionAudio = await this.getTTS(`<speak>${spannedQuestionText}</speak>`);
-		const answerAudio = await this.getTTS(`<speak>答えは、${normalize(this.state.quiz.answer)}、でした。</speak>`);
+		const answerAudio = await this.getTTS(`<speak>答えは、${get(this.state.validAnswers, 0, '')}、でした。</speak>`);
 
 		this.state.clauses = clauses;
 		this.state.timePoints = questionAudio.timepoints.map((point) => point.timeSeconds * 1000);
@@ -324,7 +360,8 @@ export default class Hayaoshi extends EventEmitter {
 		mutex.runExclusive(async () => {
 			if (this.state.phase === 'answering' && this.state.pusher === message.member.user.id && message.content !== 'p') {
 				clearTimeout(this.state.answerTimeoutId);
-				if (isCorrectAnswer(this.state.quiz.answer, message.content)) {
+				const judgement = await judgeAnswer(this.state.validAnswers, message.content);
+				if (judgement === 'correct') {
 					this.state.connection.play(path.join(__dirname, 'sounds/correct.mp3'));
 					this.incrementPoint(message.member.user.id);
 
@@ -333,12 +370,24 @@ export default class Hayaoshi extends EventEmitter {
 						解答時間: ${(this.state.maximumPushTime / 1000).toFixed(2)}秒 / ${(max(this.state.timePoints) / 1000).toFixed(2)}秒
 						Q. ${this.getSlashedText()}
 						A. **${this.state.quiz.answer}**
+						有効回答一覧: ${this.state.validAnswers.join(' / ')}
 					`);
 
 					await new Promise((resolve) => setTimeout(resolve, 3000));
 
 					this.state.quizThroughCount = 0;
 					this.endQuiz();
+				} else if (!this.state.isOneChance && judgement === 'onechance') {
+					clearTimeout(this.state.answerTimeoutId);
+					this.state.isOneChance = true;
+					await new Promise((resolve) => {
+						const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/timeup.mp3'));
+						dispatcher.on('finish', () => {
+							resolve();
+						});
+					});
+					await this.speak('もう一度お願いします。');
+					this.state.answerTimeoutId = this.setAnswerTimeout();
 				} else {
 					await new Promise((resolve) => {
 						const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/wrong.mp3'));
@@ -379,29 +428,9 @@ export default class Hayaoshi extends EventEmitter {
 				this.state.connection.play(path.join(__dirname, 'sounds/buzzer.mp3'));
 				this.state.pusher = message.member.user.id;
 				this.state.phase = 'answering';
+				this.state.isOneChance = false;
 				await message.react('🚨');
-				this.state.answerTimeoutId = setTimeout(() => {
-					mutex.runExclusive(async () => {
-						await new Promise((resolve) => {
-							const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/timeup.mp3'));
-							dispatcher.on('finish', () => {
-								resolve();
-							});
-						});
-						this.state.penaltyUsers.add(this.state.pusher);
-						this.incrementPenalty(this.state.pusher);
-						this.state.pusher = null;
-						if (this.state.isContestMode) {
-							this.state.phase = 'timeup';
-							await this.readAnswer();
-							this.endQuiz();
-						} else {
-							await new Promise((resolve) => setTimeout(resolve, 1000));
-							this.state.phase = 'gaming';
-							this.readQuestion();
-						}
-					});
-				}, this.state.isContestMode ? 20000 : 10000);
+				this.state.answerTimeoutId = this.setAnswerTimeout();
 			}
 
 			if ((message.content === '早押しクイズ' || message.content === '早押しクイズ大会') && this.state.phase === 'waiting') {
