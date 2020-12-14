@@ -26,6 +26,21 @@ jobs:
         run: |
           sed -i 's/:$/;/g' node_modules/Cloudstorm/index.d.ts
 
+      - name: Debug
+        run: npm ls typescript
+
+      - name: Debug
+        run: tsc --version
+
+      - name: Debug
+        run: npx tsc --version
+
+      - name: Debug
+        run: tsc --noEmit || exit 0
+
+      - name: Debug
+        run: npx tsc --noEmit || exit 0
+
       - name: Typecheck files not covered by tests
         run: tsc --noEmit
 
