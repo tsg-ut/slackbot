@@ -77,9 +77,9 @@ const testCases: [string, string, string[]][] = [
 ];
 
 describe('extractValidAnswers', () => {
-	for (const [problem, answer, expected] of testCases) {
+	for (const [question, answer, expected] of testCases) {
 		it(`converts ${inspect(answer)} to ${inspect(expected)}`, () => {
-			const sortedResult = extractValidAnswers(problem, answer).slice().sort();
+			const sortedResult = extractValidAnswers(question, answer).slice().sort();
 			const sortedExpected = expected.slice().sort();
 			expect(sortedResult).toStrictEqual(sortedExpected);
 		});

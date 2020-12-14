@@ -112,7 +112,7 @@ const parseDescriptiveComponent = (text: string) => {
 	return answers;
 };
 
-export const extractValidAnswers = (problem: string, answerText: string) => {
+export const extractValidAnswers = (question: string, answerText: string) => {
 	let baseText = answerText;
 
 	// basic normalization
@@ -134,7 +134,7 @@ export const extractValidAnswers = (problem: string, answerText: string) => {
 	answers = answers.filter((answer) => !answer.endsWith('-') && !answer.startsWith('-'));
 
 	const newAnswers = [];
-	if (problem.match(/(?:誰|だれ)(?:でしょう)?[?？]$/)) {
+	if (question.match(/(?:誰|だれ)(?:でしょう)?[?？]$/)) {
 		for (const answer of answers) {
 			if (katakanaMatchRegex.test(answer)) {
 				newAnswers.push(last(answer.split(/[・･]/)));

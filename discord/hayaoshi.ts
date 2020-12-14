@@ -299,7 +299,7 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.maximumPushTime = 0;
 		this.state.questionCount++;
 		this.state.quiz = await (Math.random() < 0.2 ? getItQuiz() : getHardQuiz());
-		this.state.validAnswers = extractValidAnswers(this.state.quiz.answer);
+		this.state.validAnswers = extractValidAnswers(this.state.quiz.question, this.state.quiz.answer);
 		const normalizedQuestion = this.state.quiz.question.replace(/\(.+?\)/g, '');
 
 		const tokens = await tokenize(normalizedQuestion);
