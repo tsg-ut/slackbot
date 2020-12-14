@@ -1,6 +1,11 @@
+// @ts-ignore
+import {katakanaRegex} from 'japanese';
+import {last} from 'lodash';
 import {isCorrectAnswer, normalize} from '../hayaoshi';
 // @ts-ignore
 import getReading from '../lib/getReading.js';
+
+const katakanaMatchRegex = new RegExp(`^(?:${katakanaRegex.source}|ー|・|･)+$`);
 
 const getCompornents = (text: string) => {
 	let mainComponent = text;
@@ -107,8 +112,8 @@ const parseDescriptiveComponent = (text: string) => {
 	return answers;
 };
 
-export const extractValidAnswers = (text: string) => {
-	let baseText = text;
+export const extractValidAnswers = (problem: string, answerText: string) => {
+	let baseText = answerText;
 
 	// basic normalization
 	baseText = baseText.replace(/（/g, '(');
@@ -120,13 +125,29 @@ export const extractValidAnswers = (text: string) => {
 
 	const {mainComponent, descriptiveComponents} = getCompornents(baseText);
 
-	const answers = parseMainComponent(mainComponent);
+	let answers = parseMainComponent(mainComponent);
 
 	for (const component of descriptiveComponents) {
 		answers.push(...parseDescriptiveComponent(component));
 	}
 
-	return answers.filter((answer) => !answer.endsWith('-') && !answer.startsWith('-'));
+	answers = answers.filter((answer) => !answer.endsWith('-') && !answer.startsWith('-'));
+
+	const newAnswers = [];
+	if (problem.match(/(?:誰|だれ)(?:でしょう)?[?？]$/)) {
+		for (const answer of answers) {
+			if (katakanaMatchRegex.test(answer)) {
+				newAnswers.push(last(answer.split(/[・･]/)));
+			}
+		}
+	}
+
+	answers.push(...newAnswers);
+
+	// unique
+	answers = Array.from(new Set(answers));
+
+	return answers;
 };
 
 export const judgeAnswer = async (validAnswers: string[], answer: string) => {

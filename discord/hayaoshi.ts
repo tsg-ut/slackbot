@@ -7,7 +7,7 @@ import {stripIndent} from 'common-tags';
 import Discord, {StreamDispatcher, VoiceConnection} from 'discord.js';
 import {tokenize, KuromojiToken} from 'kuromojin';
 import {max, get} from 'lodash';
-import {getHardQuiz, getItQuiz, Quiz, isCorrectAnswer, normalize} from '../hayaoshi';
+import {getHardQuiz, getItQuiz, Quiz} from '../hayaoshi';
 import {extractValidAnswers, judgeAnswer} from './hayaoshiUtils';
 
 const {TextToSpeechClient} = GoogleCloudTextToSpeech;
@@ -449,7 +449,7 @@ export default class Hayaoshi extends EventEmitter {
 
 							ルール
 							* 一番最初に5問正解した人が優勝。ただし3問誤答したら失格。(5○3×)
-							* 誰かが誤答した場合、その問題は終了。
+							* 誰かが誤答した場合、その問題は終了。(シングルチャンス)
 							* 失格者が出たとき、失格していない参加者がいない場合、引き分けで終了。
 							* 失格者が出たとき、失格していない参加者が1人の場合、その人が優勝。
 							* 正解者も誤答者も出ない問題が5問連続で出題された場合、引き分けで終了。
