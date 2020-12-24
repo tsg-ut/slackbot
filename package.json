@@ -92,6 +92,7 @@
     "scrape-it": "^5.2.4",
     "sharp": "^0.26.1",
     "shogi9.js": "^1.0.2",
+    "snapsvg": "^0.5.1",
     "sql-template-strings": "^2.2.2",
     "sqlite": "^4.0.15",
     "sqlite3": "^5.0.0",
