@@ -2,8 +2,9 @@
     "extends": "@hakatashi/eslint-config/typescript",
     "parser": "@typescript-eslint/parser",
     "rules": {
-        "no-console": "off",
         "camelcase": "off",
-        "no-restricted-imports": "off"
+        "no-restricted-imports": "off",
+        "no-unused-vars": "off",
+        "import/extensions": "off"
     }
 }

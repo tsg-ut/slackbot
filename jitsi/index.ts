@@ -10,6 +10,20 @@ import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
 
+interface JoinParameters {
+	jid: string,
+	nick: string,
+	avatarId: string,
+	roomId: string
+}
+
+interface LeaveParameters {
+	jid: string,
+	roomId: string
+}
+
+const configuredRooms = ['sb', 'workroom', 'recital'];
+
 const getTimestamp = (delayEls: HTMLCollectionOf<Element>) => {
 	if (delayEls.length > 0) {
 		const delayEl = delayEls.item(0);
@@ -18,12 +32,15 @@ const getTimestamp = (delayEls: HTMLCollectionOf<Element>) => {
 	return Date.now();
 };
 
-const members: Map<string, {nick: string, avatarId: string}> = new Map();
-
-const connect = (slack: WebClient) => {
+const connect = (
+	slack: WebClient,
+	roomName: string,
+	onJoin: (params: JoinParameters) => void,
+	onLeave: (params: LeaveParameters) => void,
+) => {
 	let intervalId: NodeJS.Timer = null;
 
-	const con = new Strophe.Connection('http://localhost:25252/http-bind?room=sb');
+	const con = new Strophe.Connection(`http://localhost:25252/http-bind?room=${roomName}`);
 	con.connect('meet.tsg.ne.jp', '', (status: number) => {
 		const connectionTime = Date.now();
 
@@ -62,37 +79,18 @@ const connect = (slack: WebClient) => {
 						const nickEls = data.getElementsByTagName('nick');
 						const avatarIdEls = data.getElementsByTagName('avatar-id');
 						const type = data.getAttribute('type');
-						const roomId = data.getAttribute('from').split('@')[0];
+						const [roomId] = data.getAttribute('from').split('@');
 
 						if (type === '' && itemEls.length > 0 && nickEls.length > 0) {
 							const nick = nickEls.item(0).firstChild.nodeValue;
 							const avatarId = avatarIdEls.item(0).firstChild.nodeValue;
 							const jid = itemEls.item(0).getAttribute('jid');
-
-							if (!members.has(jid) && nick !== 'slackbot') {
-								members.set(jid, {nick, avatarId});
-								slack.chat.postMessage({
-									channel: process.env.CHANNEL_SANDBOX,
-									username: 'jitsi',
-									icon_emoji: ':jitsi-join:',
-									text: `＊${nick}＊が<https://meet.tsg.ne.jp/${roomId}|${roomId}>にログインしました\n現在のアクティブ人数 ${members.size}人`,
-								});
-							}
+							onJoin({jid, nick, roomId, avatarId});
 						}
 
 						if (type === 'unavailable' && itemEls.length > 0) {
 							const jid = itemEls.item(0).getAttribute('jid');
-							if (members.has(jid)) {
-								const {nick} = members.get(jid);
-								members.delete(jid);
-
-								slack.chat.postMessage({
-									channel: process.env.CHANNEL_SANDBOX,
-									username: 'jitsi',
-									icon_emoji: ':jitsi-leave:',
-									text: `＊${nick}＊が<https://meet.tsg.ne.jp/${roomId}|${roomId}>からログアウトしました\n現在のアクティブ人数 ${members.size}人`,
-								});
-							}
+							onLeave({jid, roomId});
 						}
 					}
 				} catch (e) {
@@ -107,7 +105,7 @@ const connect = (slack: WebClient) => {
 			const uid = times(8, () => sample(Array.from('0123456789abcdef'))).join('');
 
 			const pres = $pres({
-				to: `sb@conference.meet.tsg.ne.jp/${uid}`,
+				to: `${roomName}@conference.meet.tsg.ne.jp/${uid}`,
 			});
 			pres.c('x', {
 				xmlns: 'http://jabber.org/protocol/muc',
@@ -151,9 +149,19 @@ const connect = (slack: WebClient) => {
 		con.disconnect('relaunch');
 	};
 
+	const postChat = (nickname: string, text: string) => {
+		const msg = $msg({
+			to: `${roomName}@conference.meet.tsg.ne.jp`,
+			type: 'groupchat',
+		});
+		msg.c('body', `${nickname}: ${text}`).up();
+		msg.c('nick', {xmlns: 'http://jabber.org/protocol/nick'}).t('slackbot').up().up();
+		con.send(msg);
+	};
+
 	return {
-		connection: con,
 		disconnect,
+		postChat,
 	};
 };
 
@@ -166,34 +174,57 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	// @ts-ignore
 	global.XMLHttpRequest = XMLHttpRequest;
 
-	let {connection, disconnect} = connect(slack);
-	setInterval(() => {
-		disconnect();
-		setTimeout(() => {
-			const config = connect(slack);
-			connection = config.connection;
-			disconnect = config.disconnect;
-		}, 5000);
-	}, 30 * 60 * 1000);
+	for (const roomName of configuredRooms) {
+		const members: Map<string, {nick: string, avatarId: string}> = new Map();
 
-	rtm.on('message', async (message) => {
-		const {channel, text, user, subtype, thread_ts} = message;
-		if (!text || channel !== process.env.CHANNEL_SANDBOX || subtype !== undefined || thread_ts !== undefined) {
-			return;
-		}
+		const onJoin = ({jid, nick, avatarId, roomId}: JoinParameters) => {
+			if (!members.has(jid) && nick !== 'slackbot') {
+				members.set(jid, {nick, avatarId});
+				slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					username: 'jitsi',
+					icon_emoji: ':jitsi-join:',
+					text: `＊${nick}＊が<https://meet.tsg.ne.jp/${roomId}|${roomId}>にログインしました\n現在のアクティブ人数 ${members.size}人`,
+				});
+			}
+		};
 
-		if (text.split('\n').length > 3 || text.length > 100) {
-			return;
-		}
+		const onLeave = ({jid, roomId}: LeaveParameters) => {
+			if (members.has(jid)) {
+				const {nick} = members.get(jid);
+				members.delete(jid);
 
-		const nickname = await getMemberName(user);
+				slack.chat.postMessage({
+					channel: process.env.CHANNEL_SANDBOX,
+					username: 'jitsi',
+					icon_emoji: ':jitsi-leave:',
+					text: `＊${nick}＊が<https://meet.tsg.ne.jp/${roomId}|${roomId}>からログアウトしました\n現在のアクティブ人数 ${members.size}人`,
+				});
+			}
+		};
 
-		const msg = $msg({
-			to: 'sb@conference.meet.tsg.ne.jp',
-			type: 'groupchat',
+		let {disconnect, postChat} = connect(slack, roomName, onJoin, onLeave);
+		setInterval(() => {
+			disconnect();
+			setTimeout(() => {
+				const config = connect(slack, roomName, onJoin, onLeave);
+				disconnect = config.disconnect;
+				postChat = config.postChat;
+			}, 5000);
+		}, 30 * 60 * 1000);
+
+		rtm.on('message', async (message) => {
+			const {channel, text, user, subtype, thread_ts} = message;
+			if (!text || channel !== process.env.CHANNEL_SANDBOX || subtype !== undefined || thread_ts !== undefined) {
+				return;
+			}
+
+			if (text.split('\n').length > 3 || text.length > 100) {
+				return;
+			}
+
+			const nickname = await getMemberName(user);
+			postChat(nickname, text);
 		});
-		msg.c('body', `${nickname}: ${text}`).up();
-		msg.c('nick', {xmlns: 'http://jabber.org/protocol/nick'}).t('slackbot').up().up();
-		connection.send(msg);
-	});
+	}
 };
