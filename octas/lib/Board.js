@@ -140,9 +140,9 @@ class Board extends EventEmitter {
 
 	fromData({moves, activePlayer, width, height}) {
 		const tempBoard = new Board({height, width});
-		moves.forEach((move) => {
+		for (const move of moves) {
 			tempBoard.moveTo(move[0]);
-		});
+		}
 		if (this.width !== width || this.height !== height) {
 			this.setSize(width, height);
 		}

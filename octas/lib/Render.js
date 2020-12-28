@@ -70,7 +70,9 @@ class BoardElement {
 			cx: 20 + 20 * x,
 			cy: 20 + 20 * y,
 		});
-		this.arrowMap.forEach((arrow) => arrow.remove());
+		for (const arrow of this.arrowMap) {
+			arrow.remove();
+		}
 		if (currentPoint !== null) {
 			this.arrowMap = this.drawArrows(currentPoint);
 			const isActive = this.board.isActive();
@@ -91,7 +93,9 @@ class BoardElement {
 
 	drawArrows(point) {
 		const arrowMap = new Map();
-		point.movableDirections.forEach((direction) => arrowMap.set(direction, this.drawArrow(point, direction)));
+		for (const direction of point.movableDirections) {
+			arrowMap.set(direction, this.drawArrow(point, direction));
+		}
 		return arrowMap;
 	}
 
@@ -172,9 +176,9 @@ class BoardElement {
 		const [origX, origY] = this.board.currentCoords;
 		const dx = svgX - (20 + 20 * origX);
 		const dy = svgY - (20 + 20 * origY);
-		this.arrowMap.forEach((arrow) => {
+		for (const arrow of this.arrowMap) {
 			arrow.removeClass('selected');
-		});
+		}
 		this.selectedDirection = null;
 		if (dx * dx + dy * dy > 100) {
 			// -PI <= theta <= PI
