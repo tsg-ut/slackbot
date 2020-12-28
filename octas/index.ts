@@ -253,7 +253,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
         else if (state.board.activePlayer == 1) {
             if (message.user == state.opponent) {
                 if (!cmd2dir.has(message.text)) {
-                    await Pardon('方位は[N, E, W, S, NE, NW, SE, SW]から選択してください');
                     return;
                 }
                 const dir = cmd2dir.get(message.text);
