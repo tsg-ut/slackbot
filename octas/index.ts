@@ -1,9 +1,9 @@
 import type {SlackInterface} from '../lib/slack';
 import cloudinary from 'cloudinary';
-import sharp from 'sharp'
+import sharp from 'sharp';
+import path from 'path';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
-import { startTimer } from 'winston';
 // @ts-ignore
 import Board from './lib/Board';
 // @ts-ignore
@@ -85,7 +85,6 @@ interface State {
     board: any,
     paper: any,
     element: any,
-    window: any,
 }
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
@@ -98,21 +97,25 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
         board: null,
         paper: null,
         element: null,
-        window: null,
     };
-    const resource: string = "node_modules/snapsvg/dist/snap.svg.js";
-    const dom = new JSDOM(`
-            <!DOCTYPE html><html>
-            <body><div id="test"></div></body></html>
-        `,
-        {
-            runScripts: "dangerously",
-            resources: "usable",
-        });
-    var script = dom.window.document.createElement('script');
-    script.src = `file://${resource}`;
-    var head = dom.window.document.getElementsByTagName('head')[0];
-    head.appendChild(script);
+
+    const dom: any = await new Promise((resolve, reject) => {
+        const resource: string = path.join(__dirname, "../node_modules/snapsvg/dist/snap.svg.js");
+        const dom = new JSDOM(`
+                <!DOCTYPE html><html>
+                <body><div id="test"></div></body></html>
+            `,
+            {
+                runScripts: "dangerously",
+                resources: "usable",
+            });
+        const script = dom.window.document.createElement('script');
+        script.src = `file://${resource}`;
+        script.onload = () => resolve(dom);
+        script.onerror = reject;
+        const head = dom.window.document.getElementsByTagName('head')[0];
+        head.appendChild(script);
+    });
 
     const Pardon = async (message: string) => {
         await slack.chat.postMessage({
@@ -139,7 +142,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
         state.isHolding = true;
         state.board = new Board({width: 5, height: 5});
         state.paper = dom.window.Snap();
-        console.log(state.paper);
         state.element = new BoardElement(state.board, state.paper, dom.window.Snap);
 
         const cloudinaryData: any = await uploadImage(state.paper);
