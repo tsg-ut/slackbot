@@ -9,6 +9,7 @@ import Board from './lib/Board';
 // @ts-ignore
 import BoardElement from './lib/Render';
 import {JSDOM} from 'jsdom';
+import Queue from 'p-queue';
 
 const applyCSS = (paper: any) => {
     paper.selectAll('.board-edge').attr({
@@ -86,6 +87,8 @@ interface State {
     paper: any,
     element: any,
 }
+
+const processQueue = new Queue({concurrency: 1});
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     const state: State = {
@@ -219,7 +222,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     const ProcessHand = async (message: any) => {
         if (state.board.ended) {
             // いつのまにか終っている　強制終了
-            Halt();
+            await processQueue.add(Halt);
             return;
         }
         const cmd2dir = new Map([
@@ -326,7 +329,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
                     reply_broadcast: true
                 });
             }
-            Halt();
+            await processQueue.add(Halt);
             return;
         }
     };
@@ -338,9 +341,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
         if (message.thread_ts && message.thread_ts == state.thread) {
             if (state.isGaming) {
-                ProcessHand(message);
+                await processQueue.add(async () => ProcessHand(message));
             } else {
-                WaitForPlayers(message);
+                await processQueue.add(async () => WaitForPlayers(message));
             }
         }
 
@@ -353,12 +356,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
                     username: 'octas',
                     icon_emoji: ':octopus:'
                 });
-                Halt();
+                await processQueue.add(Halt);
             }
             if (message.thread_ts) {
                 return;
             }
-            Launch();
+            await processQueue.add(Launch);
         }
     });
 }
