@@ -70,7 +70,7 @@ class BoardElement {
 			cx: 20 + 20 * x,
 			cy: 20 + 20 * y,
 		});
-		for (const arrow of this.arrowMap) {
+		for (const arrow of this.arrowMap.values()) {
 			arrow.remove();
 		}
 		if (currentPoint !== null) {
@@ -176,7 +176,7 @@ class BoardElement {
 		const [origX, origY] = this.board.currentCoords;
 		const dx = svgX - (20 + 20 * origX);
 		const dy = svgY - (20 + 20 * origY);
-		for (const arrow of this.arrowMap) {
+		for (const arrow of this.arrowMap.values()) {
 			arrow.removeClass('selected');
 		}
 		this.selectedDirection = null;
