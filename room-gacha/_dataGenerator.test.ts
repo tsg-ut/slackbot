@@ -9,6 +9,10 @@ describe('room-gacha _dataGenerator', () => {
     it('generates correct data', async () => {
         tinyreq.impl = jest.fn(async (url, callback) => {
             const data = await fs.readFile(`${__dirname}/city-select.test.html`, 'utf-8');
+            console.log(__dirname);
+            console.log(data);
+            console.log(url);
+            console.log(callback);
             if (callback) callback(null, data);
             return data;
         });
