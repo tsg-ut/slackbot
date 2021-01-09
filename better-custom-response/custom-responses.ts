@@ -2,6 +2,7 @@ import { stripIndent } from 'common-tags';
 // @ts-ignore
 import { romanize, katakanize } from 'japanese';
 import { shuffle } from 'lodash';
+import omikuji from './omikuji.json';
 
 interface Achievement {
     trigger: RegExp[],
@@ -145,6 +146,10 @@ const customResponses: CustomResponse[] = [
                 name: "bcr-denim-reversplit"
             },
         ],
+    },
+    {
+        input: [/^おみくじ$/],
+        outputArray: omikuji,
     },
 ];
 
