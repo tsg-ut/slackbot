@@ -64,8 +64,8 @@ export const getSongInfo = async (songInfoUrl: string, keyword: string): Promise
             selector: 'link[rel=canonical]',
             attr: 'href',
         },
-        title: 'h2',
-        artist: 'h3',
+        title: '.title h2',
+        artist: '.artist',
         lyricist: 'h4[itemprop=lyricist]',
         composer: 'h4[itemprop=composer]',
         kashiHTML: {
