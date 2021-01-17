@@ -306,7 +306,6 @@ export default class Hayaoshi extends EventEmitter {
 
 	getQuiz() {
 		const seed = Math.random();
-		return getHakatashiItQuiz();
 		if (seed < 0.1) {
 			return getItQuiz();
 		}
