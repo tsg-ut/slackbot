@@ -109,6 +109,8 @@ export default class Hayaoshi extends EventEmitter {
 	endQuiz({correct = false} = {}) {
 		const {penaltyUsers} = this.state;
 
+		const {quiz} = this.state;
+
 		this.state.dispatcher = null;
 		this.state.quiz = null;
 		this.state.pusher = null;
@@ -116,8 +118,8 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.phase = 'gaming';
 
 		if (this.state.isContestMode) {
-			if (this.state.quiz && this.state.quiz.author) {
-				this.incrementPoint(this.state.quiz.author, 0.5);
+			if (quiz && quiz.author) {
+				this.incrementPoint(quiz.author, 0.5);
 			}
 
 			const lines = Array.from(this.state.participants.entries()).map(([userId, participant]) => (
@@ -197,6 +199,7 @@ export default class Hayaoshi extends EventEmitter {
 
 		this.emit('message', stripIndent`
 			正解者: なし
+			${this.state.quiz.author ? `作問者: <@${this.state.quiz.author}>` : ''}
 			Q. ${this.state.quiz.question}
 			A. **${this.state.quiz.answer}**
 			有効回答一覧: ${this.state.validAnswers.join(' / ')}
@@ -387,6 +390,7 @@ export default class Hayaoshi extends EventEmitter {
 					this.emit('message', stripIndent`
 						正解者: <@${message.member.user.id}>
 						解答時間: ${(this.state.maximumPushTime / 1000).toFixed(2)}秒 / ${(max(this.state.timePoints) / 1000).toFixed(2)}秒
+						${this.state.quiz.author ? `作問者: <@${this.state.quiz.author}>` : ''}
 						Q. ${this.getSlashedText()}
 						A. **${this.state.quiz.answer}**
 						有効回答一覧: ${this.state.validAnswers.join(' / ')}
@@ -456,14 +460,14 @@ export default class Hayaoshi extends EventEmitter {
 				this.state.answerTimeoutId = this.setAnswerTimeout();
 			}
 
-			if ((message.content === '早押しクイズ' || message.content === '早押しクイズ大会dev') && this.state.phase === 'waiting') {
+			if ((message.content === '早押しクイズ' || message.content === '早押しクイズ大会') && this.state.phase === 'waiting') {
 				try {
 					this.state.phase = 'gaming';
 					this.state.playStartTime = 0;
 					this.state.maximumPushTime = 0;
 					this.state.quizThroughCount = 0;
 					this.state.participants = new Map();
-					this.state.isContestMode = message.content === '早押しクイズ大会dev';
+					this.state.isContestMode = message.content === '早押しクイズ大会';
 					this.state.questionCount = 0;
 
 					if (this.state.isContestMode) {
