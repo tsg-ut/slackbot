@@ -1,6 +1,6 @@
 // @ts-ignore
 import {katakanaRegex} from 'japanese';
-import {last} from 'lodash';
+import {last, uniq} from 'lodash';
 import {isCorrectAnswer, normalize} from '../hayaoshi';
 // @ts-ignore
 import getReading from '../lib/getReading.js';
@@ -54,7 +54,7 @@ const parseMainComponent = (text: string) => {
 		component = matches.groups.remnant;
 		answers.push(matches.groups.prefix.trim() + matches.groups.remnant.trim());
 	}
-	answers.push(component.replace(/\s*\(.+?\)\s*/g, '').trim());
+	answers.unshift(component.replace(/\s*\(.+?\)\s*/g, '').trim());
 	return answers;
 };
 
@@ -144,10 +144,7 @@ export const extractValidAnswers = (question: string, answerText: string) => {
 
 	answers.push(...newAnswers);
 
-	// unique
-	answers = Array.from(new Set(answers));
-
-	return answers;
+	return uniq(answers);
 };
 
 export const judgeAnswer = async (validAnswers: string[], answer: string) => {

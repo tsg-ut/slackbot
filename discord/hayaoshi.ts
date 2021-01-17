@@ -7,7 +7,7 @@ import {stripIndent} from 'common-tags';
 import Discord, {StreamDispatcher, VoiceConnection} from 'discord.js';
 import {tokenize, KuromojiToken} from 'kuromojin';
 import {max, get} from 'lodash';
-import {getHardQuiz, getItQuiz, Quiz} from '../hayaoshi';
+import {getHardQuiz, getItQuiz, getHakatashiItQuiz, Quiz} from '../hayaoshi';
 import {extractValidAnswers, judgeAnswer} from './hayaoshiUtils';
 
 const {TextToSpeechClient} = GoogleCloudTextToSpeech;
@@ -82,11 +82,11 @@ export default class Hayaoshi extends EventEmitter {
 		}).join('');
 	}
 
-	incrementPoint(user: string) {
+	incrementPoint(user: string, value: number = 1) {
 		if (!this.state.participants.has(user)) {
 			this.state.participants.set(user, {points: 0, penalties: 0});
 		}
-		this.state.participants.get(user).points++;
+		this.state.participants.get(user).points += value;
 	}
 
 	incrementPenalty(user: string) {
@@ -106,7 +106,7 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.quizThroughCount = 0;
 	}
 
-	endQuiz() {
+	endQuiz({correct = false} = {}) {
 		const {penaltyUsers} = this.state;
 
 		this.state.dispatcher = null;
@@ -116,6 +116,10 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.phase = 'gaming';
 
 		if (this.state.isContestMode) {
+			if (this.state.quiz && this.state.quiz.author) {
+				this.incrementPoint(this.state.quiz.author, 0.5);
+			}
+
 			const lines = Array.from(this.state.participants.entries()).map(([userId, participant]) => (
 				`<@${userId}>${participant.penalties >= 3 ? '❌' : ''}: ${participant.points}○${participant.penalties}×`
 			));
@@ -156,7 +160,7 @@ export default class Hayaoshi extends EventEmitter {
 			}
 
 			for (const [userId, participant] of this.state.participants.entries()) {
-				if (participant.points >= 5) {
+				if (participant.points >= 5 && correct) {
 					this.win(userId);
 					this.endGame();
 					return;
@@ -226,7 +230,7 @@ export default class Hayaoshi extends EventEmitter {
 					});
 				});
 				await this.readAnswer();
-				this.endQuiz();
+				this.endQuiz({correct: false});
 			});
 		});
 	}
@@ -257,7 +261,9 @@ export default class Hayaoshi extends EventEmitter {
 		}
 
 		const audio = await this.getTTS(text);
+		
 		await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), audio.audioContent, 'binary');
+		
 		await new Promise((resolve) => {
 			const dispatcher = this.state.connection.play(path.join(__dirname, 'tempAudio.mp3'));
 			dispatcher.on('finish', () => {
@@ -281,7 +287,7 @@ export default class Hayaoshi extends EventEmitter {
 				if (this.state.isContestMode) {
 					this.state.phase = 'timeup';
 					await this.readAnswer();
-					this.endQuiz();
+					this.endQuiz({correct: false});
 				} else {
 					await new Promise((resolve) => setTimeout(resolve, 1000));
 					this.state.phase = 'gaming';
@@ -295,11 +301,24 @@ export default class Hayaoshi extends EventEmitter {
 		return token.pos === '助詞' || token.pos === '助動詞' || token.pos_detail_1 === '接尾' || token.pos_detail_1 === '非自立';
 	}
 
+	getQuiz() {
+		const seed = Math.random();
+		return getHakatashiItQuiz();
+		if (seed < 0.1) {
+			return getItQuiz();
+		}
+		if (seed < 0.2) {
+			return getHakatashiItQuiz();
+		}
+		return getHardQuiz();
+	}
+
 	async startQuiz() {
 		this.state.maximumPushTime = 0;
 		this.state.questionCount++;
-		this.state.quiz = await (Math.random() < 0.2 ? getItQuiz() : getHardQuiz());
+		this.state.quiz = await this.getQuiz();
 		this.state.validAnswers = extractValidAnswers(this.state.quiz.question, this.state.quiz.answer);
+
 		const normalizedQuestion = this.state.quiz.question.replace(/\(.+?\)/g, '');
 
 		const tokens = await tokenize(normalizedQuestion);
@@ -376,7 +395,7 @@ export default class Hayaoshi extends EventEmitter {
 					await new Promise((resolve) => setTimeout(resolve, 3000));
 
 					this.state.quizThroughCount = 0;
-					this.endQuiz();
+					this.endQuiz({correct: true});
 				} else if (!this.state.isOneChance && judgement === 'onechance') {
 					clearTimeout(this.state.answerTimeoutId);
 					this.state.isOneChance = true;
@@ -401,7 +420,7 @@ export default class Hayaoshi extends EventEmitter {
 					if (this.state.isContestMode) {
 						this.state.phase = 'timeup';
 						await this.readAnswer();
-						this.endQuiz();
+						this.endQuiz({correct: false});
 					} else {
 						await new Promise((resolve) => setTimeout(resolve, 1000));
 						this.state.phase = 'gaming';
@@ -418,6 +437,10 @@ export default class Hayaoshi extends EventEmitter {
 				!(
 					this.state.participants.has(message.member.user.id) &&
 					this.state.participants.get(message.member.user.id).penalties >= 3
+				) &&
+				!(
+					this.state.quiz.author &&
+					this.state.quiz.author === message.member.user.id
 				)
 			) {
 				const now = Date.now();
@@ -433,14 +456,14 @@ export default class Hayaoshi extends EventEmitter {
 				this.state.answerTimeoutId = this.setAnswerTimeout();
 			}
 
-			if ((message.content === '早押しクイズ' || message.content === '早押しクイズ大会') && this.state.phase === 'waiting') {
+			if ((message.content === '早押しクイズ' || message.content === '早押しクイズ大会dev') && this.state.phase === 'waiting') {
 				try {
 					this.state.phase = 'gaming';
 					this.state.playStartTime = 0;
 					this.state.maximumPushTime = 0;
 					this.state.quizThroughCount = 0;
 					this.state.participants = new Map();
-					this.state.isContestMode = message.content === '早押しクイズ大会';
+					this.state.isContestMode = message.content === '早押しクイズ大会dev';
 					this.state.questionCount = 0;
 
 					if (this.state.isContestMode) {
@@ -450,6 +473,7 @@ export default class Hayaoshi extends EventEmitter {
 							ルール
 							* 一番最初に5問正解した人が優勝。ただし3問誤答したら失格。(5○3×)
 							* 誰かが誤答した場合、その問題は終了。(シングルチャンス)
+							* TSGerが作問した問題が出題された場合、作問者は解答権を持たず、問題終了後に作問者は0.5点を得る。ただしこのルールにより得点を獲得したタイミングで優勝判定が行われることはない (優勝判定は常に誰かが正解したタイミングで行われる)。
 							* 失格者が出たとき、失格していない参加者がいない場合、引き分けで終了。
 							* 失格者が出たとき、失格していない参加者が1人の場合、その人が優勝。
 							* 正解者も誤答者も出ない問題が5問連続で出題された場合、引き分けで終了。
@@ -460,7 +484,7 @@ export default class Hayaoshi extends EventEmitter {
 				} catch (error) {
 					this.emit('message', `エラー😢\n${error.toString()}`);
 					this.emit('message', `Q. ${this.state.quiz.question}\nA. **${this.state.quiz.answer}**`);
-					this.endQuiz();
+					this.endQuiz({correct: false});
 				}
 			}
 		});
