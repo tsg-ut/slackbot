@@ -131,9 +131,9 @@ const customResponses: CustomResponse[] = [
         username: "ガチ割れ行くぜ！",
     },
     {
-        input: [/^([^:]+)花火$/],
+        input: [/^(:([^:]+):\s?)?花火$/],
         outputFunction: (input: string[]) => {
-            const matchedReaction = `:${input[1]}:`;
+            const matchedReaction = (input[0] === '花火') ? ':hideo54:' : `:${input[2]}:`;
             const resultString = `\
 .            ・∵∴∵・
 　　∴※※◎※※∴
