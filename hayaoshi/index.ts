@@ -6,6 +6,7 @@ import axios from 'axios';
 import cheerio from 'cheerio';
 // @ts-ignore
 import levenshtein from 'fast-levenshtein';
+import {google} from 'googleapis';
 import {AllHtmlEntities} from 'html-entities';
 import iconv from 'iconv-lite';
 // @ts-ignore
@@ -13,7 +14,6 @@ import {hiraganize} from 'japanese';
 import {random, sample, shuffle, flatten, times, constant, range} from 'lodash';
 import scrapeIt from 'scrape-it';
 import type {SlackInterface} from '../lib/slack';
-import {google} from 'googleapis';
 
 const mutex = new Mutex();
 
@@ -36,7 +36,7 @@ const fullwidth2halfwidth = (string: string) => (
 	string.replace(/[\uFF01-\uFF5E]/gu, (char) => String.fromCodePoint(char.codePointAt(0) - 0xFF00 + 0x20))
 );
 
-export const normalize = (string: string) => { 
+export const normalize = (string: string) => {
 	let newString = string;
 	newString = newString.replace(/\(.+?\)/g, '');
 	newString = newString.replace(/\[.+?\]/g, '');
@@ -44,7 +44,7 @@ export const normalize = (string: string) => {
 	newString = newString.replace(/【.+?】/g, '');
 	newString = newString.replace(/[^\p{Letter}\p{Number}]/gu, '');
 	newString = newString.toLowerCase();
-	return hiraganize(fullwidth2halfwidth(newString))
+	return hiraganize(fullwidth2halfwidth(newString));
 };
 
 const getQuiz = async () => {

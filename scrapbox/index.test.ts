@@ -1,10 +1,10 @@
-jest.mock('axios');
-
+import qs from 'querystring';
+import axios from 'axios';
+import Slack from '../lib/slackMock.js';
 import scrapbox from './index';
 // @ts-ignore
-import Slack from '../lib/slackMock.js';
-import axios from 'axios';
-import qs from 'querystring';
+
+jest.mock('axios');
 
 // @ts-ignore
 axios.response = {data: {title: 'hoge', descriptions: ['fuga', 'piyo']}};

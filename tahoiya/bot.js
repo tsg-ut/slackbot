@@ -1,9 +1,9 @@
-const Docker = require('dockerode');
-const concatStream = require('concat-stream');
-const {hiraganize} = require('japanese');
-const path = require('path');
 const assert = require('assert');
+const path = require('path');
+const concatStream = require('concat-stream');
+const Docker = require('dockerode');
 const download = require('download');
+const {hiraganize} = require('japanese');
 
 const docker = new Docker();
 
