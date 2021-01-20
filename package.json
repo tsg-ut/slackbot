@@ -7,7 +7,7 @@
   "scripts": {
     "start": "nodemon --exitcrash --watch .restart-trigger -x ts-node index.js",
     "dev": "nodemon -x ts-node -e js,ts index.js -i \"*.json\"",
-    "lint": "cd mahjong && eslint .",
+    "lint": "sed \"s/\\/.\\+//g\" CODEOWNERS | grep \"^[a-z]\" | xargs -n 1 eslint --ext js,ts",
     "test": "jest --verbose --coverage"
   },
   "engines": {
