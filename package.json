@@ -119,6 +119,7 @@
     "byline": "^5.0.0",
     "csv-parse": "^4.12.0",
     "eslint": "^7.18.0",
+    "eslint-formatter-rdjson": "^1.0.3",
     "eslint-plugin-react": "^7.21.2",
     "jest": "^26.4.2",
     "lolex": "^5.1.2",
