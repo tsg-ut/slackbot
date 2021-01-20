@@ -40,8 +40,6 @@
     "@types/opentype.js": "^1.3.1",
     "@types/sharp": "^0.27.1",
     "@types/twitter": "^1.7.0",
-    "@types/xmldom": "^0.1.30",
-    "Cloudstorm": "github:DasWolke/CloudStorm",
     "async-mutex": "0.2.6",
     "axios": "^0.21.1",
     "bn.js": "^5.1.3",
@@ -97,7 +95,6 @@
     "sql-template-strings": "^2.2.2",
     "sqlite": "^4.0.19",
     "sqlite3": "^5.0.1",
-    "strophe.js": "github:hakatashi/strophejs",
     "suncalc": "^1.8.0",
     "trie-prefix-tree": "^1.5.1",
     "ts-node": "^9.1.1",
@@ -108,7 +105,6 @@
     "winston-syslog": "^2.4.4",
     "word2vec": "github:pizzacat83/node-word2vec",
     "xml-js": "^1.6.11",
-    "xmlhttprequest": "^1.8.0",
     "yargs": "^16.2.0"
   },
   "devDependencies": {

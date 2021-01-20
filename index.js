@@ -62,8 +62,6 @@ const allBots = [
 	'taiko',
 	'hayaoshi',
 	'twitter-dm-notifier',
-	'tsgctf',
-	'jitsi',
 	'hitandblow',
 	'discord',
 	'octas',
