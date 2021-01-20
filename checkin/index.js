@@ -1,7 +1,7 @@
-const {stripIndent} = require('common-tags');
-const schedule = require('node-schedule');
 const axios = require('axios');
+const {stripIndent} = require('common-tags');
 const get = require('lodash/get');
+const schedule = require('node-schedule');
 const logger = require('../lib/logger.js');
 
 const places = [

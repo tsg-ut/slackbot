@@ -25,8 +25,8 @@ it('blocks until unblocked', () => new Promise(async (resolve) => {
 
 it('blocks until all unblocked', () => new Promise(async (resolve) => {
 	const unblocks = [];
-	for(let i=0; i<10; i++) {
-		unblocks.push(await blocker.block('block' + i));
+	for (let i = 0; i < 10; i++) {
+		unblocks.push(await blocker.block(`block${i}`));
 	}
 	let unblocked = 0;
 
@@ -39,7 +39,7 @@ it('blocks until all unblocked', () => new Promise(async (resolve) => {
 		unblocked++;
 		unblocks.shift()();
 
-		await new Promise(resolve => process.nextTick(resolve));
+		await new Promise((resolve) => process.nextTick(resolve));
 	}
 }));
 
@@ -59,12 +59,10 @@ it('does not call intervalCallback unless blocked', () => new Promise(async (res
 }));
 
 it('cannot block while wait callback is runnning', () => new Promise(async (resolve, reject) => {
-	blocker.wait(() =>
-		new Promise(callbackResolve => process.nextTick(() => {
-			resolve();
-			callbackResolve();
-		}))
-	);
+	blocker.wait(() => new Promise((callbackResolve) => process.nextTick(() => {
+		resolve();
+		callbackResolve();
+	})));
 
 	await blocker.block('block');
 	reject();
