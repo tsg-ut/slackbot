@@ -111,13 +111,13 @@
     "yargs": "^16.0.3"
   },
   "devDependencies": {
-    "@hakatashi/eslint-config": "^1.13.0",
+    "@hakatashi/eslint-config": "^1.15.0",
     "@types/jest": "^26.0.14",
     "@types/lodash": "^4.14.161",
     "@typescript-eslint/parser": "^4.3.0",
     "byline": "^5.0.0",
     "csv-parse": "^4.12.0",
-    "eslint": "^7.10.0",
+    "eslint": "^7.18.0",
     "eslint-plugin-react": "^7.21.2",
     "jest": "^26.4.2",
     "lolex": "^5.1.2",
