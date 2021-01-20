@@ -7,7 +7,7 @@ import cheerio from 'cheerio';
 // @ts-ignore
 import levenshtein from 'fast-levenshtein';
 import {google} from 'googleapis';
-import {AllHtmlEntities} from 'html-entities';
+import {decode as decodeHtmlEntities} from 'html-entities';
 import iconv from 'iconv-lite';
 // @ts-ignore
 import {hiraganize} from 'japanese';
@@ -95,13 +95,12 @@ export const getHardQuiz = async () => {
 		formname: 'lite_search',
 	})}`;
 
-	const entities = new AllHtmlEntities();
 	const {data: quiz} = await scrapeIt<Quiz>(url, {
 		id: 'tbody td:nth-child(1)',
 		question: {
 			selector: 'tbody td:nth-child(3) > a',
 			how: 'html',
-			convert: (x) => entities.decode(x),
+			convert: (x) => decodeHtmlEntities(x),
 		},
 		answer: 'tbody td:nth-child(4)',
 	});
