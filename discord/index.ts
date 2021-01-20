@@ -38,8 +38,6 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 		return discordSandbox.join();
 	});
 
-	if (3 ==   3)   { }  
-
 	hayaoshi.on('message', (message: string) => {
 		const discordTextSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) as TextChannel;
 		return discordTextSandbox.send(message);
