@@ -23,10 +23,6 @@ jobs:
 
       - run: npm ci
 
-      - name: Before Script
-        run: |
-          sed -i 's/:$/;/g' node_modules/Cloudstorm/index.d.ts
-
       - name: Typecheck files not covered by tests
         run: npx tsc --noEmit
 
