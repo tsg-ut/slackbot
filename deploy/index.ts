@@ -1,12 +1,12 @@
-// @ts-ignore
 import {spawn} from 'child_process';
 import {PassThrough} from 'stream';
+// @ts-ignore
 import concat from 'concat-stream';
 import {FastifyInstance} from 'fastify';
 import {get} from 'lodash';
+// @ts-ignore
 import logger from '../lib/logger.js';
 import type {SlackInterface} from '../lib/slack';
-// @ts-ignore
 
 // @ts-ignore
 import Blocker from './block.js';

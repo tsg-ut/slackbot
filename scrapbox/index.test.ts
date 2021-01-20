@@ -1,8 +1,8 @@
 import qs from 'querystring';
 import axios from 'axios';
+// @ts-ignore
 import Slack from '../lib/slackMock.js';
 import scrapbox from './index';
-// @ts-ignore
 
 jest.mock('axios');
 
