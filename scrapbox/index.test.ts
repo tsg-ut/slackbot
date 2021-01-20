@@ -19,7 +19,7 @@ beforeEach(async () => {
 
 describe('scrapbox', () => {
 	it('respond to slack hook of scrapbox unfurling', async () => {
-		const done = new Promise((resolve) => {
+		const done = new Promise<void>((resolve) => {
 			// @ts-ignore
 			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
 				if (url === 'https://slack.com/api/chat.unfurl') {

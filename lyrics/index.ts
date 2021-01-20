@@ -1,6 +1,6 @@
 import axios from 'axios';
 import scrapeIt from 'scrape-it';
-import { AllHtmlEntities } from 'html-entities';
+import { decode as decodeHtmlEntities } from 'html-entities';
 import type { SlackInterface } from '../lib/slack';
 import { escapeRegExp, sample } from 'lodash';
 import qs from 'querystring';
@@ -58,7 +58,6 @@ export const getSongInfo = async (songInfoUrl: string, keyword: string): Promise
         composer: string;
         kashiHTML: string;
     }
-    const entities = new AllHtmlEntities();
     const fetchedSongData = (await scrapeIt<fetchedSongData>(songInfoUrl, {
         url: {
             selector: 'link[rel=canonical]',
@@ -71,7 +70,7 @@ export const getSongInfo = async (songInfoUrl: string, keyword: string): Promise
         kashiHTML: {
             selector: '#kashi_area',
             how: 'html',
-            convert: x => entities.decode(x),
+            convert: x => decodeHtmlEntities(x),
         },
     })).data;
     const paragraphs = fetchedSongData.kashiHTML.split('<br><br>').map(paragraph =>

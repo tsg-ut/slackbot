@@ -190,7 +190,7 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	async readAnswer() {
-		await new Promise((resolve) => {
+		await new Promise<void>((resolve) => {
 			const dispatcher = this.state.connection.play(path.join(__dirname, 'answerText.mp3'));
 			dispatcher.on('finish', () => {
 				resolve();
@@ -226,7 +226,7 @@ export default class Hayaoshi extends EventEmitter {
 					return;
 				}
 				this.state.phase = 'timeup';
-				await new Promise((resolve) => {
+				await new Promise<void>((resolve) => {
 					const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/timeup.mp3'));
 					dispatcher.on('finish', () => {
 						resolve();
@@ -267,7 +267,7 @@ export default class Hayaoshi extends EventEmitter {
 		
 		await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), audio.audioContent, 'binary');
 		
-		await new Promise((resolve) => {
+		await new Promise<void>((resolve) => {
 			const dispatcher = this.state.connection.play(path.join(__dirname, 'tempAudio.mp3'));
 			dispatcher.on('finish', () => {
 				resolve();
@@ -278,7 +278,7 @@ export default class Hayaoshi extends EventEmitter {
 	setAnswerTimeout() {
 		return setTimeout(() => {
 			mutex.runExclusive(async () => {
-				await new Promise((resolve) => {
+				await new Promise<void>((resolve) => {
 					const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/timeup.mp3'));
 					dispatcher.on('finish', () => {
 						resolve();
@@ -361,14 +361,14 @@ export default class Hayaoshi extends EventEmitter {
 		if (this.state.isContestMode) {
 			await this.speak(`第${this.state.questionCount}問`);
 		} else {
-			await new Promise((resolve) => {
+			await new Promise<void>((resolve) => {
 				const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/mondai.mp3'));
 				dispatcher.on('finish', () => {
 					resolve();
 				});
 			});
 		}
-		await new Promise((resolve) => {
+		await new Promise<void>((resolve) => {
 			const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/question.mp3'));
 			dispatcher.on('finish', () => {
 				resolve();
@@ -402,7 +402,7 @@ export default class Hayaoshi extends EventEmitter {
 				} else if (!this.state.isOneChance && judgement === 'onechance') {
 					clearTimeout(this.state.answerTimeoutId);
 					this.state.isOneChance = true;
-					await new Promise((resolve) => {
+					await new Promise<void>((resolve) => {
 						const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/timeup.mp3'));
 						dispatcher.on('finish', () => {
 							resolve();
@@ -411,7 +411,7 @@ export default class Hayaoshi extends EventEmitter {
 					await this.speak('もう一度お願いします。');
 					this.state.answerTimeoutId = this.setAnswerTimeout();
 				} else {
-					await new Promise((resolve) => {
+					await new Promise<void>((resolve) => {
 						const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/wrong.mp3'));
 						dispatcher.on('finish', () => {
 							resolve();

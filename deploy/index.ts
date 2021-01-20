@@ -68,8 +68,8 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 						proc.stderr.on('data', (chunk) => muxed.write(chunk));
 
 						Promise.all([
-							new Promise((resolve) => proc.stdout.on('end', () => resolve())),
-							new Promise((resolve) => proc.stderr.on('end', () => resolve())),
+							new Promise<void>((resolve) => proc.stdout.on('end', () => resolve())),
+							new Promise<void>((resolve) => proc.stderr.on('end', () => resolve())),
 						]).then(() => {
 							muxed.end();
 						});
@@ -86,7 +86,7 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 
 					await postMessage('死にます:wave:');
 
-					await new Promise((resolve) => setTimeout(() => {
+					await new Promise<void>((resolve) => setTimeout(() => {
 						process.exit(0);
 						resolve();
 					}, 2000));
