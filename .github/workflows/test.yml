@@ -2,6 +2,7 @@ name: Test
 
 on:
   - push
+  - pull_request
 
 jobs:
   test:
@@ -33,15 +34,17 @@ jobs:
         run: npm test
 
       - name: Set up reviewdog
+        if: ${{ github.event_name == 'pull_request' }}
         uses: reviewdog/action-setup@v1
         with:
           reviewdog_version: latest
 
       - name: Run reviewdog
+        if: ${{ github.event_name == 'pull_request' }}
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          sed "s/\/.\+//g" CODEOWNERS | grep "^[a-z]" | xargs -n 1 -I {} sh -c "eslint --ext js,ts -f rdjson {} | reviewdog -f=rdjson -reporter=github-pr-review"
+          sed "s/\/.\+//g" CODEOWNERS | grep "^[a-z]" | xargs -n 1 -I {} sh -c "eslint --ext js,ts -f rdjson {} | reviewdog -f=rdjson -name=ESLint -reporter=github-pr-review"
 
       - name: Lint
         run: npm run lint
