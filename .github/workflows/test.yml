@@ -40,15 +40,12 @@ jobs:
           reviewdog_version: latest
 
       - name: Run reviewdog
+        continue-on-error: true
         if: ${{ github.event_name == 'pull_request' }}
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sed "s/\/.\+//g" CODEOWNERS | grep "^[a-z]" | xargs -n 1 -I {} sh -c "npx eslint --ext js,ts -f rdjson {} | reviewdog -f=rdjson -name=ESLint -reporter=github-pr-review"
-
-      - name: Lint
-        run: npm run lint
-        continue-on-error: true
 
       - name: codecov
         run: npx codecov
