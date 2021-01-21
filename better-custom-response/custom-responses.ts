@@ -30,8 +30,7 @@ const customResponses: CustomResponse[] = [
                 ['く', 'ahokusa-top-left'],
                 ['さ', 'ahokusa-bottom-left'],
             ]);
-            let a, ho, ku, sa;
-            [a, ho, ku, sa] = Array.from(input[0]).map((c: string, i, a) => ahokusaMap.get(c));
+            const [a, ho, ku, sa] = Array.from(input[0]).map((c: string, i, a) => ahokusaMap.get(c));
             const outputStr = `:${ku}::ahokusa-top-center::${a}:\n:${sa}::ahokusa-bottom-center::${ho}:`
             return [outputStr];
         },
