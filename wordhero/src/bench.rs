@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         let start = Instant::now();
         for _i in 0..10_000 {
-            trie.find("すし").next() == None;
+            trie.find("すし").next();
         }
         let end = start.elapsed();
         println!("radix_trie: {}.{:03}s", end.as_secs(), end.subsec_nanos() / 1_000_000);
@@ -80,7 +80,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let start = Instant::now();
         for _i in 0..10_000 {
             let mut stream = set.range().ge("すし").lt("すじ").into_stream();
-            stream.next() == None;
+            stream.next();
         }
         let end = start.elapsed();
         println!("fst (range): {}.{:03}s", end.as_secs(), end.subsec_nanos() / 1_000_000);
@@ -96,7 +96,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         for _i in 0..10_000 {
             let re = Regex::new("すし.*")?;
             let mut stream = set.search(&re).into_stream();
-            stream.next() == None;
+            stream.next();
         }
         let end = start.elapsed();
         println!("fst (regex): {}.{:03}s", end.as_secs(), end.subsec_nanos() / 1_000_000);
@@ -123,7 +123,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let start = Instant::now();
         for _i in 0..10_000 {
             let mut stream = set.range().ge([24, 22]).lt([24, 23]).into_stream();
-            stream.next() == None;
+            stream.next();
         }
         let end = start.elapsed();
         println!("fst (indices, range): {}.{:03}s", end.as_secs(), end.subsec_nanos() / 1_000_000);

@@ -125,5 +125,5 @@ export default async ({ webClient }: SlackInterface) => {
             after = latest;
             await saveAfterValue(latest);
         }
-    }, 2 * 60 * 1000);
+    }, 15 * 60 * 1000);
 };

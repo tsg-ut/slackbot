@@ -1,14 +1,14 @@
-const path = require('path');
-const fs = require('fs');
 const assert = require('assert');
-const {promisify} = require('util');
-const {constant, times, flatten, range, shuffle, uniq} = require('lodash');
-const {stripIndent, stripIndents} = require('common-tags');
-const prime = require('primes-and-factors');
 const {spawn} = require('child_process');
-const concat = require('concat-stream');
-const MillerRabin = require('miller-rabin');
+const fs = require('fs');
+const path = require('path');
+const {promisify} = require('util');
 const BN = require('bn.js');
+const {stripIndent, stripIndents} = require('common-tags');
+const concat = require('concat-stream');
+const {constant, times, flatten, range, shuffle, uniq} = require('lodash');
+const MillerRabin = require('miller-rabin');
+const prime = require('primes-and-factors');
 const {unlock} = require('../achievements');
 const primes = require('./primes.ts');
 
@@ -178,7 +178,7 @@ const matchByCards = (number, factors, cards, count) => {
 				'',
 				nextFactors,
 				drop(cards, cards.includes(card) ? card : 'X'),
-				0
+				0,
 			);
 
 			if (match !== null) {
@@ -205,7 +205,7 @@ const matchByCards = (number, factors, cards, count) => {
 				remnant,
 				factors,
 				drop(cards, cards.includes(card) ? card : 'X'),
-				count - 1
+				count - 1,
 			);
 
 			if (match !== null) {
@@ -232,7 +232,7 @@ const setState = async (newState) => {
 
 	await promisify(fs.writeFile)(
 		path.join(__dirname, 'state.json'),
-		JSON.stringify(savedState)
+		JSON.stringify(savedState),
 	);
 };
 
@@ -409,7 +409,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					await postMessage(
 						`:warning: 場数 (${
 							state.boardNumber
-						}) 以下の数字を出すことはできません。`
+						}) 以下の数字を出すことはできません。`,
 					);
 					return;
 				}
@@ -418,7 +418,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					await postMessage(
 						`:warning: 場数 (${
 							state.boardNumber
-						}) 以上の数字を出すことはできません:hammer_and_wrench:`
+						}) 以上の数字を出すことはできません:hammer_and_wrench:`,
 					);
 					return;
 				}
@@ -427,7 +427,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					numberText,
 					[],
 					state.hand,
-					state.boardCards.length
+					state.boardCards.length,
 				);
 				if (match !== null) {
 					const [numberMatch] = match;
@@ -437,7 +437,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 			if (decomposition === null) {
 				await postMessage(
-					`:warning: ${numberText} は手元のカードから出せません。`
+					`:warning: ${numberText} は手元のカードから出せません。`,
 				);
 				return;
 			}
@@ -580,7 +580,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 						numberText,
 						factorComponents,
 						state.hand,
-						count
+						count,
 					);
 					if (match !== null) {
 						decompositions = match;
@@ -594,7 +594,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					await postMessage(
 						`:warning: 場数 (${
 							state.boardNumber
-						}) 以下の数字を出すことはできません。`
+						}) 以下の数字を出すことはできません。`,
 					);
 					return;
 				}
@@ -603,7 +603,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					await postMessage(
 						`:warning: 場数 (${
 							state.boardNumber
-						}) 以上の数字を出すことはできません:hammer_and_wrench:`
+						}) 以上の数字を出すことはできません:hammer_and_wrench:`,
 					);
 					return;
 				}
@@ -612,7 +612,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					numberText,
 					factorComponents,
 					state.hand,
-					state.boardCards.length
+					state.boardCards.length,
 				);
 				if (match !== null) {
 					decompositions = match;
@@ -621,7 +621,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 			if (decompositions === null) {
 				await postMessage(
-					`:warning: ${numberText} = ${factorsText} は手元のカードから出せません。`
+					`:warning: ${numberText} = ${factorsText} は手元のカードから出せません。`,
 				);
 				return;
 			}
@@ -638,7 +638,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 					return {mantissa, frequency};
 				})))
 				.filter(
-					({mantissa, frequency}) => frequency === false || (typeof frequency !== 'boolean' && (frequency.length !== 1 || frequency[0].times !== 1)) || mantissa < 2
+					({mantissa, frequency}) => frequency === false || (typeof frequency !== 'boolean' && (frequency.length !== 1 || frequency[0].times !== 1)) || mantissa < 2,
 				);
 
 			if (notPrimeMantissas.length !== 0) {
@@ -838,7 +838,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 			}
 
 			await postMessage(
-				`*${body}* = ${parseInt(body) === 1 ? '1' : frequencyToString(frequency)}`
+				`*${body}* = ${parseInt(body) === 1 ? '1' : frequencyToString(frequency)}`,
 			);
 		}
 	});

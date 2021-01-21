@@ -1,10 +1,10 @@
-jest.mock('axios');
-
-import scrapbox from './index';
+import qs from 'querystring';
+import axios from 'axios';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
-import axios from 'axios';
-import qs from 'querystring';
+import scrapbox from './index';
+
+jest.mock('axios');
 
 // @ts-ignore
 axios.response = {data: {title: 'hoge', descriptions: ['fuga', 'piyo']}};
@@ -19,7 +19,7 @@ beforeEach(async () => {
 
 describe('scrapbox', () => {
 	it('respond to slack hook of scrapbox unfurling', async () => {
-		const done = new Promise((resolve) => {
+		const done = new Promise<void>((resolve) => {
 			// @ts-ignore
 			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
 				if (url === 'https://slack.com/api/chat.unfurl') {

@@ -2,6 +2,12 @@ import { stripIndent } from 'common-tags';
 // @ts-ignore
 import { romanize, katakanize } from 'japanese';
 import { shuffle } from 'lodash';
+import omikuji from './omikuji.json';
+
+interface Achievement {
+    trigger: RegExp[],
+    name: string,
+}
 
 interface CustomResponse {
     input: RegExp[],
@@ -11,6 +17,7 @@ interface CustomResponse {
     username?: string,
     icon_emoji?: string,
     reaction?: true,
+    achievements?: Achievement[],
 }
 
 const customResponses: CustomResponse[] = [
@@ -129,6 +136,20 @@ const customResponses: CustomResponse[] = [
         },
         icon_emoji: ":iidx-muri-1p:",
         username: "ガチ割れ行くぜ！",
+        achievements: [
+            {
+                trigger: [/\|　　\|　\|　\|　\|＿\|＿\|＿\|＿\|/],
+                name: "bcr-denim-fullsplit"
+            },
+            {
+                trigger: [/\|　　\|＿\|＿\|＿\|＿\|　\|　\|　\|/],
+                name: "bcr-denim-reversplit"
+            },
+        ],
+    },
+    {
+        input: [/^おみくじ$/],
+        outputArray: omikuji,
     },
     {
         input: [/^(:([^:]+):\s?)?花火$/],

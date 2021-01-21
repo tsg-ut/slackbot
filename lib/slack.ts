@@ -1,10 +1,12 @@
-import {RTMClient, WebClient} from '@slack/client';
+import {WebClient} from '@slack/web-api';
+import {RTMClient} from '@slack/rtm-api';
 import {createEventAdapter} from '@slack/events-api';
 import {createMessageAdapter} from '@slack/interactive-messages';
 import {Deferred} from './utils';
 import {Token} from '../oauth/tokens';
 import sql from 'sql-template-strings';
-import sqlite from 'sqlite';
+import * as sqlite from 'sqlite';
+import sqlite3 from 'sqlite3';
 import path from 'path';
 
 export interface SlackInterface {
@@ -13,6 +15,31 @@ export interface SlackInterface {
 	eventClient: ReturnType<typeof createEventAdapter>;
 	messageClient: ReturnType<typeof createMessageAdapter>;
 };
+
+export interface SlashCommandEndpoint {
+	Body: {
+		token: string;
+		team_id: string;
+		team_domain: string;
+		enterprise_id: string;
+		enterprise_name: string;
+		channel_id: string;
+		channel_name: string;
+		user_id: string;
+		user_name: string;
+		command: string;
+		text: string;
+		response_url: string;
+		trigger_id: string;
+		api_app_id: string;
+	};
+}
+
+export interface SlackOauthEndpoint {
+	Querystring: {
+		code: string;
+	};
+}
 
 export const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
 export const webClient = new WebClient(process.env.SLACK_TOKEN);
@@ -23,7 +50,10 @@ rtmClients.set(process.env.TEAM_ID, rtmClient);
 
 const loadTokensDeferred = new Deferred();
 const loadTokens = async () => {
-	const db = await sqlite.open(path.join(__dirname, '..', 'tokens.sqlite3'));
+	const db = await sqlite.open({
+		filename: path.join(__dirname, '..', 'tokens.sqlite3'),
+		driver: sqlite3.Database,
+	});
 	const tokens = await db.all(sql`SELECT * FROM tokens WHERE bot_access_token <> ''`).catch(() => []);
 	await db.close();
 

@@ -2,17 +2,19 @@
 /* eslint-disable no-restricted-imports */
 /* eslint-disable react/no-access-state-in-setstate */
 // eslint-disable-next-line no-unused-vars
-import {KnownBlock, RTMClient, WebClient} from '@slack/client';
-import type {SlackInterface} from '../lib/slack';
 import {constants, promises as fs} from 'fs';
-import {flatten, isEmpty, range, shuffle, times, uniq} from 'lodash';
-import {Deferred} from '../lib/utils';
-import {Mutex} from 'async-mutex';
-import {getMemberName} from '../lib/slackUtils';
 import path from 'path';
-import plugin from 'fastify-plugin';
+import type {RTMClient} from '@slack/rtm-api';
+import type {KnownBlock, WebClient} from '@slack/web-api';
+import {Mutex} from 'async-mutex';
 // @ts-ignore
 import {stripIndent} from 'common-tags';
+import type {FastifyPluginCallback} from 'fastify';
+import plugin from 'fastify-plugin';
+import {flatten, isEmpty, range, shuffle, times, uniq} from 'lodash';
+import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
+import {getMemberName} from '../lib/slackUtils';
+import {Deferred} from '../lib/utils';
 
 interface Meaning {
 	user: string,
@@ -763,19 +765,23 @@ class Oogiri {
 	}
 }
 
-export const server = ({webClient: slack, rtmClient: rtm, messageClient: slackInteractions}: SlackInterface) => plugin(async (fastify, opts, next) => {
-	const oogiri = new Oogiri({slack, rtm, slackInteractions});
-	await oogiri.initialize();
+export const server = ({webClient: slack, rtmClient: rtm, messageClient: slackInteractions}: SlackInterface) => {
+	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
+		const oogiri = new Oogiri({slack, rtm, slackInteractions});
+		await oogiri.initialize();
 
-	// eslint-disable-next-line require-await
-	fastify.post('/slash/oogiri', async (req, res) => {
-		if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
-			res.code(400);
-			return 'Bad Request';
-		}
+		// eslint-disable-next-line require-await
+		fastify.post<SlashCommandEndpoint>('/slash/oogiri', async (req, res) => {
+			if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
+				res.code(400);
+				return 'Bad Request';
+			}
 
-		return oogiri.showStartDialog(req.body.trigger_id, req.body.text);
-	});
+			return oogiri.showStartDialog(req.body.trigger_id, req.body.text);
+		});
 
-	next();
-});
+		next();
+	};
+
+	return plugin(callback);
+};

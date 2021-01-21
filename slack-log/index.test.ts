@@ -31,7 +31,7 @@ describe('slacklog', () => {
 		expect(text).toMatch(slack.fakeChannel);
 	});
 
-	it('respond to slacklog-ize request', async () => {
+	it('respond to canonical slacklog-ize request', async () => {
 		const requestURL: string = '<https://tsg-ut.slack.com/archives/C0123ABCD/p1501234567890123>';
 		const {channel, text}: {channel: string, text: string} = await slack.getResponseTo(`slacklog ${requestURL}`);
 
@@ -40,8 +40,26 @@ describe('slacklog', () => {
 		expect(text).toBe(expectURL);
 	});
 
+	it('respond to slacklog-ize request of practical url from default web UI', async () => {
+		const requestURL: string = '<https://tsg-ut.slack.com/archives/C7AAX50QY/p1603287289337400?thread_ts=1603267719.496100&amp;cid=C7AAX50QY>';
+		const {channel, text}: {channel: string, text: string} = await slack.getResponseTo(`slacklog ${requestURL}`);
+
+		const expectURL: string = '<https://slack-log.tsg.ne.jp/C7AAX50QY/1603287289.337400>';
+		expect(channel).toBe(slack.fakeChannel);
+		expect(text).toBe(expectURL);
+	});
+
+	it('respond to slacklog-ize request of practical url from iOS app', async () => {
+		const requestURL: string = '<https://tsg-ut.slack.com/archives/C7AAX50QY/p1603288141348600?thread_ts=1603287978.345500&channel=C7AAX50QY&message_ts=1603288141.348600>';
+		const {channel, text}: {channel: string, text: string} = await slack.getResponseTo(`slacklog ${requestURL}`);
+
+		const expectURL: string = '<https://slack-log.tsg.ne.jp/C7AAX50QY/1603288141.348600>';
+		expect(channel).toBe(slack.fakeChannel);
+		expect(text).toBe(expectURL);
+	});
+
 	it('respond to slack hook of slacklog unfurling', async () => {
-		const done = new Promise((resolve) => {
+		const done = new Promise<void>((resolve) => {
 			// @ts-ignore
 			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
 				if (url === 'https://slack.com/api/chat.unfurl') {

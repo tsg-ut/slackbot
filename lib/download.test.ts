@@ -34,7 +34,7 @@ it('downloads fetched data to path', async () => {
         callback(true);
     });
     await Promise.all([
-        new Promise((resolve) => {
+        new Promise<void>((resolve) => {
             (<jest.Mock> fs.createWriteStream).mockReturnValue(
                 new PassThrough().on('data', (data) => {
                     expect(data).toBe(fakeData)

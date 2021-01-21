@@ -1,6 +1,5 @@
 import { sample } from 'lodash';
-// @ts-ignore
-import tts from 'google-tts-api';
+import { getAudioUrl } from 'google-tts-api';
 import moment from 'moment';
 import { stringify } from 'querystring';
 import assert from 'assert';
@@ -41,8 +40,11 @@ const phrases = getPhrasesOf('はっつくパンツかひっつくパンツか�
 
 const voiper = (num = 8) => Array(num).fill(null).map(() => sample(phrases)).join('');
 
-const getTtsLink = async (text: string) => {
-	const link: string = await tts(text, 'ja', 1);
+const getTtsLink = (text: string) => {
+	const link: string = getAudioUrl(text, {
+		lang: 'ja-JP',
+		slow: false,
+	});
 	return (`<${link}|${text}>`);
 };
 
@@ -127,7 +129,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		if (/^@voiperrobot\b|^ボイパーロボット(?:$|\s*(\d+))/.test(message.text)) {
 			const m = /^@voiperrobot\b|^ボイパーロボット(?:$|\s*(\d+))/.exec(message.text)!;
 			const voiperLength = validateNumber(parseInt(m[1]), 8);
-			await postMessage(await getTtsLink(voiper(voiperLength)));
+			await postMessage(getTtsLink(voiper(voiperLength)));
 			await unlock(message.user, 'voiperrobot');
 			return;
 		}
@@ -181,7 +183,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				if (state.phase !== 'answering' || message.ts !== state.ts) {
 					return;
 				}
-				await postMessage(`だれも正解できなかったよ:cry:\n正解は ${await getTtsLink(state.answer)} だよ。`);
+				await postMessage(`だれも正解できなかったよ:cry:\n正解は ${getTtsLink(state.answer)} だよ。`);
 				setState({phase: 'waiting', answer: null, users: [], ts: null});
 			});
 			return;
@@ -189,7 +191,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		await battleMutex.exec(async () => {
 			if (state.phase === 'answering' && message.user === state.users[state.userIdx] && message.text.length === state.answer.length) {
 				if (message.text === state.answer) {
-					await postMessage(`正解です!:tada:\n${await getTtsLink(state.answer)}`);
+					await postMessage(`正解です!:tada:\n${getTtsLink(state.answer)}`);
 					setState({phase: 'waiting', answer: null, users: [], ts: null});
 					await unlock(message.user, 'voiperrobot-win-battle');
 				} else {

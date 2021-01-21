@@ -1,9 +1,9 @@
 const qs = require('querystring');
-const scrapeIt = require('scrape-it');
 const axios = require('axios');
-const iconv = require('iconv-lite');
 const cheerio = require('cheerio');
+const iconv = require('iconv-lite');
 const {flatten, sortBy} = require('lodash');
+const scrapeIt = require('scrape-it');
 
 const getTayoriEntries = async () => {
 	const {data} = await scrapeIt('http://www.i-nekko.jp/hibinotayori/', {
@@ -58,7 +58,7 @@ const getSaijikiEntries = async () => {
 	return sortBy(flatten(
 		data.archives.map(({category, articles}) => (
 			articles.map((article) => ({category, ...article}))
-		))
+		)),
 	), [({date}) => {
 		const [year, month, day, time] = date.split(/[年月日]/).map((token) => token.trim());
 		return new Date(`${year}-${month}-${day} ${time}`);

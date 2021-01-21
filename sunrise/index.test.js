@@ -5,9 +5,9 @@ jest.mock('node-persist');
 jest.mock('./render.js');
 jest.mock('./fetch.js');
 
-const sunrise = require('./index.js');
-const Slack = require('../lib/slackMock.js');
 const lolex = require('lolex');
+const Slack = require('../lib/slackMock.js');
+const sunrise = require('./index.js');
 
 let slack = null;
 let clock = null;
