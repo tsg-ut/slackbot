@@ -22,8 +22,19 @@ interface CustomResponse {
 
 const customResponses: CustomResponse[] = [
     {
-        input: [/^あほくさ$/],
-        outputArray: [":ahokusa-top-left::ahokusa-top-center::ahokusa-top-right:\n:ahokusa-bottom-left::ahokusa-bottom-center::ahokusa-bottom-right:"],
+        input: [/^[あほくさ]{4}$/],
+        outputFunction: (input: string[]) => {
+            const ahokusaMap = new Map([
+                ['あ', 'ahokusa-top-right'],
+                ['ほ', 'ahokusa-bottom-right'],
+                ['く', 'ahokusa-top-left'],
+                ['さ', 'ahokusa-bottom-left'],
+            ]);
+            let a, ho, ku, sa;
+            [a, ho, ku, sa] = Array.from(input[0]).map((c: string, i, a) => ahokusaMap.get(c));
+            const outputStr = `:${ku}::ahokusa-top-center::${a}:\n:${sa}::ahokusa-bottom-center::${ho}:`
+            return [outputStr];
+        },
         username: 'あほくさresponse',
         icon_emoji: ':atama:',
     },
@@ -44,7 +55,7 @@ const customResponses: CustomResponse[] = [
                 retString += face.toString() + " ";
                 result += face;
             }
-            if(retString.length > 3000)retString = retString.slice(0, 1997) + "... ";
+            if (retString.length > 3000) retString = retString.slice(0, 1997) + "... ";
             retString += "= " + result.toString();
             return [retString];
         },
@@ -69,7 +80,7 @@ const customResponses: CustomResponse[] = [
     },
     {
         input: [/^(.+)っちへ$/],
-        outputFunction: input => [ stripIndent`
+        outputFunction: input => [stripIndent`
             ${input[1]}っちへ
             
             ういっすー!
@@ -80,7 +91,7 @@ const customResponses: CustomResponse[] = [
     },
     {
         input: [/^(.+)ぴへ$/],
-        outputFunction: input => [ stripIndent`
+        outputFunction: input => [stripIndent`
             ${input[1]}ぴへ
 
             なんかバイブス上げてくの
@@ -101,7 +112,7 @@ const customResponses: CustomResponse[] = [
         outputArray: ['sushi-salmon'],
         reaction: true,
     },
-    ... ['まぐろ', 'たまご', 'えび', 'とろ', 'いくら', 'たい', 'うに', 'いか'].map((neta): CustomResponse => {
+    ...['まぐろ', 'たまご', 'えび', 'とろ', 'いくら', 'たい', 'うに', 'いか'].map((neta): CustomResponse => {
         const regexStr = Array.from(neta)
             .map((char) => `(${char}|${romanize(char)}|${katakanize(char)})`)
             .join('');
@@ -116,7 +127,7 @@ const customResponses: CustomResponse[] = [
         outputFunction: (input: string[]) => {
             let thres = 0.83;
             let randv = Math.random();
-            if(randv < thres){
+            if (randv < thres) {
                 return [':exclamation:'];
             } else {
                 return [':exclamation_w:'];
