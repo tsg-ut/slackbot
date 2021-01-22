@@ -305,18 +305,31 @@ it('reacts to "エクササイズランキング 確認"', () => new Promise((re
 	})();
 }));
 
-it('react to もうむりあむ', () => new Promise((resolve) => {
-	slack.on('reactions.add', ({name, channel, timestamp}) => {
-		expect(name).toContain('yumemiriamu');
-		expect(channel).toBe(slack.fakeChannel);
-		expect(timestamp).toBe(slack.fakeTimestamp);
-		resolve();
-	});
+describe('もうむりあむ', () => {
+	let savedSandbox = undefined;
 
-	slack.rtmClient.emit('message', {
-		channel: slack.fakeChannel,
-		text: 'もうむりあむ',
-		user: slack.fakeUser,
-		ts: slack.fakeTimestamp,
+	beforeAll(() => {
+		const savedSandbox = process.env.CHANNEL_SANDBOX;
+		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
+	})
+
+	it('react to もうむりあむ', () => new Promise((resolve) => {
+		slack.on('reactions.add', ({name, channel, timestamp}) => {
+			expect(name).toContain('yumemiriamu');
+			expect(channel).toBe(slack.fakeChannel);
+			expect(timestamp).toBe(slack.fakeTimestamp);
+			resolve();
+		});
+
+		slack.rtmClient.emit('message', {
+			channel: slack.fakeChannel,
+			text: 'もうむりあむ',
+			user: slack.fakeUser,
+			ts: slack.fakeTimestamp,
+		});
+	}));
+
+	afterAll(() => {
+		process.env.CHANNEL_SANDBOX = savedSandbox;
 	});
-}));
+});
