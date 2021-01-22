@@ -110,6 +110,7 @@ module.exports = (clients) => {
 	const dailyexerciseCounter = new Counter('dailyexercise');
 	const exerciseCounter = new Counter('exercise');
 	const kasuCounter = new Counter('kasu');
+	const riamuCounter = new Counter('riamu');
 
 	rtm.on('message', async (message) => {
 		const { channel, text, user, ts: timestamp } = message;
@@ -181,6 +182,16 @@ module.exports = (clients) => {
 				for (let entry of kasuCounter.entries()) {
 					if (entry[0] === user) {
 						return postDM(`あなたのカス数は${entry[1]}回、現在の順位は${currentRank}位`);
+					}
+					currentRank++;
+				}
+			}
+
+			if (tokens[0] === 'りあむランキング' && tokens[1] === '確認') {
+				let currentRank = 1;
+				for (let entry of riamuCounter.entries()) {
+					if (entry[0] === user) {
+						return postDM(`あなたは現在${entry[1]}りあむ！ ${currentRank}位って、はぁ、めっちゃ病む。。。`);
 					}
 					currentRank++;
 				}
@@ -338,12 +349,20 @@ module.exports = (clients) => {
 			if(text.includes(":exercise-done:")||text.includes(":kintore_houkoku:")){
 				slack.reactions.add({name: 'erai', channel, timestamp})
 				slack.reactions.add({name: 'sugoi', channel, timestamp})
-	
+
 				if (channel.startsWith('C')) {
 					unlock(user, 'first-exercise');
-					
+
 					dailyexerciseCounter.add(user, 1);
 				}
+			}
+		}
+
+		{
+			const riamu = 'りあむ';
+			if (channel === process.env.CHANNEL_SANDBOX && text.endsWith(riamu)) {
+				slack.reactions.add({name: 'yumemiriamu', channel, timestamp});
+				riamuCounter.add(user);
 			}
 		}
 	});
@@ -485,6 +504,27 @@ module.exports = (clients) => {
 			});
 
 			kasuCounter.clear();
+
+			await slack.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				username: 'riamu',
+				text: '今週のりあむランキング',
+				icon_emoji: ':yumemiriamu:',
+				attachments: riamuCounter.entries().map(([user, count], index) => {
+					const member = members.find(({id}) => id === user);
+					if (!member) {
+						return null;
+					}
+					const name = member.profile.display_name || member.name;
+
+					return {
+						author_name: `${index + 1}位: ${name} (${count}回)`,
+						author_icon: member.profile.image_24,
+					};
+				}).filter((attachment) => attachment !== null),
+			});
+
+			riamuCounter.clear();
 		}
 	});
 }
