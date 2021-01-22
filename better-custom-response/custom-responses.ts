@@ -54,7 +54,7 @@ const customResponses: CustomResponse[] = [
                 retString += face.toString() + " ";
                 result += face;
             }
-            if (retString.length > 3000) retString = retString.slice(0, 1997) + "... ";
+            if(retString.length > 3000)retString = retString.slice(0, 1997) + "... ";
             retString += "= " + result.toString();
             return [retString];
         },
@@ -79,7 +79,7 @@ const customResponses: CustomResponse[] = [
     },
     {
         input: [/^(.+)っちへ$/],
-        outputFunction: input => [stripIndent`
+        outputFunction: input => [ stripIndent`
             ${input[1]}っちへ
             
             ういっすー!
@@ -90,7 +90,7 @@ const customResponses: CustomResponse[] = [
     },
     {
         input: [/^(.+)ぴへ$/],
-        outputFunction: input => [stripIndent`
+        outputFunction: input => [ stripIndent`
             ${input[1]}ぴへ
 
             なんかバイブス上げてくの
@@ -111,7 +111,7 @@ const customResponses: CustomResponse[] = [
         outputArray: ['sushi-salmon'],
         reaction: true,
     },
-    ...['まぐろ', 'たまご', 'えび', 'とろ', 'いくら', 'たい', 'うに', 'いか'].map((neta): CustomResponse => {
+    ... ['まぐろ', 'たまご', 'えび', 'とろ', 'いくら', 'たい', 'うに', 'いか'].map((neta): CustomResponse => {
         const regexStr = Array.from(neta)
             .map((char) => `(${char}|${romanize(char)}|${katakanize(char)})`)
             .join('');
@@ -126,7 +126,7 @@ const customResponses: CustomResponse[] = [
         outputFunction: (input: string[]) => {
             let thres = 0.83;
             let randv = Math.random();
-            if (randv < thres) {
+            if(randv < thres){
                 return [':exclamation:'];
             } else {
                 return [':exclamation_w:'];
