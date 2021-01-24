@@ -132,7 +132,12 @@ async function getDictionary() {
 module.exports = (clients) => {
 	const { rtmClient: rtm, webClient: slack } = clients;
 
-	function postMessage(message, channel, broadcast = false, on_thread = false) {
+	function postMessage(message, channel, postThreadOptions = {}) {
+    const {broadcast, on_thread} = {
+      broadcast: false,
+      on_thread: false,
+      ...postThreadOptions,
+    }
 		return slack.chat.postMessage({
 			channel,
 			text: message,
@@ -179,11 +184,11 @@ module.exports = (clients) => {
 			スレッドで回答してね!
 
 			${hints.map((hint) => hint.replace(theme.word, '• 〇〇')).join('\n')}
-		`, process.env.CHANNEL_SANDBOX, on_thread = true);
+		`, process.env.CHANNEL_SANDBOX, {broadcast: false, on_thread: true});
 
 		thread = message.ts;
 
-		await postMessage('3分経過で答えを発表するよ～', process.env.CHANNEL_SANDBOX, broadcast = false, on_thread = true);
+		await postMessage('3分経過で答えを発表するよ～', process.env.CHANNEL_SANDBOX, {broadcast: false, on_thread: true});
 		const currentTheme = theme;
 		setTimeout(async () => {
 			if (theme === currentTheme) {
@@ -191,10 +196,10 @@ module.exports = (clients) => {
 				await postMessage(stripIndents`
 					なんでわからないの？
 					答えは＊${theme.word}＊ (${theme.ruby}) だよ:anger:
-				`, process.env.CHANNEL_SANDBOX, broadcast = true, on_thread = true);
+				`, process.env.CHANNEL_SANDBOX, {broadcast: true, on_thread: true});
 				await postMessage(stripIndents`
 					${hints.map((hint) => hint.replace(theme.word, `• ＊${theme.word}＊`)).join('\n')}
-				`, process.env.CHANNEL_SANDBOX, broadcast = false, on_thread = true);
+				`, process.env.CHANNEL_SANDBOX, {broadcast: false, on_thread: true});
 				theme = null;
 				thread = null;
 			}
@@ -214,10 +219,10 @@ module.exports = (clients) => {
 				await postMessage(stripIndents`
 					<@${message.user}> 正解:tada:
 					答えは＊${word}＊ (${ruby}) だよ:tada:
-				`, channel, broadcast = true, on_thread = true);
+				`, channel, {broadcast: true, on_thread: true});
 				await postMessage(stripIndents`
 					${hints.map((hint) => hint.replace(word, `• ＊${word}＊`)).join('\n')}
-				`, channel, broadcast = false, on_thread = true);
+				`, channel, {broadcast: false, on_thread: true});
 				increment(message.user, "pockygame-win");
 				const date = new Date().toLocaleString('en-US', {
 					timeZone: 'Asia/Tokyo',
@@ -252,7 +257,7 @@ module.exports = (clients) => {
 		}
 		const result = await reply(match[1], match[2].length - 1);
 		if (result !== null) {
-			postMessage(htmlEscape(result), channel, on_thread = false);
+			postMessage(htmlEscape(result), channel, {broadcast: true, on_thread: false});
 			unlock(message.user, "pocky");
 			if (Array.from(result).length >= 20) {
 				unlock(message.user, "long-pocky");
