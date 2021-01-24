@@ -133,18 +133,18 @@ module.exports = (clients) => {
 	const { rtmClient: rtm, webClient: slack } = clients;
 
 	function postMessage(message, channel, postThreadOptions = {}) {
-    const {broadcast, on_thread} = {
-      broadcast: false,
-      on_thread: false,
-      ...postThreadOptions,
-    }
+		const {broadcast, threadPosted} = {
+			broadcast: false,
+			threadPosted: null,
+			...postThreadOptions,
+		}
 		return slack.chat.postMessage({
 			channel,
 			text: message,
 			as_user: false,
 			username: "pocky",
 			icon_emoji: ":google:",
-			thread_ts: on_thread ? thread : null,
+			thread_ts: threadPosted ? threadPosted : null,
 			reply_broadcast: broadcast,
 		});
 	}
@@ -184,22 +184,21 @@ module.exports = (clients) => {
 			スレッドで回答してね!
 
 			${hints.map((hint) => hint.replace(theme.word, '• 〇〇')).join('\n')}
-		`, process.env.CHANNEL_SANDBOX, {broadcast: false, on_thread: true});
+		`, process.env.CHANNEL_SANDBOX, {broadcast: false});
 
 		thread = message.ts;
 
-		await postMessage('3分経過で答えを発表するよ～', process.env.CHANNEL_SANDBOX, {broadcast: false, on_thread: true});
+		await postMessage('3分経過で答えを発表するよ～', process.env.CHANNEL_SANDBOX, {broadcast: false, threadPosted: thread});
 		const currentTheme = theme;
 		setTimeout(async () => {
 			if (theme === currentTheme) {
-        console.log(`thread: ${thread}`);
 				await postMessage(stripIndents`
 					なんでわからないの？
 					答えは＊${theme.word}＊ (${theme.ruby}) だよ:anger:
-				`, process.env.CHANNEL_SANDBOX, {broadcast: true, on_thread: true});
+				`, process.env.CHANNEL_SANDBOX, {broadcast: true, threadPosted: thread});
 				await postMessage(stripIndents`
 					${hints.map((hint) => hint.replace(theme.word, `• ＊${theme.word}＊`)).join('\n')}
-				`, process.env.CHANNEL_SANDBOX, {broadcast: false, on_thread: true});
+				`, process.env.CHANNEL_SANDBOX, {broadcast: false, threadPosted: thread});
 				theme = null;
 				thread = null;
 			}
@@ -219,10 +218,10 @@ module.exports = (clients) => {
 				await postMessage(stripIndents`
 					<@${message.user}> 正解:tada:
 					答えは＊${word}＊ (${ruby}) だよ:tada:
-				`, channel, {broadcast: true, on_thread: true});
+				`, channel, {broadcast: true, threadPosted: thread});
 				await postMessage(stripIndents`
 					${hints.map((hint) => hint.replace(word, `• ＊${word}＊`)).join('\n')}
-				`, channel, {broadcast: false, on_thread: true});
+				`, channel, {broadcast: false, threadPosted: thread});
 				increment(message.user, "pockygame-win");
 				const date = new Date().toLocaleString('en-US', {
 					timeZone: 'Asia/Tokyo',
@@ -246,18 +245,18 @@ module.exports = (clients) => {
 		if (channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
-	if (text === 'ポッキーゲーム') {
+		if (text === 'ポッキーゲーム') {
 			pockygame();
 			return;
 		}
 		const query = slackDecode(text.trim());
-    const match = /([\s\S]+?)([？?]+)$/.exec(query);
+		const match = /([\s\S]+?)([？?]+)$/.exec(query);
 		if (!match) {
 			return;
 		}
 		const result = await reply(match[1], match[2].length - 1);
 		if (result !== null) {
-			postMessage(htmlEscape(result), channel, {broadcast: true, on_thread: false});
+			postMessage(htmlEscape(result), channel, {broadcast: false, threadPosted: thread_ts});
 			unlock(message.user, "pocky");
 			if (Array.from(result).length >= 20) {
 				unlock(message.user, "long-pocky");
