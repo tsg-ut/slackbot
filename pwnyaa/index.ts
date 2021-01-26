@@ -23,7 +23,7 @@ const getContestSummary = async (contest: Contest) => {
 	let text = '';
 	text += `*${contest.title}* (${contest.url})\n`;
 	text += `  問題数: ${contest.numChalls}\n`;
-	if (contest.joiningUsers.length == 0) {
+	if (contest.joiningUsers.length === 0) {
 		text += '  参加者: なし\n';
 	} else {
 		text += `  参加者: ${contest.joiningUsers.length}匹\n    `;
@@ -70,9 +70,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const getUser = (slackid: string, contestname: string): User => {
 		let found: User = null;
 		for (const contest of state.contests) {
-			if (contest.alias.some((alias) => alias == contestname)) {
+			if (contest.alias.some((alias) => alias === contestname)) {
 				for (const user of contest.joiningUsers) {
-					if (user.slackId == slackid) {
+					if (user.slackId === slackid) {
 						found = user;
 					}
 				}
@@ -81,7 +81,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		return found;
 	};
 
-	const addUser2Ctf = async (slackId: string, ctfId: number, ctfUserId: string) => {
+	const addUser2Ctf = (slackId: string, ctfId: number, ctfUserId: string) => {
 		let found = false;
 		state.contests.forEach((contest, ci) => {
 			if (contest.id === ctfId) {
@@ -103,19 +103,19 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const updateChallsTW = async () => {
 		const fetchedChalls = await fetchChallsTW();
 
-		const oldtw = state.contests.find((({title}) => title == 'pwnable.tw'));
+		const oldtw = state.contests.find((({title}) => title === 'pwnable.tw'));
 		const updatedtw: Contest = {
 			url: 'https://pwnable.tw',
 			id: 0,
 			title: 'pwnable.tw',
-			alias: !oldtw ? ['tw'] : oldtw.alias,
-			joiningUsers: !oldtw ? [] : oldtw.joiningUsers,
+			alias: oldtw ? oldtw.alias : ['tw'],
+			joiningUsers: oldtw ? oldtw.joiningUsers : [],
 			numChalls: fetchedChalls.length,
 		};
-		if (!oldtw) {
-			state.contests.push(updatedtw);
-		} else {
+		if (oldtw) {
 			state.contests.map((cont) => cont.id === updatedtw.id ? updatedtw : cont);
+		} else {
+			state.contests.push(updatedtw);
 		}
 		setState(state);
 	};
@@ -125,19 +125,19 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		const fetchedChalls = await fetchChallsXYZ();
 
 		// register challenges
-		const oldxyz = state.contests.find((({title}) => title == 'pwnable.xyz'));
+		const oldxyz = state.contests.find((({title}) => title === 'pwnable.xyz'));
 		const updatedxyz: Contest = {
 			url: 'https://pwnable.xyz',
 			id: 1,
 			title: 'pwnable.xyz',
-			alias: !oldxyz ? ['xyz'] : oldxyz.alias,
-			joiningUsers: !oldxyz ? [] : oldxyz.joiningUsers,
+			alias: oldxyz ? oldxyz.alias : ['xyz'],
+			joiningUsers: oldxyz ? oldxyz.joiningUsers : [],
 			numChalls: fetchedChalls.length,
 		};
-		if (!oldxyz) {
-			state.contests.push(updatedxyz);
-		} else {
+		if (oldxyz) {
 			state.contests.map((cont) => cont.id === updatedxyz.id ? updatedxyz : cont);
+		} else {
+			state.contests.push(updatedxyz);
 		}
 		setState(state);
 	};
@@ -151,7 +151,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			if (args[0] === 'list') {
 				await postMessageDefault(message, {
 					text: await (await Promise.all(state.contests.map(
-						async (contest) => getContestSummary(contest),
+						(contest) => getContestSummary(contest),
 					))).join(''),
 				});
 
@@ -168,20 +168,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
             `,
 					});
 				} else {
-					const selectedContest = state.contests.find((contest) => contest.alias == selectedContestName || contest.title == selectedContestName);
-					if (!selectedContest) { // specified contest is not registered
-						await postMessageDefault(message, {
-							text: stripIndent`
-                コンテスト *${selectedContestName}* は見つからなかったよ...
-                現在登録されてるコンテスト一覧を見てね!
-              `,
-						});
-						await postMessageDefault(message, {
-							text: await (await Promise.all(state.contests.map(
-								async (contest) => getContestSummary(contest),
-							))).join(''),
-						});
-					} else { // add user to the contest and entire list
+					const selectedContest =
+						state.contests.find((contest) => contest.alias === selectedContestName || contest.title === selectedContestName);
+					if (selectedContest) {		// add user to the contest and entire list
 						if (!state.users.some((user) => slackUserId === user.slackId)) {
 							setState({
 								users: state.users.concat([{slackId: slackUserId, idCtf: ''}]),
@@ -195,40 +184,39 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 							await addUser2Ctf(message.user, selectedContest.id, selectedUserIdCtf);
 							await postMessageDefault(message, {
 								text: stripIndent`
-                  登録したよ! :azaika:
-                    ユーザ名  : ${userProfile.username}
-                    スコア   : ${userProfile.score}
-                    ランキング: ${userProfile.rank}
-                    ${userProfile.comment}
-                `,
+								登録したよ! :azaika:
+								ユーザ名  : ${userProfile.username}
+								スコア   : ${userProfile.score}
+								ランキング: ${userProfile.rank}
+								${userProfile.comment}
+								`,
 							});
 						} else {
 							await postMessageDefault(message, {
 								text: `ユーザ *${selectedUserIdCtf}* は *${selectedContest.title}* に見つからなかったよ:cry:`,
 							});
 						}
+					} else { // specified contest is not registered
+						await postMessageDefault(message, {
+							text: stripIndent`
+                コンテスト *${selectedContestName}* は見つからなかったよ...
+                現在登録されてるコンテスト一覧を見てね!
+              `,
+						});
+						await postMessageDefault(message, {
+							text: await (await Promise.all(state.contests.map(
+								(contest) => getContestSummary(contest),
+							))).join(''),
+						});
 					}
 				}
 
 				// check user status of the specified CTF.
-			} else if (args[0] == 'check') {
+			} else if (args[0] === 'check') {
 				const selectedContestName = args[1];
-				if (!selectedContestName) { // Command format is invalid
-					await postMessageDefault(message, {
-						text: stripIndent`
-              *check* コマンド: あるCTFにおける自分のステータス確認
-                _join_  _<CTF name/alias>_
-            `,
-					});
-				} else {										// check user status/profile
+				if (selectedContestName) {
 					const user = getUser(message.user, selectedContestName);
-					if (!user) {
-						await postMessageDefault(message, {
-							text: stripIndent`
-                まだ *${selectedContestName}* に参加してないよ。 *join* コマンドで参加登録してね!
-              `,
-						});
-					} else {
+					if (user) {
 						const fetchedProfile = await fetchUserProfile(user.idCtf);
 						await postMessageDefault(message, {
 							text: stripIndent`
@@ -240,12 +228,24 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 								`スコア   : *${fetchedProfile.score}* \n` +
 								`ランキング: *${fetchedProfile.rank}* \n` +
 								`${fetchedProfile.comment} \n` +
-								'解いた問題: \n'}${
-								getChallsSummary(fetchedProfile.solvedChalls, 2)}`,
+								'解いた問題: \n'}${getChallsSummary(fetchedProfile.solvedChalls, 2)}`,
+						});
+					} else {
+						await postMessageDefault(message, {
+							text: stripIndent`
+                まだ *${selectedContestName}* に参加してないよ。 *join* コマンドで参加登録してね!
+              `,
 						});
 					}
+				} else {
+					await postMessageDefault(message, {
+						text: stripIndent`
+              *check* コマンド: あるCTFにおける自分のステータス確認
+                _join_  _<CTF name/alias>_
+            `,
+					});
 				}
-			} else if (args[0] == 'help' || args[0] == 'usage') {
+			} else if (args[0] === 'help' || args[0] === 'usage') {
 				await postMessageThreadDefault(message, {
 					text: stripIndent`
 						*list* : 開催中のCTF一覧
@@ -293,7 +293,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	};
 
 	const checkAchievementsTW = async () => {
-		const contestTW = state.contests.find((contest) => contest.id == 0);
+		const contestTW = state.contests.find((contest) => contest.id === 0);
 		for (const user of contestTW.joiningUsers) {
 			const profile = await fetchUserProfile(user.idCtf);
 			if (profile.solvedChalls.length >= contestTW.numChalls) {
@@ -310,8 +310,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		let nobody = true;
 		for (const contest of state.contests) {
 			let text = '';
-			if (contest.id == 0) { // TW
-				text += `*${state.contests.find((contest) => contest.id == 0).title}*\n`;
+			if (contest.id === 0) { // TW
+				text += `*${state.contests.find((contest) => contest.id === 0).title}*\n`;
 				const allRecentSolves: {slackid: string, solves: SolvedInfo[]}[] = [];
 				const users = contest.joiningUsers;
 				for (const user of users) {
@@ -345,14 +345,14 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const postWeekly = async () => {
 		// for now, retrieve only TW.
 		let nobody = true;
-		const ranking: { slackid: string, solves: number }[] = [];
+		const ranks: { slackid: string, solves: number }[] = [];
 		for (const contest of state.contests) {
-			if (contest.id == 0) { // TW
+			if (contest.id === 0) { // TW
 				const users = contest.joiningUsers;
 				for (const user of users) {
 					const profile = await fetchUserProfile(user.idCtf);
 					const recentSolves = filterChallSolvedRecent(profile.solvedChalls, 7);
-					ranking.push({slackid: user.slackId, solves: recentSolves.length});
+					ranks.push({slackid: user.slackId, solves: recentSolves.length});
 					if (recentSolves.length > 0) {
 						nobody = false;
 					}
@@ -360,16 +360,16 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 		}
 
-		ranking.sort((l, r) => r.solves - l.solves);
+		ranks.sort((l, r) => r.solves - l.solves);
 		let text = '';
-		if (!nobody) {
+		if (nobody) {
+			text += '今週は誰も問題を解かなかったよ... :cry:\n';
+		} else {
 			text += '今週のpwnランキングを発表するよ〜\n';
-			for (const [ix, user] of ranking.entries()) {
+			for (const [ix, user] of ranks.entries()) {
 				text += `*${ix + 1}* 位: *${user.slackid}* \t\t${user.solves} solves \n`;
 			}
 			text += '\nおめでとう〜〜〜〜〜〜〜〜 :genius:\n';
-		} else {
-			text += '今週は誰も問題を解かなかったよ... :cry:\n';
 		}
 
 		slack.chat.postMessage({
