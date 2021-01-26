@@ -96,6 +96,7 @@
     "utf-8-validate": "^5.0.4",
     "winston": "^3.3.3",
     "winston-syslog": "^2.4.4",
+    "word2vec": "github:pizzacat83/node-word2vec",
     "xml-js": "^1.6.11",
     "yargs": "^16.2.0"
   },
