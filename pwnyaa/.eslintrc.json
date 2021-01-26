@@ -8,7 +8,11 @@
         "no-restricted-imports": "off",
         "import/extensions": "off",
 		"import/no-unresolved": "off",
-		"prefer-destructuring": "off"
+		"prefer-destructuring": "off",
+		"require-jsdoc": "off",
+		"prefer-named-capture-group": "off",
+		"import/no-extraneous-dependencies": "off",
+		"import/prefer-default-export": "off"
     },
     "settings": {
         "import/resolver": null

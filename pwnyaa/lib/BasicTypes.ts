@@ -1,7 +1,7 @@
 // User information
 export interface User {
   slackId: string,
-  idCtf: string,      // can be empty to represent only user itself
+  idCtf: string, // can be empty to represent only user itself
 }
 
 // Site Information
@@ -16,14 +16,14 @@ export interface Contest{
 
 // Challenge information per-site
 export interface Challenge {
-  id: string,           // determined by the site
+  id: string, // determined by the site
   name: string,
-  score: number,        // score of the chall
+  score: number, // score of the chall
 }
 
 export interface SolvedInfo{
-  id: string,           // challenge id
-  solvedAt: Date,       //
+  id: string, // challenge id
+  solvedAt: Date, //
   name: string,
   score: number,
 }
