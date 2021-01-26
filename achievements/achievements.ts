@@ -1886,6 +1886,23 @@ const achievements: Achievement[] = [
 		value: 20,
 	},
 
+	// pwnyaa
+
+	{
+		id: 'pwnyaa-tw-half',
+		difficulty: 'easy',
+		title: 'ポーンではなくパウンですよ!',
+		condition: 'pwnable.twで半分以上の問題を解く',
+		category: 'pwnyaa',
+	},
+	{
+		id: 'pwnyaa-tw-complete',
+		difficulty: 'medium',
+		title: 'ぱあんぱいんぱうんぱえんぱおん',
+		condition: 'pwnable.twを全完する',
+		category: 'pwnyaa',
+	},
+
 	// anime
 
 	{
