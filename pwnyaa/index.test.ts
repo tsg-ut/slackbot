@@ -4,6 +4,7 @@ import {constants, promises as fs} from 'fs';
 import path from 'path';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
+import {getMemberName} from '../lib/slackUtils';
 import {Challenge, SolvedInfo} from './lib/BasicTypes';
 import {fetchChallsTW, fetchUserProfile, profileTW} from './lib/TWManager';
 import {fetchChallsXYZ} from './lib/XYZManager';
@@ -14,6 +15,7 @@ jest.mock('../achievements');
 jest.unmock('axios');
 jest.mock('./lib/TWManager');
 jest.mock('./lib/XYZManager');
+jest.mock('../lib/slackUtils');
 
 let slack: Slack = null;
 
@@ -97,6 +99,7 @@ beforeEach(async () => {
 	(fetchChallsTW as jest.Mock).mockReturnValueOnce(sampleChallsTW);
 	(fetchChallsXYZ as jest.Mock).mockReturnValueOnce(sampleChallsXYZ);
 	(fetchUserProfile as jest.Mock).mockReturnValueOnce(sampleProfileTW);
+	(getMemberName as jest.Mock).mockReturnValueOnce('FakeName');
 
 	slack = new Slack();
 	process.env.CHANNEL_SANDBOX = slack.fakeChannel;
@@ -156,6 +159,7 @@ it('respond to list', async () => {
 	expect(text).toContain('pwnable.tw');
 	expect(text).toContain('問題数: 3');
 	expect(text).toContain('参加者: 1匹');
+	expect(text).toContain('FakeName');
 	expect(text).toContain('pwnable.xyz');
 	expect(text).toContain('問題数: 2');
 	expect(text).toContain('参加者: なし');
