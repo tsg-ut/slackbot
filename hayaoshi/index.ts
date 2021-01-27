@@ -181,7 +181,7 @@ export const getHakatashiItQuiz = async () => {
 	const values: [string, string, string][] = await new Promise((resolve, reject) => {
 		sheets.spreadsheets.values.get({
 			spreadsheetId: '1357WnNdRvBlDnh3oDtIde7ptDjm2pFFFb-hbytFX4lk',
-			range: 'Original!A:C',
+			range: 'hakatashi!A:C',
 		}, (error, response) => {
 			if (error) {
 				reject(error);

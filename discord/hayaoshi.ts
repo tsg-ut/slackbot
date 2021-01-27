@@ -118,7 +118,15 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.phase = 'gaming';
 
 		if (this.state.isContestMode) {
-			if (quiz && quiz.author) {
+			if (
+				correct &&
+				quiz &&
+				quiz.author &&
+				(
+					!this.state.participants.has(quiz.author) ||
+					this.state.participants.get(quiz.author).points < 4
+				)
+			) {
 				this.incrementPoint(quiz.author, 0.5);
 			}
 
@@ -162,7 +170,7 @@ export default class Hayaoshi extends EventEmitter {
 			}
 
 			for (const [userId, participant] of this.state.participants.entries()) {
-				if (participant.points >= 5 && correct) {
+				if (participant.points >= 5) {
 					this.win(userId);
 					this.endGame();
 					return;
@@ -233,7 +241,7 @@ export default class Hayaoshi extends EventEmitter {
 					});
 				});
 				await this.readAnswer();
-				this.endQuiz({correct: false});
+				this.endQuiz({correct: true});
 			});
 		});
 	}
@@ -476,7 +484,8 @@ export default class Hayaoshi extends EventEmitter {
 							ルール
 							* 一番最初に5問正解した人が優勝。ただし3問誤答したら失格。(5○3×)
 							* 誰かが誤答した場合、その問題は終了。(シングルチャンス)
-							* TSGerが作問した問題が出題された場合、作問者は解答権を持たず、問題終了後に作問者は0.5点を得る。ただしこのルールにより得点を獲得したタイミングで優勝判定が行われることはない (優勝判定は常に誰かが正解したタイミングで行われる)。
+							* TSGerが作問した問題が出題された場合、作問者は解答権を持たない。
+							* 作問者の得点が4点未満、かつその問題が正答またはスルーの場合、作問者は問題終了後に0.5点を得る。
 							* 失格者が出たとき、失格していない参加者がいない場合、引き分けで終了。
 							* 失格者が出たとき、失格していない参加者が1人の場合、その人が優勝。
 							* 正解者も誤答者も出ない問題が5問連続で出題された場合、引き分けで終了。
@@ -487,7 +496,7 @@ export default class Hayaoshi extends EventEmitter {
 				} catch (error) {
 					this.emit('message', `エラー😢\n${error.toString()}`);
 					this.emit('message', `Q. ${this.state.quiz.question}\nA. **${this.state.quiz.answer}**`);
-					this.endQuiz({correct: false});
+					this.endQuiz({correct: true});
 				}
 			}
 		});
