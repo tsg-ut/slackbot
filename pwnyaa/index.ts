@@ -13,6 +13,10 @@ import {fetchChallsXYZ} from './lib/XYZManager';
 
 const mutex = new Mutex();
 
+const MINUTE = 60 * 1000;
+const HOUR = MINUTE * 60;
+const DAY = HOUR * 24;
+
 // Record of registered Users and Contests
 interface State {
 	users: User[],
@@ -36,7 +40,7 @@ const getContestSummary = async (contest: Contest) => {
 };
 
 const filterChallSolvedRecent = (challs: SolvedInfo[], day: number) => {
-	const limitdate = Date.now() - day * 1000 * 60 * 60 * 24;
+	const limitdate = Date.now() - day * DAY;
 	const filteredChalls = challs.filter((chall) => chall.solvedAt.getTime() >= limitdate);
 	return filteredChalls;
 };
@@ -307,7 +311,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 	const postDaily = async () => {
 		// for now, retrieve only TW.
-		let nobody = true;
+		let someoneSolved = false;
 		for (const contest of state.contests) {
 			let text = '';
 			if (contest.id === 0) { // TW
@@ -319,7 +323,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					const recentSolves = filterChallSolvedRecent(profile.solvedChalls, 1);
 					allRecentSolves.push({slackid: user.slackId, solves: recentSolves});
 					if (recentSolves.length > 0) {
-						nobody = false;
+						someoneSolved = true;
 					}
 				}
 
@@ -328,7 +332,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						text += `*${solvePerUser.slackid}* が *${solve.name}* (${solve.score})を解いたよ :pwn: \n`;
 					}
 				}
-				if (!nobody) {
+				if (someoneSolved) {
 					slack.chat.postMessage({
 						username: 'pwnyaa',
 						icon_emoji: ':pwn',
@@ -380,12 +384,13 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 	};
 
+	// update the num of challs every 12 hours
 	setInterval(() => {
 		mutex.runExclusive(() => {
 			updateChallsTW();
 			updateChallsTW();
 		});
-	}, 30 * 60 * 1000);
+	}, 12 * HOUR);
 
 	// init
 	updateChallsTW();

@@ -1,5 +1,5 @@
+import qs from 'querystring';
 import axios, {AxiosResponse} from 'axios';
-import qs from 'qs';
 import scrapeIt from 'scrape-it';
 import {Challenge, SolvedInfo} from './BasicTypes';
 
