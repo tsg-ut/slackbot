@@ -126,6 +126,7 @@ beforeEach(async () => {
 			},
 		],
 	};
+
 	// set fake state
 	const stateOriginalPath = path.resolve(__dirname, 'state.json');
 	await fs.writeFile(stateOriginalPath, JSON.stringify(fakeState));
@@ -171,4 +172,34 @@ it('respond to check tw', async () => {
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('azaika');
 	expect(text).toContain('スレッドを見てね');
+});
+
+it('respond to check xyz without joining', async () => {
+	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa check xyz');
+
+	expect(channel).toBe(slack.fakeChannel);
+	expect(text).toContain('参加してないよ');
+});
+
+it('respond to check', async () => {
+	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa check');
+
+	expect(channel).toBe(slack.fakeChannel);
+	expect(text).toContain('check');
+	expect(text).toContain('ステータス確認');
+});
+
+it('respond to join hoge fuga', async () => {
+	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa join hoge fuga');
+
+	expect(channel).toBe(slack.fakeChannel);
+	expect(text).toContain('は見つからなかったよ');
+});
+
+it('respond to join tw', async () => {
+	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa join tw');
+
+	expect(channel).toBe(slack.fakeChannel);
+	expect(text).toContain('join');
+	expect(text).toContain('登録する');
 });
