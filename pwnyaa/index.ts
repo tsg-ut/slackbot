@@ -18,7 +18,7 @@ const HOUR = MINUTE * 60;
 const DAY = HOUR * 24;
 
 // Record of registered Users and Contests
-interface State {
+export interface State {
 	users: User[],
   contests: Contest[],
 }
@@ -117,7 +117,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			numChalls: fetchedChalls.length,
 		};
 		if (oldtw) {
-			state.contests.map((cont) => cont.id === updatedtw.id ? updatedtw : cont);
+			state.contests = state.contests.map((cont) => cont.id === updatedtw.id ? updatedtw : cont);
 		} else {
 			state.contests.push(updatedtw);
 		}
@@ -139,7 +139,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			numChalls: fetchedChalls.length,
 		};
 		if (oldxyz) {
-			state.contests.map((cont) => cont.id === updatedxyz.id ? updatedxyz : cont);
+			state.contests = state.contests.map((cont) => cont.id === updatedxyz.id ? updatedxyz : cont);
 		} else {
 			state.contests.push(updatedxyz);
 		}
@@ -173,7 +173,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					});
 				} else {
 					const selectedContest =
-						state.contests.find((contest) => contest.alias === selectedContestName || contest.title === selectedContestName);
+						// eslint-disable-next-line max-len
+						state.contests.find((contest) => contest.alias.some((alias) => alias === selectedContestName) || contest.title === selectedContestName);
 					if (selectedContest) {		// add user to the contest and entire list
 						if (!state.users.some((user) => slackUserId === user.slackId)) {
 							setState({
