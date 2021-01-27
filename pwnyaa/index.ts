@@ -337,7 +337,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					slack.chat.postMessage({
 						username: 'pwnyaa',
 						icon_emoji: ':pwn',
-						channel: process.env.CHANNEL_SANDBOX,
+						channel: process.env.CHANNEL_TW,
 						text,
 					});
 				}
@@ -380,7 +380,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		slack.chat.postMessage({
 			username: 'pwnyaa',
 			icon_emoji: ':pwn',
-			channel: process.env.CHANNEL_SANDBOX,
+			channel: process.env.CHANNEL_TW,
 			text,
 		});
 	};
