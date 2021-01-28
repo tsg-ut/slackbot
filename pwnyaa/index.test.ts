@@ -102,7 +102,7 @@ beforeEach(async () => {
 	(getMemberName as jest.Mock).mockReturnValueOnce('FakeName');
 
 	slack = new Slack();
-	process.env.CHANNEL_TW = slack.fakeChannel;
+	process.env.CHANNEL_PWNABLE_TW = slack.fakeChannel;
 
 	// this information(user IDs on the contests) is not credential, don't worry.
 	const fakeState: State = {

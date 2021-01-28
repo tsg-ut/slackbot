@@ -122,8 +122,8 @@ const loginTW = async () => {
 		data:
 			qs.stringify({
 				csrfmiddlewaretoken: csrfmiddlewaretokenTW,
-				username: process.env.TWUSER,
-				password: process.env.TWPW,
+				username: process.env.PWNABLE_TW_USERNAME,
+				password: process.env.PWNABLE_TW_PASSWORD,
 			}),
 	}).catch((data) => data.response.headers).then((headers) => {
 		sessionidTW = String(headers['set-cookie'][1]).split(' ')[0];
