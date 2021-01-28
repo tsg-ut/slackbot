@@ -11,12 +11,13 @@ interface Achievement {
 interface CustomResponse {
     input: RegExp[],
     outputArray?: string[],
-    outputFunction?: ((input: string[]) => string[] | Promise<string[]>),
+    outputFunction?: ((input: string[], user?: string) => string[] | Promise<string[]>),
     shuffle?: true,
     username?: string,
     icon_emoji?: string,
     reaction?: true,
-    achievements?: Achievement[],
+		achievements?: Achievement[],
+		needUsername?: true,
 }
 
 const customResponses: CustomResponse[] = [
@@ -70,7 +71,7 @@ const customResponses: CustomResponse[] = [
         input: [/^(.+)っちへ$/],
         outputFunction: input => [ stripIndent`
             ${input[1]}っちへ
-            
+
             ういっすー!
             朝から、完全にぽんぽんぺいんで、つらみが深いので、1日おふとんでスヤァしておきます。
             明日は行けたら行くマンです!` ],
@@ -89,7 +90,7 @@ const customResponses: CustomResponse[] = [
             もうまじ退職しか勝たんから
             明日からはおうちカフェで
             働くことにしました🐰
-            
+
             いままで397❤❤
             また会おーね👋😃` ],
         icon_emoji: ':shakaijin-ichinensei:',
@@ -153,6 +154,15 @@ const customResponses: CustomResponse[] = [
         },
         icon_emoji: ":achievement:",
         username: "実績一覧",
+    },
+    {
+        input: [/^実績一覧$/],
+        outputFunction: (input: string[], user: string) => {
+            return [`https://achievements.tsg.ne.jp/users/${user}`];
+        },
+        icon_emoji: ":achievement:",
+				username: "実績一覧",
+				needUsername: true,
     },
 ];
 
