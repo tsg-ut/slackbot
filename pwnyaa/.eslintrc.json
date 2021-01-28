@@ -11,7 +11,9 @@
 		"prefer-destructuring": "off",
 		"require-jsdoc": "off",
 		"prefer-named-capture-group": "off",
-		"import/prefer-default-export": "off"
+		"import/prefer-default-export": "off",
+		"camelcase": "off",
+		"max-params": "off"
     },
     "settings": {
         "import/resolver": null

@@ -130,7 +130,7 @@ const loginTW = async () => {
 	});
 };
 
-export const fetchUserProfile = async function(userId: string) {
+export const fetchUserProfileTW = async function(userId: string) {
 	await loginTW();
 	try {
 		const {data: html} = await clientTW.get(`https://pwnable.tw/user/${userId}`, {
@@ -170,4 +170,47 @@ export const fetchChallsTW = async function() {
 	});
 
 	return fetchedChalls;
+};
+
+const parseUsersTW = async function(data: any): Promise<{userid: string, name: string}[]> {
+	const {parsedUsers} = await scrapeIt.scrapeHTML<{ parsedUsers: { userid: string, name: string }[] }>(data, {
+		parsedUsers: {
+			listItem: 'table > tbody > tr',
+			data: {
+				userid: {
+					attr: 'data-href',
+				},
+				name: {
+					selector: 'td.name > strong',
+				},
+			},
+		},
+	});
+
+	return parsedUsers;
+};
+
+// crawl for specified user and get userID
+export const findUserByNameTW = async function (username: string): Promise<{userid: string, name: string}> {
+	loginTW();
+	let lastFetchedUser: {userid: string, name: string } = null;
+	let pageNum = 1;
+	let fetchedUsers: {userid: string, name: string}[] = [];
+
+	while (true) {
+		const {data: html} = await clientTW.get(`https://pwnable.tw/user/rank?page=${pageNum}`, {
+			headers: {},
+		});
+		fetchedUsers = await parseUsersTW(html);
+		const foundUsers = fetchedUsers.filter((user) => user.name === username);
+		if (foundUsers.length > 0) {
+			return foundUsers[0];
+		}
+		if (lastFetchedUser && lastFetchedUser.userid === fetchedUsers[0].userid) {
+			break;
+		}
+		lastFetchedUser = fetchedUsers[0];
+		pageNum += 1;
+	}
+	return null;
 };
