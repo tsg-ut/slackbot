@@ -6,8 +6,8 @@ import path from 'path';
 import Slack from '../lib/slackMock.js';
 import {getMemberName} from '../lib/slackUtils';
 import {Challenge, SolvedInfo} from './lib/BasicTypes';
-import {fetchChallsTW, fetchUserProfile, profileTW} from './lib/TWManager';
-import {fetchChallsXYZ} from './lib/XYZManager';
+import {fetchChallsTW, fetchUserProfileTW, profileTW} from './lib/TWManager';
+import {fetchChallsXYZ, fetchUserProfileXYZ} from './lib/XYZManager';
 import pwnyaa, {State} from './index';
 
 
@@ -97,8 +97,9 @@ afterAll(async () => {
 beforeEach(async () => {
 	// mock funcs containing axios calls
 	(fetchChallsTW as jest.Mock).mockReturnValueOnce(sampleChallsTW);
+	(fetchUserProfileTW as jest.Mock).mockReturnValueOnce(sampleProfileTW);
 	(fetchChallsXYZ as jest.Mock).mockReturnValueOnce(sampleChallsXYZ);
-	(fetchUserProfile as jest.Mock).mockReturnValueOnce(sampleProfileTW);
+	(fetchUserProfileXYZ as jest.Mock).mockReturnValueOnce(sampleProfileTW);
 	(getMemberName as jest.Mock).mockReturnValueOnce('FakeName');
 
 	slack = new Slack();
@@ -171,7 +172,8 @@ it('respond to check tw', async () => {
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('azaika');
-	expect(text).toContain('スレッドを見てね');
+	expect(text).toContain('Crazy Summer');
+	expect(text).toContain('解いた問題');
 });
 
 it('respond to check xyz without joining', async () => {

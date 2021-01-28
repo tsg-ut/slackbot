@@ -8,14 +8,18 @@ import {unlock} from '../achievements/index.js';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
 import {Contest, User, SolvedInfo} from './lib/BasicTypes';
-import {fetchUserProfile, fetchChallsTW} from './lib/TWManager';
-import {fetchChallsXYZ} from './lib/XYZManager';
+import {fetchUserProfileTW, fetchChallsTW, findUserByNameTW} from './lib/TWManager';
+import {fetchChallsXYZ, fetchUserProfileXYZ, findUserByNameXYZ} from './lib/XYZManager';
 
 const mutex = new Mutex();
 
 const MINUTE = 60 * 1000;
 const HOUR = MINUTE * 60;
 const DAY = HOUR * 24;
+const CALLME = '@pwnyaa';
+
+export const TW_ID = 0;
+export const XYZ_ID = 1;
 
 // Record of registered Users and Contests
 export interface State {
@@ -55,6 +59,8 @@ const getChallsSummary = (challs: SolvedInfo[], spaces = 0) => {
 };
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+	let pendingUsers: { slackid: string, contestid: number, contestUserId: string, threadId: string }[] = [];
+
 	// Restore state
 	const statePath = path.resolve(__dirname, 'state.json');
 	const exists = await fs.access(statePath, constants.F_OK)
@@ -68,6 +74,44 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const setState = (object: { [key: string]: any }) => {
 		Object.assign(state, object);
 		return fs.writeFile(statePath, JSON.stringify(state));
+	};
+
+	const resolvePendingUser = (thread_ts: string) => {
+		const requestingUser = pendingUsers.filter((user) => user.threadId === thread_ts)[0];
+		const requestingUserIndex = pendingUsers.indexOf(requestingUser);
+		if (requestingUserIndex > -1) {
+			pendingUsers.splice(requestingUserIndex, 1);
+			return requestingUser;
+		}
+		return null;
+	};
+
+	const setPendingUser = (slackid: string, contestid: number, contestUserId: string, threadId: string) => {
+		pendingUsers = pendingUsers.map((user) => user.slackid === slackid && user.contestid === contestid
+			? {slackid, contestid, contestUserId, threadId} : user);
+		if (!pendingUsers.some((user) => user.slackid === slackid && user.contestid === contestid)) {
+			pendingUsers.push({slackid, contestid, contestUserId, threadId});
+		}
+	};
+
+	// eslint-disable-next-line require-await
+	const findUserByName = async (name: string, contestid: number) => {
+		if (contestid === TW_ID) {
+			return findUserByNameTW(name);
+		} else if (contestid === XYZ_ID) {
+			return findUserByNameXYZ(name);
+		}
+		return null;
+	};
+
+	// eslint-disable-next-line require-await
+	const fetchUserProfile = async (userid: string, contestid: number) => {
+		if (contestid === TW_ID) {
+			return fetchUserProfileTW(userid);
+		} else if (contestid === XYZ_ID) {
+			return fetchUserProfileXYZ(userid);
+		}
+		return null;
 	};
 
 	// get User of slackid from contest name
@@ -110,7 +154,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		const oldtw = state.contests.find((({title}) => title === 'pwnable.tw'));
 		const updatedtw: Contest = {
 			url: 'https://pwnable.tw',
-			id: 0,
+			id: TW_ID,
 			title: 'pwnable.tw',
 			alias: oldtw ? oldtw.alias : ['tw'],
 			joiningUsers: oldtw ? oldtw.joiningUsers : [],
@@ -132,7 +176,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		const oldxyz = state.contests.find((({title}) => title === 'pwnable.xyz'));
 		const updatedxyz: Contest = {
 			url: 'https://pwnable.xyz',
-			id: 1,
+			id: XYZ_ID,
 			title: 'pwnable.xyz',
 			alias: oldxyz ? oldxyz.alias : ['xyz'],
 			joiningUsers: oldxyz ? oldxyz.joiningUsers : [],
@@ -147,8 +191,39 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	};
 
 	rtm.on('message', async (message) => {
+		// resolve pending join request
+		if (message.text && message.text.startsWith(':pwn:')) {
+			for (const user of pendingUsers) {
+				if (user.slackid === message.user && user.threadId === message.thread_ts) {
+					const requestingUser = resolvePendingUser(message.thread_ts);
+					const selectedContestId = requestingUser.contestid;
+					const selectedUserId = requestingUser.contestUserId;
+					const userProfile = await fetchUserProfile(selectedUserId, selectedContestId);
+					if (!state.users.some((user) => message.user === user.slackId)) {
+						setState({
+							users: state.users.concat([{slackId: message.user, idCtf: ''}]),
+						});
+					}
+					if (userProfile) {
+						addUser2Ctf(message.user, selectedContestId, selectedUserId);
+						await postMessageDefault(message, {
+							text: stripIndent`
+								登録したよ! :azaika:
+								ユーザ名  : ${userProfile.username}
+								スコア   : ${userProfile.score}
+								ランキング: ${userProfile.rank}
+								${userProfile.comment}
+						`,
+						});
+					}
+				}
+			}
+			return;
+		}
+
+		// handle commands
 		if (message.text && message.subtype === undefined &&
-      message.text.startsWith('@pwnyaa')) { // message is toward me
+      message.text.startsWith(CALLME) && (message.channel === process.env.CHANNEL_SANDBOX || process.env.CHANNEL_PWNABLE_TW || message.channel.startsWith('D'))) { // message is toward me
 			const args = message.text.split(' ').slice(1);
 
 			// show list of registered contests summary
@@ -159,82 +234,111 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					))).join(''),
 				});
 
+				/** ** END of list ****/
+
 				// join the contest
 			} else if (args[0] === 'join') {
 				const selectedContestName = args[1];
-				const selectedUserIdCtf = args[2];
-				const slackUserId = message.user;
-				if (!selectedContestName || !selectedUserIdCtf) { // Command format is invalid
-					await postMessageDefault(message, {
-						text: stripIndent`
-              *join* コマンド: ある常設CTFに登録する
-                _join_  _<CTF name/alias>_  _<User ID>_
-            `,
-					});
-				} else {
-					const selectedContest =
-						// eslint-disable-next-line max-len
-						state.contests.find((contest) => contest.alias.some((alias) => alias === selectedContestName) || contest.title === selectedContestName);
-					if (selectedContest) {		// add user to the contest and entire list
-						if (!state.users.some((user) => slackUserId === user.slackId)) {
-							setState({
-								users: state.users.concat([{slackId: slackUserId, idCtf: ''}]),
-							});
-						}
+				const selectedContest =
+					// eslint-disable-next-line max-len
+					state.contests.find((contest) => contest.alias.some((alias) => alias === selectedContestName) || contest.title === selectedContestName);
+
+
+				if (selectedContest) {	// contest is found
+					if (args[2]) {				// syntax is valid
 						await addReactionDefault(message, 'ok');
 
-						// check whether user exists on the CTF
-						const userProfile = await fetchUserProfile(selectedUserIdCtf);
-						if (userProfile) {
-							await addUser2Ctf(message.user, selectedContest.id, selectedUserIdCtf);
-							await postMessageDefault(message, {
-								text: stripIndent`
-								登録したよ! :azaika:
-								ユーザ名  : ${userProfile.username}
-								スコア   : ${userProfile.score}
-								ランキング: ${userProfile.rank}
-								${userProfile.comment}
-								`,
-							});
-						} else {
-							await postMessageDefault(message, {
-								text: `ユーザ *${selectedUserIdCtf}* は *${selectedContest.title}* に見つからなかったよ:cry:`,
-							});
+						if ((args[2] as string).startsWith('name=')) {	// check by name
+							const specifiedUsername = (args[2] as string).substring('name='.length);
+							const foundUser = await findUserByName(specifiedUsername, selectedContest.id);
+							if (foundUser) {															// user is found on the contest
+								setPendingUser(message.user, selectedContest.id, foundUser.userid, message.ts);
+								await postMessageThreadDefault(message, {
+									text: stripIndent`
+									このユーザであってるかな...? OKならこのスレッドで:pwn:とコメントしてね!
+									  *ユーザ名* : ${foundUser.name}
+									  *ID* : ${foundUser.userid}
+									`,
+								});
+							} else {																		// user is not found on the contest
+								await postMessageDefault(message, {
+									text: `ユーザ *${specifiedUsername}* は *${selectedContestName}* に見つからなかったよ:cry:`,
+								});
+							}
+						} else {																			// check by ID
+							const selectedUserId = args[2];
+							const userProfile = await fetchUserProfile(selectedUserId, selectedContest.id);
+							if (userProfile) {												// user is found on the contest
+								if (!state.users.some((user) => message.user === user.slackId)) {
+									setState({
+										users: state.users.concat([{slackId: message.user, idCtf: ''}]),
+									});
+								}
+								addUser2Ctf(message.user, selectedContest.id, selectedUserId);
+								await postMessageDefault(message, {
+									text: stripIndent`
+										登録したよ! :azaika:
+										ユーザ名  : ${userProfile.username}
+										スコア   : ${userProfile.score}
+										ランキング: ${userProfile.rank}
+										${userProfile.comment}
+										`,
+								});
+							} else {																// user is not found on the contest
+								await postMessageDefault(message, {
+									text: `ユーザID *${selectedUserId}* は *${selectedContestName}* に見つからなかったよ:cry:`,
+								});
+							}
 						}
-					} else { // specified contest is not registered
+					} else {							// syntax is invalid
 						await postMessageDefault(message, {
 							text: stripIndent`
-                コンテスト *${selectedContestName}* は見つからなかったよ...
-                現在登録されてるコンテスト一覧を見てね!
-              `,
-						});
-						await postMessageDefault(message, {
-							text: await (await Promise.all(state.contests.map(
-								(contest) => getContestSummary(contest),
-							))).join(''),
+								*join* コマンド: ある常設CTFに登録する
+									_join_  _<CTF name/alias>_  _<UserID | name=USERNAME>_
+							`,
 						});
 					}
+				} else {					// contest not found
+					await postMessageDefault(message, {
+						text: stripIndent`
+							コンテスト *${selectedContestName}* は見つからなかったよ...
+							現在登録されてるコンテスト一覧を見てね!
+						`,
+					});
+					await postMessageDefault(message, {
+						text: await (await Promise.all(state.contests.map(
+							(contest) => getContestSummary(contest),
+						))).join(''),
+					});
 				}
+
+				/** ** END of join ****/
 
 				// check user status of the specified CTF.
 			} else if (args[0] === 'check') {
 				const selectedContestName = args[1];
 				if (selectedContestName) {
 					const user = getUser(message.user, selectedContestName);
-					if (user) {
-						const fetchedProfile = await fetchUserProfile(user.idCtf);
-						await postMessageDefault(message, {
-							text: stripIndent`
-                *${fetchedProfile.username}* の情報だよ！スレッドを見てね。
-              `,
-						});
-						await postMessageThreadDefault(message, {
-							text: `${`ユーザ名  : *${fetchedProfile.username}* \n` +
-								`スコア   : *${fetchedProfile.score}* \n` +
-								`ランキング: *${fetchedProfile.rank}* \n` +
-								`${fetchedProfile.comment} \n` +
-								'解いた問題: \n'}${getChallsSummary(fetchedProfile.solvedChalls, 2)}`,
-						});
+					if (user) {										// user is not found
+						// eslint-disable-next-line max-len
+						const selectedContest = state.contests.find((contest) => contest.alias.some((alias) => alias === selectedContestName) || contest.title === selectedContestName);
+						if (selectedContest) {			// contest is found
+							const fetchedProfile = await fetchUserProfile(user.idCtf, selectedContest.id);
+							await postMessageThreadDefault(message, {
+								text: `${`ユーザ名  : *${fetchedProfile.username}* \n` +
+									`スコア   : *${fetchedProfile.score}* \n` +
+									`ランキング: *${fetchedProfile.rank}* \n` +
+									`${fetchedProfile.comment} \n` +
+									'解いた問題: \n'}${getChallsSummary(fetchedProfile.solvedChalls, 2)}`,
+							});
+						} else {										// contest is not found
+							await postMessageDefault(message, {
+								text: stripIndent`
+									コンテスト *${selectedContestName}* は見つからなかったよ...
+									現在登録されてるコンテスト一覧を見てね!
+								`,
+							});
+						}
 					} else {
 						await postMessageDefault(message, {
 							text: stripIndent`
@@ -246,10 +350,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					await postMessageDefault(message, {
 						text: stripIndent`
               *check* コマンド: あるCTFにおける自分のステータス確認
-                _join_  _<CTF name/alias>_
+                _check_  _<CTF name/alias>_
             `,
 					});
 				}
+
+				/** ** END of check ****/
 			} else if (args[0] === 'help' || args[0] === 'usage') {
 				await postMessageThreadDefault(message, {
 					text: stripIndent`
@@ -298,9 +404,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	};
 
 	const checkAchievementsTW = async () => {
-		const contestTW = state.contests.find((contest) => contest.id === 0);
+		const contestTW = state.contests.find((contest) => contest.id === TW_ID);
 		for (const user of contestTW.joiningUsers) {
-			const profile = await fetchUserProfile(user.idCtf);
+			const profile = await fetchUserProfileTW(user.idCtf);
 			if (profile.solvedChalls.length >= contestTW.numChalls) {
 				await unlock(user.slackId, 'pwnyaa-tw-complete');
 			}
@@ -309,42 +415,53 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 		}
 	};
+	const checkAchievementsXYZ = async () => {
+		const contestXYZ = state.contests.find((contest) => contest.id === XYZ_ID);
+		for (const user of contestXYZ.joiningUsers) {
+			const profile = await fetchUserProfileXYZ(user.idCtf);
+			if (profile.solvedChalls.length >= contestXYZ.numChalls) {
+				await unlock(user.slackId, 'pwnyaa-xyz-complete');
+			}
+			if (profile.solvedChalls.length >= contestXYZ.numChalls / 2) {
+				await unlock(user.slackId, 'pwnyaa-xyz-halr');
+			}
+		}
+	};
 
 	const postDaily = async () => {
 		// for now, retrieve only TW.
-		let someoneSolved = false;
 		for (const contest of state.contests) {
+			let someoneSolved = false;
 			let text = '';
-			if (contest.id === 0) { // TW
-				text += `*${state.contests.find((contest) => contest.id === 0).title}*\n`;
-				const allRecentSolves: {slackid: string, solves: SolvedInfo[]}[] = [];
-				const users = contest.joiningUsers;
-				for (const user of users) {
-					const profile = await fetchUserProfile(user.idCtf);
-					const recentSolves = filterChallSolvedRecent(profile.solvedChalls, 1);
-					allRecentSolves.push({slackid: user.slackId, solves: recentSolves});
-					if (recentSolves.length > 0) {
-						someoneSolved = true;
-					}
+			text += `*${state.contests.find((con) => con.id === contest.id).title}*\n`;
+			const allRecentSolves: {slackid: string, solves: SolvedInfo[]}[] = [];
+			const users = contest.joiningUsers;
+			for (const user of users) {
+				const profile = await fetchUserProfile(user.idCtf, contest.id);
+				const recentSolves = filterChallSolvedRecent(profile.solvedChalls, 1);
+				allRecentSolves.push({slackid: user.slackId, solves: recentSolves});
+				if (recentSolves.length > 0) {
+					someoneSolved = true;
 				}
+			}
 
-				for (const solvePerUser of allRecentSolves) {
-					for (const solve of solvePerUser.solves) {
-						text += `*${solvePerUser.slackid}* が *${solve.name}* (${solve.score})を解いたよ :pwn: \n`;
-					}
+			for (const solvePerUser of allRecentSolves) {
+				for (const solve of solvePerUser.solves) {
+					text += `*${await getMemberName(solvePerUser.slackid)}* が *${solve.name}* (${solve.score})を解いたよ :pwn: \n`;
 				}
-				if (someoneSolved) {
-					slack.chat.postMessage({
-						username: 'pwnyaa',
-						icon_emoji: ':pwn',
-						channel: process.env.CHANNEL_PWNABLE_TW,
-						text,
-					});
-				}
+			}
+			if (someoneSolved) {
+				slack.chat.postMessage({
+					username: 'pwnyaa',
+					icon_emoji: ':pwn',
+					channel: process.env.CHANNEL_PWNABLE_TW,
+					text,
+				});
 			}
 		}
 
 		await checkAchievementsTW();
+		await checkAchievementsXYZ();
 	};
 
 	const postWeekly = async () => {
@@ -352,15 +469,18 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		let nobody = true;
 		const ranks: { slackid: string, solves: number }[] = [];
 		for (const contest of state.contests) {
-			if (contest.id === 0) { // TW
-				const users = contest.joiningUsers;
-				for (const user of users) {
-					const profile = await fetchUserProfile(user.idCtf);
-					const recentSolves = filterChallSolvedRecent(profile.solvedChalls, 7);
+			const users = contest.joiningUsers;
+			for (const user of users) {
+				const profile = await fetchUserProfile(user.idCtf, contest.id);
+				const recentSolves = filterChallSolvedRecent(profile.solvedChalls, 7);
+				if (ranks.some((rank) => rank.slackid === user.slackId)) {
+					const rankIndex = ranks.indexOf(ranks.find((rank) => rank.slackid === user.slackId));
+					ranks[rankIndex].solves += recentSolves.length;
+				} else {
 					ranks.push({slackid: user.slackId, solves: recentSolves.length});
-					if (recentSolves.length > 0) {
-						nobody = false;
-					}
+				}
+				if (recentSolves.length > 0) {
+					nobody = false;
 				}
 			}
 		}
@@ -372,7 +492,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		} else {
 			text += '今週のpwnランキングを発表するよ〜\n';
 			for (const [ix, user] of ranks.entries()) {
-				text += `*${ix + 1}* 位: *${user.slackid}* \t\t${user.solves} solves \n`;
+				text += `*${ix + 1}* 位: *${await getMemberName(user.slackid)}* \t\t${user.solves} solves \n`;
 			}
 			text += '\nおめでとう〜〜〜〜〜〜〜〜 :genius:\n';
 		}
@@ -389,7 +509,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	setInterval(() => {
 		mutex.runExclusive(() => {
 			updateChallsTW();
-			updateChallsTW();
+			updateChallsXYZ();
 		});
 	}, 12 * HOUR);
 
