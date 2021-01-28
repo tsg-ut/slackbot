@@ -65,6 +65,7 @@ const allBots = [
 	'hitandblow',
 	'discord',
 	'octas',
+	'pwnyaa',
 ];
 
 const argv = yargs

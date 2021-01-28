@@ -1,0 +1,19 @@
+{
+    "extends": "@hakatashi/eslint-config/typescript",
+    "rules": {
+        "no-console": "off",
+        "no-shadow": "off",
+        "no-use-before-define": "off",
+        "require-atomic-updates": "off",
+        "no-restricted-imports": "off",
+        "import/extensions": "off",
+		"import/no-unresolved": "off",
+		"prefer-destructuring": "off",
+		"require-jsdoc": "off",
+		"prefer-named-capture-group": "off",
+		"import/prefer-default-export": "off"
+    },
+    "settings": {
+        "import/resolver": null
+    }
+}
