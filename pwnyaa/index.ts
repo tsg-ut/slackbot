@@ -446,7 +446,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	};
 
 	const postDaily = async () => {
-		// for now, retrieve only TW.
 		for (const contest of state.contests) {
 			let someoneSolved = false;
 			let text = '';
@@ -521,22 +520,20 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 	};
 
-	// update the num of challs every 12 hours
+	const updateAll = async () => {
+		await updateChallsTW();
+		await updateChallsXYZ();
+		await postDaily();
+		await checkAchievementsTW();
+		await checkAchievementsXYZ();
+	};
+
+	// update the num of challs and achievements every 12 hours
 	setInterval(() => {
 		mutex.runExclusive(() => {
-			updateChallsTW();
-			updateChallsXYZ();
+			updateAll();
 		});
 	}, 12 * HOUR);
-
-	// set schedules
-	schedule.scheduleJob('0 9 * * *', () => {
-		mutex.runExclusive(() => {
-			postDaily();
-			checkAchievementsTW();
-			checkAchievementsXYZ();
-		});
-	});
 
 	schedule.scheduleJob('0 9 * * 0', () => {
 		mutex.runExclusive(() => {
@@ -545,6 +542,5 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	});
 
 	// init
-	updateChallsTW();
-	updateChallsXYZ();
+	updateAll();
 };
