@@ -45,7 +45,7 @@ const getContestSummary = async (contest: Contest) => {
 
 const filterChallSolvedRecent = (challs: SolvedInfo[], day: number) => {
 	const limitdate = Date.now() - day * DAY;
-	const filteredChalls = challs.filter((chall) => chall.solvedAt.getTime() >= limitdate);
+	const filteredChalls = challs.filter((chall) => chall.solvedAt.valueOf() >= limitdate);
 	return filteredChalls;
 };
 
@@ -328,7 +328,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				// check user status of the specified CTF.
 			} else if (args[0] === 'check') {
 				const selectedContestName = args[1];
-				if (selectedContestName) {
+				if (selectedContestName) {			// contest is found
 					let specifiedUserSlackid: string = null;
 					if (args.length === 3) {
 						specifiedUserSlackid = await getSlackidByName(args[2]);
@@ -336,7 +336,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						specifiedUserSlackid = message.user;
 					}
 					const user = getUser(specifiedUserSlackid, selectedContestName);
-					if (user) {										// user is not found
+					if (user) {										// user is found local
 						// eslint-disable-next-line max-len
 						const selectedContest = state.contests.find((contest) => contest.alias.some((alias) => alias === selectedContestName) || contest.title === selectedContestName);
 						if (selectedContest) {			// contest is found
@@ -455,16 +455,18 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const users = contest.joiningUsers;
 			for (const user of users) {
 				const profile = await fetchUserProfile(user.idCtf, contest.id);
-				const recentSolves = filterChallSolvedRecent(profile.solvedChalls, 1);
-				allRecentSolves.push({slackid: user.slackId, solves: recentSolves});
-				if (recentSolves.length > 0) {
-					someoneSolved = true;
+				if (profile !== null) {		// the user solved more than one challs
+					const recentSolves = filterChallSolvedRecent(profile.solvedChalls, 1);
+					allRecentSolves.push({slackid: user.slackId, solves: recentSolves});
+					if (recentSolves.length > 0) {
+						someoneSolved = true;
+					}
 				}
 			}
 
 			for (const solvePerUser of allRecentSolves) {
 				for (const solve of solvePerUser.solves) {
-					text += `*${await getMemberName(solvePerUser.slackid)}* が *${solve.name}* (${solve.score})を解いたよ :pwn: \n`;
+					text += `<@${solvePerUser.slackid}> が *${solve.name}* (${solve.score})を解いたよ :pwn: \n`;
 				}
 			}
 			if (someoneSolved) {
@@ -476,9 +478,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				});
 			}
 		}
-
-		await checkAchievementsTW();
-		await checkAchievementsXYZ();
 	};
 
 	const postWeekly = async () => {
@@ -509,7 +508,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		} else {
 			text += '今週のpwnランキングを発表するよ〜\n';
 			for (const [ix, user] of ranks.entries()) {
-				text += `*${ix + 1}* 位: *${await getMemberName(user.slackid)}* \t\t${user.solves} solves \n`;
+				text += `*${ix + 1}* 位: <@${user.slackid}> \t\t*${user.solves}* solves \n`;
 			}
 			text += '\nおめでとう〜〜〜〜〜〜〜〜 :genius:\n';
 		}
@@ -530,14 +529,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 	}, 12 * HOUR);
 
-	// init
-	updateChallsTW();
-	updateChallsXYZ();
-
 	// set schedules
 	schedule.scheduleJob('0 9 * * *', () => {
 		mutex.runExclusive(() => {
 			postDaily();
+			checkAchievementsTW();
+			checkAchievementsXYZ();
 		});
 	});
 
@@ -546,4 +543,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			postWeekly();
 		});
 	});
+
+	// init
+	updateChallsTW();
+	updateChallsXYZ();
 };

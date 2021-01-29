@@ -7,9 +7,8 @@ import Slack from '../lib/slackMock.js';
 import {getMemberName} from '../lib/slackUtils';
 import {Challenge, SolvedInfo} from './lib/BasicTypes';
 import {fetchChallsTW, fetchUserProfileTW, profileTW} from './lib/TWManager';
-import {fetchChallsXYZ, fetchUserProfileXYZ} from './lib/XYZManager';
+import {fetchChallsXYZ, fetchUserProfileXYZ, profileXYZ} from './lib/XYZManager';
 import pwnyaa, {State} from './index';
-
 
 jest.mock('../achievements');
 jest.unmock('axios');
@@ -31,29 +30,30 @@ const sampleChallsXYZ: Challenge[] = [
 	{name: 'xyzChallB', score: 500, id: '2'},
 ];
 
-// solved now
+// eslint-disable-next-line no-unused-vars
+const NOW = 'August 20, 2020 09:00:00';
+
+// solved an hour ago
 const sampleSolved1: SolvedInfo = {
 	id: '0',
 	name: 'first',
 	score: 100,
-	solvedAt: new Date(),
+	solvedAt: new Date('August 20, 2020 08:00:00'),
 };
 // solved 2 days ago
 const sampleSolved2: SolvedInfo = {
 	id: '2',
 	name: 'second',
 	score: 200,
-	solvedAt: new Date(),
+	solvedAt: new Date('August 18, 2020 09:00:00'),
 };
-sampleSolved2.solvedAt.setDate(sampleSolved2.solvedAt.getDate() - 2);
 // solved 2 weeks ago
 const sampleSolved3: SolvedInfo = {
 	id: '3',
 	name: 'third',
 	score: 300,
-	solvedAt: new Date(),
+	solvedAt: new Date('August 06, 2020 09:00:00'),
 };
-sampleSolved3.solvedAt.setDate(sampleSolved3.solvedAt.getDate() - 14);
 
 const sampleProfileTW: profileTW = {
 	username: 'azaika',
@@ -61,6 +61,16 @@ const sampleProfileTW: profileTW = {
 	rank: '20/1000',
 	score: '3000',
 	comment: 'Crazy Summer',
+	registeredAt: '2020/01/27',
+	solvedChalls: [sampleSolved1, sampleSolved2, sampleSolved3],
+};
+
+const sampleProfileXYZ: profileXYZ = {
+	username: 'hogeko',
+	country: 'JP',
+	rank: '30/1000',
+	score: '4000',
+	comment: 'Crazy Winter',
 	registeredAt: '2020/01/27',
 	solvedChalls: [sampleSolved1, sampleSolved2, sampleSolved3],
 };
@@ -96,11 +106,11 @@ afterAll(async () => {
 
 beforeEach(async () => {
 	// mock funcs containing axios calls
-	(fetchChallsTW as jest.Mock).mockReturnValueOnce(sampleChallsTW);
-	(fetchUserProfileTW as jest.Mock).mockReturnValueOnce(sampleProfileTW);
-	(fetchChallsXYZ as jest.Mock).mockReturnValueOnce(sampleChallsXYZ);
-	(fetchUserProfileXYZ as jest.Mock).mockReturnValueOnce(sampleProfileTW);
-	(getMemberName as jest.Mock).mockReturnValueOnce('FakeName');
+	(fetchChallsTW as jest.Mock).mockReturnValue(sampleChallsTW);
+	(fetchUserProfileTW as jest.Mock).mockReturnValue(sampleProfileTW);
+	(fetchChallsXYZ as jest.Mock).mockReturnValue(sampleChallsXYZ);
+	(fetchUserProfileXYZ as jest.Mock).mockReturnValue(sampleProfileXYZ);
+	(getMemberName as jest.Mock).mockReturnValue('FakeName');
 
 	slack = new Slack();
 	process.env.CHANNEL_PWNABLE_TW = slack.fakeChannel;
@@ -132,6 +142,7 @@ beforeEach(async () => {
 	const stateOriginalPath = path.resolve(__dirname, 'state.json');
 	await fs.writeFile(stateOriginalPath, JSON.stringify(fakeState));
 
+	jest.useFakeTimers();
 	await pwnyaa(slack);
 });
 
