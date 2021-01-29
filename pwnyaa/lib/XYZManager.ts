@@ -3,6 +3,8 @@ import axios, {AxiosResponse} from 'axios';
 import scrapeIt from 'scrape-it';
 import {Challenge, SolvedInfo} from './BasicTypes';
 
+const SAFELIMIT = 100;
+
 export interface profileXYZ{
   username: string,
   country: string,
@@ -210,9 +212,10 @@ export const findUserByNameXYZ = async function (username: string): Promise<{use
 	loginXYZ();
 	let lastFetchedUser: {userid: string, name: string } = null;
 	let pageNum = 1;
+  let safebar = 0;    // to prevent DoS
 	let fetchedUsers: {userid: string, name: string}[] = [];
 
-	while (true) {
+	while (safebar < SAFELIMIT) {
 		const {data: html} = await clientXYZ.get(`https://pwnable.xyz/leaderboard/?page=${pageNum}`, {
 			headers: {},
 		});
@@ -226,6 +229,7 @@ export const findUserByNameXYZ = async function (username: string): Promise<{use
 		}
 		lastFetchedUser = fetchedUsers[0];
 		pageNum += 1;
+		safebar += 1;
 	}
 	return null;
 };
