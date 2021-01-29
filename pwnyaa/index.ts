@@ -331,7 +331,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				if (selectedContestName) {
 					let specifiedUserSlackid: string = null;
 					if (args.length === 3) {
-						specifiedUserSlackid = await getSlackidByName(args[3]);
+						specifiedUserSlackid = await getSlackidByName(args[2]);
 					} else {
 						specifiedUserSlackid = message.user;
 					}
