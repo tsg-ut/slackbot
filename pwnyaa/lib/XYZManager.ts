@@ -212,7 +212,7 @@ export const findUserByNameXYZ = async function (username: string): Promise<{use
 	loginXYZ();
 	let lastFetchedUser: {userid: string, name: string } = null;
 	let pageNum = 1;
-  let safebar = 0;    // to prevent DoS
+	let safebar = 0; // to prevent DoS
 	let fetchedUsers: {userid: string, name: string}[] = [];
 
 	while (safebar < SAFELIMIT) {

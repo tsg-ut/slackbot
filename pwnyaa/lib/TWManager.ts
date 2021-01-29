@@ -196,8 +196,8 @@ const parseUsersTW = async function(data: any): Promise<{userid: string, name: s
 export const findUserByNameTW = async function (username: string): Promise<{userid: string, name: string}> {
 	loginTW();
 	let lastFetchedUser: {userid: string, name: string } = null;
-  let pageNum = 1;
-  let safebar = 0;    // to prevent DoS
+	let pageNum = 1;
+	let safebar = 0; // to prevent DoS
 	let fetchedUsers: {userid: string, name: string}[] = [];
 
 	while (safebar < SAFELIMIT) {
@@ -213,8 +213,8 @@ export const findUserByNameTW = async function (username: string): Promise<{user
 			break;
 		}
 		lastFetchedUser = fetchedUsers[0];
-    pageNum += 1;
-    safebar += 1;
+		pageNum += 1;
+		safebar += 1;
 	}
 	return null;
 };
