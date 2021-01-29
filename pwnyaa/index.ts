@@ -76,6 +76,17 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		return fs.writeFile(statePath, JSON.stringify(state));
 	};
 
+	const getSlackidByName = async (name: string) => {
+		const candidates = state.users;
+		for (const user of candidates) {
+			if (await getMemberName(user.slackId) === name) {
+				return user.slackId;
+			}
+		}
+		return null;
+	};
+
+
 	const resolvePendingUser = (thread_ts: string) => {
 		const requestingUser = pendingUsers.filter((user) => user.threadId === thread_ts)[0];
 		const requestingUserIndex = pendingUsers.indexOf(requestingUser);
@@ -318,7 +329,13 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			} else if (args[0] === 'check') {
 				const selectedContestName = args[1];
 				if (selectedContestName) {
-					const user = getUser(message.user, selectedContestName);
+					let specifiedUserSlackid: string = null;
+					if (args.length === 3) {
+						specifiedUserSlackid = await getSlackidByName(args[3]);
+					} else {
+						specifiedUserSlackid = message.user;
+					}
+					const user = getUser(specifiedUserSlackid, selectedContestName);
 					if (user) {										// user is not found
 						// eslint-disable-next-line max-len
 						const selectedContest = state.contests.find((contest) => contest.alias.some((alias) => alias === selectedContestName) || contest.title === selectedContestName);
