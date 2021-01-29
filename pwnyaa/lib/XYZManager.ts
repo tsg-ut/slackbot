@@ -72,11 +72,18 @@ const str2dateXYZ = (strDate: string): Date => {
 	const day = (`00${elements[1].substring(0, elements[1].length - 1)}`).slice(-2);
 	const year = elements[2].substring(0, elements[2].length - 1);
 	const hour = (`00${elements[3].split(':')[0]}`).slice(-2);
-	const minute = (`00${elements[3].split(':')[1]}`).slice(-2);
+	let minute: string = null;
+	if (elements[3].includes(':')) {
+		minute = (`00${elements[3].split(':')[1]}`).slice(-2);
+	} else {
+		minute = '00';
+	}
 	const seconds = '00';
 
 	const validDateStr = `${year}/${month}/${day} ${hour}:${minute}:${seconds}`;
-	return new Date(validDateStr);
+	const resDate = new Date(validDateStr);
+	resDate.setHours(resDate.getDate() + 9);
+	return resDate;
 };
 
 const parseProfileXYZ = async (html: any) => {
