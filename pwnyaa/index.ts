@@ -428,7 +428,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				await unlock(user.slackId, 'pwnyaa-tw-complete');
 			}
 			if (profile.solvedChalls.length >= contestTW.numChalls / 2) {
-				await unlock(user.slackId, 'pwnyaa-tw-halr');
+				await unlock(user.slackId, 'pwnyaa-tw-half');
 			}
 		}
 	};
@@ -440,7 +440,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				await unlock(user.slackId, 'pwnyaa-xyz-complete');
 			}
 			if (profile.solvedChalls.length >= contestXYZ.numChalls / 2) {
-				await unlock(user.slackId, 'pwnyaa-xyz-halr');
+				await unlock(user.slackId, 'pwnyaa-xyz-half');
 			}
 		}
 	};
@@ -523,7 +523,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const updateAll = async () => {
 		await updateChallsTW();
 		await updateChallsXYZ();
-		await postDaily();
 		await checkAchievementsTW();
 		await checkAchievementsXYZ();
 	};
@@ -532,6 +531,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	setInterval(() => {
 		mutex.runExclusive(() => {
 			updateAll();
+			postDaily();
 		});
 	}, 12 * HOUR);
 
