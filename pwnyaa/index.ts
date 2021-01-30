@@ -21,6 +21,8 @@ const CALLME = '@pwnyaa';
 export const TW_ID = 0;
 export const XYZ_ID = 1;
 
+const UPDATE_INTERVAL = 12;
+
 // Record of registered Users and Contests
 export interface State {
 	users: User[],
@@ -43,8 +45,13 @@ const getContestSummary = async (contest: Contest) => {
 	return text;
 };
 
-const filterChallSolvedRecent = (challs: SolvedInfo[], day: number) => {
-	const limitdate = Date.now() - day * DAY;
+const filterChallSolvedRecent = (challs: SolvedInfo[], solvedIn: number, hour = false) => {
+	let limitdate: number = 0;
+	if (hour) {
+		limitdate = Date.now() - solvedIn * HOUR;
+	} else {
+		limitdate = Date.now() - solvedIn * DAY;
+	}
 	const filteredChalls = challs.filter((chall) => chall.solvedAt.valueOf() >= limitdate);
 	return filteredChalls;
 };
@@ -455,7 +462,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			for (const user of users) {
 				const profile = await fetchUserProfile(user.idCtf, contest.id);
 				if (profile !== null) {		// the user solved more than one challs
-					const recentSolves = filterChallSolvedRecent(profile.solvedChalls, 1);
+					const recentSolves = filterChallSolvedRecent(profile.solvedChalls, UPDATE_INTERVAL, true);
 					allRecentSolves.push({slackid: user.slackId, solves: recentSolves});
 					if (recentSolves.length > 0) {
 						someoneSolved = true;
@@ -533,7 +540,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			updateAll();
 			postDaily();
 		});
-	}, 12 * HOUR);
+	}, UPDATE_INTERVAL * HOUR);
 
 	schedule.scheduleJob('0 9 * * 0', () => {
 		mutex.runExclusive(() => {
