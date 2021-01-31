@@ -487,7 +487,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	};
 
 	const postWeekly = async () => {
-		// for now, retrieve only TW.
 		let nobody = true;
 		const ranks: { slackid: string, solves: number }[] = [];
 		for (const contest of state.contests) {
@@ -495,13 +494,13 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			for (const user of users) {
 				const profile = await fetchUserProfile(user.idCtf, contest.id);
 				const recentSolves = filterChallSolvedRecent(profile.solvedChalls, 7);
-				if (ranks.some((rank) => rank.slackid === user.slackId)) {
-					const rankIndex = ranks.indexOf(ranks.find((rank) => rank.slackid === user.slackId));
-					ranks[rankIndex].solves += recentSolves.length;
-				} else {
-					ranks.push({slackid: user.slackId, solves: recentSolves.length});
-				}
-				if (recentSolves.length > 0) {
+				if (recentSolves.length > 0) {		// solved more than one challs
+					if (ranks.some((rank) => rank.slackid === user.slackId)) {
+						const rankIndex = ranks.indexOf(ranks.find((rank) => rank.slackid === user.slackId));
+						ranks[rankIndex].solves += recentSolves.length;
+					} else {
+						ranks.push({slackid: user.slackId, solves: recentSolves.length});
+					}
 					nobody = false;
 				}
 			}
