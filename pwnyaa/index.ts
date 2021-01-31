@@ -514,7 +514,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		} else {
 			text += '今週のpwnランキングを発表するよ〜\n';
 			for (const [ix, user] of ranks.entries()) {
-				text += `*${ix + 1}* 位: <@${user.slackid}> \t\t*${user.solves}* solves \n`;
+				text += `*${ix + 1}* 位: *${await getMemberName(user.slackid)}* \t\t*${user.solves}* solves \n`;
 			}
 			text += '\nおめでとう〜〜〜〜〜〜〜〜 :genius:\n';
 		}
