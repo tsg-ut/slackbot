@@ -26,7 +26,7 @@ const UPDATE_INTERVAL = 12;
 // Record of registered Users and Contests
 export interface State {
 	users: User[],
-  contests: Contest[],
+	contests: Contest[],
 }
 
 const getContestSummary = async (contest: Contest) => {
@@ -163,6 +163,34 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 		});
 		setState(state);
+	};
+
+	const resolveSelfSolve = async (challName: string, slackMessage: any) => {
+		const user = state.users.filter((user) => user.slackId === slackMessage.user);
+		if (!user) {		// user is not joining any CTFs
+			await postMessageDefault(slackMessage, {
+				text: stripIndent`
+					*${await getMemberName(slackMessage.user)}* はどのCTFにも参加してないよ :cry:
+					まずは常設CTFのどれかに登録だけしてね!
+				`,
+			});
+			return;
+		}
+		state.users.forEach((curUser, ci) => {
+			if (curUser.slackId === slackMessage.user) {
+				if (curUser.selfSolvesWeekly) {
+					state.users[ci].selfSolvesWeekly += 1;
+				} else {
+					state.users[ci].selfSolvesWeekly = 1;
+				}
+			}
+		});
+		setState(state);
+		await postMessageDefault(slackMessage, {
+			text: stripIndent`
+				<@${await slackMessage.user}> が *${challName}* (self)を解いたよ :pwn:
+			`,
+		});
 	};
 
 	// fetch data from TW and update state
@@ -380,6 +408,23 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}
 
 				/** ** END of check ****/
+			} else if (args[0] === ':pwn:') {		// self solve declaration
+				if (args.length <= 1) {						// command format is invalid
+					await postMessageDefault(message, {
+						text: stripIndent`
+							*:pwn:* コマンド: 登録されている以外のCTFの問題を解いたことの自己宣言
+							*format* : _:pwn:_ _<chall name>_
+						`,
+					});
+				} else {													// command format is valid
+					// concatnate solved-chall name
+					let challName = '';
+					for (const partName of args.slice(1)) {
+						challName += ` ${partName}`;
+					}
+					challName = challName.slice(1);
+					await resolveSelfSolve(challName, message);
+				}
 			} else if (args[0] === 'help' || args[0] === 'usage') {
 				await postMessageThreadDefault(message, {
 					text: stripIndent`
@@ -489,6 +534,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const postWeekly = async () => {
 		let nobody = true;
 		const ranks: { slackid: string, solves: number }[] = [];
+		// crawl CTFs
 		for (const contest of state.contests) {
 			const users = contest.joiningUsers;
 			for (const user of users) {
@@ -505,7 +551,27 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}
 			}
 		}
+		// add self-solved declarations
+		for (const user of state.users) {
+			if (user.selfSolvesWeekly && user.selfSolvesWeekly > 0) {
+				if (ranks.some((rank) => rank.slackid === user.slackId)) {
+					const rankIndex = ranks.indexOf(ranks.find((rank) => rank.slackid === user.slackId));
+					ranks[rankIndex].solves += user.selfSolvesWeekly;
+				} else {
+					ranks.push({slackid: user.slackId, solves: user.selfSolvesWeekly});
+				}
+				user.selfSolvesWeekly = 0;
+				nobody = false;
+			}
+		}
+		// clear self-solves count
+		state.users = state.users.map((user) => {
+			user.selfSolvesWeekly = 0;
+			return user;
+		});
+		setState(state);
 
+		// post
 		ranks.sort((l, r) => r.solves - l.solves);
 		let text = '';
 		if (nobody) {
