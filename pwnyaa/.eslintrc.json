@@ -14,7 +14,8 @@
 		"import/prefer-default-export": "off",
 		"camelcase": "off",
 		"max-params": "off",
-		"no-warning-comments": [2, { "terms": ["todo", "fixme", "xxx"], "location": "start" }]
+		"no-warning-comments": [2, { "terms": ["todo", "fixme", "xxx"], "location": "start" }],
+		"no-negated-condition": "off"
     },
     "settings": {
         "import/resolver": null

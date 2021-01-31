@@ -83,6 +83,63 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		return fs.writeFile(statePath, JSON.stringify(state));
 	};
 
+	// post usage text. *args* starts right before @pwnyaa
+	const resolveUsageMessage = async (args: string[], slackMessage: any) => {
+		if (args.length !== 2) {		// format is invalid
+			await postMessageThreadDefault(slackMessage, {
+				text: stripIndent`
+					usage/helpコマンドのフォーマットが違うよ... :cry:
+					*format* : _<command name> help_
+				`,
+			});
+		} else {
+			if (args[1] === 'check') {
+				await postMessageThreadDefault(slackMessage, {
+					text: stripIndent`
+						*check* コマンド: 現在のsolve状況を確認する
+
+						_check_ <CTF name>: 自分のsolve状況を確認する
+						_check_ <CTF name> <slack name> : 他人のsolve状況を確認する(非メンション)
+					`,
+				});
+			} else if (args[1] === 'join') {
+				await postMessageThreadDefault(slackMessage, {
+					text: stripIndent`
+						*join* コマンド: 常設CTFへの参加を宣言する
+
+						_join_ <CTF name> <user ID>: そのCTFにおけるuser IDを直接指定して参加登録する
+						_join_ <CTF name> name=<username>: そのCTFにおけるuser nameを指定して参加登録する
+						*WARNING* : 名前による検索はクロールコストを伴うため頻繁には行わないでください。
+					`,
+				});
+			} else if (args[1] === 'list') {
+				await postMessageThreadDefault(slackMessage, {
+					text: stripIndent`
+						*list* コマンド: 現在登録されている常設CTFを確認する
+
+						_list_ : CTFのリストを確認する
+					`,
+				});
+			} else if (args[1] === 'pwn') {
+				await postMessageThreadDefault(slackMessage, {
+					text: stripIndent`
+						*pwn* コマンド: 常設CTF以外の問題を解いたことを宣言する
+
+						_pwn_ <chall name>: 解いたことを宣言
+						*補足* : 自己宣言した問題は毎週のランキングにおけるsolve数に加算されます
+					`,
+				});
+			} else {
+				await postMessageThreadDefault(slackMessage, {
+					text: stripIndent`
+						*${args[1]}* は登録されてないコマンドだよ... :cry:
+						_help_ コマンドで一覧を確認してね!
+					`,
+				});
+			}
+		}
+	};
+
 	const getSlackidByName = async (name: string) => {
 		const candidates = state.users;
 		for (const user of candidates) {
@@ -408,7 +465,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}
 
 				/** ** END of check ****/
-			} else if (args[0] === ':pwn:') {		// self solve declaration
+			} else if (args[0] === 'pwn') {		// self solve declaration
 				if (args.length <= 1) {						// command format is invalid
 					await postMessageDefault(message, {
 						text: stripIndent`
@@ -425,14 +482,24 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					challName = challName.slice(1);
 					await resolveSelfSolve(challName, message);
 				}
+
+				/** ** END of pwn ****/
 			} else if (args[0] === 'help' || args[0] === 'usage') {
-				await postMessageThreadDefault(message, {
-					text: stripIndent`
-						*list* : 開催中のCTF一覧
-						*join* : CTFに参加登録
-						*check* : ステータス確認
-						`,
-				});
+				if (args.length >= 2) {
+					await resolveUsageMessage(args, message);
+				} else {
+					await postMessageThreadDefault(message, {
+						text: stripIndent`
+							*list* : 開催中のCTF一覧
+							*join* : CTFに参加登録
+							*check* : ステータス確認
+							*pwn* : 問題を解いたことの自己宣言
+							詳しいフォーマットを知りたいときは、 _@pwnyaa help <command name>_ で聞いてね!
+							`,
+					});
+				}
+
+				/** ** END of help/usage ****/
 
 				// unknown command
 			} else {
