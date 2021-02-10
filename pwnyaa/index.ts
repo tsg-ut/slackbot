@@ -3,8 +3,11 @@ import path from 'path';
 import {ChatPostMessageArguments} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
+// @ts-ignore
 import schedule from 'node-schedule';
 import {unlock} from '../achievements/index.js';
+// @ts-ignore
+import logger from '../lib/logger.js';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
 import {Contest, User, SolvedInfo} from './lib/BasicTypes';
@@ -433,6 +436,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						const selectedContest = state.contests.find((contest) => contest.alias.some((alias) => alias === selectedContestName) || contest.title === selectedContestName);
 						if (selectedContest) {			// contest is found
 							const fetchedProfile = await fetchUserProfile(user.idCtf, selectedContest.id);
+
 							await postMessageThreadDefault(message, {
 								text: `${`ユーザ名  : *${fetchedProfile.username}* \n` +
 									`スコア   : *${fetchedProfile.score}* \n` +
@@ -540,6 +544,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	};
 
 	const checkAchievementsTW = async () => {
+		logger.info('[+] pwnyaa: checking achievements for TW...');
 		const contestTW = state.contests.find((contest) => contest.id === TW_ID);
 		for (const user of contestTW.joiningUsers) {
 			const profile = await fetchUserProfileTW(user.idCtf);
@@ -552,6 +557,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}
 	};
 	const checkAchievementsXYZ = async () => {
+		logger.info('[+] pwnyaa: checking achievements for XYZ...');
 		const contestXYZ = state.contests.find((contest) => contest.id === XYZ_ID);
 		for (const user of contestXYZ.joiningUsers) {
 			const profile = await fetchUserProfileXYZ(user.idCtf);
@@ -565,6 +571,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	};
 
 	const postDaily = async () => {
+		logger.info('[+] pwnyaa: daily posting...');
 		for (const contest of state.contests) {
 			let someoneSolved = false;
 			let text = '';
@@ -588,6 +595,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}
 			}
 			if (someoneSolved) {
+				logger.info('[+] someone solved challs...');
 				slack.chat.postMessage({
 					username: 'pwnyaa',
 					icon_emoji: ':pwn',
@@ -599,6 +607,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	};
 
 	const postWeekly = async () => {
+		logger.info('[+] pwnyaa: posting weekly...');
 		let nobody = true;
 		const ranks: { slackid: string, solves: number }[] = [];
 		// crawl CTFs
