@@ -1,4 +1,5 @@
 import {spawn} from 'child_process';
+import os from 'os';
 import {PassThrough} from 'stream';
 // @ts-ignore
 import concat from 'concat-stream';
@@ -6,7 +7,6 @@ import {FastifyInstance} from 'fastify';
 import {get} from 'lodash';
 // @ts-ignore
 import logger from '../lib/logger.js';
-import os from 'os';
 import type {SlackInterface} from '../lib/slack';
 
 // @ts-ignore
@@ -22,7 +22,7 @@ const commands = [
 const deployBlocker = new Blocker();
 export const blockDeploy = (name: string) => deployBlocker.block(name);
 
-export const server = ({webClient: slack}: SlackInterface) => async (fastify: FastifyInstance) => {
+export const server = ({webClient: slack}: SlackInterface) => (fastify: FastifyInstance) => {
 	let triggered = false;
 
 	const postMessage = (text: string) => (
@@ -33,6 +33,7 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 		})
 	);
 
+	// eslint-disable-next-line require-await
 	fastify.post('/hooks/github', async (req, res) => {
 		logger.info(JSON.stringify({body: req.body, headers: req.headers}));
 
@@ -88,7 +89,9 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 					await postMessage('死にます:wave:');
 
 					await new Promise<void>((resolve) => setTimeout(() => {
+						// eslint-disable-next-line no-process-exit, node/no-process-exit
 						process.exit(0);
+						// eslint-disable-next-line no-unreachable
 						resolve();
 					}, 2000));
 				},

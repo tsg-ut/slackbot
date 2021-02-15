@@ -4,6 +4,8 @@
     "rules": {
         "no-console": "off",
         "camelcase": "off",
-        "no-promise-executor-return": "off"
+        "no-promise-executor-return": "off",
+        "no-restricted-imports": "off",
+        "import/extensions": "off"
     }
 }
