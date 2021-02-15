@@ -420,8 +420,7 @@ const helpDocs: Map<string, string> = new Map([
   [
     '',
     'usage: <emoji> | <filter> <argument> <argument> ... | <filter> <argument> <argument> ... | ...\n'
-      + 'Write ":" around the emoji name!\n\n'
-      + 'Filters:'
+      + 'Write ":" around the emoji name!'
   ],
   ['help', 'usage: help <filter>\nGet information about the given filter.'],
   // filters
