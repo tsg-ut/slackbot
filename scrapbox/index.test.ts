@@ -7,7 +7,20 @@ import scrapbox from './index';
 jest.mock('axios');
 
 // @ts-ignore
-axios.response = {data: {title: 'hoge', descriptions: ['fuga', 'piyo']}};
+axios.response = {data: {
+	title: 'hoge',
+	descriptions: ['fuga', 'piyo'],
+	lines: [
+		{
+			id: 'f00a',
+			text: 'fuga',
+		},
+		{
+			id: '0140',
+			text: 'piyo',
+		},
+	]
+}};
 
 let slack: Slack = null;
 
