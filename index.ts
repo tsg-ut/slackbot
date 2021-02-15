@@ -148,7 +148,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 			attachments: [
 				{
 					color: '#4CAF50',
-					text: Array.from(loadedPlugins).join(', '),
+					text: `loaded: ${Array.from(loadedPlugins).join(', ')}`,
 				},
 				...plugins.filter((name) => !loadedPlugins.has(name)).map((name) => ({
 					color: '#F44336',
