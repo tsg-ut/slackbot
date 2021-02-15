@@ -5,6 +5,7 @@ import { stripIndent } from 'common-tags';
 import sample from 'lodash/sample';
 // @ts-ignore
 import { getPageTitle, getWordUrl, getCandidateWords } from '../tahoiya/lib';
+import { unlock, increment } from "../achievements";
 
 interface ChatPostMessageResult extends WebAPICallResult {
 	channel: string;
@@ -61,16 +62,16 @@ const getRandomTitle = async (): Promise<string> => {
 	return data.query.random[0].title;
 };
 
-module.exports = async ({ rtmClient, webClient }: SlackInterface) => {
+export default async ({ rtmClient, webClient }: SlackInterface) => {
 	let state: State = { type: 'Sleeping' };
 
 	const candidateWords = await getCandidateWords({ min: 0, max: Infinity }) as Candidate[];
 
 	const commands = process.env.NODE_ENV === 'production' ? {
-		start: /^(?:ソート|そーと)なぞなぞ\s*(?:(?<length>[1-9][0-9]?)(?:(?:文)?字)?)?$/,
+		start: /^(?:ソート|そーと)なぞなぞ\s*(?:(?<specifiedLength>[1-9][0-9]?)(?:(?:文)?字)?)?$/,
 		stop: /^(?:ソート|そーと)なぞなぞ\s*終了$/,
 	} : {
-		start: /^ア(?:ソート|そーと)なぞなぞ\s*(?:(?<length>[1-9][0-9]?)(?:(?:文)?字)?)?$/,
+		start: /^ア(?:ソート|そーと)なぞなぞ\s*(?:(?<specifiedLength>[1-9][0-9]?)(?:(?:文)?字)?)?$/,
 		stop: /^ア(?:ソート|そーと)なぞなぞ\s*終了$/,
 	};
 
@@ -86,21 +87,20 @@ module.exports = async ({ rtmClient, webClient }: SlackInterface) => {
 		if (state.type === 'Sleeping' && commands.start.test(message.text || '')) {
 			const match = (message.text as string).match(commands.start);
 
+			let specifiedLength: number | null = null;
 			let found: Candidate[];
-			if (match.groups.length) {
-				const length = parseInt(match.groups.length, 10);
-				found = candidateWords.filter(([_, answer]) => answer.length === length);
+			if (match.groups.specifiedLength) {
+				specifiedLength = parseInt(match.groups.specifiedLength, 10);
+				found = candidateWords.filter(([_, answer]) => [...answer].length === specifiedLength);
 				if (found.length === 0) {
-					found = candidateWords.filter(([_, answer]) => answer.length >= length);
+					found = candidateWords.filter(([_, answer]) => [...answer].length >= specifiedLength);
 				}
 			} else {
 				found = candidateWords;
 			}
 
 			const [title, answer, source, _meaning, id] = sample(found);
-
 			const sorted = getSortedString(answer);
-
 			const wordUrl = getWordUrl(title, source, id);
 
 			const { ts: thread } = await webClient.chat.postMessage({
@@ -167,6 +167,18 @@ module.exports = async ({ rtmClient, webClient }: SlackInterface) => {
 					thread_ts: thread,
 					reply_broadcast: true,
 				});
+
+				await increment(message.user, 'sorting-riddles-answer');
+				const actualLength = [...answer].length;
+				if (actualLength >= 4) {
+					await unlock(message.user, 'sorting-riddles-4-or-more-characters');
+				}
+				if (actualLength >= 7) {
+					await unlock(message.user, 'sorting-riddles-7-or-more-characters');
+				}
+				if (actualLength >= 10) {
+					await unlock(message.user, 'sorting-riddles-10-or-more-characters');
+				}
 			} else {
 				await webClient.reactions.add({
 					name: 'no_good',

@@ -2240,6 +2240,48 @@ const achievements: Achievement[] = [
 		category: 'bcr',
 	},
 
+	// sorting-riddles
+
+	{
+		id: 'sorting-riddles-answer',
+		difficulty: 'easy',
+		title: 'すぞぞでななるソトー正解',
+		condition: 'ソートなぞなぞで正解する',
+		category: 'sorting-riddles',
+		counter: 'sorting-riddles-answer',
+		value: 1,
+	},
+	{
+		id: 'sorting-riddles-answer-20',
+		difficulty: 'hard',
+		title: '02すぞぞでななるソトー回正解',
+		condition: 'ソートなぞなぞで20回正解する',
+		category: 'sorting-riddles',
+		counter: 'sorting-riddles-answer',
+		value: 20,
+	},
+	{
+		id: 'sorting-riddles-4-or-more-characters',
+		difficulty: 'easy',
+		title: '4すぞぞででななるソトー上以字文正解',
+		condition: 'ソートなぞなぞで4文字以上で正解する',
+		category: 'sorting-riddles',
+	},
+	{
+		id: 'sorting-riddles-7-or-more-characters',
+		difficulty: 'hard',
+		title: '7すぞぞででななるソトー上以字文正解',
+		condition: 'ソートなぞなぞで7文字以上で正解する',
+		category: 'sorting-riddles',
+	},
+	{
+		id: 'sorting-riddles-10-or-more-characters',
+		difficulty: 'professional',
+		title: '01すぞぞででななるソトー上以字文正解',
+		condition: 'ソートなぞなぞで10文字以上で正解する',
+		category: 'sorting-riddles',
+	},
+
 	// achievements
 
 	{
