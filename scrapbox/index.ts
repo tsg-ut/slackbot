@@ -50,7 +50,9 @@ export const scrapbox2slack = (s: string) => (
 		.replace(/\[([^\[\]]+).icon\]/g, '<https://scrapbox.io/tsg/$1|$1>') // アイコンリンク
 		.replace(/\[\*+ (.*)]/g, '*$1*') // 太字
 		.replace(/#(.*)/g, '<https://scrapbox.io/tsg/$1|#$1>') // hashtag (TSG独自記法)
-		.replace(/\[([^*\[\]]+)\]/g, '<https://scrapbox.io/tsg/$1|$1>') // Scrapbox記事リンク
+		.replace(/\[([^\s*\[\]]+)\]/g, '<https://scrapbox.io/tsg/$1|$1>') // Scrapbox記事リンク
+		.replace(/\[(.*)+\s([^\s]+)\]/g, '<$2|$1>') // 文字を指定するタイプのリンク
+	// バグあるかも。誰かよろしく!
 );
 
 export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
