@@ -1,21 +1,27 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
 
-process.on('unhandledRejection', (error) => {
+dotenv.config();
+
+process.on('unhandledRejection', (error: Error) => {
 	logger.error(error.stack);
 });
 
-const {rtmClient, webClient} = require('./lib/slack.ts');
-const {createEventAdapter} = require('@slack/events-api');
-const {createMessageAdapter} = require('@slack/interactive-messages');
-const fastify = require('fastify')({
+import {rtmClient, webClient} from './lib/slack';
+import {createEventAdapter} from '@slack/events-api';
+import {createMessageAdapter} from '@slack/interactive-messages';
+import Fastify from 'fastify';
+
+// @ts-ignore
+import logger from './lib/logger.js';
+import yargs from 'yargs';
+
+import fastifyFormbody from 'fastify-formbody';
+import fastifyExpress from 'fastify-express';
+
+const fastify = Fastify({
 	logger: true,
 	pluginTimeout: 50000,
 });
-const logger = require('./lib/logger.js');
-const yargs = require('yargs');
-
-const fastifyFormbody = require('fastify-formbody');
-const fastifyExpress = require('fastify-express');
 
 const allBots = [
 	'summary',
@@ -75,7 +81,7 @@ const argv = yargs
 	.default('startup', 'ｼｭｯｼｭｯ (起動音)')
 	.argv;
 
-const plugins = Object.fromEntries(argv.only.map((name) => [name, require(`./${name}`)]));
+const plugins = Object.fromEntries(argv.only.map((name) => [name, import(`./${name}`)]));
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
 	logger.error(error.stack);
@@ -105,7 +111,8 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 		}
 	});
 
-	await Promise.all(Object.entries(plugins).map(async ([name, plugin]) => {
+	await Promise.all(Object.entries(plugins).map(async ([name, pluginPromise]) => {
+		const plugin = await pluginPromise;
 		if (typeof plugin === 'function') {
 			await plugin({rtmClient, webClient, eventClient, messageClient});
 		}
@@ -125,11 +132,11 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 	});
 
 	let firstLogin = true;
-	let lastLogin = null;
+	let lastLogin: number = null;
 	let combos = 1;
 	rtmClient.on('authenticated', (data) => {
 		logger.info(`Logged in as ${data.self.name} of team ${data.team.name}`);
-		const now = new Date();
+		const now = Date.now();
 		if (!firstLogin) {
 			let comboStr = '';
 			if (now - lastLogin <= 2 * 60 * 1000) {

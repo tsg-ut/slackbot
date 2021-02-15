@@ -3,10 +3,10 @@
   "private": true,
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "index.ts",
   "scripts": {
-    "start": "nodemon --exitcrash --watch .restart-trigger -x ts-node index.js",
-    "dev": "nodemon -x ts-node -e js,ts index.js -i \"*.json\"",
+    "start": "nodemon --exitcrash --watch .restart-trigger -x ts-node index.ts",
+    "dev": "nodemon -x ts-node -e js,ts index.ts -i \"*.json\"",
     "lint": "sed \"s/\\/.\\+//g\" CODEOWNERS | grep \"^[a-z]\" | xargs -n 1 eslint --ext js,ts",
     "fix": "npm run lint -- --fix",
     "test": "jest --verbose --coverage"
