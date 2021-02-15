@@ -24,7 +24,7 @@ export interface Challenge {
 
 export interface SolvedInfo{
   id: string, // challenge id
-  solvedAt: Date, //
+  solvedAt: Date, // UTC
   name: string,
   score: number,
 }

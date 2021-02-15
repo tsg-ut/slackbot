@@ -32,6 +32,16 @@ export interface State {
 	contests: Contest[],
 }
 
+// print as JST
+const getPrintableDate = (date: Date) => {
+	let strdate = '';
+	const jstdate = new Date(date);
+	jstdate.setUTCHours(jstdate.getUTCHours() + 9);
+	strdate += `${jstdate.getUTCFullYear()}/${jstdate.getUTCMonth() + 1}/${jstdate.getUTCDate()} `;
+	strdate += `${jstdate.getUTCHours()}:${jstdate.getUTCMinutes()}`;
+	return strdate;
+};
+
 const getContestSummary = async (contest: Contest) => {
 	let text = '';
 	text += `*${contest.title}* (${contest.url})\n`;
@@ -55,7 +65,7 @@ const filterChallSolvedRecent = (challs: SolvedInfo[], solvedIn: number, hour = 
 	} else {
 		limitdate = Date.now() - solvedIn * DAY;
 	}
-	const filteredChalls = challs.filter((chall) => chall.solvedAt.valueOf() >= limitdate);
+	const filteredChalls = challs.filter((chall) => chall.solvedAt.getTime() >= limitdate);
 	return filteredChalls;
 };
 
@@ -63,7 +73,7 @@ const getChallsSummary = (challs: SolvedInfo[], spaces = 0) => {
 	let text = '';
 	for (const chall of challs) {
 		text += ' '.repeat(spaces);
-		text += `*${chall.name}* (${chall.score}) ${chall.solvedAt.toLocaleString()}\n`;
+		text += `*${chall.name}* (${chall.score}) ${getPrintableDate(chall.solvedAt)}\n`;
 	}
 	return text;
 };
@@ -455,16 +465,16 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					} else {
 						await postMessageDefault(message, {
 							text: stripIndent`
-                まだ *${selectedContestName}* に参加してないよ。 *join* コマンドで参加登録してね!
-              `,
+							まだ *${selectedContestName}* に参加してないよ。 *join* コマンドで参加登録してね!
+							`,
 						});
 					}
 				} else {
 					await postMessageDefault(message, {
 						text: stripIndent`
-              *check* コマンド: あるCTFにおける自分のステータス確認
-                _check_  _<CTF name/alias>_
-            `,
+						*check* コマンド: あるCTFにおける自分のステータス確認
+						_check_  _<CTF name/alias>_
+						`,
 					});
 				}
 
@@ -570,8 +580,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}
 	};
 
-	const postDaily = async () => {
-		logger.info('[+] pwnyaa: daily posting...');
+	const postProgress = async () => {
+		logger.info('[+] pwnyaa: progress posting...');
 		for (const contest of state.contests) {
 			let someoneSolved = false;
 			let text = '';
@@ -662,7 +672,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		slack.chat.postMessage({
 			username: 'pwnyaa',
-			icon_emoji: ':pwn',
+			icon_emoji: ':pwn:',
 			channel: process.env.CHANNEL_PWNABLE_TW,
 			text,
 		});
@@ -679,13 +689,23 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	setInterval(() => {
 		mutex.runExclusive(() => {
 			updateAll();
-			postDaily();
 		});
 	}, UPDATE_INTERVAL * HOUR);
 
 	schedule.scheduleJob('0 9 * * 0', () => {
 		mutex.runExclusive(() => {
 			postWeekly();
+		});
+	});
+
+	schedule.scheduleJob('0 10 * * *', () => {
+		mutex.runExclusive(() => {
+			postProgress();
+		});
+	});
+	schedule.scheduleJob('0 22 * * *', () => {
+		mutex.runExclusive(() => {
+			postProgress();
 		});
 	});
 
