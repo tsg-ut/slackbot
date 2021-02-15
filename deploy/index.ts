@@ -6,6 +6,7 @@ import {FastifyInstance} from 'fastify';
 import {get} from 'lodash';
 // @ts-ignore
 import logger from '../lib/logger.js';
+import os from 'os';
 import type {SlackInterface} from '../lib/slack';
 
 // @ts-ignore
@@ -26,8 +27,8 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 
 	const postMessage = (text: string) => (
 		slack.chat.postMessage({
+			username: `tsgbot-deploy [${os.hostname()}]`,
 			channel: process.env.CHANNEL_SANDBOX,
-			username: 'deploy',
 			text,
 		})
 	);

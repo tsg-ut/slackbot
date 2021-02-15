@@ -6,6 +6,7 @@ process.on('unhandledRejection', (error: Error) => {
 	logger.error(error.stack);
 });
 
+import os from 'os';
 import {rtmClient, webClient} from './lib/slack';
 import {createEventAdapter} from '@slack/events-api';
 import {createMessageAdapter} from '@slack/interactive-messages';
@@ -127,6 +128,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 
 	logger.info('Launched');
 	webClient.chat.postMessage({
+		username: `tsgbot [${os.hostname()}]`,
 		channel: process.env.CHANNEL_SANDBOX,
 		text: argv.startup,
 	});
@@ -147,6 +149,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 				combos = 1;
 			}
 			webClient.chat.postMessage({
+				username: `tsgbot [${os.hostname()}]`,
 				channel: process.env.CHANNEL_SANDBOX,
 				text: `再接続しました ${comboStr}`,
 			});
