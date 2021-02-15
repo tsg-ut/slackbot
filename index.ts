@@ -75,6 +75,8 @@ const allBots = [
 	'pwnyaa',
 ];
 
+logger.info('slackbot started');
+
 const argv = yargs
 	.array('only')
 	.choices('only', allBots)
@@ -82,7 +84,7 @@ const argv = yargs
 	.default('startup', 'ｼｭｯｼｭｯ (起動音)')
 	.argv;
 
-const plugins = Object.fromEntries(argv.only.map((name) => [name, import(`./${name}`)]));
+const plugins = argv.only;
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
 	logger.error(error.stack);
@@ -112,8 +114,20 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 		}
 	});
 
-	await Promise.all(Object.entries(plugins).map(async ([name, pluginPromise]) => {
-		const plugin = await pluginPromise;
+	const loadedPlugins = new Set<string>();
+
+	const initializationMessagePromise = webClient.chat.postMessage({
+		username: `tsgbot [${os.hostname()}]`,
+		channel: process.env.CHANNEL_SANDBOX,
+		text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
+		attachments: plugins.map((name) => ({
+			color: '#F44336',
+			text: `${name}: loading...`,
+		})),
+	});
+
+	await Promise.all(plugins.map(async (name) => {
+		const plugin = await import(`./${name}`);
 		if (typeof plugin === 'function') {
 			await plugin({rtmClient, webClient, eventClient, messageClient});
 		}
@@ -123,7 +137,19 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 		if (typeof plugin.server === 'function') {
 			await fastify.register(plugin.server({rtmClient, webClient, eventClient, messageClient}));
 		}
+		loadedPlugins.add(name);
 		logger.info(`plugin "${name}" successfully loaded`);
+
+		const initializationMessage = await initializationMessagePromise;
+		webClient.chat.update({
+			channel: process.env.CHANNEL_SANDBOX,
+			ts: initializationMessage.ts as string,
+			text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
+			attachments: plugins.map((name) => ({
+				color: loadedPlugins.has(name) ? '#4CAF50' : '#F44336',
+				text: `${name}: ${loadedPlugins.has(name) ? 'loaded' : 'loading...'}`,
+			})),
+		})
 	}));
 
 	logger.info('Launched');
