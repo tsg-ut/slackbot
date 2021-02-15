@@ -559,9 +559,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		for (const user of contestTW.joiningUsers) {
 			const profile = await fetchUserProfileTW(user.idCtf);
 			if (profile.solvedChalls.length >= contestTW.numChalls) {
+				logger.info('[+] pwnyaa: unlocking: pwnyaa-tw-complete');
 				await unlock(user.slackId, 'pwnyaa-tw-complete');
 			}
 			if (profile.solvedChalls.length >= contestTW.numChalls / 2) {
+				logger.info('[+] pwnyaa: unlocking: pwnyaa-tw-half');
 				await unlock(user.slackId, 'pwnyaa-tw-half');
 			}
 		}
@@ -572,9 +574,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		for (const user of contestXYZ.joiningUsers) {
 			const profile = await fetchUserProfileXYZ(user.idCtf);
 			if (profile.solvedChalls.length >= contestXYZ.numChalls) {
+				logger.info('[+] pwnyaa: unlocking: pwnyaa-xyz-complete');
 				await unlock(user.slackId, 'pwnyaa-xyz-complete');
 			}
 			if (profile.solvedChalls.length >= contestXYZ.numChalls / 2) {
+				logger.info('[+] pwnyaa: unlocking: pwnyaa-xyz-half');
 				await unlock(user.slackId, 'pwnyaa-xyz-half');
 			}
 		}
@@ -679,10 +683,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	};
 
 	const updateAll = async () => {
-		await updateChallsTW();
 		await updateChallsXYZ();
-		await checkAchievementsTW();
+		await updateChallsTW();
 		await checkAchievementsXYZ();
+		await checkAchievementsTW();
 	};
 
 	// update the num of challs and achievements every 12 hours
