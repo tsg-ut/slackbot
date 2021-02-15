@@ -1,28 +1,54 @@
-const axios = require('axios');
-const { stripIndent } = require('common-tags');
-const sample = require('lodash/sample');
-const {
-	getPageTitle,
-	getWordUrl,
-	getCandidateWords,
-} = require('../tahoiya/lib');
+import type { WebAPICallResult } from '@slack/web-api';
+import type { SlackInterface } from '../lib/slack';
+import axios from 'axios';
+import { stripIndent } from 'common-tags';
+import sample from 'lodash/sample';
+// @ts-ignore
+import { getPageTitle, getWordUrl, getCandidateWords } from '../tahoiya/lib';
 
-const BOTNAME = 'ソートなぞなぞ';
-const BOTICON = ':abc:';
+interface ChatPostMessageResult extends WebAPICallResult {
+	channel: string;
+	ts: string;
+	message: {
+		text: string;
+	}
+}
 
-const getSortedString = (answer) => {
+type Candidate = [word: string, ruby: string, source: string, meaning: string, id: string];
+
+type State = {
+	type: 'Sleeping',
+} | {
+	type: 'Answering',
+	title: string,
+	answer: string,
+	wordUrl: string,
+	sorted: string,
+	thread: string,
+	timeoutId: NodeJS.Timeout,
+};
+
+const BOTNAME = `ソートなぞなぞ`;
+const BOTICON = `:abc:`;
+
+/**
+ * 正解文字列に対するソート文字列を返す。
+ */
+const getSortedString = (answer: string): string => {
 	return [...answer].sort((a, b) => {
 		return a.codePointAt(0) - b.codePointAt(0);
 	}).join('');
 };
 
-// 正解文字列に対する解答時間（秒）
-const calculateTimeout = (answer) => {
+/**
+ * 正解文字列に対する解答時間（秒）を返す。
+ */
+const calculateTimeout = (answer: string): number => {
 	const length = [...answer].length;
 	return Math.ceil((length * Math.log2(length) ** 2) / 10) * 10;
 };
 
-const getRandomTitle = async () => {
+const getRandomTitle = async (): Promise<string> => {
 	const { data } = await axios.get(`https://ja.wikipedia.org/w/api.php`, {
 		params: {
 			action: 'query',
@@ -35,37 +61,22 @@ const getRandomTitle = async () => {
 	return data.query.random[0].title;
 };
 
-module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
-	const state = {
-		title: null,
-		answer: null,
-		wordUrl: null,
-		sorted: null,
-		thread: null,
-		timeoutId: null,
-		clear() {
-			this.title = null;
-			this.answer = null;
-			this.wordUrl = null;
-			this.sorted = null;
-			this.thread = null;
-			this.timeoutId = null;
-		},
-	};
+module.exports = async ({ rtmClient, webClient }: SlackInterface) => {
+	let state: State = { type: 'Sleeping' };
 
-	const candidateWords = await getCandidateWords({ min: 0, max: Infinity });
+	const candidateWords = await getCandidateWords({ min: 0, max: Infinity }) as Candidate[];
 
 	const command = /^(?:ソート|そーと)なぞなぞ\s*(?:(?<length>[1-9][0-9]?)(?:(?:文)?字)?)?$/;
 
-	rtm.on('message', async (message) => {
+	rtmClient.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
 
-		if (command.test(message.text || '') && state.answer === null) {
-			const match = message.text.match(command);
+		if (state.type === 'Sleeping' && command.test(message.text || '')) {
+			const match = (message.text as string).match(command);
 
-			let found;
+			let found: Candidate[];
 			if (match.groups.length) {
 				const length = parseInt(match.groups.length, 10);
 				found = candidateWords.filter(([_, answer]) => answer.length === length);
@@ -77,16 +88,12 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 			}
 
 			const [title, answer, source, _meaning, id] = sample(found);
-			state.title = title;
-			state.answer = answer;
 
 			const sorted = getSortedString(answer);
-			state.sorted = sorted;
 
 			const wordUrl = getWordUrl(title, source, id);
-			state.wordUrl = wordUrl;
 
-			const { ts } = await slack.chat.postMessage({
+			const { ts: thread } = await webClient.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: stripIndent`
 					ソート前の文字列を当ててね
@@ -95,26 +102,27 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 				`,
 				username: BOTNAME,
 				icon_emoji: BOTICON,
-			});
-			state.thread = ts;
+			}) as ChatPostMessageResult;
 
 			const timeout = calculateTimeout(answer);
 
-			await slack.chat.postMessage({
+			await webClient.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: stripIndent`
 					${timeout} 秒以内にこのスレッドに返信してね
 				`,
 				username: BOTNAME,
 				icon_emoji: BOTICON,
-				thread_ts: state.thread,
+				thread_ts: thread,
 			});
 
 			const timeoutId = setTimeout(async () => {
-				const { title, answer, wordUrl, thread } = state;
-				state.clear();
+				if (state.type !== 'Answering') return;
 
-				await slack.chat.postMessage({
+				const { title, answer, wordUrl, thread } = state;
+				state = { type: 'Sleeping' };
+
+				await webClient.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
 						答えは ＊${title}＊／＊${answer}＊ だよ:triumph:
@@ -126,16 +134,17 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 					reply_broadcast: true,
 				});
 			}, timeout * 1000);
-			state.timeoutId = timeoutId;
+
+			state = { type: 'Answering', title, answer, sorted, wordUrl, thread, timeoutId };
 		}
 
-		if (state.answer !== null && message.thread_ts === state.thread && message.username !== BOTNAME) {
+		if (state.type === 'Answering' && message.thread_ts === state.thread && message.username !== BOTNAME) {
 			if (message.text === state.answer) {
 				const { title, answer, wordUrl, thread, timeoutId } = state;
-				state.clear();
+				state = { type: 'Sleeping' };
 				clearTimeout(timeoutId);
 
-				await slack.chat.postMessage({
+				await webClient.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
 						<@${message.user}> 正解:tada:
@@ -148,7 +157,7 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 					reply_broadcast: true,
 				});
 			} else {
-				await slack.reactions.add({
+				await webClient.reactions.add({
 					name: 'no_good',
 					channel: message.channel,
 					timestamp: message.ts,
