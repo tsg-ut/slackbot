@@ -22,7 +22,8 @@ const commands = [
 const deployBlocker = new Blocker();
 export const blockDeploy = (name: string) => deployBlocker.block(name);
 
-export const server = ({webClient: slack}: SlackInterface) => (fastify: FastifyInstance) => {
+// eslint-disable-next-line require-await
+export const server = ({webClient: slack}: SlackInterface) => async (fastify: FastifyInstance) => {
 	let triggered = false;
 
 	const postMessage = (text: string) => (
