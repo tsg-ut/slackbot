@@ -2,7 +2,7 @@ import qs from 'querystring';
 import axios from 'axios';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
-import scrapbox from './index';
+import scrapbox, { scrapbox2slack } from './index';
 
 jest.mock('axios');
 
@@ -63,5 +63,55 @@ describe('scrapbox', () => {
 		});
 
 		return done;
+	});
+
+	it('respond to slack hook of scrapbox unfurling with line specified', async () => {
+		const done = new Promise<void>((resolve) => {
+			// @ts-ignore
+			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
+				if (url === 'https://slack.com/api/chat.unfurl') {
+					const parsed = qs.parse(data);
+					const unfurls = JSON.parse(Array.isArray(parsed.unfurls) ? parsed.unfurls[0] : parsed.unfurls);
+					expect(unfurls['https://scrapbox.io/tsg/hoge#0140']).toBeTruthy();
+					expect(unfurls['https://scrapbox.io/tsg/hoge#0140'].text).toBe('piyo');
+					resolve();
+					return Promise.resolve({data: {ok: true}});
+				}
+				// @ts-ignore
+				return Promise.resolve(axios.response);
+			});
+		});
+
+		slack.eventClient.emit('link_shared', {
+			type: 'link_shared',
+			channel: 'Cxxxxxx',
+			user: 'Uxxxxxxx',
+			message_ts: '123452389.9875',
+			thread_ts: '123456621.1855',
+			links: [
+				{
+					domain: 'scrapbox.io',
+					url: 'https://scrapbox.io/tsg/hoge#0140',
+				},
+			],
+		});
+
+		return done;
+	});
+
+	it('convert Scrapbox-style text to Slack-style text', () => {
+		const exampleScrapboxText = `
+			#debug
+			[*** ひとこと]
+			>カラオケの鉄人
+			これすき [hideo54.icon] (ソース: [用語集])
+		`;
+		const expectedSlackText = `
+			<https://scrapbox.io/tsg/debug|debug>
+			*ひとこと*
+			>カラオケの鉄人
+			これすき <https://scrapbox.io/tsg/hideo54|hideo54> (ソース: <https://scrapbox.io/tsg/用語集|用語集>)
+		`;
+		expect(scrapbox2slack(exampleScrapboxText)).toBe(expectedSlackText);
 	});
 });

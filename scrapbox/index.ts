@@ -45,6 +45,14 @@ interface ScrapboxPage {
 	lines: ScrapboxLine[];
 }
 
+export const scrapbox2slack = (s: string) => (
+	s.replace(/\[(https?:\/\/.+)\]/g, '$1') // 外部リンク
+		.replace(/\[([^\[\]]+).icon\]/g, '<https://scrapbox.io/tsg/$1|$1>') // アイコンリンク
+		.replace(/\[\*+ (.*)]/g, '*$1*') // 太字
+		.replace(/#(.*)/g, '[$1]') // hashtag (TSG独自記法) → 一旦記事リンクに変換
+		.replace(/\[([^*\[\]]+)\]/g, '<https://scrapbox.io/tsg/$1|$1>') // Scrapbox記事リンク
+);
+
 export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
 	event.on('link_shared', async (e: { links: Link[]; message_ts: string; channel: string; }) => {
 		logger.info('Incoming unfurl request >');
@@ -70,13 +78,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 			const rawDescriptions = lineId ? data.lines.filter((d, i) => i >= lineIndex)
 				.slice(0, 5) // descriptions と同じ個数
 				.map(line => line.text) : data.descriptions;
-			const descriptions = rawDescriptions.map(d => d
-				.replace(/\[(https?:\/\/.+)\]/g, '$1') // 外部リンク
-				.replace(/\[([^\[\]]+).icon\]/g, '<https://scrapbox.io/tsg/$1|$1>') // アイコンリンク
-				.replace(/\[\*+ (.*)]/g, '*$1*') // 太字
-				.replace(/#(.*)/g, '[$1]') // hashtag (TSG独自記法) → 一旦記事リンクに変換
-				.replace(/\[([^*\[\]]+)\]/g, '<https://scrapbox.io/tsg/$1|$1>') // Scrapbox記事リンク
-			);
+			const descriptions = rawDescriptions.map(d => scrapbox2slack(d));
 
 			unfurls[url] = {
 				title: data.title,
