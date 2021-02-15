@@ -107,7 +107,7 @@ describe('scrapbox', () => {
 			これすき [hideo54.icon] (ソース: [用語集])
 		`;
 		const expectedSlackText = `
-			<https://scrapbox.io/tsg/debug|debug>
+			<https://scrapbox.io/tsg/debug|#debug>
 			*ひとこと*
 			>カラオケの鉄人
 			これすき <https://scrapbox.io/tsg/hideo54|hideo54> (ソース: <https://scrapbox.io/tsg/用語集|用語集>)

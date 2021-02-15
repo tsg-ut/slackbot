@@ -49,7 +49,7 @@ export const scrapbox2slack = (s: string) => (
 	s.replace(/\[(https?:\/\/.+)\]/g, '$1') // 外部リンク
 		.replace(/\[([^\[\]]+).icon\]/g, '<https://scrapbox.io/tsg/$1|$1>') // アイコンリンク
 		.replace(/\[\*+ (.*)]/g, '*$1*') // 太字
-		.replace(/#(.*)/g, '[$1]') // hashtag (TSG独自記法) → 一旦記事リンクに変換
+		.replace(/#(.*)/g, '<https://scrapbox.io/tsg/$1|#$1>') // hashtag (TSG独自記法)
 		.replace(/\[([^*\[\]]+)\]/g, '<https://scrapbox.io/tsg/$1|$1>') // Scrapbox記事リンク
 );
 
