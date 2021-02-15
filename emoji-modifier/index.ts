@@ -493,7 +493,7 @@ const runTransformation = async (parseResult: Transformation): Promise<Emoji | E
     if (typeMismatch != null) {
       error = typeMismatch;
       return null;
-    }
+    };
     const convertedArgs = _.zipWith(args, argTypes, (arg, type) => {
       if (type === 'string') {
         return arg;
