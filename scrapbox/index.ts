@@ -58,7 +58,9 @@ export const scrapbox2slack = (s: string) => (
 export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
 	event.on('link_shared', async (e: { links: Link[]; message_ts: string; channel: string; }) => {
 		logger.info('Incoming unfurl request >');
-		e.links.forEach(link => { logger.info('-', link); });
+		for (const link of e.links) {
+			logger.info('-', link);
+		}
 		const links = e.links.filter(({domain}) => domain === 'scrapbox.io');
 		const unfurls: LinkUnfurls = {};
 		for (const link of links) {
@@ -66,7 +68,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 			if (!(/^https?:\/\/scrapbox.io\/tsg\/.+/).test(url)) {
 				continue;
 			}
-			let [ _, pageName, __, lineId ] = url.match(/^https?:\/\/scrapbox.io\/tsg\/([^#]+)(#([\da-f]+))?$/);
+			let [_, pageName, __, lineId] = url.match(/^https?:\/\/scrapbox.io\/tsg\/([^#]+)(#([\da-f]+))?$/);
 			// 型定義がカスで、lineId は string と思われてるが本当は string | undefined.
 			try {
 				if (decodeURI(pageName) === pageName) {
@@ -76,11 +78,11 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 			const scrapboxUrl = getScrapboxUrl(pageName);
 			const response = await axios.get<ScrapboxPage>(scrapboxUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
 			const {data} = response;
-			const lineIndex = data.lines.map(line => line.id).indexOf(lineId);
+			const lineIndex = data.lines.map((line) => line.id).indexOf(lineId);
 			const rawDescriptions = lineId ? data.lines.filter((d, i) => i >= lineIndex)
 				.slice(0, 5) // descriptions と同じ個数
-				.map(line => line.text) : data.descriptions;
-			const descriptions = rawDescriptions.map(d => scrapbox2slack(d));
+				.map((line) => line.text) : data.descriptions;
+			const descriptions = rawDescriptions.map((d) => scrapbox2slack(d));
 
 			unfurls[url] = {
 				title: data.title,

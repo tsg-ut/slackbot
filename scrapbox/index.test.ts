@@ -2,7 +2,7 @@ import qs from 'querystring';
 import axios from 'axios';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
-import scrapbox, { scrapbox2slack } from './index';
+import scrapbox, {scrapbox2slack} from './index';
 
 jest.mock('axios');
 
@@ -19,7 +19,7 @@ axios.response = {data: {
 			id: '0140',
 			text: 'piyo',
 		},
-	]
+	],
 }};
 
 let slack: Slack = null;
