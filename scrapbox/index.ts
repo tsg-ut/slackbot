@@ -48,10 +48,10 @@ interface ScrapboxPage {
 export const scrapbox2slack = (s: string) => (
 	s.replace(/\[(https?:\/\/.+)\]/g, '$1') // 外部リンク
 		.replace(/\[([^\[\]]+).icon\]/g, '<https://scrapbox.io/tsg/$1|$1>') // アイコンリンク
-		.replace(/\[\*+ (.*)]/g, '*$1*') // 太字
-		.replace(/#(.*)/g, '<https://scrapbox.io/tsg/$1|#$1>') // hashtag (TSG独自記法)
-		.replace(/\[([^\s*\[\]]+)\]/g, '<https://scrapbox.io/tsg/$1|$1>') // Scrapbox記事リンク
-		.replace(/\[(.*)+\s([^\s]+)\]/g, '<$2|$1>') // 文字を指定するタイプのリンク
+		.replace(/#([^\s]*)/g, '<https://scrapbox.io/tsg/$1|#$1>') // hashtag (TSG独自記法)
+		.replace(/\[([^\s\*\[\]]+)\]/g, '<https://scrapbox.io/tsg/$1|$1>') // Scrapbox記事リンク
+		.replace(/\[([^\*]*)+\s([^\s\]]+)\]/g, '<$2|$1>') // 文字を指定するタイプのリンク
+		.replace(/\[\*+ ([^\[\]]*)]/g, '*$1*') // 太字
 	// バグあるかも。誰かよろしく!
 );
 

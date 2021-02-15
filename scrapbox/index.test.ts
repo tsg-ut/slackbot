@@ -101,19 +101,19 @@ describe('scrapbox', () => {
 
 	it('convert Scrapbox-style text to Slack-style text', () => {
 		const exampleScrapboxText = `
-			#debug
+			#debug #test
 			[*** ひとこと]
 			>カラオケの鉄人
 			これすき [hideo54.icon] (ソース: [用語集])
-			[* [太字内部リンク]]
+			[* [太字内部リンク]] [* 太字2]
 			[** [TSG 公式サイト https://tsg.ne.jp/]]
 		`;
 		const expectedSlackText = `
-			<https://scrapbox.io/tsg/debug|#debug>
+			<https://scrapbox.io/tsg/debug|#debug> <https://scrapbox.io/tsg/test|#test>
 			*ひとこと*
 			>カラオケの鉄人
 			これすき <https://scrapbox.io/tsg/hideo54|hideo54> (ソース: <https://scrapbox.io/tsg/用語集|用語集>)
-			*<https://scrapbox.io/tsg/太字内部リンク|太字内部リンク>*
+			*<https://scrapbox.io/tsg/太字内部リンク|太字内部リンク>* *太字2*
 			*<https://tsg.ne.jp/|TSG 公式サイト>*
 		`;
 		expect(scrapbox2slack(exampleScrapboxText)).toBe(expectedSlackText);
