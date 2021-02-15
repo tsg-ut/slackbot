@@ -424,7 +424,6 @@ interface Transformation {
 
 interface HelpRequest {
   kind: 'help';
-  argument?: string
 }
 
 type ParseResult = Transformation | EmodiError | HelpRequest;
@@ -434,18 +433,13 @@ const parse = (message: string): ParseResult => {
   const parts = message.split('|').map(_.trim);
   logger.info(parts);
   if (parts.length < 1) {
-    return parseError('Expected emoji; you can also type "@emodi help"');
+    return parseError('Expected emoji');
   }
   if (parts[0] === 'help') {
-    if (parts.length === 1) {
-      return {kind: 'help'};
+    if (parts.length > 1) {
+      return parseError('`help` needs no argument');
     }
-    else if (parts.length === 2) {
-      return {kind: 'help', argument: parts[1]};
-    }
-    else {
-      return parseError('too many argument');
-    }
+    return {kind: 'help'};
   }
   const nameMatch = /^:(?<name>[^!:\s]+):$/.exec(parts[0]);
   if (nameMatch == null) {
