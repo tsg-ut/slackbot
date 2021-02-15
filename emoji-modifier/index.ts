@@ -415,32 +415,6 @@ const filters: Map<string, Filter> = new Map([
 ] as [string, Filter][]);
 // }}}
 
-// help document {{{
-const helpDocs: Map<string, string> = new Map([
-  [
-    '',
-    'usage: <emoji> | <filter> <argument> <argument> ... | <filter> <argument> <argument> ... | ...\n'
-      + 'Write ":" around the emoji name!'
-  ],
-  ['help', 'usage: help <filter>\nGet information about the given filter.'],
-  // filters
-  ['identity', 'usage: identity (no argument)\nMake no change.'],
-  ['speedTimes', 'usage: speedtimes <number>\nChange the speed of animation.'],
-  ['mirrorV', 'usage: mirrorV (no argument)\nReflect the emoji through the horizontal median line.'],
-  ['mirror', 'usage: mirror (no argument)\nReflect the emoji through the vertical median line.'],
-  [
-    'move',
-    'usage: move <"top"|"bottom"|"left"|"right"> <"top"|"bottom"|"left"|"right">\n'
-      + 'Move the emoji so that it comes in from the side specified by the first argument and goes out through the side specified by the second argument.'
-  ],
-  ['go', 'usage: move <"top"|"bottom"|"left"|"right">\nMove the emoji in the given direction.'],
-  ['trim', 'usage: trim <number>\nTrim the emoji including the opaque pixels with regard to the given threshold.'],
-  ['distort', 'usage: distort (no argument)\nDistort the emoji.'],
-  ['pro', 'usage: pro <string> <string>\nCreate a fake proof that somebody of the emoji avatar with the given username and user_id said "私がプロだ" on an SNS.'],
-  ['think', 'usage: think (no argument)\nAttach a hand to the emoji as if it is thinking.'],
-]);
-// }}}
-
 // parsing & executing {{{
 interface Transformation {
   kind: 'success';
