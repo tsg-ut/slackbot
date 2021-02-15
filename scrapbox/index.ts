@@ -7,34 +7,76 @@ import type {SlackInterface} from '../lib/slack';
 
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
 
+interface Link {
+	url: string;
+	domain: string; // e.g. scrapbox.io
+}
+
+interface ScrapboxUser {
+	id: string;
+	name: string;
+	displayName: string;
+	photo: string; // URL
+}
+
+interface ScrapboxLine {
+	id: string;
+	text: string;
+	userId: string;
+	created: number;
+	updated: number;
+}
+
+interface ScrapboxPage {
+	id: string;
+	title: string;
+	image: string; // URL
+	descriptions: string[];
+	user: ScrapboxUser;
+	pin: number;
+	views: number;
+	linked: number;
+	commitId: string;
+	created: number;
+	updated: number;
+	accessed: number;
+	snapshotCreated: number;
+	persistent: boolean;
+	lines: ScrapboxLine[];
+}
 
 export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
-	event.on('link_shared', async (e: any) => {
+	event.on('link_shared', async (e: { links: Link[]; message_ts: string; channel: string; }) => {
 		logger.info('Incoming unfurl request >');
-		e.links.map((link: string) => logger.info('-', link));
-		const links = e.links.filter(({domain}: {domain: string}) => domain === 'scrapbox.io');
+		e.links.forEach(link => { logger.info('-', link); });
+		const links = e.links.filter(({domain}) => domain === 'scrapbox.io');
 		const unfurls: LinkUnfurls = {};
 		for (const link of links) {
 			const {url} = link;
 			if (!(/^https?:\/\/scrapbox.io\/tsg\/.+/).test(url)) {
 				continue;
 			}
-			let pageName = url.replace(/^https?:\/\/scrapbox.io\/tsg\/(.+)$/, '$1');
+			let [ _, pageName, __, lineId ] = url.match(/^https?:\/\/scrapbox.io\/tsg\/([^#]+)(#([\da-f]+))?$/);
+			// 型定義がカスで、lineId は string と思われてるが本当は string | undefined.
 			try {
 				if (decodeURI(pageName) === pageName) {
 					pageName = encodeURI(pageName);
 				}
 			} catch {}
 			const scrapboxUrl = getScrapboxUrl(pageName);
-			const response = await axios.get(scrapboxUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
+			const response = await axios.get<ScrapboxPage>(scrapboxUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
 			const {data} = response;
+			const lineIndex = data.lines.map(line => line.id).indexOf(lineId);
+			const descriptions = lineId ? data.lines.filter((d, i) => i >= lineIndex)
+				.slice(0, 5) // descriptions と同じ個数
+				.map(line => line.text) : data.descriptions;
 
 			unfurls[url] = {
 				title: data.title,
 				title_link: url,
 				author_name: 'Scrapbox',
 				author_icon: 'https://scrapbox.io/favicon.ico',
-				text: data.descriptions.join('\n'),
+				text: descriptions.join('\n'),
 				color: '#484F5E',
 				...(data.image ? {image_url: data.image} : {}),
 			};
