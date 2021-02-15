@@ -523,7 +523,7 @@ const buildResponse = async (message: string): Promise<Emoji | EmodiError | Help
     return parseResult;
   }
   return await runTransformation(parseResult);
-}
+};
 
 // }}}
 
