@@ -517,7 +517,7 @@ const runTransformation = async (parseResult: Transformation): Promise<Emoji | E
   );
 };
 
-const createResult = async (message: string): Promise<Emoji | EmodiError | HelpRequest> => {
+const buildResponse = async (message: string): Promise<Emoji | EmodiError | HelpRequest> => {
   const parseResult = parse(message);
   if (parseResult.kind === 'error' || parseResult.kind === 'help') {
     return parseResult;
@@ -578,7 +578,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     }
 
     const internalError = errorOfKind('InternalError');
-    const result = await createResult(operation.groups.command)
+    const result = await buildResponse(operation.groups.command)
       .catch((err) => {
         logger.error(err.message);
         return internalError(err.name + ': ' + err.message + '\n Please inform :coil:.');
