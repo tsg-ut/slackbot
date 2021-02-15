@@ -9,12 +9,17 @@ const {
 
 const BOTNAME = 'ソートなぞなぞ';
 const BOTICON = ':abc:';
-const TIMEOUT = 1000 * 60;
 
 const getSortedString = (answer) => {
 	return [...answer].sort((a, b) => {
 		return a.codePointAt(0) - b.codePointAt(0);
 	}).join('');
+};
+
+// 正解文字列に対する解答時間（秒）
+const calculateTimeout = (answer) => {
+	const length = [...answer].length;
+	return Math.ceil((length * Math.log2(length) ** 2) / 10) * 10;
 };
 
 const getRandomTitle = async () => {
@@ -93,10 +98,12 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 			});
 			state.thread = ts;
 
+			const timeout = calculateTimeout(answer);
+
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: stripIndent`
-					60 秒以内にこのスレッドに返信してね
+					${timeout} 秒以内にこのスレッドに返信してね
 				`,
 				username: BOTNAME,
 				icon_emoji: BOTICON,
@@ -118,7 +125,7 @@ module.exports = async ({ rtmClient: rtm, webClient: slack }) => {
 					thread_ts: thread,
 					reply_broadcast: true,
 				});
-			}, TIMEOUT);
+			}, timeout * 1000);
 			state.timeoutId = timeoutId;
 		}
 
