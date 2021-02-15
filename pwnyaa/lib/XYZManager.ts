@@ -60,6 +60,7 @@ const loginXYZ = async () => {
 	});
 };
 
+// parse as UTC and return Date as UTC
 const str2dateXYZ = (strDate: string): Date => {
 	const strmons = ['Jan.', 'Feb.', 'March', 'April', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov', 'Dec.'];
 
@@ -68,7 +69,7 @@ const str2dateXYZ = (strDate: string): Date => {
 	if (elements.length <= 1) {
 		return null;
 	}
-	const month = (`00${String(strmons.indexOf(elements[0]) + 1)}`).slice(-2);
+	const month = (`00${String(strmons.indexOf(elements[0]))}`).slice(-2); // month is 0-indexed
 	const day = (`00${elements[1].substring(0, elements[1].length - 1)}`).slice(-2);
 	const year = elements[2].substring(0, elements[2].length - 1);
 	const hour = (`00${elements[3].split(':')[0]}`).slice(-2);
@@ -80,9 +81,7 @@ const str2dateXYZ = (strDate: string): Date => {
 	}
 	const seconds = '00';
 
-	const validDateStr = `${year}/${month}/${day} ${hour}:${minute}:${seconds}`;
-	const resDate = new Date(validDateStr);
-	resDate.setHours(resDate.getDate() + 9);
+	const resDate = new Date(Date.UTC(Number(year), Number(month), Number(day), Number(hour), Number(minute), Number(seconds)));
 	return resDate;
 };
 
