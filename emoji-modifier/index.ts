@@ -464,14 +464,6 @@ const parse = (message: string): ParseResult => {
   };
 };
 
-const createResult = async (message: string): Promise<Emoji | EmodiError | HelpRequest> => {
-  const parseResult = parse(message);
-  if (parseResult.kind === 'error' || parseResult.kind === 'help') {
-    return parseResult;
-  }
-  return await runTransformation(parseResult);
-}
-
 const runTransformation = async (parseResult: Transformation): Promise<Emoji | EmodiError> => {
   const nameError = errorOfKind('NameError');
   const emoji = await lookupEmoji(parseResult.emojiName);
@@ -524,6 +516,14 @@ const runTransformation = async (parseResult: Transformation): Promise<Emoji | E
     Promise.resolve(emoji as Emoji | EmodiError)
   );
 };
+
+const createResult = async (message: string): Promise<Emoji | EmodiError | HelpRequest> => {
+  const parseResult = parse(message);
+  if (parseResult.kind === 'error' || parseResult.kind === 'help') {
+    return parseResult;
+  }
+  return await runTransformation(parseResult);
+}
 
 // }}}
 
