@@ -66,15 +66,25 @@ module.exports = async ({ rtmClient, webClient }: SlackInterface) => {
 
 	const candidateWords = await getCandidateWords({ min: 0, max: Infinity }) as Candidate[];
 
-	const command = /^(?:ソート|そーと)なぞなぞ\s*(?:(?<length>[1-9][0-9]?)(?:(?:文)?字)?)?$/;
+	const commands = process.env.NODE_ENV === 'production' ? {
+		start: /^(?:ソート|そーと)なぞなぞ\s*(?:(?<length>[1-9][0-9]?)(?:(?:文)?字)?)?$/,
+		stop: /^(?:ソート|そーと)なぞなぞ\s*終了$/,
+	} : {
+		start: /^ア(?:ソート|そーと)なぞなぞ\s*(?:(?<length>[1-9][0-9]?)(?:(?:文)?字)?)?$/,
+		stop: /^ア(?:ソート|そーと)なぞなぞ\s*終了$/,
+	};
 
 	rtmClient.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
 
-		if (state.type === 'Sleeping' && command.test(message.text || '')) {
-			const match = (message.text as string).match(command);
+		if (message.username === BOTNAME) {
+			return;
+		}
+
+		if (state.type === 'Sleeping' && commands.start.test(message.text || '')) {
+			const match = (message.text as string).match(commands.start);
 
 			let found: Candidate[];
 			if (match.groups.length) {
@@ -125,7 +135,7 @@ module.exports = async ({ rtmClient, webClient }: SlackInterface) => {
 				await webClient.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
-						答えは ＊${title}＊／＊${answer}＊ だよ:triumph:
+						答えは ＊${title}＊／＊${answer}＊ だよ :triumph:
 						<${wordUrl}|${getPageTitle(wordUrl)}>
 					`,
 					username: BOTNAME,
@@ -136,9 +146,10 @@ module.exports = async ({ rtmClient, webClient }: SlackInterface) => {
 			}, timeout * 1000);
 
 			state = { type: 'Answering', title, answer, sorted, wordUrl, thread, timeoutId };
+			return;
 		}
 
-		if (state.type === 'Answering' && message.thread_ts === state.thread && message.username !== BOTNAME) {
+		if (state.type === 'Answering' && message.thread_ts === state.thread) {
 			if (message.text === state.answer) {
 				const { title, answer, wordUrl, thread, timeoutId } = state;
 				state = { type: 'Sleeping' };
@@ -147,8 +158,8 @@ module.exports = async ({ rtmClient, webClient }: SlackInterface) => {
 				await webClient.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: stripIndent`
-						<@${message.user}> 正解:tada:
-						答えは ＊${title}＊／＊${answer}＊ だよ:muscle:
+						<@${message.user}> 正解 :tada:
+						答えは ＊${title}＊／＊${answer}＊ だよ :muscle:
 						${wordUrl}
 					`,
 					username: BOTNAME,
@@ -163,6 +174,38 @@ module.exports = async ({ rtmClient, webClient }: SlackInterface) => {
 					timestamp: message.ts,
 				});
 			}
+			return;
+		}
+
+		if (state.type === 'Answering' && message.thread_ts !== state.thread && commands.start.test(message.text || '')) {
+			await webClient.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: stripIndent`
+					現在解答中だよ。終了するには「ソートなぞなぞ 終了」と送信してね。
+				`,
+				username: BOTNAME,
+				icon_emoji: BOTICON,
+			});
+			return;
+		}
+
+		if (state.type === 'Answering' && message.thread_ts !== state.thread && commands.stop.test(message.text || '')) {
+			const { title, answer, wordUrl, timeoutId } = state;
+			state = { type: 'Sleeping' };
+			clearTimeout(timeoutId);
+			await webClient.chat.postMessage({
+				channel: process.env.CHANNEL_SANDBOX,
+				text: stripIndent`
+					解答を終了したよ :pensive:
+					答えは ＊${title}＊／＊${answer}＊ だよ :muscle:
+					${wordUrl}
+				`,
+				username: BOTNAME,
+				icon_emoji: BOTICON,
+				thread_ts: message.ts,
+				reply_broadcast: true,
+			});
+			return;
 		}
 	});
 }
