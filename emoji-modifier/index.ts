@@ -522,7 +522,7 @@ const buildResponse = async (message: string): Promise<Emoji | EmodiError | Help
   if (parseResult.kind === 'error' || parseResult.kind === 'help') {
     return parseResult;
   }
-  return await runTransformation(parseResult);
+  return runTransformation(parseResult);
 };
 
 // }}}
