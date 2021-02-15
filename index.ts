@@ -122,7 +122,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 		text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
 		attachments: plugins.map((name) => ({
 			color: '#F44336',
-			text: `${name}: loading...`,
+			text: `loading: ${name}`,
 		})),
 	});
 
@@ -145,10 +145,16 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 			channel: process.env.CHANNEL_SANDBOX,
 			ts: initializationMessage.ts as string,
 			text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
-			attachments: plugins.map((name) => ({
-				color: loadedPlugins.has(name) ? '#4CAF50' : '#F44336',
-				text: `${name}: ${loadedPlugins.has(name) ? 'loaded' : 'loading...'}`,
-			})),
+			attachments: [
+				{
+					color: '#4CAF50',
+					text: Array.from(loadedPlugins).join(', '),
+				},
+				...plugins.filter((name) => !loadedPlugins.has(name)).map((name) => ({
+					color: '#F44336',
+					text: `loading: ${name}`,
+				})),
+			],
 		})
 	}));
 
