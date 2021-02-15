@@ -598,7 +598,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				logger.info('[+] someone solved challs...');
 				slack.chat.postMessage({
 					username: 'pwnyaa',
-					icon_emoji: ':pwn',
+					icon_emoji: ':pwn:',
 					channel: process.env.CHANNEL_PWNABLE_TW,
 					text,
 				});
