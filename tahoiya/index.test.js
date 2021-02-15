@@ -8,8 +8,8 @@ const download = require('download');
 
 download.response = Array(10).fill('単語\tたんご\t単語\t000').join('\n');
 
-const tahoiya = require('./index.js');
 const Slack = require('../lib/slackMock.js');
+const tahoiya = require('./index.js');
 
 let slack = null;
 

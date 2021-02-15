@@ -45,7 +45,7 @@ describe('lyrics', () => {
                         </div>
                         <div class="artist_etc clearfix">
                             <div class="kashi_artist">
-                                歌手：<h3><a><span>みかくにんぐッ!</span></a></h3>
+                                歌手：<h2 class="artist"><a><span>みかくにんぐッ!</span></a></h2>
                                 <br>
                                 作詞：<h4 itemprop=lyricist><a>Junky</a></h4>
                                 <br>

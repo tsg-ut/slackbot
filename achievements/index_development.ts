@@ -1,11 +1,11 @@
 export default async () => {};
 
-export const unlock = async (user: string, name: string, additionalInfo?: string) => {
-	console.log(`${user} unlocked ${name}${additionalInfo == null ? '' : (`, ${additionalInfo}`)}`);
+export const unlock = (user: string, name: string, additionalInfo?: string) => {
+	console.log(`${user} unlocked ${name}${additionalInfo === null ? '' : (`, ${additionalInfo}`)}`);
 };
 
-export const isUnlocked = async () => false;
-export const increment = async () => {};
-export const get = async (): Promise<any> => null;
-export const set = async () => {};
-export const lock = async () => {};
+export const isUnlocked = () => false;
+export const increment = () => {};
+export const get = (): any => null;
+export const set = () => {};
+export const lock = () => {};

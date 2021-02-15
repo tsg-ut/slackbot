@@ -2,7 +2,6 @@
 // node remove-category.js [category]
 
 const db = require('../lib/firestore.ts').default;
-const chunk = require('lodash/chunk');
 
 if (process.argv.length !== 3) {
 	throw new Error('Usage: node remove-category.js [category]');
