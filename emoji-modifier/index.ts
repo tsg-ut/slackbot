@@ -425,8 +425,8 @@ const helpDocs: Map<string, string> = new Map([
   ['mirror', 'usage: mirror (no argument)\nReflect the emoji through the vertical median line.'],
   [
     'move',
-    'usage: move <"top"|"bottom"|"left"|"right"> <"top"|"bottom"|"left"|"right">\n'
-      + 'Move the emoji so that it comes in from the side specified by the first argument and goes out through the side specified by the second argument.'
+    'usage: move <"top"|"bottom"|"left"|"right"> <"top"|"bottom"|"left"|"right">\n' +
+      'Move the emoji so that it comes in from the side specified by the first argument and goes out through the side specified by the second argument.'
   ],
   ['go', 'usage: move <"top"|"bottom"|"left"|"right">\nMove the emoji in the given direction.'],
   ['trim', 'usage: trim <number>\nTrim the emoji including the opaque pixels with regard to the given threshold.'],
