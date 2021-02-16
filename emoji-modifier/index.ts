@@ -465,9 +465,9 @@ const parse = (message: string): ParseResult => {
     if (subparts.length === 1) {
       return {
         kind: 'help',
-        document: 'usage: <emoji> | <filter> <argument> <argument> ... | <filter> <argument> <argument> ... | ...\n'
+        document: 'usage: @emodi <emoji> | <filter> <argument> <argument> ... | <filter> <argument> <argument> ... | ...\n'
           + 'Write ":" around the emoji name!\n\n'
-          + 'Filters:'
+          + 'Filters: '
           + [...filters.keys()].join(' ')
       };
     }
