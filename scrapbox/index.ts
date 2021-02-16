@@ -68,7 +68,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 			if (!(/^https?:\/\/scrapbox.io\/tsg\/.+/).test(url)) {
 				continue;
 			}
-			let [_, pageName, __, lineId] = url.match(/^https?:\/\/scrapbox.io\/tsg\/([^#]+)(#([\da-f]+))?$/);
+			let [, pageName,, lineId] = url.match(/^https?:\/\/scrapbox.io\/tsg\/([^#]+)(#([\da-f]+))?$/);
 			// 型定義がカスで、lineId は string と思われてるが本当は string | undefined.
 			try {
 				if (decodeURI(pageName) === pageName) {
