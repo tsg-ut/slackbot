@@ -417,13 +417,6 @@ const filters: Map<string, Filter> = new Map([
 
 // help document {{{
 const helpDocs: Map<string, string> = new Map([
-  [
-    '',
-    'usage: <emoji> | <filter> <argument> <argument> ... | <filter> <argument> <argument> ... | ...\n'
-      + 'Write ":" around the emoji name!\n\n'
-      + 'Filters:'
-      + [...filters.keys()].join(' ')
-  ],
   ['help', 'usage: help <filter>\nGet information about the given filter.'],
   // filters
   ['identity', 'usage: identity (no argument)\nMake no change.'],
@@ -466,7 +459,13 @@ const parse = (message: string): ParseResult => {
   }
   if (parts[0] === 'help') {
     if (parts.length === 1) {
-      return {kind: 'help', document: ''};
+      return {
+        kind: 'help',
+        document: 'usage: <emoji> | <filter> <argument> <argument> ... | <filter> <argument> <argument> ... | ...\n'
+          + 'Write ":" around the emoji name!\n\n'
+          + 'Filters:'
+          + [...filters.keys()].join(' ')
+      };
     }
     if (parts.length === 2) {
       const document = helpDocs.get(parts[1]);
