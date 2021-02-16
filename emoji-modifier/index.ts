@@ -422,6 +422,7 @@ const helpDocs: Map<string, string> = new Map([
     'usage: <emoji> | <filter> <argument> <argument> ... | <filter> <argument> <argument> ... | ...\n'
       + 'Write ":" around the emoji name!\n\n'
       + 'Filters:'
+      + [...filters.keys()].join(' ')
   ],
   ['help', 'usage: help <filter>\nGet information about the given filter.'],
   // filters
