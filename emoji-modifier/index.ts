@@ -476,7 +476,7 @@ const parse = (message: string): ParseResult => {
       if (document === undefined) {
         return {kind: 'help', document: 'No such filter, or no document for it'};
       }
-      return {kind: 'help', document: document};
+      return {kind: 'help', document};
     }
     return parseError('too many argument');
   }
