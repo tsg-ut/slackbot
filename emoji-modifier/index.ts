@@ -452,7 +452,7 @@ interface Transformation {
 
 interface HelpRequest {
   kind: 'help';
-  argument: string
+  document: string
 }
 
 type ParseResult = Transformation | EmodiError | HelpRequest;
@@ -466,10 +466,14 @@ const parse = (message: string): ParseResult => {
   }
   if (parts[0] === 'help') {
     if (parts.length === 1) {
-      return {kind: 'help', argument: ''};
+      return {kind: 'help', document: ''};
     }
     if (parts.length === 2) {
-      return {kind: 'help', argument: parts[1]};
+      const document = helpDocs.get(parts[1]);
+      if (document === undefined) {
+        return {kind: 'help', document: 'No such filter, or no document for it'};
+      }
+      return {kind: 'help', document: document};
     }
     return parseError('too many argument');
   }
