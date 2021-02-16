@@ -589,17 +589,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       text: message,
     });
   };
-  const postHelp = (): void => {
+  const postHelp = (document: string): void => {
     slack.chat.postMessage({
       channel: process.env.CHANNEL_SANDBOX,
       username: 'emoji-modifier',
       icon_emoji: ':essential-information:',
-      text: [...filters.entries()].map(([name, filter]: [string, Filter]): string => {
-        if (filter.arguments.length === 0) {
-          return name;
-        }
-        return name + ' ' + filter.arguments.map((s: string) => '[' + s + ']').join(' ');
-      }).join('\n'),
+      text: document,
     });
   };
 
@@ -624,7 +619,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       postError(result.message);
     }
     else if (result.kind === 'help') {
-      postHelp();
+      postHelp(result.document);
     }
     else {
       const url = await uploadEmoji(result);
