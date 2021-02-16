@@ -440,12 +440,10 @@ const parse = (message: string): ParseResult => {
     if (parts.length === 1) {
       return {kind: 'help', argument: ''};
     }
-    else if (parts.length === 2) {
+    if (parts.length === 2) {
       return {kind: 'help', argument: parts[1]};
     }
-    else {
-      return parseError('too many argument');
-    }
+    return parseError('too many argument');
   }
   const nameMatch = /^:(?<name>[^!:\s]+):$/.exec(parts[0]);
   if (nameMatch == null) {
