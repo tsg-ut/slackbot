@@ -458,7 +458,11 @@ const parse = (message: string): ParseResult => {
     return parseError('Expected emoji; you can also type "@emodi help"');
   }
   if (parts[0] === 'help') {
-    if (parts.length === 1) {
+    if (parts.length > 1) {
+      return parseError('filters cannot be applied to `help`');
+    }
+    const subparts = parts[0].split(/\s+/) // split by serieses of spaces
+    if (subparts.length === 1) {
       return {
         kind: 'help',
         document: 'usage: <emoji> | <filter> <argument> <argument> ... | <filter> <argument> <argument> ... | ...\n'
@@ -467,7 +471,7 @@ const parse = (message: string): ParseResult => {
           + [...filters.keys()].join(' ')
       };
     }
-    if (parts.length === 2) {
+    if (subparts.length === 2) {
       const document = helpDocs.get(parts[1]);
       if (document === undefined) {
         return {kind: 'help', document: 'No such filter, or no document for it'};
