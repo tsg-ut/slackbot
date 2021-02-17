@@ -8,8 +8,8 @@ const response = async (text:string, user:string) => {
         for (const regexp of resp.input) {
             const matches = text.match(regexp);
             if (matches !== null) {
-							const responses = {}.hasOwnProperty.call(resp, 'outputArray') ? resp.outputArray :
-								(resp.needUsername ? await resp.outputFunction(matches, user) : await resp.outputFunction(matches));
+                const responses = {}.hasOwnProperty.call(resp, 'outputArray') ? resp.outputArray :
+                    (resp.needsUsername ? await resp.outputFunction(matches, user) : await resp.outputFunction(matches));
                 if (!responses) continue;
                 const respText = resp.shuffle ? shuffle(responses).join('') : sample(responses);
                 const respAchievements: string[] = [];

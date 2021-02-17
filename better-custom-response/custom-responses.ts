@@ -16,8 +16,8 @@ interface CustomResponse {
     username?: string,
     icon_emoji?: string,
     reaction?: true,
-		achievements?: Achievement[],
-		needUsername?: true,
+    achievements?: Achievement[],
+    needsUsername?: true,
 }
 
 const customResponses: CustomResponse[] = [
@@ -71,7 +71,7 @@ const customResponses: CustomResponse[] = [
         input: [/^(.+)っちへ$/],
         outputFunction: input => [ stripIndent`
             ${input[1]}っちへ
-
+            
             ういっすー!
             朝から、完全にぽんぽんぺいんで、つらみが深いので、1日おふとんでスヤァしておきます。
             明日は行けたら行くマンです!` ],
@@ -161,8 +161,8 @@ const customResponses: CustomResponse[] = [
             return [`https://achievements.tsg.ne.jp/users/${user}`];
         },
         icon_emoji: ":achievement:",
-				username: "実績一覧",
-				needUsername: true,
+        username: "実績一覧",
+        needsUsername: true,
     },
 ];
 
