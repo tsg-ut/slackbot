@@ -3,8 +3,8 @@
 jest.mock('axios');
 
 const axios = require('axios');
-const checkin = require('./index.js');
 const Slack = require('../lib/slackMock.js');
+const checkin = require('./index.js');
 
 let slack = null;
 

@@ -24,7 +24,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
         const [command, ...queries] = trim.split(/\s+/);
         if (command === 'slacklog') {
             const url = queries.join(' ');
-            const slackURLRegexp = new RegExp('^<https?://tsg-ut.slack.com/archives/([A-Z0-9]+)/p([0-9]+)([0-9]{6})>');
+            const slackURLRegexp = new RegExp('^<https?://tsg-ut.slack.com/archives/([A-Z0-9]+)/p([0-9]+)([0-9]{6})\\S*>');
 
             if (slackURLRegexp.test(url)) {
                 const [_, chanid, ts1, ts2] = slackURLRegexp.exec(url);

@@ -1,12 +1,12 @@
-const {stripIndent} = require('common-tags');
 const axios = require('axios');
+const {stripIndent} = require('common-tags');
 
 module.exports = (clients) => {
 	const {rtmClient: rtm, webClient: slack} = clients;
 
 	const notify = async ({type, channel, user}) => {
 		await axios.post('https://slack.com/api/channels.invite', {
-			channel: channel,
+			channel,
 			user: process.env.USER_TSGBOT,
 		}, {
 			headers: {

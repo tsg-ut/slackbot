@@ -1,6 +1,6 @@
 import axios from 'axios';
 import scrapeIt from 'scrape-it';
-import { AllHtmlEntities } from 'html-entities';
+import { decode as decodeHtmlEntities } from 'html-entities';
 import type { SlackInterface } from '../lib/slack';
 import { escapeRegExp, sample } from 'lodash';
 import qs from 'querystring';
@@ -15,6 +15,7 @@ interface SongInfo {
     utaNetUrl: string;
     audioUrl?: string;
     artworkUrl?: string;
+    appleMusicUrl?: string;
     paragraphs: string[],
 }
 
@@ -27,6 +28,7 @@ interface MovieInfo {
 interface iTunesInfo {
     audioUrl?: string;
     artworkUrl?: string;
+    appleMusicUrl?: string;
 }
 
 const getiTunesInfo = async (title: string, artist: string): Promise<iTunesInfo> => {
@@ -43,6 +45,7 @@ const getiTunesInfo = async (title: string, artist: string): Promise<iTunesInfo>
     return {
         audioUrl: results[0].previewUrl,
         artworkUrl: results[0].artworkUrl60,
+        appleMusicUrl: results[0].trackViewUrl,
     };
 };
 
@@ -55,20 +58,19 @@ export const getSongInfo = async (songInfoUrl: string, keyword: string): Promise
         composer: string;
         kashiHTML: string;
     }
-    const entities = new AllHtmlEntities();
     const fetchedSongData = (await scrapeIt<fetchedSongData>(songInfoUrl, {
         url: {
             selector: 'link[rel=canonical]',
             attr: 'href',
         },
-        title: 'h2',
-        artist: 'h3',
+        title: '.title h2',
+        artist: '.artist',
         lyricist: 'h4[itemprop=lyricist]',
         composer: 'h4[itemprop=composer]',
         kashiHTML: {
             selector: '#kashi_area',
             how: 'html',
-            convert: x => entities.decode(x),
+            convert: x => decodeHtmlEntities(x),
         },
     })).data;
     const paragraphs = fetchedSongData.kashiHTML.split('<br><br>').map(paragraph =>
@@ -78,7 +80,7 @@ export const getSongInfo = async (songInfoUrl: string, keyword: string): Promise
     const formattedMatchingParagraphs = matchingParagraphs.map(paragraph =>
         paragraph.replace(new RegExp(escapeRegExp(keyword), 'g'), '＊$&＊')
     );
-    const { audioUrl, artworkUrl } = await getiTunesInfo(fetchedSongData.title, fetchedSongData.artist);
+    const itunesInfo = await getiTunesInfo(fetchedSongData.title, fetchedSongData.artist);
 
     return {
         phrase: keyword,
@@ -88,8 +90,9 @@ export const getSongInfo = async (songInfoUrl: string, keyword: string): Promise
         artist: fetchedSongData.artist,
         lyricist: fetchedSongData.lyricist,
         composer: fetchedSongData.composer,
-        audioUrl,
-        artworkUrl,
+        audioUrl: itunesInfo.audioUrl,
+        artworkUrl: itunesInfo.artworkUrl,
+        appleMusicUrl: itunesInfo.appleMusicUrl,
         paragraphs,
     };
 };
@@ -183,9 +186,15 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
                     },
                 ];
                 if (songInfo.audioUrl) { // It also has artworkUrl
+                    const links = [
+                        [ songInfo.audioUrl, '試聴' ],
+                    ];
+                    if (songInfo.appleMusicUrl) {
+                        links.push([ songInfo.appleMusicUrl, 'Apple Music' ]);
+                    }
                     fields.push({
-                        "title": "試聴リンク",
-                        "value": songInfo.audioUrl,
+                        "title": "リンク",
+                        "value": links.map(l => `<${l[0]}|${l[1]}>`).join(', '),
                         "short": false
                     });
                     defaultResponseFormat.icon_url = songInfo.artworkUrl;

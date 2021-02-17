@@ -6,7 +6,8 @@ import axios from 'axios';
 import cheerio from 'cheerio';
 // @ts-ignore
 import levenshtein from 'fast-levenshtein';
-import {AllHtmlEntities} from 'html-entities';
+import {google} from 'googleapis';
+import {decode as decodeHtmlEntities} from 'html-entities';
 import iconv from 'iconv-lite';
 // @ts-ignore
 import {hiraganize} from 'japanese';
@@ -16,10 +17,11 @@ import type {SlackInterface} from '../lib/slack';
 
 const mutex = new Mutex();
 
-interface Quiz {
+export interface Quiz {
 	id: number,
 	question: string,
 	answer: string,
+	author?: string,
 }
 
 interface Data {
@@ -27,14 +29,23 @@ interface Data {
 }
 
 const statePath = path.resolve(__dirname, 'candidates.json');
+const itStatePath = path.resolve(__dirname, 'candidates-it.json');
+const hakatashiItStatePath = path.resolve(__dirname, 'candidates-hakatashi-it.json');
 
 const fullwidth2halfwidth = (string: string) => (
 	string.replace(/[\uFF01-\uFF5E]/gu, (char) => String.fromCodePoint(char.codePointAt(0) - 0xFF00 + 0x20))
 );
 
-const normalize = (string: string) => (
-	hiraganize(fullwidth2halfwidth(string.replace(/[^\p{Letter}\p{Number}]/gu, '').toLowerCase()))
-);
+export const normalize = (string: string) => {
+	let newString = string;
+	newString = newString.replace(/\(.+?\)/g, '');
+	newString = newString.replace(/\[.+?\]/g, '');
+	newString = newString.replace(/（.+?）/g, '');
+	newString = newString.replace(/【.+?】/g, '');
+	newString = newString.replace(/[^\p{Letter}\p{Number}]/gu, '');
+	newString = newString.toLowerCase();
+	return hiraganize(fullwidth2halfwidth(newString));
+};
 
 const getQuiz = async () => {
 	const stateExists = await fs.access(statePath, constants.F_OK).then(() => true).catch(() => false);
@@ -75,7 +86,7 @@ const getQuiz = async () => {
 	return quiz;
 };
 
-const getHardQuiz = async () => {
+export const getHardQuiz = async () => {
 	const id = random(1, 18191);
 	const url = `http://qss.quiz-island.site/abcgo?${encode({
 		ipp: 1,
@@ -84,20 +95,111 @@ const getHardQuiz = async () => {
 		formname: 'lite_search',
 	})}`;
 
-	const entities = new AllHtmlEntities();
 	const {data: quiz} = await scrapeIt<Quiz>(url, {
 		id: 'tbody td:nth-child(1)',
 		question: {
 			selector: 'tbody td:nth-child(3) > a',
 			how: 'html',
-			convert: (x) => entities.decode(x),
+			convert: (x) => decodeHtmlEntities(x),
 		},
 		answer: 'tbody td:nth-child(4)',
 	});
 
 	// eslint-disable-next-line prefer-destructuring
 	quiz.question = quiz.question.split('<br>')[0];
-	quiz.answer = quiz.answer.replace(/(?:\(.+?\)|（.+?）|\[.+?\]|【.+?】)/g, '').trim();
+	quiz.answer = quiz.answer.trim();
+
+	return quiz;
+};
+
+export const getItQuiz = async () => {
+	const stateExists = await fs.access(itStatePath, constants.F_OK).then(() => true).catch(() => false);
+	const candidates = [];
+	if (stateExists) {
+		const stateData = await fs.readFile(itStatePath);
+		candidates.push(...JSON.parse(stateData.toString()));
+	}
+
+	if (candidates.length === 0) {
+		candidates.push(...range(1, 660));
+	}
+
+	const id = sample(candidates);
+
+	const auth = await new google.auth.GoogleAuth({
+		scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+	}).getClient();
+
+	const sheets = google.sheets({version: 'v4', auth});
+
+	const values: [string, string, string][] = await new Promise((resolve, reject) => {
+		sheets.spreadsheets.values.get({
+			spreadsheetId: '1357WnNdRvBlDnh3oDtIde7ptDjm2pFFFb-hbytFX4lk',
+			range: 'A:C',
+		}, (error, response) => {
+			if (error) {
+				reject(error);
+			} else if (response.data.values) {
+				resolve(response.data.values as [string, string, string][]);
+			} else {
+				reject(new Error('values not found'));
+			}
+		});
+	});
+
+	const quizes: Quiz[] = values.map(([id, question, answer]) => ({
+		id: parseInt(id), question, answer,
+	}));
+
+	const quiz = quizes.find((q) => q.id === id);
+
+	await fs.writeFile(itStatePath, JSON.stringify(candidates.filter((candidate) => candidate !== id)));
+
+	return quiz;
+};
+
+export const getHakatashiItQuiz = async () => {
+	const stateExists = await fs.access(hakatashiItStatePath, constants.F_OK).then(() => true).catch(() => false);
+	const candidates = [];
+	if (stateExists) {
+		const stateData = await fs.readFile(hakatashiItStatePath);
+		candidates.push(...JSON.parse(stateData.toString()));
+	}
+
+	if (candidates.length === 0) {
+		candidates.push(...range(1, 450));
+	}
+
+	const id = sample(candidates);
+
+	const auth = await new google.auth.GoogleAuth({
+		scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+	}).getClient();
+
+	const sheets = google.sheets({version: 'v4', auth});
+
+	const values: [string, string, string][] = await new Promise((resolve, reject) => {
+		sheets.spreadsheets.values.get({
+			spreadsheetId: '1357WnNdRvBlDnh3oDtIde7ptDjm2pFFFb-hbytFX4lk',
+			range: 'hakatashi!A:C',
+		}, (error, response) => {
+			if (error) {
+				reject(error);
+			} else if (response.data.values) {
+				resolve(response.data.values as [string, string, string][]);
+			} else {
+				reject(new Error('values not found'));
+			}
+		});
+	});
+
+	const quizes: Quiz[] = values.map(([id, question, answer]) => ({
+		id: parseInt(id), question, answer, author: '320061621395259392',
+	}));
+
+	const quiz = quizes.find((q) => q.id === id);
+
+	await fs.writeFile(hakatashiItStatePath, JSON.stringify(candidates.filter((candidate) => candidate !== id)));
 
 	return quiz;
 };
@@ -139,6 +241,15 @@ const getQuestionChars = (question: string): QuestionChar[] => {
 const getQuestionText = (questionChars: QuestionChar[], hint: number) => (
 	questionChars.map((char) => char.hint <= hint ? char.char : '○').join('')
 );
+
+export const isCorrectAnswer = (answerText: string, userAnswerText: string) => {
+	const answer = normalize(answerText);
+	const userAnswer = normalize(userAnswerText);
+
+	const distance = levenshtein.get(answer, userAnswer);
+
+	return distance <= answer.length / 3;
+};
 
 export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const state: State = {
@@ -257,12 +368,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					return;
 				}
 
-				const answer = normalize(state.answer);
-				const userAnswer = normalize(message.text);
-
-				const distance = levenshtein.get(answer, userAnswer);
-
-				if (distance <= answer.length / 3) {
+				if (isCorrectAnswer(state.answer, message.text)) {
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
 						text: `<@${message.user}> 正解🎉\nQ. ＊${getQuestionText(state.question, 13)}＊\n答えは＊${state.answer}＊だよ💪`,

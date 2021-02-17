@@ -2,6 +2,7 @@ import { stripIndent } from 'common-tags';
 // @ts-ignore
 import { romanize, katakanize } from 'japanese';
 import { shuffle } from 'lodash';
+import omikuji from './omikuji.json';
 
 interface Achievement {
     trigger: RegExp[],
@@ -21,8 +22,18 @@ interface CustomResponse {
 
 const customResponses: CustomResponse[] = [
     {
-        input: [/^あほくさ$/],
-        outputArray: [":ahokusa-top-left::ahokusa-top-center::ahokusa-top-right:\n:ahokusa-bottom-left::ahokusa-bottom-center::ahokusa-bottom-right:"],
+        input: [/^[あほくさ]{4}$/],
+        outputFunction: (input: string[]) => {
+            const ahokusaMap = new Map([
+                ['あ', 'ahokusa-top-right'],
+                ['ほ', 'ahokusa-bottom-right'],
+                ['く', 'ahokusa-top-left'],
+                ['さ', 'ahokusa-bottom-left'],
+            ]);
+            const [a, ho, ku, sa] = Array.from(input[0]).map((c: string, i, a) => ahokusaMap.get(c));
+            const outputStr = `:${ku}::ahokusa-top-center::${a}:\n:${sa}::ahokusa-bottom-center::${ho}:`
+            return [outputStr];
+        },
         username: 'あほくさresponse',
         icon_emoji: ':atama:',
     },
@@ -153,6 +164,10 @@ const customResponses: CustomResponse[] = [
         },
         icon_emoji: ":achievement:",
         username: "実績一覧",
+    },
+    {
+        input: [/^おみくじ$/],
+        outputArray: omikuji,
     },
 ];
 

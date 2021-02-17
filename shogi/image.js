@@ -1,7 +1,7 @@
-const sharp = require('sharp');
-const {default: Color} = require('shogi9.js/lib/Color.js');
 const path = require('path');
 const cloudinary = require('cloudinary');
+const sharp = require('sharp');
+const {default: Color} = require('shogi9.js/lib/Color.js');
 
 const filenameMap = {
 	FU: 'fu',

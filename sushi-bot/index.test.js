@@ -264,3 +264,44 @@ it('reacts to "起床ランキング 確認', () => new Promise((resolve) => {
 		});
 	})();
 }));
+
+it('reacts to "エクササイズランキング 確認"', () => new Promise((resolve) => {
+	slack.on('chat.postMessage', ({username, channel, text}) => {
+		expect(username).toBe('sushi-bot');
+		expect(channel).toBe("D00000000");
+		expect(text).toContain('あなたのエクササイズ日数は1日');
+		expect(text).toContain('現在の順位は');
+		resolve();
+	});
+
+	(async () => {
+		const promise = new Promise(resolve => {
+			const table = {sugoi: false, erai: false};
+			slack.on('reactions.add', ({name, timestamp}) => {
+				if (timestamp === slack.fakeTimestamp && table.hasOwnProperty(name)) {
+					table[name] = true;
+				}
+				if(Object.values(table).every(x=>x)) {
+					resolve();
+				}
+			});
+		});
+
+		slack.rtmClient.emit('message', {
+			channel: slack.fakeChannel,
+			text: ':exercise-done:',
+			user: slack.fakeUser,
+			ts: slack.fakeTimestamp,
+		});
+
+		await promise;
+
+		slack.rtmClient.emit('message', {
+			channel: "D00000000",
+			text: 'エクササイズランキング 確認',
+			user: slack.fakeUser,
+			ts: slack.fakeTimestamp,
+		});
+	})();
+}));
+

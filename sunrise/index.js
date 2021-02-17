@@ -1,16 +1,16 @@
-const path = require('path');
 const assert = require('assert');
-const suncalc = require('suncalc');
+const path = require('path');
+const cloudinary = require('cloudinary');
+const {stripIndent} = require('common-tags');
+const {get, maxBy, range, map} = require('lodash');
+const moment = require('moment');
 const nodePersist = require('node-persist');
 const {default: Queue} = require('p-queue');
-const moment = require('moment');
-const {stripIndent} = require('common-tags');
-const cloudinary = require('cloudinary');
-const {get, maxBy, range, map} = require('lodash');
+const suncalc = require('suncalc');
 
+const {getWeather, getHaiku, getEntries} = require('./fetch.js');
 const render = require('./render.js');
 const weathers = require('./weathers.js');
-const {getWeather, getHaiku, getEntries} = require('./fetch.js');
 
 const queue = new Queue({concurrency: 1});
 
@@ -379,7 +379,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					title: '本日の一句',
 					title_link: 'https://www.haijinkyokai.jp/',
 					text: haiku.text,
-					footer: haiku.note + '\n' + haiku.author,
+					footer: `${haiku.note}\n${haiku.author}`,
 				}],
 			});
 
