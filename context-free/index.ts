@@ -4,7 +4,7 @@ import scrapeIt from 'scrape-it';
 /* eslint-disable no-unused-vars */
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils';
-import {tags} from './cfp-tag'
+import {tags} from './cfp-tags'
 
 const normalizeMeaning = (input: string) => {
   let meaning = input;
