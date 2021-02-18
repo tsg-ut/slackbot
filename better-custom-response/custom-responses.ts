@@ -161,6 +161,31 @@ const customResponses: CustomResponse[] = [
         input: [/^おみくじ$/],
         outputArray: omikuji,
     },
+    {
+        input: [/^(:([^:]+):\s?)?花火$/],
+        outputFunction: (input: string[]) => {
+            const matchedReaction = (input[0] === '花火') ? ':hideo54:' : `:${input[2]}:`;
+            const resultString = stripIndent`\
+                ．　　・∵∴∵・
+                　　∴※※◎※※∴
+                　∴※◎☆${matchedReaction}☆◎※∴
+                ・※◎${matchedReaction}＼川／${matchedReaction}◎※・
+                ∵※☆＼＼Ｖ／／☆※∵
+                ∴◎${matchedReaction}三＞${matchedReaction}＜三${matchedReaction}◎∴
+                ∴※☆／／∧＼＼☆※∴
+                ・※◎${matchedReaction}／川＼${matchedReaction}◎※・
+                　∵※◎☆${matchedReaction}☆◎※∵
+                　　∵※※◎※※∵
+                　　　・∴∵∴・
+                　　　　　ｉ
+                　　　　　ｉ
+                　　　　　ｉ
+                　　＿　　　　　　　＿`;
+            return [resultString];
+        },
+        icon_emoji: ":fireworks:",
+        username: "鍵屋",
+    },
 ];
 
 export default customResponses;
