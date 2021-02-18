@@ -99,12 +99,12 @@ const composePost = async (message: string): Promise<string> => {
     }
     first = false;
     const placeholder = match[0];
-    const ph_tag = Object.keys(tags).indexOf(match[2]) >= 0 ? match[2] : undefined;
-    const ph_name = match[3];
+    const phTag = Object.keys(tags).indexOf(match[2]) >= 0 ? match[2] : undefined;
+    const phName = match[3];
 
-    const word = (ph_tag === undefined ? (await randomWord()).word : sample(tags[ph_tag]))
+    const word = (phTag === undefined ? (await randomWord()).word : sample(tags[phTag]));
 
-    if (ph_name === '') {
+    if (phName === '') {
       response = response.replace(placeholder, word);
     }
     else {
