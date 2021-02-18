@@ -1,3 +1,3 @@
-export const tags: {[key: string]: Array<string>} = {
-  // testTag: ['test1', 'test2', 'test4'],
-};
+export const tags: Map<string, string[]> = new Map([
+  ['testTag', ['test1', 'test2', 'test4']],
+]);

@@ -94,15 +94,14 @@ const composePost = async (message: string): Promise<string> => {
   let response = message;
   let match = null;
   while ((match = /{(<([^{}<>]*)>)?([^{}<>]*)}/.exec(response)) != null) {
-    if (!first) {
-      await sleepFor(5000);
-    }
-    first = false;
     const placeholder = match[0];
-    const phTag = Object.keys(tags).indexOf(match[2]) >= 0 ? match[2] : undefined;
+    const phTag = Array.from(tags.keys()).indexOf(match[2]) >= 0 ? match[2] : undefined;
     const phName = match[3];
 
-    const word = (phTag === undefined ? (await randomWord()).word : sample(tags[phTag]));
+    if (!first && phTag === undefined){
+      await sleepFor(5000);
+    }
+    const word = (phTag === undefined ? (await randomWord()).word : sample(tags.get(phTag)));
 
     if (phName === '') {
       response = response.replace(placeholder, word);
