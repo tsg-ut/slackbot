@@ -1,9 +1,10 @@
 import plugin from 'fastify-plugin';
-import {escapeRegExp} from 'lodash';
+import {escapeRegExp, sample} from 'lodash';
 import scrapeIt from 'scrape-it';
 /* eslint-disable no-unused-vars */
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils';
+import {tags} from './cfp-tag'
 
 const normalizeMeaning = (input: string) => {
   let meaning = input;
@@ -92,15 +93,19 @@ const composePost = async (message: string): Promise<string> => {
   let first = true;
   let response = message;
   let match = null;
-  while ((match = /{[^{}]*}/.exec(response)) != null) {
+  while ((match = /{(<([^{}<>]*)>)?([^{}<>]*)}/.exec(response)) != null) {
     if (!first) {
       await sleepFor(5000);
     }
     first = false;
-    const {word} = await randomWord();
-    const [placeholder] = match;
-    if (placeholder === '{}') {
-      response = response.replace('{}', word);
+    const placeholder = match[0];
+    const ph_tag = Object.keys(tags).indexOf(match[2]) >= 0 ? match[2] : undefined;
+    const ph_name = match[3];
+
+    const word = (ph_tag === undefined ? (await randomWord()).word : sample(tags[ph_tag]))
+
+    if (ph_name === '') {
+      response = response.replace(placeholder, word);
     }
     else {
       response = response.replace(new RegExp(escapeRegExp(placeholder), 'g'), word);
