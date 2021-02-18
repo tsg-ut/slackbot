@@ -97,13 +97,13 @@ const composePost = async (message: string): Promise<string> => {
     const placeholder = match[0];
     const phTag = Array.from(tags.keys()).indexOf(match[2]) >= 0 ? match[2] : undefined;
     const phName = match[3];
-  
+
     if (phTag === undefined) {
-      if (!first) {
-        await sleepFor(5000);
+      if (first) {
+        first = false;
       }
       else {
-        first = false
+        await sleepFor(5000);
       }
     }
 
@@ -164,12 +164,12 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
       response.code(200);
       return '/cfp is only for TSG. Sorry!';
     }
-    //const username = await getMemberName(request.body.user_id);
-    //const icon_url = await getMemberIcon(request.body.user_id, 512);
+    const username = await getMemberName(request.body.user_id);
+    const icon_url = await getMemberIcon(request.body.user_id, 512);
     composePost(request.body.text).then((text) => {
       slack.chat.postMessage({
-        //username,
-        //icon_url,
+        username,
+        icon_url,
         channel: request.body.channel_id,
         text,
       });
