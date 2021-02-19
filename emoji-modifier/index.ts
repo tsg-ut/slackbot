@@ -474,7 +474,7 @@ const parse = (message: string): ParseResult => {
     if (subparts.length === 2) {
       const document = helpDocs.get(subparts[1]);
       if (document === undefined) {
-        const helpArgumentError = errorOfKind('HelpArgumentError')
+        const helpArgumentError = errorOfKind('HelpArgumentError');
         return helpArgumentError('No such filter, or no document for it');
       }
       return {kind: 'help', document};
