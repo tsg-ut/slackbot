@@ -461,7 +461,7 @@ const parse = (message: string): ParseResult => {
     if (parts.length > 1) {
       return parseError('filters cannot be applied to `help`');
     }
-    const subparts = parts[0].split(/\s+/); // split by serieses of spaces
+    const subparts = parts[0].split(/\s+/); // split by series of spaces
     if (subparts.length === 1) {
       return {
         kind: 'help',
