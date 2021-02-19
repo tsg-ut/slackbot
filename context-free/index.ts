@@ -1,3 +1,4 @@
+import axios from 'axios';
 import plugin from 'fastify-plugin';
 import {escapeRegExp, sample} from 'lodash';
 import scrapeIt from 'scrape-it';
@@ -5,7 +6,6 @@ import scrapeIt from 'scrape-it';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils';
 import {tags} from './cfp-tags';
-import axios from 'axios'
 
 const normalizeMeaning = (input: string) => {
   let meaning = input;
@@ -91,16 +91,14 @@ const composePost = async (message: string): Promise<string> => {
     const {word} = await randomWord();
     return word;
   }
-  
+
   let response = message;
 
-  response.match(/{<[^{}<>]*>[^{}<>]*}/g)
-    .map((placeholder) => placeholder.match(/<(?<phTag>[^{}<>]*)>/).groups.phTag)
-    .forEach((tag) => {
-      if (Array.from(tags.keys()).indexOf(tag) < 0) {
-        throw new Error(`/cfp tag '${tag}' not found. (Perhaps you can implement it?)`);
-      }
-    });
+  for (const match of response.matchAll(/{<(?<phTag>[^{}<>]*)>[^{}<>]*}/g)) {
+    if (!tags.has(match.groups.phTag)) {
+      throw new Error(`/cfp tag '${match.groups.phTag}' not found. (Perhaps you can implement it?)`);
+    }
+  }
 
   let first = true;
   let match = null;
