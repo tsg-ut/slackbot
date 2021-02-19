@@ -4,7 +4,8 @@ import scrapeIt from 'scrape-it';
 /* eslint-disable no-unused-vars */
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils';
-import {tags} from './cfp-tags'
+import {tags} from './cfp-tags';
+import axios from 'axios'
 
 const normalizeMeaning = (input: string) => {
   let meaning = input;
@@ -90,13 +91,22 @@ const composePost = async (message: string): Promise<string> => {
     const {word} = await randomWord();
     return word;
   }
-  let first = true;
+  
   let response = message;
+
+  response.match(/{<[^{}<>]*>[^{}<>]*}/g)
+    .map((placeholder) => placeholder.match(/<(?<phTag>[^{}<>]*)>/).groups.phTag)
+    .forEach((tag) => {
+      if (Array.from(tags.keys()).indexOf(tag) < 0) {
+        throw new Error(`/cfp tag '${tag}' not found. (Perhaps you can implement it?)`);
+      }
+    });
+
+  let first = true;
   let match = null;
-  while ((match = /{(<([^{}<>]*)>)?([^{}<>]*)}/.exec(response)) != null) {
-    const placeholder = match[0];
-    const phTag = Array.from(tags.keys()).indexOf(match[2]) >= 0 ? match[2] : undefined;
-    const phName = match[3];
+
+  while ((match = /(?<placeholder>{(?:<(?<phTag>[^{}<>]*)>)?(?<phName>[^{}<>]*)})/.exec(response)) != null) {
+    const {placeholder, phTag, phName} = match.groups;
 
     if (phTag === undefined) {
       if (first) {
@@ -164,16 +174,20 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
       response.code(200);
       return '/cfp is only for TSG. Sorry!';
     }
-    const username = await getMemberName(request.body.user_id);
-    const icon_url = await getMemberIcon(request.body.user_id, 512);
-    composePost(request.body.text).then((text) => {
-      slack.chat.postMessage({
-        username,
-        icon_url,
-        channel: request.body.channel_id,
-        text,
+    //const username = await getMemberName(request.body.user_id);
+    //const icon_url = await getMemberIcon(request.body.user_id, 512);
+    composePost(request.body.text)
+      .then((text) => {
+        slack.chat.postMessage({
+          //username,
+          //icon_url,
+          channel: request.body.channel_id,
+          text,
+        });
+      })
+      .catch((error: Error) => {
+        axios.post(request.body.response_url, {text: error.message});
       });
-    });
     return '';
   });
 });
