@@ -174,13 +174,13 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
       response.code(200);
       return '/cfp is only for TSG. Sorry!';
     }
-    //const username = await getMemberName(request.body.user_id);
-    //const icon_url = await getMemberIcon(request.body.user_id, 512);
+    const username = await getMemberName(request.body.user_id);
+    const icon_url = await getMemberIcon(request.body.user_id, 512);
     composePost(request.body.text)
       .then((text) => {
         slack.chat.postMessage({
-          //username,
-          //icon_url,
+          username,
+          icon_url,
           channel: request.body.channel_id,
           text,
         });
