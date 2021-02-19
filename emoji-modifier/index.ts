@@ -455,7 +455,7 @@ const parse = (message: string): ParseResult => {
   const parts = message.split('|').map(_.trim);
   logger.info(parts);
   if (parts.length < 1) {
-    return parseError('Expected emoji; you can also type "@emodi help"');
+    return parseError('Expected emoji; you can also type `@emodi help`');
   }
   if (parts[0] === 'help' || parts[0].startsWith('help ')) {
     if (parts.length > 1) {
