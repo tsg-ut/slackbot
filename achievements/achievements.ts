@@ -817,6 +817,33 @@ const achievements: Achievement[] = [
 		reaction: 'tukutte',
 		value: 5,
 	},
+	{
+		id: 'reaction-understand-1-5',
+		difficulty: 'hard',
+		title: 'Understand 理解した',
+		condition: '1つのメッセージに対し5人以上から:understand-1:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'understand-1',
+		value: 5,
+	},
+	{
+		id: 'reaction-understand-10-5',
+		difficulty: 'hard',
+		title: 'Understand 完全に理解した',
+		condition: '1つのメッセージに対し5人以上から:understand-10:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'understand-10',
+		value: 5,
+	},
+	{
+		id: 'reaction-understand--5',
+		difficulty: 'hard',
+		title: '無知の知',
+		condition: '1つのメッセージに対し5人以上から:understand-:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'understand-',
+		value: 5,
+	},
 
 	// sushi-bot
 
