@@ -5,9 +5,9 @@ module.exports = (clients) => {
 	const {rtmClient: rtm, webClient: slack} = clients;
 
 	const notify = async ({type, channel, user}) => {
-		await axios.post('https://slack.com/api/channels.invite', {
+		await axios.post('https://slack.com/api/conversations.invite', {
 			channel,
-			user: process.env.USER_TSGBOT,
+			users: process.env.USER_TSGBOT, // A comma separated list of user IDs
 		}, {
 			headers: {
 				Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
