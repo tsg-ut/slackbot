@@ -8,41 +8,41 @@ import type {SlackInterface} from '../lib/slack';
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
 
 interface Link {
-	url: string;
-	domain: string; // e.g. scrapbox.io
+	url: string,
+	domain: string, // e.g. scrapbox.io
 }
 
 interface ScrapboxUser {
-	id: string;
-	name: string;
-	displayName: string;
-	photo: string; // URL
+	id: string,
+	name: string,
+	displayName: string,
+	photo: string, // URL
 }
 
 interface ScrapboxLine {
-	id: string;
-	text: string;
-	userId: string;
-	created: number;
-	updated: number;
+	id: string,
+	text: string,
+	userId: string,
+	created: number,
+	updated: number,
 }
 
 interface ScrapboxPage {
-	id: string;
-	title: string;
-	image: string; // URL
-	descriptions: string[];
-	user: ScrapboxUser;
-	pin: number;
-	views: number;
-	linked: number;
-	commitId: string;
-	created: number;
-	updated: number;
-	accessed: number;
-	snapshotCreated: number;
-	persistent: boolean;
-	lines: ScrapboxLine[];
+	id: string,
+	title: string,
+	image: string, // URL
+	descriptions: string[],
+	user: ScrapboxUser,
+	pin: number,
+	views: number,
+	linked: number,
+	commitId: string,
+	created: number,
+	updated: number,
+	accessed: number,
+	snapshotCreated: number,
+	persistent: boolean,
+	lines: ScrapboxLine[],
 }
 
 export const scrapbox2slack = (s: string) => (
