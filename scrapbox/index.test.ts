@@ -2,7 +2,7 @@ import qs from 'querystring';
 import axios from 'axios';
 // @ts-ignore
 import Slack from '../lib/slackMock.js';
-import scrapbox, {scrapbox2slack} from './index';
+import scrapbox, {scrapbox2slack} from './index.ts';
 
 jest.mock('axios');
 
@@ -31,7 +31,7 @@ beforeEach(async () => {
 });
 
 describe('scrapbox', () => {
-	it('respond to slack hook of scrapbox unfurling', async () => {
+	it('respond to slack hook of scrapbox unfurling', () => {
 		const done = new Promise<void>((resolve) => {
 			// @ts-ignore
 			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
@@ -65,7 +65,7 @@ describe('scrapbox', () => {
 		return done;
 	});
 
-	it('respond to slack hook of scrapbox unfurling with line specified', async () => {
+	it('respond to slack hook of scrapbox unfurling with line specified', () => {
 		const done = new Promise<void>((resolve) => {
 			// @ts-ignore
 			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
