@@ -96,6 +96,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		return fs.writeFile(statePath, JSON.stringify(state));
 	};
 
+	// Check achievement 'pwnyaa-praise-your-birthday'
+	for (const user of state.users) {
+		await unlock(user.slackId, 'pwnyaa-praise-your-birthday');
+	}
+
 	// post usage text. *args* starts right before @pwnyaa
 	const resolveUsageMessage = async (args: string[], slackMessage: any) => {
 		if (args.length !== 2) {		// format is invalid
@@ -232,6 +237,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}
 			}
 		});
+		unlock(slackId, 'pwnyaa-praise-your-birthday');
 		setState(state);
 	};
 

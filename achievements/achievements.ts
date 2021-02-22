@@ -1943,6 +1943,13 @@ const achievements: Achievement[] = [
 		condition: 'pwnable.xyzを全完する',
 		category: 'pwnyaa',
 	},
+	{
+		id: 'pwnyaa-praise-your-birthday',
+		difficulty: 'baby',
+		title: 'あなたは今、最も難しいことを成し遂げました',
+		condition: 'pwnyaaにjoinする',
+		category: 'pwnyaa',
+	},
 
 	// anime
 
