@@ -1950,6 +1950,20 @@ const achievements: Achievement[] = [
 		condition: 'pwnyaaにjoinする',
 		category: 'pwnyaa',
 	},
+	{
+		id: 'pwnyaa-ch-half',
+		difficulty: 'hard',
+		title: '全ての道はpwnに通ず',
+		condition: 'cryptohackで半分以上の問題を解く',
+		category: 'pwnyaa',
+	},
+	{
+		id: 'pwnyaa-ch-complete',
+		difficulty: 'professional',
+		title: 'YOU ARE CRYPTO HACKER...',
+		condition: 'cryptohackを全完する',
+		category: 'pwnyaa',
+	},
 
 	// anime
 
