@@ -28,3 +28,13 @@ export interface SolvedInfo{
   name: string,
   score: number,
 }
+
+export interface Profile{
+  username: string,
+  country: string,
+  rank: string,
+  score: string,
+  comment: string,
+  registeredAt: string,					// UTC
+  solvedChalls: SolvedInfo[],
+}

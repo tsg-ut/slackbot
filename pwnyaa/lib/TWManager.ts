@@ -1,19 +1,9 @@
 import qs from 'querystring';
 import axios, {AxiosResponse} from 'axios';
 import scrapeIt from 'scrape-it';
-import {Challenge, SolvedInfo} from './BasicTypes';
+import {Challenge, SolvedInfo, Profile} from './BasicTypes';
 
 const SAFELIMIT = 100;
-
-export interface profileTW{
-  username: string,
-  country: string,
-  rank: string,
-  score: string,
-  comment: string,
-  registeredAt: string,
-  solvedChalls: SolvedInfo[],
-}
 
 const getAxiosClientTW = () => {
 	const clientTW = axios.create({
@@ -30,7 +20,7 @@ let sessionidTW = '';
 
 const parseProfileTW = async (html: any) => {
 	// Parse profile except for solved challs.
-	const {fetchedBasicProfiles} = await scrapeIt.scrapeHTML<{ fetchedBasicProfiles: profileTW[] }>(html, {
+	const {fetchedBasicProfiles} = scrapeIt.scrapeHTML<{ fetchedBasicProfiles: Profile[] }>(html, {
 		fetchedBasicProfiles: {
 			listItem: 'div.col-md-8 > div.row > div.col-md-9',
 			data: {
@@ -61,7 +51,7 @@ const parseProfileTW = async (html: any) => {
 			},
 		},
 	});
-	const fetchedProfile: profileTW = {
+	const fetchedProfile: Profile = {
 		...fetchedBasicProfiles[0],
 	};
 
