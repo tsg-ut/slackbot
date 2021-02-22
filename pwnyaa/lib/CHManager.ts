@@ -69,7 +69,11 @@ const parseProfileCH = async (html: any) => {
 			attr: 'class',
 			convert: (strCountry: string) => {
 				const tmpstr = strCountry.split(' ')[1];
-				return tmpstr.substring('flag-icon-'.length);
+				try {
+					return tmpstr.substring('flag-icon-'.length);
+				} catch {
+					return 'unknown';
+				}
 			},
 		},
 		rank: {
