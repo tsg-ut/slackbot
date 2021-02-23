@@ -5,16 +5,6 @@ import axios, {AxiosResponse} from 'axios';
 import scrapeIt from 'scrape-it';
 import {Challenge, SolvedInfo, Profile} from './BasicTypes';
 
-export interface Daimon{
-	daimonName: string,
-	challs: Challenge[],
-}
-
-export interface Genre{
-	genreName: string,
-	daimons: Daimon[],
-}
-
 const getAxiosClientCH = () => {
 	const clientCH = axios.create({
 	});
@@ -161,10 +151,12 @@ export const collectDaimonCH = async function () {
 	return partUrls.map((partUrl) => partUrl.url);
 };
 
-const fetchGenresCH = async function () {
+// update challs and solved-state of cryptohack.org
+// NOTE: need to login
+export const fetchChallsCH = async function () {
 	// fetch Daimon-s
 	const daimonUrls = await collectDaimonCH();
-	const genres: Genre[] = [];
+	let fetchedChalls: Challenge[] = [];
 
 	await loginCH();
 
@@ -175,57 +167,29 @@ const fetchGenresCH = async function () {
 				Cookie: sessionidCH,
 			},
 		});
-		const genreName: string = scrapeIt.scrapeHTML<any>(html, {
+		const genreName: string = await scrapeIt.scrapeHTML<any>(html, {
 			name: 'h2.categoryTitle',
 		}).name;
-		const {daimons} = scrapeIt.scrapeHTML<{ daimons: Daimon[] }>(html, {
-			daimons: {
-				listItem: 'span.stage',
+		const {fetchedGenreChalls} = scrapeIt.scrapeHTML<{ fetchedGenreChalls: Challenge[] }>(html, {
+			fetchedGenreChalls: {
+				listItem: 'li.challenge',
 				data: {
-					daimonName: 'div.challengeInfo > span > h4',
-					challs: {
-						listItem: 'ul > li.challenge',
-						data: {
-							name: {
-								selector: 'div > div',
-							},
-							score: {
-								selector: 'div > span.right',
-								convert: (strScore) => Number(strScore.split(' ')[0]),
-							},
-							id: {
-								attr: 'data-category',
-							},
-						},
+					name: {
+						selector: 'div.challenge-text',
+						convert: (strName: string) => `${genreName}: ${strName}`,
+					},
+					score: {
+						selector: 'span.right',
+						convert: (strScore: string) => Number(strScore.split(' ')[0]),
+					},
+					id: {
+						attr: 'data-category',
 					},
 				},
 			},
 		});
-		genres.push({genreName, daimons} as Genre);
+		fetchedChalls = fetchedChalls.concat(fetchedGenreChalls);
 	}
-
-	return genres;
-};
-
-// update challs and solved-state of cryptohack.org
-// NOTE: need to login
-export const fetchChallsCH = async function () {
-	// fetch Daimon-s
-	const fetchedChalls: Challenge[] = [];
-	const genres: Genre[] = await fetchGenresCH();
-
-	for (const genre of genres) {
-		for (const daimon of genre.daimons) {
-			for (const chall of daimon.challs) {
-				fetchedChalls.push({
-					id: chall.id,
-					name: `${genre.genreName} - ${daimon.daimonName} - ${chall.name}`,
-					score: chall.score,
-				});
-			}
-		}
-	}
-
 	return fetchedChalls;
 };
 
