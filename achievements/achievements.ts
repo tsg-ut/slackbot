@@ -817,6 +817,33 @@ const achievements: Achievement[] = [
 		reaction: 'tukutte',
 		value: 5,
 	},
+	{
+		id: 'reaction-understand-1-5',
+		difficulty: 'hard',
+		title: 'Understand 理解した',
+		condition: '1つのメッセージに対し5人以上から:understand-1:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'understand-1',
+		value: 5,
+	},
+	{
+		id: 'reaction-understand-10-5',
+		difficulty: 'hard',
+		title: 'Understand 完全に理解した',
+		condition: '1つのメッセージに対し5人以上から:understand-10:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'understand-10',
+		value: 5,
+	},
+	{
+		id: 'reaction-understand--5',
+		difficulty: 'hard',
+		title: '無知の知',
+		condition: '1つのメッセージに対し5人以上から:understand-:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'understand-',
+		value: 5,
+	},
 
 	// sushi-bot
 
@@ -1914,6 +1941,27 @@ const achievements: Achievement[] = [
 		difficulty: 'baby',
 		title: '続けることが、大事です',
 		condition: 'pwnable.xyzを全完する',
+		category: 'pwnyaa',
+	},
+	{
+		id: 'pwnyaa-praise-your-birthday',
+		difficulty: 'baby',
+		title: 'あなたは今、最も難しいことを成し遂げました',
+		condition: 'pwnyaaにjoinする',
+		category: 'pwnyaa',
+	},
+	{
+		id: 'pwnyaa-ch-half',
+		difficulty: 'hard',
+		title: '全ての道はpwnに通ず',
+		condition: 'cryptohackで半分以上の問題を解く',
+		category: 'pwnyaa',
+	},
+	{
+		id: 'pwnyaa-ch-complete',
+		difficulty: 'professional',
+		title: 'YOU ARE CRYPTO HACKER...',
+		condition: 'cryptohackを全完する',
 		category: 'pwnyaa',
 	},
 

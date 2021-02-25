@@ -11,6 +11,7 @@ import logger from '../lib/logger.js';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
 import {Contest, User, SolvedInfo} from './lib/BasicTypes';
+import {fetchChallsCH, fetchUserProfileCH, findUserByNameCH} from './lib/CHManager';
 import {fetchUserProfileTW, fetchChallsTW, findUserByNameTW} from './lib/TWManager';
 import {fetchChallsXYZ, fetchUserProfileXYZ, findUserByNameXYZ} from './lib/XYZManager';
 
@@ -23,6 +24,7 @@ const CALLME = '@pwnyaa';
 
 export const TW_ID = 0;
 export const XYZ_ID = 1;
+export const CH_ID = 2;
 
 const UPDATE_INTERVAL = 12;
 
@@ -95,6 +97,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		Object.assign(state, object);
 		return fs.writeFile(statePath, JSON.stringify(state));
 	};
+
+	// Check achievement 'pwnyaa-praise-your-birthday'
+	for (const user of state.users) {
+		await unlock(user.slackId, 'pwnyaa-praise-your-birthday');
+	}
 
 	// post usage text. *args* starts right before @pwnyaa
 	const resolveUsageMessage = async (args: string[], slackMessage: any) => {
@@ -188,6 +195,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return findUserByNameTW(name);
 		} else if (contestid === XYZ_ID) {
 			return findUserByNameXYZ(name);
+		} else if (contestid === CH_ID) {
+			return findUserByNameCH(name);
 		}
 		return null;
 	};
@@ -198,6 +207,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return fetchUserProfileTW(userid);
 		} else if (contestid === XYZ_ID) {
 			return fetchUserProfileXYZ(userid);
+		} else if (contestid === CH_ID) {
+			return fetchUserProfileCH(userid);
 		}
 		return null;
 	};
@@ -232,6 +243,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}
 			}
 		});
+		unlock(slackId, 'pwnyaa-praise-your-birthday');
 		setState(state);
 	};
 
@@ -280,6 +292,27 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			state.contests = state.contests.map((cont) => cont.id === updatedtw.id ? updatedtw : cont);
 		} else {
 			state.contests.push(updatedtw);
+		}
+		setState(state);
+	};
+
+	// fetch data from CH and update state
+	const updateChallsCH = async () => {
+		const fetchedChalls = await fetchChallsCH();
+
+		const oldch = state.contests.find((({title}) => title === 'cryptohack'));
+		const updatedch: Contest = {
+			url: 'https://cryptohack.org',
+			id: CH_ID,
+			title: 'cryptohack',
+			alias: oldch ? oldch.alias : ['cryptohack', 'ch'],
+			joiningUsers: oldch ? oldch.joiningUsers : [],
+			numChalls: fetchedChalls.length,
+		};
+		if (oldch) {
+			state.contests = state.contests.map((cont) => cont.id === updatedch.id ? updatedch : cont);
+		} else {
+			state.contests.push(updatedch);
 		}
 		setState(state);
 	};
@@ -583,6 +616,21 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 		}
 	};
+	const checkAchievementsCH = async () => {
+		logger.info('[+] pwnyaa: checking achievements for CH...');
+		const contestCH = state.contests.find((contest) => contest.id === CH_ID);
+		for (const user of contestCH.joiningUsers) {
+			const profile = await fetchUserProfileCH(user.idCtf);
+			if (profile.solvedChalls.length >= contestCH.numChalls) {
+				logger.info('[+] pwnyaa: unlocking: pwnyaa-ch-complete');
+				await unlock(user.slackId, 'pwnyaa-ch-complete');
+			}
+			if (profile.solvedChalls.length >= contestCH.numChalls / 2) {
+				logger.info('[+] pwnyaa: unlocking: pwnyaa-ch-half');
+				await unlock(user.slackId, 'pwnyaa-ch-half');
+			}
+		}
+	};
 
 	const postProgress = async () => {
 		logger.info('[+] pwnyaa: progress posting...');
@@ -685,8 +733,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const updateAll = async () => {
 		await updateChallsXYZ();
 		await updateChallsTW();
+		await updateChallsCH();
 		await checkAchievementsXYZ();
 		await checkAchievementsTW();
+		await checkAchievementsCH();
 	};
 
 	// update the num of challs and achievements every 12 hours

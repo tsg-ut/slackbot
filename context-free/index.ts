@@ -1,9 +1,11 @@
+import axios from 'axios';
 import plugin from 'fastify-plugin';
-import {escapeRegExp} from 'lodash';
+import {escapeRegExp, sample} from 'lodash';
 import scrapeIt from 'scrape-it';
 /* eslint-disable no-unused-vars */
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils';
+import {tags} from './cfp-tags';
 
 const normalizeMeaning = (input: string) => {
   let meaning = input;
@@ -89,18 +91,34 @@ const composePost = async (message: string): Promise<string> => {
     const {word} = await randomWord();
     return word;
   }
-  let first = true;
+
   let response = message;
-  let match = null;
-  while ((match = /{[^{}]*}/.exec(response)) != null) {
-    if (!first) {
-      await sleepFor(5000);
+
+  for (const match of response.matchAll(/{<(?<phTag>[^{}<>]*)>[^{}<>]*}/g)) {
+    if (!tags.has(match.groups.phTag)) {
+      throw new Error(`/cfp tag '${match.groups.phTag}' not found. (Perhaps you can implement it?)`);
     }
-    first = false;
-    const {word} = await randomWord();
-    const [placeholder] = match;
-    if (placeholder === '{}') {
-      response = response.replace('{}', word);
+  }
+
+  let first = true;
+  let match = null;
+
+  while ((match = /(?<placeholder>{(?:<(?<phTag>[^{}<>]*)>)?(?<phName>[^{}<>]*)})/.exec(response)) != null) {
+    const {placeholder, phTag, phName} = match.groups;
+
+    if (phTag === undefined) {
+      if (first) {
+        first = false;
+      }
+      else {
+        await sleepFor(5000);
+      }
+    }
+
+    const word = (phTag === undefined ? (await randomWord()).word : sample(tags.get(phTag)));
+
+    if (phName === '') {
+      response = response.replace(placeholder, word);
     }
     else {
       response = response.replace(new RegExp(escapeRegExp(placeholder), 'g'), word);
@@ -156,14 +174,18 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
     }
     const username = await getMemberName(request.body.user_id);
     const icon_url = await getMemberIcon(request.body.user_id, 512);
-    composePost(request.body.text).then((text) => {
-      slack.chat.postMessage({
-        username,
-        icon_url,
-        channel: request.body.channel_id,
-        text,
+    composePost(request.body.text)
+      .then((text) => {
+        slack.chat.postMessage({
+          username,
+          icon_url,
+          channel: request.body.channel_id,
+          text,
+        });
+      })
+      .catch((error: Error) => {
+        axios.post(request.body.response_url, {text: error.message});
       });
-    });
     return '';
   });
 });
