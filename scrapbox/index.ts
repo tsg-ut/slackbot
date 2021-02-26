@@ -46,12 +46,12 @@ interface ScrapboxPage {
 }
 
 export const scrapbox2slack = (s: string) => (
-	s.replace(/\[(?<url>https?:\/\/.+)\]/g, '$<url>') // 外部リンク
+	s.replace(/\[(?<url>https?:\/\/.+?)\]/g, '$<url>') // 外部リンク
 		.replace(/\[(?<username>[^[\]]+).icon\]/g, '<https://scrapbox.io/tsg/$<username>|$<username>>') // アイコンリンク
-		.replace(/#(?<tagname>[^\s]*)/g, '<https://scrapbox.io/tsg/$<tagname>|#$<tagname>>') // hashtag
-		.replace(/\[(?<title>[^\s*[\]]+)\]/g, '<https://scrapbox.io/tsg/$<title>|$<title>>') // Scrapbox記事リンク
-		.replace(/\[(?<str>[^*]*)+\s(?<href>[^\s\]]+)\]/g, '<$<href>|$<str>>') // 文字を指定するタイプのリンク
-		.replace(/\[\*+ (?<str>[^[\]]*)]/g, '*$<str>*') // 太字
+		.replace(/\[(?<str>(?!\*).+?)\s(?<href>https?:\/\/.+?)\]/g, '<$<href>|$<str>>') // 文字を指定するタイプのリンク
+		.replace(/\[(?<title>(?!\*).+?)\]/g, '<https://scrapbox.io/tsg/$<title>|$<title>>') // Scrapbox記事リンク
+		.replace(/\[\*+ (?<str>.+?)]/g, '*$<str>*') // 太字
+		.replace(/(?<!\/|\|)#(?<hashtag>[^\s]+)/g, '<https://scrapbox.io/tsg/$<hashtag>|#$<hashtag>>') // hashtag
 );
 
 export default ({eventClient: event}: SlackInterface) => {
@@ -64,10 +64,11 @@ export default ({eventClient: event}: SlackInterface) => {
 		const unfurls: LinkUnfurls = {};
 		for (const link of scrapboxLinks) {
 			const {url} = link;
-			if (!(/^https?:\/\/scrapbox.io\/tsg\/.+/).test(url)) {
+			const urlRe = new RegExp(/^https?:\/\/scrapbox.io\/tsg\/(?<pageName>#?[^#]+)(?<hash>#(?<lineId>[\da-f]+))?$/);
+			if (!(urlRe).test(url)) {
 				continue;
 			}
-			const {groups} = url.match(/^https?:\/\/scrapbox.io\/tsg\/(?<pageName>[^#]+)(?<hash>#(?<lineId>[\da-f]+))?$/);
+			const {groups} = url.match(urlRe);
 			let {pageName} = groups;
 			const {lineId} = groups; // 型定義がカスで、string と思われてるが本当は string | undefined.
 			try {

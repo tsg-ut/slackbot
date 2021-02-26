@@ -107,6 +107,7 @@ describe('scrapbox', () => {
 			これすき [hideo54.icon] (ソース: [用語集])
 			[* [太字内部リンク]] [* 太字2]
 			[** [TSG 公式サイト https://tsg.ne.jp/]]
+			[https://example.com] test [#sandbox]
 		`;
 		const expectedSlackText = `
 			<https://scrapbox.io/tsg/debug|#debug> <https://scrapbox.io/tsg/test|#test>
@@ -115,6 +116,7 @@ describe('scrapbox', () => {
 			これすき <https://scrapbox.io/tsg/hideo54|hideo54> (ソース: <https://scrapbox.io/tsg/用語集|用語集>)
 			*<https://scrapbox.io/tsg/太字内部リンク|太字内部リンク>* *太字2*
 			*<https://tsg.ne.jp/|TSG 公式サイト>*
+			https://example.com test <https://scrapbox.io/tsg/#sandbox|#sandbox>
 		`;
 		expect(scrapbox2slack(exampleScrapboxText)).toBe(expectedSlackText);
 	});
