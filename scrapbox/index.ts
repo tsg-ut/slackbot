@@ -46,35 +46,37 @@ interface ScrapboxPage {
 }
 
 export const scrapbox2slack = (s: string) => (
-	s.replace(/\[(https?:\/\/.+)\]/g, '$1') // 外部リンク
-		.replace(/\[([^\[\]]+).icon\]/g, '<https://scrapbox.io/tsg/$1|$1>') // アイコンリンク
-		.replace(/#([^\s]*)/g, '<https://scrapbox.io/tsg/$1|#$1>') // hashtag (TSG独自記法)
-		.replace(/\[([^\s\*\[\]]+)\]/g, '<https://scrapbox.io/tsg/$1|$1>') // Scrapbox記事リンク
-		.replace(/\[([^\*]*)+\s([^\s\]]+)\]/g, '<$2|$1>') // 文字を指定するタイプのリンク
-		.replace(/\[\*+ ([^\[\]]*)]/g, '*$1*') // 太字
-	// バグあるかも。誰かよろしく!
+	s.replace(/\[(?<url>https?:\/\/.+)\]/g, '$<url>') // 外部リンク
+		.replace(/\[(?<username>[^[\]]+).icon\]/g, '<https://scrapbox.io/tsg/$<username>|$<username>>') // アイコンリンク
+		.replace(/#(?<tagname>[^\s]*)/g, '<https://scrapbox.io/tsg/$<tagname>|#$<tagname>>') // hashtag
+		.replace(/\[(?<title>[^\s*[\]]+)\]/g, '<https://scrapbox.io/tsg/$<title>|$<title>>') // Scrapbox記事リンク
+		.replace(/\[(?<str>[^*]*)+\s(?<href>[^\s\]]+)\]/g, '<$<href>|$<str>>') // 文字を指定するタイプのリンク
+		.replace(/\[\*+ (?<str>[^[\]]*)]/g, '*$<str>*') // 太字
 );
 
-export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
-	event.on('link_shared', async (e: { links: Link[]; message_ts: string; channel: string; }) => {
+export default ({eventClient: event}: SlackInterface) => {
+	event.on('link_shared', async ({links, message_ts, channel}: { links: Link[]; message_ts: string; channel: string; }) => {
 		logger.info('Incoming unfurl request >');
-		for (const link of e.links) {
+		for (const link of links) {
 			logger.info('-', link);
 		}
-		const links = e.links.filter(({domain}) => domain === 'scrapbox.io');
+		const scrapboxLinks = links.filter(({domain}) => domain === 'scrapbox.io');
 		const unfurls: LinkUnfurls = {};
-		for (const link of links) {
+		for (const link of scrapboxLinks) {
 			const {url} = link;
 			if (!(/^https?:\/\/scrapbox.io\/tsg\/.+/).test(url)) {
 				continue;
 			}
-			let [, pageName,, lineId] = url.match(/^https?:\/\/scrapbox.io\/tsg\/([^#]+)(#([\da-f]+))?$/);
-			// 型定義がカスで、lineId は string と思われてるが本当は string | undefined.
+			const {groups} = url.match(/^https?:\/\/scrapbox.io\/tsg\/(?<pageName>[^#]+)(?<hash>#(?<lineId>[\da-f]+))?$/);
+			let {pageName} = groups;
+			const {lineId} = groups; // 型定義がカスで、string と思われてるが本当は string | undefined.
 			try {
 				if (decodeURI(pageName) === pageName) {
 					pageName = encodeURI(pageName);
 				}
-			} catch {}
+			} catch {
+				//
+			}
 			const scrapboxUrl = getScrapboxUrl(pageName);
 			const response = await axios.get<ScrapboxPage>(scrapboxUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
 			const {data} = response;
@@ -100,8 +102,8 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
 					method: 'POST',
 					url: 'https://slack.com/api/chat.unfurl',
 					data: qs.stringify({
-						ts: e.message_ts,
-						channel: e.channel,
+						ts: message_ts,
+						channel,
 						unfurls: JSON.stringify(unfurls),
 						token: process.env.HAKATASHI_TOKEN,
 					}),
