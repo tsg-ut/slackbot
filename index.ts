@@ -61,7 +61,7 @@ const allBots = [
 	'anime',
 	'anime/anison',
 	'oogiri',
-	'sort-nazonazo',
+	'sorting-riddles',
 	'tsglive',
 	'emoji-modifier',
 	'context-free',
