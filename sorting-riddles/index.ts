@@ -5,7 +5,7 @@ import { stripIndent } from 'common-tags';
 import sample from 'lodash/sample';
 // @ts-ignore
 import { getPageTitle, getWordUrl, getCandidateWords } from '../tahoiya/lib';
-import { unlock, increment } from "../achievements";
+import { unlock, increment } from '../achievements';
 
 interface ChatPostMessageResult extends WebAPICallResult {
 	channel: string;
