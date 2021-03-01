@@ -16,7 +16,7 @@ const commands = [
 	['git', 'checkout', '--', 'package.json', 'package-lock.json'],
 	['git', 'pull'],
 	['git', 'submodule', 'update', '--init', '--recursive'],
-	['npm', 'install', '--production'],
+	['npm', 'install', '--production', '--build-from-source'],
 	['/home/slackbot/.cargo/bin/cargo', 'build', '--release', '--all'],
 ];
 const deployBlocker = new Blocker();
