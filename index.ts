@@ -19,6 +19,11 @@ import yargs from 'yargs';
 import fastifyFormbody from 'fastify-formbody';
 import fastifyExpress from 'fastify-express';
 
+import sharp from 'sharp';
+
+// Disable the cache since it likely hits the swap anyway
+sharp.cache(false);
+
 const fastify = Fastify({
 	logger: true,
 	pluginTimeout: 50000,
