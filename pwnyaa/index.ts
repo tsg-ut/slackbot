@@ -771,74 +771,36 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 	const postProgress = async () => {
 		logger.info('[+] pwnyaa: progress posting...');
-		for (const contest of state.contests) {
-			let someoneSolved = false;
-			let text = '';
-			text += `*${state.contests.find((con) => con.id === contest.id).title}*\n`;
-			const allRecentSolves: {slackid: string, solves: SolvedInfo[]}[] = [];
-			const users = contest.joiningUsers;
-			for (const user of users) {
-				const profile = await fetchUserProfile(user.idCtf, contest.id);
-				if (profile !== null) {		// the user solved more than one challs
-					const recentSolves = filterChallSolvedRecent(profile.solvedChalls, UPDATE_INTERVAL, DateGran.HOUR);
-					allRecentSolves.push({slackid: user.slackId, solves: recentSolves});
-					if (recentSolves.length > 0) {
-						someoneSolved = true;
-					}
-				}
-			}
 
-			for (const solvePerUser of allRecentSolves) {
-				for (const solve of solvePerUser.solves) {
-					text += `<@${solvePerUser.slackid}> が *${solve.name}* (${solve.score})を解いたよ :pwn: \n`;
+		let text = '';
+		let someoneSolved = false;
+		const recentSolvesAllCtfs = await fetchRecentSolvesAll(UPDATE_INTERVAL, DateGran.HOUR);
+		for (const solvesPerContest of recentSolvesAllCtfs) {
+			for (const solvesPerUser of solvesPerContest.solves) {
+				for (const solve of solvesPerUser.solves) {
+					text += `<@${solvesPerUser.slackid}> が *${solve.name}* (${solve.score})を解いたよ :pwn: \n`;
+					someoneSolved = true;
 				}
 			}
-			if (someoneSolved) {
-				logger.info('[+] someone solved challs...');
-				slack.chat.postMessage({
-					username: 'pwnyaa',
-					icon_emoji: ':pwn:',
-					channel: process.env.CHANNEL_PWNABLE_TW,
-					text,
-				});
-			}
+		}
+		if (someoneSolved) {
+			logger.info('[+] someone solved challs...');
+			slack.chat.postMessage({
+				username: 'pwnyaa',
+				icon_emoji: ':pwn:',
+				channel: process.env.CHANNEL_PWNABLE_TW,
+				text,
+			});
 		}
 	};
 
 	const postWeekly = async () => {
 		logger.info('[+] pwnyaa: posting weekly...');
-		let nobody = true;
-		const ranks: { slackid: string, solves: number }[] = [];
-		// crawl CTFs
-		for (const contest of state.contests) {
-			const users = contest.joiningUsers;
-			for (const user of users) {
-				const profile = await fetchUserProfile(user.idCtf, contest.id);
-				const recentSolves = filterChallSolvedRecent(profile.solvedChalls, 7, DateGran.DAY);
-				if (recentSolves.length > 0) {		// solved more than one challs
-					if (ranks.some((rank) => rank.slackid === user.slackId)) {
-						const rankIndex = ranks.indexOf(ranks.find((rank) => rank.slackid === user.slackId));
-						ranks[rankIndex].solves += recentSolves.length;
-					} else {
-						ranks.push({slackid: user.slackId, solves: recentSolves.length});
-					}
-					nobody = false;
-				}
-			}
-		}
-		// add self-solved declarations
-		for (const user of state.users) {
-			if (user.selfSolvesWeekly && user.selfSolvesWeekly > 0) {
-				if (ranks.some((rank) => rank.slackid === user.slackId)) {
-					const rankIndex = ranks.indexOf(ranks.find((rank) => rank.slackid === user.slackId));
-					ranks[rankIndex].solves += user.selfSolvesWeekly;
-				} else {
-					ranks.push({slackid: user.slackId, solves: user.selfSolvesWeekly});
-				}
-				user.selfSolvesWeekly = 0;
-				nobody = false;
-			}
-		}
+
+		// get ranking
+		const recentSolvesAllCtfs = await fetchRecentSolvesAll(7, DateGran.DAY);
+		const ranks = getRanking(recentSolvesAllCtfs);
+
 		// clear self-solves count
 		state.users = state.users.map((user) => {
 			user.selfSolvesWeekly = 0;
@@ -849,14 +811,14 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		// post
 		ranks.sort((l, r) => r.solves - l.solves);
 		let text = '';
-		if (nobody) {
-			text += '今週は誰も問題を解かなかったよ... :cry:\n';
-		} else {
+		if (ranks.length > 0) {
 			text += '今週のpwnランキングを発表するよ〜\n';
 			for (const [ix, user] of ranks.entries()) {
 				text += `*${ix + 1}* 位: *${await getMemberName(user.slackid)}* \t\t*${user.solves}* solves \n`;
 			}
 			text += '\nおめでとう〜〜〜〜〜〜〜〜 :genius:\n';
+		} else {
+			text += '今週は誰も問題を解かなかったよ... :cry:\n';
 		}
 
 		slack.chat.postMessage({
