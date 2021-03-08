@@ -29,7 +29,7 @@ const DateGran = {
 	HOUR: 'h',
 	DAY: 'd',
 } as const;
-	// eslint-disable-next-line no-redeclare
+// eslint-disable-next-line no-redeclare
 type DateGran = typeof DateGran[keyof typeof DateGran];
 
 export const TW_ID = 0;
