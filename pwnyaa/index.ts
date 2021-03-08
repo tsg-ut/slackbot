@@ -870,7 +870,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		// resolve streaks
 		await resolveStreaks(recentSolvesAllCtfs);
 
-		// post
+		// gen text
 		ranks.sort((l, r) => r.solves - l.solves);
 		let text = '';
 		if (ranks.length > 0) {
@@ -881,6 +881,13 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			text += '\nおめでとう〜〜〜〜〜〜〜〜 :genius:\n';
 		} else {
 			text += '今週は誰も問題を解かなかったよ... :cry:\n';
+		}
+
+		text += '\n';
+		for (const user of state.users) {
+			if (user.longestStreak && user.longestStreak === user.currentStreak) {
+				text += `:azaika-is-blue-coder: *${await getMemberName(user.slackId)}* がLongestStreakを更新したよ! *(${user.longestStreak} streak!)* \n`;
+			}
 		}
 
 		slack.chat.postMessage({
