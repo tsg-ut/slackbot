@@ -22,6 +22,16 @@ const HOUR = MINUTE * 60;
 const DAY = HOUR * 24;
 const CALLME = '@pwnyaa';
 
+const DateGran = {
+	MSECOND: 'ms',
+	SECOND: 's',
+	MINUTE: 'm',
+	HOUR: 'h',
+	DAY: 'd',
+} as const;
+	// eslint-disable-next-line no-redeclare
+type DateGran = typeof DateGran[keyof typeof DateGran];
+
 export const TW_ID = 0;
 export const XYZ_ID = 1;
 export const CH_ID = 2;
@@ -60,11 +70,17 @@ const getContestSummary = async (contest: Contest) => {
 	return text;
 };
 
-const filterChallSolvedRecent = (challs: SolvedInfo[], solvedIn: number, hour = false) => {
+const filterChallSolvedRecent = (challs: SolvedInfo[], solvedIn: number, granular: DateGran) => {
 	let limitdate: number = 0;
-	if (hour) {
+	if (granular === DateGran.MSECOND) {
+		limitdate = Date.now() - solvedIn;
+	} else if (granular === DateGran.MINUTE) {
+		limitdate = Date.now() - solvedIn * MINUTE;
+	} else if (granular === DateGran.SECOND) {
+		limitdate = Date.now() - solvedIn * 1000;
+	} else if (granular === DateGran.HOUR) {
 		limitdate = Date.now() - solvedIn * HOUR;
-	} else {
+	} else if (granular === DateGran.DAY) {
 		limitdate = Date.now() - solvedIn * DAY;
 	}
 	const filteredChalls = challs.filter((chall) => chall.solvedAt.getTime() >= limitdate);
@@ -78,6 +94,22 @@ const getChallsSummary = (challs: SolvedInfo[], spaces = 0) => {
 		text += `*${chall.name}* (${chall.score}) ${getPrintableDate(chall.solvedAt)}\n`;
 	}
 	return text;
+};
+
+// assumes update is done in every Sunday 9:00AM
+const getLastUpdateDate = () => {
+	const now = new Date();
+	const last = new Date();
+	last.setHours(9, 0, 0);
+	if (now.getDay() !== 0) {
+		last.setDate(now.getDate() - now.getDay());
+		return last;
+	}
+	if (now.getHours() <= 8) {
+		last.setDate(now.getDate() - 7);
+		return last;
+	}
+	return last;
 };
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
@@ -102,6 +134,77 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	for (const user of state.users) {
 		await unlock(user.slackId, 'pwnyaa-praise-your-birthday');
 	}
+
+	const getRanking = (solvesAllCtfs: {idCtf: number, solves: {slackid: string, solves: SolvedInfo[]}[]}[]) => {
+		const ranks: { slackid: string, solves: number }[] = [];
+		// parse profiles
+		for (const contest of solvesAllCtfs) {
+			for (const solvePerUser of contest.solves) {
+				if (solvePerUser.solves.length > 0) {
+					if (ranks.some((rank) => rank.slackid === solvePerUser.slackid)) {
+						const rankIndex = ranks.indexOf(ranks.find((rank) => rank.slackid === solvePerUser.slackid));
+						ranks[rankIndex].solves += solvePerUser.solves.length;
+					} else {
+						ranks.push({slackid: solvePerUser.slackid, solves: solvePerUser.solves.length});
+					}
+				}
+			}
+		}
+
+		// add self-solved declarations
+		for (const user of state.users) {
+			if (user.selfSolvesWeekly && user.selfSolvesWeekly > 0) {
+				if (ranks.some((rank) => rank.slackid === user.slackId)) {
+					const rankIndex = ranks.indexOf(ranks.find((rank) => rank.slackid === user.slackId));
+					ranks[rankIndex].solves += user.selfSolvesWeekly;
+				} else {
+					ranks.push({slackid: user.slackId, solves: user.selfSolvesWeekly});
+				}
+			}
+		}
+
+		ranks.sort((l, r) => r.solves - l.solves);
+		return ranks;
+	};
+
+	// get solve-status from last Saturday 10:00 to today
+	const getStatSummary = async () => {
+		let text = '今週のsolve状況だよ!\n\n';
+		// fetch each solve status
+		const recentSolvesAllCtfs = await fetchRecentSolvesAll(Date.now() - getLastUpdateDate().getTime(), DateGran.MSECOND);
+		for (const recentSolvesPerContest of recentSolvesAllCtfs) {
+			let someoneSolved = false;
+			const {idCtf, solves} = recentSolvesPerContest;
+			const nameCtf = state.contests.find((contest) => contest.id === idCtf).title;
+			text += `*${nameCtf}* \n`;
+			for (const solvePerUser of solves) {
+				if (solvePerUser.solves.length !== 0) {
+					const username = await getMemberName(solvePerUser.slackid);
+					for (const solve of solvePerUser.solves) {
+						text += ` ${username}: ${solve.name}\n`;
+					}
+					someoneSolved = true;
+				}
+			}
+			if (someoneSolved) {
+				text += '\n';
+			} else {
+				text += ' 誰も解いてないぽよ... :cry:\n\n';
+			}
+		}
+		// fetch ranking
+		const ranks = getRanking(recentSolvesAllCtfs);
+		text += '\n暫定ランキングだよ!\n';
+		if (ranks.length > 0) {
+			for (const [ix, user] of ranks.entries()) {
+				text += `*${ix + 1}* 位: *${await getMemberName(user.slackid)}* \t\t*${user.solves}* solves \n`;
+			}
+		} else {
+			text += ' 誰も解いてないからみんな1位だよ！！平和だね！';
+		}
+
+		return text;
+	};
 
 	// post usage text. *args* starts right before @pwnyaa
 	const resolveUsageMessage = async (args: string[], slackMessage: any) => {
@@ -147,6 +250,14 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 						_pwn_ <chall name>: 解いたことを宣言
 						*補足* : 自己宣言した問題は毎週のランキングにおけるsolve数に加算されます
+					`,
+				});
+			} else if (args[1] === 'stat') {
+				await postMessageThreadDefault(slackMessage, {
+					text: stripIndent`
+						*stat* コマンド: 諸々のsolve状況等を確認する
+
+						_stat_ : 今週のsolve状況と暫定ランキングを確認
 					`,
 				});
 			} else {
@@ -547,6 +658,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}
 
 				/** ** END of help/usage ****/
+			} else if (args[0] === 'stat') {
+				// it takes some time to fetch all information
+				await addReactionDefault(message, 'ok');
+				await postMessageThreadDefault(message, {
+					text: await getStatSummary(),
+				});
 
 				// unknown command
 			} else {
@@ -632,6 +749,26 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}
 	};
 
+	// fetch challs of all CTFs solved recently
+	const fetchRecentSolvesAll = async (solvedIn: number, granular: DateGran) => {
+		const recentSolvesAllCtfs: {
+			idCtf: number,
+			solves: { slackid: string, solves: SolvedInfo[] }[],
+		}[] = [];
+		for (const contest of state.contests) {
+			const allRecentSolves: { slackid: string, solves: SolvedInfo[] }[] = [];
+			for (const user of contest.joiningUsers) {
+				const profile = await fetchUserProfile(user.idCtf, contest.id);
+				if (profile !== null) {
+					const recentSolves = filterChallSolvedRecent(profile.solvedChalls, solvedIn, granular);
+					allRecentSolves.push({slackid: user.slackId, solves: recentSolves});
+				}
+			}
+			recentSolvesAllCtfs.push({idCtf: contest.id, solves: allRecentSolves});
+		}
+		return recentSolvesAllCtfs;
+	};
+
 	const postProgress = async () => {
 		logger.info('[+] pwnyaa: progress posting...');
 		for (const contest of state.contests) {
@@ -643,7 +780,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			for (const user of users) {
 				const profile = await fetchUserProfile(user.idCtf, contest.id);
 				if (profile !== null) {		// the user solved more than one challs
-					const recentSolves = filterChallSolvedRecent(profile.solvedChalls, UPDATE_INTERVAL, true);
+					const recentSolves = filterChallSolvedRecent(profile.solvedChalls, UPDATE_INTERVAL, DateGran.HOUR);
 					allRecentSolves.push({slackid: user.slackId, solves: recentSolves});
 					if (recentSolves.length > 0) {
 						someoneSolved = true;
@@ -677,7 +814,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const users = contest.joiningUsers;
 			for (const user of users) {
 				const profile = await fetchUserProfile(user.idCtf, contest.id);
-				const recentSolves = filterChallSolvedRecent(profile.solvedChalls, 7);
+				const recentSolves = filterChallSolvedRecent(profile.solvedChalls, 7, DateGran.DAY);
 				if (recentSolves.length > 0) {		// solved more than one challs
 					if (ranks.some((rank) => rank.slackid === user.slackId)) {
 						const rankIndex = ranks.indexOf(ranks.find((rank) => rank.slackid === user.slackId));
