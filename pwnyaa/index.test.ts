@@ -266,3 +266,12 @@ it('respond to join ch', async () => {
 	expect(text).toContain('join');
 	expect(text).toContain('登録する');
 });
+
+it('respond to stat', async () => {
+	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa stat');
+
+	expect(channel).toBe(slack.fakeChannel);
+	expect(text).toContain('状況だよ');
+	expect(text).toContain('暫定ランキングだよ');
+	expect(text).toContain('誰も解いてない');
+});
