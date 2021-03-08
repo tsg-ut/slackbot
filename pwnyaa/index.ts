@@ -169,9 +169,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 	// get solve-status from last Saturday 10:00 to today
 	const getStatSummary = async () => {
-		let text = '今週のsolve状況だよ!\n\n';
+		let text = '*==今週のsolve状況だよ!==*\n\n';
 		// fetch each solve status
 		const recentSolvesAllCtfs = await fetchRecentSolvesAll(Date.now() - getLastUpdateDate().getTime(), DateGran.MSECOND);
+		// count for each CTFs
 		for (const recentSolvesPerContest of recentSolvesAllCtfs) {
 			let someoneSolved = false;
 			const {idCtf, solves} = recentSolvesPerContest;
@@ -192,15 +193,47 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				text += ' 誰も解いてないぽよ... :cry:\n\n';
 			}
 		}
+		// also, count for selfe-solves
+		text += '*Self-Solves* \n';
+		let someoneSolved = false;
+		for (const user of state.users) {
+			if (user.selfSolvesWeekly) {
+				// eslint-disable-next-line no-unused-vars
+				for (const _ of [...Array(user.selfSolvesWeekly).keys()]) {
+					const username = await getMemberName(user.slackId);
+					someoneSolved = true;
+					text += ` ${username}: _self-solve_ \n`;
+				}
+			}
+		}
+		if (someoneSolved) {
+			text += '\n';
+		} else {
+			text += ' 誰も解いてないぽよ... :cry:\n\n';
+		}
+
 		// fetch ranking
 		const ranks = getRanking(recentSolvesAllCtfs);
-		text += '\n暫定ランキングだよ!\n';
+		text += '\n*==暫定ランキングだよ!==*\n';
 		if (ranks.length > 0) {
 			for (const [ix, user] of ranks.entries()) {
-				text += `*${ix + 1}* 位: *${await getMemberName(user.slackid)}* \t\t*${user.solves}* solves \n`;
+				text += ` *${ix + 1}* 位: *${await getMemberName(user.slackid)}* \t\t*${user.solves}* solves \n`;
 			}
 		} else {
 			text += ' 誰も解いてないからみんな1位だよ！！平和だね！';
+		}
+
+		// fetch streaks
+		text += '\n*==LongestStreaksの状況だよ!==*\n';
+		for (const user of state.users) {
+			if (user.longestStreak && user.longestStreak >= 1) {
+				text += ` ${await getMemberName(user.slackId)}: *${user.longestStreak} streak!* `;
+				if (user.longestStreak === user.currentStreak) {
+					text += '(更新中!)\n';
+				} else {
+					text += `(${user.currentStreak})\n`;
+				}
+			}
 		}
 
 		return text;
@@ -378,12 +411,44 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}
 			}
 		});
-		setState(state);
+		await setState(state);
 		await postMessageDefault(slackMessage, {
 			text: stripIndent`
 				<@${await slackMessage.user}> が *${challName}* (self)を解いたよ :pwn:
 			`,
 		});
+	};
+
+	const resolveStreaks = async (solvesAllCtfs: { idCtf: number, solves: { slackid: string, solves: SolvedInfo[] }[] }[]) => {
+		state.users.forEach((user, ci) => {
+			let solvedThisWeek = false;
+			// count for each CTFs
+			for (const contest of solvesAllCtfs) {
+				if (contest.solves.some((solve) => solve.slackid === user.slackId && solve.solves.length > 0)) {
+					solvedThisWeek = true;
+					break;
+				}
+			}
+			// also, count for self-solves
+			if (user.selfSolvesWeekly > 0) {
+				solvedThisWeek = true;
+			}
+
+			if (solvedThisWeek) {
+				if (state.users[ci].currentStreak) {
+					state.users[ci].currentStreak += 1;
+					state.users[ci].longestStreak = Math.max(state.users[ci].longestStreak, state.users[ci].currentStreak);
+				} else {
+					state.users[ci].currentStreak = 1;
+					state.users[ci].longestStreak = 1;
+				}
+				state.users[ci].solvedLastWeek = true;
+			} else {
+				state.users[ci].currentStreak = 0;
+				state.users[ci].solvedLastWeek = false;
+			}
+		});
+		await setState(state);
 	};
 
 	// fetch data from TW and update state
@@ -652,6 +717,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 							*join* : CTFに参加登録
 							*check* : ステータス確認
 							*pwn* : 問題を解いたことの自己宣言
+							*stat* : 今週の諸々の状況を確認
 							詳しいフォーマットを知りたいときは、 _@pwnyaa help <command name>_ で聞いてね!
 							`,
 					});
@@ -801,12 +867,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		const recentSolvesAllCtfs = await fetchRecentSolvesAll(7, DateGran.DAY);
 		const ranks = getRanking(recentSolvesAllCtfs);
 
-		// clear self-solves count
-		state.users = state.users.map((user) => {
-			user.selfSolvesWeekly = 0;
-			return user;
-		});
-		setState(state);
+		// resolve streaks
+		await resolveStreaks(recentSolvesAllCtfs);
 
 		// post
 		ranks.sort((l, r) => r.solves - l.solves);
@@ -827,6 +889,13 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			channel: process.env.CHANNEL_PWNABLE_TW,
 			text,
 		});
+
+		// clear self-solves count
+		state.users = state.users.map((user) => {
+			user.selfSolvesWeekly = 0;
+			return user;
+		});
+		setState(state);
 	};
 
 	const updateAll = async () => {

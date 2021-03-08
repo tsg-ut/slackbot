@@ -3,6 +3,9 @@ export interface User {
   slackId: string,
   idCtf: string, // can be empty to represent only user itself
   selfSolvesWeekly?: number,
+  longestStreak?: number,
+  currentStreak?: number,
+  solvedLastWeek?: boolean,
 }
 
 // Site Information
