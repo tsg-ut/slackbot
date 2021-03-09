@@ -442,10 +442,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					state.users[ci].currentStreak = 1;
 					state.users[ci].longestStreak = 1;
 				}
-				state.users[ci].solvedLastWeek = true;
 			} else {
 				state.users[ci].currentStreak = 0;
-				state.users[ci].solvedLastWeek = false;
 			}
 		});
 		await setState(state);

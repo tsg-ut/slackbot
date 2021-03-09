@@ -5,7 +5,6 @@ export interface User {
   selfSolvesWeekly?: number,
   longestStreak?: number,
   currentStreak?: number,
-  solvedLastWeek?: boolean,
 }
 
 // Site Information
