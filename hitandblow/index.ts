@@ -162,7 +162,7 @@ export default ({
     }
 
     // game開始処理
-    if (message.text.match(/^hitandblow( \d+)?$/)) {
+    if (message.text.match(/^yakiniku( \d+)?$/)) {
       if (state.inGame) {
         await slack.chat.postMessage({
           text: '進行中のゲームがあるよ:thinking_face:',
@@ -174,7 +174,7 @@ export default ({
         });
         return;
       } else {
-        const rawAnswerLength = message.text.match(/^hitandblow( \d+)?$/)[1];
+        const rawAnswerLength = message.text.match(/^yakiniku( \d+)?$/)[1];
         const answerLength =
           rawAnswerLength !== undefined ? parseInt(rawAnswerLength) : 4;
         if (answerLength <= 0 || 10 < answerLength) {
@@ -269,7 +269,7 @@ export default ({
                   .map((dig: number) => String(dig))
                   .join('')}\` だよ:muscle:
                 手数: ${state.history.length}手
-                経過時間: ${round(passedTime / 1000, 2).toFixed(2)}秒`,
+                経過時間: ${round(passedTime / 1000, 3).toFixed(3)}秒`,
                 channel: process.env.CHANNEL_SANDBOX as string,
                 username: 'Hit & Blow',
                 icon_emoji: '1234',
