@@ -12,6 +12,7 @@ import type {SlackInterface} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
 import {Contest, User, SolvedInfo} from './lib/BasicTypes';
 import {fetchChallsCH, fetchUserProfileCH, findUserByNameCH} from './lib/CHManager';
+import {fetchChallsKSN, fetchUserProfileKSN, findUserByNameKSN} from './lib/KSNManager';
 import {fetchUserProfileTW, fetchChallsTW, findUserByNameTW} from './lib/TWManager';
 import {fetchChallsXYZ, fetchUserProfileXYZ, findUserByNameXYZ} from './lib/XYZManager';
 
@@ -35,6 +36,7 @@ type DateGran = typeof DateGran[keyof typeof DateGran];
 export const TW_ID = 0;
 export const XYZ_ID = 1;
 export const CH_ID = 2;
+export const KSN_ID = 3;
 
 const UPDATE_INTERVAL = 12;
 
@@ -89,6 +91,7 @@ const filterChallSolvedRecent = (challs: SolvedInfo[], solvedIn: number, granula
 
 const getChallsSummary = (challs: SolvedInfo[], spaces = 0) => {
 	let text = '';
+	console.log(challs);
 	for (const chall of challs) {
 		text += ' '.repeat(spaces);
 		text += `*${chall.name}* (${chall.score}) ${getPrintableDate(chall.solvedAt)}\n`;
@@ -341,6 +344,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return findUserByNameXYZ(name);
 		} else if (contestid === CH_ID) {
 			return findUserByNameCH(name);
+		} else if (contestid === KSN_ID) {
+			return findUserByNameKSN(name);
 		}
 		return null;
 	};
@@ -353,6 +358,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return fetchUserProfileXYZ(userid);
 		} else if (contestid === CH_ID) {
 			return fetchUserProfileCH(userid);
+		} else if (contestid === KSN_ID) {
+			return fetchUserProfileKSN(userid);
 		}
 		return null;
 	};
@@ -513,6 +520,28 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		setState(state);
 	};
 
+	// fetch data from KSN and update state
+	const updateChallsKSN = async () => {
+		const fetchedChalls = await fetchChallsKSN();
+
+		// register challenges
+		const oldksn = state.contests.find((({title}) => title === 'ksnctf'));
+		const updatedksn: Contest = {
+			url: 'https://ksnctf.sweetduet.info',
+			id: KSN_ID,
+			title: 'ksnctf',
+			alias: oldksn ? oldksn.alias : ['ksn', 'ksnctf'],
+			joiningUsers: oldksn ? oldksn.joiningUsers : [],
+			numChalls: fetchedChalls.length,
+		};
+		if (oldksn) {
+			state.contests = state.contests.map((cont) => cont.id === updatedksn.id ? updatedksn : cont);
+		} else {
+			state.contests.push(updatedksn);
+		}
+		setState(state);
+	};
+
 	rtm.on('message', async (message) => {
 		// resolve pending join request
 		if (message.text && message.text.startsWith(':pwn:')) {
@@ -585,7 +614,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 								});
 							} else {																		// user is not found on the contest
 								await postMessageDefault(message, {
-									text: `ユーザ *${specifiedUsername}* は *${selectedContestName}* に見つからなかったよ:cry:`,
+									text: `ユーザ *${specifiedUsername}* は *${selectedContestName}* に見つからなかったよ:cry: (1問も解いていない場合には参加できない場合があるよ)`,
 								});
 							}
 						} else {																			// check by ID
@@ -812,6 +841,21 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 		}
 	};
+	const checkAchievementsKSN = async () => {
+		logger.info('[+] pwnyaa: checking achievements for KSN...');
+		const contestKSN = state.contests.find((contest) => contest.id === KSN_ID);
+		for (const user of contestKSN.joiningUsers) {
+			const profile = await fetchUserProfileKSN(user.idCtf);
+			if (profile.solvedChalls.length >= contestKSN.numChalls) {
+				logger.info('[+] pwnyaa: unlocking: pwnyaa-ksn-complete');
+				await unlock(user.slackId, 'pwnyaa-ksn-complete');
+			}
+			if (profile.solvedChalls.length >= contestKSN.numChalls / 2) {
+				logger.info('[+] pwnyaa: unlocking: pwnyaa-ksn-half');
+				await unlock(user.slackId, 'pwnyaa-ksn-half');
+			}
+		}
+	};
 
 	// fetch challs of all CTFs solved recently
 	const fetchRecentSolvesAll = async (solvedIn: number, granular: DateGran) => {
@@ -907,9 +951,11 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		await updateChallsXYZ();
 		await updateChallsTW();
 		await updateChallsCH();
+		await updateChallsKSN();
 		await checkAchievementsXYZ();
 		await checkAchievementsTW();
 		await checkAchievementsCH();
+		await checkAchievementsKSN();
 	};
 
 	// update the num of challs and achievements every 12 hours
