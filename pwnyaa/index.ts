@@ -9,7 +9,7 @@ import {unlock} from '../achievements/index.js';
 // @ts-ignore
 import logger from '../lib/logger.js';
 import type {SlackInterface} from '../lib/slack';
-import {getMemberName} from '../lib/slackUtils';
+import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Contest, User, SolvedInfo} from './lib/BasicTypes';
 import {fetchChallsCH, fetchUserProfileCH, findUserByNameCH} from './lib/CHManager';
 import {fetchChallsKSN, fetchUserProfileKSN, findUserByNameKSN} from './lib/KSNManager';
@@ -69,6 +69,21 @@ const getContestColor = (ctfId: number) => {
 		default:
 			return '#000000';
 	}
+};
+
+const getSolveColor = (solveNum: number) => {
+	if (solveNum === 1) {
+		return '#336699';
+	} else if (2 <= solveNum && solveNum <= 3) {
+		return '#00ffcc';
+	} else if (4 <= solveNum && solveNum <= 5) {
+		return '#ffcc00';
+	} else if (6 <= solveNum && solveNum <= 7) {
+		return '#ff6666';
+	} else if (solveNum >= 8) {
+		return '#cc0000';
+	}
+	return '#000000';
 };
 
 const getContestSummary = async (contest: Contest): Promise<any> => {
@@ -926,6 +941,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		// get ranking
 		const recentSolvesAllCtfs = await fetchRecentSolvesAll(7, DateGran.DAY);
 		const ranks = getRanking(recentSolvesAllCtfs);
+		const attachments: any[] = [];
 
 		// resolve streaks
 		await resolveStreaks(recentSolvesAllCtfs);
@@ -936,25 +952,38 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		if (ranks.length > 0) {
 			text += '今週のpwnランキングを発表するよ〜\n';
 			for (const [ix, user] of ranks.entries()) {
-				text += `*${ix + 1}* 位: *${await getMemberName(user.slackid)}* \t\t*${user.solves}* solves \n`;
+				const attachment: any = {
+					color: getSolveColor(user.solves),
+					author_name: `${await getMemberName(user.slackid)}: ${ix + 1}位 (${user.solves} solves)`,
+					author_icon: await getMemberIcon(user.slackid),
+					footer: `${state.users.find((u) => u.slackId === user.slackid).currentStreak} streaks`,
+				};
+				attachments.push(attachment);
 			}
-			text += '\nおめでとう〜〜〜〜〜〜〜〜 :genius:\n';
 		} else {
-			text += '今週は誰も問題を解かなかったよ... :cry:\n';
+			attachments.push({
+				text: '今週は誰も問題を解かなかったよ... :cry:',
+				color: '#000000',
+			});
 		}
 
-		text += '\n';
+		let streakText = '';
 		for (const user of state.users) {
 			if (user.longestStreak && user.longestStreak === user.currentStreak) {
-				text += `:azaika-is-blue-coder: *${await getMemberName(user.slackId)}* がLongestStreakを更新したよ! *(${user.longestStreak} streak!)* \n`;
+				streakText += `:azaika-is-blue-coder: *${await getMemberName(user.slackId)}* がLongestStreakを更新したよ! *(${user.longestStreak} streak!)* \n`;
 			}
 		}
+		attachments.push({
+			text: streakText,
+			color: '#ffccff',
+		});
 
 		slack.chat.postMessage({
 			username: 'pwnyaa',
 			icon_emoji: ':pwn:',
 			channel: process.env.CHANNEL_PWNABLE_TW,
 			text,
+			attachments,
 		});
 
 		// clear self-solves count
