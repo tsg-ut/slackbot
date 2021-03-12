@@ -306,6 +306,4 @@ it('respond to stat', async () => {
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('状況だよ');
-	expect(text).toContain('暫定ランキングだよ');
-	expect(text).toContain('誰も解いてない');
 });
