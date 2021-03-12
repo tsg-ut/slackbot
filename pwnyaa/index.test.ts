@@ -220,22 +220,9 @@ it('respond to help', async () => {
 });
 
 it('respond to list', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa list');
+	const {channel}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa list');
 
 	expect(channel).toBe(slack.fakeChannel);
-	expect(text).toContain('pwnable.tw');
-	expect(text).toContain('問題数: 3');
-	expect(text).toContain('参加者: 1匹');
-	expect(text).toContain('FakeName');
-	expect(text).toContain('pwnable.xyz');
-	expect(text).toContain('問題数: 2');
-	expect(text).toContain('参加者: なし');
-	expect(text).toContain('cryptohack');
-	expect(text).toContain('問題数: 2');
-	expect(text).toContain('参加者: なし');
-	expect(text).toContain('ksnctf');
-	expect(text).toContain('問題数: 2');
-	expect(text).toContain('参加者: なし');
 });
 
 it('respond to check tw', async () => {

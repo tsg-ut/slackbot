@@ -56,10 +56,23 @@ const getPrintableDate = (date: Date) => {
 	return strdate;
 };
 
-const getContestSummary = async (contest: Contest) => {
+const getContestColor = (ctfId: number) => {
+	switch (ctfId) {
+		case XYZ_ID:
+			return '#ff66ff';
+		case TW_ID:
+			return '#ffff00';
+		case CH_ID:
+			return '#0099ff';
+		case KSN_ID:
+			return '#99cc00';
+		default:
+			return '#000000';
+	}
+};
+
+const getContestSummary = async (contest: Contest): Promise<any> => {
 	let text = '';
-	text += `*${contest.title}* (${contest.url})\n`;
-	text += `  問題数: ${contest.numChalls}\n`;
 	if (contest.joiningUsers.length === 0) {
 		text += '  参加者: なし\n';
 	} else {
@@ -69,7 +82,13 @@ const getContestSummary = async (contest: Contest) => {
 		}
 		text += '\n';
 	}
-	return text;
+	return {
+		color: getContestColor(contest.id),
+		author_name: contest.title,
+		author_link: contest.url,
+		text,
+		footer: `問題数: ${contest.numChalls}`,
+	};
 };
 
 const filterChallSolvedRecent = (challs: SolvedInfo[], solvedIn: number, granular: DateGran) => {
@@ -580,9 +599,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			// show list of registered contests summary
 			if (args[0] === 'list') {
 				await postMessageDefault(message, {
-					text: await (await Promise.all(state.contests.map(
+					attachments: await (await Promise.all(state.contests.map(
 						(contest) => getContestSummary(contest),
-					))).join(''),
+					))),
 				});
 
 				/** ** END of list ****/
@@ -657,9 +676,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						`,
 					});
 					await postMessageDefault(message, {
-						text: await (await Promise.all(state.contests.map(
+						attachments: await (await Promise.all(state.contests.map(
 							(contest) => getContestSummary(contest),
-						))).join(''),
+						))),
 					});
 				}
 
