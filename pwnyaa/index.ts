@@ -91,7 +91,6 @@ const filterChallSolvedRecent = (challs: SolvedInfo[], solvedIn: number, granula
 
 const getChallsSummary = (challs: SolvedInfo[], spaces = 0) => {
 	let text = '';
-	console.log(challs);
 	for (const chall of challs) {
 		text += ' '.repeat(spaces);
 		text += `*${chall.name}* (${chall.score}) ${getPrintableDate(chall.solvedAt)}\n`;
