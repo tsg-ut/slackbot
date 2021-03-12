@@ -962,7 +962,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			for (const solvesPerUser of solvesPerContest.solves) {
 				for (const solve of solvesPerUser.solves) {
 					attachments.push({
-						color: getSolveColor(1),
+						color: getContestColor(solvesPerContest.idCtf),
 						author_name: await getMemberName(solvesPerUser.slackid),
 						author_icon: await getMemberIcon(solvesPerUser.slackid),
 						text: `${solve.name}(${solve.score}) を解いたよ!`,
