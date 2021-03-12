@@ -7,6 +7,7 @@ import Slack from '../lib/slackMock.js';
 import {getMemberName} from '../lib/slackUtils';
 import {Challenge, SolvedInfo, Profile} from './lib/BasicTypes';
 import {fetchChallsCH, fetchUserProfileCH} from './lib/CHManager';
+import {fetchChallsKSN, fetchUserProfileKSN} from './lib/KSNManager';
 import {fetchChallsTW, fetchUserProfileTW} from './lib/TWManager';
 import {fetchChallsXYZ, fetchUserProfileXYZ} from './lib/XYZManager';
 import pwnyaa, {State} from './index';
@@ -16,6 +17,7 @@ jest.unmock('axios');
 jest.mock('./lib/CHManager');
 jest.mock('./lib/TWManager');
 jest.mock('./lib/XYZManager');
+jest.mock('./lib/KSNManager');
 jest.mock('../lib/slackUtils');
 
 let slack: Slack = null;
@@ -35,6 +37,11 @@ const sampleChallsXYZ: Challenge[] = [
 const sampleChallsCH: Challenge[] = [
 	{name: 'chChallA', score: 400, id: '1'},
 	{name: 'chChallB', score: 500, id: '2'},
+];
+// eslint-disable-next-line array-plural/array-plural
+const sampleChallsKSN: Challenge[] = [
+	{name: 'ksnChallA', score: 400, id: '1'},
+	{name: 'ksnChallB', score: 500, id: '2'},
 ];
 
 // eslint-disable-next-line no-unused-vars
@@ -92,6 +99,16 @@ const sampleProfileCH: Profile = {
 	solvedChalls: [sampleSolved1],
 };
 
+const sampleProfileKSN: Profile = {
+	username: 'hogeko',
+	country: 'JP',
+	rank: '30/1000',
+	score: '4000',
+	comment: 'Crazy Winter',
+	registeredAt: '2020/01/27',
+	solvedChalls: [sampleSolved1],
+};
+
 
 beforeAll(async () => {
 	// backup state file
@@ -129,6 +146,8 @@ beforeEach(async () => {
 	(fetchUserProfileXYZ as jest.Mock).mockReturnValue(sampleProfileXYZ);
 	(fetchChallsCH as jest.Mock).mockReturnValue(sampleChallsCH);
 	(fetchUserProfileCH as jest.Mock).mockReturnValue(sampleProfileCH);
+	(fetchChallsKSN as jest.Mock).mockReturnValue(sampleChallsKSN);
+	(fetchUserProfileKSN as jest.Mock).mockReturnValue(sampleProfileKSN);
 	(getMemberName as jest.Mock).mockReturnValue('FakeName');
 
 	slack = new Slack();
@@ -162,6 +181,14 @@ beforeEach(async () => {
 				joiningUsers: [],
 				numChalls: 51,
 			},
+			{
+				url: 'https://ksnctf.sweetduet.info',
+				id: 3,
+				title: 'ksnctf',
+				alias: ['ksn', 'ksnctf'],
+				joiningUsers: [],
+				numChalls: 31,
+			},
 		],
 	};
 
@@ -193,16 +220,9 @@ it('respond to help', async () => {
 });
 
 it('respond to list', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa list');
+	const {channel}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa list');
 
 	expect(channel).toBe(slack.fakeChannel);
-	expect(text).toContain('pwnable.tw');
-	expect(text).toContain('問題数: 3');
-	expect(text).toContain('参加者: 1匹');
-	expect(text).toContain('FakeName');
-	expect(text).toContain('pwnable.xyz');
-	expect(text).toContain('問題数: 2');
-	expect(text).toContain('参加者: なし');
 });
 
 it('respond to check tw', async () => {
@@ -223,6 +243,12 @@ it('respond to check xyz without joining', async () => {
 
 it('respond to check ch without joining', async () => {
 	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa check ch');
+
+	expect(channel).toBe(slack.fakeChannel);
+	expect(text).toContain('参加してないよ');
+});
+it('respond to check ksn without joining', async () => {
+	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa check ksn');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('参加してないよ');
@@ -267,11 +293,17 @@ it('respond to join ch', async () => {
 	expect(text).toContain('登録する');
 });
 
+it('respond to join ksn', async () => {
+	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa join ksn');
+
+	expect(channel).toBe(slack.fakeChannel);
+	expect(text).toContain('join');
+	expect(text).toContain('登録する');
+});
+
 it('respond to stat', async () => {
 	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa stat');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('状況だよ');
-	expect(text).toContain('暫定ランキングだよ');
-	expect(text).toContain('誰も解いてない');
 });
