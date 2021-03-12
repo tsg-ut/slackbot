@@ -492,9 +492,13 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 		await setState(state);
 		await postMessageDefault(slackMessage, {
-			text: stripIndent`
-				<@${await slackMessage.user}> が *${challName}* (self)を解いたよ :pwn:
-			`,
+			attachments: [{
+				color: getSolveColor(1),
+				author_name: await getMemberName(slackMessage.user),
+				author_icon: await getMemberIcon(slackMessage.user),
+				text: `${challName}(self) を解いたよ!`,
+				footer: 'self-solve',
+			}],
 		});
 	};
 
@@ -949,25 +953,34 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 	const postProgress = async () => {
 		logger.info('[+] pwnyaa: progress posting...');
-
-		let text = '';
 		let someoneSolved = false;
 		const recentSolvesAllCtfs = await fetchRecentSolvesAll(UPDATE_INTERVAL, DateGran.HOUR);
+		const attachments: any[] = [];
+
 		for (const solvesPerContest of recentSolvesAllCtfs) {
+			const nameCtf = state.contests.find((c) => solvesPerContest.idCtf === c.id).title;
 			for (const solvesPerUser of solvesPerContest.solves) {
 				for (const solve of solvesPerUser.solves) {
-					text += `<@${solvesPerUser.slackid}> が *${solve.name}* (${solve.score})を解いたよ :pwn: \n`;
+					attachments.push({
+						color: getSolveColor(1),
+						author_name: await getMemberName(solvesPerUser.slackid),
+						author_icon: await getMemberIcon(solvesPerUser.slackid),
+						text: `${solve.name}(${solve.score}) を解いたよ!`,
+						footer: nameCtf,
+					});
 					someoneSolved = true;
 				}
 			}
 		}
+
 		if (someoneSolved) {
 			logger.info('[+] someone solved challs...');
 			slack.chat.postMessage({
 				username: 'pwnyaa',
 				icon_emoji: ':pwn:',
 				channel: process.env.CHANNEL_PWNABLE_TW,
-				text,
+				text: '',
+				attachments,
 			});
 		}
 	};
