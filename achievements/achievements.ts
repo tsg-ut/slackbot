@@ -1964,6 +1964,20 @@ const achievements: Achievement[] = [
 		condition: 'cryptohackを全完する',
 		category: 'pwnyaa',
 	},
+	{
+		id: 'pwnyaa-ksn-half',
+		difficulty: 'medium',
+		title: 'ニルギリ!',
+		condition: 'ksnctfで半分以上の問題を解く',
+		category: 'pwnyaa',
+	},
+	{
+		id: 'pwnyaa-ksn-complete',
+		difficulty: 'hard',
+		title: '村人Aには会えましたか...?',
+		condition: 'ksnctfを全完する',
+		category: 'pwnyaa',
+	},
 
 	// anime
 
