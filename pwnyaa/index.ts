@@ -675,6 +675,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		if (message.text && message.subtype === undefined &&
       message.text.startsWith(CALLME) && (message.channel === process.env.CHANNEL_SANDBOX || process.env.CHANNEL_PWNABLE_TW || message.channel.startsWith('D'))) { // message is toward me
 			const args = message.text.split(' ').slice(1);
+			if (args.length === 0) {
+				args.push('help');
+			}
 
 			// show list of registered contests summary
 			if (args[0] === 'list') {
