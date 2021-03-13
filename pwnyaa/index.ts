@@ -272,11 +272,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		text += '*==暫定ランキングだよ!==*';
 		if (ranks.length > 0) {
 			for (const [ix, user] of ranks.entries()) {
+				const streak = state.users.find((u) => u.slackId === user.slackid).currentStreak;
 				const attachment: any = {
 					color: getSolveColor(user.solves),
 					author_name: `${await getMemberName(user.slackid)}: ${ix + 1}位 (${user.solves} solves)`,
 					author_icon: await getMemberIcon(user.slackid),
-					footer: `${state.users.find((u) => u.slackId === user.slackid).currentStreak} streaks`,
+					footer: `${streak ? streak : 0} streaks`,
 				};
 				attachments.push(attachment);
 			}
@@ -303,9 +304,16 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					author_name: await getMemberName(user.slackId),
 					author_icon: await getMemberIcon(user.slackId),
 					text: String(user.longestStreak) + (user.longestStreak === user.currentStreak ? ' (更新中!)' : ''),
-					footer: `current streaks: ${user.currentStreak}`,
+					footer: `current streaks: ${user.currentStreak ? user.currentStreak : 0}`,
 				});
 			}
+		}
+		if (attachments.length === 0) {
+			attachments.push({
+				color: '#000000',
+				author_name: 'No Streaks',
+				text: 'みんな0-streaksだよ。悲しいね。',
+			});
 		}
 		await postMessageThreadDefault(message, {
 			text,
@@ -410,30 +418,34 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 	// eslint-disable-next-line require-await
 	const findUserByName = async (name: string, contestid: number) => {
-		if (contestid === TW_ID) {
-			return findUserByNameTW(name);
-		} else if (contestid === XYZ_ID) {
-			return findUserByNameXYZ(name);
-		} else if (contestid === CH_ID) {
-			return findUserByNameCH(name);
-		} else if (contestid === KSN_ID) {
-			return findUserByNameKSN(name);
+		switch (contestid) {
+			case TW_ID:
+				return findUserByNameTW(name);
+			case XYZ_ID:
+				return findUserByNameXYZ(name);
+			case CH_ID:
+				return findUserByNameCH(name);
+			case KSN_ID:
+				return findUserByNameKSN(name);
+			default:
+				return null;
 		}
-		return null;
 	};
 
 	// eslint-disable-next-line require-await
 	const fetchUserProfile = async (userid: string, contestid: number) => {
-		if (contestid === TW_ID) {
-			return fetchUserProfileTW(userid);
-		} else if (contestid === XYZ_ID) {
-			return fetchUserProfileXYZ(userid);
-		} else if (contestid === CH_ID) {
-			return fetchUserProfileCH(userid);
-		} else if (contestid === KSN_ID) {
-			return fetchUserProfileKSN(userid);
+		switch (contestid) {
+			case TW_ID:
+				return fetchUserProfileTW(userid);
+			case XYZ_ID:
+				return fetchUserProfileXYZ(userid);
+			case CH_ID:
+				return fetchUserProfileCH(userid);
+			case KSN_ID:
+				return fetchUserProfileKSN(userid);
+			default:
+				return null;
 		}
-		return null;
 	};
 
 	// get User of slackid from contest name
@@ -1002,11 +1014,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		if (ranks.length > 0) {
 			text += '今週のpwnランキングを発表するよ〜\n';
 			for (const [ix, user] of ranks.entries()) {
+				const streak = state.users.find((u) => u.slackId === user.slackid).currentStreak;
 				const attachment: any = {
 					color: getSolveColor(user.solves),
 					author_name: `${await getMemberName(user.slackid)}: ${ix + 1}位 (${user.solves} solves)`,
 					author_icon: await getMemberIcon(user.slackid),
-					footer: `${state.users.find((u) => u.slackId === user.slackid).currentStreak} streaks`,
+					footer: `${streak ? streak : 0} streaks`,
 				};
 				attachments.push(attachment);
 			}
