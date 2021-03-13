@@ -86,6 +86,19 @@ const getSolveColor = (solveNum: number) => {
 	return '#000000';
 };
 
+const getScoreColor = (score: number) => {
+	if (score <= 10) {
+		return '#336699';
+	} else if (10 < score && score <= 50) {
+		return '#00ffcc';
+	} else if (50 < score && score <= 100) {
+		return '#ffcc00';
+	} else if (100 < score && score <= 300) {
+		return '#ff6666';
+	}
+	return '#cc0000';
+};
+
 const getContestSummary = async (contest: Contest): Promise<any> => {
 	let text = '';
 	if (contest.joiningUsers.length === 0) {
@@ -123,14 +136,11 @@ const filterChallSolvedRecent = (challs: SolvedInfo[], solvedIn: number, granula
 	return filteredChalls;
 };
 
-const getChallsSummary = (challs: SolvedInfo[], spaces = 0) => {
-	let text = '';
-	for (const chall of challs) {
-		text += ' '.repeat(spaces);
-		text += `*${chall.name}* (${chall.score}) ${getPrintableDate(chall.solvedAt)}\n`;
-	}
-	return text;
-};
+const getChallsSummary = (challs: SolvedInfo[]) => challs.map((chall) => ({
+	color: getScoreColor(chall.score),
+	author_name: `${chall.name}: (${chall.score})`,
+	footer: getPrintableDate(chall.solvedAt),
+}));
 
 // assumes update is done in every Sunday 9:00AM
 const getLastUpdateDate = () => {
@@ -770,13 +780,13 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						const selectedContest = state.contests.find((contest) => contest.alias.some((alias) => alias === selectedContestName) || contest.title === selectedContestName);
 						if (selectedContest) {			// contest is found
 							const fetchedProfile = await fetchUserProfile(user.idCtf, selectedContest.id);
-
 							await postMessageThreadDefault(message, {
 								text: `${`ユーザ名  : *${fetchedProfile.username}* \n` +
 									`スコア   : *${fetchedProfile.score}* \n` +
 									`ランキング: *${fetchedProfile.rank}* \n` +
 									`${fetchedProfile.comment} \n` +
-									'解いた問題: \n'}${getChallsSummary(fetchedProfile.solvedChalls, 2)}`,
+									'解いた問題: \n'}`,
+								attachments: getChallsSummary(fetchedProfile.solvedChalls),
 							});
 						} else {										// contest is not found
 							await postMessageDefault(message, {
