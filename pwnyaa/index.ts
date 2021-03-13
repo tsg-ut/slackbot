@@ -139,7 +139,7 @@ const filterChallSolvedRecent = (challs: SolvedInfo[], solvedIn: number, granula
 	} else if (granular === DateGran.DAY) {
 		limitdate = Date.now() - solvedIn * DAY;
 	}
-	const filteredChalls = challs.filter((chall) => chall.solvedAt.getTime() >= limitdate);
+	const filteredChalls = challs.filter((chall) => limitdate <= chall.solvedAt.getTime() && chall.solvedAt.getTime() <= Date.now());
 	return filteredChalls;
 };
 
