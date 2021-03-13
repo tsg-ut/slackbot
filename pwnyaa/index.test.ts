@@ -139,6 +139,15 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+	const getProfile = (profile: Profile): Promise<Profile> => new Promise((resolve, _reject) => {
+		resolve(profile);
+	});
+	const getChalls = (challs: Challenge[]): Promise<Challenge[]> => new Promise((resolve, _reject) => {
+		resolve(challs);
+	});
+	const getUser = (): Promise<{ userid: string, name: string}> => new Promise((resolve, _reject) => {
+		resolve({userid: 'fakeid', name: 'fakename'});
+	});
 	// mock funcs containing axios calls
 	(fetchChallsTW as jest.Mock).mockReturnValue(sampleChallsTW);
 	(fetchUserProfileTW as jest.Mock).mockReturnValue(sampleProfileTW);
@@ -164,6 +173,10 @@ beforeEach(async () => {
 				alias: ['tw'],
 				joiningUsers: [{slackId: slack.fakeUser, idCtf: '23718'}],
 				numChalls: 46,
+				achievementStr: 'tw',
+				fetchUserProfile: (_username: string) => getProfile(sampleProfileTW),
+				fetchChalls: () => getChalls(sampleChallsTW),
+				findUserByName: (_username: string) => getUser(),
 			},
 			{
 				url: 'https://pwnable.xyz',
@@ -172,6 +185,10 @@ beforeEach(async () => {
 				alias: ['xyz'],
 				joiningUsers: [],
 				numChalls: 51,
+				achievementStr: 'xyz',
+				fetchUserProfile: (_username: string) => getProfile(sampleProfileXYZ),
+				fetchChalls: () => getChalls(sampleChallsXYZ),
+				findUserByName: (_username: string) => getUser(),
 			},
 			{
 				url: 'https://cryptohack.org',
@@ -180,6 +197,10 @@ beforeEach(async () => {
 				alias: ['cryptohack', 'ch'],
 				joiningUsers: [],
 				numChalls: 51,
+				achievementStr: 'ch',
+				fetchUserProfile: (_username: string) => getProfile(sampleProfileCH),
+				fetchChalls: () => getChalls(sampleChallsCH),
+				findUserByName: (_username: string) => getUser(),
 			},
 			{
 				url: 'https://ksnctf.sweetduet.info',
@@ -188,12 +209,17 @@ beforeEach(async () => {
 				alias: ['ksn', 'ksnctf'],
 				joiningUsers: [],
 				numChalls: 31,
+				achievementStr: 'ksn',
+				fetchUserProfile: (_username: string) => getProfile(sampleProfileKSN),
+				fetchChalls: () => getChalls(sampleChallsKSN),
+				findUserByName: (_username: string) => getUser(),
 			},
 		],
 	};
 
 	// set fake state
 	const stateOriginalPath = path.resolve(__dirname, 'state.json');
+	await fs.unlink(stateOriginalPath);
 	await fs.writeFile(stateOriginalPath, JSON.stringify(fakeState));
 
 	jest.useFakeTimers();
