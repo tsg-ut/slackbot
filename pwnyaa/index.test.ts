@@ -1,5 +1,4 @@
 /* eslint-disable no-undef */
-
 import {constants, promises as fs} from 'fs';
 import path from 'path';
 // @ts-ignore
@@ -219,7 +218,11 @@ beforeEach(async () => {
 
 	// set fake state
 	const stateOriginalPath = path.resolve(__dirname, 'state.json');
-	await fs.unlink(stateOriginalPath);
+	try {
+		await fs.unlink(stateOriginalPath);
+	} catch {
+		console.log('[test] state.json doesn\'t exists.');
+	}
 	await fs.writeFile(stateOriginalPath, JSON.stringify(fakeState));
 
 	jest.useFakeTimers();
