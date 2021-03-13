@@ -15,6 +15,10 @@ export interface Contest{
   alias: string[],
   numChalls: number,
   joiningUsers: User[],
+  achievementStr?: string,
+  fetchUserProfile?: (_username: string) => Promise<Profile>,
+  findUserByName?: (_username: string) => Promise<{ userid: string, name: string }>,
+  fetchChalls?: () => Promise<Challenge[]>,
 }
 
 // Challenge information per-site

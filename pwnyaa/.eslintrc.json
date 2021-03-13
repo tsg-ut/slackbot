@@ -15,7 +15,8 @@
 		"camelcase": "off",
 		"max-params": "off",
 		"no-warning-comments": [2, { "terms": ["todo", "fixme", "xxx"], "location": "start" }],
-		"no-negated-condition": "off"
+		"no-negated-condition": "off",
+        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }]
     },
     "settings": {
         "import/resolver": null
