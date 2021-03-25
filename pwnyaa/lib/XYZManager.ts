@@ -59,6 +59,7 @@ const str2dateXYZ = (strDate: string): Date => {
 	if (elements.length <= 1) {
 		return null;
 	}
+	const ispm = strDate.includes('p.m.');
 	const month = (`00${String(strmons.indexOf(elements[0]))}`).slice(-2); // month is 0-indexed
 	const day = (`00${elements[1].substring(0, elements[1].length - 1)}`).slice(-2);
 	const year = elements[2].substring(0, elements[2].length - 1);
@@ -72,6 +73,9 @@ const str2dateXYZ = (strDate: string): Date => {
 	const seconds = '00';
 
 	const resDate = new Date(Date.UTC(Number(year), Number(month), Number(day), Number(hour), Number(minute), Number(seconds)));
+	if (ispm) {
+		resDate.setTime(resDate.getTime() + (12 * 60 * 60 * 1000));
+	}
 	return resDate;
 };
 
