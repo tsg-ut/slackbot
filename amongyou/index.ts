@@ -24,15 +24,15 @@ const numList = [
 ];
 
 export interface User{
-  slackId: string,
-  probability: number,
-  timeStart: Date,
+	slackId: string,
+	probability: number,
+	timeStart: Date,
 	timeEnd: Date,
 	people: number,
 }
 
 interface State{
-  users: User[],
+	users: User[],
 	activeThread: string,
 	activeChannel: string,
 	tmpUsers: User[],
