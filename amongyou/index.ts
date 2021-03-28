@@ -21,7 +21,7 @@ const timeList = range(0, 27).map((n) => {
 }).flat();
 
 const numList = [
-	'5', '8', '1',
+	'5', '8',
 ];
 
 export interface User{
