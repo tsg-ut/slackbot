@@ -11,6 +11,7 @@ import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Deferred} from '../lib/utils';
 
 const CALLME = '@amongyou';
+const AMONGABLE_CHECK_INTERVAL = 10 * 60 * 1000;
 
 const timeList = [
 	'00:00', '00:30',
@@ -174,6 +175,9 @@ class Among {
 
 	loadDeferred: Deferred;
 
+	// eslint-disable-next-line no-undef
+	activeSchedular: NodeJS.Timeout;
+
 	constructor({
 		rtm,
 		slack,
@@ -222,6 +226,9 @@ class Among {
 			timeEnd: new Date(user.timeEnd),
 		}));
 		await fs.writeFile(statePath, JSON.stringify(this.state));
+		if (this.state.activeThread !== null) {
+			this.activeSchedular = setInterval(() => this.checkAmongable(), AMONGABLE_CHECK_INTERVAL);
+		}
 
 		// register actions
 		this.slackInteractions.action({
@@ -257,12 +264,7 @@ class Among {
 				attachments: await this.getStatAttachments(),
 			});
 
-			const amongableUsers = this.checkAmongable();
-			if (amongableUsers !== null) {
-				this.postMessageChannelDefault(this.state.activeChannel, {
-					text: getAmongableMessage(amongableUsers),
-				});
-			}
+			this.checkAmongable();
 		});
 
 		this.slackInteractions.action({
@@ -346,6 +348,7 @@ class Among {
 		const {ts}: any = await this.postStatMessage(channelid);
 		this.state.activeThread = ts;
 		this.state.activeChannel = channelid;
+		this.activeSchedular = setInterval(() => this.checkAmongable(), AMONGABLE_CHECK_INTERVAL);
 		this.setState(this.state);
 	}
 
@@ -356,6 +359,7 @@ class Among {
 			});
 			return;
 		}
+		clearInterval(this.activeSchedular);
 		this.setState({
 			users: [],
 			tmpUsers: [],
@@ -525,7 +529,7 @@ class Among {
 		} as State);
 	}
 
-	checkAmongable() {
+	checkAmongableUsers() {
 		const now = new Date();
 		let amongableUsers: User[] = [];
 		for (const user of this.state.users) {
@@ -548,6 +552,15 @@ class Among {
 			return amongableUsers;
 		}
 		return null;
+	}
+
+	checkAmongable() {
+		const amongableUsers = this.checkAmongableUsers();
+		if (amongableUsers !== null) {
+			this.postMessageChannelDefault(this.state.activeChannel, {
+				text: getAmongableMessage(amongableUsers),
+			});
+		}
 	}
 }
 
