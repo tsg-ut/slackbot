@@ -304,6 +304,11 @@ class Among {
 		return this.loadDeferred.promise;
 	}
 
+	async clearFile() {
+		const statePath = path.resolve(__dirname, 'state.json');
+		await fs.writeFile(statePath, '');
+	}
+
 	async setState(object: { [key: string]: any }) {
 		const statePath = path.resolve(__dirname, 'state.json');
 		Object.assign(this.state, object);
@@ -339,6 +344,7 @@ class Among {
 			return;
 		}
 		clearInterval(this.activeSchedular);
+		await this.clearFile();
 		this.setState({
 			users: [],
 			tmpUsers: [],
@@ -547,6 +553,8 @@ class Among {
 			this.postMessageChannelDefault(this.state.activeChannel, {
 				text: getAmongableMessage(amongableUsers),
 			});
+			// clear all
+			this.clearAmongCandidate(this.state.activeChannel);
 		}
 	}
 }
