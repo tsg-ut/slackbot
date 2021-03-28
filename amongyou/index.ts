@@ -7,6 +7,7 @@ import {stripIndent} from 'common-tags';
 import type {FastifyPluginCallback} from 'fastify';
 import plugin from 'fastify-plugin';
 import {range} from 'lodash';
+import moment from 'moment';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Deferred} from '../lib/utils';
@@ -38,11 +39,7 @@ interface State{
 	tmpUsers: User[],
 }
 
-const printableDate = (date: Date) => {
-	const jpDate = new Date(date.getTime());
-	jpDate.setUTCHours(jpDate.getUTCHours() + 9);
-	return `${jpDate.getUTCMonth() + 1}/${jpDate.getUTCDate()} ${(`00${String(jpDate.getUTCHours())}`).slice(-2)}:${(`00${String(jpDate.getUTCMinutes())}`).slice(-2)}`;
-};
+const printableDate = (date: Date) => moment(date).format('MM/DD HH:mm');
 
 const parseDate = (strDate: string) => {
 	const tmpDates = strDate.split(':');
@@ -58,14 +55,6 @@ const parseDate = (strDate: string) => {
 	date.setHours(hour);
 	date.setMinutes(minute);
 	return date;
-};
-
-const getAmongableMessage = (amongableUsers: User[]) => {
-	let text = `*AmongUsが開催できるよ〜〜* (${amongableUsers.length}人) :among_us_report: :among_us_report:\n`;
-	for (const user of amongableUsers) {
-		text += `<@${user.slackId}> `;
-	}
-	return text;
 };
 
 const getModalBlocks = () => [
@@ -551,7 +540,10 @@ class Among {
 		const amongableUsers = this.checkAmongableUsers();
 		if (amongableUsers !== null) {
 			this.postMessageChannelDefault(this.state.activeChannel, {
-				text: getAmongableMessage(amongableUsers),
+				text: stripIndent`
+					*AmongUsが開催できるよ〜〜* (${amongableUsers.length}人) :among_us_report: :among_us_report: 
+					${amongableUsers.map((user) => `<@${user.slackId}>`).join(' ')}
+				`,
 			});
 			// clear all
 			this.clearAmongCandidate(this.state.activeChannel);
