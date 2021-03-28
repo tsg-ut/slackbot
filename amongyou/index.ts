@@ -273,11 +273,11 @@ class Among {
 			}
 			const args = message.text.split(' ').slice(1);
 			switch (args[0]) {
-				default:
-					await this.postMessageDefault(message, {
-						text: ':wakarazu:',
-					});
-					break;
+			default:
+				await this.postMessageDefault(message, {
+					text: ':wakarazu:',
+				});
+				break;
 			}
 		});
 
@@ -296,7 +296,7 @@ class Among {
 		await fs.writeFile(statePath, JSON.stringify(this.state));
 	}
 
-	async startAmongCandidate (channelid: any) {
+	async startAmongCandidate(channelid: any) {
 		if (this.state.activeThread !== null) {
 			await this.postMessageChannelDefault(channelid, {
 				text: '既に募集は開始してるよ〜 :among_us_task:',
@@ -317,7 +317,7 @@ class Among {
 		this.setState(this.state);
 	}
 
-	async clearAmongCandidate (channelid: any) {
+	async clearAmongCandidate(channelid: any) {
 		if (this.state.activeThread === null) {
 			await this.postMessageChannelDefault(channelid, {
 				text: '今は募集してないよ... :among_us_lime_dead:',
@@ -353,7 +353,7 @@ class Among {
 		return attachments;
 	}
 
-	async postStatMessage (channelid: any) {
+	async postStatMessage(channelid: any) {
 		const text = '*現在の参加予定者だよ!*';
 		const attachments: any[] = await this.getStatAttachments();
 		return this.postMessageChannelDefault(channelid, {
@@ -384,7 +384,7 @@ class Among {
 		return this.slack.chat.postMessage(postingConfig);
 	}
 
-	addReactionDefault (receivedMessage: any, emoji: string) {
+	addReactionDefault(receivedMessage: any, emoji: string) {
 		return this.slack.reactions.add({
 			name: emoji,
 			channel: receivedMessage.channel,
@@ -414,6 +414,7 @@ class Among {
 			}
 			this.setState({
 				...this.state,
+				// eslint-disable-next-line max-len
 				tmpUsers: this.state.tmpUsers.map((user) => user.slackId === slackid ? {...user, timeStart: date} : user),
 			} as State);
 		} else if (targets.length === 0) {
@@ -580,24 +581,24 @@ export const server = ({webClient: slack, rtmClient: rtm, messageClient: slackIn
 
 		// eslint-disable-next-line require-await
 		fastify.post<SlashCommandEndpoint>('/slash/amongyou', async (req, res) => {
-			 if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
+			if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
 				res.code(400);
 				return 'Bad Request';
-			 }
+			}
 			res.code(200);
 			const args = req.body.text.split(' ');
 			if (args[0] === '') {
 				args[0] = 'start';
 			}
 			switch (args[0]) {
-				case 'start':
-					among.startAmongCandidate(req.body.channel_id);
-					return 'OK';
-				case 'clear':
-					among.clearAmongCandidate(req.body.channel_id);
-					return 'OK';
-				default:
-					return `Unknown Command: ${args[0]}`;
+			case 'start':
+				among.startAmongCandidate(req.body.channel_id);
+				return 'OK';
+			case 'clear':
+				among.clearAmongCandidate(req.body.channel_id);
+				return 'OK';
+			default:
+				return `Unknown Command: ${args[0]}`;
 			}
 		});
 
