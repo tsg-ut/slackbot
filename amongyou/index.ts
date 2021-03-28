@@ -61,7 +61,7 @@ const parseDate = (strDate: string) => {
 };
 
 const getAmongableMessage = (amongableUsers: User[]) => {
-	let text = `*AmongUsが開催できるよ〜〜* (${amongableUsers.length}) :among_us_report: :among_us_report:\n`;
+	let text = `*AmongUsが開催できるよ〜〜* (${amongableUsers.length}人) :among_us_report: :among_us_report:\n`;
 	for (const user of amongableUsers) {
 		text += `<@${user.slackId}> `;
 	}
@@ -73,7 +73,7 @@ const getModalBlocks = () => [
 		type: 'section',
 		text: {
 			type: 'mrkdwn',
-			text: '*参加可能時刻* を *希望最低人数* 選んでね! :among_us_red:',
+			text: '*参加可能時刻* と *希望最低人数* を選んでね! :among_us_red:',
 		},
 	},
 	{
@@ -318,7 +318,7 @@ class Among {
 	async startAmongCandidate (channelid: any) {
 		if (this.state.activeThread !== null) {
 			await this.postMessageChannelDefault(channelid, {
-				text: '既に募集は開始してるよ',
+				text: '既に募集は開始してるよ〜 :among_us_task:',
 			});
 			return;
 		}
@@ -339,7 +339,7 @@ class Among {
 	async clearAmongCandidate (channelid: any) {
 		if (this.state.activeThread === null) {
 			await this.postMessageChannelDefault(channelid, {
-				text: '今は募集してないよ',
+				text: '今は募集してないよ... :among_us_lime_dead:',
 			});
 			return;
 		}
@@ -352,7 +352,7 @@ class Among {
 			activeThread: null,
 		} as State);
 		await this.postMessageChannelDefault(channelid, {
-			text: '*AmongUsの募集を終了したよ* :among_us_cyan:',
+			text: '*AmongUsの募集を終了したよ〜* :among_us_cyan:',
 		});
 	}
 
