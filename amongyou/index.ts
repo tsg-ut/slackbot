@@ -15,8 +15,8 @@ import {Deferred} from '../lib/utils';
 const CALLME = '@amongyou';
 const AMONGABLE_CHECK_INTERVAL = 10 * 60 * 1000;
 
-const timeList = range(0, 27).map((n) => {
-	const h = n.toString().padStart(2, '0');
+const timeList = range(moment().hours(), moment().hours() + 24).map((n) => {
+	const h = (n % 24).toString().padStart(2, '0');
 	return [`${h}:00`, `${h}:30`];
 }).flat();
 
@@ -42,19 +42,11 @@ interface State{
 const printableDate = (date: Date) => moment(date).format('MM/DD HH:mm');
 
 const parseDate = (strDate: string) => {
-	const tmpDates = strDate.split(':');
-	if (tmpDates.length !== 2) {
-		return null;
+	const date = moment(strDate, 'HH:mm');
+	if (moment().diff(date, 'minutes') >= 30) {
+		date.add(1, 'day');
 	}
-	const hour = Number(tmpDates[0]);
-	const minute = Number(tmpDates[1]);
-	if (isNaN(hour) || isNaN(minute)) {
-		return null;
-	}
-	const date = new Date();
-	date.setHours(hour);
-	date.setMinutes(minute);
-	return date;
+	return date.toDate();
 };
 
 const getModalBlocks = () => [
