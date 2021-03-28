@@ -420,12 +420,16 @@ class Among {
 	// eslint-disable-next-line require-await
 	async setStartTime(slackid: string, start: string) {
 		const date = parseDate(start);
-		if (this.state.tmpUsers.some((user) => user.slackId === slackid)) {
+		const targets = this.state.tmpUsers.filter((user) => user.slackId === slackid);
+		if (targets.length === 1) {
+			if (targets[0].timeEnd !== null && targets[0].timeEnd.getTime() - date.getTime() <= 20 * 60 * 1000) {
+				return;
+			}
 			this.setState({
 				...this.state,
 				tmpUsers: this.state.tmpUsers.map((user) => user.slackId === slackid ? {...user, timeStart: date} : user),
 			} as State);
-		} else {
+		} else if (targets.length === 0) {
 			this.state.tmpUsers.push({
 				timeStart: date,
 				timeEnd: null,
@@ -440,12 +444,16 @@ class Among {
 	// eslint-disable-next-line require-await
 	async setEndTime(slackid: string, end: string) {
 		const date = parseDate(end);
-		if (this.state.tmpUsers.some((user) => user.slackId === slackid)) {
+		const targets = this.state.tmpUsers.filter((user) => user.slackId === slackid);
+		if (targets.length === 1) {
+			if (targets[0].timeStart !== null && date.getTime() - targets[0].timeStart.getTime() <= 20 * 60 * 1000) {
+				return;
+			}
 			this.setState({
 				...this.state,
 				tmpUsers: this.state.tmpUsers.map((user) => user.slackId === slackid ? {...user, timeEnd: date} : user),
 			} as State);
-		} else {
+		} else if (targets.length === 0) {
 			this.state.tmpUsers.push({
 				timeStart: null,
 				timeEnd: date,
