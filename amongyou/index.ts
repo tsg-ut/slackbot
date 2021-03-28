@@ -196,6 +196,9 @@ class Among {
 			actionId: 'amongyou-join',
 		// eslint-disable-next-line no-unused-vars
 		}, (payload: any, respond: any) => {
+			if (this.state.activeChannel === null) {
+				return;
+			}
 			this.slack.views.open({
 				trigger_id: payload.trigger_id,
 				view: {
@@ -216,6 +219,9 @@ class Among {
 		});
 
 		this.slackInteractions.viewSubmission('amongyou-join-info', async (payload: any) => {
+			if (this.state.activeChannel === null) {
+				return;
+			}
 			this.joinUser(payload.user.id);
 			this.slack.chat.update({
 				channel: this.state.activeChannel,
@@ -232,6 +238,9 @@ class Among {
 			actionId: 'amongyou-cancel',
 		// eslint-disable-next-line no-unused-vars
 		}, async (payload: any, respond: any) => {
+			if (this.state.activeChannel === null) {
+				return;
+			}
 			this.cancelUser(payload.user.id);
 			this.slack.chat.update({
 				channel: this.state.activeChannel,
@@ -246,6 +255,9 @@ class Among {
 			actionId: 'amongyou-start-time',
 		// eslint-disable-next-line no-unused-vars
 		}, (payload: any, respond: any) => {
+			if (this.state.activeChannel === null) {
+				return;
+			}
 			this.setStartTime(payload.user.id, payload.actions[0].selected_option.text.text);
 		});
 
@@ -254,6 +266,9 @@ class Among {
 			actionId: 'amongyou-end-time',
 		// eslint-disable-next-line no-unused-vars
 		}, (payload: any, respond: any) => {
+			if (this.state.activeChannel === null) {
+				return;
+			}
 			this.setEndTime(payload.user.id, payload.actions[0].selected_option.text.text);
 		});
 
@@ -262,6 +277,9 @@ class Among {
 			actionId: 'amongyou-num-people',
 		// eslint-disable-next-line no-unused-vars
 		}, (payload: any, respond: any) => {
+			if (this.state.activeChannel === null) {
+				return;
+			}
 			this.setNumPeople(payload.user.id, payload.actions[0].selected_option.text.text);
 		});
 
