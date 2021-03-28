@@ -131,22 +131,6 @@ const getModalBlocks = () => [
 			},
 		],
 	},
-	{
-		type: 'actions',
-		elements: [
-			{
-				type: 'button',
-				text: {
-					type: 'plain_text',
-					emoji: true,
-					text: 'JOIN!',
-				},
-				style: 'primary',
-				value: 'amongus-join',
-				action_id: 'amongyou-join-option',
-			},
-		],
-	},
 ];
 
 const getBlocks = () => [
@@ -250,6 +234,11 @@ class Among {
 				view: {
 					type: 'modal',
 					callback_id: 'amongyou-join-info',
+					submit: {
+						type: 'plain_text',
+						text: 'JOIN!',
+						emoji: true,
+					},
 					title: {
 						type: 'plain_text',
 						text: 'AmongYOU: 希望要件',
@@ -259,11 +248,7 @@ class Among {
 			});
 		});
 
-		this.slackInteractions.action({
-			type: 'button',
-			actionId: 'amongyou-join-option',
-		// eslint-disable-next-line no-unused-vars
-		}, async (payload: any, respond: any) => {
+		this.slackInteractions.viewSubmission('amongyou-join-info', async (payload: any) => {
 			this.joinUser(payload.user.id);
 			this.slack.chat.update({
 				channel: this.state.activeChannel,
