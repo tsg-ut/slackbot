@@ -1,23 +1,24 @@
 {
-    "env": {
-        "browser": true,
-        "es2021": true
-    },
-    "extends": [
-        "google"
-    ],
-    "parser": "@typescript-eslint/parser",
-    "parserOptions": {
-        "ecmaVersion": 12,
-        "sourceType": "module"
-    },
-    "plugins": [
-        "@typescript-eslint"
-    ],
-    "rules": {
-			"indent": ["error", "tab"],
-			"no-tabs": "off",
-			"require-jsdoc": "off",
-			"max-len": ["error", {"code": 120}]
-    }
+	"env": {
+		"browser": true,
+		"es2021": true
+	},
+	"extends": [
+		"google"
+	],
+	"parser": "@typescript-eslint/parser",
+	"parserOptions": {
+		"ecmaVersion": 12,
+		"sourceType": "module"
+	},
+	"plugins": [
+		"@typescript-eslint"
+	],
+	"rules": {
+		"indent": ["error", "tab"],
+		"no-tabs": "off",
+		"require-jsdoc": "off",
+		"max-len": ["error", {"code": 120}],
+		"no-undef": "off"
+	}
 }
