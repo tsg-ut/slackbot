@@ -322,7 +322,8 @@ class Among {
 			return;
 		}
 		await this.postMessageChannelDefault(channelid, {
-			text: '*AmongUsの募集を開始するよ〜〜* :among_us_report: :among_us_report:',
+			// eslint-disable-next-line max-len
+			text: `*AmongUsの募集を開始するよ〜〜* :among_us_report: :among_us_report: ${channelid === process.env.CHANNEL_AMONGUS ? '<!channel>' : ''}`,
 		});
 		await this.postMessageChannelDefault(channelid, {
 			text: '',
