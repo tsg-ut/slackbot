@@ -86,7 +86,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	}
 	
 	rtm.on('message', async (message) => {
-		if(message.type !== 'message' || message.subtype === 'message_replied'){
+		if(!message.text || message.type !== 'message' || message.subtype === 'message_replied'){
 			return;
 		}
 		async function reply(msg:string):Promise<any>{
