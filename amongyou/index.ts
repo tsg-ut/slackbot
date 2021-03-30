@@ -12,7 +12,6 @@ import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Deferred} from '../lib/utils';
 
-const CALLME = '@amongyou';
 const AMONGABLE_CHECK_INTERVAL = 10 * 60 * 1000;
 
 const timeList = range(moment().hours(), moment().hours() + 24).map((n) => {
@@ -37,6 +36,7 @@ interface State{
 	activeThread: string,
 	activeChannel: string,
 	tmpUsers: User[],
+	rememberedUsers?: string[],
 }
 
 const printableDate = (date: Date) => moment(date).format('MM/DD HH:mm');
@@ -156,6 +156,7 @@ class Among {
 			tmpUsers: [],
 			activeThread: null,
 			activeChannel: null,
+			rememberedUsers: [],
 		};
 	}
 
@@ -173,6 +174,7 @@ class Among {
 			tmpUsers: [],
 			activeThread: null,
 			activeChannel: null,
+			rememberedUsers: [],
 			...(exists ? JSON.parse((await fs.readFile(statePath)).toString()) : {}),
 		};
 		this.state.users = this.state.users.map((user) => ({
@@ -285,10 +287,11 @@ class Among {
 
 		// register RTM
 		this.rtm.on('message', async (message) => {
+			console.log('OK');
 			// eslint-disable-next-line max-len
-			if (!message.text || message.subtype || (message.channel !== process.env.CHANNEL_SANDBOX && message.channel !== process.env.CHANNEL_AMONGUS) || !message.text.startsWith(CALLME)) {
-				return;
-			}
+			// if (!message.text || message.subtype || (message.channel !== process.env.CHANNEL_SANDBOX && message.channel !== process.env.CHANNEL_AMONGUS) || !message.text.startsWith(CALLME)) {
+			//	return;
+			// }
 			const args = message.text.split(' ').slice(1);
 			switch (args[0]) {
 			default:
@@ -322,7 +325,10 @@ class Among {
 			return;
 		}
 		await this.postMessageChannelDefault(channelid, {
-			text: '*AmongUsの募集を開始するよ〜〜* :among_us_report: :among_us_report:',
+			text: stripIndent`
+				*AmongUsの募集を開始するよ〜〜* :among_us_report: :among_us_report:
+				CC: ${this.state.rememberedUsers.map((user) => `<@${user}>`).join(' ')}	
+			`,
 		});
 		await this.postMessageChannelDefault(channelid, {
 			text: '',
@@ -345,6 +351,7 @@ class Among {
 		clearInterval(this.activeSchedular);
 		await this.clearFile();
 		this.setState({
+			...this.state,
 			users: [],
 			tmpUsers: [],
 			activeChannel: null,
@@ -515,6 +522,17 @@ class Among {
 		}
 	}
 
+	// remember the member. Return false if the user is already registered.
+	async rememberMember(slackid: string) {
+		if (!this.state.rememberedUsers.some((userid) => userid === slackid)) {
+			this.state.rememberedUsers.push(slackid);
+			this.setState(this.state);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	cancelUser(slackid: string) {
 		this.setState({
 			...this.state,
@@ -615,6 +633,12 @@ export const server = ({webClient: slack, rtmClient: rtm, messageClient: slackIn
 			case 'clear':
 				among.clearAmongCandidate(req.body.channel_id);
 				return 'OK';
+			case 'remember':
+				if (await among.rememberMember(req.body.user_id)) {
+					return '登録したよ! :among_us_pink:';
+				} else {
+					return '既に登録されてるよ! :among_us_pink_dead:';
+				}
 			default:
 				return `Unknown Command: ${args[0]}`;
 			}
