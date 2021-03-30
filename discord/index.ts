@@ -43,32 +43,7 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 		return discordTextSandbox.send(message);
 	});
 
-	rtm.on('message', async (message) => {
-		const {channel, text, user, subtype, thread_ts} = message;
-		if (!text || channel !== process.env.CHANNEL_SANDBOX || subtype !== undefined || thread_ts !== undefined) {
-			return;
-		}
-
-		if (text.split('\n').length > 3 || text.length > 100) {
-			return;
-		}
-
-		const nickname = await getMemberName(user);
-		const discordSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_CHANNEL_ID) as TextChannel;
-
-		discordSandbox.send(`${nickname}: ${text}`);
-	});
-
 	discord.on('message', (message) => {
-		if (!message.member.user.bot && message.channel.id === process.env.DISCORD_SANDBOX_CHANNEL_ID && message.content.length < 200) {
-			slack.chat.postMessage({
-				channel: process.env.CHANNEL_SANDBOX,
-				text: message.content,
-				username: `${message.member.displayName}@Discord`,
-				icon_url: message.member.user.displayAvatarURL({format: 'png', size: 128}),
-			});
-		}
-
 		if (message.channel.id === process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID && !message.member.user.bot) {
 			hayaoshi.onMessage(message);
 		}
