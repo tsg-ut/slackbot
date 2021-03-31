@@ -37,6 +37,7 @@ interface State{
 	activeThread: string,
 	activeChannel: string,
 	tmpUsers: User[],
+	timeApplicationStart?: Date,
 }
 
 const printableDate = (date: Date) => moment(date).format('MM/DD HH:mm');
@@ -156,6 +157,7 @@ class Among {
 			tmpUsers: [],
 			activeThread: null,
 			activeChannel: null,
+			timeApplicationStart: new Date(),
 		};
 	}
 
@@ -173,6 +175,7 @@ class Among {
 			tmpUsers: [],
 			activeThread: null,
 			activeChannel: null,
+			timeApplicationStart: new Date(),
 			...(exists ? JSON.parse((await fs.readFile(statePath)).toString()) : {}),
 		};
 		this.state.users = this.state.users.map((user) => ({
@@ -185,6 +188,9 @@ class Among {
 			timeStart: new Date(user.timeStart),
 			timeEnd: new Date(user.timeEnd),
 		}));
+		if (this.state.timeApplicationStart !== undefined) {
+			this.state.timeApplicationStart = new Date(this.state.timeApplicationStart);
+		}
 		await fs.writeFile(statePath, JSON.stringify(this.state));
 		if (this.state.activeThread !== null) {
 			this.activeSchedular = setInterval(() => this.checkAmongable(), AMONGABLE_CHECK_INTERVAL);
@@ -291,9 +297,13 @@ class Among {
 			}
 			const args = message.text.split(' ').slice(1);
 			switch (args[0]) {
+			case ':wakarazu:':
+				await this.postMessageDefault(message, {
+					text: ':kowa:',
+				});
 			default:
 				await this.postMessageDefault(message, {
-					text: ':wakarazu:',
+					text: ':wakarazu: :wakarazu: :wakarazu: :wakarazu: :wakarazu: :wakarazu:',
 				});
 				break;
 			}
@@ -332,6 +342,7 @@ class Among {
 		const {ts}: any = await this.postStatMessage(channelid);
 		this.state.activeThread = ts;
 		this.state.activeChannel = channelid;
+		this.state.timeApplicationStart = new Date();
 		this.activeSchedular = setInterval(() => this.checkAmongable(), AMONGABLE_CHECK_INTERVAL);
 		this.setState(this.state);
 	}
@@ -559,7 +570,25 @@ class Among {
 			});
 			// clear all
 			this.clearAmongCandidate(this.state.activeChannel);
+		} else {
+			if (this.checkShouldFinishApplication()) {
+				this.clearAmongCandidate(this.state.activeChannel);
+			}
 		}
+	}
+
+	checkShouldFinishApplication() {
+		if (Date.now() - this.state.timeApplicationStart.getTime() < 12 * 60*60*1000) {
+			return;
+		}
+		let shouldFinish = true;
+		for (const user of this.state.users) {
+			if (user.timeEnd.getTime() >= Date.now()) {
+				shouldFinish = false;
+				break;
+			}
+		}
+		return shouldFinish;
 	}
 }
 
