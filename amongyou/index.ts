@@ -27,9 +27,9 @@ const numList = [
 export interface User{
 	slackId: string,
 	probability: number,
-	timeStart: Date,
-	timeEnd: Date,
-	people: number,
+	timeStart: Date | null,
+	timeEnd: Date | null,
+	people: number | null,
 }
 
 interface State{
@@ -510,6 +510,10 @@ class Among {
 	async joinUser(slackid: string) {
 		const targetix = this.state.tmpUsers.findIndex((user) => user.slackId === slackid);
 		if (targetix === -1) {
+			return;
+		}
+		// eslint-disable-next-line max-len
+		if (this.state.tmpUsers[targetix].people === null || this.state.tmpUsers[targetix].timeStart === null || this.state.tmpUsers[targetix].timeEnd === null) {
 			return;
 		}
 		if (this.state.users.some((user) => user.slackId === slackid)) {
