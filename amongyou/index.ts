@@ -542,7 +542,15 @@ class Among {
 		const now = new Date();
 		let amongableUsers: User[] = [];
 		for (const user of this.state.users) {
-			if (now.getTime() >= user.timeStart.getTime() && now.getTime() <= user.timeEnd.getTime()) {
+			let timeStart = user.timeStart;
+			let timeEnd = user.timeEnd;
+			if (timeStart.getTime() === 0) {
+				timeStart = new Date();
+			}
+			if (timeEnd.getTime() === 0) {
+				timeEnd = moment().add(1, 'day').toDate();
+			}
+			if (now.getTime() >= timeStart.getTime() && now.getTime() <= timeEnd.getTime()) {
 				amongableUsers.push(user);
 			}
 		}
@@ -554,7 +562,7 @@ class Among {
 		while (tmpcount !== currentcount) {
 			tmpcount = amongableUsers.length;
 			// eslint-disable-next-line no-loop-func
-			amongableUsers = amongableUsers.filter((user) => user.people <= currentcount);
+			amongableUsers = amongableUsers.filter((user) => user.people <= currentcount || user.people === null);
 			currentcount = amongableUsers.length;
 		}
 		if (amongableUsers.length >= 1) {
