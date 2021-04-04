@@ -19,34 +19,38 @@ enum Voice {A = 'A', B = 'B', C = 'C', D= 'D'};
 
 interface State {
 	users: Map<string, Voice>,
-	userTimeouts: Map<string, Timeout>,
+	userTimers: Map<string, Timer>,
 	connection: VoiceConnection,
 	isPaused: boolean,
 }
 
-class Timeout {
-	timeout: number;
+class Timer {
+	time: number;
 	timeoutId: NodeJS.Timeout;
 	isFired: boolean;
 	func: () => void;
 
-	constructor(func: () => void, timeout: number) {
-		this.timeout = timeout;
-		this.timeoutId = setTimeout(this.onCall, timeout);
+	constructor(func: () => void, time: number) {
+		this.time = time;
+		this.timeoutId = setTimeout(() => {
+			this.onCall();
+		}, time);
 		this.isFired = false;
 		this.func = func;
 	}
 
 	onCall() {
 		this.isFired = true;
-		this.func();
+		if (typeof this.func === 'function') {
+			this.func();
+		}
 	}
 
 	cancel() {
 		if (this.isFired) {
 			return false
 		}
-		clearTimeout(this.timeout);
+		clearTimeout(this.timeoutId);
 		return true;
 	}
 
@@ -54,8 +58,10 @@ class Timeout {
 		if (this.isFired) {
 			return false;
 		}
-		this.cancel();
-		this.timeoutId = setTimeout(this.onCall, this.timeout);
+		clearTimeout(this.timeoutId);
+		this.timeoutId = setTimeout(() => {
+			this.onCall();
+		}, this.time);
 		return true;
 	}
 }
@@ -70,7 +76,7 @@ export default class TTS extends EventEmitter {
 		this.joinVoiceChannelFn = joinVoiceChannelFn;
 		this.state = {
 			users: new Map(),
-			userTimeouts: new Map(),
+			userTimers: new Map(),
 			connection: null,
 			isPaused: false,
 		};
@@ -118,17 +124,17 @@ export default class TTS extends EventEmitter {
 				if (tokens.length === 1 || tokens[1] === 'start') {
 					if (!this.state.users.has(user)) {
 						this.state.users.set(user, this.assignNewVoice());
-						const timeout = new Timeout(() => {
+						const timer = new Timer(() => {
 							mutex.runExclusive(async () => {
 								this.state.users.delete(user);
-								this.state.userTimeouts.get(user)?.cancel();
+								this.state.userTimers.get(user)?.cancel();
 								this.emit('message', stripIndent`
-									1分以上発言がなかったので<@${user}>のTTSを解除しました
+									10分以上発言がなかったので<@${user}>のTTSを解除しました
 								`)
 								await this.onUsersModified();
 							});
-						}, 1 * 60 * 1000);
-						this.state.userTimeouts.set(user, timeout);
+						}, 10 * 60 * 1000);
+						this.state.userTimers.set(user, timer);
 						await this.onUsersModified();
 						await message.react('🆗');
 					} else {
@@ -137,7 +143,7 @@ export default class TTS extends EventEmitter {
 				} else if (tokens[1] === 'stop') {
 					if (this.state.users.has(user)) {
 						this.state.users.delete(user);
-						this.state.userTimeouts.get(user)?.cancel();
+						this.state.userTimers.get(user)?.cancel();
 						await this.onUsersModified();
 						await message.react('🆗');
 					} else {
@@ -160,16 +166,16 @@ export default class TTS extends EventEmitter {
 					);
 				} else {
 					this.emit('message', stripIndent`
-						* TTS [start] - TTSを開始
+						* TTS [start] - TTSを開始 (\`-\`で始まるメッセージは読み上げられません)
 						* TTS stop - TTSを停止
 						* TTS voice <A | B | C | D> - 声を変更
 						* TTS status - ステータスを表示
 						* TTS help - ヘルプを表示
 					`);
 				}
-			} else if (this.state.users.has(user)) {
+			} else if (this.state.users.has(user) && !message.content.startsWith('-')) {
 				const id = this.state.users.get(user);
-				this.state.userTimeouts.get(user)?.resetTimer();
+				this.state.userTimers.get(user)?.resetTimer();
 
 				const [response] = await client.synthesizeSpeech({
 					input: {
@@ -189,12 +195,17 @@ export default class TTS extends EventEmitter {
 				});
 				await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), response.audioContent, 'binary');
 				
-				await new Promise<void>((resolve) => {
-					const dispatcher = this.state.connection.play(path.join(__dirname, 'tempAudio.mp3'));
-					dispatcher.on('finish', () => {
-						resolve();
-					});
-				});
+				await Promise.race([
+					new Promise<void>((resolve) => {
+						const dispatcher = this.state.connection.play(path.join(__dirname, 'tempAudio.mp3'));
+						dispatcher.on('finish', () => {
+							resolve();
+						});
+					}),
+					new Promise<void>((resolve) => {
+						setTimeout(resolve, 10 * 1000);
+					}),
+				]);
 			}
 		});
 	}

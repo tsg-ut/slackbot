@@ -58,6 +58,14 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 		return discordTextSandbox.send(message);
 	});
 
+	hayaoshi.on('start-game', () => {
+		tts.pause();
+	});
+
+	hayaoshi.on('end-game', () => {
+		tts.unpause();
+	});
+
 	discord.on('message', async (message) => {
 		if (message.channel.id === process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID && !message.member.user.bot) {
 			hayaoshi.onMessage(message);

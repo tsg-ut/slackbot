@@ -104,6 +104,7 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.phase = 'waiting';
 		this.state.connection = null;
 		this.state.quizThroughCount = 0;
+		this.emit('end-game');
 	}
 
 	endQuiz({correct = false} = {}) {
@@ -476,6 +477,8 @@ export default class Hayaoshi extends EventEmitter {
 					this.state.participants = new Map();
 					this.state.isContestMode = message.content === '早押しクイズ大会';
 					this.state.questionCount = 0;
+
+					this.emit('start-game');
 
 					if (this.state.isContestMode) {
 						this.emit('message', stripIndent`
