@@ -52,6 +52,13 @@ getTokens().then(async (tokens) => {
 	});
 });
 
+export const getAllMembers = async (): Promise<Array<any>> => {
+	return [
+		...additionalMembers,
+		...(await loadMembersDeferred.promise),
+	];
+};
+
 export const getMemberName = async (user: string): Promise<string> => {
 	const members = [
 		...additionalMembers,
