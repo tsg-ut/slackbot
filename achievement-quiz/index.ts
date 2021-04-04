@@ -60,7 +60,7 @@ export default ({
     await slack.chat.postMessage({
       text: stripIndent`
           正解者は出ませんでした:sob:
-          答えは *${state.answer.title}* だよ:cry:`,
+          答えは *<https://achievements.tsg.ne.jp/achievements/${state.answer.id}|${state.answer.title}>* だよ:cry:`,
       channel: process.env.CHANNEL_SANDBOX as string,
       username: '実績当てクイズ',
       icon_emoji: 'achievement',
@@ -144,7 +144,7 @@ export default ({
         await slack.chat.postMessage({
           text: stripIndent`
           <@${message.user}> 正解です:clap:
-          答えは *${state.answer.title}* だよ:laughing:`,
+          答えは *<https://achievements.tsg.ne.jp/achievements/${state.answer.id}|${state.answer.title}>* だよ:laughing:`,
           channel: process.env.CHANNEL_SANDBOX as string,
           username: '実績当てクイズ',
           icon_emoji: 'achievement',
