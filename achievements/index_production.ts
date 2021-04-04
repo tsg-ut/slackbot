@@ -169,24 +169,6 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 
 	initializeDeferred.resolve();
 
-	const {members}: any = await slack.users.list();
-
-	for (const memberChunks of chunk(Array.from(members), 300) as any) {
-		const batch = db.batch();
-		for (const member of memberChunks) {
-			if (usersSet.has(member.id)) {
-				batch.update(db.collection('users').doc(member.id), {
-					info: member,
-				});
-			} else {
-				batch.set(db.collection('users').doc(member.id), {
-					info: member,
-				});
-			}
-		}
-		await batch.commit();
-	}
-
 	const achievementsDataData = await db.collection('achievement_data').get();
 	const achievementsDataSet = new Set(achievementsDataData.docs.map((a) => a.id));
 	for (const achievementChunks of chunk(Array.from(achievements), 300) as any) {
