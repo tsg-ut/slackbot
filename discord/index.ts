@@ -3,6 +3,7 @@ import Discord, {TextChannel, Collection, Snowflake, GuildMember, VoiceChannel} 
 import type {SlackInterface} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
 import Hayaoshi from './hayaoshi';
+import TTS from './tts';
 import {v1beta1 as GoogleCloudTextToSpeech} from '@google-cloud/text-to-speech';
 import {promises as fs} from 'fs';
 import path from 'path';
@@ -39,58 +40,28 @@ const getMembersBlock = (roomName: string, members: Collection<Snowflake, GuildM
 );
 
 export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
-	const hayaoshi = new Hayaoshi(() => {
+	const joinVoiceChannelFn = () => {
 		const discordSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_VOICE_CHANNEL_ID) as VoiceChannel;
 		return discordSandbox.join();
-	});
+	};
+
+	const hayaoshi = new Hayaoshi(joinVoiceChannelFn);
+	const tts = new TTS(joinVoiceChannelFn);
 
 	hayaoshi.on('message', (message: string) => {
 		const discordTextSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) as TextChannel;
 		return discordTextSandbox.send(message);
 	});
 
-	let connection: Discord.VoiceConnection = null;
-	const ttsUsers: string[] = [];
+	tts.on('message', (message: string) => {
+		const discordTextSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) as TextChannel;
+		return discordTextSandbox.send(message);
+	});
 
 	discord.on('message', async (message) => {
 		if (message.channel.id === process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID && !message.member.user.bot) {
 			hayaoshi.onMessage(message);
-			if (message.content === 'TTS') {
-				const discordSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_VOICE_CHANNEL_ID) as VoiceChannel;
-				connection = await discordSandbox.join();
-
-				const discordTextSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) as TextChannel;
-				discordTextSandbox.send('ok');
-
-				ttsUsers.push(message.member.user.id);
-			} else if (ttsUsers.includes(message.member.user.id)) {
-				const index = ttsUsers.indexOf(message.member.user.id);
-				const id = ['A', 'C', 'B', 'D'][index];
-				const [response] = await client.synthesizeSpeech({
-					input: {
-						ssml: message.content,
-					},
-					voice: {
-						languageCode: 'ja-JP',
-						name: `ja-JP-Wavenet-${id}`,
-					},
-					audioConfig: {
-						audioEncoding: 'MP3',
-						speakingRate: 1.2,
-						effectsProfileId: ['headphone-class-device'],
-					},
-					// @ts-ignore
-					enableTimePointing: ['SSML_MARK'],
-				});
-				await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), response.audioContent, 'binary');
-				
-				await new Promise<void>((resolve) => {
-					const dispatcher = connection.play(path.join(__dirname, 'tempAudio.mp3'));
-					dispatcher.on('finish', () => {
-						resolve();
-					});
-				});
-			}
+			tts.onMessage(message);
 		}
 	});
 
