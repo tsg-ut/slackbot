@@ -273,9 +273,9 @@ export default class Hayaoshi extends EventEmitter {
 		}
 
 		const audio = await this.getTTS(text);
-		
+
 		await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), audio.audioContent, 'binary');
-		
+
 		await new Promise<void>((resolve) => {
 			const dispatcher = this.state.connection.play(path.join(__dirname, 'tempAudio.mp3'));
 			dispatcher.on('finish', () => {

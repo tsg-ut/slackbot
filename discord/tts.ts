@@ -12,19 +12,15 @@ const {TextToSpeechClient} = GoogleCloudTextToSpeech;
 const client = new TextToSpeechClient();
 const mutex = new Mutex();
 
-enum Voice {A = 'A', B = 'B', C = 'C', D= 'D'};
-
-interface State {
-	users: Map<string, Voice>,
-	userTimers: Map<string, Timer>,
-	connection: VoiceConnection,
-	isPaused: boolean,
-}
+enum Voice {A = 'A', B = 'B', C = 'C', D= 'D'}
 
 class Timer {
 	time: number;
+
 	timeoutId: NodeJS.Timeout;
+
 	isFired: boolean;
+
 	func: () => void;
 
 	constructor(func: () => void, time: number) {
@@ -45,7 +41,7 @@ class Timer {
 
 	cancel() {
 		if (this.isFired) {
-			return false
+			return false;
 		}
 		clearTimeout(this.timeoutId);
 		return true;
@@ -61,6 +57,13 @@ class Timer {
 		}, this.time);
 		return true;
 	}
+}
+
+interface State {
+	users: Map<string, Voice>,
+	userTimers: Map<string, Timer>,
+	connection: VoiceConnection,
+	isPaused: boolean,
 }
 
 export default class TTS extends EventEmitter {
@@ -127,7 +130,7 @@ export default class TTS extends EventEmitter {
 								this.state.userTimers.get(user)?.cancel();
 								this.emit('message', stripIndent`
 									10分以上発言がなかったので<@${user}>のTTSを解除しました
-								`)
+								`);
 								await this.onUsersModified();
 							});
 						}, 10 * 60 * 1000);
@@ -149,7 +152,7 @@ export default class TTS extends EventEmitter {
 				} else if (tokens.length === 3 && tokens[1] === 'voice') {
 					const voice: Voice = Voice[tokens[2] as keyof typeof Voice] || Voice.A;
 					if (this.state.users.has(user)) {
-						this.state.users.set(user, voice)
+						this.state.users.set(user, voice);
 						await message.react('🆗');
 					} else {
 						await message.react('🤔');
@@ -191,7 +194,7 @@ export default class TTS extends EventEmitter {
 					enableTimePointing: ['SSML_MARK'],
 				});
 				await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), response.audioContent, 'binary');
-				
+
 				await Promise.race([
 					new Promise<void>((resolve) => {
 						const dispatcher = this.state.connection.play(path.join(__dirname, 'tempAudio.mp3'));

@@ -1,15 +1,8 @@
 import type {ContextBlock} from '@slack/web-api';
 import Discord, {TextChannel, Collection, Snowflake, GuildMember, VoiceChannel} from 'discord.js';
 import type {SlackInterface} from '../lib/slack';
-import {getMemberName} from '../lib/slackUtils';
 import Hayaoshi from './hayaoshi';
 import TTS from './tts';
-import {v1beta1 as GoogleCloudTextToSpeech} from '@google-cloud/text-to-speech';
-import {promises as fs} from 'fs';
-import path from 'path';
-
-const {TextToSpeechClient} = GoogleCloudTextToSpeech;
-const client = new TextToSpeechClient();
 
 const discord = new Discord.Client();
 discord.login(process.env.TSGBOT_DISCORD_TOKEN);
@@ -66,7 +59,7 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 		tts.unpause();
 	});
 
-	discord.on('message', async (message) => {
+	discord.on('message', (message) => {
 		if (message.channel.id === process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID && !message.member.user.bot) {
 			hayaoshi.onMessage(message);
 			tts.onMessage(message);
