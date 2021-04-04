@@ -4,11 +4,8 @@ import path from 'path';
 import {v1beta1 as GoogleCloudTextToSpeech} from '@google-cloud/text-to-speech';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-import Discord, {StreamDispatcher, VoiceConnection} from 'discord.js';
-import {tokenize, KuromojiToken} from 'kuromojin';
-import {max, get, minBy, countBy} from 'lodash';
-import {getHardQuiz, getItQuiz, getHakatashiItQuiz, Quiz} from '../hayaoshi';
-import {extractValidAnswers, judgeAnswer} from './hayaoshiUtils';
+import Discord, {VoiceConnection} from 'discord.js';
+import {minBy, countBy} from 'lodash';
 
 const {TextToSpeechClient} = GoogleCloudTextToSpeech;
 
