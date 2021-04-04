@@ -180,15 +180,19 @@ module.exports = (clients) => {
 
 		const message = await postMessage(stripIndents`
 			ポッキーゲームを始めるよ～
-			下の単語の〇〇に共通して入る単語は何かな～？
-			スレッドで回答してね!
-
-			${hints.map((hint) => hint.replace(theme.word, '• 〇〇')).join('\n')}
+			${hints.map((hint) => hint.replaceAll(theme.word, '〇〇')).join(' / ')}
 		`, process.env.CHANNEL_SANDBOX, {broadcast: false});
 
 		thread = message.ts;
 
-		await postMessage('3分経過で答えを発表するよ～', process.env.CHANNEL_SANDBOX, {broadcast: false, threadPosted: thread});
+		await postMessage(stripIndents`
+			下の単語の〇〇に共通して入る単語は何かな～？
+			スレッドで回答してね!
+			3分経過で答えを発表するよ～
+
+			${hints.map((hint) => `• ${hint.replaceAll(theme.word, '〇〇')}`).join('\n')}
+		`, process.env.CHANNEL_SANDBOX, {broadcast: false, threadPosted: thread});
+
 		const currentTheme = theme;
 		setTimeout(async () => {
 			if (theme === currentTheme) {
