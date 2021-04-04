@@ -2086,6 +2086,64 @@ const achievements: Achievement[] = [
 		category: 'bcr',
 	},
 
+	// achievement-quiz
+	{
+		id: 'achievement-quiz-play',
+		difficulty: 'easy',
+		title: '',
+		condition: '実績当てクイズをプレイする',
+		category: 'achievement-quiz',
+	},
+	{
+		id: 'achievement-quiz-clear',
+		difficulty: 'medium',
+		title: '',
+		condition: '実績当てクイズで正解する',
+		category: 'achievement-quiz',
+	},
+	{
+		id: 'achievement-quiz-clear-baby',
+		difficulty: 'hard',
+		title: '',
+		condition: '実績当てクイズで難易度babyの実績の名前を当てる',
+		category: 'achievement-quiz',
+	},
+	{
+		id: 'achievement-quiz-clear-easy',
+		difficulty: 'hard',
+		title: 'Used to be 諦めるのは easy',
+		condition: '実績当てクイズで難易度easyの実績の名前を当てる',
+		category: 'achievement-quiz',
+	},
+	{
+		id: 'achievement-quiz-clear-medium',
+		difficulty: 'hard',
+		title: '',
+		condition: '実績当てクイズで難易度mediumの実績の名前を当てる',
+		category: 'achievement-quiz',
+	},
+	{
+		id: 'achievement-quiz-clear-hard',
+		difficulty: 'hard',
+		title: '',
+		condition: '実績当てクイズで難易度hardの実績の名前を当てる',
+		category: 'achievement-quiz',
+	},
+	{
+		id: 'achievement-quiz-clear-professional',
+		difficulty: 'hard',
+		title: '',
+		condition: '実績当てクイズで難易度professionalの実績の名前を当てる',
+		category: 'achievement-quiz',
+	},
+	{
+		id: 'achievement-quiz-clear-this-achievement',
+		difficulty: 'professional',
+		title: '',
+		condition: '実績当てクイズでこの実績の名前を当てる',
+		category: 'achievement-quiz',
+	},
+
 	// achievements
 
 	{
