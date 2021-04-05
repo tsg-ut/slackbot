@@ -1,8 +1,8 @@
 import type {ContextBlock} from '@slack/web-api';
 import Discord, {TextChannel, Collection, Snowflake, GuildMember, VoiceChannel} from 'discord.js';
 import type {SlackInterface} from '../lib/slack';
-import {getMemberName} from '../lib/slackUtils';
 import Hayaoshi from './hayaoshi';
+import TTS from './tts';
 
 const discord = new Discord.Client();
 discord.login(process.env.TSGBOT_DISCORD_TOKEN);
@@ -33,19 +33,36 @@ const getMembersBlock = (roomName: string, members: Collection<Snowflake, GuildM
 );
 
 export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
-	const hayaoshi = new Hayaoshi(() => {
+	const joinVoiceChannelFn = () => {
 		const discordSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_VOICE_CHANNEL_ID) as VoiceChannel;
 		return discordSandbox.join();
-	});
+	};
+
+	const hayaoshi = new Hayaoshi(joinVoiceChannelFn);
+	const tts = new TTS(joinVoiceChannelFn);
 
 	hayaoshi.on('message', (message: string) => {
 		const discordTextSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) as TextChannel;
 		return discordTextSandbox.send(message);
 	});
 
+	tts.on('message', (message: string) => {
+		const discordTextSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) as TextChannel;
+		return discordTextSandbox.send(message);
+	});
+
+	hayaoshi.on('start-game', () => {
+		tts.pause();
+	});
+
+	hayaoshi.on('end-game', () => {
+		tts.unpause();
+	});
+
 	discord.on('message', (message) => {
 		if (message.channel.id === process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID && !message.member.user.bot) {
 			hayaoshi.onMessage(message);
+			tts.onMessage(message);
 		}
 	});
 

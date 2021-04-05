@@ -166,11 +166,13 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 	}));
 
 	logger.info('Launched');
+	/*
 	webClient.chat.postMessage({
 		username: `tsgbot [${os.hostname()}]`,
 		channel: process.env.CHANNEL_SANDBOX,
 		text: argv.startup,
 	});
+	*/
 
 	let firstLogin = true;
 	let lastLogin: number = null;
