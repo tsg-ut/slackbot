@@ -2358,8 +2358,9 @@ const achievements: Achievement[] = [
 		title: '',
 		condition: '実績当てクイズでこの実績の名前を当てる',
 		category: 'achievement-quiz',
+	},
+	
 	// sorting-riddles
-
 	{
 		id: 'sorting-riddles-answer',
 		difficulty: 'easy',
