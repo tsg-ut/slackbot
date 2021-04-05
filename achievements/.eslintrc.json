@@ -13,6 +13,8 @@
         "no-restricted-imports": "off",
         "no-use-before-define": "off",
         "camelcase": "off",
-        "import/extensions": "off"
+        "import/extensions": "off",
+        "no-empty-function": "off",
+        "prefer-destructuring": "off"
     }
 }

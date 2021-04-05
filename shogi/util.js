@@ -36,60 +36,58 @@ const gridList = [
 
 const handList = ['HI', 'KA', 'KI', 'GI', 'KE', 'KY', 'FU'];
 
-module.exports.charToPiece = (char) =>
-	({
-		歩: 'FU',
-		歩兵: 'FU',
-		香: 'KY',
-		香車: 'KY',
-		桂: 'KE',
-		桂馬: 'KE',
-		銀: 'GI',
-		銀将: 'GI',
-		金: 'KI',
-		金将: 'KI',
-		飛: 'HI',
-		飛車: 'HI',
-		角: 'KA',
-		角行: 'KA',
-		王: 'OU',
-		王将: 'OU',
-		玉: 'OU',
-		玉将: 'OU',
-		と: 'TO',
-		と金: 'TO',
-		成香: 'NY',
-		杏: 'NY',
-		成桂: 'NK',
-		圭: 'NK',
-		成銀: 'NG',
-		全: 'NG',
-		龍: 'RY',
-		龍王: 'RY',
-		竜: 'RY',
-		竜王: 'RY',
-		馬: 'UM',
-		龍馬: 'UM',
-		竜馬: 'UM',
-	}[char]);
+module.exports.charToPiece = (char) => ({
+	歩: 'FU',
+	歩兵: 'FU',
+	香: 'KY',
+	香車: 'KY',
+	桂: 'KE',
+	桂馬: 'KE',
+	銀: 'GI',
+	銀将: 'GI',
+	金: 'KI',
+	金将: 'KI',
+	飛: 'HI',
+	飛車: 'HI',
+	角: 'KA',
+	角行: 'KA',
+	王: 'OU',
+	王将: 'OU',
+	玉: 'OU',
+	玉将: 'OU',
+	と: 'TO',
+	と金: 'TO',
+	成香: 'NY',
+	杏: 'NY',
+	成桂: 'NK',
+	圭: 'NK',
+	成銀: 'NG',
+	全: 'NG',
+	龍: 'RY',
+	龍王: 'RY',
+	竜: 'RY',
+	竜王: 'RY',
+	馬: 'UM',
+	龍馬: 'UM',
+	竜馬: 'UM',
+}[char]);
 
-module.exports.pieceToChar = (piece) =>
-	({
-		FU: '歩',
-		KY: '香',
-		KE: '桂',
-		GI: '銀',
-		KI: '金',
-		HI: '飛',
-		KA: '角',
-		OU: '玉',
-		TO: 'と',
-		NY: '成香',
-		NK: '成桂',
-		NG: '成銀',
-		RY: '龍',
-		UM: '馬',
-	}[piece]);
+module.exports.pieceToChar = (piece) => ({
+	FU: '歩',
+	KY: '香',
+	KE: '桂',
+	GI: '銀',
+	KI: '金',
+	HI: '飛',
+	KA: '角',
+	OU: '玉',
+	TO: 'と',
+	NY: '成香',
+	NK: '成桂',
+	NG: '成銀',
+	RY: '龍',
+	UM: '馬',
+}[piece]);
 
 module.exports.deserialize = (blob) => {
 	const gridsBlob = [...blob]
@@ -153,9 +151,8 @@ module.exports.serialize = (board) => {
 			if (gridData) {
 				gridNumbers.push(
 					gridList.findIndex(
-						(grid) =>
-							grid.kind === gridData.kind && grid.color === gridData.color
-					)
+						(grid) => grid.kind === gridData.kind && grid.color === gridData.color,
+					),
 				);
 			} else {
 				gridNumbers.push(0);
@@ -182,7 +179,7 @@ module.exports.serialize = (board) => {
 			[6, 7],
 		][index];
 		const counts = board.hands.map(
-			(pieces) => pieces.filter(({kind}) => kind === piece).length
+			(pieces) => pieces.filter(({kind}) => kind === piece).length,
 		);
 		const number =
 			((maxPieces + 1) * 2 - counts[Color.Black] + 1) *
@@ -197,10 +194,8 @@ module.exports.serialize = (board) => {
 		.join('')
 		.padStart(32, '0');
 
-	const gridHex = gridBin.replace(/.{1,4}/g, (byte) =>
-		parseInt(byte, 2).toString(16));
-	const handHex = handBin.replace(/.{1,4}/g, (byte) =>
-		parseInt(byte, 2).toString(16));
+	const gridHex = gridBin.replace(/.{1,4}/g, (byte) => parseInt(byte, 2).toString(16));
+	const handHex = handBin.replace(/.{1,4}/g, (byte) => parseInt(byte, 2).toString(16));
 
 	return Buffer.from(gridHex + handHex, 'hex');
 };
@@ -225,7 +220,7 @@ module.exports.getTransitions = (board) => {
 					move.to.x,
 					move.to.y,
 					// とりあえず成でmoveしてみる
-					move.from.y === 1 || move.to.y === 1
+					move.from.y === 1 || move.to.y === 1,
 				);
 				const transition = {
 					type: 'move',
@@ -249,7 +244,7 @@ module.exports.getTransitions = (board) => {
 						move.from.y,
 						move.to.x,
 						move.to.y,
-						false
+						false,
 					);
 
 					// 強制的に成った場合は追加しない

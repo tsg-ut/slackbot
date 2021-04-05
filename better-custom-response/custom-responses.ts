@@ -2,6 +2,7 @@ import { stripIndent } from 'common-tags';
 // @ts-ignore
 import { romanize, katakanize } from 'japanese';
 import { shuffle } from 'lodash';
+import omikuji from './omikuji.json';
 
 interface Achievement {
     trigger: RegExp[],
@@ -21,8 +22,18 @@ interface CustomResponse {
 
 const customResponses: CustomResponse[] = [
     {
-        input: [/^あほくさ$/],
-        outputArray: [":ahokusa-top-left::ahokusa-top-center::ahokusa-top-right:\n:ahokusa-bottom-left::ahokusa-bottom-center::ahokusa-bottom-right:"],
+        input: [/^[あほくさ]{4}$/],
+        outputFunction: (input: string[]) => {
+            const ahokusaMap = new Map([
+                ['あ', 'ahokusa-top-right'],
+                ['ほ', 'ahokusa-bottom-right'],
+                ['く', 'ahokusa-top-left'],
+                ['さ', 'ahokusa-bottom-left'],
+            ]);
+            const [a, ho, ku, sa] = Array.from(input[0]).map((c: string, i, a) => ahokusaMap.get(c));
+            const outputStr = `:${ku}::ahokusa-top-center::${a}:\n:${sa}::ahokusa-bottom-center::${ho}:`
+            return [outputStr];
+        },
         username: 'あほくさresponse',
         icon_emoji: ':atama:',
     },
@@ -145,6 +156,35 @@ const customResponses: CustomResponse[] = [
                 name: "bcr-denim-reversplit"
             },
         ],
+    },
+    {
+        input: [/^おみくじ$/],
+        outputArray: omikuji,
+    },
+    {
+        input: [/^(:([^:]+):\s?)?花火$/],
+        outputFunction: (input: string[]) => {
+            const matchedReaction = (input[0] === '花火') ? ':hideo54:' : `:${input[2]}:`;
+            const resultString = stripIndent`\
+                ．　　・∵∴∵・
+                　　∴※※◎※※∴
+                　∴※◎☆${matchedReaction}☆◎※∴
+                ・※◎${matchedReaction}＼川／${matchedReaction}◎※・
+                ∵※☆＼＼Ｖ／／☆※∵
+                ∴◎${matchedReaction}三＞${matchedReaction}＜三${matchedReaction}◎∴
+                ∴※☆／／∧＼＼☆※∴
+                ・※◎${matchedReaction}／川＼${matchedReaction}◎※・
+                　∵※◎☆${matchedReaction}☆◎※∵
+                　　∵※※◎※※∵
+                　　　・∴∵∴・
+                　　　　　ｉ
+                　　　　　ｉ
+                　　　　　ｉ
+                　　＿　　　　　　　＿`;
+            return [resultString];
+        },
+        icon_emoji: ":fireworks:",
+        username: "鍵屋",
     },
 ];
 

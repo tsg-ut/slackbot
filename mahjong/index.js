@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const qs = require('querystring');
 const {promisify} = require('util');
-const {stripIndent} = require('common-tags');
+const {source} = require('common-tags');
 const {chunk, shuffle} = require('lodash');
 const {unlock} = require('../achievements');
 const {blockDeploy} = require('../deploy/index.ts');
@@ -12,17 +12,27 @@ const calculator = require('./calculator.js');
 
 const savedState = (() => {
 	try {
+		const defaultSavedState = {
+			points: 25000,
+			wins: 0,
+			loses: 0,
+			大麻雀Points: 350000,
+			大麻雀Wins: 0,
+			大麻雀Loses: 0,
+		};
 		// eslint-disable-next-line global-require
-		return require('./current-point.json');
+		return Object.assign(defaultSavedState, require('./current-point.json'));
 	} catch (e) {
 		return {
 			points: 25000,
 			wins: 0,
 			loses: 0,
+			大麻雀Points: 350000,
+			大麻雀Wins: 0,
+			大麻雀Loses: 0,
 		};
 	}
 })();
-
 
 const get牌Type = (牌) => {
 	const codePoint = 牌.codePointAt(0);
@@ -125,6 +135,10 @@ const state = {
 	loses: savedState.loses,
 	thread: null,
 	deployUnblock: null,
+	大麻雀: false,
+	大麻雀Points: savedState.大麻雀Points,
+	大麻雀Wins: savedState.大麻雀Wins,
+	大麻雀Loses: savedState.大麻雀Loses,
 };
 
 const 麻雀牌 = Array(136).fill(0).map((_, index) => {
@@ -154,6 +168,9 @@ const saveState = async () => {
 		points: state.points,
 		wins: state.wins,
 		loses: state.loses,
+		大麻雀Points: state.大麻雀Points,
+		大麻雀Wins: state.大麻雀Wins,
+		大麻雀Loses: state.大麻雀Loses,
 	}));
 };
 
@@ -218,7 +235,7 @@ module.exports = (clients) => {
 				state.loses++;
 				state.points = 25000;
 				await saveState();
-				postMessage(stripIndent`
+				postMessage(source`
 					ハコ割れしました。点数をリセットします。
 					通算成績: ${state.wins}勝${state.loses}敗
 				`, {
@@ -228,9 +245,34 @@ module.exports = (clients) => {
 				state.wins++;
 				state.points = 25000;
 				await saveState();
-				postMessage(stripIndent`
+				postMessage(source`
 					勝利しました。点数をリセットします。
 					通算成績: ${state.wins}勝${state.loses}敗
+				`, {
+					mode: 'broadcast',
+				});
+			}
+			if (state.大麻雀Points < 0) {
+				state.大麻雀Loses++;
+				state.大麻雀Points = 350000;
+				await saveState();
+				postMessage(source`
+					*大麻雀 役満縛り*
+
+					ハコ割れしました。点数をリセットします。
+					通算成績: ${state.大麻雀Wins}勝${state.大麻雀Loses}敗
+				`, {
+					mode: 'broadcast',
+				});
+			} else if (state.大麻雀Points > 600000) {
+				state.大麻雀Wins++;
+				state.大麻雀Points = 350000;
+				await saveState();
+				postMessage(source`
+					*大麻雀 役満縛り*
+
+					勝利しました。点数をリセットします。
+					通算成績: ${state.大麻雀Wins}勝${state.大麻雀Loses}敗
 				`, {
 					mode: 'broadcast',
 				});
@@ -268,9 +310,10 @@ module.exports = (clients) => {
 			state.壁牌 = shuffled牌s.slice(15);
 			state.remaining自摸 = 17;
 			state.points -= 1500;
+			state.大麻雀 = false;
 			await saveState();
 
-			const {ts} = await postMessage(stripIndent`
+			const {ts} = await postMessage(source`
 				場代 -1500点
 				現在の得点: ${state.points}点
 
@@ -306,11 +349,53 @@ module.exports = (clients) => {
 			state.壁牌 = shuffled牌s.slice(15);
 			state.remaining自摸 = 17;
 			state.points -= 6000;
+			state.大麻雀 = false;
 			await saveState();
 
-			const {ts} = await postMessage(stripIndent`
+			const {ts} = await postMessage(source`
 				場代 -6000点
 				現在の得点: ${state.points}点
+
+				残り${state.remaining自摸}牌
+
+				コマンドをスレッドで打ち込んでください。
+			`, {
+				手牌: state.手牌,
+				王牌: generate王牌(),
+				mode: 'initial',
+			});
+
+			state.thread = ts;
+			await saveState();
+
+			return;
+		}
+
+		if (text === '大麻雀') {
+			if (state.phase !== 'waiting') {
+				perdonBroadcast();
+				return;
+			}
+
+			state.deployUnblock = await blockDeploy('mahjong');
+			state.phase = 'gaming';
+			state.mode = '三人';
+			state.抜きドラCount = 0;
+			state.嶺上牌Count = 8;
+			const shuffled牌s = shuffle(麻雀牌Forサンマ);
+			state.手牌 = sort(shuffled牌s.slice(0, 14));
+			state.ドラ表示牌s = shuffled牌s.slice(14, 15);
+			state.壁牌 = shuffled牌s.slice(15);
+			state.remaining自摸 = 20;
+			state.大麻雀Points -= 6000;
+			state.大麻雀 = true;
+			await saveState();
+
+			const {ts} = await postMessage(source`
+				*大麻雀 役満縛り*
+
+				場代 -6000点
+				現在の得点: ${state.大麻雀Points}点
 
 				残り${state.remaining自摸}牌
 
@@ -346,7 +431,7 @@ module.exports = (clients) => {
 				for (const 牌 of state.壁牌) {
 					残り牌List[牌.codePointAt(0) - 0x1F000]++;
 				}
-				postMessage(stripIndent`
+				postMessage(source`
 					萬子: ${chunk(残り牌List.slice(7, 16), 3).map((numbers) => numbers.join('')).join(' ')}
 					筒子: ${chunk(残り牌List.slice(25, 34), 3).map((numbers) => numbers.join('')).join(' ')}
 					索子: ${chunk(残り牌List.slice(16, 25), 3).map((numbers) => numbers.join('')).join(' ')}
@@ -395,18 +480,23 @@ module.exports = (clients) => {
 					state.phase = 'waiting';
 					const isTenpai = calculator.tenpai(state.手牌);
 					if (isTenpai) {
-						postMessage(stripIndent`
-							聴牌 0点
-							現在の得点: ${state.points}点
+						postMessage(source`
+							${state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}聴牌 0点
+							現在の得点: ${state.大麻雀 ? state.大麻雀Points : state.points}点
 						`, {
 							mode: 'broadcast',
 						});
 					} else {
-						state.points -= 3000;
+						if (state.大麻雀) {
+							state.大麻雀Points -= 3000;
+						} else {
+							state.points -= 3000;
+						}
+
 						await saveState();
-						postMessage(stripIndent`
-							不聴罰符 -3000点
-							現在の得点: ${state.points}点
+						postMessage(source`
+							${state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}不聴罰符 -3000点
+							現在の得点: ${state.大麻雀 ? state.大麻雀Points : state.points}点
 						`, {
 							mode: 'broadcast',
 						});
@@ -423,7 +513,7 @@ module.exports = (clients) => {
 				state.壁牌 = state.壁牌.slice(1);
 				state.remaining自摸--;
 
-				postMessage(stripIndent`
+				postMessage(source`
 					摸${牌ToName(state.手牌[state.手牌.length - 1])} 残り${state.remaining自摸}牌
 				`, {
 					手牌: state.手牌,
@@ -450,7 +540,7 @@ module.exports = (clients) => {
 				state.手牌 = sort(state.手牌).concat([state.壁牌[0]]);
 				state.壁牌 = state.壁牌.slice(1);
 
-				postMessage(stripIndent`
+				postMessage(source`
 					抜きドラ ${state.抜きドラCount}牌 残り${state.remaining自摸}牌
 				`, {
 					手牌: state.手牌,
@@ -524,21 +614,33 @@ module.exports = (clients) => {
 							isHaitei: state.remaining自摸 === 0 && 当たり牌Index === 河牌Count - 1,
 							isVirgin: false,
 							isRiichi: true,
-							isDoubleRiichi: state.リーチTurn === 17,
+							isDoubleRiichi: state.リーチTurn === (state.大麻雀 ? 20 : 17),
 							isIppatsu: state.リーチTurn - state.remaining自摸 === 1,
 							isRon: 当たり牌Index !== 河牌Count - 1,
 							additionalDora: 抜きドラ,
 						});
 
-						state.points += agari.delta[0];
+						let is錯和 = false;
+
+						if (state.大麻雀) {
+							if (agari.delta[0] < 48000) {
+								is錯和 = true;
+								agari.delta[0] = -12000;
+							}
+							state.大麻雀Points += agari.delta[0];
+						} else {
+							state.points += agari.delta[0];
+						}
+
 						await saveState();
-						postMessage(stripIndent`
-							河${河牌s.slice(0, Math.min(当たり牌Index + 1, 河牌Count - 1)).map(牌ToName).join('・')}${当たり牌Index === 河牌Count - 1 ? ` 摸${牌ToName(河牌s[河牌s.length - 1])}` : ''}
+						postMessage(source`
+							${state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}河${河牌s.slice(0, Math.min(当たり牌Index + 1, 河牌Count - 1)).map(牌ToName).join('・')}${当たり牌Index === 河牌Count - 1 ? ` 摸${牌ToName(河牌s[河牌s.length - 1])}` : ''}
 							${当たり牌Index === 河牌Count - 1 ? 'ツモ!!!' : 'ロン!!!'}
 
 							${役s.join('・')}
-							${agari.delta[0]}点
-							現在の得点: ${state.points}点
+
+							${is錯和 ? '錯和 ' : ''}${agari.delta[0]}点
+							現在の得点: ${state.大麻雀 ? state.大麻雀Points : state.points}点
 						`, {
 							手牌: state.手牌.concat([河牌s[当たり牌Index]]),
 							王牌: generate王牌(裏ドラ表示牌s),
@@ -553,7 +655,7 @@ module.exports = (clients) => {
 						state.deployUnblock();
 						state.phase = 'waiting';
 
-						if (state.mode === '四人') {
+						if (state.mode === '四人' && !state.大麻雀) {
 							await unlock(message.user, 'mahjong');
 							if (役s.includes('七対子')) {
 								await unlock(message.user, 'mahjong-七対子');
@@ -594,7 +696,7 @@ module.exports = (clients) => {
 						return;
 					}
 
-					postMessage(stripIndent`
+					postMessage(source`
 						河${河牌s.slice(0, 河牌Count - 1).map(牌ToName).join('・')} 摸${牌ToName(河牌s[河牌s.length - 1])} 残り${state.remaining自摸}牌
 					`, {
 						手牌: state.手牌.concat([河牌s[河牌s.length - 1]]),
@@ -610,24 +712,34 @@ module.exports = (clients) => {
 				state.phase = 'waiting';
 				const isTenpai = calculator.tenpai(state.手牌);
 				if (isTenpai) {
-					state.points -= 1000;
+					if (state.大麻雀) {
+						state.大麻雀Points -= 1000;
+					} else {
+						state.points -= 1000;
+					}
+
 					await saveState();
-					postMessage(stripIndent`
-						流局 供託点 -1000点
-						現在の得点: ${state.points}点
+					postMessage(source`
+						${state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}流局 供託点 -1000点
+						現在の得点: ${state.大麻雀 ? state.大麻雀Points : state.points}点
 					`, {
 						mode: 'broadcast',
 					});
 				} else {
-					state.points -= 12000;
+					if (state.大麻雀) {
+						state.大麻雀Points -= 12000;
+					} else {
+						state.points -= 12000;
+					}
+
 					await saveState();
-					postMessage(stripIndent`
-						流局 不聴立直 -12000点
-						現在の得点: ${state.points}点
+					postMessage(source`
+						${state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}流局 不聴立直 -12000点
+						現在の得点: ${state.大麻雀 ? state.大麻雀Points : state.points}点
 					`, {
 						mode: 'broadcast',
 					});
-					if (state.mode === '四人') {
+					if (state.mode === '四人' && !state.大麻雀) {
 						await unlock(message.user, 'mahjong-不聴立直');
 					}
 				}
@@ -649,7 +761,7 @@ module.exports = (clients) => {
 				const {agari, 役s} = calculator.agari(state.手牌, {
 					doraHyouji: state.ドラ表示牌s,
 					isHaitei: state.remaining自摸 === 0,
-					isVirgin: state.remaining自摸 === 17,
+					isVirgin: state.remaining自摸 === (state.大麻雀 ? 20 : 17),
 					additionalDora: state.抜きドラCount,
 				});
 
@@ -657,11 +769,15 @@ module.exports = (clients) => {
 				state.phase = 'waiting';
 
 				if (!agari.isAgari) {
-					state.points -= 12000;
+					if (state.大麻雀) {
+						state.大麻雀Points -= 12000;
+					} else {
+						state.points -= 12000;
+					}
 					await saveState();
-					postMessage(stripIndent`
-						錯和 -12000点
-						現在の得点: ${state.points}点
+					postMessage(source`
+						${state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}錯和 -12000点
+						現在の得点: ${state.大麻雀 ? state.大麻雀Points : state.points}点
 					`, {
 						mode: 'broadcast',
 					});
@@ -671,13 +787,26 @@ module.exports = (clients) => {
 					return;
 				}
 
-				state.points += agari.delta[0];
+				let is錯和 = false;
+
+				if (state.大麻雀) {
+					if (agari.delta[0] < 48000) {
+						is錯和 = true;
+						agari.delta[0] = -12000;
+					}
+					state.大麻雀Points += agari.delta[0];
+				} else {
+					state.points += agari.delta[0];
+				}
+
 				await saveState();
-				postMessage(stripIndent`
-					ツモ!!!
+				postMessage(source`
+					${state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}ツモ!!!
+
 					${役s.join('・')}
-					${agari.delta[0]}点
-					現在の得点: ${state.points}点
+
+					${is錯和 ? '錯和 ' : ''}${agari.delta[0]}点
+					現在の得点: ${state.大麻雀 ? state.大麻雀Points : state.points}点
 				`, {
 					mode: 'broadcast',
 				});

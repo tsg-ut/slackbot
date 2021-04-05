@@ -2,8 +2,8 @@
 
 jest.mock('../achievements');
 
-const mahjong = require('./index.js');
 const Slack = require('../lib/slackMock.js');
+const mahjong = require('./index.js');
 
 let slack = null;
 

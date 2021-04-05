@@ -3,6 +3,9 @@
     "parser": "@typescript-eslint/parser",
     "rules": {
         "no-console": "off",
-        "camelcase": "off"
+        "camelcase": "off",
+        "no-promise-executor-return": "off",
+        "no-restricted-imports": "off",
+        "import/extensions": "off"
     }
 }

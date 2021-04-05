@@ -1,15 +1,15 @@
-const path = require('path');
+const assert = require('assert');
 const fs = require('fs');
+const path = require('path');
+const querystring = require('querystring');
 const {promisify} = require('util');
-const {hiraganize} = require('japanese');
-const moment = require('moment');
 const axios = require('axios');
 const download = require('download');
-const querystring = require('querystring');
-const assert = require('assert');
+const {hiraganize} = require('japanese');
+const get = require('lodash/get');
 const last = require('lodash/last');
 const shuffle = require('lodash/shuffle');
-const get = require('lodash/get');
+const moment = require('moment');
 const logger = require('../lib/logger.js');
 
 module.exports.getPageTitle = (url) => {

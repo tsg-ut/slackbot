@@ -1,21 +1,33 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
 
-process.on('unhandledRejection', (error) => {
+dotenv.config();
+
+process.on('unhandledRejection', (error: Error) => {
 	logger.error(error.stack);
 });
 
-const {rtmClient, webClient} = require('./lib/slack.ts');
-const {createEventAdapter} = require('@slack/events-api');
-const {createMessageAdapter} = require('@slack/interactive-messages');
-const fastify = require('fastify')({
+import os from 'os';
+import {rtmClient, webClient} from './lib/slack';
+import {createEventAdapter} from '@slack/events-api';
+import {createMessageAdapter} from '@slack/interactive-messages';
+import Fastify from 'fastify';
+
+// @ts-ignore
+import logger from './lib/logger.js';
+import yargs from 'yargs';
+
+import fastifyFormbody from 'fastify-formbody';
+import fastifyExpress from 'fastify-express';
+
+import sharp from 'sharp';
+
+// Disable the cache since it likely hits the swap anyway
+sharp.cache(false);
+
+const fastify = Fastify({
 	logger: true,
 	pluginTimeout: 50000,
 });
-const logger = require('./lib/logger.js');
-const yargs = require('yargs');
-
-const fastifyFormbody = require('fastify-formbody');
-const fastifyExpress = require('fastify-express');
 
 const allBots = [
 	'summary',
@@ -54,7 +66,7 @@ const allBots = [
 	'anime',
 	'anime/anison',
 	'oogiri',
-	'sort-nazonazo',
+	'sorting-riddles',
 	'tsglive',
 	'emoji-modifier',
 	'context-free',
@@ -62,11 +74,16 @@ const allBots = [
 	'taiko',
 	'hayaoshi',
 	'twitter-dm-notifier',
-	'tsgctf',
-	'jitsi',
 	'hitandblow',
 	'achievement-quiz',
+	'discord',
+	'octas',
+	'pwnyaa',
+	'amongyou',
+	'api',
 ];
+
+logger.info('slackbot started');
 
 const argv = yargs
 	.array('only')
@@ -75,7 +92,7 @@ const argv = yargs
 	.default('startup', 'ｼｭｯｼｭｯ (起動音)')
 	.argv;
 
-const plugins = Object.fromEntries(argv.only.map((name) => [name, require(`./${name}`)]));
+const plugins = argv.only;
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
 	logger.error(error.stack);
@@ -105,7 +122,20 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 		}
 	});
 
-	await Promise.all(Object.entries(plugins).map(async ([name, plugin]) => {
+	const loadedPlugins = new Set<string>();
+
+	const initializationMessagePromise = webClient.chat.postMessage({
+		username: `tsgbot [${os.hostname()}]`,
+		channel: process.env.CHANNEL_SANDBOX,
+		text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
+		attachments: plugins.map((name) => ({
+			color: '#F44336',
+			text: `loading: ${name}`,
+		})),
+	});
+
+	await Promise.all(plugins.map(async (name) => {
+		const plugin = await import(`./${name}`);
 		if (typeof plugin === 'function') {
 			await plugin({rtmClient, webClient, eventClient, messageClient});
 		}
@@ -115,21 +145,42 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 		if (typeof plugin.server === 'function') {
 			await fastify.register(plugin.server({rtmClient, webClient, eventClient, messageClient}));
 		}
+		loadedPlugins.add(name);
 		logger.info(`plugin "${name}" successfully loaded`);
+
+		const initializationMessage = await initializationMessagePromise;
+		webClient.chat.update({
+			channel: process.env.CHANNEL_SANDBOX,
+			ts: initializationMessage.ts as string,
+			text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
+			attachments: [
+				{
+					color: '#4CAF50',
+					text: `loaded: ${Array.from(loadedPlugins).join(', ')}`,
+				},
+				...plugins.filter((name) => !loadedPlugins.has(name)).map((name) => ({
+					color: '#F44336',
+					text: `loading: ${name}`,
+				})),
+			],
+		})
 	}));
 
 	logger.info('Launched');
+	/*
 	webClient.chat.postMessage({
+		username: `tsgbot [${os.hostname()}]`,
 		channel: process.env.CHANNEL_SANDBOX,
 		text: argv.startup,
 	});
+	*/
 
 	let firstLogin = true;
-	let lastLogin = null;
+	let lastLogin: number = null;
 	let combos = 1;
 	rtmClient.on('authenticated', (data) => {
 		logger.info(`Logged in as ${data.self.name} of team ${data.team.name}`);
-		const now = new Date();
+		const now = Date.now();
 		if (!firstLogin) {
 			let comboStr = '';
 			if (now - lastLogin <= 2 * 60 * 1000) {
@@ -140,6 +191,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 				combos = 1;
 			}
 			webClient.chat.postMessage({
+				username: `tsgbot [${os.hostname()}]`,
 				channel: process.env.CHANNEL_SANDBOX,
 				text: `再接続しました ${comboStr}`,
 			});

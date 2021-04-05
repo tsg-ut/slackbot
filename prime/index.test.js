@@ -2,8 +2,8 @@
 
 jest.mock('../achievements');
 
-const shogi = require('./index.js');
 const Slack = require('../lib/slackMock.js');
+const shogi = require('./index.js');
 
 let slack = null;
 

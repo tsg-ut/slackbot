@@ -1,7 +1,7 @@
 /* eslint-env node, jest */
 
-const emojiNotifier = require('./index.js');
 const Slack = require('../lib/slackMock.js');
+const emojiNotifier = require('./index.js');
 
 let slack = null;
 

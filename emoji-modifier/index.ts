@@ -415,6 +415,27 @@ const filters: Map<string, Filter> = new Map([
 ] as [string, Filter][]);
 // }}}
 
+// help document {{{
+const helpDocs: Map<string, string> = new Map([
+  ['help', 'usage: help <filter>\nGet information about the given filter.'],
+  // filters
+  ['identity', 'usage: identity (no argument)\nMake no change.'],
+  ['speedTimes', 'usage: speedtimes <number>\nChange the speed of animation.'],
+  ['mirrorV', 'usage: mirrorV (no argument)\nReflect the emoji through the horizontal median line.'],
+  ['mirror', 'usage: mirror (no argument)\nReflect the emoji through the vertical median line.'],
+  [
+    'move',
+    'usage: move <"top"|"bottom"|"left"|"right"> <"top"|"bottom"|"left"|"right">\n' +
+      'Move the emoji so that it comes in from the side specified by the first argument and goes out through the side specified by the second argument.',
+  ],
+  ['go', 'usage: move <"top"|"bottom"|"left"|"right">\nMove the emoji in the given direction.'],
+  ['trim', 'usage: trim <number>\nTrim the emoji including the opaque pixels with regard to the given threshold.'],
+  ['distort', 'usage: distort (no argument)\nDistort the emoji.'],
+  ['pro', 'usage: pro <string> <string>\nCreate a fake proof that somebody of the emoji avatar with the given username and user_id said "私がプロだ" on an SNS.'],
+  ['think', 'usage: think (no argument)\nAttach a hand to the emoji as if it is thinking.'],
+]);
+// }}}
+
 // parsing & executing {{{
 interface Transformation {
   kind: 'success';
@@ -424,6 +445,7 @@ interface Transformation {
 
 interface HelpRequest {
   kind: 'help';
+  document: string
 }
 
 type ParseResult = Transformation | EmodiError | HelpRequest;
@@ -433,13 +455,31 @@ const parse = (message: string): ParseResult => {
   const parts = message.split('|').map(_.trim);
   logger.info(parts);
   if (parts.length < 1) {
-    return parseError('Expected emoji');
+    return parseError('Expected emoji; you can also type `@emodi help`');
   }
-  if (parts[0] === 'help') {
+  if (parts[0] === 'help' || parts[0].startsWith('help ')) {
     if (parts.length > 1) {
-      return parseError('`help` needs no argument');
+      return parseError('filters cannot be applied to `help`');
     }
-    return {kind: 'help'};
+    const subparts = parts[0].split(/\s+/); // split by series of spaces
+    if (subparts.length === 1) {
+      return {
+        kind: 'help',
+        document: 'usage: @emodi <emoji> | <filter> <argument> <argument> ... | <filter> <argument> <argument> ... | ...\n' +
+          'Write ":" around the emoji name!\n\n' +
+          'Filters: ' +
+          [...filters.keys()].join(' '),
+      };
+    }
+    if (subparts.length === 2) {
+      const document = helpDocs.get(subparts[1]);
+      if (document === undefined) {
+        const helpArgumentError = errorOfKind('HelpArgumentError');
+        return helpArgumentError('No such filter, or no document for it');
+      }
+      return {kind: 'help', document};
+    }
+    return parseError('too many argument');
   }
   const nameMatch = /^:(?<name>[^!:\s]+):$/.exec(parts[0]);
   if (nameMatch == null) {
@@ -464,11 +504,7 @@ const parse = (message: string): ParseResult => {
   };
 };
 
-const runTransformation = async (message: string): Promise<Emoji | EmodiError | HelpRequest> => {
-  const parseResult = parse(message);
-  if (parseResult.kind === 'error' || parseResult.kind === 'help') {
-    return parseResult;
-  }
+const runTransformation = async (parseResult: Transformation): Promise<Emoji | EmodiError> => {
   const nameError = errorOfKind('NameError');
   const emoji = await lookupEmoji(parseResult.emojiName);
   if (emoji == null) {
@@ -521,6 +557,15 @@ const runTransformation = async (message: string): Promise<Emoji | EmodiError | 
   );
 };
 
+const buildResponse = async (message: string): Promise<Emoji | EmodiError | HelpRequest> => {
+  const parseResult = parse(message);
+  if (parseResult.kind === 'error' || parseResult.kind === 'help') {
+    return parseResult;
+  }
+  const result = await runTransformation(parseResult);
+  return result;
+};
+
 // }}}
 
 // user interaction {{{
@@ -548,17 +593,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       text: message,
     });
   };
-  const postHelp = (): void => {
+  const postHelp = (document: string): void => {
     slack.chat.postMessage({
       channel: process.env.CHANNEL_SANDBOX,
       username: 'emoji-modifier',
       icon_emoji: ':essential-information:',
-      text: [...filters.entries()].map(([name, filter]: [string, Filter]): string => {
-        if (filter.arguments.length === 0) {
-          return name;
-        }
-        return name + ' ' + filter.arguments.map((s: string) => '[' + s + ']').join(' ');
-      }).join('\n'),
+      text: document,
     });
   };
 
@@ -574,7 +614,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     }
 
     const internalError = errorOfKind('InternalError');
-    const result = await runTransformation(operation.groups.command)
+    const result = await buildResponse(operation.groups.command)
       .catch((err) => {
         logger.error(err.message);
         return internalError(err.name + ': ' + err.message + '\n Please inform :coil:.');
@@ -583,7 +623,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
       postError(result.message);
     }
     else if (result.kind === 'help') {
-      postHelp();
+      postHelp(result.document);
     }
     else {
       const url = await uploadEmoji(result);
