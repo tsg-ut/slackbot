@@ -2,7 +2,7 @@ import { RTMClient } from '@slack/rtm-api';
 import { WebClient } from '@slack/web-api';
 import { random } from 'lodash';
 import { stripIndent, source } from 'common-tags';
-import { unlock } from '../achievements';
+import { increment, unlock } from '../achievements';
 import achievementsMap, {
   Achievement,
   Difficulty,
@@ -122,6 +122,10 @@ export default ({
     // ゲーム中のスレッドでのみ反応
     if (message.thread_ts === state.thread) {
       if (message.text === state.answer.title) {
+        // 終了処理
+        const {answer, thread} = state;
+        state.clear();
+
         // リアクション
         await slack.reactions.add({
           name: 'thumbsup',
@@ -133,11 +137,15 @@ export default ({
         await postMessage(
           stripIndent`
           <@${message.user}> 正解です:clap:
-          答えは *<https://achievements.tsg.ne.jp/achievements/${state.answer.id}|${state.answer.title}>* だよ:laughing:`,
-          state.thread, true);
-
-        // 終了処理
-        state.clear();
+          答えは *<https://achievements.tsg.ne.jp/achievements/${answer.id}|${answer.title}>* だよ:laughing:`,
+          thread, true);
+        
+        // 実績解除
+        increment(message.user, 'achievement-quiz-clear')
+        unlock(message.user, `achievement-quiz-clear-${answer.difficulty}`)
+        if (answer.id === 'achievement-quiz-clear-this-achievement') {
+          unlock(message.user, 'achievement-quiz-clear-this-achievement')
+        }
       } else {
         // リアクション
         await slack.reactions.add({
