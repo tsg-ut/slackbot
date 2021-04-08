@@ -1032,10 +1032,17 @@ const achievements: Achievement[] = [
 		category: 'pocky',
 	},
 	{
-		id: 'cat-pocky',
+		id: 'quine-pocky',
 		difficulty: 'medium',
 		title: 'やまびこやまびこ',
 		condition: 'pockyに与えた文字列と同一の返答を得る',
+		category: 'pocky',
+	},
+	{
+		id: 'self-pocky',
+		difficulty: 'medium',
+		title: 'エゴサーチ？',
+		condition: 'Slackの表示名とpockyからの返答が一致する',
 		category: 'pocky',
 	},
 	{
