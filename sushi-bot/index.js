@@ -329,12 +329,8 @@ module.exports = (clients) => {
 		{
 			const kasu = 'カス';
 			if (channel === process.env.CHANNEL_SANDBOX && text.includes(kasu)) {
-				if (user === 'U01AM9D17RV') { // ishitatsuyuki
-					slack.chat.delete({channel, ts: timestamp, token: process.env.HAKATASHI_TOKEN, as_user: true});
-				} else {
-					slack.reactions.add({name: 'kasukasu_dance', channel, timestamp});
-					kasuCounter.add(user);
-				}
+				slack.reactions.add({name: 'kasukasu_dance', channel, timestamp});
+				kasuCounter.add(user);
 			}
 		}
 
@@ -342,10 +338,10 @@ module.exports = (clients) => {
 			if(text.includes(":exercise-done:")||text.includes(":kintore_houkoku:")){
 				slack.reactions.add({name: 'erai', channel, timestamp})
 				slack.reactions.add({name: 'sugoi', channel, timestamp})
-
+	
 				if (channel.startsWith('C')) {
 					unlock(user, 'first-exercise');
-
+					
 					dailyexerciseCounter.add(user, 1);
 				}
 			}
