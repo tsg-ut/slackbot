@@ -6,7 +6,7 @@
   "main": "index.ts",
   "scripts": {
     "start": "nodemon --exitcrash --watch .restart-trigger -x ts-node index.ts",
-    "dev": "nodemon -x ts-node -e js,ts index.ts -i \"*.json\"",
+    "dev": "ts-node-dev --respawn --ignore-watch \".json$\" index.ts",
     "lint": "sed \"s/\\/.\\+//g\" CODEOWNERS | grep \"^[a-z]\" | awk '{print $1}' | xargs -n 1 eslint --ext js,ts",
     "fix": "npm run lint -- --fix",
     "test": "jest --verbose --coverage"
@@ -124,6 +124,7 @@
     "mock-cloud-firestore": "^0.12.0",
     "nodemon": "^2.0.7",
     "prettier-eslint-cli": "^5.0.1",
-    "ts-jest": "^26.5.4"
+    "ts-jest": "^26.5.4",
+    "ts-node-dev": "^1.1.6"
   }
 }
