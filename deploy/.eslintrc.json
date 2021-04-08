@@ -6,6 +6,10 @@
         "camelcase": "off",
         "no-promise-executor-return": "off",
         "no-restricted-imports": "off",
-        "import/extensions": "off"
+        "import/extensions": "off",
+        "no-async-promise-executor": "off",
+        "no-return-assign": "off",
+        "callback-return": "off",
+        "node/callback-return": "off"
     }
 }
