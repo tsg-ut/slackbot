@@ -1,15 +1,7 @@
 import winston from 'winston';
 // @ts-ignore
 import {Syslog as WinstonSyslog} from 'winston-syslog';
-
-const prettyFormatter = winston.format((info, opts) => {
-	info.level = `[${info.level.toUpperCase()}]`
-
-	return {
-		level: info.level,
-		message: info.message,
-	};
-});
+import {inspect} from 'util';
 
 const logger = winston.createLogger({
 	level: 'info',
@@ -18,27 +10,27 @@ const logger = winston.createLogger({
 		winston.format.json(),
 	),
 	transports: [
-		...(
-			process.env.NODE_ENV === 'production' ?
-		[new winston.transports.Console()] :
-		[new winston.transports.Console({
-			format: winston.format.combine(
-				winston.format((info) => {
-					info.level = info.level.toUpperCase();
-					return info;
-				})(),
-				winston.format.colorize(),
-				winston.format.printf(({ level, message, label, timestamp }) => {
-					const time = new Date(timestamp);
-					const hh = time.getHours().toString().padStart(2, '0');
-					const mm = time.getMinutes().toString().padStart(2, '0');
-					const ss = time.getSeconds().toString().padStart(2, '0');
-					return `[${level}] \x1b[90m${hh}:${mm}:${ss}\x1b[0m ${message}`;
-				}),
-			),
-		})]
+		process.env.NODE_ENV === 'production' ?
+			new winston.transports.Console() :
+			new winston.transports.Console({
+				level: 'debug',
+				format: winston.format.combine(
+					winston.format((info) => {
+						info.level = info.level.toUpperCase();
+						return info;
+					})(),
+					winston.format.colorize(),
+					winston.format.printf(({level, message, timestamp}) => {
+						const time = new Date(timestamp);
+						const hh = time.getHours().toString().padStart(2, '0');
+						const mm = time.getMinutes().toString().padStart(2, '0');
+						const ss = time.getSeconds().toString().padStart(2, '0');
+						const prettyMessage = typeof message === 'string' ? message : inspect(message, {colors: true});
+						return `[${level}] \x1b[90m${hh}:${mm}:${ss}\x1b[0m ${prettyMessage}`;
+					}),
+				),
+			}),
 
-		),
 		...(
 			process.env.PAPERTRAIL_PORT ?
 			[
