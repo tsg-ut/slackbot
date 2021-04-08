@@ -33,7 +33,6 @@ const numList = [
 
 export interface User{
 	slackId: string,
-	probability: number,
 	timeStart: Date | null,
 	timeEnd: Date | null,
 	people: number | null,
@@ -412,7 +411,6 @@ class Among {
 				text: stripIndent`
 					${user.people}人   ${printableDate(user.timeStart)} ~ ${printableDate(user.timeEnd)}
 				`,
-				footer: `確度 ${user.probability}`,
 			});
 		}
 		return attachments;
@@ -490,7 +488,6 @@ class Among {
 				timeEnd: null,
 				slackId: slackid,
 				people: null,
-				probability: 100,
 			});
 			this.setState(this.state);
 		}
@@ -516,7 +513,6 @@ class Among {
 				timeEnd: date,
 				slackId: slackid,
 				people: null,
-				probability: 100,
 			});
 			this.setState(this.state);
 		}
@@ -539,7 +535,6 @@ class Among {
 				timeEnd: null,
 				slackId: slackid,
 				people: num,
-				probability: 100,
 			});
 			this.setState(this.state);
 		}
