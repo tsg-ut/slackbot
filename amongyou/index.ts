@@ -13,7 +13,7 @@ import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Deferred} from '../lib/utils';
 
 const CALLME = '@amongyou';
-const AMONGABLE_CHECK_INTERVAL = 10 * 60 * 1000;
+const AMONGABLE_CHECK_INTERVAL = 60 *1000;
 
 const timeList = () => {
 	const isOver30 = moment().minutes() >= 30;
