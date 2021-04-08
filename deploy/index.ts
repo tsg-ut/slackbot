@@ -5,8 +5,8 @@ import {PassThrough} from 'stream';
 import concat from 'concat-stream';
 import {FastifyInstance} from 'fastify';
 import {get} from 'lodash';
-// @ts-ignore
 import pm2 from 'pm2';
+// @ts-ignore
 import logger from '../lib/logger.js';
 import type {SlackInterface} from '../lib/slack';
 
