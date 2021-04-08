@@ -1,5 +1,7 @@
 import {WebClient} from '@slack/web-api';
+import { logging } from 'googleapis/build/src/apis/logging';
 import {flatten} from 'lodash';
+import logger from './logger';
 import {getTokens, getRtmClient} from './slack';
 import {Deferred} from './utils';
 
@@ -65,7 +67,7 @@ export const getMemberName = async (user: string): Promise<string> => {
 		...(await loadMembersDeferred.promise),
 	];
 	const member = members.find(({id}: any) => id === user);
-	return member.profile.display_name || member.name;
+	return member.profile.display_name || member.profile.real_name || member.name;
 };
 
 type IconResolution = 24 | 32 | 48 | 72 | 192 | 512;
