@@ -15,10 +15,17 @@ import {Deferred} from '../lib/utils';
 const CALLME = '@amongyou';
 const AMONGABLE_CHECK_INTERVAL = 10 * 60 * 1000;
 
-const timeList = range(moment().hours(), moment().hours() + 24).map((n) => {
-	const h = (n % 24).toString().padStart(2, '0');
-	return [`${h}:00`, `${h}:30`];
-}).flat();
+const timeList = () => {
+	const isOver30 = moment().minutes() >= 30;
+	const ret = range(moment().hours(), moment().hours() + 24).map((n) => {
+		const h = (n % 24).toString().padStart(2, '0');
+		return [`${h}:00`, `${h}:30`];
+	}).flat();
+	if (isOver30) {
+		return ret.splice(1);
+	}
+	return ret;
+};
 
 const numList = [
 	'5', '8',
@@ -227,6 +234,34 @@ class Among {
 		this.slackInteractions.viewSubmission('amongyou-join-info', async (payload: any) => {
 			if (this.state.activeChannel === null) {
 				return;
+			}
+			if (!this.checkValidity(payload.user.id)) {
+				console.log(payload);
+				return {
+					response_action: 'push',
+					view: {
+						type: 'modal',
+						callback_id: 'second_step_callback_id',
+						title: {
+							type: 'plain_text',
+							text: 'Second step',
+						},
+						blocks: [
+							{
+								type: 'input',
+								block_id: 'last_thing',
+								element: {
+									type: 'plain_text_input',
+									action_id: 'text',
+								},
+								label: {
+									type: 'plain_text',
+									text: 'One last thing...',
+								},
+							},
+						],
+					},
+				};
 			}
 			this.joinUser(payload.user.id);
 			this.slack.chat.update({
@@ -439,7 +474,9 @@ class Among {
 		const date = parseDate(start);
 		const targets = this.state.tmpUsers.filter((user) => user.slackId === slackid);
 		if (targets.length === 1) {
-			if (targets[0].timeEnd !== null && targets[0].timeEnd.getTime() - date.getTime() <= 20 * 60 * 1000) {
+			// regard time of previous 30mins as today (this means "I can join from now on")
+			// it assumes the user choose the time as quickly as in few mins
+			if (targets[0].timeEnd !== null && targets[0].timeEnd.getTime() - date.getTime() < 30 * 60 * 1000) {
 				return;
 			}
 			this.setState({
@@ -464,7 +501,9 @@ class Among {
 		const date = parseDate(end);
 		const targets = this.state.tmpUsers.filter((user) => user.slackId === slackid);
 		if (targets.length === 1) {
-			if (targets[0].timeStart !== null && date.getTime() - targets[0].timeStart.getTime() <= 20 * 60 * 1000) {
+			// regard time of previous 30mins as today (this means "I can join from now on")
+			// it assumes the user choose the time as quickly as in few mins
+			if (targets[0].timeStart !== null && date.getTime() - targets[0].timeStart.getTime() < 30 * 60 * 1000) {
 				return;
 			}
 			this.setState({
@@ -506,15 +545,27 @@ class Among {
 		}
 	}
 
+	checkValidity(slackid: string) {
+		const targetix = this.state.tmpUsers.findIndex((user) => user.slackId === slackid);
+		if (targetix === -1) {
+			return false;
+		}
+		// eslint-disable-next-line max-len
+		if (this.state.tmpUsers[targetix].people === null || this.state.tmpUsers[targetix].timeStart === null || this.state.tmpUsers[targetix].timeEnd === null) {
+			return false;
+		}
+		return true;
+	}
+
 	// eslint-disable-next-line require-await
 	async joinUser(slackid: string) {
 		const targetix = this.state.tmpUsers.findIndex((user) => user.slackId === slackid);
 		if (targetix === -1) {
-			return;
+			return false;
 		}
 		// eslint-disable-next-line max-len
 		if (this.state.tmpUsers[targetix].people === null || this.state.tmpUsers[targetix].timeStart === null || this.state.tmpUsers[targetix].timeEnd === null) {
-			return;
+			return false;
 		}
 		if (this.state.users.some((user) => user.slackId === slackid)) {
 			this.setState({
@@ -529,6 +580,7 @@ class Among {
 				users: this.state.users.concat([this.state.tmpUsers[targetix]]),
 			} as State);
 		}
+		return true;
 	}
 
 	cancelUser(slackid: string) {
@@ -606,7 +658,7 @@ class Among {
 
 const getTimeOptions = () => {
 	const options: any[] = [];
-	timeList.forEach((t, ix) => {
+	timeList().forEach((t, ix) => {
 		options.push({
 			text: {
 				type: 'plain_text',
