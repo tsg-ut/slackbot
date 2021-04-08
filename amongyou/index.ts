@@ -234,34 +234,6 @@ class Among {
 			if (this.state.activeChannel === null) {
 				return;
 			}
-			if (!this.checkValidity(payload.user.id)) {
-				console.log(payload);
-				return {
-					response_action: 'push',
-					view: {
-						type: 'modal',
-						callback_id: 'second_step_callback_id',
-						title: {
-							type: 'plain_text',
-							text: 'Second step',
-						},
-						blocks: [
-							{
-								type: 'input',
-								block_id: 'last_thing',
-								element: {
-									type: 'plain_text_input',
-									action_id: 'text',
-								},
-								label: {
-									type: 'plain_text',
-									text: 'One last thing...',
-								},
-							},
-						],
-					},
-				};
-			}
 			this.joinUser(payload.user.id);
 			this.slack.chat.update({
 				channel: this.state.activeChannel,
@@ -556,11 +528,11 @@ class Among {
 	async joinUser(slackid: string) {
 		const targetix = this.state.tmpUsers.findIndex((user) => user.slackId === slackid);
 		if (targetix === -1) {
-			return false;
+			return;
 		}
 		// eslint-disable-next-line max-len
 		if (this.state.tmpUsers[targetix].people === null || this.state.tmpUsers[targetix].timeStart === null || this.state.tmpUsers[targetix].timeEnd === null) {
-			return false;
+			return;
 		}
 		if (this.state.users.some((user) => user.slackId === slackid)) {
 			this.setState({
@@ -575,7 +547,6 @@ class Among {
 				users: this.state.users.concat([this.state.tmpUsers[targetix]]),
 			} as State);
 		}
-		return true;
 	}
 
 	cancelUser(slackid: string) {
