@@ -5,6 +5,7 @@ import {PassThrough} from 'stream';
 import concat from 'concat-stream';
 import {FastifyInstance} from 'fastify';
 import {get} from 'lodash';
+import pm2 from 'pm2';
 // @ts-ignore
 import logger from '../lib/logger.js';
 import type {SlackInterface} from '../lib/slack';
@@ -25,12 +26,14 @@ export const blockDeploy = (name: string) => deployBlocker.block(name);
 // eslint-disable-next-line require-await
 export const server = ({webClient: slack}: SlackInterface) => async (fastify: FastifyInstance) => {
 	let triggered = false;
+	let thread: string = null;
 
 	const postMessage = (text: string) => (
 		slack.chat.postMessage({
 			username: `tsgbot-deploy [${os.hostname()}]`,
 			channel: process.env.CHANNEL_SANDBOX,
 			text,
+			...(thread === null ? {} : {thread_ts: thread}),
 		})
 	);
 
@@ -61,7 +64,8 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 
 			deployBlocker.wait(
 				async () => {
-					await postMessage('デプロイを開始します');
+					const message = await postMessage('デプロイを開始します');
+					thread = message.ts as string;
 
 					for (const [command, ...args] of commands) {
 						const proc = spawn(command, args, {cwd: process.cwd()});
@@ -87,14 +91,28 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 						await postMessage(text);
 					}
 
+					await new Promise<void>((resolve, reject) => {
+						pm2.connect((error) => {
+							if (error) {
+								reject(error);
+							} else {
+								resolve();
+							}
+						});
+					});
+
+					thread = null;
 					await postMessage('死にます:wave:');
 
-					await new Promise<void>((resolve) => setTimeout(() => {
-						// eslint-disable-next-line no-process-exit, node/no-process-exit
-						process.exit(0);
-						// eslint-disable-next-line no-unreachable
-						resolve();
-					}, 2000));
+					await new Promise<void>((resolve, reject) => {
+						pm2.restart('app', (error) => {
+							if (error) {
+								reject(error);
+							} else {
+								resolve();
+							}
+						});
+					});
 				},
 				30 * 60 * 1000, // 30min
 				(blocks: any) => {

@@ -12,7 +12,7 @@ it('blocks until unblocked', () => new Promise(async (resolve) => {
 	const unblock = await blocker.block('block1');
 	let blocked = true;
 
-	blocker.wait(async () => {
+	blocker.wait(() => {
 		expect(blocked).toBe(false);
 		resolve();
 	});
@@ -30,7 +30,7 @@ it('blocks until all unblocked', () => new Promise(async (resolve) => {
 	}
 	let unblocked = 0;
 
-	blocker.wait(async () => {
+	blocker.wait(() => {
 		expect(unblocked).toBe(10);
 		resolve();
 	});
@@ -44,7 +44,7 @@ it('blocks until all unblocked', () => new Promise(async (resolve) => {
 }));
 
 it('calls intervalCallback when block continues', () => new Promise(async (resolve, reject) => {
-	const unblock = await blocker.block('block');
+	await blocker.block('block');
 
 	blocker.wait(reject, 0, resolve);
 }));
@@ -53,7 +53,7 @@ it('does not call intervalCallback unless blocked', () => new Promise(async (res
 	const unblock = await blocker.block('block');
 	unblock();
 
-	blocker.wait(async () => {
+	blocker.wait(() => {
 		process.nextTick(resolve);
 	}, 0, reject);
 }));
@@ -65,5 +65,5 @@ it('cannot block while wait callback is runnning', () => new Promise(async (reso
 	})));
 
 	await blocker.block('block');
-	reject();
+	reject(new Error());
 }));
