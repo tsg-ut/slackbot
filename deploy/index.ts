@@ -6,8 +6,7 @@ import concat from 'concat-stream';
 import {FastifyInstance} from 'fastify';
 import {get} from 'lodash';
 import pm2 from 'pm2';
-// @ts-ignore
-import logger from '../lib/logger.js';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 
 // @ts-ignore

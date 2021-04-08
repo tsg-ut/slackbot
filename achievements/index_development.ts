@@ -1,7 +1,9 @@
+import logger from '../lib/logger';
+
 export default async () => {};
 
 export const unlock = (user: string, name: string, additionalInfo?: string) => {
-	console.log(`${user} unlocked ${name}${additionalInfo === null ? '' : (`, ${additionalInfo}`)}`);
+	logger.debug(`${user} unlocked ${name}${additionalInfo ? `, ${additionalInfo}` : ''}`);
 };
 
 export const isUnlocked = () => false;

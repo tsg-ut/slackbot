@@ -12,8 +12,7 @@ import {createEventAdapter} from '@slack/events-api';
 import {createMessageAdapter} from '@slack/interactive-messages';
 import Fastify from 'fastify';
 
-// @ts-ignore
-import logger from './lib/logger.js';
+import logger from './lib/logger';
 import yargs from 'yargs';
 
 import fastifyFormbody from 'fastify-formbody';
@@ -25,7 +24,6 @@ import sharp from 'sharp';
 sharp.cache(false);
 
 const fastify = Fastify({
-	logger: true,
 	pluginTimeout: 50000,
 });
 

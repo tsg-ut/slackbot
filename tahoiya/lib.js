@@ -10,7 +10,7 @@ const get = require('lodash/get');
 const last = require('lodash/last');
 const shuffle = require('lodash/shuffle');
 const moment = require('moment');
-const logger = require('../lib/logger.js');
+const {default: logger} = require('../lib/logger.ts');
 
 module.exports.getPageTitle = (url) => {
 	const urlTitle = decodeURI(url.match(/([^/]+)$/)[1]);
