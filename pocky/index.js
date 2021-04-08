@@ -265,6 +265,9 @@ module.exports = (clients) => {
 			if (Array.from(result).length >= 20) {
 				unlock(message.user, "long-pocky");
 			}
+			if (JSON.stringify(Array.from(match[1])) == JSON.stringify(Array.from(result))) {
+				unlock(message.user, "cat-pocky");
+			}
 			const date = new Date().toLocaleString('en-US', {
 				timeZone: 'Asia/Tokyo',
 				month: 'numeric',

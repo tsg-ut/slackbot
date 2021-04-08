@@ -1032,6 +1032,13 @@ const achievements: Achievement[] = [
 		category: 'pocky',
 	},
 	{
+		id: 'cat-pocky',
+		difficulty: 'medium',
+		title: 'やまびこやまびこ',
+		condition: 'pockyに与えた文字列と同一の返答を得る',
+		category: 'pocky',
+	},
+	{
 		id: 'pocky-on-nov-11',
 		difficulty: 'medium',
 		title: '最後までチョコたっぷり',
