@@ -13,12 +13,19 @@ import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Deferred} from '../lib/utils';
 
 const CALLME = '@amongyou';
-const AMONGABLE_CHECK_INTERVAL = 10 * 60 * 1000;
+const AMONGABLE_CHECK_INTERVAL = 60 *1000;
 
-const timeList = range(moment().hours(), moment().hours() + 24).map((n) => {
-	const h = (n % 24).toString().padStart(2, '0');
-	return [`${h}:00`, `${h}:30`];
-}).flat();
+const timeList = () => {
+	const isOver30 = moment().minutes() >= 30;
+	const ret = range(moment().hours(), moment().hours() + 24).map((n) => {
+		const h = (n % 24).toString().padStart(2, '0');
+		return [`${h}:00`, `${h}:30`];
+	}).flat();
+	if (isOver30) {
+		return ret.splice(1);
+	}
+	return ret;
+};
 
 const numList = [
 	'5', '8',
@@ -26,7 +33,6 @@ const numList = [
 
 export interface User{
 	slackId: string,
-	probability: number,
 	timeStart: Date | null,
 	timeEnd: Date | null,
 	people: number | null,
@@ -377,7 +383,6 @@ class Among {
 				text: stripIndent`
 					${user.people}人   ${printableDate(user.timeStart)} ~ ${printableDate(user.timeEnd)}
 				`,
-				footer: `確度 ${user.probability}`,
 			});
 		}
 		return attachments;
@@ -439,7 +444,9 @@ class Among {
 		const date = parseDate(start);
 		const targets = this.state.tmpUsers.filter((user) => user.slackId === slackid);
 		if (targets.length === 1) {
-			if (targets[0].timeEnd !== null && targets[0].timeEnd.getTime() - date.getTime() <= 20 * 60 * 1000) {
+			// regard time of previous 30mins as today (this means "I can join from now on")
+			// it assumes the user choose the time as quickly as in few mins
+			if (targets[0].timeEnd !== null && targets[0].timeEnd.getTime() - date.getTime() < 30 * 60 * 1000) {
 				return;
 			}
 			this.setState({
@@ -453,7 +460,6 @@ class Among {
 				timeEnd: null,
 				slackId: slackid,
 				people: null,
-				probability: 100,
 			});
 			this.setState(this.state);
 		}
@@ -464,7 +470,9 @@ class Among {
 		const date = parseDate(end);
 		const targets = this.state.tmpUsers.filter((user) => user.slackId === slackid);
 		if (targets.length === 1) {
-			if (targets[0].timeStart !== null && date.getTime() - targets[0].timeStart.getTime() <= 20 * 60 * 1000) {
+			// regard time of previous 30mins as today (this means "I can join from now on")
+			// it assumes the user choose the time as quickly as in few mins
+			if (targets[0].timeStart !== null && date.getTime() - targets[0].timeStart.getTime() < 30 * 60 * 1000) {
 				return;
 			}
 			this.setState({
@@ -477,7 +485,6 @@ class Among {
 				timeEnd: date,
 				slackId: slackid,
 				people: null,
-				probability: 100,
 			});
 			this.setState(this.state);
 		}
@@ -500,10 +507,21 @@ class Among {
 				timeEnd: null,
 				slackId: slackid,
 				people: num,
-				probability: 100,
 			});
 			this.setState(this.state);
 		}
+	}
+
+	checkValidity(slackid: string) {
+		const targetix = this.state.tmpUsers.findIndex((user) => user.slackId === slackid);
+		if (targetix === -1) {
+			return false;
+		}
+		// eslint-disable-next-line max-len
+		if (this.state.tmpUsers[targetix].people === null || this.state.tmpUsers[targetix].timeStart === null || this.state.tmpUsers[targetix].timeEnd === null) {
+			return false;
+		}
+		return true;
 	}
 
 	// eslint-disable-next-line require-await
@@ -606,7 +624,7 @@ class Among {
 
 const getTimeOptions = () => {
 	const options: any[] = [];
-	timeList.forEach((t, ix) => {
+	timeList().forEach((t, ix) => {
 		options.push({
 			text: {
 				type: 'plain_text',
