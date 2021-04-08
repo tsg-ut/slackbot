@@ -25,7 +25,7 @@ const {unlock, increment} = require('../achievements');
 const {blockDeploy} = require('../deploy/index.ts');
 const getReading = require('../lib/getReading.js');
 
-const logger = require('../lib/logger.js');
+const logger = require('../lib/logger.ts');
 const bot = require('./bot.js');
 const gist = require('./gist.js');
 const {

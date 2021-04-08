@@ -1,6 +1,5 @@
 import Fastify from 'fastify';
-// @ts-ignore
-import logger from '../lib/logger.js';
+import logger from '../lib/logger';
 import {getAllMembers} from '../lib/slackUtils';
 
 interface RootRoute {

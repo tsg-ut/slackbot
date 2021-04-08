@@ -1,6 +1,5 @@
 import axios from 'axios';
-// @ts-ignore
-import logger from '../lib/logger.js';
+import logger from '../lib/logger';
 
 const welcomeScrapboxUrl = `https://scrapbox.io/api/pages/tsg/welcome`;
 

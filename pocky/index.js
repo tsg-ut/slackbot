@@ -7,7 +7,7 @@ const {sample, get} = require("lodash");
 const {hiraganize} = require("japanese");
 const {stripIndents} = require("common-tags");
 const {unlock, increment} = require("../achievements");
-const logger = require('../lib/logger.js');
+const logger = require('../lib/logger.ts');
 
 const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，．…・?!：；:;\s]+$/g;
 

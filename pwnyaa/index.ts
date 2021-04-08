@@ -6,8 +6,7 @@ import {stripIndent} from 'common-tags';
 // @ts-ignore
 import schedule from 'node-schedule';
 import {unlock} from '../achievements/index.js';
-// @ts-ignore
-import logger from '../lib/logger.js';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Contest, User, SolvedInfo} from './lib/BasicTypes';

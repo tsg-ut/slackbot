@@ -13,8 +13,7 @@ import schedule from 'node-schedule';
 import prime from 'primes-and-factors';
 import scrapeIt from 'scrape-it';
 import {increment, unlock} from '../achievements/index.js';
-// @ts-ignore
-import logger from '../lib/logger.js';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 // eslint-disable-next-line no-unused-vars

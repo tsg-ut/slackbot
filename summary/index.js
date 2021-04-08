@@ -7,7 +7,7 @@ const fs = require('fs');
 const concatStream = require('concat-stream');
 const schedule = require('node-schedule');
 
-const logger = require('../lib/logger.js');
+const logger = require('../lib/logger.ts');
 const {makeSummary} = require('./summary_writer.js');
 
 
