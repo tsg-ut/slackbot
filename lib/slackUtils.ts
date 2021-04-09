@@ -1,7 +1,5 @@
 import {WebClient} from '@slack/web-api';
-import { logging } from 'googleapis/build/src/apis/logging';
 import {flatten} from 'lodash';
-import logger from './logger';
 import {getTokens, getRtmClient} from './slack';
 import {Deferred} from './utils';
 
