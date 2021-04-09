@@ -8,8 +8,7 @@ const {hiraganize} = require("japanese");
 const {stripIndents} = require("common-tags");
 const {unlock, increment} = require("../achievements");
 const {default: logger} = require('../lib/logger.ts');
-const { loggers } = require("winston");
-const { getMemberName } = require("../lib/slackUtils");
+const {getMemberName} = require('../lib/slackUtils');
 
 const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，．…・?!：；:;\s]+$/g;
 
