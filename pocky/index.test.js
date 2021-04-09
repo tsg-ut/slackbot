@@ -18,8 +18,8 @@ beforeEach(() => {
 
 describe('pocky', () => {
 	it('responds to "ほげ?"', async () => {
-		axios.response = { data: [null, ['ほげ ふが']] }
-		const { username, text } = await slack.getResponseTo('ほげ?');
+		axios.response = {data: [null, ['ほげ ふが']]}
+		const {username, text} = await slack.getResponseTo('ほげ?');
 
 		expect(username).toBe('pocky');
 		expect(text).toBe('ふが');
