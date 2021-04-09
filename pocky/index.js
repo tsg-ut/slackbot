@@ -268,7 +268,7 @@ module.exports = (clients) => {
 					unlock(message.user, "self-pocky");
 				}
 			}, (error) => {
-				logger.info("error:", error.message);
+				logger.error("error:", error.message);
 			});
 			if (Array.from(result).length >= 20) {
 				unlock(message.user, "long-pocky");
