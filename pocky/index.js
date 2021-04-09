@@ -8,6 +8,7 @@ const {hiraganize} = require("japanese");
 const {stripIndents} = require("common-tags");
 const {unlock, increment} = require("../achievements");
 const {default: logger} = require('../lib/logger.ts');
+const {getMemberName} = require('../lib/slackUtils');
 
 const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，．…・?!：；:;\s]+$/g;
 
@@ -262,8 +263,18 @@ module.exports = (clients) => {
 		if (result !== null) {
 			postMessage(htmlEscape(result), channel, {broadcast: false, threadPosted: thread_ts});
 			unlock(message.user, "pocky");
+			getMemberName(message.user).then((value) => {
+				if (value === result) {
+					unlock(message.user, "self-pocky");
+				}
+			}, (error) => {
+				logger.error("error:", error.message);
+			});
 			if (Array.from(result).length >= 20) {
 				unlock(message.user, "long-pocky");
+			}
+			if (match[1] === result) {
+				unlock(message.user, "quine-pocky");
 			}
 			const date = new Date().toLocaleString('en-US', {
 				timeZone: 'Asia/Tokyo',
