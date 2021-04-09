@@ -1046,6 +1046,13 @@ const achievements: Achievement[] = [
 		category: 'pocky',
 	},
 	{
+		id: 'long-quine-pocky',
+		difficulty: 'professional',
+		title: '',
+		condition: 'pockyに与えた文字列と同一の、20文字以上の返答を得る',
+		category: 'pocky',
+	},
+	{
 		id: 'pocky-on-nov-11',
 		difficulty: 'medium',
 		title: '最後までチョコたっぷり',

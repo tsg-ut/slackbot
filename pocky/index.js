@@ -276,6 +276,9 @@ module.exports = (clients) => {
 			if (match[1] === result) {
 				unlock(message.user, "quine-pocky");
 			}
+			if (Array.from(result).length >= 20 && match[1] === result) {
+				unlock(message.user, "long-quine-pocky");
+			}
 			const date = new Date().toLocaleString('en-US', {
 				timeZone: 'Asia/Tokyo',
 				month: 'numeric',
