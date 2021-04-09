@@ -2,6 +2,7 @@
 
 jest.mock('axios');
 jest.mock('../achievements');
+jest.mock('../lib/slackUtils')
 
 const axios = require('axios');
 const pocky = require('./index.js');
