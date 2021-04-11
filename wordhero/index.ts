@@ -188,7 +188,14 @@ const generateHardBoard = (tree: any, seed: string) => {
 	return board;
 };
 
-const loadDeferred = new Deferred();
+interface DeferState {
+	seedWords: string[],
+	hardSeedWords: string[],
+	tree: any,
+	db: sqlite.Database,
+}
+
+const loadDeferred = new Deferred<DeferState>();
 
 const load = async () => {
 	if (loadDeferred.isResolved) {

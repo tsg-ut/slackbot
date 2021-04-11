@@ -1,5 +1,4 @@
 import {throttle, groupBy} from 'lodash';
-// @ts-ignore
 import db from './firestore';
 import {Deferred} from './utils';
 import path from 'path';
