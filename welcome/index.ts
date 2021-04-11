@@ -37,7 +37,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
-				text: `welcome for <@${user}> done :heavy_check_mark:`,
+				text: `Welcome <@${user}> to TSG! :tada:`,
 				icon_emoji: ':tsg:',
 				username: 'welcome',
 			});
