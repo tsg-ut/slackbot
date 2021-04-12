@@ -78,11 +78,11 @@ interface StateClass<StateObj> {
 	increment<K extends keyof StateObj & string>(key: K, value: StateObj[K] & number): void,
 }
 
-interface StateInterface {
+export interface StateInterface {
 	init<StateObj>(name: string, defaultValues: StateObj): Promise<StateObj & StateClass<StateObj>>,
 }
 
-const StateProduction: StateInterface = class StateProduction<StateObj> {
+export const StateProduction: StateInterface = class StateProduction<StateObj> {
 	name: string;
 	stateMap: Map<string, any>;
 	new: (name: string, defaultValues: StateObj) => Partial<StateObj>;
@@ -134,7 +134,7 @@ const StateProduction: StateInterface = class StateProduction<StateObj> {
 	}
 }
 
-const StateDevelopment: StateInterface = class StateDevelopment<StateObj> {
+export const StateDevelopment: StateInterface = class StateDevelopment<StateObj> {
 	name: string;
 	statePath: string;
 	stateMap: Map<string, any>;
@@ -150,7 +150,7 @@ const StateDevelopment: StateInterface = class StateDevelopment<StateObj> {
 			const data = await fs.readFile(statePath);
 			stateObj = JSON.parse(data.toString());
 		} else {
-			await fs.writeFile(statePath, JSON.stringify({}));
+			await fs.writeFile(statePath, JSON.stringify(defaultValues, null, '  '));
 		}
 
 		const state = new StateDevelopment<StateObj>(name, {...defaultValues, ...stateObj});
@@ -181,7 +181,7 @@ const StateDevelopment: StateInterface = class StateDevelopment<StateObj> {
 	set<K extends keyof StateObj & string>(key: K, value: StateObj[K]) {
 		this.stateMap.set(key, value);
 		const data = JSON.stringify(Object.fromEntries(this.stateMap), null, '  ');
-		this.mutex.runExclusive(async () => {
+		return this.mutex.runExclusive(async () => {
 			await fs.writeFile(this.statePath, data);
 		});
 	}
@@ -189,7 +189,7 @@ const StateDevelopment: StateInterface = class StateDevelopment<StateObj> {
 	increment<K extends keyof StateObj & string>(key: K, value: StateObj[K] & number) {
 		this.stateMap.set(key, this.stateMap.get(key) + value);
 		const data = JSON.stringify(Object.fromEntries(this.stateMap), null, '  ');
-		this.mutex.runExclusive(async () => {
+		return this.mutex.runExclusive(async () => {
 			await fs.writeFile(this.statePath, data);
 		});
 	}
