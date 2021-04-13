@@ -27,7 +27,9 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Test
-        run: npm test
+        uses: w9jds/firebase-action@master
+        with:
+          args: emulators:exec --only firestore \"npm test\"
 
       - name: Set up reviewdog
         if: ${{ github.event_name == 'pull_request' }}
