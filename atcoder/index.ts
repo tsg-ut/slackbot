@@ -1,13 +1,9 @@
-import {constants, promises as fs} from 'fs';
-import path from 'path';
 import qs from 'querystring';
 import {Mutex} from 'async-mutex';
 import axios from 'axios';
-// @ts-ignore
 import {stripIndent} from 'common-tags';
 import {sumBy, minBy} from 'lodash';
 import moment from 'moment';
-// @ts-ignore
 import schedule from 'node-schedule';
 // @ts-ignore
 import prime from 'primes-and-factors';
@@ -16,8 +12,9 @@ import {increment, unlock} from '../achievements/index.js';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
+import State from '../lib/state';
 // eslint-disable-next-line no-unused-vars
-import {Results, Standings} from './types';
+import type {Results, Standings} from './types';
 
 const mutex = new Mutex();
 
@@ -100,7 +97,7 @@ const formatNumber = (number: number) => {
 	return number.toString();
 };
 
-interface State {
+interface StateObj {
 	users: {atcoder: string, slack: string}[],
 	contests: {id: string, date: number, title: string, duration: number, isPosted: boolean, isPreposted: boolean, ratedCount: number}[],
 }
@@ -113,19 +110,10 @@ interface ContestEntry {
 }
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
-	const statePath = path.resolve(__dirname, 'state.json');
-	const exists = await fs.access(statePath, constants.F_OK).then(() => true).catch(() => false);
-	const state: State = {
+	const state = await State.init<StateObj>('atcoder', {
 		users: [],
 		contests: [],
-		...(exists ? JSON.parse((await fs.readFile(statePath)).toString()) : {}),
-	};
-
-	await fs.writeFile(statePath, JSON.stringify(state));
-	const setState = (object: {[key: string]: any}) => {
-		Object.assign(state, object);
-		return fs.writeFile(statePath, JSON.stringify(state));
-	};
+	});
 
 	const updateContests = async () => {
 		logger.info('Updating AtCoder contests...');
@@ -168,20 +156,20 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		if (contests.length > 0) {
 			const oldContests = state.contests;
 			const newContests: ContestEntry[] = [];
-			setState({
-				contests: contests.filter(({date}: any) => !Number.isNaN(date)).map((contest) => {
-					const oldContest = oldContests.find(({id}) => id === contest.id);
-					if (!oldContest) {
-						newContests.push(contest);
-					}
-					return {
-						...contest,
-						isPosted: oldContest ? oldContest.isPosted : false,
-						isPreposted: oldContest ? oldContest.isPreposted : false,
-						ratedCount: 0,
-					};
-				}),
+
+			state.contests = contests.filter(({date}: any) => !Number.isNaN(date)).map((contest) => {
+				const oldContest = oldContests.find(({id}) => id === contest.id);
+				if (!oldContest) {
+					newContests.push(contest);
+				}
+				return {
+					...contest,
+					isPosted: oldContest ? oldContest.isPosted : false,
+					isPreposted: oldContest ? oldContest.isPreposted : false,
+					ratedCount: 0,
+				};
 			});
+
 			for (const contest of newContests) {
 				await postNewContest(contest.id);
 			}
@@ -291,7 +279,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 
 		contest.isPreposted = true;
-		setState({contests: state.contests});
+		// eslint-disable-next-line no-self-assign
+		state.contests = state.contests;
 	};
 
 	const getRatedCount = async (id: string) => {
@@ -401,7 +390,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		const isContestRated = standings.StandingsData.some((standing) => standing.IsRated);
 
 		contest.isPosted = true;
-		setState({contests: state.contests});
+		// eslint-disable-next-line no-self-assign
+		state.contests = state.contests;
 
 		for (const {user, standing} of userStandings) {
 			const result = resultMap.get(user);
@@ -513,16 +503,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				const slackId = message.user;
 				if (atcoderId.length > 0) {
 					if (state.users.some(({slack}) => slackId === slack)) {
-						setState({
-							users: state.users.map((user) => user.slack === slackId ? {
-								slack: slackId,
-								atcoder: atcoderId,
-							} : user),
-						});
+						state.users = state.users.map((user) => user.slack === slackId ? {
+							slack: slackId,
+							atcoder: atcoderId,
+						} : user);
 					} else {
-						setState({
-							users: state.users.concat([{slack: slackId, atcoder: atcoderId}]),
-						});
+						state.users = state.users.concat([{slack: slackId, atcoder: atcoderId}]);
 					}
 					await slack.reactions.add({
 						name: '+1',

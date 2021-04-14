@@ -44,8 +44,8 @@ const difficultyToStars = (difficulty: Difficulty) => (
 	}[difficulty]
 );
 
-const loadDeferred = new Deferred();
-const initializeDeferred = new Deferred();
+const loadDeferred = new Deferred<WebClient>();
+const initializeDeferred = new Deferred<void>();
 
 export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
 	loadDeferred.resolve(slack);
@@ -431,3 +431,4 @@ export const set = async (user: string, name: string, value: any) => {
 	state.users.get(user)[name] = value;
 	updateDb({type: 'set', user, name, value});
 };
+

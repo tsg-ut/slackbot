@@ -140,7 +140,7 @@ class Among {
 
 	state: State;
 
-	loadDeferred: Deferred;
+	loadDeferred: Deferred<void>;
 
 	// eslint-disable-next-line no-undef
 	activeSchedular: NodeJS.Timeout;
@@ -594,7 +594,7 @@ class Among {
 		if (amongableUsers !== null) {
 			this.postMessageChannelDefault(this.state.activeChannel, {
 				text: stripIndent`
-					*AmongUsが開催できるよ〜〜* (${amongableUsers.length}人) :among_us_report: :among_us_report: 
+					*AmongUsが開催できるよ〜〜* (${amongableUsers.length}人) :among_us_report: :among_us_report:
 					${amongableUsers.map((user) => `<@${user.slackId}>`).join(' ')}
 				`,
 			});

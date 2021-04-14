@@ -1,5 +1,5 @@
-export class Deferred {
-	promise: Promise<any>;
+export class Deferred<T> {
+	promise: Promise<T>;
 	isResolved: boolean;
 	isRejected: boolean;
 	private nativeReject: (...args: any[]) => any;

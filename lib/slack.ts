@@ -48,7 +48,7 @@ rtmClient.start();
 const rtmClients = new Map<string, RTMClient>();
 rtmClients.set(process.env.TEAM_ID, rtmClient);
 
-const loadTokensDeferred = new Deferred();
+const loadTokensDeferred = new Deferred<Token[]>();
 const loadTokens = async () => {
 	const db = await sqlite.open({
 		filename: path.join(__dirname, '..', 'tokens.sqlite3'),
