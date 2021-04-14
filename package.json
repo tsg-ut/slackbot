@@ -85,6 +85,8 @@
     "libmime": "^5.0.0",
     "lodash": "^4.17.21",
     "miller-rabin": "^4.0.1",
+    "mobx": "^6.2.0",
+    "mobx-utils": "^6.0.4",
     "moment": "^2.29.1",
     "node-emoji": "^1.10.0",
     "node-persist": "^3.1.0",

@@ -4,6 +4,11 @@ import {Deferred} from './utils';
 import path from 'path';
 import fs from 'fs-extra';
 import {Mutex} from 'async-mutex';
+import {observable} from 'mobx';
+import type {IObjectDidChange, IArrayDidChange, IMapDidChange} from 'mobx';
+import {deepObserve} from 'mobx-utils';
+
+declare type IChange = IObjectDidChange | IArrayDidChange | IMapDidChange;
 
 const statesDeferred = new Deferred<FirebaseFirestore.QuerySnapshot<FirebaseFirestore.DocumentData>>();
 (async () => {
@@ -72,22 +77,16 @@ const triggerUpdateDb = throttle(async () => {
 	});
 }, 30 * 1000);
 
-interface StateClass<StateObj> {
-	get<K extends keyof StateObj & string>(key: K): StateObj[K],
-	set<K extends keyof StateObj & string>(key: K, value: StateObj[K]): void,
-	increment<K extends keyof StateObj & string>(key: K, value: StateObj[K] & number): void,
-}
-
 export interface StateInterface {
-	init<StateObj>(name: string, defaultValues: StateObj): Promise<StateObj & StateClass<StateObj>>,
+	init<StateObj>(name: string, defaultValues: StateObj): Promise<StateObj>,
 }
 
 export const StateProduction: StateInterface = class StateProduction<StateObj> {
 	name: string;
-	stateMap: Map<string, any>;
+	stateObject: {[key: string]: any};
 	new: (name: string, defaultValues: StateObj) => Partial<StateObj>;
 
-	static async init<StateObj>(name: string, defaultValues: StateObj): Promise<StateObj & StateProduction<StateObj>> {
+	static async init<StateObj>(name: string, defaultValues: StateObj): Promise<StateObj> {
 		const statesData = await statesDeferred.promise;
 		const stateDoc = statesData.docs.find((doc) => doc.id === name);
 
@@ -96,52 +95,32 @@ export const StateProduction: StateInterface = class StateProduction<StateObj> {
 			...(stateDoc?.data() || {}),
 		};
 
-		const state = new StateProduction<StateObj>(name, initialState);
-		const keys = new Set(Object.keys(defaultValues));
+		const stateObject = observable(initialState);
 
-		return new Proxy(state, {
-			get(obj: any, key: string) {
-				return keys.has(key) ? obj.get(key) : Reflect.get(obj, key);
-			},
-			set(obj: any, key: string, value: any) {
-				keys.has(key) ? obj.set(key, value) : Reflect.set(obj, key, value);
-				return true;
-			}
-		});
+		const state = new StateProduction<StateObj>(name, stateObject);
+		deepObserve(stateObject, state.onUpdate.bind(state));
+
+		return stateObject;
 	}
 
 	constructor(name: string, initialValues: StateObj) {
 		this.name = name;
-		this.stateMap = new Map(Object.entries(initialValues));
+		this.stateObject = initialValues;
 	}
 
-	async initialize() {
-
-	}
-
-	get(key: keyof StateObj & string) {
-		return this.stateMap.get(key);
-	}
-
-	set<K extends keyof StateObj & string>(key: K, value: StateObj[K]) {
-		this.stateMap.set(key, value);
-		updateDb({type: 'set', name: this.name, key, value});
-	}
-
-	increment<K extends keyof StateObj & string>(key: K, value: StateObj[K] & number) {
-		this.stateMap.set(key, value);
-		updateDb({type: 'increment', name: this.name, key, value});
+	private onUpdate(change: IChange, path: string, root: StateObj) {
+		console.log({change, path, root});
 	}
 }
 
 export const StateDevelopment: StateInterface = class StateDevelopment<StateObj> {
 	name: string;
 	statePath: string;
-	stateMap: Map<string, any>;
+	stateObject: {[key: string]: any};
 	mutex: Mutex;
 	new: (name: string, defaultValues: StateObj) => Partial<StateObj>;
 
-	static async init<StateObj>(name: string, defaultValues: StateObj): Promise<StateObj & StateDevelopment<StateObj>> {
+	static async init<StateObj>(name: string, defaultValues: StateObj): Promise<StateObj> {
 		await fs.mkdirp(path.resolve(__dirname, '__state__'));
 		const statePath = path.resolve(__dirname, '__state__', `${name}.json`);
 
@@ -153,42 +132,26 @@ export const StateDevelopment: StateInterface = class StateDevelopment<StateObj>
 			await fs.writeFile(statePath, JSON.stringify(defaultValues, null, '  '));
 		}
 
-		const state = new StateDevelopment<StateObj>(name, {...defaultValues, ...stateObj});
-		const keys = new Set(Object.keys(defaultValues));
+		const initialState = {...defaultValues, ...stateObj};
 
-		return new Proxy(state, {
-			get(obj: any, key: string) {
-				return keys.has(key) ? obj.get(key) : Reflect.get(obj, key);
-			},
-			set(obj: any, key: string, value: any) {
-				keys.has(key) ? obj.set(key, value) : Reflect.set(obj, key, value);
-				return true;
-			}
-		});
+		const stateObject = observable(initialState);
+
+		const state = new StateDevelopment<StateObj>(name, stateObject);
+		deepObserve(stateObject, state.onUpdate.bind(state));
+
+		return stateObject;
 	}
 
 	constructor(name: string, initialValues: StateObj) {
 		this.name = name;
-		this.stateMap = new Map(Object.entries(initialValues));
+		this.stateObject = initialValues;
 		this.statePath = path.resolve(__dirname, '__state__', `${name}.json`);
 		this.mutex = new Mutex();
 	}
 
-	get(key: keyof StateObj & string) {
-		return this.stateMap.get(key);
-	}
-
-	set<K extends keyof StateObj & string>(key: K, value: StateObj[K]) {
-		this.stateMap.set(key, value);
-		const data = JSON.stringify(Object.fromEntries(this.stateMap), null, '  ');
-		return this.mutex.runExclusive(async () => {
-			await fs.writeFile(this.statePath, data);
-		});
-	}
-
-	increment<K extends keyof StateObj & string>(key: K, value: StateObj[K] & number) {
-		this.stateMap.set(key, this.stateMap.get(key) + value);
-		const data = JSON.stringify(Object.fromEntries(this.stateMap), null, '  ');
+	private onUpdate(change: IChange, path: string, root: StateObj) {
+		console.log({change, path, root});
+		const data = JSON.stringify(this.stateObject, null, '  ');
 		return this.mutex.runExclusive(async () => {
 			await fs.writeFile(this.statePath, data);
 		});
