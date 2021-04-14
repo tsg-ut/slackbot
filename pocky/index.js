@@ -9,6 +9,7 @@ const {stripIndents} = require("common-tags");
 const {unlock, increment} = require("../achievements");
 const {default: logger} = require('../lib/logger.ts');
 const {getMemberName} = require('../lib/slackUtils');
+const {default: State} = require('../lib/state.ts');
 
 const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，．…・?!：；:;\s]+$/g;
 
@@ -130,8 +131,13 @@ async function getDictionary() {
 	return entries;
 }
 
-module.exports = (clients) => {
+module.exports = async (clients) => {
 	const { rtmClient: rtm, webClient: slack } = clients;
+
+	const state = await State.init('pocky', {
+		quineSolutions: [],
+		longQuineSolutions: [],
+	});
 
 	function postMessage(message, channel, postThreadOptions = {}) {
 		const {broadcast, threadPosted} = {
@@ -273,11 +279,13 @@ module.exports = (clients) => {
 			if (Array.from(result).length >= 20) {
 				unlock(message.user, "long-pocky");
 			}
-			if (match[1] === result) {
+			if (match[1] === result && !state.quineSolutions.includes(result)) {
 				unlock(message.user, "quine-pocky");
+				state.quineSolutions = state.quineSolutions.concat([result]);
 			}
-			if (Array.from(result).length >= 20 && match[1] === result) {
+			if (Array.from(result).length >= 20 && match[1] === result && !state.longQuineSolutions.includes(result)) {
 				unlock(message.user, "long-quine-pocky");
+				state.longQuineSolutions = state.longQuineSolutions.concat([result]);
 			}
 			const date = new Date().toLocaleString('en-US', {
 				timeZone: 'Asia/Tokyo',
