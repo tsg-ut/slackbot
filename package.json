@@ -36,6 +36,7 @@
     "@slack/rtm-api": "^6.0.0",
     "@slack/web-api": "^6.1.0",
     "@types/common-tags": "^1.8.0",
+    "@types/fs-extra": "^9.0.10",
     "@types/html-entities": "^1.2.16",
     "@types/jest": "^26.0.22",
     "@types/jsdom": "^16.2.10",
