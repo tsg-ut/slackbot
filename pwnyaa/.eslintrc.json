@@ -16,7 +16,8 @@
 		"max-params": "off",
 		"no-warning-comments": [2, { "terms": ["todo", "fixme", "xxx"], "location": "start" }],
 		"no-negated-condition": "off",
-        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }]
+        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+        "no-self-assign": "off"
     },
     "settings": {
         "import/resolver": null

@@ -1,5 +1,3 @@
-import {constants, promises as fs} from 'fs';
-import path from 'path';
 import {ChatPostMessageArguments} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
@@ -9,6 +7,7 @@ import {unlock} from '../achievements/index.js';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
+import State from '../lib/state';
 import {Contest, User, SolvedInfo} from './lib/BasicTypes';
 import {fetchChallsCH, fetchUserProfileCH, findUserByNameCH} from './lib/CHManager';
 import {fetchChallsKSN, fetchUserProfileKSN, findUserByNameKSN} from './lib/KSNManager';
@@ -47,7 +46,7 @@ const CONTESTS: Contest[] = [
 const UPDATE_INTERVAL = 12;
 
 // Record of registered Users and Contests
-export interface State {
+export interface PwnState {
 	users: User[],
 	contests: Contest[],
 }
@@ -168,19 +167,10 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	let pendingUsers: { slackid: string, contestid: number, contestUserId: string, threadId: string }[] = [];
 
 	// Restore state
-	const statePath = path.resolve(__dirname, 'state.json');
-	const exists = await fs.access(statePath, constants.F_OK)
-		.then(() => true).catch(() => false);
-	const state: State = {
+	const state = await State.init<PwnState>('pwnyaa', {
 		users: [],
 		contests: [],
-		...(exists ? JSON.parse((await fs.readFile(statePath)).toString()) : {}),
-	};
-	await fs.writeFile(statePath, JSON.stringify(state));
-	const setState = (object: { [key: string]: any }) => {
-		Object.assign(state, object);
-		return fs.writeFile(statePath, JSON.stringify(state));
-	};
+	});
 
 	// Check achievement 'pwnyaa-praise-your-birthday'
 	for (const user of state.users) {
@@ -473,7 +463,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 		});
 		unlock(slackId, 'pwnyaa-praise-your-birthday');
-		setState(state);
+		state.contests = state.contests;
 	};
 
 	const resolveSelfSolve = async (challName: string, slackMessage: any) => {
@@ -496,7 +486,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}
 			}
 		});
-		await setState(state);
+		state.users = state.users;
 		await postMessageDefault(slackMessage, {
 			attachments: [{
 				color: getSolveColor(1),
@@ -508,7 +498,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 	};
 
-	const resolveStreaks = async (solvesAllCtfs: { idCtf: number, solves: { slackid: string, solves: SolvedInfo[] }[] }[]) => {
+	const resolveStreaks = (solvesAllCtfs: { idCtf: number, solves: { slackid: string, solves: SolvedInfo[] }[] }[]) => {
 		state.users.forEach((user, ci) => {
 			let solvedThisWeek = false;
 			// count for each CTFs
@@ -535,7 +525,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				state.users[ci].currentStreak = 0;
 			}
 		});
-		await setState(state);
+		state.users = state.users;
 	};
 
 	// fetch data from TW and update state
@@ -554,7 +544,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				state.contests.push(updated);
 			}
 		}
-		setState(state);
+		state.contests = state.contests;
 	};
 
 
@@ -568,9 +558,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					const selectedUserId = requestingUser.contestUserId;
 					const userProfile = await fetchUserProfile(selectedUserId, selectedContestId);
 					if (!state.users.some((user) => message.user === user.slackId)) {
-						setState({
-							users: state.users.concat([{slackId: message.user, idCtf: ''}]),
-						});
+						state.users = state.users.concat([{slackId: message.user, idCtf: ''}]);
 					}
 					if (userProfile) {
 						addUser2Ctf(message.user, selectedContestId, selectedUserId);
@@ -641,9 +629,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 							const userProfile = await fetchUserProfile(selectedUserId, selectedContest.id);
 							if (userProfile) {												// user is found on the contest
 								if (!state.users.some((user) => message.user === user.slackId)) {
-									setState({
-										users: state.users.concat([{slackId: message.user, idCtf: ''}]),
-									});
+									state.users = state.users.concat([{slackId: message.user, idCtf: ''}]);
 								}
 								addUser2Ctf(message.user, selectedContest.id, selectedUserId);
 								await postMessageDefault(message, {
@@ -941,7 +927,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			user.selfSolvesWeekly = 0;
 			return user;
 		});
-		setState(state);
 	};
 
 	const updateAll = async () => {
