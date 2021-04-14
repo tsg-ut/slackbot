@@ -279,6 +279,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 
 		contest.isPreposted = true;
+		// eslint-disable-next-line no-self-assign
 		state.contests = state.contests;
 	};
 
@@ -389,6 +390,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		const isContestRated = standings.StandingsData.some((standing) => standing.IsRated);
 
 		contest.isPosted = true;
+		// eslint-disable-next-line no-self-assign
 		state.contests = state.contests;
 
 		for (const {user, standing} of userStandings) {
