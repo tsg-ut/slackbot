@@ -26,10 +26,10 @@ jobs:
       - name: Typecheck files not covered by tests
         run: npx tsc --noEmit
 
-      - name: Set up Firebase Emulator
+      - name: Run Test
         uses: w9jds/firebase-action@master
         with:
-          args: npx firebase emulators:exec --only firestore \"npm test\"
+          args: emulators:exec --only firestore \"npm test\"
         env:
           FIREBASE_TOKEN: ${{secrets.FIREBASE_TOKEN}}
 
