@@ -8,7 +8,7 @@
     "start": "pm2 start ecosystem.config.js",
     "stop": "pm2 stop ecosystem.config.js",
     "restart": "pm2 restart ecosystem.config.js",
-    "dev": "ts-node-dev --respawn --ignore-watch \".json$\" index.ts",
+    "dev": "ts-node-dev --respawn --rs --ignore-watch \".json$\" index.ts",
     "lint": "sed \"s/\\/.\\+//g\" CODEOWNERS | grep \"^[a-z]\" | awk '{print $1}' | xargs -n 1 eslint --ext js,ts",
     "fix": "npm run lint -- --fix",
     "test": "jest --verbose --coverage"

@@ -1,4 +1,4 @@
-import {throttle, groupBy} from 'lodash';
+import {throttle, groupBy, uniq} from 'lodash';
 import db from './firestore';
 import {Deferred} from './utils';
 import path from 'path';
@@ -17,61 +17,33 @@ const statesDeferred = new Deferred<FirebaseFirestore.QuerySnapshot<FirebaseFire
 	}
 })();
 
-interface IncrementOperation {
-	type: 'increment',
-	name: string,
-	key: string,
-	value: number,
-}
+const updatedProperties: {name: string, property: string, value: any}[] = [];
 
-interface SetOperation {
-	type: 'set',
-	name: string,
-	key: string,
-	value: any,
-}
-
-type Operation = IncrementOperation | SetOperation;
-
-const pendingOperations: Operation[] = [];
-
-const updateDb = (operation: Operation) => {
-	pendingOperations.push(operation);
+const updateDb = (name: string, property: string, value: any) => {
+	updatedProperties.push({name, property, value});
 	triggerUpdateDb();
 };
 
-// TODO: Sync back changes to local state
 const triggerUpdateDb = throttle(async () => {
-	const operations = pendingOperations.splice(0);
-	const states = groupBy(operations, (operation) => operation.name);
+	const states = groupBy(updatedProperties, (prop) => prop.name);
 	await db.runTransaction(async (transaction) => {
-		const stateData = new Map<string, {data: {[name: string]: any}, exists: boolean}>();
-		// read before write
+		const stateData = new Map<string, boolean>();
 		await Promise.all(Object.keys(states).map(async (state) => {
 			const stateRef = db.collection('states').doc(state);
 			const stateTransaction = await transaction.get(stateRef);
-			const data = stateTransaction.data() || {};
-			stateData.set(state, {data, exists: stateTransaction.exists});
+			stateData.set(state, stateTransaction.exists);
 		}));
-		for (const [state, stateOperations] of Object.entries(states)) {
-			const stateRef = db.collection('states').doc(state);
-			const {data, exists} = stateData.get(state);
-			for (const operation of stateOperations) {
-				if (operation.type === 'increment') {
-					if ({}.hasOwnProperty.call(data, operation.key)) {
-						data[operation.key] += operation.value;
-					} else {
-						data[operation.key] = operation.value;
-					}
-				}
-				if (operation.type === 'set') {
-					data[operation.key] = operation.value;
-				}
+		for (const [stateName, stateUpdates] of Object.entries(states)) {
+			const stateRef = db.collection('states').doc(stateName);
+			const exists = stateData.get(stateName);
+			const newValues = new Map<string, any>();
+			for (const {property, value} of stateUpdates) {
+				newValues.set(property, value);
 			}
 			if (exists) {
-				transaction.update(stateRef, data);
+				transaction.update(stateRef, Object.fromEntries(newValues));
 			} else {
-				transaction.set(stateRef, data);
+				transaction.set(stateRef, Object.fromEntries(newValues));
 			}
 		}
 	});
@@ -109,7 +81,13 @@ export const StateProduction: StateInterface = class StateProduction<StateObj> {
 	}
 
 	private onUpdate(change: IChange, path: string, root: StateObj) {
-		console.log({change, path, root});
+		const properties = path.length > 0 ? path.split('/') : [];
+		if (change.observableKind !== 'array') {
+			properties.push(change.name);
+		}
+		if (properties.length >= 1 && this.stateObject.hasOwnProperty(properties[0])) {
+			updateDb(this.name, properties[0], this.stateObject[properties[0]]);
+		}
 	}
 }
 
@@ -150,7 +128,6 @@ export const StateDevelopment: StateInterface = class StateDevelopment<StateObj>
 	}
 
 	private onUpdate(change: IChange, path: string, root: StateObj) {
-		console.log({change, path, root});
 		const data = JSON.stringify(this.stateObject, null, '  ');
 		return this.mutex.runExclusive(async () => {
 			await fs.writeFile(this.statePath, data);
@@ -164,23 +141,32 @@ export const StateDevelopment: StateInterface = class StateDevelopment<StateObj>
  *
  * get, set, increment の3つのデータ更新用メソッドはすべて同期的に動作し、ローカルのキャッシュが即座に更新されるようになっています。
  * production環境では30秒に1回データベースがアップデートされます。
- * また、getterとsetterによる shorthand method が定義されているため通常の代入のように記述することができます。
- * ただし数値のインクリメントを行う際は `+=` ではなくincrement()を使用してください。
+ * 内部実装にはMobxを用いているため、ネストされたプロパティへのアクセスもすべて追跡されます。
  *
- * その他のトランザクションを要する処理が必要になったら必要になった人が実装してください。
+ * 実装の簡素化のため、インクリメントや配列へのプッシュなどはアトミックに実装されていません。
+ * 本番環境でも開発環境でもバックエンドのデータベースは複数箇所から書き込まれることがないのでこれは通常問題になりませんが、
+ * デプロイの際は複数箇所で同じ種類のBOTを起動することがないように注意してください。
  *
  * ```typescript
  * import State from '../lib/state.ts';
  *
  * interface TestState {
  *   a: string,
- *   b: number,
+ *   b: {c: string, d: number[]}[],
  * }
  *
- * const state = await State.init<TestState>('test', {a: 'hoge', b: 100});
- * state.set('a', 'fuga');
- * state.a = 'fuga'; // 上と同じ
- * state.increment('b', 100);
+ * const state = await State.init<TestState>('test', {a: 'hoge', b: [{c: 'fuga', d: []}]});
+ *
+ * // 例えば以下のような変更は自動的に保存されます。
+ * state.a = 'fuga';
+ * state.b[0].c += 'fuganyan';
+ * const b = state.b.find(() => true);
+ * b.d.push(100);
+ *
+ * // 古くなった参照への変更は保存されません。
+ * const b2 = state.b[0];
+ * state.b[0] = {c: 'nyan', d: [0]};
+ * b2.c = 'hoge'; // 保存されない
  * ```
  */
 const State: StateInterface = process.env.NODE_ENV === 'production' ? StateProduction : StateDevelopment;
