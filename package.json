@@ -8,7 +8,7 @@
     "start": "pm2 start ecosystem.config.js",
     "stop": "pm2 stop ecosystem.config.js",
     "restart": "pm2 restart ecosystem.config.js",
-    "dev": "ts-node-dev --respawn --ignore-watch \".json$\" index.ts",
+    "dev": "ts-node-dev --respawn --rs --ignore-watch \".json$\" index.ts",
     "lint": "sed \"s/\\/.\\+//g\" CODEOWNERS | grep \"^[a-z]\" | awk '{print $1}' | xargs -n 1 eslint --ext js,ts",
     "fix": "npm run lint -- --fix",
     "test": "jest --verbose --coverage"
@@ -85,6 +85,8 @@
     "libmime": "^5.0.0",
     "lodash": "^4.17.21",
     "miller-rabin": "^4.0.1",
+    "mobx": "^6.2.0",
+    "mobx-utils": "^6.0.4",
     "moment": "^2.29.1",
     "node-emoji": "^1.10.0",
     "node-persist": "^3.1.0",
