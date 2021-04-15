@@ -107,6 +107,25 @@ describe('State', () => {
 			]);
 		});
 
+		it('detects call to the mutable methods of array', async () => {
+			const state = await StateDevelopment.init<StateObj>('test', {
+				number: 100,
+				list: [],
+			});
+
+			const call = await new Promise((resolve) => {
+				(<jest.Mock>fs.writeFile).mockImplementationOnce((...args) => resolve(args));
+
+				state.list.push({a: 100, b: '100'})
+				expect(state.list).toEqual([{a: 100, b: '100'}]);
+			});
+
+			expect(call).toEqual([
+				path.join(__dirname, '__state__', 'test.json'),
+				JSON.stringify({number: 100, list: [{a: 100, b: '100'}]}, null, '  '),
+			]);
+		});
+
 		it('merges the saved state with the default value', async () => {
 			(<jest.Mock>fs.pathExists).mockImplementation(async () => true);
 			(<jest.Mock>fs.readFile).mockImplementation(async () => (
