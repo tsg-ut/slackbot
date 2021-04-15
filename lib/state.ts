@@ -127,7 +127,7 @@ export const StateDevelopment: StateInterface = class StateDevelopment<StateObj>
 		this.mutex = new Mutex();
 	}
 
-	private onUpdate(change: IChange, path: string, root: StateObj) {
+	private onUpdate() {
 		const data = JSON.stringify(this.stateObject, null, '  ');
 		return this.mutex.runExclusive(async () => {
 			await fs.writeFile(this.statePath, data);

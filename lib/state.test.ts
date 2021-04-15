@@ -10,7 +10,6 @@ process.env.NODE_ENV = 'development';
 import {StateDevelopment} from './state';
 import path from 'path';
 import fs from 'fs-extra';
-import {last} from 'lodash';
 
 interface StateObj {
 	number: number,
@@ -56,12 +55,55 @@ describe('State', () => {
 				number: 334,
 			});
 
-			await state.set('number', 100);
-			expect(state.number).toBe(100);
+			const call = await new Promise((resolve) => {
+				(<jest.Mock>fs.writeFile).mockImplementationOnce((...args) => resolve(args));
 
-			expect(last((<jest.Mock>fs.writeFile).mock.calls)).toEqual([
+				state.number = 100;
+				expect(state.number).toBe(100);
+			});
+
+			expect(call).toEqual([
 				path.join(__dirname, '__state__', 'test.json'),
 				'{\n  "number": 100\n}',
+			]);
+		});
+
+		it('detects updates on nested property', async () => {
+			const state = await StateDevelopment.init<StateObj>('test', {
+				number: 100,
+				list: [{a: 0, b: '0'}, {a: 1, b: '1'}],
+			});
+
+			const call = await new Promise((resolve) => {
+				(<jest.Mock>fs.writeFile).mockImplementationOnce((...args) => resolve(args));
+
+				const item = state.list.find(({a}) => a === 1);
+				item.b = '2';
+
+				expect(state.list).toEqual([{a: 0, b: '0'}, {a: 1, b: '2'}]);
+			});
+
+			expect(call).toEqual([
+				path.join(__dirname, '__state__', 'test.json'),
+				JSON.stringify({number: 100, list: [{a: 0, b: '0'}, {a: 1, b: '2'}]}, null, '  '),
+			]);
+		});
+
+		it('detects updates on new property', async () => {
+			const state = await StateDevelopment.init<StateObj>('test', {
+				number: 100,
+			});
+
+			const call = await new Promise((resolve) => {
+				(<jest.Mock>fs.writeFile).mockImplementationOnce((...args) => resolve(args));
+
+				state.number2 = 200;
+				expect(state.number2).toBe(200);
+			});
+
+			expect(call).toEqual([
+				path.join(__dirname, '__state__', 'test.json'),
+				'{\n  "number": 100,\n  "number2": 200\n}',
 			]);
 		});
 
