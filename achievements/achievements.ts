@@ -1035,7 +1035,7 @@ const achievements: Achievement[] = [
 		id: 'quine-pocky',
 		difficulty: 'medium',
 		title: 'やまびこやまびこ',
-		condition: 'pockyに与えた文字列と同一の返答を得る',
+		condition: 'pockyに与えた文字列と同一の返答を得る。ただし一度言われたものは不可',
 		category: 'pocky',
 	},
 	{
@@ -1048,8 +1048,8 @@ const achievements: Achievement[] = [
 	{
 		id: 'long-quine-pocky',
 		difficulty: 'professional',
-		title: '',
-		condition: 'pockyに与えた文字列と同一の、20文字以上の返答を得る',
+		title: '(‘ω’)',
+		condition: 'pockyに与えた文字列と同一の、20文字以上の返答を得る。ただし一度言われたものは不可',
 		category: 'pocky',
 	},
 	{
