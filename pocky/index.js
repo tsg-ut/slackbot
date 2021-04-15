@@ -281,11 +281,11 @@ module.exports = async (clients) => {
 			}
 			if (match[1] === result && !state.quineSolutions.includes(result)) {
 				unlock(message.user, "quine-pocky");
-				state.quineSolutions = state.quineSolutions.concat([result]);
+				state.quineSolutions.push(result);
 			}
 			if (Array.from(result).length >= 20 && match[1] === result && !state.longQuineSolutions.includes(result)) {
 				unlock(message.user, "long-quine-pocky");
-				state.longQuineSolutions = state.longQuineSolutions.concat([result]);
+				state.longQuineSolutions.push(result);
 			}
 			const date = new Date().toLocaleString('en-US', {
 				timeZone: 'Asia/Tokyo',
