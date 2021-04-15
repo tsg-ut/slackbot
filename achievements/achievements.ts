@@ -1035,7 +1035,7 @@ const achievements: Achievement[] = [
 		id: 'quine-pocky',
 		difficulty: 'medium',
 		title: 'やまびこやまびこ',
-		condition: 'pockyに与えた文字列と同一の返答を得る',
+		condition: 'pockyに与えた文字列と同一の返答を得る。ただし一度言われたものは不可',
 		category: 'pocky',
 	},
 	{
@@ -1043,6 +1043,13 @@ const achievements: Achievement[] = [
 		difficulty: 'medium',
 		title: 'エゴサーチ？',
 		condition: 'Slackの表示名とpockyからの返答が一致する',
+		category: 'pocky',
+	},
+	{
+		id: 'long-quine-pocky',
+		difficulty: 'professional',
+		title: '(‘ω’)',
+		condition: 'pockyに与えた文字列と同一の、20文字以上の返答を得る。ただし一度言われたものは不可',
 		category: 'pocky',
 	},
 	{
