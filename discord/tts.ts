@@ -59,91 +59,102 @@ class Timer {
 	}
 }
 
-interface State {
-	users: Map<string, Voice>,
-	userTimers: Map<string, Timer>,
-	connection: VoiceConnection,
-	isPaused: boolean,
-}
-
 export default class TTS extends EventEmitter {
-	state: State;
+	users: Map<string, Voice>;
+	userTimers: Map<string, Timer>;
+	connection: VoiceConnection;
+	isPaused: boolean;
+	lastActiveVoiceChannel: string;
 
-	joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>;
+	joinVoiceChannelFn: (channelId?: string) => Promise<Discord.VoiceConnection>;
 
 	constructor(joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>) {
 		super();
 		this.joinVoiceChannelFn = joinVoiceChannelFn;
-		this.state = {
-			users: new Map(),
-			userTimers: new Map(),
-			connection: null,
-			isPaused: false,
-		};
+		this.users = new Map();
+		this.userTimers = new Map();
+		this.connection = null;
+		this.isPaused = false;
+		this.lastActiveVoiceChannel = null;
 	}
 
 	async onUsersModified() {
-		if (this.state.isPaused) {
+		if (this.isPaused) {
 			return;
 		}
-		if (this.state.connection === null) {
-			this.state.connection = await this.joinVoiceChannelFn();
+		if (this.connection === null) {
+			if (this.lastActiveVoiceChannel === null) {
+				this.connection = await this.joinVoiceChannelFn();
+			} else {
+				this.connection = await this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
+			}
 		} else {
-			if (this.state.users.size === 0) {
-				this.state.connection.disconnect();
-				this.state.connection = null;
+			if (this.users.size === 0) {
+				this.connection.disconnect();
+				this.connection = null;
 			}
 		}
 	}
 
 	assignNewVoice() {
 		const voices: Voice[] = Object.values(Voice);
-		const users = countBy(Array.from(this.state.users.values()));
+		const users = countBy(Array.from(this.users.values()));
 		const voice = minBy(voices, (voice) => users[voice] || 0);
 		return voice;
 	}
 
 	pause() {
-		this.state.connection = null;
+		this.connection = null;
 	}
 
 	unpause() {
 		mutex.runExclusive(async () => {
-			if (this.state.users.size !== 0) {
-				this.state.connection = await this.joinVoiceChannelFn();
+			if (this.users.size !== 0) {
+				if (this.lastActiveVoiceChannel === null) {
+					this.connection = await this.joinVoiceChannelFn();
+				} else {
+					this.connection = await this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
+				}
 			}
 		});
 	}
 
 	onMessage(message: Discord.Message) {
+		if (message.member.user.bot) {
+			return;
+		}
+
 		mutex.runExclusive(async () => {
 			const tokens = message.content.split(/\s+/);
 			const user = message.member.user.id;
 
 			if (tokens[0]?.toUpperCase() === 'TTS') {
 				if (tokens.length === 1 || tokens[1] === 'start') {
-					if (!this.state.users.has(user)) {
-						this.state.users.set(user, this.assignNewVoice());
+					if (!this.users.has(user)) {
+						this.users.set(user, this.assignNewVoice());
 						const timer = new Timer(() => {
 							mutex.runExclusive(async () => {
-								this.state.users.delete(user);
-								this.state.userTimers.get(user)?.cancel();
+								this.users.delete(user);
+								this.userTimers.get(user)?.cancel();
 								this.emit('message', stripIndent`
 									10分以上発言がなかったので<@${user}>のTTSを解除しました
 								`);
 								await this.onUsersModified();
 							});
 						}, 10 * 60 * 1000);
-						this.state.userTimers.set(user, timer);
+						this.userTimers.set(user, timer);
+						if (message.member.voice?.channelID) {
+							this.lastActiveVoiceChannel = message.member.voice.channelID;
+						}
 						await this.onUsersModified();
 						await message.react('🆗');
 					} else {
 						await message.react('🤔');
 					}
 				} else if (tokens[1] === 'stop') {
-					if (this.state.users.has(user)) {
-						this.state.users.delete(user);
-						this.state.userTimers.get(user)?.cancel();
+					if (this.users.has(user)) {
+						this.users.delete(user);
+						this.userTimers.get(user)?.cancel();
 						await this.onUsersModified();
 						await message.react('🆗');
 					} else {
@@ -151,8 +162,8 @@ export default class TTS extends EventEmitter {
 					}
 				} else if (tokens.length === 3 && tokens[1] === 'voice') {
 					const voice: Voice = Voice[tokens[2] as keyof typeof Voice] || Voice.A;
-					if (this.state.users.has(user)) {
-						this.state.users.set(user, voice);
+					if (this.users.has(user)) {
+						this.users.set(user, voice);
 						await message.react('🆗');
 					} else {
 						await message.react('🤔');
@@ -160,9 +171,10 @@ export default class TTS extends EventEmitter {
 				} else if (tokens[1] === 'status') {
 					this.emit(
 						'message',
-						Array.from(this.state.users.entries())
+						Array.from(this.users.entries())
 							.map(([user, voice]) => `* <@${user}> - ${voice}`)
 							.join('\n'),
+						message.channel.id,
 					);
 				} else {
 					this.emit('message', stripIndent`
@@ -171,11 +183,11 @@ export default class TTS extends EventEmitter {
 						* TTS voice <A | B | C | D> - 声を変更
 						* TTS status - ステータスを表示
 						* TTS help - ヘルプを表示
-					`);
+					`, message.channel.id);
 				}
-			} else if (this.state.users.has(user) && !message.content.startsWith('-')) {
-				const id = this.state.users.get(user);
-				this.state.userTimers.get(user)?.resetTimer();
+			} else if (this.users.has(user) && !message.content.startsWith('-')) {
+				const id = this.users.get(user);
+				this.userTimers.get(user)?.resetTimer();
 
 				const [response] = await client.synthesizeSpeech({
 					input: {
@@ -197,7 +209,7 @@ export default class TTS extends EventEmitter {
 
 				await Promise.race([
 					new Promise<void>((resolve) => {
-						const dispatcher = this.state.connection.play(path.join(__dirname, 'tempAudio.mp3'));
+						const dispatcher = this.connection.play(path.join(__dirname, 'tempAudio.mp3'));
 						dispatcher.on('finish', () => {
 							resolve();
 						});
