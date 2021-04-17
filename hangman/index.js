@@ -6,7 +6,7 @@ const path = require('path');
 const download = require('download');
 const { stripIndents } = require("common-tags");
 const { unlock, increment, set } = require('../achievements');
-const logger = require('../lib/logger');
+const { default: logger } = require('../lib/logger.ts');
 
 const state = (() => {
     try {
@@ -157,7 +157,7 @@ const getRandomWord = (diffValue, wordList) => {
     for (var i = 0; i < 10; i++) {
         const randomIndex = random(freqLeft, freqRight - 1, false);
         const result = wordList[randomIndex % wordList.length];
-        logger(`Word found: ${result}`);
+        logger.info(`Word found: ${result}`);
         if (result.length >= minLength && result.match(/^[a-z]+$/)) {
             return result;
         }
@@ -263,7 +263,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                     thread: ts
                 });
 
-                await postMessage(`答えかた
+                await postMessage(stripIndents`答え方
                 小文字アルファベットを書く: \`x\`
                 単語を丸ごと宣言する: \`!word\``);
 
@@ -393,7 +393,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
             }
         }
         if (text === "reset hangman") {
-            logger("resetting Sadge");
+            logger.info("resetting Sadge");
             await setState({
                 phase: 'waiting',
                 challenger: null,
