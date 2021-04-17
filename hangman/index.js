@@ -139,12 +139,12 @@ const getRandomWord = (diffValue, wordList) => {
             break;
         case 'medium':
             freqLeft = 1000;
-            freqRight = 3000;
+            freqRight = 4000;
             minLength = 7;
             break;
         case 'hard':
-            freqLeft = 3000;
-            freqRight = 5000;
+            freqLeft = 4000;
+            freqRight = 5500;
             minLength = 6;
             break;
         case 'extreme':
