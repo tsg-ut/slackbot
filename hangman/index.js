@@ -237,6 +237,22 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                 await setState({
                     thread: ts
                 });
+
+                const currentThread = state.thread;
+                setTimeout(async () => {
+                    if (currentThread == state.thread) {
+                        await postGameResult(':clock3: タイムオーバー :sweat:');
+                        await setState({
+                            phase: 'waiting',
+                            challenger: null,
+                            thread: null,
+                            answer: '',
+                            openList: [],
+                            usedCharacterList: [],
+                            triesLeft: 0,
+                        });
+                    }
+                }, 4 * 60 * 1000);
                 
                 return;
             }
