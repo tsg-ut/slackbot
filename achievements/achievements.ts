@@ -2472,7 +2472,7 @@ const achievements: Achievement[] = [
 		id: 'hangman-extreme-clear',
 		difficulty: 'medium',
 		title: 'An arduous undertaking',
-		condition: 'HangmanでX, Z, J, Qのいずれかを含む単語でゲームクリアする',
+		condition: 'Hangmanでextreme難易度をゲームクリアする',
 		category: 'hangman',
 	},
 	{

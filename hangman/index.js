@@ -6,6 +6,7 @@ const path = require('path');
 const download = require('download');
 const { stripIndents } = require("common-tags");
 const { unlock, increment, set } = require('../achievements');
+const logger = require('../lib/logger');
 
 const state = (() => {
     try {
@@ -14,7 +15,7 @@ const state = (() => {
             phase: savedState.phase,
             challenger: savedState.challenger || null,
             thread: savedState.thread || null,
-            diffValue: savedState.diffValue || 0,
+            diffValue: savedState.diffValue || '',
             answer: savedState.answer || '',
             openList: savedState.openList || [],
             usedCharacterList: savedState.usedCharacterList || [],
@@ -25,7 +26,7 @@ const state = (() => {
             phase: 'waiting',
             challenger: null,
             thread: null,
-            diffValue: 0,
+            diffValue: '',
             answer: '',
             openList: [],
             usedCharacterList: [],
@@ -48,20 +49,14 @@ const setState = async (newState) => {
     );
 };
 
-const HangmanResponse = {
-    Invalid: -1,
-    Success: 0,
-    Failure: 1,
-};
-
 //open a character
 const openCharacter = async (character) => {
     if (state.usedCharacterList.includes(character)) {
-        return HangmanResponse.Invalid;
+        return 'invalid';
     }
-    var newOpenList = state.openList.slice();
-    var letterCount = 0;
-    for (const index in range(state.answer.length)) {
+    const newOpenList = state.openList.slice();
+    let letterCount = 0;
+    for (const index of range(state.answer.length)) {
         if (state.answer[index] == character) {
             newOpenList[index] = true;
             letterCount += 1;
@@ -71,7 +66,7 @@ const openCharacter = async (character) => {
     const succeeded = (letterCount > 0);
 
     if (succeeded) {
-        await increment(state.user, 'hangman-letters', succeeded);
+        await increment(state.user, 'hangman-letters', letterCount);
     }
 
     await setState({
@@ -80,8 +75,7 @@ const openCharacter = async (character) => {
         triesLeft: state.triesLeft - (succeeded ? 0 : 1),
     });
     
-    
-    return succeeded ? HangmanResponse.Success : HangmanResponse.Failure;
+    return succeeded ? 'success' : 'failure';
 };
 
 //guess the whole string
@@ -95,13 +89,13 @@ const guessAnswer = async (candidate) => {
         if (countUnique(closedChars) >= 4) {
             await unlock(state.user, 'hangman-multiple-letters');
         }
-        return HangmanResponse.Success;
+        return 'success';
     } 
     else {
         await setState({
             triesLeft: state.triesLeft - 1,
         });
-        return HangmanResponse.Failure;
+        return 'failure';
     }
 };
 
@@ -138,33 +132,32 @@ const getRandomWord = (diffValue, wordList) => {
     let freqRight = 100;
     let minLength = 5;
     switch (diffValue) {
-        case 0:
+        case 'easy':
             freqLeft = 0;
             freqRight = 1000;
             minLength = 8;
             break;
-        case 1:
+        case 'medium':
             freqLeft = 1000;
             freqRight = 3000;
             minLength = 7;
             break;
-        case 2:
+        case 'hard':
             freqLeft = 3000;
             freqRight = 5000;
             minLength = 6;
             break;
-        case 3:
+        case 'extreme':
             freqLeft = 7000;
             freqRight = 10000;
             minLength = 5;
             break;
     }
     if (!wordList) wordList = tmpDictionary;
-    console.log(freqLeft + " " + freqRight);
     for (var i = 0; i < 10; i++) {
         const randomIndex = random(freqLeft, freqRight - 1, false);
         const result = wordList[randomIndex % wordList.length];
-        console.log(result);
+        logger(`Word found: ${result}`);
         if (result.length >= minLength && result.match(/^[a-z]+$/)) {
             return result;
         }
@@ -182,16 +175,16 @@ const resetConsecutiveAchievements = async () => {
 const unlockGameAchievements = async () => {
     await increment(state.user, 'hangman-clear');
     await increment(state.user, 'hangman-consecutive');
-    if (state.triesLeft == numberOfTries) {
+    if (state.triesLeft === numberOfTries) {
         await unlock(state.user, 'hangman-perfect');
     }
     if (state.answer.length <= 6) {
         await unlock(state.user, 'hangman-short');
     }
-    if (state.answer.match(/x|z|j|q/)) {
+    if (state.answer.match(/[xzjq]/)) {
         await unlock(state.user, 'hangman-xzjq');
     }
-    if (state.diffValue == 3) {
+    if (state.diffValue === 'extreme') {
         await unlock(state.user, 'hangman-extreme-clear');
     }
 };
@@ -242,41 +235,37 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
 
         if (matches = text.match(/^hangman(|\s\w*)$/i)) {
             if (state.phase === 'waiting') {
-                console.log(text);
                 //string matches "hangman" or "hangman <difficulty>"
                 const difficultyString = ((matches[1] === "") ? "medium" : matches[1].slice(1));
-                let diffValue = -1;
-                switch (difficultyString) {
-                    case "easy": diffValue = 0; break;
-                    case "medium": diffValue = 1; break;
-                    case "hard": diffValue = 2; break;
-                    case "extreme": diffValue = 3; break;
-                }
-                if (diffValue < 0) {
+                if (!difficultyString.match(/easy|medium|hard|extreme/)) {
+                    await postMessage('難易度はeasy/medium/hard/extremeのどれかを指定してね');
                     return;
                 }
 
                 const wordList = await getDictionary();
 
-                const word = getRandomWord(diffValue, wordList);
+                const word = getRandomWord(difficultyString, wordList);
                 
                 const wordLength = word.length;
                 await setState({
                     phase: 'playing',
                     challenger: user,
-                    diffValue: diffValue,
+                    diffValue: difficultyString,
                     answer: word,
                     openList: Array(wordLength).fill(false),
                     usedCharacterList: [],
                     triesLeft: numberOfTries,
                 });
 
-                console.log("after");
                 const { ts } = await postGameStatus('Hangmanを始めるよ！正解の英単語を当てよう！');
 
                 await setState({
                     thread: ts
                 });
+
+                await postMessage(`答えかた
+                小文字アルファベットを書く: \`x\`
+                単語を丸ごと宣言する: \`!word\``);
 
                 const currentThread = state.thread;
                 setTimeout(async () => {
@@ -287,7 +276,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                             phase: 'waiting',
                             challenger: null,
                             thread: null,
-                            diffValue: 0,
+                            diffValue: '',
                             answer: '',
                             openList: [],
                             usedCharacterList: [],
@@ -307,8 +296,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                 return;
             }
             const response = await openCharacter(text);
-            console.log(getOpenListString());
-            if (response === HangmanResponse.Success) {
+            if (response === 'success') {
                 if (!state.openList.every(x => x)) {
                     postGameStatus(':ok:');
                     return;
@@ -320,7 +308,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                         phase: 'waiting',
                         challenger: null,
                         thread: null,
-                        diffValue: 0,
+                        diffValue: '',
                         answer: '',
                         openList: [],
                         usedCharacterList: [],
@@ -329,7 +317,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                     return;
                 }
             } 
-            else if (response === HangmanResponse.Failure) {
+            else if (response === 'failure') {
                 if (state.triesLeft > 0) {
                     await postGameStatus(':ng: 間違っています :ng:');
                     return;
@@ -341,7 +329,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                         phase: 'waiting',
                         challenger: null,
                         thread: null,
-                        diffValue: 0,
+                        diffValue: '',
                         answer: '',
                         openList: [],
                         usedCharacterList: [],
@@ -363,14 +351,14 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                 return;
             }
             const response = await guessAnswer(matches[1]);
-            if (response === HangmanResponse.Success) {
+            if (response === 'success') {
                 postGameResult(':tada: 正解！ :astonished:');
                 await unlockGameAchievements();
                 await setState({
                     phase: 'waiting',
                     challenger: null,
                     thread: null,
-                    diffValue: 0,
+                    diffValue: '',
                     answer: '',
                     openList: [],
                     usedCharacterList: [],
@@ -378,7 +366,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                 });
                 return;
             }
-            else if (response === HangmanResponse.Failure) {
+            else if (response === 'failure') {
                 if (state.triesLeft > 0) {
                     postGameStatus(':ng: 失敗です…… :ng:');
                     return;
@@ -390,7 +378,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                         phase: 'waiting',
                         challenger: null,
                         thread: null,
-                        diffValue: 0,
+                        diffValue: '',
                         answer: '',
                         openList: [],
                         usedCharacterList: [],
@@ -404,13 +392,13 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                 return;
             }
         }
-        if (text == "reset hangman") {
-            console.log("resetting Sadge");
+        if (text === "reset hangman") {
+            logger("resetting Sadge");
             await setState({
                 phase: 'waiting',
                 challenger: null,
                 thread: null,
-                diffValue: 0,
+                diffValue: '',
                 answer: '',
                 openList: [],
                 usedCharacterList: [],
