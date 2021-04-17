@@ -174,7 +174,9 @@ const resetConsecutiveAchievements = async () => {
 
 const unlockGameAchievements = async () => {
     await increment(state.user, 'hangman-clear');
-    await increment(state.user, 'hangman-consecutive');
+    if (state.diffValue == 'hard' || state.diffValue == 'extreme') {
+        await increment(state.user, 'hangman-consecutive');
+    }
     if (state.triesLeft === numberOfTries) {
         await unlock(state.user, 'hangman-perfect');
     }
