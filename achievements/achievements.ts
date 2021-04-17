@@ -2478,8 +2478,8 @@ const achievements: Achievement[] = [
 	{
 		id: 'hangman-multiple-letters',
 		difficulty: 'hard',
-		title: 'Walking dictionary',
-		condition: 'Hangmanで4種類以上の文字を同時に言い当てる',
+		title: 'Word wizard',
+		condition: 'Hangmanで3種類以上の文字を同時に言い当てる',
 		category: 'hangman',
 	},
 

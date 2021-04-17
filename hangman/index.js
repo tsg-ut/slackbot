@@ -86,7 +86,7 @@ const guessAnswer = async (candidate) => {
             return new Set(iterable).size;
         }
         const closedChars = state.answer.split('').filter((character, index) => !state.openList[index]);
-        if (countUnique(closedChars) >= 4) {
+        if (countUnique(closedChars) >= 3) {
             await unlock(state.user, 'hangman-multiple-letters');
         }
         return 'success';
