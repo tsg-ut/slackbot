@@ -1,5 +1,6 @@
 jest.mock('../achievements');
 
+/*
 jest.mock('./state.json', () => ({
     phase: 'waiting',
     challenger: null,
@@ -10,6 +11,7 @@ jest.mock('./state.json', () => ({
     usedCharacterList: [],
     triesLeft: 0,
 }));
+*/
 
 const Slack = require('../lib/slackMock.js');
 const hangman = require('./index.js');
