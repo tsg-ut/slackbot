@@ -57,7 +57,7 @@ const openCharacter = async (character) => {
     const newOpenList = state.openList.slice();
     let letterCount = 0;
     for (const index of range(state.answer.length)) {
-        if (state.answer[index] == character) {
+        if (state.answer[index] === character) {
             newOpenList[index] = true;
             letterCount += 1;
         }
@@ -174,7 +174,7 @@ const resetConsecutiveAchievements = async () => {
 
 const unlockGameAchievements = async () => {
     await increment(state.user, 'hangman-clear');
-    if (state.diffValue == 'hard' || state.diffValue == 'extreme') {
+    if (state.diffValue === 'hard' || state.diffValue === 'extreme') {
         await increment(state.user, 'hangman-consecutive');
     }
     if (state.triesLeft === numberOfTries) {
@@ -271,7 +271,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
 
                 const currentThread = state.thread;
                 setTimeout(async () => {
-                    if (currentThread == state.thread) {
+                    if (currentThread === state.thread) {
                         await postGameResult(':clock3: タイムオーバー :sweat:');
                         await resetConsecutiveAchievements();
                         await setState({
