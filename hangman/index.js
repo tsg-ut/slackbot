@@ -66,7 +66,7 @@ const openCharacter = async (character) => {
     const succeeded = (letterCount > 0);
 
     if (succeeded) {
-        await increment(state.user, 'hangman-letters', letterCount);
+        await increment(state.challenger, 'hangman-letters', letterCount);
     }
 
     await setState({
@@ -87,7 +87,7 @@ const guessAnswer = async (candidate) => {
         }
         const closedChars = state.answer.split('').filter((character, index) => !state.openList[index]);
         if (countUnique(closedChars) >= 3) {
-            await unlock(state.user, 'hangman-multiple-letters');
+            await unlock(state.challenger, 'hangman-multiple-letters');
         }
         return 'success';
     } 
@@ -166,28 +166,28 @@ const getRandomWord = (diffValue, wordList) => {
 };
 
 const resetConsecutiveAchievements = async () => {
-    await set(state.user, 'hangman-consecutive', 0);
+    await set(state.challenger, 'hangman-consecutive', 0);
     if (state.openList.every(x => !x)) {
-        await unlock(state.user, 'hangman-reverse-perfect');
+        await unlock(state.challenger, 'hangman-reverse-perfect');
     }
 };
 
 const unlockGameAchievements = async () => {
-    await increment(state.user, 'hangman-clear');
+    await increment(state.challenger, 'hangman-clear');
     if (state.diffValue === 'hard' || state.diffValue === 'extreme') {
-        await increment(state.user, 'hangman-consecutive');
+        await increment(state.challenger, 'hangman-consecutive');
     }
     if (state.triesLeft === numberOfTries) {
-        await unlock(state.user, 'hangman-perfect');
+        await unlock(state.challenger, 'hangman-perfect');
     }
     if (state.answer.length <= 6) {
-        await unlock(state.user, 'hangman-short');
+        await unlock(state.challenger, 'hangman-short');
     }
     if (state.answer.match(/[xzjq]/)) {
-        await unlock(state.user, 'hangman-xzjq');
+        await unlock(state.challenger, 'hangman-xzjq');
     }
     if (state.diffValue === 'extreme') {
-        await unlock(state.user, 'hangman-extreme-clear');
+        await unlock(state.challenger, 'hangman-extreme-clear');
     }
 };
 
