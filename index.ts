@@ -78,6 +78,7 @@ const allBots = [
 	'pwnyaa',
 	'amongyou',
 	'api',
+	'hangman',
 ];
 
 logger.info('slackbot started');
