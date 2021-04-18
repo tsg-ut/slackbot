@@ -33,21 +33,21 @@ const getMembersBlock = (roomName: string, members: Collection<Snowflake, GuildM
 );
 
 export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
-	const joinVoiceChannelFn = () => {
-		const discordSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_VOICE_CHANNEL_ID) as VoiceChannel;
+	const joinVoiceChannelFn = (channelId: string = process.env.DISCORD_SANDBOX_VOICE_CHANNEL_ID) => {
+		const discordSandbox = discord.channels.cache.get(channelId) as VoiceChannel;
 		return discordSandbox.join();
 	};
 
 	const hayaoshi = new Hayaoshi(joinVoiceChannelFn);
 	const tts = new TTS(joinVoiceChannelFn);
 
-	hayaoshi.on('message', (message: string) => {
-		const discordTextSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) as TextChannel;
+	hayaoshi.on('message', (message: string, channelId: string = process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) => {
+		const discordTextSandbox = discord.channels.cache.get(channelId) as TextChannel;
 		return discordTextSandbox.send(message);
 	});
 
-	tts.on('message', (message: string) => {
-		const discordTextSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) as TextChannel;
+	tts.on('message', (message: string, channelId: string = process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) => {
+		const discordTextSandbox = discord.channels.cache.get(channelId) as TextChannel;
 		return discordTextSandbox.send(message);
 	});
 
@@ -60,10 +60,8 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	});
 
 	discord.on('message', (message) => {
-		if (message.channel.id === process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID && !message.member.user.bot) {
-			hayaoshi.onMessage(message);
-			tts.onMessage(message);
-		}
+		hayaoshi.onMessage(message);
+		tts.onMessage(message);
 	});
 
 	discord.on('voiceStateUpdate', (oldState, newState) => {

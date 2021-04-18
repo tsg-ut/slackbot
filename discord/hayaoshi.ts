@@ -387,6 +387,10 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	onMessage(message: Discord.Message) {
+		if (message.channel.id !== process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID || message.member.user.bot) {
+			return;
+		}
+
 		mutex.runExclusive(async () => {
 			if (this.state.phase === 'answering' && this.state.pusher === message.member.user.id && message.content !== 'p') {
 				clearTimeout(this.state.answerTimeoutId);

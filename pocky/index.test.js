@@ -10,10 +10,10 @@ const Slack = require('../lib/slackMock.js');
 
 let slack = null;
 
-beforeEach(() => {
+beforeEach(async () => {
 	slack = new Slack();
 	process.env.CHANNEL_SANDBOX = slack.fakeChannel;
-	pocky(slack);
+	await pocky(slack);
 });
 
 describe('pocky', () => {
