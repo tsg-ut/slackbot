@@ -215,7 +215,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
     };
 
     rtm.on('message', async (message) => {
-        if (message.channel !== process.env.CHANNEL_SANDBOX) {
+        if (message.channel !== process.env.CHANNEL_SANDBOX || !!message.subtype) {
             return;
         }
 
@@ -235,7 +235,23 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
         
         let matches = null;
 
-        if (matches = text.match(/^hangman(|\s\w*)$/i)) {
+        // reset command is available both within threads or not
+        if (text === "reset hangman") {
+            logger.info("resetting Sadge");
+            await setState({
+                phase: 'waiting',
+                challenger: null,
+                thread: null,
+                diffValue: '',
+                answer: '',
+                openList: [],
+                usedCharacterList: [],
+                triesLeft: 0,
+            });
+            return;
+        }
+
+        if (!message.thread_ts && (matches = text.match(/^hangman(|\s\w*)$/i))) {
             if (state.phase === 'waiting') {
                 //string matches "hangman" or "hangman <difficulty>"
                 const difficultyString = ((matches[1] === "") ? "medium" : matches[1].slice(1));
@@ -290,21 +306,72 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                 return;
             }
         }
-        if (text.match(/^[a-z]$/)) {
-            if (state.phase !== 'playing') {
-                return;
-            }
-            if (state.challenger !== user) {
-                return;
-            }
-            const response = await openCharacter(text);
-            if (response === 'success') {
-                if (!state.openList.every(x => x)) {
-                    postGameStatus(':ok:');
+        if (!!message.thread_ts) { // available only within the thread
+            if (text.match(/^[a-z]$/)) {
+                if (state.phase !== 'playing') {
                     return;
                 }
+                if (state.challenger !== user) {
+                    return;
+                }
+                const response = await openCharacter(text);
+                if (response === 'success') {
+                    if (!state.openList.every(x => x)) {
+                        postGameStatus(':ok:');
+                        return;
+                    }
+                    else {
+                        await postGameResult(':tada: 正解！ :partying_face:');
+                        await unlockGameAchievements();
+                        await setState({
+                            phase: 'waiting',
+                            challenger: null,
+                            thread: null,
+                            diffValue: '',
+                            answer: '',
+                            openList: [],
+                            usedCharacterList: [],
+                            triesLeft: 0,
+                        });
+                        return;
+                    }
+                } 
+                else if (response === 'failure') {
+                    if (state.triesLeft > 0) {
+                        await postGameStatus(':ng: 間違っています :ng:');
+                        return;
+                    }
+                    else {
+                        await postGameResult(':cry: ゲームオーバー :pensive:');
+                        await resetConsecutiveAchievements();
+                        await setState({
+                            phase: 'waiting',
+                            challenger: null,
+                            thread: null,
+                            diffValue: '',
+                            answer: '',
+                            openList: [],
+                            usedCharacterList: [],
+                            triesLeft: 0,
+                        });
+                        return;
+                    }
+                }
                 else {
-                    await postGameResult(':tada: 正解！ :partying_face:');
+                    postGameStatus(':thinking_face: その手はよくわからないよ :thinking_face:');
+                    return;
+                }
+            }
+            if (matches = text.match(/^!([a-z]+)/)) {
+                if (state.phase !== 'playing') {
+                    return;
+                }
+                if (state.challenger !== user) {
+                    return;
+                }
+                const response = await guessAnswer(matches[1]);
+                if (response === 'success') {
+                    postGameResult(':tada: 正解！ :astonished:');
                     await unlockGameAchievements();
                     await setState({
                         phase: 'waiting',
@@ -318,95 +385,32 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                     });
                     return;
                 }
-            } 
-            else if (response === 'failure') {
-                if (state.triesLeft > 0) {
-                    await postGameStatus(':ng: 間違っています :ng:');
-                    return;
-                }
+                else if (response === 'failure') {
+                    if (state.triesLeft > 0) {
+                        postGameStatus(':ng: 失敗です…… :ng:');
+                        return;
+                    }
+                    else {
+                        postGameResult(':cry: ゲームオーバー :pensive:');
+                        await resetConsecutiveAchievements();
+                        await setState({
+                            phase: 'waiting',
+                            challenger: null,
+                            thread: null,
+                            diffValue: '',
+                            answer: '',
+                            openList: [],
+                            usedCharacterList: [],
+                            triesLeft: 0,
+                        });
+                        return;
+                    }
+                } 
                 else {
-                    await postGameResult(':cry: ゲームオーバー :pensive:');
-                    await resetConsecutiveAchievements();
-                    await setState({
-                        phase: 'waiting',
-                        challenger: null,
-                        thread: null,
-                        diffValue: '',
-                        answer: '',
-                        openList: [],
-                        usedCharacterList: [],
-                        triesLeft: 0,
-                    });
+                    postGameStatus(':thinking_face: その手はよくわからないよ :thinking_face:');
                     return;
                 }
             }
-            else {
-                postGameStatus(':thinking_face: その手はよくわからないよ :thinking_face:');
-                return;
-            }
-        }
-        if (matches = text.match(/^!([a-z]+)/)) {
-            if (state.phase !== 'playing') {
-                return;
-            }
-            if (state.challenger !== user) {
-                return;
-            }
-            const response = await guessAnswer(matches[1]);
-            if (response === 'success') {
-                postGameResult(':tada: 正解！ :astonished:');
-                await unlockGameAchievements();
-                await setState({
-                    phase: 'waiting',
-                    challenger: null,
-                    thread: null,
-                    diffValue: '',
-                    answer: '',
-                    openList: [],
-                    usedCharacterList: [],
-                    triesLeft: 0,
-                });
-                return;
-            }
-            else if (response === 'failure') {
-                if (state.triesLeft > 0) {
-                    postGameStatus(':ng: 失敗です…… :ng:');
-                    return;
-                }
-                else {
-                    postGameResult(':cry: ゲームオーバー :pensive:');
-                    await resetConsecutiveAchievements();
-                    await setState({
-                        phase: 'waiting',
-                        challenger: null,
-                        thread: null,
-                        diffValue: '',
-                        answer: '',
-                        openList: [],
-                        usedCharacterList: [],
-                        triesLeft: 0,
-                    });
-                    return;
-                }
-            } 
-            else {
-                postGameStatus(':thinking_face: その手はよくわからないよ :thinking_face:');
-                return;
-            }
-        }
-        if (text === "reset hangman") {
-            logger.info("resetting Sadge");
-            await setState({
-                phase: 'waiting',
-                challenger: null,
-                thread: null,
-                diffValue: '',
-                answer: '',
-                openList: [],
-                usedCharacterList: [],
-                triesLeft: 0,
-            });
-            return;
         }
     });
 };
