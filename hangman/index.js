@@ -7,31 +7,13 @@ const download = require('download');
 const { stripIndents } = require("common-tags");
 const { unlock, increment, set } = require('../achievements');
 const { default: logger } = require('../lib/logger.ts');
+const { getMemberName } = require('../lib/slackUtils');
 
 const state = (() => {
     try {
-        const savedState = require('./state.json');
-        return {
-            phase: savedState.phase,
-            challenger: savedState.challenger || null,
-            thread: savedState.thread || null,
-            diffValue: savedState.diffValue || '',
-            answer: savedState.answer || '',
-            openList: savedState.openList || [],
-            usedCharacterList: savedState.usedCharacterList || [],
-            triesLeft: savedState.triesLeft || 0,
-        };
+        return require('./state.json');
     } catch (e) {
-        return {
-            phase: 'waiting',
-            challenger: null,
-            thread: null,
-            diffValue: '',
-            answer: '',
-            openList: [],
-            usedCharacterList: [],
-            triesLeft: 0,
-        };
+        return {};
     }
 })();
 
@@ -50,14 +32,19 @@ const setState = async (newState) => {
 };
 
 //open a character
-const openCharacter = async (character) => {
-    if (state.usedCharacterList.includes(character)) {
+const openCharacter = async (character, slackid) => {
+    const challenger = getChallengerById(slackid);
+    if (challenger === null) {
+        logger.error(`Not found the challenger of ID: ${slackid}`);
         return 'invalid';
     }
-    const newOpenList = state.openList.slice();
+    if (challenger.usedCharacterList.includes(character)) {
+        return 'invalid';
+    }
+    const newOpenList = challenger.openList.slice();
     let letterCount = 0;
-    for (const index of range(state.answer.length)) {
-        if (state.answer[index] === character) {
+    for (const index of range(challenger.answer.length)) {
+        if (challenger.answer[index] === character) {
             newOpenList[index] = true;
             letterCount += 1;
         }
@@ -66,45 +53,56 @@ const openCharacter = async (character) => {
     const succeeded = (letterCount > 0);
 
     if (succeeded) {
-        await increment(state.challenger, 'hangman-letters', letterCount);
+        await increment(slackid, 'hangman-letters', letterCount);
     }
 
     await setState({
-        openList: newOpenList,
-        usedCharacterList: state.usedCharacterList.concat([character]),
-        triesLeft: state.triesLeft - (succeeded ? 0 : 1),
+        ...state,
+        [slackid]: {
+            ...challenger,
+            openList: newOpenList,
+            usedCharacterList: challenger.usedCharacterList.concat([character]),
+            triesLeft: challenger.triesLeft - (succeeded ? 0 : 1),
+        }
     });
     
     return succeeded ? 'success' : 'failure';
 };
 
 //guess the whole string
-const guessAnswer = async (candidate) => {
-    const succeeded = (state.answer === candidate);
+const guessAnswer = async (candidate, challenger) => {
+    const succeeded = (challenger.answer === candidate);
+    const slackid = getChallengerByTs(challenger.thread)[0];
     if (succeeded) {
         const countUnique = (iterable) => {
             return new Set(iterable).size;
         }
-        const closedChars = state.answer.split('').filter((character, index) => !state.openList[index]);
+        const closedChars = challenger.answer.split('').filter((character, index) => !challenger.openList[index]);
         if (countUnique(closedChars) >= 3) {
-            await unlock(state.challenger, 'hangman-multiple-letters');
+            await unlock(slackid, 'hangman-multiple-letters');
         }
         return 'success';
     } 
     else {
-        await setState({
-            triesLeft: state.triesLeft - 1,
+        setState({
+            ...state,
+            [slackid]: {
+                ...challenger,
+                triesLeft: challenger.triesLeft - 1,
+            },
         });
         return 'failure';
     }
 };
 
-const getOpenListString = () => {
-    return '`' + state.openList.map((flag, index) => (flag ? state.answer[index] : '_')).join(' ') + '`';
+const getOpenListString = (slackid) => {
+    const challenger = getChallengerById(slackid);
+    return '`' + challenger.openList.map((flag, index) => (flag ? challenger.answer[index] : '_')).join(' ') + '`';
 };
 
-const getUsedString = () => {
-    return state.usedCharacterList.map(character => '`' + character + '`').join(' ') ;
+const getUsedString = (slackid) => {
+    const challenger = getChallengerById(slackid);
+    return challenger.usedCharacterList.map(character => '`' + character + '`').join(' ') ;
 };
 
 const tmpDictionary = [
@@ -165,94 +163,112 @@ const getRandomWord = (diffValue, wordList) => {
     return 'hangman';
 };
 
-const resetConsecutiveAchievements = async () => {
-    await set(state.challenger, 'hangman-consecutive', 0);
-    if (state.openList.every(x => !x)) {
-        await unlock(state.challenger, 'hangman-reverse-perfect');
+const resetConsecutiveAchievements = async (slackid) => {
+    await set(slackid, 'hangman-consecutive', 0);
+    if (state[slackid].openList.every(x => !x)) {
+        await unlock(slackid, 'hangman-reverse-perfect');
     }
 };
 
-const unlockGameAchievements = async () => {
-    await increment(state.challenger, 'hangman-clear');
-    if (state.diffValue === 'hard' || state.diffValue === 'extreme') {
-        await increment(state.challenger, 'hangman-consecutive');
+const unlockGameAchievements = async (slackid) => {
+    await increment(slackid, 'hangman-clear');
+    if (state[slackid].diffValue === 'hard' || state[slackid].diffValue === 'extreme') {
+        await increment(slackid, 'hangman-consecutive');
     }
-    if (state.triesLeft === numberOfTries) {
-        await unlock(state.challenger, 'hangman-perfect');
+    if (state[slackid].triesLeft === numberOfTries) {
+        await unlock(slackid, 'hangman-perfect');
     }
-    if (state.answer.length <= 6) {
-        await unlock(state.challenger, 'hangman-short');
+    if (state[slackid].answer.length <= 6) {
+        await unlock(slackid, 'hangman-short');
     }
-    if (state.answer.match(/[xzjq]/)) {
-        await unlock(state.challenger, 'hangman-xzjq');
+    if (state[slackid].answer.match(/[xzjq]/)) {
+        await unlock(slackid, 'hangman-xzjq');
     }
-    if (state.diffValue === 'extreme') {
-        await unlock(state.challenger, 'hangman-extreme-clear');
+    if (state[slackid].diffValue === 'extreme') {
+        await unlock(slackid, 'hangman-extreme-clear');
     }
+};
+
+const getChallengerByTs = (ts) => {
+    for (const slackid in state) {
+        if (state[slackid].thread === ts)
+            return { slackid, challenger: state[slackid]};
+    }
+    return null;
+}
+
+const getChallengerById = (slackid) => {
+    if (slackid in state) {
+        return state[slackid];
+    }
+    return null;
 };
 
 module.exports = ({ rtmClient: rtm, webClient: slack }) => {
-    const postMessage = (text, options) => slack.chat.postMessage({
+    const postMessage = (text, slackid, options) => slack.chat.postMessage({
         channel: process.env.CHANNEL_SANDBOX,
         text,
         username: 'hangmanbot',
         // eslint-disable-next-line camelcase
         icon_emoji: ':capital_abcd:',
         ...(options ? options : {}),
-        ...(state.thread ? { thread_ts: state.thread } : {}),
+        ...(slackid !== undefined && state[slackid] !== undefined && state[slackid].thread ? { thread_ts: state[slackid].thread } : {}),
     });
 
-    const postGameStatus = async (header) => {
+    const postGameStatus = async (header, slackid) => {
         return await postMessage(stripIndents`${header}
-                現在の状態: ${getOpenListString()}
-                使った文字: ${getUsedString()}
-                残機: ${state.triesLeft}`);
+                現在の状態: ${getOpenListString(slackid)}
+                使った文字: ${getUsedString(slackid)}
+                残機: ${state[slackid].triesLeft}`, slackid);
     };
 
-    const postGameResult = async (header) => {
+    const postGameResult = async (header, slackid) => {
         return await postMessage(stripIndents`${header}
-                    答えは \`${state.answer}\` でした `, {reply_broadcast: true});
+                    答えは \`${state[slackid].answer}\` でした `, slackid, {reply_broadcast: true});
     };
 
     rtm.on('message', async (message) => {
-        if (message.channel !== process.env.CHANNEL_SANDBOX || !!message.subtype) {
+        if (message.channel !== process.env.CHANNEL_SANDBOX || !!message.subtype || !message.text || message.username === 'hangmanbot' || !message.user) {
             return;
         }
 
-        if (!message.text) {
-            return;
-        }
-
-        if (message.username === 'hangmanbot') {
-            return;
-        }
-
-        if (!message.user) {
-            return;
-        }
-
-        const {text, user} = message;
+        const { text, user } = message;
         
         let matches = null;
 
         // reset command is available both within threads or not
-        if (text === "reset hangman") {
+        if (text === "hangman reset") {
             logger.info("resetting Sadge");
-            await setState({
-                phase: 'waiting',
-                challenger: null,
-                thread: null,
-                diffValue: '',
-                answer: '',
-                openList: [],
-                usedCharacterList: [],
-                triesLeft: 0,
-            });
+            const challenger = getChallengerById(user);
+            if (challenger === null) {
+                await postMessage(`*${await getMemberName(user)}* はプレイ中じゃないよ!`);
+            } else {
+                delete state[user];
+                setState(state, state);
+                await postMessage(`*${await getMemberName(user)}* のゲームをリセットしたよ!`);
+            }
             return;
         }
 
         if (!message.thread_ts && (matches = text.match(/^hangman(|\s\w*)$/i))) {
-            if (state.phase === 'waiting') {
+            // check if the challenger is now playing game
+            let challenger = getChallengerById(message.user);
+            if (challenger !== null) {
+                return await postMessage(`${await getMemberName(message.user)}はhangmanをプレイ中だよ!!`);
+            } else {
+                challenger = {
+                    phase: 'waiting',
+                    thread: null,
+                    diffValue: '',
+                    answer: '',
+                    openList: [],
+                    usedCharacterList: [],
+                    triesLeft: 0,
+                };
+                setState({ ...state, [message.user]: challenger });
+            }
+
+            if (challenger.phase === 'waiting') {
                 //string matches "hangman" or "hangman <difficulty>"
                 const difficultyString = ((matches[1] === "") ? "medium" : matches[1].slice(1));
                 if (!difficultyString.match(/easy|medium|hard|extreme/)) {
@@ -266,40 +282,38 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                 
                 const wordLength = word.length;
                 await setState({
-                    phase: 'playing',
-                    challenger: user,
-                    diffValue: difficultyString,
-                    answer: word,
-                    openList: Array(wordLength).fill(false),
-                    usedCharacterList: [],
-                    triesLeft: numberOfTries,
+                    ...state,
+                    [message.user]: {
+                        ...challenger,
+                        phase: 'playing',
+                        diffValue: difficultyString,
+                        answer: word,
+                        openList: Array(wordLength).fill(false),
+                        triesLeft: numberOfTries,
+                    }
                 });
 
-                const { ts } = await postGameStatus('Hangmanを始めるよ！正解の英単語を当てよう！');
+                const { ts } = await postGameStatus('Hangmanを始めるよ！正解の英単語を当てよう！', message.user);
 
                 await setState({
-                    thread: ts
+                    ...state,
+                    [message.user]: {
+                        ...state[message.user],
+                        thread: ts,
+                    }
                 });
 
                 await postMessage(stripIndents`答え方
                 小文字アルファベットを書く: \`x\`
-                単語を丸ごと宣言する: \`!word\``);
+                単語を丸ごと宣言する: \`!word\``, message.user);
 
-                const currentThread = state.thread;
+                const currentThread = state[message.user].thread;
                 setTimeout(async () => {
-                    if (currentThread === state.thread) {
-                        await postGameResult(':clock3: タイムオーバー :sweat:');
-                        await resetConsecutiveAchievements();
-                        await setState({
-                            phase: 'waiting',
-                            challenger: null,
-                            thread: null,
-                            diffValue: '',
-                            answer: '',
-                            openList: [],
-                            usedCharacterList: [],
-                            triesLeft: 0,
-                        });
+                    if (currentThread === state[message.user].thread) {
+                        await postGameResult(':clock3: タイムオーバー :sweat:', message.user);
+                        await resetConsecutiveAchievements(message.user);
+                        delete state[message.user];
+                        setState(state, state);
                     }
                 }, 4 * 60 * 1000);
                 
@@ -307,107 +321,86 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
             }
         }
         if (!!message.thread_ts) { // available only within the thread
+            const {slackid, challenger} = getChallengerByTs(message.thread_ts);
+            if (challenger === null) {
+                logger.error(`Not found the user with ts(${message.thread_ts})`);
+                return;
+            }
             if (text.match(/^[a-z]$/)) {
-                if (state.phase !== 'playing') {
+                if (challenger.phase !== 'playing') {
                     return;
                 }
-                if (state.challenger !== user) {
+                if (slackid !== user) {
                     return;
                 }
-                const response = await openCharacter(text);
+                const response = await openCharacter(text, slackid);
                 if (response === 'success') {
-                    if (!state.openList.every(x => x)) {
-                        postGameStatus(':ok:');
+                    if (!state[slackid].openList.every(x => x)) {
+                        postGameStatus(':ok:', slackid);
                         return;
                     }
                     else {
-                        await postGameResult(':tada: 正解！ :partying_face:');
-                        await unlockGameAchievements();
-                        await setState({
-                            phase: 'waiting',
-                            challenger: null,
-                            thread: null,
-                            diffValue: '',
-                            answer: '',
-                            openList: [],
-                            usedCharacterList: [],
-                            triesLeft: 0,
-                        });
+                        await postGameResult(':tada: 正解！ :partying_face:', slackid);
+                        await unlockGameAchievements(slackid);
+                        delete state[slackid];
+                        setState(state, state);
                         return;
                     }
                 } 
                 else if (response === 'failure') {
-                    if (state.triesLeft > 0) {
-                        await postGameStatus(':ng: 間違っています :ng:');
+                    if (state[slackid].triesLeft > 0) {
+                        await postGameStatus(':ng: 間違っています :ng:', slackid);
                         return;
                     }
                     else {
-                        await postGameResult(':cry: ゲームオーバー :pensive:');
-                        await resetConsecutiveAchievements();
-                        await setState({
-                            phase: 'waiting',
-                            challenger: null,
-                            thread: null,
-                            diffValue: '',
-                            answer: '',
-                            openList: [],
-                            usedCharacterList: [],
-                            triesLeft: 0,
-                        });
+                        await postGameResult(':cry: ゲームオーバー :pensive:', slackid);
+                        await resetConsecutiveAchievements(slackid);
+                        delete state[slackid];
+                        setState(state, state);
                         return;
                     }
                 }
                 else {
-                    postGameStatus(':thinking_face: その手はよくわからないよ :thinking_face:');
+                    postGameStatus(':thinking_face: その手はよくわからないよ :thinking_face:', slackid);
                     return;
                 }
             }
             if (matches = text.match(/^!([a-z]+)/)) {
-                if (state.phase !== 'playing') {
+                const {slackid, challenger} = getChallengerByTs(message.thread_ts);
+                if (challenger === null) {
+                    logger.error(`Not found the user with ts(${message.thread_ts})`);
                     return;
                 }
-                if (state.challenger !== user) {
+
+                if (challenger.phase !== 'playing') {
                     return;
                 }
-                const response = await guessAnswer(matches[1]);
+                if (slackid !== user) {
+                    return;
+                }
+                const response = await guessAnswer(matches[1], challenger);
                 if (response === 'success') {
-                    postGameResult(':tada: 正解！ :astonished:');
-                    await unlockGameAchievements();
-                    await setState({
-                        phase: 'waiting',
-                        challenger: null,
-                        thread: null,
-                        diffValue: '',
-                        answer: '',
-                        openList: [],
-                        usedCharacterList: [],
-                        triesLeft: 0,
-                    });
+                    postGameResult(':tada: 正解！ :astonished:', slackid);
+                    await unlockGameAchievements(slackid);
+                    delete state[slackid];
+                    setState(state, state);
                     return;
                 }
                 else if (response === 'failure') {
-                    if (state.triesLeft > 0) {
-                        postGameStatus(':ng: 失敗です…… :ng:');
+                    if (challenger.triesLeft > 0) {
+                        postGameStatus(':ng: 失敗です…… :ng:', slackid);
                         return;
                     }
                     else {
-                        postGameResult(':cry: ゲームオーバー :pensive:');
-                        await resetConsecutiveAchievements();
-                        await setState({
-                            phase: 'waiting',
-                            challenger: null,
-                            thread: null,
-                            diffValue: '',
-                            answer: '',
-                            openList: [],
-                            usedCharacterList: [],
-                            triesLeft: 0,
-                        });
+                        postGameResult(':cry: ゲームオーバー :pensive:', slackid);
+                        await resetConsecutiveAchievements(slackid);
+                        delete state[slackid];
+                        setState(state, state);
                         return;
                     }
                 } 
                 else {
-                    postGameStatus(':thinking_face: その手はよくわからないよ :thinking_face:');
+                    postGameStatus(':thinking_face: その手はよくわからないよ :thinking_face:', slackid);
                     return;
                 }
             }
