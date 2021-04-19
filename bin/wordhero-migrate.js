@@ -22,7 +22,7 @@ const colors = [
 ];
 
 for (const i of Array(1).keys()) {
-	const filename = `crossword-board-9.svg`;
+	const filename = `../wordhero/crossword-board-9.svg`;
 	const buf = fs.readFileSync(filename);
 
 	const has = (element, name) => {
