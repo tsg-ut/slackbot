@@ -30,38 +30,28 @@ cp .env.example .env
 # .envをいい感じに編集する
 ```
 
-`CHANNEL_XXX`系は全部自分宛のDMを指定するのがオススメ。
-
-`SLACK_TOKEN` は [@tsgbot の OAuth & Permissions](https://api.slack.com/apps/ADMCWEP5X/oauth) から必要な権限のみに絞ったTokenを発行するのをオススメ。アクセスできない場合は管理者権限がありそうな人に聞いてください。
-
-大抵必要な設定項目
-
-* `HAKATASHI_TOKEN`: 自分のUser token
-* `SLACK_TOKEN`: 自分のBot token
-* `SIGNING_SECRET`: 手元でテストする分には適当な文字列でよい
-* `USER_TSGBOT`: @tsgbotのユーザー名
-
-必要なスコープ
-
-* `channels:history`
-* `channels:write`
-* `chat:write:bot`
-* `chat:write:user`
-* `incoming-webhook`
-* `bot`
-* `commands`
-* `users:read`
-
-`IMAGEBIN_KEY`はshogiを開発する時以外は必要ない。必要な場合は https://imagebin.ca/tools.php からAPIキーを取得。
-
-#### shogiのセットアップ
-
-[nine-grids-shogi-analyzer](https://github.com/hakatashi/nine-grids-shogi-analyzer)を実行したら生成される`test.sqlite3`を`slackbot/shogi/boards/test.sqlite3`に配置する。
-
-### 実行
+## 実行
 
 ```sh
 npm run dev
+```
+
+### 必要なBOTのみ実行する
+
+```sh
+npm run dev -- --only [bot id]
+```
+
+## テスト実行
+
+```sh
+npm test
+```
+
+### 必要なテストのみ実行する
+
+```sh
+npm test -- [regex pattern]
 ```
 
 ## デプロイ
