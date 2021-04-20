@@ -1,4 +1,5 @@
 import type {SlackInterface} from '../lib/slack';
+import logger from '../lib/logger';
 import cloudinary from 'cloudinary';
 import sharp from 'sharp';
 import path from 'path';
@@ -142,6 +143,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     };
 
     const Launch = async () => {
+        logger.info('[OCTAS] instance launched.');
         state.isHolding = true;
         state.board = new Board({width: 5, height: 5});
         state.paper = dom.window.Snap();
@@ -216,6 +218,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
             });
 
             // begin match!
+            logger.info('[OCTAS] matching accepted.');
         }
     };
 
@@ -289,7 +292,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
             }],
             username: 'octas',
             icon_emoji: ':octopus:',
-            reply_broadcast: true,
         });
 
         await slack.chat.postMessage({
