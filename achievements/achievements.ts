@@ -2490,6 +2490,47 @@ const achievements: Achievement[] = [
 		category: 'hangman',
 	},
 
+	// octas
+	{
+		id: 'octas-beginner',
+		difficulty: 'easy',
+		title: 'octasプレーヤー',
+		condition: 'octasをプレーする',
+		category: 'octas',
+	},
+	{
+		id: 'octas-win-1',
+		difficulty: 'medium',
+		title: '初ゴール',
+		condition: 'octasで他人に勝利する',
+		category: 'octas',
+		counter: 'octas-win',
+		value: 1,
+	},
+	{
+		id: 'octas-win-5',
+		difficulty: 'medium',
+		title: 'octasエキスパート',
+		condition: 'octasで他人に5回勝利する',
+		category: 'octas',
+		counter: 'octas-win',
+		value: 5,
+	},
+	{
+		id: 'octas-owngoaler',
+		difficulty: 'easy',
+		title: 'オウンゴール',
+		condition: 'octasで自分から自陣のゴールに入れる',
+		category: 'octas',
+	},
+	{
+		id: 'octas-catch',
+		difficulty: 'hard',
+		title: '袋の鼠',
+		condition: 'octasで相手を手詰まりで負かす',
+		category: 'octas',
+	},
+
 	// achievements
 
 	{
