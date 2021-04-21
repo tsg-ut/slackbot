@@ -538,7 +538,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const labels = dataValues.slice().reverse().map(({username}) => `@${username}`).join('|');
 
 			const chartUrl = `https://image-charts.com/chart?${qs.encode({
-				chan: '2000,easeOutCubic',
 				chbr: 3,
 				chco: 'fdb45c,ff5500,27c9c2,003fc7',
 				chd: `a:${series1}|${series2}|${series3}|${series4}`,
