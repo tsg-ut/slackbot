@@ -1961,7 +1961,7 @@ const achievements: Achievement[] = [
 		value: 20,
 	},
 	{
-		id: 'atcoder-typical-solves-20',
+		id: 'atcoder-typical-solves-50',
 		difficulty: 'hard',
 		title: '増築王高橋君',
 		condition: 'AtCoder Beginners Selection (practice A を除く) と競プロ典型90問の問題のうち50問を解く',
