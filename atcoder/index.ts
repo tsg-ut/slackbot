@@ -470,6 +470,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		const typicalSolves = new Map<string, number>();
 
 		for (const {user, standing} of userStandings) {
+			if (standing === undefined) {
+				continue;
+			}
 			const solves = Object.values(standing.TaskResults).filter((result) => result.Status === 1).length;
 			typicalSolves.set(user, solves);
 		}
@@ -479,6 +482,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		for (const user of state.users) {
 			logger.info(`[atcoder-daily] Fetching result of ABS (user = ${user.atcoder})`);
+
+			await new Promise((resolve) => setTimeout(resolve, 3000));
 			const submissions = await crawlSubmissionsByUser('abs', user.atcoder);
 			const acceptedProblems = new Set<string>();
 
@@ -530,7 +535,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const series2 = dataValues.map(({values}) => values[1].toString()).join();
 			const series3 = dataValues.map(({values}) => values[2].toString()).join();
 			const series4 = dataValues.map(({values}) => values[3].toString()).join();
-			const labels = dataValues.slice().reverse().map(({username}) => username).join('|');
+			const labels = dataValues.slice().reverse().map(({username}) => `@${username}`).join('|');
 
 			const chartUrl = `https://image-charts.com/chart?${qs.encode({
 				chan: '2000,easeOutCubic',
