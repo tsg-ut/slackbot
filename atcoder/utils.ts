@@ -1,5 +1,5 @@
-import scrapeIt from 'scrape-it';
 import {last} from 'lodash';
+import scrapeIt from 'scrape-it';
 
 interface Submission {
 	time: Date,
@@ -82,7 +82,7 @@ export const crawlSubmissionsByUser = async (contestId: string, user: string) =>
 						attr: 'href',
 						convert: (text) => parseInt(last(text.split('/'))),
 					},
-				}
+				},
 			},
 		});
 

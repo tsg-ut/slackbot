@@ -8,7 +8,6 @@ import schedule from 'node-schedule';
 // @ts-ignore
 import prime from 'primes-and-factors';
 import scrapeIt from 'scrape-it';
-import {crawlSubmissionsByUser} from './utils';
 import {increment, unlock, set, get} from '../achievements/index.js';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
@@ -16,6 +15,7 @@ import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
 // eslint-disable-next-line no-unused-vars
 import type {Results, Standings} from './types';
+import {crawlSubmissionsByUser} from './utils';
 
 const mutex = new Mutex();
 
@@ -465,12 +465,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		const oneDayLater = now.clone().add(1, 'day');
 
 		// typical shojin notifications
-		logger.info(`[atcoder-daily] Fetching result of typical90`);
+		logger.info('[atcoder-daily] Fetching result of typical90');
 		const {userStandings} = await getStandings('typical90');
 		const typicalSolves = new Map<string, number>();
 
 		for (const {user, standing} of userStandings) {
-			const solves = Object.values(standing.TaskResults).filter((result) => result.Status === 1).length
+			const solves = Object.values(standing.TaskResults).filter((result) => result.Status === 1).length;
 			typicalSolves.set(user, solves);
 		}
 
@@ -502,15 +502,18 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 			let username = await getMemberName(user.slack);
 			if (username.length > 12) {
-				username = username.slice(0, 10) + '...';
+				username = `${username.slice(0, 10)}...`;
 			}
 
-			dataValues.push({username, values: [
-				previousAbsSolve,
-				absSolve - previousAbsSolve,
-				previousTypicalSolve,
-				typicalSolve - previousTypicalSolve,
-			]});
+			dataValues.push({
+				username,
+				values: [
+					previousAbsSolve,
+					absSolve - previousAbsSolve,
+					previousTypicalSolve,
+					typicalSolve - previousTypicalSolve,
+				],
+			});
 		}
 
 		dataValues.sort((a, b) => sum(b.values) - sum(a.values));
@@ -556,7 +559,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 							emoji: true,
 						},
 						image_url: chartUrl,
-						alt_text: 'AtCoder典型問題精進グラフ (AtCoder Beginners Selection + 競プロ典型90問)'
+						alt_text: 'AtCoder典型問題精進グラフ (AtCoder Beginners Selection + 競プロ典型90問)',
 					},
 				],
 			});
