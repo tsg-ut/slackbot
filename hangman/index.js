@@ -273,6 +273,9 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                 const difficultyString = ((matches[1] === "") ? "medium" : matches[1].slice(1));
                 if (!difficultyString.match(/easy|medium|hard|extreme/)) {
                     await postMessage('難易度はeasy/medium/hard/extremeのどれかを指定してね');
+                    delete state[message.user];
+                    setState(state, state);
+
                     return;
                 }
 
