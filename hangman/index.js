@@ -223,8 +223,15 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
     };
 
     const postGameResult = async (header, slackid) => {
-        return await postMessage(stripIndents`${header}
-                    答えは \`${state[slackid].answer}\` でした `, slackid, {reply_broadcast: true});
+        const challenger = getChallengerById(slackid);
+        return await postMessage(
+            stripIndents`
+                ${header}
+                答えは \`${challenger.answer}\` でした
+                ${challenger.triesLeft === numberOfTries ? 'パーフェクト解答！すごいね！ :ojigineko-drug:' : ''}`,
+            slackid, {
+                reply_broadcast: true
+        });
     };
 
     rtm.on('message', async (message) => {
