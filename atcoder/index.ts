@@ -497,7 +497,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const typicalSolve = typicalSolves.get(user.slack) || 0;
 
 			const previousAbsSolve = (await get(user.slack, 'atcoder-abs-solves')) || 0;
-			const previousTypicalSolve = (await get(user.slack, 'atcoder-typical-solves')) || 0;
+			const previousTypicalSolve = ((await get(user.slack, 'atcoder-typical-solves')) || 0) - previousAbsSolve;
 
 			set(user.slack, 'atcoder-abs-solves', absSolve);
 			set(user.slack, 'atcoder-typical-solves', absSolve + typicalSolve);
@@ -553,17 +553,17 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				username: 'atcoder',
 				icon_emoji: ':atcoder:',
 				channel: process.env.CHANNEL_PROCON,
-				text: 'AtCoder典型問題精進状況 (AtCoder Beginners Selection + 競プロ典型90問)',
+				text: 'AtCoder典型問題精進状況 (精選10問 + 典型90問)',
 				blocks: [
 					{
 						type: 'image',
 						title: {
 							type: 'plain_text',
-							text: 'AtCoder典型問題精進グラフ (AtCoder Beginners Selection + 競プロ典型90問)',
+							text: 'AtCoder典型問題精進状況 (精選10問 + 典型90問)',
 							emoji: true,
 						},
 						image_url: chartUrl,
-						alt_text: 'AtCoder典型問題精進グラフ (AtCoder Beginners Selection + 競プロ典型90問)',
+						alt_text: 'AtCoder典型問題精進状況 (精選10問 + 典型90問)',
 					},
 				],
 			});
