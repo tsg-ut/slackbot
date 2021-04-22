@@ -228,7 +228,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
             stripIndents`
                 ${header}
                 答えは \`${challenger.answer}\` でした
-                ${challenger.triesLeft === numberOfTries ? 'パーフェクト解答！すごいね！ :ojigineko-drug:' : ''}`,
+                ${challenger.triesLeft === numberOfTries ? ':ojigineko-superfast: パーフェクト解答！すごいね！ :ojigineko-drug:' : ''}`,
             slackid, {
                 reply_broadcast: true
         });
