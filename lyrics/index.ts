@@ -153,8 +153,8 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
     rtmClient.on('message', async message => {
         if (message.channel !== process.env.CHANNEL_SANDBOX) return;
         if (!message.text) return;
-        if (message.text.startsWith('@きつね ')) {
-            const keyword = message.text.replace('@きつね ', '');
+        if (message.text.startsWith('@lyrics ')) {
+            const keyword = message.text.replace('@lyrics ', '');
             const songInfo: SongInfo | null = await search(keyword);
             const defaultResponseFormat = {
                 channel: message.channel,
