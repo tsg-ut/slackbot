@@ -42,7 +42,7 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 		return discordSandbox.join();
 	};
 	const roomNotifyCache = {
-		lastUnixTime: 0, nicks: <string[]>[], ts: '', action: ''
+		lastUnixTime: 0, nicks: <string[]>[], ts: '', action: '',
 	};
 	const notifyCacheLimit = 60000; // 1min
 	const nickSummarizer = (nicks: string[]) => {
@@ -50,12 +50,11 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 			return `＊${nicks[0]}＊, ＊${nicks[1]}＊, ほか${nicks.length - 2}名`;
 		} else if (nicks.length === 2) {
 			return `＊${nicks[0]}＊, ＊${nicks[1]}＊`;
-		} else if (nicks.length === 1){
+		} else if (nicks.length === 1) {
 			return `＊${nicks[0]}＊`;
-		} else {
-			return '';
 		}
-	}
+		return '';
+	};
 
 	const hayaoshi = new Hayaoshi(joinVoiceChannelFn);
 	const tts = new TTS(joinVoiceChannelFn);
@@ -150,7 +149,7 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 			const count = newState.channel.members.size;
 			const actionName = 'join';
 
-			if (roomNotifyCache.lastUnixTime + notifyCacheLimit > eventTime && roomNotifyCache.action === actionName)  {
+			if (roomNotifyCache.lastUnixTime + notifyCacheLimit > eventTime && roomNotifyCache.action === actionName) {
 				roomNotifyCache.nicks.push(nick);
 				await slack.chat.update({
 					ts: roomNotifyCache.ts,
@@ -168,7 +167,7 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 						},
 						getMembersBlock(roomName, newState.channel.members),
 					],
-				})
+				});
 			} else {
 				const response = await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
