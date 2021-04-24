@@ -63,10 +63,10 @@ export const getSongInfo = async (songInfoUrl: string, keyword: string): Promise
             selector: 'link[rel=canonical]',
             attr: 'href',
         },
-        title: '.title h2',
-        artist: '.artist',
-        lyricist: 'h4[itemprop=lyricist]',
-        composer: 'h4[itemprop=composer]',
+        title: 'h2',
+        artist: 'span[itemprop^=byArtist]',
+        lyricist: 'a[itemprop=lyricist]',
+        composer: 'a[itemprop=composer]',
         kashiHTML: {
             selector: '#kashi_area',
             how: 'html',
@@ -153,8 +153,8 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
     rtmClient.on('message', async message => {
         if (message.channel !== process.env.CHANNEL_SANDBOX) return;
         if (!message.text) return;
-        if (message.text.startsWith('@lyrics ')) {
-            const keyword = message.text.replace('@lyrics ', '');
+        if (message.text.startsWith('@きつね ')) {
+            const keyword = message.text.replace('@きつね ', '');
             const songInfo: SongInfo | null = await search(keyword);
             const defaultResponseFormat = {
                 channel: message.channel,
