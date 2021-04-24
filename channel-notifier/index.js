@@ -5,13 +5,10 @@ module.exports = (clients) => {
 	const {rtmClient: rtm, webClient: slack} = clients;
 
 	const notify = async ({type, channel, user}) => {
-		await axios.post('https://slack.com/api/channels.invite', {
+		await slack.conversations.invite({
 			channel,
-			user: process.env.USER_TSGBOT,
-		}, {
-			headers: {
-				Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
-			},
+			users: process.env.USER_TSGBOT, // A comma separated list of user IDs
+			token: process.env.HAKATASHI_TOKEN,
 		});
 
 		const verb = type === 'create' ? '作成' : 'アーカイブから復元';

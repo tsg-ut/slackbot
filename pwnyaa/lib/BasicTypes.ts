@@ -3,6 +3,8 @@ export interface User {
   slackId: string,
   idCtf: string, // can be empty to represent only user itself
   selfSolvesWeekly?: number,
+  longestStreak?: number,
+  currentStreak?: number,
 }
 
 // Site Information
@@ -13,6 +15,10 @@ export interface Contest{
   alias: string[],
   numChalls: number,
   joiningUsers: User[],
+  achievementStr?: string,
+  fetchUserProfile?: (_username: string) => Promise<Profile>,
+  findUserByName?: (_username: string) => Promise<{ userid: string, name: string }>,
+  fetchChalls?: () => Promise<Challenge[]>,
 }
 
 // Challenge information per-site
@@ -27,4 +33,14 @@ export interface SolvedInfo{
   solvedAt: Date, // UTC
   name: string,
   score: number,
+}
+
+export interface Profile{
+  username: string,
+  country: string,
+  rank: string,
+  score: string,
+  comment: string,
+  registeredAt: string,					// UTC
+  solvedChalls: SolvedInfo[],
 }

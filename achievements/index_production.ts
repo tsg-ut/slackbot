@@ -44,8 +44,8 @@ const difficultyToStars = (difficulty: Difficulty) => (
 	}[difficulty]
 );
 
-const loadDeferred = new Deferred();
-const initializeDeferred = new Deferred();
+const loadDeferred = new Deferred<WebClient>();
+const initializeDeferred = new Deferred<void>();
 
 export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
 	loadDeferred.resolve(slack);
@@ -168,24 +168,6 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 	}
 
 	initializeDeferred.resolve();
-
-	const {members}: any = await slack.users.list();
-
-	for (const memberChunks of chunk(Array.from(members), 300) as any) {
-		const batch = db.batch();
-		for (const member of memberChunks) {
-			if (usersSet.has(member.id)) {
-				batch.update(db.collection('users').doc(member.id), {
-					info: member,
-				});
-			} else {
-				batch.set(db.collection('users').doc(member.id), {
-					info: member,
-				});
-			}
-		}
-		await batch.commit();
-	}
 
 	const achievementsDataData = await db.collection('achievement_data').get();
 	const achievementsDataSet = new Set(achievementsDataData.docs.map((a) => a.id));
@@ -447,5 +429,14 @@ export const set = async (user: string, name: string, value: any) => {
 	}
 
 	state.users.get(user)[name] = value;
+
+	if (typeof value === 'number') {
+		const unlocked = Array.from(achievements.values()).filter((achievement) => achievement.counter === name && achievement.value <= value);
+		for (const achievement of unlocked) {
+			unlock(user, achievement.id);
+		}
+	}
+
 	updateDb({type: 'set', user, name, value});
 };
+

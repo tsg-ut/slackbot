@@ -44,5 +44,23 @@ const sortBy = require('lodash/sortBy');
 			));
 			await transaction.update(db.collection('users').doc(user), {counts: categories});
 		}
+
+		const difficultyCounts = countBy(achievements.docs, (achievement) => achievementData.get(achievement.get('name')).get('difficulty'));
+		for (const [difficulty, count] of Object.entries(difficultyCounts)) {
+			await transaction.set(db.collection('achievement_stats_by_difficulty').doc(difficulty), {count});
+		}
+
+		const categoryCounts = countBy(achievements.docs, (achievement) => achievementData.get(achievement.get('name')).get('category'));
+		for (const [category, count] of Object.entries(categoryCounts)) {
+			await transaction.set(db.collection('achievement_stats_by_category').doc(category), {count});
+		}
+
+		const monthCounts = countBy(achievements.docs, (achievement) => {
+			const date = new Date(achievement.get('date').seconds * 1000);
+			return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+		});
+		for (const [month, count] of Object.entries(monthCounts)) {
+			await transaction.set(db.collection('achievement_stats_by_month').doc(month), {count});
+		}
 	});
 })();

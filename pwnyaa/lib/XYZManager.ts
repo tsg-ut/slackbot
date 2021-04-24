@@ -1,19 +1,9 @@
 import qs from 'querystring';
 import axios, {AxiosResponse} from 'axios';
 import scrapeIt from 'scrape-it';
-import {Challenge, SolvedInfo} from './BasicTypes';
+import {Challenge, SolvedInfo, Profile} from './BasicTypes';
 
 const SAFELIMIT = 100;
-
-export interface profileXYZ{
-  username: string,
-  country: string,
-  rank: string,
-  score: string,
-  comment: string,
-  registeredAt: string,					// UTC
-  solvedChalls: SolvedInfo[],
-}
 
 const getAxiosClientXYZ = () => {
 	const clientXYZ = axios.create({
@@ -69,6 +59,7 @@ const str2dateXYZ = (strDate: string): Date => {
 	if (elements.length <= 1) {
 		return null;
 	}
+	const ispm = strDate.includes('p.m.');
 	const month = (`00${String(strmons.indexOf(elements[0]))}`).slice(-2); // month is 0-indexed
 	const day = (`00${elements[1].substring(0, elements[1].length - 1)}`).slice(-2);
 	const year = elements[2].substring(0, elements[2].length - 1);
@@ -82,12 +73,15 @@ const str2dateXYZ = (strDate: string): Date => {
 	const seconds = '00';
 
 	const resDate = new Date(Date.UTC(Number(year), Number(month), Number(day), Number(hour), Number(minute), Number(seconds)));
+	if (ispm) {
+		resDate.setTime(resDate.getTime() + (12 * 60 * 60 * 1000));
+	}
 	return resDate;
 };
 
 const parseProfileXYZ = async (html: any) => {
 	// Parse profile except for solved challs.
-	const {fetchedBasicProfiles} = await scrapeIt.scrapeHTML<{ fetchedBasicProfiles: profileXYZ[] }>(html, {
+	const {fetchedBasicProfiles} = await scrapeIt.scrapeHTML<{ fetchedBasicProfiles: Profile[] }>(html, {
 		fetchedBasicProfiles: {
 			listItem: 'div.col-md-4',
 			data: {
@@ -109,7 +103,7 @@ const parseProfileXYZ = async (html: any) => {
 			},
 		},
 	});
-	const fetchedProfile: profileXYZ = {
+	const fetchedProfile: Profile = {
 		...fetchedBasicProfiles[0],
 	};
 

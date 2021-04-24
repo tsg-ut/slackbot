@@ -8,6 +8,7 @@ module.exports = {
 		'!**/*.test.{js,ts}',
 	],
 	coveragePathIgnorePatterns: [
+		'bin',
 		'coverage',
 		'/node_modules/',
 	],

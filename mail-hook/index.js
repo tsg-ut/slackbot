@@ -1,4 +1,4 @@
-const logger = require('../lib/logger.js');
+const {default: logger} = require('../lib/logger.ts');
 const isValidUTF8 = require('utf-8-validate');
 const encodingJapanese = require('encoding-japanese');
 const libmime = require('libmime');

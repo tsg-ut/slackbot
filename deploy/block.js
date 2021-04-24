@@ -7,7 +7,7 @@ module.exports = class Blocker {
 	async block(name) {
 		await this.waitPromise;
 
-		let resolve;
+		let resolve = null;
 		const promise = new Promise((_resolve) => resolve = _resolve);
 
 		const block = {name, promise, time: Date.now()};
@@ -20,7 +20,7 @@ module.exports = class Blocker {
 	}
 
 	async wait(callback, interval, intervalCallback) {
-		let intervalID;
+		let intervalID = null;
 		if (intervalCallback) {
 			intervalID = setInterval(() => {
 				intervalCallback(this.blocks);

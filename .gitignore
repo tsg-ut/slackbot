@@ -69,3 +69,5 @@ target
 tokens.sqlite3
 
 .DS_Store
+
+.vscode

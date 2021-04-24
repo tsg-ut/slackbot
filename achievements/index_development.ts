@@ -1,11 +1,16 @@
+import logger from '../lib/logger';
+
 export default async () => {};
 
 export const unlock = (user: string, name: string, additionalInfo?: string) => {
-	console.log(`${user} unlocked ${name}${additionalInfo === null ? '' : (`, ${additionalInfo}`)}`);
+	logger.debug(`${user} unlocked ${name}${additionalInfo ? `, ${additionalInfo}` : ''}`);
 };
-
 export const isUnlocked = () => false;
-export const increment = () => {};
+export const increment = (user: string, name: string, value: number = 1) => {
+	logger.debug(`${user} incresed ${name} by ${value}`);
+};
 export const get = (): any => null;
-export const set = () => {};
+export const set = (user: string, name: string, value: any) => {
+	logger.debug(`${user} set ${name} = ${value}`);
+};
 export const lock = () => {};

@@ -1,6 +1,5 @@
 import axios from 'axios';
-// @ts-ignore
-import logger from '../lib/logger.js';
+import logger from '../lib/logger';
 
 const welcomeScrapboxUrl = `https://scrapbox.io/api/pages/tsg/welcome`;
 
@@ -38,7 +37,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
-				text: `welcome for <@${user}> done :heavy_check_mark:`,
+				text: `Welcome <@${user}> to TSG! :tada:`,
 				icon_emoji: ':tsg:',
 				username: 'welcome',
 			});

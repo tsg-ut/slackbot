@@ -56,7 +56,7 @@ class Oogiri {
 
 	state: State;
 
-	loadDeferred: Deferred;
+	loadDeferred: Deferred<void>;
 
 	previousTick: number;
 

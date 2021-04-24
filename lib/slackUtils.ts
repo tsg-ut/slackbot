@@ -8,8 +8,8 @@ const webClient = new WebClient();
 const additionalMembers: any[] = [];
 const additionalEmojis: any[] = [];
 
-const loadMembersDeferred = new Deferred();
-const loadEmojisDeferred = new Deferred();
+const loadMembersDeferred = new Deferred<Array<any>>();
+const loadEmojisDeferred = new Deferred<Array<any>>();
 
 getTokens().then(async (tokens) => {
 	for (const token of tokens) {
@@ -32,14 +32,14 @@ getTokens().then(async (tokens) => {
 		});
 	}
 
-	Promise.all(tokens.map(async (token) => { 
+	Promise.all(tokens.map(async (token) => {
 		const {members} = await webClient.users.list({token: token.bot_access_token});
 		return members;
 	})).then((usersArray) => {
 		loadMembersDeferred.resolve(flatten(usersArray));
 	});
 
-	Promise.all(tokens.map(async (token) => { 
+	Promise.all(tokens.map(async (token) => {
 		const {emoji}: any = await webClient.emoji.list({token: token.access_token});
 		const {team}: any = await webClient.team.info({token: token.bot_access_token});
 		return Object.entries(emoji).map(([name, url]) => ({
@@ -52,13 +52,20 @@ getTokens().then(async (tokens) => {
 	});
 });
 
+export const getAllMembers = async (): Promise<Array<any>> => {
+	return [
+		...additionalMembers,
+		...(await loadMembersDeferred.promise),
+	];
+};
+
 export const getMemberName = async (user: string): Promise<string> => {
 	const members = [
 		...additionalMembers,
 		...(await loadMembersDeferred.promise),
 	];
 	const member = members.find(({id}: any) => id === user);
-	return member.profile.display_name || member.name;
+	return member.profile.display_name || member.profile.real_name || member.name;
 };
 
 type IconResolution = 24 | 32 | 48 | 72 | 192 | 512;

@@ -8,7 +8,7 @@ const {hiraganize} = require('japanese');
 
 (async () => {
 	const dictionary = [];
-	const reader = fs.createReadStream('dict/entries.tsv');
+	const reader = fs.createReadStream('../wordhero/dict/entries.tsv');
 	const parser = parse({
 		delimiter: '\t',
 		quote: null,
@@ -21,7 +21,7 @@ const {hiraganize} = require('japanese');
 
 	parser.on('end', () => {
 		console.log(dictionary.length);
-		const writer = fs.createWriteStream('dict/query.sql');
+		const writer = fs.createWriteStream('../wordhero/dict/query.sql');
 		const words = new Set();
 		writer.write('CREATE TABLE words (word TEXT, ruby TEXT, description TEXT);\n')
 		writer.write('BEGIN TRANSACTION;\n');
@@ -41,7 +41,7 @@ const {hiraganize} = require('japanese');
 		writer.write('COMMIT;');
 		writer.end();
 		console.log(words.size);
-		const wordsWriter = fs.createWriteStream('crossword.txt');
+		const wordsWriter = fs.createWriteStream('../wordhero/crossword.txt');
 		for (const ruby of words) {
 			wordsWriter.write(ruby + '\n');
 		}

@@ -12,15 +12,18 @@ import {createEventAdapter} from '@slack/events-api';
 import {createMessageAdapter} from '@slack/interactive-messages';
 import Fastify from 'fastify';
 
-// @ts-ignore
-import logger from './lib/logger.js';
+import logger from './lib/logger';
 import yargs from 'yargs';
 
 import fastifyFormbody from 'fastify-formbody';
 import fastifyExpress from 'fastify-express';
 
+import sharp from 'sharp';
+
+// Disable the cache since it likely hits the swap anyway
+sharp.cache(false);
+
 const fastify = Fastify({
-	logger: true,
 	pluginTimeout: 50000,
 });
 
@@ -61,7 +64,7 @@ const allBots = [
 	'anime',
 	'anime/anison',
 	'oogiri',
-	'sort-nazonazo',
+	'sorting-riddles',
 	'tsglive',
 	'emoji-modifier',
 	'context-free',
@@ -73,6 +76,9 @@ const allBots = [
 	'discord',
 	'octas',
 	'pwnyaa',
+	'amongyou',
+	'api',
+	'hangman',
 ];
 
 logger.info('slackbot started');

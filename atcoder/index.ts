@@ -1,24 +1,21 @@
-import {constants, promises as fs} from 'fs';
-import path from 'path';
 import qs from 'querystring';
 import {Mutex} from 'async-mutex';
 import axios from 'axios';
-// @ts-ignore
 import {stripIndent} from 'common-tags';
-import {sumBy, minBy} from 'lodash';
+import {sumBy, minBy, sum} from 'lodash';
 import moment from 'moment';
-// @ts-ignore
 import schedule from 'node-schedule';
 // @ts-ignore
 import prime from 'primes-and-factors';
 import scrapeIt from 'scrape-it';
-import {increment, unlock} from '../achievements/index.js';
-// @ts-ignore
-import logger from '../lib/logger.js';
+import {increment, unlock, set, get} from '../achievements/index.js';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
+import State from '../lib/state';
 // eslint-disable-next-line no-unused-vars
-import {Results, Standings} from './types';
+import type {Results, Standings} from './types';
+import {crawlSubmissionsByUser} from './utils';
 
 const mutex = new Mutex();
 
@@ -101,7 +98,7 @@ const formatNumber = (number: number) => {
 	return number.toString();
 };
 
-interface State {
+interface StateObj {
 	users: {atcoder: string, slack: string}[],
 	contests: {id: string, date: number, title: string, duration: number, isPosted: boolean, isPreposted: boolean, ratedCount: number}[],
 }
@@ -114,19 +111,10 @@ interface ContestEntry {
 }
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
-	const statePath = path.resolve(__dirname, 'state.json');
-	const exists = await fs.access(statePath, constants.F_OK).then(() => true).catch(() => false);
-	const state: State = {
+	const state = await State.init<StateObj>('atcoder', {
 		users: [],
 		contests: [],
-		...(exists ? JSON.parse((await fs.readFile(statePath)).toString()) : {}),
-	};
-
-	await fs.writeFile(statePath, JSON.stringify(state));
-	const setState = (object: {[key: string]: any}) => {
-		Object.assign(state, object);
-		return fs.writeFile(statePath, JSON.stringify(state));
-	};
+	});
 
 	const updateContests = async () => {
 		logger.info('Updating AtCoder contests...');
@@ -169,20 +157,20 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		if (contests.length > 0) {
 			const oldContests = state.contests;
 			const newContests: ContestEntry[] = [];
-			setState({
-				contests: contests.filter(({date}: any) => !Number.isNaN(date)).map((contest) => {
-					const oldContest = oldContests.find(({id}) => id === contest.id);
-					if (!oldContest) {
-						newContests.push(contest);
-					}
-					return {
-						...contest,
-						isPosted: oldContest ? oldContest.isPosted : false,
-						isPreposted: oldContest ? oldContest.isPreposted : false,
-						ratedCount: 0,
-					};
-				}),
+
+			state.contests = contests.filter(({date}: any) => !Number.isNaN(date)).map((contest) => {
+				const oldContest = oldContests.find(({id}) => id === contest.id);
+				if (!oldContest) {
+					newContests.push(contest);
+				}
+				return {
+					...contest,
+					isPosted: oldContest ? oldContest.isPosted : false,
+					isPreposted: oldContest ? oldContest.isPreposted : false,
+					ratedCount: 0,
+				};
 			});
+
 			for (const contest of newContests) {
 				await postNewContest(contest.id);
 			}
@@ -234,6 +222,22 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 	};
 
+	const getStandings = async (id: string) => {
+		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`, {
+			headers: {
+				Cookie: `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+			},
+		});
+
+		const userStandings = state.users.map(({atcoder, slack}) => {
+			const standing = standings.StandingsData.find(({UserName, UserScreenName}) => UserName === atcoder || UserScreenName === atcoder);
+			return {user: slack, atcoder, standing};
+		}).sort((a, b) => (a.standing ? a.standing.Rank : 1e9) - (b.standing ? b.standing.Rank : 1e9));
+		const tasks = new Map(standings.TaskInfo.map((task) => [task.TaskScreenName, task]));
+
+		return {userStandings, tasks};
+	};
+
 	const prepostResult = async (id: string) => {
 		const contest = state.contests.find((contest) => contest.id === id);
 
@@ -251,17 +255,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 		logger.info(`Preposting result of contest ${id}...`);
 
-		const {data: standings}: {data: Standings} = await axios.get(`https://atcoder.jp/contests/${id}/standings/json`, {
-			headers: {
-				Cookie: `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
-			},
-		});
-
-		const userStandings = state.users.map(({atcoder, slack}) => {
-			const standing = standings.StandingsData.find(({UserName, UserScreenName}) => UserName === atcoder || UserScreenName === atcoder);
-			return {user: slack, atcoder, standing};
-		}).sort((a, b) => (a.standing ? a.standing.Rank : 1e9) - (b.standing ? b.standing.Rank : 1e9));
-		const tasks = new Map(standings.TaskInfo.map((task) => [task.TaskScreenName, task]));
+		const {userStandings, tasks} = await getStandings(id);
 
 		await slack.chat.postMessage({
 			username: 'atcoder',
@@ -292,7 +286,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 
 		contest.isPreposted = true;
-		setState({contests: state.contests});
 	};
 
 	const getRatedCount = async (id: string) => {
@@ -402,7 +395,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		const isContestRated = standings.StandingsData.some((standing) => standing.IsRated);
 
 		contest.isPosted = true;
-		setState({contests: state.contests});
 
 		for (const {user, standing} of userStandings) {
 			const result = resultMap.get(user);
@@ -472,9 +464,115 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		const now = moment().utcOffset(9).startOf('day').hours(9);
 		const oneDayLater = now.clone().add(1, 'day');
 
+		// typical shojin notifications
+		logger.info('[atcoder-daily] Fetching result of typical90');
+		const {userStandings} = await getStandings('typical90');
+		const typicalSolves = new Map<string, number>();
+
+		for (const {user, standing} of userStandings) {
+			if (standing === undefined) {
+				continue;
+			}
+			const solves = Object.values(standing.TaskResults).filter((result) => result.Status === 1).length;
+			typicalSolves.set(user, solves);
+		}
+
+		const dataValues = [];
+		let increase = 0;
+
+		for (const user of state.users) {
+			logger.info(`[atcoder-daily] Fetching result of ABS (user = ${user.atcoder})`);
+
+			await new Promise((resolve) => setTimeout(resolve, 3000));
+			const submissions = await crawlSubmissionsByUser('abs', user.atcoder);
+			const acceptedProblems = new Set<string>();
+
+			for (const {result, problemId} of submissions) {
+				if (result === 'AC' && problemId !== 'practice_1') {
+					acceptedProblems.add(problemId);
+				}
+			}
+
+			const absSolve = acceptedProblems.size;
+			const typicalSolve = typicalSolves.get(user.slack) || 0;
+
+			const previousAbsSolve = (await get(user.slack, 'atcoder-abs-solves')) || 0;
+			const previousTypicalSolve = ((await get(user.slack, 'atcoder-typical-solves')) || 0) - previousAbsSolve;
+
+			set(user.slack, 'atcoder-abs-solves', absSolve);
+			set(user.slack, 'atcoder-typical-solves', absSolve + typicalSolve);
+
+			increase += Math.max(0, absSolve - previousAbsSolve);
+			increase += Math.max(0, typicalSolve - previousTypicalSolve);
+
+			let username = await getMemberName(user.slack);
+			if (username.length > 12) {
+				username = `${username.slice(0, 10)}...`;
+			}
+
+			dataValues.push({
+				username,
+				values: [
+					previousAbsSolve,
+					absSolve - previousAbsSolve,
+					previousTypicalSolve,
+					typicalSolve - previousTypicalSolve,
+				],
+			});
+		}
+
+		dataValues.sort((a, b) => sum(b.values) - sum(a.values));
+
+		if (increase === 0) {
+			await slack.chat.postMessage({
+				username: 'atcoder',
+				icon_emoji: ':atcoder:',
+				channel: process.env.CHANNEL_PROCON,
+				text: '今日は誰も精進をしなかったよ:relieved:',
+			});
+		} else {
+			const series1 = dataValues.map(({values}) => values[0].toString()).join();
+			const series2 = dataValues.map(({values}) => values[1].toString()).join();
+			const series3 = dataValues.map(({values}) => values[2].toString()).join();
+			const series4 = dataValues.map(({values}) => values[3].toString()).join();
+			const labels = dataValues.slice().reverse().map(({username}) => `@${username}`).join('|');
+
+			const chartUrl = `https://image-charts.com/chart?${qs.encode({
+				chbr: 3,
+				chco: 'fdb45c,ff5500,27c9c2,003fc7',
+				chd: `a:${series1}|${series2}|${series3}|${series4}`,
+				chma: '0,0,10,10',
+				chs: '700x700',
+				cht: 'bhs',
+				chxl: `1:|${labels}`,
+				chxr: '0,0,100',
+				chxt: 'x,y',
+			})}`;
+
+			await slack.chat.postMessage({
+				username: 'atcoder',
+				icon_emoji: ':atcoder:',
+				channel: process.env.CHANNEL_PROCON,
+				text: 'AtCoder典型問題精進状況 (精選10問 + 典型90問)',
+				blocks: [
+					{
+						type: 'image',
+						title: {
+							type: 'plain_text',
+							text: 'AtCoder典型問題精進状況 (精選10問 + 典型90問)',
+							emoji: true,
+						},
+						image_url: chartUrl,
+						alt_text: 'AtCoder典型問題精進状況 (精選10問 + 典型90問)',
+					},
+				],
+			});
+		}
+
+		// contest notifications
 		const contests = state.contests.filter((contest) => now.valueOf() < contest.date && contest.date <= oneDayLater.valueOf());
 
-		logger.info(`Posting daily notifications of ${contests.length} contests...`);
+		logger.info(`[atcoder-daily] Posting daily notifications of ${contests.length} contests...`);
 
 		for (const contest of contests) {
 			const date = moment(contest.date).utcOffset(9);
@@ -514,16 +612,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				const slackId = message.user;
 				if (atcoderId.length > 0) {
 					if (state.users.some(({slack}) => slackId === slack)) {
-						setState({
-							users: state.users.map((user) => user.slack === slackId ? {
-								slack: slackId,
-								atcoder: atcoderId,
-							} : user),
-						});
+						state.users = state.users.map((user) => user.slack === slackId ? {
+							slack: slackId,
+							atcoder: atcoderId,
+						} : user);
 					} else {
-						setState({
-							users: state.users.concat([{slack: slackId, atcoder: atcoderId}]),
-						});
+						state.users = state.users.concat([{slack: slackId, atcoder: atcoderId}]);
 					}
 					await slack.reactions.add({
 						name: '+1',

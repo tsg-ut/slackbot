@@ -3,7 +3,9 @@
 
 achievements/** @hakatashi
 ahokusa/** @kurgm
+amongyou/** @smallkirby
 anime/** @hakatashi
+api/** @hakatashi
 atcoder/** @hakatashi
 better-custom-response/** @naan4UGen
 channel-notifier/** @hakatashi
@@ -15,6 +17,7 @@ discord/** @hakatashi
 emoji-modifier/** @KPCCoiL
 emoji-notifier/** @hakatashi
 emoxpand/** @KPCCoiL
+hangman/** @platypus999
 hayaoshi/** @hakatashi
 hitandblow/** @settyan117
 lyrics/** @hideo54
@@ -33,7 +36,7 @@ room-gacha/** @hideo54
 scrapbox/** @hakatashi
 shogi/** @hakatashi
 slack-log/** @cookie-s
-sort-nazonazo/** @n4o847
+sorting-riddles/** @n4o847
 summary/** @Yosshi999
 sunrise/** @hakatashi
 sushi-bot/** @cookie-s

@@ -1,6 +1,5 @@
 import axios from 'axios';
-// @ts-ignore
-import logger from '../lib/logger.js';
+import logger from '../lib/logger';
 import type {LinkUnfurls} from '@slack/web-api';
 import qs from 'querystring';
 

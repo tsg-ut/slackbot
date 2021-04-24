@@ -104,6 +104,7 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.phase = 'waiting';
 		this.state.connection = null;
 		this.state.quizThroughCount = 0;
+		this.emit('end-game');
 	}
 
 	endQuiz({correct = false} = {}) {
@@ -272,9 +273,9 @@ export default class Hayaoshi extends EventEmitter {
 		}
 
 		const audio = await this.getTTS(text);
-		
+
 		await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), audio.audioContent, 'binary');
-		
+
 		await new Promise<void>((resolve) => {
 			const dispatcher = this.state.connection.play(path.join(__dirname, 'tempAudio.mp3'));
 			dispatcher.on('finish', () => {
@@ -386,6 +387,10 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	onMessage(message: Discord.Message) {
+		if (message.channel.id !== process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID || message.member.user.bot) {
+			return;
+		}
+
 		mutex.runExclusive(async () => {
 			if (this.state.phase === 'answering' && this.state.pusher === message.member.user.id && message.content !== 'p') {
 				clearTimeout(this.state.answerTimeoutId);
@@ -476,6 +481,8 @@ export default class Hayaoshi extends EventEmitter {
 					this.state.participants = new Map();
 					this.state.isContestMode = message.content === '早押しクイズ大会';
 					this.state.questionCount = 0;
+
+					this.emit('start-game');
 
 					if (this.state.isContestMode) {
 						this.emit('message', stripIndent`

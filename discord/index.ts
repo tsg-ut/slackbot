@@ -1,8 +1,8 @@
 import type {ContextBlock} from '@slack/web-api';
 import Discord, {TextChannel, Collection, Snowflake, GuildMember, VoiceChannel} from 'discord.js';
 import type {SlackInterface} from '../lib/slack';
-import {getMemberName} from '../lib/slackUtils';
 import Hayaoshi from './hayaoshi';
+import TTS from './tts';
 
 const discord = new Discord.Client();
 discord.login(process.env.TSGBOT_DISCORD_TOKEN);
@@ -33,45 +33,35 @@ const getMembersBlock = (roomName: string, members: Collection<Snowflake, GuildM
 );
 
 export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
-	const hayaoshi = new Hayaoshi(() => {
-		const discordSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_VOICE_CHANNEL_ID) as VoiceChannel;
+	const joinVoiceChannelFn = (channelId: string = process.env.DISCORD_SANDBOX_VOICE_CHANNEL_ID) => {
+		const discordSandbox = discord.channels.cache.get(channelId) as VoiceChannel;
 		return discordSandbox.join();
-	});
+	};
 
-	hayaoshi.on('message', (message: string) => {
-		const discordTextSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) as TextChannel;
+	const hayaoshi = new Hayaoshi(joinVoiceChannelFn);
+	const tts = new TTS(joinVoiceChannelFn);
+
+	hayaoshi.on('message', (message: string, channelId: string = process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) => {
+		const discordTextSandbox = discord.channels.cache.get(channelId) as TextChannel;
 		return discordTextSandbox.send(message);
 	});
 
-	rtm.on('message', async (message) => {
-		const {channel, text, user, subtype, thread_ts} = message;
-		if (!text || channel !== process.env.CHANNEL_SANDBOX || subtype !== undefined || thread_ts !== undefined) {
-			return;
-		}
+	tts.on('message', (message: string, channelId: string = process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) => {
+		const discordTextSandbox = discord.channels.cache.get(channelId) as TextChannel;
+		return discordTextSandbox.send(message);
+	});
 
-		if (text.split('\n').length > 3 || text.length > 100) {
-			return;
-		}
+	hayaoshi.on('start-game', () => {
+		tts.pause();
+	});
 
-		const nickname = await getMemberName(user);
-		const discordSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_CHANNEL_ID) as TextChannel;
-
-		discordSandbox.send(`${nickname}: ${text}`);
+	hayaoshi.on('end-game', () => {
+		tts.unpause();
 	});
 
 	discord.on('message', (message) => {
-		if (!message.member.user.bot && message.channel.id === process.env.DISCORD_SANDBOX_CHANNEL_ID && message.content.length < 200) {
-			slack.chat.postMessage({
-				channel: process.env.CHANNEL_SANDBOX,
-				text: message.content,
-				username: `${message.member.displayName}@Discord`,
-				icon_url: message.member.user.displayAvatarURL({format: 'png', size: 128}),
-			});
-		}
-
-		if (message.channel.id === process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID && !message.member.user.bot) {
-			hayaoshi.onMessage(message);
-		}
+		hayaoshi.onMessage(message);
+		tts.onMessage(message);
 	});
 
 	discord.on('voiceStateUpdate', (oldState, newState) => {

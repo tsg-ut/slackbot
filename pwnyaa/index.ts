@@ -6,11 +6,12 @@ import {stripIndent} from 'common-tags';
 // @ts-ignore
 import schedule from 'node-schedule';
 import {unlock} from '../achievements/index.js';
-// @ts-ignore
-import logger from '../lib/logger.js';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
-import {getMemberName} from '../lib/slackUtils';
+import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Contest, User, SolvedInfo} from './lib/BasicTypes';
+import {fetchChallsCH, fetchUserProfileCH, findUserByNameCH} from './lib/CHManager';
+import {fetchChallsKSN, fetchUserProfileKSN, findUserByNameKSN} from './lib/KSNManager';
 import {fetchUserProfileTW, fetchChallsTW, findUserByNameTW} from './lib/TWManager';
 import {fetchChallsXYZ, fetchUserProfileXYZ, findUserByNameXYZ} from './lib/XYZManager';
 
@@ -21,8 +22,27 @@ const HOUR = MINUTE * 60;
 const DAY = HOUR * 24;
 const CALLME = '@pwnyaa';
 
+const DateGran = {
+	MSECOND: 'ms',
+	SECOND: 's',
+	MINUTE: 'm',
+	HOUR: 'h',
+	DAY: 'd',
+} as const;
+// eslint-disable-next-line no-redeclare
+type DateGran = typeof DateGran[keyof typeof DateGran];
+
 export const TW_ID = 0;
 export const XYZ_ID = 1;
+export const CH_ID = 2;
+export const KSN_ID = 3;
+
+const CONTESTS: Contest[] = [
+	{url: 'https://pwnable.xyz', id: XYZ_ID, title: 'pwnable.xyz', alias: ['xyz', 'pnwable.xyz'], achievementStr: 'xyz', fetchUserProfile: fetchUserProfileXYZ, findUserByName: findUserByNameXYZ, fetchChalls: fetchChallsXYZ, numChalls: 0, joiningUsers: []},
+	{url: 'https://pwnable.tw', id: TW_ID, title: 'pwnable.tw', alias: ['tw', 'pwnable.tw'], achievementStr: 'tw', fetchUserProfile: fetchUserProfileTW, findUserByName: findUserByNameTW, fetchChalls: fetchChallsTW, numChalls: 0, joiningUsers: []},
+	{url: 'https://cryptohack.org', id: CH_ID, title: 'cryptohack', alias: ['cryptohack', 'ch'], achievementStr: 'ch', fetchUserProfile: fetchUserProfileCH, findUserByName: findUserByNameCH, fetchChalls: fetchChallsCH, numChalls: 0, joiningUsers: []},
+	{url: 'https://ksnctf.sweetduet.info', id: KSN_ID, title: 'ksnctf', alias: ['ksn', 'ksnctf'], achievementStr: 'ksn', fetchUserProfile: fetchUserProfileKSN, findUserByName: findUserByNameKSN, fetchChalls: fetchChallsKSN, numChalls: 0, joiningUsers: []},
+];
 
 const UPDATE_INTERVAL = 12;
 
@@ -42,10 +62,51 @@ const getPrintableDate = (date: Date) => {
 	return strdate;
 };
 
-const getContestSummary = async (contest: Contest) => {
+const getContestColor = (ctfId: number) => {
+	switch (ctfId) {
+		case XYZ_ID:
+			return '#ff66ff';
+		case TW_ID:
+			return '#ffff00';
+		case CH_ID:
+			return '#0099ff';
+		case KSN_ID:
+			return '#99cc00';
+		default:
+			return '#000000';
+	}
+};
+
+const getSolveColor = (solveNum: number) => {
+	if (solveNum === 1) {
+		return '#336699';
+	} else if (2 <= solveNum && solveNum <= 3) {
+		return '#00ffcc';
+	} else if (4 <= solveNum && solveNum <= 5) {
+		return '#ffcc00';
+	} else if (6 <= solveNum && solveNum <= 7) {
+		return '#ff6666';
+	} else if (solveNum >= 8) {
+		return '#cc0000';
+	}
+	return '#000000';
+};
+
+const getScoreColor = (score: number) => {
+	if (score <= 10) {
+		return '#336699';
+	} else if (10 < score && score <= 50) {
+		return '#00ffcc';
+	} else if (50 < score && score <= 100) {
+		return '#ffcc00';
+	} else if (100 < score && score <= 300) {
+		return '#ff6666';
+	}
+	return '#cc0000';
+};
+
+const getContestSummary = async (contest: Contest): Promise<any> => {
 	let text = '';
-	text += `*${contest.title}* (${contest.url})\n`;
-	text += `  問題数: ${contest.numChalls}\n`;
 	if (contest.joiningUsers.length === 0) {
 		text += '  参加者: なし\n';
 	} else {
@@ -55,27 +116,52 @@ const getContestSummary = async (contest: Contest) => {
 		}
 		text += '\n';
 	}
-	return text;
+	return {
+		color: getContestColor(contest.id),
+		author_name: contest.title,
+		author_link: contest.url,
+		text,
+		footer: `問題数: ${contest.numChalls}`,
+	};
 };
 
-const filterChallSolvedRecent = (challs: SolvedInfo[], solvedIn: number, hour = false) => {
+const filterChallSolvedRecent = (challs: SolvedInfo[], solvedIn: number, granular: DateGran) => {
 	let limitdate: number = 0;
-	if (hour) {
+	if (granular === DateGran.MSECOND) {
+		limitdate = Date.now() - solvedIn;
+	} else if (granular === DateGran.MINUTE) {
+		limitdate = Date.now() - solvedIn * MINUTE;
+	} else if (granular === DateGran.SECOND) {
+		limitdate = Date.now() - solvedIn * 1000;
+	} else if (granular === DateGran.HOUR) {
 		limitdate = Date.now() - solvedIn * HOUR;
-	} else {
+	} else if (granular === DateGran.DAY) {
 		limitdate = Date.now() - solvedIn * DAY;
 	}
-	const filteredChalls = challs.filter((chall) => chall.solvedAt.getTime() >= limitdate);
+	const filteredChalls = challs.filter((chall) => limitdate <= chall.solvedAt.getTime() && chall.solvedAt.getTime() <= Date.now());
 	return filteredChalls;
 };
 
-const getChallsSummary = (challs: SolvedInfo[], spaces = 0) => {
-	let text = '';
-	for (const chall of challs) {
-		text += ' '.repeat(spaces);
-		text += `*${chall.name}* (${chall.score}) ${getPrintableDate(chall.solvedAt)}\n`;
+const getChallsSummary = (challs: SolvedInfo[]) => challs.map((chall) => ({
+	color: getScoreColor(chall.score),
+	author_name: `${chall.name}: (${chall.score})`,
+	footer: getPrintableDate(chall.solvedAt),
+}));
+
+// assumes update is done in every Sunday 9:00AM
+const getLastUpdateDate = () => {
+	const now = new Date();
+	const last = new Date();
+	last.setHours(9, 0, 0);
+	if (now.getDay() !== 0) {
+		last.setDate(now.getDate() - now.getDay());
+		return last;
 	}
-	return text;
+	if (now.getHours() <= 8) {
+		last.setDate(now.getDate() - 7);
+		return last;
+	}
+	return last;
 };
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
@@ -95,6 +181,162 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		Object.assign(state, object);
 		return fs.writeFile(statePath, JSON.stringify(state));
 	};
+
+	// Check achievement 'pwnyaa-praise-your-birthday'
+	for (const user of state.users) {
+		await unlock(user.slackId, 'pwnyaa-praise-your-birthday');
+	}
+
+	const getRanking = (solvesAllCtfs: {idCtf: number, solves: {slackid: string, solves: SolvedInfo[]}[]}[]) => {
+		const ranks: { slackid: string, solves: number }[] = [];
+		// parse profiles
+		for (const contest of solvesAllCtfs) {
+			for (const solvePerUser of contest.solves) {
+				if (solvePerUser.solves.length > 0) {
+					if (ranks.some((rank) => rank.slackid === solvePerUser.slackid)) {
+						const rankIndex = ranks.indexOf(ranks.find((rank) => rank.slackid === solvePerUser.slackid));
+						ranks[rankIndex].solves += solvePerUser.solves.length;
+					} else {
+						ranks.push({slackid: solvePerUser.slackid, solves: solvePerUser.solves.length});
+					}
+				}
+			}
+		}
+
+		// add self-solved declarations
+		for (const user of state.users) {
+			if (user.selfSolvesWeekly && user.selfSolvesWeekly > 0) {
+				if (ranks.some((rank) => rank.slackid === user.slackId)) {
+					const rankIndex = ranks.indexOf(ranks.find((rank) => rank.slackid === user.slackId));
+					ranks[rankIndex].solves += user.selfSolvesWeekly;
+				} else {
+					ranks.push({slackid: user.slackId, solves: user.selfSolvesWeekly});
+				}
+			}
+		}
+
+		ranks.sort((l, r) => r.solves - l.solves);
+		return ranks;
+	};
+
+	// get solve-status from last Saturday 10:00 to today
+	const postStatSummary = async (message: any) => {
+		// ** post solve state of this week **
+		let text = '*==今週のsolve状況だよ!==*';
+		let attachments: any[] = [];
+		// fetch each solve status
+		const recentSolvesAllCtfs = await fetchRecentSolvesAll(Date.now() - getLastUpdateDate().getTime(), DateGran.MSECOND);
+		// count for each CTFs
+		for (const recentSolvesPerContest of recentSolvesAllCtfs) {
+			let someoneSolved = false;
+			const {idCtf, solves} = recentSolvesPerContest;
+			const nameCtf = state.contests.find((contest) => contest.id === idCtf).title;
+			const urlCtf = state.contests.find((contest) => contest.id === idCtf).url;
+			let textCtf = '';
+			for (const solvePerUser of solves) {
+				if (solvePerUser.solves.length !== 0) {
+					const username = await getMemberName(solvePerUser.slackid);
+					for (const solve of solvePerUser.solves) {
+						textCtf += ` ${username}: ${solve.name}\n`;
+					}
+					someoneSolved = true;
+				}
+			}
+			if (!someoneSolved) {
+				textCtf += ' 誰も解いてないぽよ... :cry:';
+			}
+			attachments.push({
+				color: getContestColor(idCtf),
+				author_name: nameCtf,
+				author_link: urlCtf,
+				text: textCtf,
+			});
+		}
+
+		// also, count for selfe-solves
+		let textCtf = '';
+		let someoneSolved = false;
+		for (const user of state.users) {
+			if (user.selfSolvesWeekly) {
+				// eslint-disable-next-line no-unused-vars
+				for (const _ of [...Array(user.selfSolvesWeekly).keys()]) {
+					const username = await getMemberName(user.slackId);
+					someoneSolved = true;
+					textCtf += ` ${username}: self-solve \n`;
+				}
+			}
+		}
+		if (!someoneSolved) {
+			textCtf += ' 誰も解いてないぽよ... :cry:';
+		}
+		attachments.push({
+			author_name: 'self-solve',
+			color: '#6600ff',
+			text: textCtf,
+		});
+
+		// post
+		await postMessageThreadDefault(message, {
+			text,
+			attachments,
+		});
+		text = '';
+		attachments = [];
+
+		// ** post ranking **
+		const ranks = getRanking(recentSolvesAllCtfs);
+		text += '*==暫定ランキングだよ!==*';
+		if (ranks.length > 0) {
+			for (const [ix, user] of ranks.entries()) {
+				const streak = state.users.find((u) => u.slackId === user.slackid).currentStreak;
+				const attachment: any = {
+					color: getSolveColor(user.solves),
+					author_name: `${await getMemberName(user.slackid)}: ${ix + 1}位 (${user.solves} solves)`,
+					author_icon: await getMemberIcon(user.slackid),
+					footer: `${streak ? streak : 0} streaks`,
+				};
+				attachments.push(attachment);
+			}
+		} else {
+			attachments.push({
+				color: '#000000',
+				text: '誰も解いてないからみんな1位だよ！！平和だね！',
+			});
+		}
+		// post
+		await postMessageThreadDefault(message, {
+			text,
+			attachments,
+		});
+		text = '';
+		attachments = [];
+
+		// fetch streaks
+		text += '*==LongestStreaksの状況だよ!==*';
+		for (const user of state.users) {
+			if (user.longestStreak && user.longestStreak >= 1) {
+				attachments.push({
+					color: getSolveColor(user.longestStreak),
+					author_name: await getMemberName(user.slackId),
+					author_icon: await getMemberIcon(user.slackId),
+					text: String(user.longestStreak) + (user.longestStreak === user.currentStreak ? ' (更新中!)' : ''),
+					footer: `current streaks: ${user.currentStreak ? user.currentStreak : 0}`,
+				});
+			}
+		}
+		if (attachments.length === 0) {
+			attachments.push({
+				color: '#000000',
+				author_name: 'No Streaks',
+				text: 'みんな0-streaksだよ。悲しいね。',
+			});
+		}
+		await postMessageThreadDefault(message, {
+			text,
+			attachments,
+		});
+	};
+
 
 	// post usage text. *args* starts right before @pwnyaa
 	const resolveUsageMessage = async (args: string[], slackMessage: any) => {
@@ -142,6 +384,14 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						*補足* : 自己宣言した問題は毎週のランキングにおけるsolve数に加算されます
 					`,
 				});
+			} else if (args[1] === 'stat') {
+				await postMessageThreadDefault(slackMessage, {
+					text: stripIndent`
+						*stat* コマンド: 諸々のsolve状況等を確認する
+
+						_stat_ : 今週のsolve状況と暫定ランキングを確認
+					`,
+				});
 			} else {
 				await postMessageThreadDefault(slackMessage, {
 					text: stripIndent`
@@ -163,7 +413,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		return null;
 	};
 
-
 	const resolvePendingUser = (thread_ts: string) => {
 		const requestingUser = pendingUsers.filter((user) => user.threadId === thread_ts)[0];
 		const requestingUserIndex = pendingUsers.indexOf(requestingUser);
@@ -184,22 +433,13 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 	// eslint-disable-next-line require-await
 	const findUserByName = async (name: string, contestid: number) => {
-		if (contestid === TW_ID) {
-			return findUserByNameTW(name);
-		} else if (contestid === XYZ_ID) {
-			return findUserByNameXYZ(name);
-		}
-		return null;
+		const contest = state.contests.find((c) => c.id === contestid);
+		return contest ? contest.findUserByName(name) : null;
 	};
-
 	// eslint-disable-next-line require-await
 	const fetchUserProfile = async (userid: string, contestid: number) => {
-		if (contestid === TW_ID) {
-			return fetchUserProfileTW(userid);
-		} else if (contestid === XYZ_ID) {
-			return fetchUserProfileXYZ(userid);
-		}
-		return null;
+		const contest = state.contests.find((c) => c.id === contestid);
+		return contest ? contest.fetchUserProfile(userid) : null;
 	};
 
 	// get User of slackid from contest name
@@ -232,6 +472,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}
 			}
 		});
+		unlock(slackId, 'pwnyaa-praise-your-birthday');
 		setState(state);
 	};
 
@@ -255,56 +496,67 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				}
 			}
 		});
-		setState(state);
+		await setState(state);
 		await postMessageDefault(slackMessage, {
-			text: stripIndent`
-				<@${await slackMessage.user}> が *${challName}* (self)を解いたよ :pwn:
-			`,
+			attachments: [{
+				color: getSolveColor(1),
+				author_name: await getMemberName(slackMessage.user),
+				author_icon: await getMemberIcon(slackMessage.user),
+				text: `${challName}(self) を解いたよ!`,
+				footer: 'self-solve',
+			}],
 		});
 	};
 
+	const resolveStreaks = async (solvesAllCtfs: { idCtf: number, solves: { slackid: string, solves: SolvedInfo[] }[] }[]) => {
+		state.users.forEach((user, ci) => {
+			let solvedThisWeek = false;
+			// count for each CTFs
+			for (const contest of solvesAllCtfs) {
+				if (contest.solves.some((solve) => solve.slackid === user.slackId && solve.solves.length > 0)) {
+					solvedThisWeek = true;
+					break;
+				}
+			}
+			// also, count for self-solves
+			if (user.selfSolvesWeekly > 0) {
+				solvedThisWeek = true;
+			}
+
+			if (solvedThisWeek) {
+				if (state.users[ci].currentStreak) {
+					state.users[ci].currentStreak += 1;
+					state.users[ci].longestStreak = Math.max(state.users[ci].longestStreak, state.users[ci].currentStreak);
+				} else {
+					state.users[ci].currentStreak = 1;
+					state.users[ci].longestStreak = 1;
+				}
+			} else {
+				state.users[ci].currentStreak = 0;
+			}
+		});
+		await setState(state);
+	};
+
 	// fetch data from TW and update state
-	const updateChallsTW = async () => {
-		const fetchedChalls = await fetchChallsTW();
-
-		const oldtw = state.contests.find((({title}) => title === 'pwnable.tw'));
-		const updatedtw: Contest = {
-			url: 'https://pwnable.tw',
-			id: TW_ID,
-			title: 'pwnable.tw',
-			alias: oldtw ? oldtw.alias : ['tw'],
-			joiningUsers: oldtw ? oldtw.joiningUsers : [],
-			numChalls: fetchedChalls.length,
-		};
-		if (oldtw) {
-			state.contests = state.contests.map((cont) => cont.id === updatedtw.id ? updatedtw : cont);
-		} else {
-			state.contests.push(updatedtw);
+	const updateChalls = async () => {
+		for (const contest of CONTESTS) {
+			const fetchedChalls = await contest.fetchChalls();
+			const old = state.contests.find((c) => c.id === contest.id);
+			const updated: Contest = {
+				...contest,
+				joiningUsers: old ? old.joiningUsers : [],
+				numChalls: fetchedChalls.length,
+			};
+			if (old) {
+				state.contests = state.contests.map((c) => c.id === updated.id ? updated : c);
+			} else {
+				state.contests.push(updated);
+			}
 		}
 		setState(state);
 	};
 
-	// fetch data from XYZ and update state
-	const updateChallsXYZ = async () => {
-		const fetchedChalls = await fetchChallsXYZ();
-
-		// register challenges
-		const oldxyz = state.contests.find((({title}) => title === 'pwnable.xyz'));
-		const updatedxyz: Contest = {
-			url: 'https://pwnable.xyz',
-			id: XYZ_ID,
-			title: 'pwnable.xyz',
-			alias: oldxyz ? oldxyz.alias : ['xyz'],
-			joiningUsers: oldxyz ? oldxyz.joiningUsers : [],
-			numChalls: fetchedChalls.length,
-		};
-		if (oldxyz) {
-			state.contests = state.contests.map((cont) => cont.id === updatedxyz.id ? updatedxyz : cont);
-		} else {
-			state.contests.push(updatedxyz);
-		}
-		setState(state);
-	};
 
 	rtm.on('message', async (message) => {
 		// resolve pending join request
@@ -341,13 +593,16 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		if (message.text && message.subtype === undefined &&
       message.text.startsWith(CALLME) && (message.channel === process.env.CHANNEL_SANDBOX || process.env.CHANNEL_PWNABLE_TW || message.channel.startsWith('D'))) { // message is toward me
 			const args = message.text.split(' ').slice(1);
+			if (args.length === 0) {
+				args.push('help');
+			}
 
 			// show list of registered contests summary
 			if (args[0] === 'list') {
 				await postMessageDefault(message, {
-					text: await (await Promise.all(state.contests.map(
+					attachments: await (await Promise.all(state.contests.map(
 						(contest) => getContestSummary(contest),
-					))).join(''),
+					))),
 				});
 
 				/** ** END of list ****/
@@ -378,7 +633,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 								});
 							} else {																		// user is not found on the contest
 								await postMessageDefault(message, {
-									text: `ユーザ *${specifiedUsername}* は *${selectedContestName}* に見つからなかったよ:cry:`,
+									text: `ユーザ *${specifiedUsername}* は *${selectedContestName}* に見つからなかったよ:cry: (1問も解いていない場合には参加できない場合があるよ)`,
 								});
 							}
 						} else {																			// check by ID
@@ -422,9 +677,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						`,
 					});
 					await postMessageDefault(message, {
-						text: await (await Promise.all(state.contests.map(
+						attachments: await (await Promise.all(state.contests.map(
 							(contest) => getContestSummary(contest),
-						))).join(''),
+						))),
 					});
 				}
 
@@ -446,13 +701,13 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						const selectedContest = state.contests.find((contest) => contest.alias.some((alias) => alias === selectedContestName) || contest.title === selectedContestName);
 						if (selectedContest) {			// contest is found
 							const fetchedProfile = await fetchUserProfile(user.idCtf, selectedContest.id);
-
 							await postMessageThreadDefault(message, {
 								text: `${`ユーザ名  : *${fetchedProfile.username}* \n` +
 									`スコア   : *${fetchedProfile.score}* \n` +
 									`ランキング: *${fetchedProfile.rank}* \n` +
 									`${fetchedProfile.comment} \n` +
-									'解いた問題: \n'}${getChallsSummary(fetchedProfile.solvedChalls, 2)}`,
+									'解いた問題: \n'}`,
+								attachments: getChallsSummary(fetchedProfile.solvedChalls),
 							});
 						} else {										// contest is not found
 							await postMessageDefault(message, {
@@ -508,12 +763,17 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 							*join* : CTFに参加登録
 							*check* : ステータス確認
 							*pwn* : 問題を解いたことの自己宣言
+							*stat* : 今週の諸々の状況を確認
 							詳しいフォーマットを知りたいときは、 _@pwnyaa help <command name>_ で聞いてね!
 							`,
 					});
 				}
 
 				/** ** END of help/usage ****/
+			} else if (args[0] === 'stat') {
+				// it takes some time to fetch all information
+				await addReactionDefault(message, 'ok');
+				await postStatSummary(message);
 
 				// unknown command
 			} else {
@@ -553,140 +813,140 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		await slack.chat.postMessage(postingConfig);
 	};
 
-	const checkAchievementsTW = async () => {
-		logger.info('[+] pwnyaa: checking achievements for TW...');
-		const contestTW = state.contests.find((contest) => contest.id === TW_ID);
-		for (const user of contestTW.joiningUsers) {
-			const profile = await fetchUserProfileTW(user.idCtf);
-			if (profile.solvedChalls.length >= contestTW.numChalls) {
-				logger.info('[+] pwnyaa: unlocking: pwnyaa-tw-complete');
-				await unlock(user.slackId, 'pwnyaa-tw-complete');
-			}
-			if (profile.solvedChalls.length >= contestTW.numChalls / 2) {
-				logger.info('[+] pwnyaa: unlocking: pwnyaa-tw-half');
-				await unlock(user.slackId, 'pwnyaa-tw-half');
+	const checkAchievements = async () => {
+		logger.info('[+] pwnyaa: checking achievements...');
+		for (const contest of state.contests) {
+			for (const user of contest.joiningUsers) {
+				const profile = await fetchUserProfile(user.idCtf, contest.id);
+				if (profile.solvedChalls.length >= contest.numChalls) {
+					logger.info(`[+] pwnyaa: unlocking: pwnyaa-${contest.achievementStr}-complete`);
+					await unlock(user.slackId, `pwnyaa-${contest.achievementStr}-complete`);
+				}
+				if (profile.solvedChalls.length >= contest.numChalls / 2) {
+					logger.info(`[+] pwnyaa: unlocking: pwnyaa-${contest.achievementStr}-half`);
+					await unlock(user.slackId, `pwnyaa-${contest.achievementStr}-half`);
+				}
 			}
 		}
 	};
-	const checkAchievementsXYZ = async () => {
-		logger.info('[+] pwnyaa: checking achievements for XYZ...');
-		const contestXYZ = state.contests.find((contest) => contest.id === XYZ_ID);
-		for (const user of contestXYZ.joiningUsers) {
-			const profile = await fetchUserProfileXYZ(user.idCtf);
-			if (profile.solvedChalls.length >= contestXYZ.numChalls) {
-				logger.info('[+] pwnyaa: unlocking: pwnyaa-xyz-complete');
-				await unlock(user.slackId, 'pwnyaa-xyz-complete');
+
+	// fetch challs of all CTFs solved recently
+	const fetchRecentSolvesAll = async (solvedIn: number, granular: DateGran) => {
+		const recentSolvesAllCtfs: {
+			idCtf: number,
+			solves: { slackid: string, solves: SolvedInfo[] }[],
+		}[] = [];
+		for (const contest of state.contests) {
+			const allRecentSolves: { slackid: string, solves: SolvedInfo[] }[] = [];
+			for (const user of contest.joiningUsers) {
+				const profile = await fetchUserProfile(user.idCtf, contest.id);
+				if (profile !== null) {
+					const recentSolves = filterChallSolvedRecent(profile.solvedChalls, solvedIn, granular);
+					allRecentSolves.push({slackid: user.slackId, solves: recentSolves});
+				}
 			}
-			if (profile.solvedChalls.length >= contestXYZ.numChalls / 2) {
-				logger.info('[+] pwnyaa: unlocking: pwnyaa-xyz-half');
-				await unlock(user.slackId, 'pwnyaa-xyz-half');
-			}
+			recentSolvesAllCtfs.push({idCtf: contest.id, solves: allRecentSolves});
 		}
+		return recentSolvesAllCtfs;
 	};
 
 	const postProgress = async () => {
 		logger.info('[+] pwnyaa: progress posting...');
-		for (const contest of state.contests) {
-			let someoneSolved = false;
-			let text = '';
-			text += `*${state.contests.find((con) => con.id === contest.id).title}*\n`;
-			const allRecentSolves: {slackid: string, solves: SolvedInfo[]}[] = [];
-			const users = contest.joiningUsers;
-			for (const user of users) {
-				const profile = await fetchUserProfile(user.idCtf, contest.id);
-				if (profile !== null) {		// the user solved more than one challs
-					const recentSolves = filterChallSolvedRecent(profile.solvedChalls, UPDATE_INTERVAL, true);
-					allRecentSolves.push({slackid: user.slackId, solves: recentSolves});
-					if (recentSolves.length > 0) {
-						someoneSolved = true;
-					}
-				}
-			}
+		let someoneSolved = false;
+		const recentSolvesAllCtfs = await fetchRecentSolvesAll(UPDATE_INTERVAL, DateGran.HOUR);
+		const attachments: any[] = [];
 
-			for (const solvePerUser of allRecentSolves) {
-				for (const solve of solvePerUser.solves) {
-					text += `<@${solvePerUser.slackid}> が *${solve.name}* (${solve.score})を解いたよ :pwn: \n`;
+		for (const solvesPerContest of recentSolvesAllCtfs) {
+			const nameCtf = state.contests.find((c) => solvesPerContest.idCtf === c.id).title;
+			for (const solvesPerUser of solvesPerContest.solves) {
+				for (const solve of solvesPerUser.solves) {
+					attachments.push({
+						color: getContestColor(solvesPerContest.idCtf),
+						author_name: await getMemberName(solvesPerUser.slackid),
+						author_icon: await getMemberIcon(solvesPerUser.slackid),
+						text: `${solve.name}(${solve.score}) を解いたよ!`,
+						footer: nameCtf,
+					});
+					someoneSolved = true;
 				}
 			}
-			if (someoneSolved) {
-				logger.info('[+] someone solved challs...');
-				slack.chat.postMessage({
-					username: 'pwnyaa',
-					icon_emoji: ':pwn:',
-					channel: process.env.CHANNEL_PWNABLE_TW,
-					text,
-				});
-			}
+		}
+
+		if (someoneSolved) {
+			logger.info('[+] someone solved challs...');
+			slack.chat.postMessage({
+				username: 'pwnyaa',
+				icon_emoji: ':pwn:',
+				channel: process.env.CHANNEL_PWNABLE_TW,
+				text: '',
+				attachments,
+			});
 		}
 	};
 
 	const postWeekly = async () => {
 		logger.info('[+] pwnyaa: posting weekly...');
-		let nobody = true;
-		const ranks: { slackid: string, solves: number }[] = [];
-		// crawl CTFs
-		for (const contest of state.contests) {
-			const users = contest.joiningUsers;
-			for (const user of users) {
-				const profile = await fetchUserProfile(user.idCtf, contest.id);
-				const recentSolves = filterChallSolvedRecent(profile.solvedChalls, 7);
-				if (recentSolves.length > 0) {		// solved more than one challs
-					if (ranks.some((rank) => rank.slackid === user.slackId)) {
-						const rankIndex = ranks.indexOf(ranks.find((rank) => rank.slackid === user.slackId));
-						ranks[rankIndex].solves += recentSolves.length;
-					} else {
-						ranks.push({slackid: user.slackId, solves: recentSolves.length});
-					}
-					nobody = false;
-				}
-			}
-		}
-		// add self-solved declarations
-		for (const user of state.users) {
-			if (user.selfSolvesWeekly && user.selfSolvesWeekly > 0) {
-				if (ranks.some((rank) => rank.slackid === user.slackId)) {
-					const rankIndex = ranks.indexOf(ranks.find((rank) => rank.slackid === user.slackId));
-					ranks[rankIndex].solves += user.selfSolvesWeekly;
-				} else {
-					ranks.push({slackid: user.slackId, solves: user.selfSolvesWeekly});
-				}
-				user.selfSolvesWeekly = 0;
-				nobody = false;
-			}
-		}
-		// clear self-solves count
-		state.users = state.users.map((user) => {
-			user.selfSolvesWeekly = 0;
-			return user;
-		});
-		setState(state);
 
-		// post
+		// get ranking
+		const recentSolvesAllCtfs = await fetchRecentSolvesAll(7, DateGran.DAY);
+		const ranks = getRanking(recentSolvesAllCtfs);
+		const attachments: any[] = [];
+
+		// resolve streaks
+		await resolveStreaks(recentSolvesAllCtfs);
+
+		// gen text
 		ranks.sort((l, r) => r.solves - l.solves);
 		let text = '';
-		if (nobody) {
-			text += '今週は誰も問題を解かなかったよ... :cry:\n';
-		} else {
+		if (ranks.length > 0) {
 			text += '今週のpwnランキングを発表するよ〜\n';
 			for (const [ix, user] of ranks.entries()) {
-				text += `*${ix + 1}* 位: *${await getMemberName(user.slackid)}* \t\t*${user.solves}* solves \n`;
+				const streak = state.users.find((u) => u.slackId === user.slackid).currentStreak;
+				const attachment: any = {
+					color: getSolveColor(user.solves),
+					author_name: `${await getMemberName(user.slackid)}: ${ix + 1}位 (${user.solves} solves)`,
+					author_icon: await getMemberIcon(user.slackid),
+					footer: `${streak ? streak : 0} streaks`,
+				};
+				attachments.push(attachment);
 			}
-			text += '\nおめでとう〜〜〜〜〜〜〜〜 :genius:\n';
+		} else {
+			attachments.push({
+				text: '今週は誰も問題を解かなかったよ... :cry:',
+				color: '#000000',
+			});
 		}
+
+		let streakText = '';
+		for (const user of state.users) {
+			if (user.longestStreak && user.longestStreak === user.currentStreak) {
+				streakText += `:azaika-is-blue-coder: *${await getMemberName(user.slackId)}* がLongestStreakを更新したよ! *(${user.longestStreak} streak!)* \n`;
+			}
+		}
+		attachments.push({
+			text: streakText,
+			color: '#ffccff',
+		});
 
 		slack.chat.postMessage({
 			username: 'pwnyaa',
 			icon_emoji: ':pwn:',
 			channel: process.env.CHANNEL_PWNABLE_TW,
 			text,
+			attachments,
 		});
+
+		// clear self-solves count
+		state.users = state.users.map((user) => {
+			user.selfSolvesWeekly = 0;
+			return user;
+		});
+		setState(state);
 	};
 
 	const updateAll = async () => {
-		await updateChallsXYZ();
-		await updateChallsTW();
-		await checkAchievementsXYZ();
-		await checkAchievementsTW();
+		await updateChalls();
+		await checkAchievements();
 	};
 
 	// update the num of challs and achievements every 12 hours
