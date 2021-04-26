@@ -61,9 +61,13 @@ class Timer {
 
 export default class TTS extends EventEmitter {
 	users: Map<string, Voice>;
+
 	userTimers: Map<string, Timer>;
+
 	connection: VoiceConnection;
+
 	isPaused: boolean;
+
 	lastActiveVoiceChannel: string;
 
 	joinVoiceChannelFn: (channelId?: string) => Promise<Discord.VoiceConnection>;

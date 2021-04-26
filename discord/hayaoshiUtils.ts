@@ -84,8 +84,10 @@ const parseDescriptiveComponentSection = (text: string) => {
 	const answers = [];
 	const section = text.trim();
 	let matches = null;
-	if (section.match(/(?:◯|○|OK)$/)) {
-		if ((matches = section.match(/^(?<body>.+?)(?:もおまけで|のみで|でも|で|も)(?:◯|○|OK)$/))) {
+	if (section.match(/(?:◯|○|〇|OK)$/)) {
+		if ((matches = section.match(/^(?<body>.+?)(?:もおまけで|のみで|でも|で|も)(?:◯|○|〇|OK)$/))) {
+			answers.push(...parseSectionWords(matches.groups.body.trim()));
+		} else if ((matches = section.match(/^(?:◯|○|〇)(?<body>.+?)$/))) {
 			answers.push(...parseSectionWords(matches.groups.body.trim()));
 		}
 	} else if ((matches = section.match(/^(?<body>.+?)はもう一度$/))) {
@@ -105,6 +107,9 @@ const parseDescriptiveComponent = (text: string) => {
 	if (component.startsWith('△')) {
 		component = component.slice(1);
 	}
+	if (component.match(/^[英独仏羅西伊露瑞西][:：]/)) {
+		component = component.slice(2);
+	}
 	const sections = component.split(/[、。/,:]/);
 	for (const section of sections) {
 		answers.push(...parseDescriptiveComponentSection(section));
@@ -112,7 +117,7 @@ const parseDescriptiveComponent = (text: string) => {
 	return answers;
 };
 
-export const extractValidAnswers = (question: string, answerText: string) => {
+export const extractValidAnswers = (question: string, answerText: string, note: string = '') => {
 	let baseText = answerText;
 
 	// basic normalization
@@ -143,6 +148,12 @@ export const extractValidAnswers = (question: string, answerText: string) => {
 	}
 
 	answers.push(...newAnswers);
+
+	for (const line of note.split('\n')) {
+		if (line.length > 0) {
+			answers.push(...parseDescriptiveComponent(line));
+		}
+	}
 
 	return uniq(answers);
 };
