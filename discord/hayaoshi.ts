@@ -492,14 +492,14 @@ export default class Hayaoshi extends EventEmitter {
 				this.state.answerTimeoutId = this.setAnswerTimeout();
 			}
 
-			if ((message.content === '早押しクイズdev' || message.content === '早押しクイズ大会dev') && this.state.phase === 'waiting') {
+			if ((message.content === '早押しクイズ' || message.content === '早押しクイズ大会') && this.state.phase === 'waiting') {
 				try {
 					this.state.phase = 'gaming';
 					this.state.playStartTime = 0;
 					this.state.maximumPushTime = 0;
 					this.state.quizThroughCount = 0;
 					this.state.participants = new Map();
-					this.state.isContestMode = message.content === '早押しクイズ大会dev';
+					this.state.isContestMode = message.content === '早押しクイズ大会';
 					this.state.questionCount = 0;
 
 					this.emit('start-game');
