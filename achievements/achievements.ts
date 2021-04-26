@@ -2576,6 +2576,52 @@ const achievements: Achievement[] = [
 		category: 'octas',
 	},
 
+	// discord
+
+	{
+		id: 'discord-hayaoshi-correct-1',
+		difficulty: 'easy',
+		title: 'クイズ初心者',
+		condition: 'Discordの早押しクイズで正解する',
+		counter: 'discord-hayaoshi-correct',
+		value: 1,
+		category: 'discord',
+	},
+	{
+		id: 'discord-hayaoshi-correct-10',
+		difficulty: 'medium',
+		title: 'クイズ中級者',
+		condition: 'Discordの早押しクイズで10回正解する',
+		counter: 'discord-hayaoshi-correct',
+		value: 10,
+		category: 'discord',
+	},
+	{
+		id: 'discord-hayaoshi-correct-100',
+		difficulty: 'hard',
+		title: 'クイズ上級者',
+		condition: 'Discordの早押しクイズで100回正解する',
+		counter: 'discord-hayaoshi-correct',
+		value: 100,
+		category: 'discord',
+	},
+	{
+		id: 'discord-hayaoshi-correct-1000',
+		difficulty: 'professional',
+		title: 'クイズ王',
+		condition: 'Discordの早押しクイズで1000回正解する',
+		counter: 'discord-hayaoshi-correct',
+		value: 1000,
+		category: 'discord',
+	},
+	{
+		id: 'discord-hayaoshi-my-quiz-is-used',
+		difficulty: 'hard',
+		title: 'この問題見たことある',
+		condition: 'Discordの早押しクイズで自分が作問した問題が出題される',
+		category: 'discord',
+	},
+
 	// achievements
 
 	{

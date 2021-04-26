@@ -607,7 +607,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						text: `https://atcoder.jp/users/${user.atcoder}`,
 					}))),
 				});
-			} else if (text.match(/^[\x00-\x7F]+$/)) {
+			} else if (text.match(/^\w+$/)) {
 				const atcoderId = text;
 				const slackId = message.user;
 				if (atcoderId.length > 0) {
@@ -617,7 +617,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 							atcoder: atcoderId,
 						} : user);
 					} else {
-						state.users = state.users.concat([{slack: slackId, atcoder: atcoderId}]);
+						state.users.push({slack: slackId, atcoder: atcoderId});
 					}
 					await slack.reactions.add({
 						name: '+1',

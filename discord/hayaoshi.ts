@@ -7,7 +7,8 @@ import {stripIndent} from 'common-tags';
 import Discord, {StreamDispatcher, VoiceConnection} from 'discord.js';
 import {tokenize, KuromojiToken} from 'kuromojin';
 import {max, get} from 'lodash';
-import {getHardQuiz, getItQuiz, getHakatashiItQuiz, Quiz} from '../hayaoshi';
+import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
+import {unlock, increment} from '../achievements';
 import {extractValidAnswers, judgeAnswer} from './hayaoshiUtils';
 
 const {TextToSpeechClient} = GoogleCloudTextToSpeech;
@@ -38,12 +39,14 @@ interface State {
 
 export default class Hayaoshi extends EventEmitter {
 	state: State;
+	users: {discord: string, slack: string}[];
 
 	joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>;
 
-	constructor(joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>) {
+	constructor(joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>, users: {discord: string, slack: string}[]) {
 		super();
 		this.joinVoiceChannelFn = joinVoiceChannelFn;
+		this.users = users;
 		this.state = {
 			phase: 'waiting',
 			dispatcher: null,
@@ -131,9 +134,18 @@ export default class Hayaoshi extends EventEmitter {
 				this.incrementPoint(quiz.author, 0.5);
 			}
 
-			const lines = Array.from(this.state.participants.entries()).map(([userId, participant]) => (
-				`<@${userId}>${participant.penalties >= 3 ? '❌' : ''}: ${participant.points}○${participant.penalties}×`
-			));
+			if (quiz && quiz.author) {
+				const user = this.users.find(({discord}) => discord === quiz.author);
+				if (user) {
+					unlock(user.slack, 'discord-hayaoshi-my-quiz-is-used');
+				}
+			}
+
+			const lines = Array.from(this.state.participants.entries()).map(([userId, participant]) => {
+				const penaltyText = participant.penalties >= 3 ? '❌' : '';
+				const warningText = this.users.some(({discord}) => discord === userId) ? '' : ' (⚠️Slack連携未設定)';
+				return `<@${userId}>${penaltyText}: ${participant.points}○${participant.penalties}× ${warningText}`;
+			});
 
 			this.emit('message', lines.join('\n'));
 
@@ -319,7 +331,10 @@ export default class Hayaoshi extends EventEmitter {
 			return getItQuiz();
 		}
 		if (seed < 0.2) {
-			return getHakatashiItQuiz();
+			return getAbc2019Quiz();
+		}
+		if (seed < 0.3) {
+			return getUserQuiz();
 		}
 		return getHardQuiz();
 	}
@@ -328,9 +343,9 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.maximumPushTime = 0;
 		this.state.questionCount++;
 		this.state.quiz = await this.getQuiz();
-		this.state.validAnswers = extractValidAnswers(this.state.quiz.question, this.state.quiz.answer);
+		this.state.validAnswers = extractValidAnswers(this.state.quiz.question, this.state.quiz.answer, this.state.quiz.note);
 
-		const normalizedQuestion = this.state.quiz.question.replace(/\(.+?\)/g, '');
+		const normalizedQuestion = this.state.quiz.question.replace(/\(.+?\)/g, '').replace(/（.+?）/g, '');
 
 		const tokens = await tokenize(normalizedQuestion);
 
@@ -398,6 +413,11 @@ export default class Hayaoshi extends EventEmitter {
 				if (judgement === 'correct') {
 					this.state.connection.play(path.join(__dirname, 'sounds/correct.mp3'));
 					this.incrementPoint(message.member.user.id);
+
+					const user = this.users.find(({discord}) => discord === message.member.user.id);
+					if (user) {
+						increment(user.slack, 'discord-hayaoshi-correct');
+					}
 
 					this.emit('message', stripIndent`
 						正解者: <@${message.member.user.id}>
@@ -472,14 +492,14 @@ export default class Hayaoshi extends EventEmitter {
 				this.state.answerTimeoutId = this.setAnswerTimeout();
 			}
 
-			if ((message.content === '早押しクイズ' || message.content === '早押しクイズ大会') && this.state.phase === 'waiting') {
+			if ((message.content === '早押しクイズdev' || message.content === '早押しクイズ大会dev') && this.state.phase === 'waiting') {
 				try {
 					this.state.phase = 'gaming';
 					this.state.playStartTime = 0;
 					this.state.maximumPushTime = 0;
 					this.state.quizThroughCount = 0;
 					this.state.participants = new Map();
-					this.state.isContestMode = message.content === '早押しクイズ大会';
+					this.state.isContestMode = message.content === '早押しクイズ大会dev';
 					this.state.questionCount = 0;
 
 					this.emit('start-game');
@@ -496,6 +516,8 @@ export default class Hayaoshi extends EventEmitter {
 							* 失格者が出たとき、失格していない参加者がいない場合、引き分けで終了。
 							* 失格者が出たとき、失格していない参加者が1人の場合、その人が優勝。
 							* 正解者も誤答者も出ない問題が5問連続で出題された場合、引き分けで終了。
+							* Slackで \`@discord [discordのユーザーID]\` と送信するとSlackアカウントを連携できます。
+							* https://tsg-quiz.hkt.sh を編集すると自分で作問した問題を追加できます。
 						`);
 					}
 
