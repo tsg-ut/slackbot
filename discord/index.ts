@@ -1,7 +1,7 @@
 import type {ContextBlock} from '@slack/web-api';
 import Discord, {TextChannel, Collection, Snowflake, GuildMember, VoiceChannel} from 'discord.js';
-import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import type {SlackInterface} from '../lib/slack';
+import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
 import Hayaoshi from './hayaoshi';
 import TTS from './tts';
@@ -194,5 +194,5 @@ export default async ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 				});
 			}
 		}
-	})
+	});
 };

@@ -7,8 +7,8 @@ import {stripIndent} from 'common-tags';
 import Discord, {StreamDispatcher, VoiceConnection} from 'discord.js';
 import {tokenize, KuromojiToken} from 'kuromojin';
 import {max, get} from 'lodash';
-import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
 import {unlock, increment} from '../achievements';
+import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
 import {extractValidAnswers, judgeAnswer} from './hayaoshiUtils';
 
 const {TextToSpeechClient} = GoogleCloudTextToSpeech;
@@ -39,6 +39,7 @@ interface State {
 
 export default class Hayaoshi extends EventEmitter {
 	state: State;
+
 	users: {discord: string, slack: string}[];
 
 	joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>;

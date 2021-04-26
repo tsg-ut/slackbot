@@ -1,5 +1,3 @@
-import {constants, promises as fs} from 'fs';
-import path from 'path';
 import {encode} from 'querystring';
 import axios from 'axios';
 import cheerio from 'cheerio';
@@ -8,10 +6,10 @@ import {decode as decodeHtmlEntities} from 'html-entities';
 import iconv from 'iconv-lite';
 // @ts-ignore
 import {hiraganize} from 'japanese';
-import {random, sample, range, shuffle} from 'lodash';
+import {random, sample, range} from 'lodash';
 import scrapeIt from 'scrape-it';
-import {Loader} from '../lib/utils';
 import State from '../lib/state';
+import {Loader} from '../lib/utils';
 
 export interface Quiz {
 	id: number,
@@ -50,25 +48,20 @@ interface StateObj {
 	abc2019Candidates: number[],
 }
 
-const itStatePath = path.resolve(__dirname, 'candidates-it.json');
-const hakatashiItStatePath = path.resolve(__dirname, 'candidates-hakatashi-it.json');
-
-const getSheetRows = (range: string, sheets: sheets_v4.Sheets) => {
-	return new Promise<string[][]>((resolve, reject) => {
-		sheets.spreadsheets.values.get({
-			spreadsheetId: '1357WnNdRvBlDnh3oDtIde7ptDjm2pFFFb-hbytFX4lk',
-			range,
-		}, (error, response) => {
-			if (error) {
-				reject(error);
-			} else if (response.data.values) {
-				resolve(response.data.values as string[][]);
-			} else {
-				reject(new Error('values not found'));
-			}
-		});
+const getSheetRows = (rangeText: string, sheets: sheets_v4.Sheets) => new Promise<string[][]>((resolve, reject) => {
+	sheets.spreadsheets.values.get({
+		spreadsheetId: '1357WnNdRvBlDnh3oDtIde7ptDjm2pFFFb-hbytFX4lk',
+		range: rangeText,
+	}, (error, response) => {
+		if (error) {
+			reject(error);
+		} else if (response.data.values) {
+			resolve(response.data.values as string[][]);
+		} else {
+			reject(new Error('values not found'));
+		}
 	});
-}
+});
 
 const loader = new Loader<LoaderData>(async () => {
 	const state = await State.init<StateObj>('hayaoshi', {
@@ -112,7 +105,7 @@ const loader = new Loader<LoaderData>(async () => {
 			}));
 
 			const count = quizes.length;
-			if (!state.users.hasOwnProperty(name)) {
+			if (!{}.hasOwnProperty.call(state.users, name)) {
 				state.users[name] = {
 					count,
 					candidates: range(1, count + 1),
@@ -127,9 +120,9 @@ const loader = new Loader<LoaderData>(async () => {
 
 			return [
 				name,
-				{slack, discord, quizes}
+				{slack, discord, quizes},
 			] as [string, QuizUser];
-		})
+		}),
 	);
 
 	const usersMap = new Map(users);
@@ -213,7 +206,6 @@ const getHardQuizRaw = async () => {
 		page: id,
 		target: 0,
 		formname: 'lite_search',
-		question_text: '-今年 -昨年 -去年 -来年 -昨月 -今月 -来月',
 	})}`;
 
 	const {data: quiz} = await scrapeIt<Quiz>(url, {
@@ -235,7 +227,7 @@ const getHardQuizRaw = async () => {
 
 export const getHardQuiz = async () => {
 	let quiz: Quiz = null;
-	while (quiz === null || quiz.question.match(/(今年|昨年|去年|来年|昨月|今月|来月)/)) {
+	while (quiz === null || quiz.question.match(/(?:今年|昨年|去年|来年|昨月|今月|来月)/)) {
 		quiz = await getHardQuizRaw();
 	}
 	return quiz;
@@ -278,7 +270,7 @@ export const getUserQuiz = async () => {
 	for (const username of usernames) {
 		candidates.push(
 			...state.users[username].candidates
-				.map((id) => [username, id] as [string, number])
+				.map((id) => [username, id] as [string, number]),
 		);
 	}
 
@@ -287,7 +279,7 @@ export const getUserQuiz = async () => {
 			state.users[username].candidates.push(...range(1, state.users[username].count + 1));
 			candidates.push(
 				...state.users[username].candidates
-					.map((id) => [username, id] as [string, number])
+					.map((id) => [username, id] as [string, number]),
 			);
 		}
 	}
