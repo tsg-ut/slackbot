@@ -109,15 +109,15 @@ export default class TTS extends EventEmitter {
 	}
 
 	pause() {
-		logger.debug('[TTS] pause');
+		logger.info('[TTS] pause');
 		this.connection = null;
 		this.isPaused = true;
 	}
 
 	unpause() {
-		logger.debug('[TTS] unpause');
+		logger.info('[TTS] unpause');
 		mutex.runExclusive(async () => {
-			logger.debug(`[TTS] unpause - joining channel with lastActiveVoiceChannel ${this.lastActiveVoiceChannel}`);
+			logger.info(`[TTS] unpause - joining channel with lastActiveVoiceChannel ${this.lastActiveVoiceChannel}`);
 			if (this.users.size !== 0) {
 				if (this.lastActiveVoiceChannel === null) {
 					this.connection = await this.joinVoiceChannelFn();

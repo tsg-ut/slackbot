@@ -61,12 +61,12 @@ export default async ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	});
 
 	hayaoshi.on('start-game', () => {
-		logger.debug('[hayaoshi] start-game');
+		logger.info('[hayaoshi] start-game');
 		tts.pause();
 	});
 
 	hayaoshi.on('end-game', () => {
-		logger.debug('[hayaoshi] end-game');
+		logger.info('[hayaoshi] end-game');
 		tts.unpause();
 	});
 
