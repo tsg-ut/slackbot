@@ -49,7 +49,7 @@ const queue = new Queue({concurrency: 1});
 const transaction = (func) => queue.add(func);
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
-const state = (() => {
+	const state = (() => {
 		try {
 			// eslint-disable-next-line global-require
 			const savedState = require('./state.json');
