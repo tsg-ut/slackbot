@@ -118,7 +118,7 @@ export default class TTS extends EventEmitter {
 		logger.info('[TTS] unpause');
 		mutex.runExclusive(async () => {
 			logger.info(`[TTS] unpause - joining channel with lastActiveVoiceChannel ${this.lastActiveVoiceChannel}`);
-			await new Promise((resolve) => setTimeout(resolve, 5000));
+			await new Promise((resolve) => setTimeout(resolve, 200));
 			if (this.users.size !== 0) {
 				if (this.lastActiveVoiceChannel === null) {
 					this.connection = await this.joinVoiceChannelFn();

@@ -105,9 +105,15 @@ export default class Hayaoshi extends EventEmitter {
 			this.state.connection.disconnect();
 		}
 
+	async endGame() {
+		const oldConnection = this.state.connection;
 		this.state.phase = 'waiting';
 		this.state.connection = null;
 		this.state.quizThroughCount = 0;
+
+		if (oldConnection) {
+			await oldConnection.disconnect();
+		}
 		this.emit('end-game');
 	}
 
