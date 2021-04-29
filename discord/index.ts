@@ -1,5 +1,6 @@
 import type {ContextBlock} from '@slack/web-api';
 import Discord, {TextChannel, Collection, Snowflake, GuildMember, VoiceChannel} from 'discord.js';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
@@ -60,10 +61,12 @@ export default async ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	});
 
 	hayaoshi.on('start-game', () => {
+		logger.debug('[hayaoshi] start-game');
 		tts.pause();
 	});
 
 	hayaoshi.on('end-game', () => {
+		logger.debug('[hayaoshi] end-game');
 		tts.unpause();
 	});
 

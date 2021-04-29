@@ -6,6 +6,7 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord, {VoiceConnection} from 'discord.js';
 import {minBy, countBy} from 'lodash';
+import logger from '../lib/logger';
 
 const {TextToSpeechClient} = GoogleCloudTextToSpeech;
 
@@ -108,11 +109,15 @@ export default class TTS extends EventEmitter {
 	}
 
 	pause() {
+		logger.debug('[TTS] pause');
 		this.connection = null;
+		this.isPaused = true;
 	}
 
 	unpause() {
+		logger.debug('[TTS] unpause');
 		mutex.runExclusive(async () => {
+			logger.debug(`[TTS] unpause - joining channel with lastActiveVoiceChannel ${this.lastActiveVoiceChannel}`);
 			if (this.users.size !== 0) {
 				if (this.lastActiveVoiceChannel === null) {
 					this.connection = await this.joinVoiceChannelFn();
@@ -120,6 +125,7 @@ export default class TTS extends EventEmitter {
 					this.connection = await this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
 				}
 			}
+			this.isPaused = false;
 		});
 	}
 
@@ -189,7 +195,7 @@ export default class TTS extends EventEmitter {
 						* TTS help - ヘルプを表示
 					`, message.channel.id);
 				}
-			} else if (this.users.has(user) && !message.content.startsWith('-')) {
+			} else if (this.users.has(user) && !message.content.startsWith('-') && !this.isPaused) {
 				const id = this.users.get(user);
 				this.userTimers.get(user)?.resetTimer();
 
