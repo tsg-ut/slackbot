@@ -53,11 +53,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		try {
 			// eslint-disable-next-line global-require
 			const savedState = require('./state.json');
-			if (savedState.endThisPhase != null) {
+			if (savedState.endThisPhase !== null) {
 				assert(savedState.phase !== 'waiting');
 				const difftime = savedState.endThisPhase - Date.now();
 				if (difftime <= 0) {
-					logger.info("tahoiya ends its phase while deploy, hence add extra time");
+					logger.info('tahoiya ends its phase while deploy, hence add extra time');
 					savedState.endThisPhase = Date.now() + timeExtraAddition;
 				}
 				switch (savedState.phase) {
@@ -87,7 +87,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				stashedDaily: savedState.stashedDaily || null,
 				endThisPhase: savedState.endThisPhase || null,
 			};
-		} catch (e) {
+		} catch (error) {
 			return {
 				phase: 'waiting',
 				isWaitingDaily: false,
@@ -412,7 +412,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				}
 			}
 		}
-	};
+	}
 
 	async function onFinishBettings() {
 		assert(state.phase === 'collect_bettings');
@@ -676,7 +676,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 				await unlock(user, 'tahoiya-deceive3');
 			}
 		}
-	};
+	}
 
 	const onBotResult = async ({result, modelName}) => {
 		assert(state.phase === 'collect_meanings');
