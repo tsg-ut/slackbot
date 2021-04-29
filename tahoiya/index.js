@@ -39,6 +39,7 @@ const {
 
 const timeCollectMeaningNormal = 3 * 60 * 1000;
 const timeCollectMeaningDaily = 90 * 60 * 1000;
+const timeCollectBettingNormal = 3 * 60 * 1000;
 const timeCollectBettingDaily = 30 * 60 * 1000;
 const timeExtraAddition = 60 * 1000;
 
@@ -697,7 +698,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const startDaily = async () => {
 		assert(state.phase === 'waiting');
 
-		const end = Date.now() + 90 * 60 * 1000;
+		const end = Date.now() + timeCollectMeaningDaily;
 		await setState({
 			phase: 'collect_meanings',
 			isWaitingDaily: false,
