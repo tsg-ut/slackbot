@@ -1,6 +1,7 @@
 import qs from 'querystring';
 import axios, {AxiosResponse} from 'axios';
 import scrapeIt from 'scrape-it';
+import logger from '../../lib/logger';
 import {Challenge, SolvedInfo, Profile} from './BasicTypes';
 
 const SAFELIMIT = 100;
@@ -145,7 +146,12 @@ const parseProfileXYZ = async (html: any) => {
 };
 
 export const fetchUserProfileXYZ = async function(userId: string) {
-	await loginXYZ();
+	try {
+		await loginXYZ();
+	} catch {
+		logger.error('failed to login to XYZ');
+		return null;
+	}
 	try {
 		const {data: html} = await clientXYZ.get(`https://pwnable.xyz/user/${userId}/`, {
 			headers: {
@@ -160,6 +166,14 @@ export const fetchUserProfileXYZ = async function(userId: string) {
 
 // update challs and solved-state of pwnable.xyz
 export const fetchChallsXYZ = async function () {
+	// connection check
+	try {
+		await loginXYZ();
+	} catch {
+		logger.error('failed to login to XYZ');
+		return [];
+	}
+
 	// fetch data
 	const {data: html} = await axios.get('https://pwnable.xyz/challenges', {
 		headers: {},
@@ -209,7 +223,12 @@ const parseUsersXYZ = async function(data: any): Promise<{userid: string, name: 
 
 // crawl for specified user and get userID
 export const findUserByNameXYZ = async function (username: string): Promise<{userid: string, name: string}> {
-	loginXYZ();
+	try {
+		await loginXYZ();
+	} catch {
+		logger.error('failed to login to XYZ');
+		return null;
+	}
 	let lastFetchedUser: {userid: string, name: string } = null;
 	let pageNum = 1;
 	let safebar = 0; // to prevent DoS
