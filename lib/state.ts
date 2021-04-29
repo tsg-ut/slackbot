@@ -2,9 +2,10 @@ import {throttle, groupBy, uniq} from 'lodash';
 import db from './firestore';
 import {Deferred} from './utils';
 import path from 'path';
+import {inspect} from 'util';
 import fs from 'fs-extra';
 import {Mutex} from 'async-mutex';
-import {observable} from 'mobx';
+import {observable, toJS} from 'mobx';
 import type {IObjectDidChange, IArrayDidChange, IMapDidChange} from 'mobx';
 import {deepObserve} from 'mobx-utils';
 
@@ -110,7 +111,11 @@ export const StateDevelopment: StateInterface = class StateDevelopment<StateObj>
 			await fs.writeFile(statePath, JSON.stringify(defaultValues, null, '  '));
 		}
 
-		const initialState = {...defaultValues, ...stateObj};
+		const initialState = {
+			...defaultValues,
+			...stateObj,
+			[inspect.custom]: function() { return toJS(this); },
+		};
 
 		const stateObject = observable(initialState);
 

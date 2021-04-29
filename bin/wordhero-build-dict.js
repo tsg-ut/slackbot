@@ -22,7 +22,7 @@ const {hiraganize} = require('japanese');
 	});
 	const decoder = iconv.decodeStream('EUC-JP');
 	const encoder = iconv.encodeStream('UTF-8');
-	const reader = fs.createReadStream('dict/mecab-naist-jdic-0.6.3b-20111013/naist-jdic.csv');
+	const reader = fs.createReadStream('../wordhero/dict/mecab-naist-jdic-0.6.3b-20111013/naist-jdic.csv');
 
 	const dictionary = new Map();
 
@@ -40,7 +40,7 @@ const {hiraganize} = require('japanese');
 
 	parser.on('end', () => {
 		console.log(dictionary.size);
-		const reader = fs.createReadStream('dict/entries-all.tsv');
+		const reader = fs.createReadStream('../wordhero/dict/entries-all.tsv');
 		const parser = parse({
 			delimiter: '\t',
 			quote: null,
@@ -53,8 +53,8 @@ const {hiraganize} = require('japanese');
 
 		parser.on('end', () => {
 			console.log(dictionary.size);
-			const writer = fs.createWriteStream('dict/naistdic.sql');
-			const wordsWriter = fs.createWriteStream('words.txt');
+			const writer = fs.createWriteStream('../wordhero/dict/naistdic.sql');
+			const wordsWriter = fs.createWriteStream('../wordhero/words.txt');
 			writer.write('CREATE TABLE words (word TEXT, ruby TEXT UNIQUE, description TEXT);\n')
 			writer.write('BEGIN TRANSACTION;\n');
 			for (const [ruby, {word, description}] of dictionary.entries()) {

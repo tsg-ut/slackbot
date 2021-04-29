@@ -429,6 +429,14 @@ export const set = async (user: string, name: string, value: any) => {
 	}
 
 	state.users.get(user)[name] = value;
+
+	if (typeof value === 'number') {
+		const unlocked = Array.from(achievements.values()).filter((achievement) => achievement.counter === name && achievement.value <= value);
+		for (const achievement of unlocked) {
+			unlock(user, achievement.id);
+		}
+	}
+
 	updateDb({type: 'set', user, name, value});
 };
 

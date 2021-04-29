@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const {hiraganize} = require('japanese');
 
-const data = fs.readFileSync(path.join(__dirname, 'dict/kojien.txt'));
+const data = fs.readFileSync(path.join(__dirname, '../wordhero/dict/kojien.txt'));
 const lines = data.toString().split('\r\n');
 
 const normalizeMeaning = (input) => {

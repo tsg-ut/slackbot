@@ -1,4 +1,5 @@
 import type {SlackInterface} from '../lib/slack';
+import logger from '../lib/logger';
 import cloudinary from 'cloudinary';
 import sharp from 'sharp';
 import path from 'path';
@@ -10,6 +11,7 @@ import Board from './lib/Board';
 import BoardElement from './lib/Render';
 import {JSDOM} from 'jsdom';
 import Queue from 'p-queue';
+import {increment, unlock} from '../achievements/index.js';
 
 const applyCSS = (paper: any) => {
     paper.selectAll('.board-edge').attr({
@@ -142,6 +144,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     };
 
     const Launch = async () => {
+        logger.info('[OCTAS] instance launched.');
         state.isHolding = true;
         state.board = new Board({width: 5, height: 5});
         state.paper = dom.window.Snap();
@@ -216,6 +219,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
             });
 
             // begin match!
+            logger.info('[OCTAS] matching accepted.');
         }
     };
 
@@ -289,7 +293,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
             }],
             username: 'octas',
             icon_emoji: ':octopus:',
-            reply_broadcast: true,
         });
 
         await slack.chat.postMessage({
@@ -328,6 +331,34 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
                     icon_emoji: ':octopus:',
                     reply_broadcast: true
                 });
+            }
+            logger.info(`active: ${state.board.activePlayer}, winner: ${state.board.winner}`);
+            unlock(state.player, 'octas-beginner');
+            unlock(state.opponent, 'octas-beginner');
+            if (state.player != state.opponent) {
+                if (state.board.winner == 0) {
+                    increment(state.player, 'octas-win');
+                    if (state.board.getCurrentPoint() == null) {
+                        // goal
+                        if (state.board.activePlayer == 1) {
+                            unlock(state.opponent, 'octas-owngoaler');
+                        }
+                    } else {
+                        // unable to move
+                        unlock(state.player, 'octas-catch');
+                    }
+                } else {
+                    increment(state.opponent, 'octas-win');
+                    if (state.board.getCurrentPoint() == null) {
+                        // goal
+                        if (state.board.activePlayer == 0) {
+                            unlock(state.player, 'octas-owngoaler');
+                        }
+                    } else {
+                        // unable to move
+                        unlock(state.opponent, 'octas-catch');
+                    }
+                }
             }
             await processQueue.add(Halt);
             return;

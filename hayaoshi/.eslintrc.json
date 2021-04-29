@@ -6,6 +6,8 @@
         "no-use-before-define": "off",
         "camelcase": "off",
         "require-atomic-updates": "off",
-        "import/extensions": "off"
+        "import/extensions": "off",
+        "import/default": "off",
+        "import/no-named-as-default-member": "off"
     }
 }
