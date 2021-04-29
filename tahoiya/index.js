@@ -22,7 +22,6 @@ const sql = require('sql-template-strings');
 const sqlite = require('sqlite');
 const sqlite3 = require('sqlite3');
 const {unlock, increment} = require('../achievements');
-const {blockDeploy} = require('../deploy/index.ts');
 const getReading = require('../lib/getReading.js');
 
 const {default: logger} = require('../lib/logger.ts');
@@ -38,48 +37,75 @@ const {
 	normalizeMeaning,
 } = require('./lib.js');
 
-const state = (() => {
-	try {
-		// eslint-disable-next-line global-require
-		const savedState = require('./state.json');
-		return {
-			phase: savedState.phase,
-			author: savedState.author || null,
-			authorHistory: savedState.authorHistory || [],
-			isWaitingDaily: savedState.isWaitingDaily || false,
-			candidates: savedState.candidates,
-			meanings: new Map(Object.entries(savedState.meanings)),
-			shuffledMeanings: savedState.shuffledMeanings,
-			bettings: new Map(Object.entries(savedState.bettings)),
-			theme: savedState.theme,
-			ratings: new Map(Object.entries(savedState.ratings)),
-			comments: savedState.comments || [],
-			stashedDaily: savedState.stashedDaily || null,
-		};
-	} catch (e) {
-		return {
-			phase: 'waiting',
-			isWaitingDaily: false,
-			author: null,
-			authorHistory: [],
-			candidates: [],
-			meanings: new Map(),
-			shuffledMeanings: [],
-			bettings: new Map(),
-			theme: null,
-			ratings: new Map(),
-			comments: [],
-			stashedDaily: null,
-		};
-	}
-})();
+const timeCollectMeaningNormal = 3 * 60 * 1000;
+const timeCollectMeaningDaily = 90 * 60 * 1000;
+const timeCollectBettingDaily = 30 * 60 * 1000;
+const timeExtraAddition = 60 * 1000;
+
+let timeoutId = null;
 
 const queue = new Queue({concurrency: 1});
 
 const transaction = (func) => queue.add(func);
-let deployUnblock = null;
 
 module.exports = async ({rtmClient: rtm, webClient: slack}) => {
+const state = (() => {
+		try {
+			// eslint-disable-next-line global-require
+			const savedState = require('./state.json');
+			if (savedState.endThisPhase != null) {
+				assert(savedState.phase !== 'waiting');
+				const difftime = savedState.endThisPhase - Date.now();
+				if (difftime <= 0) {
+					logger.info("tahoiya ends its phase while deploy, hence add extra time");
+					savedState.endThisPhase = Date.now() + timeExtraAddition;
+				}
+				switch (savedState.phase) {
+					case 'collect_meanings':
+						setTimeout(onFinishMeanings, savedState.endThisPhase - Date.now());
+						break;
+					case 'collect_bettings':
+						timeoutId = setTimeout(onFinishBettings, savedState.endThisPhase - Date.now());
+						break;
+					case 'waiting':
+					default:
+						break;
+				}
+			}
+			return {
+				phase: savedState.phase,
+				author: savedState.author || null,
+				authorHistory: savedState.authorHistory || [],
+				isWaitingDaily: savedState.isWaitingDaily || false,
+				candidates: savedState.candidates,
+				meanings: new Map(Object.entries(savedState.meanings)),
+				shuffledMeanings: savedState.shuffledMeanings,
+				bettings: new Map(Object.entries(savedState.bettings)),
+				theme: savedState.theme,
+				ratings: new Map(Object.entries(savedState.ratings)),
+				comments: savedState.comments || [],
+				stashedDaily: savedState.stashedDaily || null,
+				endThisPhase: savedState.endThisPhase || null,
+			};
+		} catch (e) {
+			return {
+				phase: 'waiting',
+				isWaitingDaily: false,
+				author: null,
+				authorHistory: [],
+				candidates: [],
+				meanings: new Map(),
+				shuffledMeanings: [],
+				bettings: new Map(),
+				theme: null,
+				ratings: new Map(),
+				comments: [],
+				stashedDaily: null,
+				endThisPhase: null,
+			};
+		}
+	})();
+
 	const db = await sqlite.open({
 		filename: path.join(__dirname, 'themes.sqlite3'),
 		driver: sqlite3.Database,
@@ -102,25 +128,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	};
 
 	const setState = async (newState) => {
-		if (state.phase !== 'waiting' && newState.phase === 'waiting') {
-			// running -> waiting
-			if (deployUnblock) {
-				deployUnblock();
-				deployUnblock = null;
-			} else {
-				logger.warn('tahoiya: deployUnblock is falthy when running -> waiting');
-			}
-		}
-		if (state.phase === 'waiting' && newState.phase !== 'waiting') {
-			// waiting -> running
-			if (deployUnblock) {
-				logger.warn('tahoiya: deployUnblock is truthy when waiting -> running');
-				deployUnblock();
-				deployUnblock = null;
-			}
-			deployUnblock = await blockDeploy('tahoiya');
-		}
-
 		Object.assign(state, newState);
 
 		const savedState = {};
@@ -135,7 +142,6 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		await promisify(fs.writeFile)(path.join(__dirname, 'state.json'), JSON.stringify(savedState));
 	};
 
-	let timeoutId = null;
 
 	const candidateWords = await getCandidateWords();
 
@@ -294,7 +300,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		postMessage(error.stack)
 	);
 
-	const onFinishMeanings = async () => {
+	async function onFinishMeanings() {
 		const humanCount = Array.from(state.meanings.keys()).filter((user) => user.startsWith('U')).length;
 		if (state.author !== null && humanCount < 3) {
 			await setState({
@@ -315,18 +321,22 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					meanings: [...state.meanings.entries()],
 					comments: state.comments,
 				},
+				endThisPhase: null,
 			});
 			await postMessage('参加者が最少催行人数 (3人) より少ないので今日のデイリーたほいやはキャンセルされたよ:face_with_rolling_eyes:');
 			return;
 		}
 
 		if (humanCount === 0) {
-			await setState({phase: 'waiting', theme: null, author: null, meanings: new Map()});
+			await setState({phase: 'waiting', theme: null, author: null, meanings: new Map(), endThisPhase: null});
 			await postMessage('参加者がいないのでキャンセルされたよ:face_with_rolling_eyes:');
 			return;
 		}
 
-		await setState({phase: 'collect_bettings'});
+		await setState({
+			phase: 'collect_bettings',
+			endThisPhase: Date.now() + state.author === null ? timeCollectBettingNormal : timeCollectMeaningDaily,
+		});
 		const dummySize = Math.max(1, 4 - state.meanings.size);
 		const ambiguateDummy = minBy(candidateWords, ([word, ruby]) => {
 			const distance = levenshtein.get(state.theme.ruby, ruby);
@@ -393,7 +403,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			}
 		}
 
-		timeoutId = setTimeout(onFinishBettings, (state.author === null ? 3 : 30) * 60 * 1000);
+		timeoutId = setTimeout(onFinishBettings, state.author === null ? timeCollectBettingNormal : timeCollectBettingDaily);
 
 		if (humanCount >= 3) {
 			for (const user of state.meanings.keys()) {
@@ -404,7 +414,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 	};
 
-	const onFinishBettings = async () => {
+	async function onFinishBettings() {
 		assert(state.phase === 'collect_bettings');
 
 		const timestamp = new Date().toISOString();
@@ -602,6 +612,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			meanings: new Map(),
 			bettings: new Map(),
 			comments: [],
+			endThisPhase: null,
 		});
 
 		if (state.isWaitingDaily) {
@@ -686,9 +697,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	const startDaily = async () => {
 		assert(state.phase === 'waiting');
 
+		const end = Date.now() + 90 * 60 * 1000;
 		await setState({
 			phase: 'collect_meanings',
 			isWaitingDaily: false,
+			endThisPhase: end,
 		});
 
 		// 最近選ばれてないユーザーを選ぶ
@@ -733,7 +746,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 
 		if (!theme) {
-			await setState({phase: 'waiting'});
+			await setState({phase: 'waiting', endThisPhase: null});
 			await postMessage('お題ストックが無いのでデイリーたほいやはキャンセルされたよ:cry:');
 			return;
 		}
@@ -756,10 +769,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			stashedDaily: null,
 			meanings,
 			comments,
+			endThisPhase: null,
 		});
 
-		const end = Date.now() + 90 * 60 * 1000;
-		setTimeout(onFinishMeanings, 90 * 60 * 1000);
+		setTimeout(onFinishMeanings, timeCollectMeaningDaily);
 
 		axios.post('https://slack.com/api/chat.postMessage', {
 			channel: process.env.CHANNEL_SANDBOX,
@@ -821,7 +834,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 				if (state.candidates.some(([, ruby]) => ruby === text)) {
 					assert(state.phase === 'waiting');
-					await setState({phase: 'collect_meanings'});
+					const end = Date.now() + timeCollectMeaningNormal;
+					await setState({phase: 'collect_meanings', endThisPhase: end});
 
 					const [word, ruby, source, rawMeaning, id] = state.candidates.find(([, r]) => r === text);
 					await setState({candidates: []});
@@ -830,8 +844,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 					await setState({theme: {word, ruby, meaning, source, id}});
 
-					const end = Date.now() + 3 * 60 * 1000;
-					setTimeout(onFinishMeanings, 3 * 60 * 1000);
+					setTimeout(onFinishMeanings, timeCollectMeaningNormal);
 
 					await postMessage(stripIndent`
 						お題を *「${ruby}」* にセットしたよ:v:
