@@ -100,11 +100,6 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.participants.get(user).penalties++;
 	}
 
-	endGame() {
-		if (this.state.connection) {
-			this.state.connection.disconnect();
-		}
-
 	async endGame() {
 		const oldConnection = this.state.connection;
 		this.state.phase = 'waiting';
