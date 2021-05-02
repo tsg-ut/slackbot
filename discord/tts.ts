@@ -126,7 +126,7 @@ export default class TTS extends EventEmitter {
 					this.connection = await this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
 				}
 			}
-			logger.info(`[TTS] unpause - connected`);
+			logger.info('[TTS] unpause - connected');
 			this.isPaused = false;
 		});
 	}
