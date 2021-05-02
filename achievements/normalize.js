@@ -25,8 +25,6 @@ const sortBy = require('lodash/sortBy');
 
 	await db.runTransaction(async (transaction) => {
 		const achievements = await transaction.get(db.collection('achievements'));
-		const rawAchievementData = await transaction.get(db.collection('achievement_data'));
-		const achievementData = new Map(rawAchievementData.docs.map((data) => [data.get('id'), data]));
 
 		const names = groupBy(achievements.docs, (achievement) => achievement.get('name'));
 		for (const [name, nameAchievements] of Object.entries(names)) {
@@ -36,6 +34,12 @@ const sortBy = require('lodash/sortBy');
 				first: first.get('user'),
 			});
 		}
+	});
+
+	await db.runTransaction(async (transaction) => {
+		const achievements = await transaction.get(db.collection('achievements'));
+		const rawAchievementData = await transaction.get(db.collection('achievement_data'));
+		const achievementData = new Map(rawAchievementData.docs.map((data) => [data.get('id'), data]));
 
 		const users = groupBy(achievements.docs, (achievement) => achievement.get('user'));
 		for (const [user, userAchievements] of Object.entries(users)) {
@@ -44,6 +48,12 @@ const sortBy = require('lodash/sortBy');
 			));
 			await transaction.update(db.collection('users').doc(user), {counts: categories});
 		}
+	});
+
+	await db.runTransaction(async (transaction) => {
+		const achievements = await transaction.get(db.collection('achievements'));
+		const rawAchievementData = await transaction.get(db.collection('achievement_data'));
+		const achievementData = new Map(rawAchievementData.docs.map((data) => [data.get('id'), data]));
 
 		const difficultyCounts = countBy(achievements.docs, (achievement) => achievementData.get(achievement.get('name')).get('difficulty'));
 		for (const [difficulty, count] of Object.entries(difficultyCounts)) {

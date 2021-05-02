@@ -7,7 +7,7 @@ import {stripIndent} from 'common-tags';
 import Discord, {StreamDispatcher, VoiceConnection} from 'discord.js';
 import {tokenize, KuromojiToken} from 'kuromojin';
 import {max, get} from 'lodash';
-import {unlock, increment} from '../achievements';
+import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
 import {extractValidAnswers, judgeAnswer} from './hayaoshiUtils';
 
@@ -97,7 +97,14 @@ export default class Hayaoshi extends EventEmitter {
 		if (!this.state.participants.has(user)) {
 			this.state.participants.set(user, {points: 0, penalties: 0});
 		}
-		this.state.participants.get(user).penalties++;
+		const penalties = ++this.state.participants.get(user).penalties;
+
+		if (penalties == 3) {
+			const userData = this.users.find(({discord}) => discord === user);
+			if (userData) {
+				increment(userData.slack, 'discord-hayaoshi-disqualification');
+			}
+		}
 	}
 
 	async endGame() {
@@ -123,6 +130,13 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.penaltyUsers = new Set();
 		this.state.phase = 'gaming';
 
+		if (quiz && quiz.author) {
+			const user = this.users.find(({discord}) => discord === quiz.author);
+			if (user) {
+				increment(user.slack, 'discord-hayaoshi-my-quiz-is-used');
+			}
+		}
+
 		if (this.state.isContestMode) {
 			if (
 				correct &&
@@ -134,13 +148,6 @@ export default class Hayaoshi extends EventEmitter {
 				)
 			) {
 				this.incrementPoint(quiz.author, 0.5);
-			}
-
-			if (quiz && quiz.author) {
-				const user = this.users.find(({discord}) => discord === quiz.author);
-				if (user) {
-					unlock(user.slack, 'discord-hayaoshi-my-quiz-is-used');
-				}
 			}
 
 			const lines = Array.from(this.state.participants.entries()).map(([userId, participant]) => {
@@ -210,6 +217,17 @@ export default class Hayaoshi extends EventEmitter {
 			🎉🎉🎉優勝🎉🎉🎉
 			<@${user}>
 		`);
+
+		const userData = this.users.find(({discord}) => discord === user);
+		if (userData) {
+			increment(userData.slack, 'discord-hayaoshi-win');
+			if (this.state.participants.get(user)?.points >= 5) {
+				increment(userData.slack, 'discord-hayaoshi-complete-win');
+				if (this.state.participants.get(user)?.penalties === 0) {
+					increment(userData.slack, 'discord-hayaoshi-perfect-win');
+				}
+			}
+		}
 	}
 
 	async readAnswer() {
@@ -419,6 +437,9 @@ export default class Hayaoshi extends EventEmitter {
 					const user = this.users.find(({discord}) => discord === message.member.user.id);
 					if (user) {
 						increment(user.slack, 'discord-hayaoshi-correct');
+						if (this.state.maximumPushTime <= 2000) {
+							unlock(user.slack, 'discord-hayaoshi-time-lt2');
+						}
 					}
 
 					this.emit('message', stripIndent`
