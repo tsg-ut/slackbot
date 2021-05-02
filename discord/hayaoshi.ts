@@ -99,7 +99,7 @@ export default class Hayaoshi extends EventEmitter {
 		}
 		const penalties = ++this.state.participants.get(user).penalties;
 
-		if (penalties == 3) {
+		if (penalties === 3) {
 			const userData = this.users.find(({discord}) => discord === user);
 			if (userData) {
 				increment(userData.slack, 'discord-hayaoshi-disqualification');
