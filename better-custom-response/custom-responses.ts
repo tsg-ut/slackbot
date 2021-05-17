@@ -1,7 +1,7 @@
 import { stripIndent } from 'common-tags';
 // @ts-ignore
 import { romanize, katakanize } from 'japanese';
-import { sample, shuffle } from 'lodash';
+import { shuffle } from 'lodash';
 import omikuji from './omikuji.json';
 
 interface Achievement {
