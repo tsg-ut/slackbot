@@ -187,7 +187,7 @@ const customResponses: CustomResponse[] = [
         username: "鍵屋",
     },
     {
-        input: [/^(?:(?:.+)か)+(?:.+)?占い$/],
+        input: [/^(?:.+か)+(?:.+)?占い$/],
         outputFunction: (input: string[]) => {
             const matchedString = input[0];
             const choice = (() =>{
