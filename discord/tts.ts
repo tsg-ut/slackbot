@@ -203,7 +203,7 @@ export default class TTS extends EventEmitter {
 			} else if (this.users.has(user) && !message.content.startsWith('-') && !this.isPaused) {
 				const id = this.users.get(user);
 				this.userTimers.get(user)?.resetTimer();
-				let content = message.content;
+				let {content} = message;
 				for (const {key, value} of this.ttsDictionary) {
 					content = content.replace(new RegExp(key, 'g'), value);
 				}
@@ -241,5 +241,4 @@ export default class TTS extends EventEmitter {
 		});
 	}
 }
-
 
