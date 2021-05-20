@@ -9,6 +9,7 @@ import TTS from './tts';
 
 interface StateObj {
 	users: {discord: string, slack: string}[],
+	ttsDictionary: {key: string, value: string}[],
 }
 
 const discord = new Discord.Client();
@@ -40,7 +41,10 @@ const getMembersBlock = (roomName: string, members: Collection<Snowflake, GuildM
 );
 
 export default async ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
-	const state = await State.init<StateObj>('discord', {users: []});
+	const state = await State.init<StateObj>('discord', {
+		users: [],
+		ttsDictionary: [{key: 'https?:.*', value: 'URL省略'}],
+	});
 
 	const joinVoiceChannelFn = (channelId: string = process.env.DISCORD_SANDBOX_VOICE_CHANNEL_ID) => {
 		const discordSandbox = discord.channels.cache.get(channelId) as VoiceChannel;
@@ -48,7 +52,7 @@ export default async ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	};
 
 	const hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users);
-	const tts = new TTS(joinVoiceChannelFn);
+	const tts = new TTS(joinVoiceChannelFn, state.ttsDictionary);
 
 	hayaoshi.on('message', (message: string, channelId: string = process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) => {
 		const discordTextSandbox = discord.channels.cache.get(channelId) as TextChannel;

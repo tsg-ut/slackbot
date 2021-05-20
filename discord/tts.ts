@@ -73,7 +73,9 @@ export default class TTS extends EventEmitter {
 
 	joinVoiceChannelFn: (channelId?: string) => Promise<Discord.VoiceConnection>;
 
-	constructor(joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>) {
+	ttsDictionary: {key: string, value: string}[];
+
+	constructor(joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>, ttsDictionary: {key: string, value: string}[]) {
 		super();
 		this.joinVoiceChannelFn = joinVoiceChannelFn;
 		this.users = new Map();
@@ -81,6 +83,7 @@ export default class TTS extends EventEmitter {
 		this.connection = null;
 		this.isPaused = false;
 		this.lastActiveVoiceChannel = null;
+		this.ttsDictionary = ttsDictionary;
 	}
 
 	async onUsersModified() {
@@ -200,10 +203,14 @@ export default class TTS extends EventEmitter {
 			} else if (this.users.has(user) && !message.content.startsWith('-') && !this.isPaused) {
 				const id = this.users.get(user);
 				this.userTimers.get(user)?.resetTimer();
+				let {content} = message;
+				for (const {key, value} of this.ttsDictionary) {
+					content = content.replace(new RegExp(key, 'g'), value);
+				}
 
 				const [response] = await client.synthesizeSpeech({
 					input: {
-						ssml: message.content,
+						ssml: content,
 					},
 					voice: {
 						languageCode: 'ja-JP',
@@ -234,5 +241,4 @@ export default class TTS extends EventEmitter {
 		});
 	}
 }
-
 
