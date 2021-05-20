@@ -203,7 +203,7 @@ const customResponses: CustomResponse[] = [
                 return stripIndent`\
                 :meishodoto_umamusume: 「救いは無いのですか～？」
                 :matikanefukukitaru_umamusume: 「むむっ…　:palms_up_together::crystal_ball:」
-                :matikanefukukitaru_umamusume: 「出ました！　『＊${c}＊』です！」
+                :matikanefukukitaru_umamusume: 「出ました！　＊『${c.trim()}』＊です！」
                 `;
             }
             return choice.map(fukukitarify);
