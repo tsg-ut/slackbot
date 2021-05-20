@@ -143,7 +143,7 @@ export default class TTS extends EventEmitter {
 			const tokens = message.content.split(/\s+/);
 			const user = message.member.user.id;
 
-			if (tokens[0]?.toUpperCase() === 'DTTS') {
+			if (tokens[0]?.toUpperCase() === 'TTS') {
 				if (tokens.length === 1 || tokens[1] === 'start') {
 					if (!this.users.has(user)) {
 						this.users.set(user, this.assignNewVoice());
