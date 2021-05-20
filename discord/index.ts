@@ -46,7 +46,7 @@ export default ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	};
 	const notifyCacheLimit = 60000; // 1min
 	const nickSummarizer = (nicks: string[]) => {
-		if (nicks.length > 3) {
+		if (nicks.length >= 3) {
 			return `＊${nicks[0]}＊, ＊${nicks[1]}＊, ほか${nicks.length - 2}名`;
 		} else if (nicks.length === 2) {
 			return `＊${nicks[0]}＊, ＊${nicks[1]}＊`;
