@@ -1,19 +1,16 @@
 import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
-import {v1beta1 as GoogleCloudTextToSpeech} from '@google-cloud/text-to-speech';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord, {VoiceConnection} from 'discord.js';
 import {minBy, countBy} from 'lodash';
 import logger from '../lib/logger';
+import {getSpeech} from './speeches';
 
-const {TextToSpeechClient} = GoogleCloudTextToSpeech;
-
-const client = new TextToSpeechClient();
 const mutex = new Mutex();
 
-enum Voice {A = 'A', B = 'B', C = 'C', D= 'D'}
+enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K'}
 
 class Timer {
 	time: number;
@@ -152,11 +149,11 @@ export default class TTS extends EventEmitter {
 								this.users.delete(user);
 								this.userTimers.get(user)?.cancel();
 								this.emit('message', stripIndent`
-									10分以上発言がなかったので<@${user}>のTTSを解除しました
+									30分以上発言がなかったので<@${user}>のTTSを解除しました
 								`);
 								await this.onUsersModified();
 							});
-						}, 10 * 60 * 1000);
+						}, 30 * 60 * 1000);
 						this.userTimers.set(user, timer);
 						if (message.member.voice?.channelID) {
 							this.lastActiveVoiceChannel = message.member.voice.channelID;
@@ -195,7 +192,7 @@ export default class TTS extends EventEmitter {
 					this.emit('message', stripIndent`
 						* TTS [start] - TTSを開始 (\`-\`で始まるメッセージは読み上げられません)
 						* TTS stop - TTSを停止
-						* TTS voice <A | B | C | D> - 声を変更
+						* TTS voice <A | B | C | D | E | F | G | H | I | J | K> - 声を変更
 						* TTS status - ステータスを表示
 						* TTS help - ヘルプを表示
 					`, message.channel.id);
@@ -208,23 +205,8 @@ export default class TTS extends EventEmitter {
 					content = content.replace(new RegExp(key, 'g'), value);
 				}
 
-				const [response] = await client.synthesizeSpeech({
-					input: {
-						ssml: content,
-					},
-					voice: {
-						languageCode: 'ja-JP',
-						name: `ja-JP-Wavenet-${id}`,
-					},
-					audioConfig: {
-						audioEncoding: 'MP3',
-						speakingRate: 1.2,
-						effectsProfileId: ['headphone-class-device'],
-					},
-					// @ts-ignore
-					enableTimePointing: ['SSML_MARK'],
-				});
-				await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), response.audioContent, 'binary');
+				const speech = await getSpeech(content, 1.2, id);
+				await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), speech.data);
 
 				await Promise.race([
 					new Promise<void>((resolve) => {

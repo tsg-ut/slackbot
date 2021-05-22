@@ -1,7 +1,6 @@
 import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
-import {v1beta1 as GoogleCloudTextToSpeech} from '@google-cloud/text-to-speech';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord, {StreamDispatcher, VoiceConnection} from 'discord.js';
@@ -10,10 +9,8 @@ import {max, get} from 'lodash';
 import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
 import {extractValidAnswers, judgeAnswer} from './hayaoshiUtils';
+import {getSpeech} from './speeches';
 
-const {TextToSpeechClient} = GoogleCloudTextToSpeech;
-
-const client = new TextToSpeechClient();
 const mutex = new Mutex();
 
 interface State {
@@ -279,24 +276,8 @@ export default class Hayaoshi extends EventEmitter {
 		});
 	}
 
-	async getTTS(text: string) {
-		const [response] = await client.synthesizeSpeech({
-			input: {
-				ssml: text,
-			},
-			voice: {
-				languageCode: 'ja-JP',
-				name: 'ja-JP-Wavenet-C',
-			},
-			audioConfig: {
-				audioEncoding: 'MP3',
-				speakingRate: 0.9,
-				effectsProfileId: ['headphone-class-device'],
-			},
-			// @ts-ignore
-			enableTimePointing: ['SSML_MARK'],
-		});
-		return response;
+	getTTS(text: string) {
+		return getSpeech(text, 0.9, 'C');
 	}
 
 	async speak(text: string) {
@@ -306,7 +287,7 @@ export default class Hayaoshi extends EventEmitter {
 
 		const audio = await this.getTTS(text);
 
-		await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), audio.audioContent, 'binary');
+		await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), audio.data);
 
 		await new Promise<void>((resolve) => {
 			const dispatcher = this.state.connection.play(path.join(__dirname, 'tempAudio.mp3'));
@@ -396,8 +377,8 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.clauses = clauses;
 		this.state.timePoints = questionAudio.timepoints.map((point) => point.timeSeconds * 1000);
 
-		await fs.writeFile(path.join(__dirname, 'questionText.mp3'), questionAudio.audioContent, 'binary');
-		await fs.writeFile(path.join(__dirname, 'answerText.mp3'), answerAudio.audioContent, 'binary');
+		await fs.writeFile(path.join(__dirname, 'questionText.mp3'), questionAudio.data);
+		await fs.writeFile(path.join(__dirname, 'answerText.mp3'), answerAudio.data);
 
 		this.state.connection = await this.joinVoiceChannelFn();
 
