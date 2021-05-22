@@ -22,13 +22,13 @@ export const getSpeech = (text: string, speed: number, voiceType: 'A' | 'B' | 'C
 		return azure(text, speed, 'ja-JP-KeitaNeural');
 	}
 	if (voiceType === 'G') {
-		return azure(text, speed, 'ja-JP-Ayumi');
+		return amazon(text, speed, 'Mizuki');
 	}
 	if (voiceType === 'H') {
 		return amazon(text, speed, 'Takumi');
 	}
 	if (voiceType === 'I') {
-		return amazon(text, speed, 'Mizuki');
+		return azure(text, speed, 'ja-JP-Ayumi');
 	}
 	if (voiceType === 'J') {
 		return azure(text, speed, 'ja-JP-HarukaRUS');
