@@ -300,12 +300,15 @@ export const unlock = async (user: string, name: string, additionalInfo?: string
 	});
 
 	const holdingAchievements = Array.from(state.achievements.get(user));
+	const userUrl = `https://achievements.tsg.ne.jp/users/${user}`;
+	const achievementUrl = `https://achievements.tsg.ne.jp/achievements/${achievement.id}`;
+
 	slack.chat.postMessage({
 		channel: process.env.CHANNEL_SANDBOX,
 		username: 'achievements',
 		icon_emoji: ':unlock:',
 		text: stripIndent`
-			<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada: <https://achievements.tsg.ne.jp/users/${user}|[実績一覧]>
+			<@${user}>が実績【<${achievementUrl}|${achievement.title}>】を解除しました:tada::tada::tada: <${userUrl}|[実績一覧]>
 			_${achievement.condition}_
 			難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty}) ${isFirst ? '*初達成者!!:ojigineko-superfast:*' : ''}
 			${additionalInfo === undefined ? '' : additionalInfo}`,
