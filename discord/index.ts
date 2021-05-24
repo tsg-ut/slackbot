@@ -1,4 +1,5 @@
 import type {ContextBlock, WebAPICallResult} from '@slack/web-api';
+import {Mutex} from 'async-mutex';
 import Discord, {TextChannel, Collection, Snowflake, GuildMember, VoiceChannel} from 'discord.js';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
@@ -18,6 +19,8 @@ interface StateObj {
 
 const discord = new Discord.Client();
 discord.login(process.env.TSGBOT_DISCORD_TOKEN);
+
+const mutex = new Mutex();
 
 const getMembersBlock = (roomName: string, members: Collection<Snowflake, GuildMember>) => (
 	{
@@ -140,7 +143,7 @@ export default async ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 		return response;
 	};
 
-	discord.on('voiceStateUpdate', async (oldState, newState) => {
+	discord.on('voiceStateUpdate', (oldState, newState) => {
 		if (oldState.member.user.bot) {
 			return;
 		}
@@ -148,96 +151,98 @@ export default async ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 		const username = oldState.member.displayName;
 		const eventTime = Date.now();
 
-		// leave
-		if (oldState.channel !== null && newState.channel === null) {
-			const roomName = oldState.channel.name;
-			const roomId = oldState.channel.id;
-			const count = oldState.channel.members.size;
-			const actionName = 'leave';
-			const update = roomNotifyCache.lastUnixTime + notifyCacheLimit > eventTime && roomNotifyCache.action === actionName;
+		mutex.runExclusive(async () => {
+			// leave
+			if (oldState.channel !== null && newState.channel === null) {
+				const roomName = oldState.channel.name;
+				const roomId = oldState.channel.id;
+				const count = oldState.channel.members.size;
+				const actionName = 'leave';
+				const update = roomNotifyCache.lastUnixTime + notifyCacheLimit > eventTime && roomNotifyCache.action === actionName;
 
-			if (update) {
-				roomNotifyCache.usernames.push(username);
-			} else {
-				roomNotifyCache.usernames = [username];
+				if (update) {
+					roomNotifyCache.usernames.push(username);
+				} else {
+					roomNotifyCache.usernames = [username];
+				}
+
+				const response = await postMessage({
+					text: `${usernameSummarizer(roomNotifyCache.usernames)}が<https://discord.com/channels/${process.env.DISCORD_SERVER_ID}/${roomId}|${roomName}>からログアウトしました`,
+					count,
+					rooms: [{name: roomName, members: oldState.channel.members}],
+					ts: update ? roomNotifyCache.ts : null,
+				});
+
+				if (!update && response.ok) {
+					roomNotifyCache.ts = response.ts;
+				}
+
+				roomNotifyCache.action = actionName;
+				roomNotifyCache.lastUnixTime = eventTime;
 			}
 
-			const response = await postMessage({
-				text: `${usernameSummarizer(roomNotifyCache.usernames)}が<https://discord.com/channels/${process.env.DISCORD_SERVER_ID}/${roomId}|${roomName}>からログアウトしました`,
-				count,
-				rooms: [{name: roomName, members: oldState.channel.members}],
-				ts: update ? roomNotifyCache.ts : null,
-			});
+			// join
+			if (newState.channel !== null && oldState.channel === null) {
+				const roomName = newState.channel.name;
+				const roomId = newState.channel.id;
+				const count = newState.channel.members.size;
+				const actionName = 'join';
+				const update = roomNotifyCache.lastUnixTime + notifyCacheLimit > eventTime && roomNotifyCache.action === actionName;
 
-			if (!update && response.ok) {
-				roomNotifyCache.ts = response.ts;
+				if (update) {
+					roomNotifyCache.usernames.push(username);
+				} else {
+					roomNotifyCache.usernames = [username];
+				}
+
+				const response = await postMessage({
+					text: `${usernameSummarizer(roomNotifyCache.usernames)}が<https://discord.com/channels/${process.env.DISCORD_SERVER_ID}/${roomId}|${roomName}>にログインしました`,
+					count,
+					rooms: [{name: roomName, members: newState.channel.members}],
+					ts: update ? roomNotifyCache.ts : null,
+				});
+
+				if (!update && response.ok) {
+					roomNotifyCache.ts = response.ts;
+				}
+
+				roomNotifyCache.action = actionName;
+				roomNotifyCache.lastUnixTime = eventTime;
 			}
 
-			roomNotifyCache.action = actionName;
-			roomNotifyCache.lastUnixTime = eventTime;
-		}
+			// move
+			if (oldState.channel !== null && newState.channel !== null && oldState.channel.id !== newState.channel.id) {
+				const newRoomName = newState.channel.name;
+				const newRoomId = newState.channel.id;
+				const oldRoomName = oldState.channel.name;
+				const oldRoomId = oldState.channel.id;
+				const actionName = `join-${oldRoomId}-${newRoomId}`;
+				const update = roomNotifyCache.lastUnixTime + notifyCacheLimit > eventTime && roomNotifyCache.action === actionName;
 
-		// join
-		if (newState.channel !== null && oldState.channel === null) {
-			const roomName = newState.channel.name;
-			const roomId = newState.channel.id;
-			const count = newState.channel.members.size;
-			const actionName = 'join';
-			const update = roomNotifyCache.lastUnixTime + notifyCacheLimit > eventTime && roomNotifyCache.action === actionName;
+				if (update) {
+					roomNotifyCache.usernames.push(username);
+				} else {
+					roomNotifyCache.usernames = [username];
+				}
 
-			if (update) {
-				roomNotifyCache.usernames.push(username);
-			} else {
-				roomNotifyCache.usernames = [username];
+				const response = await postMessage({
+					text: `${usernameSummarizer(roomNotifyCache.usernames)}が<https://discord.com/channels/${process.env.DISCORD_SERVER_ID}/${oldRoomId}|${oldRoomName}>から<https://discord.com/channels/${process.env.DISCORD_SERVER_ID}/${newRoomId}|${newRoomName}>に移動しました`,
+					count: null,
+					rooms: [
+						{name: oldRoomName, members: oldState.channel.members},
+						{name: newRoomName, members: newState.channel.members},
+					],
+					ts: update ? roomNotifyCache.ts : null,
+				});
+
+				if (!update && response.ok) {
+					roomNotifyCache.ts = response.ts;
+				}
+
+				roomNotifyCache.action = actionName;
+				roomNotifyCache.lastUnixTime = eventTime;
 			}
-
-			const response = await postMessage({
-				text: `${usernameSummarizer(roomNotifyCache.usernames)}が<https://discord.com/channels/${process.env.DISCORD_SERVER_ID}/${roomId}|${roomName}>にログインしました`,
-				count,
-				rooms: [{name: roomName, members: newState.channel.members}],
-				ts: update ? roomNotifyCache.ts : null,
-			});
-
-			if (!update && response.ok) {
-				roomNotifyCache.ts = response.ts;
-			}
-
-			roomNotifyCache.action = actionName;
-			roomNotifyCache.lastUnixTime = eventTime;
-		}
-
-		// move
-		if (oldState.channel !== null && newState.channel !== null && oldState.channel.id !== newState.channel.id) {
-			const newRoomName = newState.channel.name;
-			const newRoomId = newState.channel.id;
-			const oldRoomName = oldState.channel.name;
-			const oldRoomId = oldState.channel.id;
-			const actionName = `join-${oldRoomId}-${newRoomId}`;
-			const update = roomNotifyCache.lastUnixTime + notifyCacheLimit > eventTime && roomNotifyCache.action === actionName;
-
-			if (update) {
-				roomNotifyCache.usernames.push(username);
-			} else {
-				roomNotifyCache.usernames = [username];
-			}
-
-			const response = await postMessage({
-				text: `${usernameSummarizer(roomNotifyCache.usernames)}が<https://discord.com/channels/${process.env.DISCORD_SERVER_ID}/${oldRoomId}|${oldRoomName}>から<https://discord.com/channels/${process.env.DISCORD_SERVER_ID}/${newRoomId}|${newRoomName}>に移動しました`,
-				count: null,
-				rooms: [
-					{name: oldRoomName, members: oldState.channel.members},
-					{name: newRoomName, members: newState.channel.members},
-				],
-				ts: update ? roomNotifyCache.ts : null,
-			});
-
-			if (!update && response.ok) {
-				roomNotifyCache.ts = response.ts;
-			}
-
-			roomNotifyCache.action = actionName;
-			roomNotifyCache.lastUnixTime = eventTime;
-		}
+		});
 	});
 
 	rtm.on('message', async (message) => {
