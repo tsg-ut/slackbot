@@ -9,10 +9,14 @@ interface Achievement {
     name: string,
 }
 
-interface CustomResponse {
+export interface Context {
+    user: string,
+}
+
+export interface CustomResponse {
     input: RegExp[],
     outputArray?: string[],
-    outputFunction?: ((input: string[]) => string[] | Promise<string[]>),
+    outputFunction?: ((input: string[], context: Context) => string[] | Promise<string[]>),
     shuffle?: true,
     username?: string,
     icon_emoji?: string,
@@ -156,6 +160,22 @@ const customResponses: CustomResponse[] = [
                 name: "bcr-denim-reversplit"
             },
         ],
+    },
+    {
+        input: [/^実績一覧 <@(U[A-Z0-9]+)>$/],
+        outputFunction: (input: string[]) => {
+            return [`https://achievements.tsg.ne.jp/users/${input[1]}`];
+        },
+        icon_emoji: ":achievement:",
+        username: "実績一覧",
+    },
+    {
+        input: [/^実績一覧$/],
+        outputFunction: (input: string[], context: Context) => {
+            return [`https://achievements.tsg.ne.jp/users/${context.user}`];
+        },
+        icon_emoji: ":achievement:",
+        username: "実績一覧",
     },
     {
         input: [/^おみくじ$/],
