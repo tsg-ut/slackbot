@@ -100,7 +100,17 @@ export default async ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 		tts.onMessage(message);
 	});
 
-	const postMessage = async ({text, count, rooms, ts}: {text: string, count: number, rooms: {name: string, members: Discord.Collection<string, Discord.GuildMember>}[], ts: string}) => {
+	const postMessage = async (
+		{text, count, rooms, ts}: {
+			text: string,
+			count: number,
+			rooms: {
+				name: string,
+				members: Discord.Collection<string, Discord.GuildMember>,
+			}[],
+			ts: string,
+		},
+	) => {
 		const countText = count === null ? '' : `現在のアクティブ人数 ${count}人`;
 
 		if (ts) {
