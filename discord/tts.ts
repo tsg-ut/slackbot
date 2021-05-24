@@ -1,18 +1,16 @@
 import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
-import {v1beta1 as GoogleCloudTextToSpeech} from '@google-cloud/text-to-speech';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord, {VoiceConnection} from 'discord.js';
 import {minBy, countBy} from 'lodash';
+import logger from '../lib/logger';
+import {getSpeech} from './speeches';
 
-const {TextToSpeechClient} = GoogleCloudTextToSpeech;
-
-const client = new TextToSpeechClient();
 const mutex = new Mutex();
 
-enum Voice {A = 'A', B = 'B', C = 'C', D= 'D'}
+enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K'}
 
 class Timer {
 	time: number;
@@ -72,7 +70,9 @@ export default class TTS extends EventEmitter {
 
 	joinVoiceChannelFn: (channelId?: string) => Promise<Discord.VoiceConnection>;
 
-	constructor(joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>) {
+	ttsDictionary: {key: string, value: string}[];
+
+	constructor(joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>, ttsDictionary: {key: string, value: string}[]) {
 		super();
 		this.joinVoiceChannelFn = joinVoiceChannelFn;
 		this.users = new Map();
@@ -80,6 +80,7 @@ export default class TTS extends EventEmitter {
 		this.connection = null;
 		this.isPaused = false;
 		this.lastActiveVoiceChannel = null;
+		this.ttsDictionary = ttsDictionary;
 	}
 
 	async onUsersModified() {
@@ -108,11 +109,16 @@ export default class TTS extends EventEmitter {
 	}
 
 	pause() {
+		logger.info('[TTS] pause');
 		this.connection = null;
+		this.isPaused = true;
 	}
 
 	unpause() {
+		logger.info('[TTS] unpause');
 		mutex.runExclusive(async () => {
+			logger.info(`[TTS] unpause - joining channel with lastActiveVoiceChannel ${this.lastActiveVoiceChannel}`);
+			await new Promise((resolve) => setTimeout(resolve, 200));
 			if (this.users.size !== 0) {
 				if (this.lastActiveVoiceChannel === null) {
 					this.connection = await this.joinVoiceChannelFn();
@@ -120,6 +126,8 @@ export default class TTS extends EventEmitter {
 					this.connection = await this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
 				}
 			}
+			logger.info('[TTS] unpause - connected');
+			this.isPaused = false;
 		});
 	}
 
@@ -141,11 +149,11 @@ export default class TTS extends EventEmitter {
 								this.users.delete(user);
 								this.userTimers.get(user)?.cancel();
 								this.emit('message', stripIndent`
-									10分以上発言がなかったので<@${user}>のTTSを解除しました
+									30分以上発言がなかったので<@${user}>のTTSを解除しました
 								`);
 								await this.onUsersModified();
 							});
-						}, 10 * 60 * 1000);
+						}, 30 * 60 * 1000);
 						this.userTimers.set(user, timer);
 						if (message.member.voice?.channelID) {
 							this.lastActiveVoiceChannel = message.member.voice.channelID;
@@ -184,32 +192,21 @@ export default class TTS extends EventEmitter {
 					this.emit('message', stripIndent`
 						* TTS [start] - TTSを開始 (\`-\`で始まるメッセージは読み上げられません)
 						* TTS stop - TTSを停止
-						* TTS voice <A | B | C | D> - 声を変更
+						* TTS voice <A | B | C | D | E | F | G | H | I | J | K> - 声を変更
 						* TTS status - ステータスを表示
 						* TTS help - ヘルプを表示
 					`, message.channel.id);
 				}
-			} else if (this.users.has(user) && !message.content.startsWith('-')) {
+			} else if (this.users.has(user) && !message.content.startsWith('-') && !this.isPaused) {
 				const id = this.users.get(user);
 				this.userTimers.get(user)?.resetTimer();
+				let {content} = message;
+				for (const {key, value} of this.ttsDictionary) {
+					content = content.replace(new RegExp(key, 'g'), value);
+				}
 
-				const [response] = await client.synthesizeSpeech({
-					input: {
-						ssml: message.content,
-					},
-					voice: {
-						languageCode: 'ja-JP',
-						name: `ja-JP-Wavenet-${id}`,
-					},
-					audioConfig: {
-						audioEncoding: 'MP3',
-						speakingRate: 1.2,
-						effectsProfileId: ['headphone-class-device'],
-					},
-					// @ts-ignore
-					enableTimePointing: ['SSML_MARK'],
-				});
-				await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), response.audioContent, 'binary');
+				const speech = await getSpeech(content, 1.2, id);
+				await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), speech.data);
 
 				await Promise.race([
 					new Promise<void>((resolve) => {
@@ -226,5 +223,4 @@ export default class TTS extends EventEmitter {
 		});
 	}
 }
-
 

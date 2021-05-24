@@ -11,6 +11,7 @@
         "no-shadow": "off",
         "no-promise-executor-return": "off",
         "no-undef": "off",
-        "no-negated-condition": "off"
+        "no-negated-condition": "off",
+        "import/prefer-default-export": "off"
     }
 }

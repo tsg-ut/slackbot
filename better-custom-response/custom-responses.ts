@@ -186,6 +186,31 @@ const customResponses: CustomResponse[] = [
         icon_emoji: ":fireworks:",
         username: "鍵屋",
     },
+    {
+        input: [/^(?:.+か)+(?:.+)?占い$/],
+        outputFunction: (input: string[]) => {
+            const matchedString = input[0];
+            const choice = (() =>{
+                const lackChoice = [...matchedString.matchAll(/(.+?)か/g)].map(m => m[1]);
+                const lastIndex = lackChoice.join('か').length;
+                if(lastIndex < matchedString.length - 3){
+                    return lackChoice.concat([matchedString.slice(lastIndex + 1, matchedString.length - 2)]);
+                } else {
+                    return lackChoice;
+                }
+            })();
+            const fukukitarify = (c: string) => {
+                return stripIndent`\
+                :meishodoto_umamusume: 「救いは無いのですか～？」
+                :matikanefukukitaru_umamusume: 「むむっ…　:palms_up_together::crystal_ball:」
+                :matikanefukukitaru_umamusume: 「出ました！　＊『${c.trim()}』＊です！」
+                `;
+            }
+            return choice.map(fukukitarify);
+        },
+        icon_emoji: ":camping:",
+        username: "表はあっても占い",
+    },
 ];
 
 export default customResponses;

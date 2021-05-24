@@ -39,20 +39,23 @@ describe('lyrics', () => {
                 const data = oneLineTrim`
                     <html><head>
                         <link rel="canonical" href="https://www.uta-net.com/song/159792/">
-                    </head><body><div id="view_kashi">
-                        <div class="title">
-                            <h2>とまどい→レシピ</h2>
-                        </div>
-                        <div class="artist_etc clearfix">
-                            <div class="kashi_artist">
-                                歌手：<h2 class="artist"><a><span>みかくにんぐッ!</span></a></h2>
-                                <br>
-                                作詞：<h4 itemprop=lyricist><a>Junky</a></h4>
-                                <br>
-                                作曲：<h4 itemprop=composer><a>Junky</a></h4>
+                    </head><body><div id="main">
+                        <div class="row"><div><div><div>
+                            <div>
+                                <h2>とまどい→レシピ</h2>
+                                <h3><a><span itemprop="byArtist name">みかくにんぐッ!</span></a></h3>
                             </div>
-                        </div>
-                        <div id="flash_area"><div><div id="kashi_area">
+                            <div></div>
+                            <div>
+                                <p>未確認で進行形 オープニング</p>
+                                <p class="detail">
+                                    作詞：<a href="/lyricist/7740/" itemprop="lyricist">Junky</a><br>
+                                    作曲：<a href="/composer/9401/" itemprop="composer">Junky</a><br>
+                                    発売日：2014/02/19<br>                                    この曲の表示回数：106,837回
+                                </p>
+                            </div>
+                        </div></div></div></div>
+                        <div id="kashi"><div><div id="kashi_area">
                             略
                             <br><br>
                             朝目が覚めたらもう昨日みたいな日常はなくて

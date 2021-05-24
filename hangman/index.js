@@ -1,7 +1,6 @@
 
 const { random, range } = require('lodash');
 const { promises: fs, constants } = require('fs');
-const { promisify } = require('util');
 const path = require('path');
 const download = require('download');
 const { stripIndents } = require("common-tags");
@@ -72,7 +71,7 @@ const openCharacter = async (character, slackid) => {
 //guess the whole string
 const guessAnswer = async (candidate, challenger) => {
     const succeeded = (challenger.answer === candidate);
-    const slackid = getChallengerByTs(challenger.thread)[0];
+    const slackid = getChallengerByTs(challenger.thread).slackid;
     if (succeeded) {
         const countUnique = (iterable) => {
             return new Set(iterable).size;
@@ -228,7 +227,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
             stripIndents`
                 ${header}
                 答えは \`${challenger.answer}\` でした
-                ${challenger.triesLeft === numberOfTries ? ':ojigineko-superfast: パーフェクト解答！すごいね！ :ojigineko-drug:' : ''}`,
+                ${challenger.triesLeft === numberOfTries && state[slackid].openList.every(x => x) ? ':ojigineko-superfast: パーフェクト解答！すごいね！ :ojigineko-drug:' : ''}`,
             slackid, {
                 reply_broadcast: true
         });
@@ -259,8 +258,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
 
         if (!message.thread_ts && (matches = text.match(/^hangman(|\s\w*)$/i))) {
             // check if the challenger is now playing game
-            let challenger = getChallengerById(message.user);
-            if (challenger !== null) {
+            if (getChallengerById(message.user) !== null) {
                 return await postMessage(`${await getMemberName(message.user)}はhangmanをプレイ中だよ!!`);
             } else {
                 challenger = {
@@ -272,72 +270,81 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                     usedCharacterList: [],
                     triesLeft: 0,
                 };
-                setState({ ...state, [message.user]: challenger });
+                setState({
+                    ...state,
+                    [message.user]: {
+                        phase: 'waiting',
+                        thread: null,
+                        diffValue: '',
+                        answer: '',
+                        openList: [],
+                        usedCharacterList: [],
+                        triesLeft: 0,
+                }});
             }
 
-            if (challenger.phase === 'waiting') {
-                //string matches "hangman" or "hangman <difficulty>"
-                const difficultyString = ((matches[1] === "") ? "medium" : matches[1].slice(1));
-                if (!difficultyString.match(/easy|medium|hard|extreme/)) {
-                    await postMessage('難易度はeasy/medium/hard/extremeのどれかを指定してね');
-                    delete state[message.user];
-                    setState(state, state);
+            //string matches "hangman" or "hangman <difficulty>"
+            const difficultyString = ((matches[1] === "") ? "medium" : matches[1].slice(1));
+            if (!difficultyString.match(/easy|medium|hard|extreme/)) {
+                await postMessage('難易度はeasy/medium/hard/extremeのどれかを指定してね');
+                delete state[message.user];
+                setState(state, state);
 
-                    return;
-                }
-
-                const wordList = await getDictionary();
-
-                const word = getRandomWord(difficultyString, wordList);
-                
-                const wordLength = word.length;
-                await setState({
-                    ...state,
-                    [message.user]: {
-                        ...challenger,
-                        phase: 'playing',
-                        diffValue: difficultyString,
-                        answer: word,
-                        openList: Array(wordLength).fill(false),
-                        triesLeft: numberOfTries,
-                    }
-                });
-
-                const { ts } = await postGameStatus('Hangmanを始めるよ！正解の英単語を当てよう！', message.user);
-
-                await setState({
-                    ...state,
-                    [message.user]: {
-                        ...state[message.user],
-                        thread: ts,
-                    }
-                });
-
-                await postMessage(stripIndents`答え方
-                小文字アルファベットを書く: \`x\`
-                単語を丸ごと宣言する: \`!word\``, message.user);
-
-                const currentThread = state[message.user].thread;
-                setTimeout(async () => {
-                    if (currentThread === state[message.user].thread) {
-                        await postGameResult(':clock3: タイムオーバー :sweat:', message.user);
-                        await resetConsecutiveAchievements(message.user);
-                        delete state[message.user];
-                        setState(state, state);
-                    }
-                }, 4 * 60 * 1000);
-                
                 return;
             }
-        }
+
+            const wordList = await getDictionary();
+
+            const word = getRandomWord(difficultyString, wordList);
+            
+            const wordLength = word.length;
+            await setState({
+                ...state,
+                [message.user]: {
+                    ...state[message.user],
+                    phase: 'playing',
+                    diffValue: difficultyString,
+                    answer: word,
+                    openList: Array(wordLength).fill(false),
+                    triesLeft: numberOfTries,
+                }
+            });
+
+            const { ts } = await postGameStatus('Hangmanを始めるよ！正解の英単語を当てよう！', message.user);
+
+            await setState({
+                ...state,
+                [message.user]: {
+                    ...state[message.user],
+                    thread: ts,
+                }
+            });
+
+            await postMessage(stripIndents`答え方
+            小文字アルファベットを書く: \`x\`
+            単語を丸ごと宣言する: \`!word\``, message.user);
+
+            const currentThread = state[message.user].thread;
+            setTimeout(async () => {
+                if (currentThread === state[message.user].thread) {
+                    await postGameResult(':clock3: タイムオーバー :sweat:', message.user);
+                    await resetConsecutiveAchievements(message.user);
+                    delete state[message.user];
+                    setState(state, state);
+                }
+            }, 4 * 60 * 1000);
+            
+            return;
+        } // ( end hangman .+ command )
+
         if (!!message.thread_ts) { // available only within the thread
-            const {slackid, challenger} = getChallengerByTs(message.thread_ts);
-            if (challenger === null) {
+            const {slackid, _challenger} = getChallengerByTs(message.thread_ts);
+            if (_challenger === null) {
                 logger.error(`Not found the user with ts(${message.thread_ts})`);
                 return;
             }
             if (text.match(/^[a-z]$/)) {
-                if (challenger.phase !== 'playing') {
+                if (state[slackid].phase !== 'playing') {
                     return;
                 }
                 if (slackid !== user) {
@@ -376,19 +383,19 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                 }
             }
             if (matches = text.match(/^!([a-z]+)/)) {
-                const {slackid, challenger} = getChallengerByTs(message.thread_ts);
-                if (challenger === null) {
+                const {slackid, _challenger} = getChallengerByTs(message.thread_ts);
+                if (_challenger === null) {
                     logger.error(`Not found the user with ts(${message.thread_ts})`);
                     return;
                 }
 
-                if (challenger.phase !== 'playing') {
+                if (state[slackid].phase !== 'playing') {
                     return;
                 }
                 if (slackid !== user) {
                     return;
                 }
-                const response = await guessAnswer(matches[1], challenger);
+                const response = await guessAnswer(matches[1], state[slackid]);
                 if (response === 'success') {
                     postGameResult(':tada: 正解！ :astonished:', slackid);
                     await unlockGameAchievements(slackid);
@@ -397,7 +404,7 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
                     return;
                 }
                 else if (response === 'failure') {
-                    if (challenger.triesLeft > 0) {
+                    if (state[slackid].triesLeft > 0) {
                         postGameStatus(':ng: 失敗です…… :ng:', slackid);
                         return;
                     }

@@ -9,6 +9,10 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
+		if (message.channel !== process.env.CHANNEL_SANDBOX) {
+			return;
+		}
+
 		const {text} = message;
 		let matches: String[] = null;
 
