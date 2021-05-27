@@ -9,6 +9,7 @@ const speech: SynthesizeFunction = (text: string, speed: number, voiceType: stri
         speed: Math.floor(speed * 100),
         pitch: 100,
         volume: 100,
+        format: 'mp3',
         // for other options, see https://cloud.voicetext.jp/webapi/docs/api
     });
     return new Promise((resolve, reject) => {

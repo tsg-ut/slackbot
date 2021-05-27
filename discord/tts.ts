@@ -247,11 +247,11 @@ export default class TTS extends EventEmitter {
 
 				try {
 					const speech = await getSpeech(content, 1.2, id);
-					await fs.writeFile(path.join(__dirname, 'tempAudio.wav'), speech.data);
+					await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), speech.data);
 
 					await Promise.race([
 						new Promise<void>((resolve) => {
-							const dispatcher = this.connection.play(path.join(__dirname, 'tempAudio.wav'));
+							const dispatcher = this.connection.play(path.join(__dirname, 'tempAudio.mp3'));
 							dispatcher.on('finish', () => {
 								resolve();
 							});
