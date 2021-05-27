@@ -6,6 +6,8 @@ import {stripIndent} from 'common-tags';
 import Discord, {VoiceConnection} from 'discord.js';
 import {minBy, countBy} from 'lodash';
 import logger from '../lib/logger';
+import State from '../lib/state';
+import {Loader} from '../lib/utils';
 import {getSpeech} from './speeches';
 
 const mutex = new Mutex();
@@ -57,8 +59,12 @@ class Timer {
 	}
 }
 
+interface StateObj {
+	userVoices: {[id: string]: Voice},
+}
+
 export default class TTS extends EventEmitter {
-	users: Map<string, Voice>;
+	users: Set<string>;
 
 	userTimers: Map<string, Timer>;
 
@@ -72,15 +78,20 @@ export default class TTS extends EventEmitter {
 
 	ttsDictionary: {key: string, value: string}[];
 
+	state: Loader<StateObj>;
+
 	constructor(joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>, ttsDictionary: {key: string, value: string}[]) {
 		super();
 		this.joinVoiceChannelFn = joinVoiceChannelFn;
-		this.users = new Map();
+		this.users = new Set();
 		this.userTimers = new Map();
 		this.connection = null;
 		this.isPaused = false;
 		this.lastActiveVoiceChannel = null;
 		this.ttsDictionary = ttsDictionary;
+		this.state = new Loader<StateObj>(() => (
+			State.init<StateObj>('discord-tts', {userVoices: Object.create(null)})
+		));
 	}
 
 	async onUsersModified() {
@@ -101,10 +112,12 @@ export default class TTS extends EventEmitter {
 		}
 	}
 
-	assignNewVoice() {
+	async assignNewVoice() {
+		const state = await this.state.load();
 		const voices: Voice[] = Object.values(Voice);
-		const users = countBy(Array.from(this.users.values()));
-		const voice = minBy(voices, (voice) => users[voice] || 0);
+		const assignedVoices: Voice[] = Object.values(state.userVoices);
+		const voiceCounts = countBy(assignedVoices);
+		const voice = minBy(voices, (voice) => voiceCounts[voice] || 0);
 		return voice;
 	}
 
@@ -139,11 +152,16 @@ export default class TTS extends EventEmitter {
 		mutex.runExclusive(async () => {
 			const tokens = message.content.split(/\s+/);
 			const user = message.member.user.id;
+			const state = await this.state.load();
 
-			if (tokens[0]?.toUpperCase() === 'TTS') {
+			if (tokens[0]?.toUpperCase() === 'TTSDEV') {
 				if (tokens.length === 1 || tokens[1] === 'start') {
 					if (!this.users.has(user)) {
-						this.users.set(user, this.assignNewVoice());
+						if (!{}.hasOwnProperty.call(state.userVoices, user)) {
+							const newVoice = await this.assignNewVoice();
+							state.userVoices[user] = newVoice;
+						}
+						this.users.add(user);
 						const timer = new Timer(() => {
 							mutex.runExclusive(async () => {
 								this.users.delete(user);
@@ -175,7 +193,7 @@ export default class TTS extends EventEmitter {
 				} else if (tokens.length === 3 && tokens[1] === 'voice') {
 					const voice: Voice = Voice[tokens[2] as keyof typeof Voice] || Voice.A;
 					if (this.users.has(user)) {
-						this.users.set(user, voice);
+						state.userVoices[user] = voice;
 						await message.react('🆗');
 					} else {
 						await message.react('🤔');
@@ -183,22 +201,23 @@ export default class TTS extends EventEmitter {
 				} else if (tokens[1] === 'status') {
 					this.emit(
 						'message',
-						Array.from(this.users.entries())
-							.map(([user, voice]) => `* <@${user}> - ${voice}`)
+						Array.from(this.users)
+							.map((user) => `* <@${user}> - ${state.userVoices[user]}`)
 							.join('\n'),
 						message.channel.id,
 					);
 				} else {
+					const voices: Voice[] = Object.values(Voice);
 					this.emit('message', stripIndent`
 						* TTS [start] - TTSを開始 (\`-\`で始まるメッセージは読み上げられません)
 						* TTS stop - TTSを停止
-						* TTS voice <A | B | C | D | E | F | G | H | I | J | K> - 声を変更
+						* TTS voice <${voices.join(' | ')}> - 声を変更
 						* TTS status - ステータスを表示
 						* TTS help - ヘルプを表示
 					`, message.channel.id);
 				}
 			} else if (this.users.has(user) && !message.content.startsWith('-') && !this.isPaused) {
-				const id = this.users.get(user);
+				const id = state.userVoices[user] || Voice.A;
 				this.userTimers.get(user)?.resetTimer();
 				let {content} = message;
 				for (const {key, value} of this.ttsDictionary) {
