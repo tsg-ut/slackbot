@@ -19,6 +19,11 @@ const speech: SynthesizeFunction = (text: string, speed: number, voiceType: stri
 			(result) => {
 				const {audioData} = result;
 
+				if (!(audioData instanceof ArrayBuffer)) {
+					reject(result);
+					return;
+				}
+
 				synthesizer.close();
 				if (result) {
 					resolve({data: Buffer.from(audioData)});

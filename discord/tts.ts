@@ -5,14 +5,13 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord, {VoiceConnection} from 'discord.js';
 import {minBy, countBy} from 'lodash';
+import {inspect} from 'util';
 import logger from '../lib/logger';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';
-import {getSpeech} from './speeches';
+import {getSpeech, Voice, speechConfig} from './speeches';
 
 const mutex = new Mutex();
-
-enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K'}
 
 class Timer {
 	time: number;
@@ -154,7 +153,7 @@ export default class TTS extends EventEmitter {
 			const user = message.member.user.id;
 			const state = await this.state.load();
 
-			if (tokens[0]?.toUpperCase() === 'TTS') {
+			if (tokens[0]?.toUpperCase() === 'TTSDEV') {
 				if (tokens.length === 1 || tokens[1] === 'start') {
 					if (!this.users.has(user)) {
 						if (!{}.hasOwnProperty.call(state.userVoices, user)) {
@@ -198,20 +197,40 @@ export default class TTS extends EventEmitter {
 					} else {
 						await message.react('🤔');
 					}
+				} else if (tokens[1] === 'voices') {
+					const voices: Voice[] = Object.values(Voice);
+					const voicesText = voices.map((voice) => {
+						const config = speechConfig.get(voice);
+						let providerName = '';
+						if (config.provider === 'google') {
+							providerName = 'Google Cloud Text-to-Speech';
+						} else if (config.provider === 'azure') {
+							providerName = 'Microsoft Azure Text-to-Speech';
+						} else {
+							providerName = 'Amazon Polly';
+						}
+						return `* \`${voice}\`: **${config.name}** (${providerName})`;
+					}).join('\n');
+					this.emit('message', voicesText);
 				} else if (tokens[1] === 'status') {
-					this.emit(
-						'message',
-						Array.from(this.users)
-							.map((user) => `* <@${user}> - ${state.userVoices[user]}`)
-							.join('\n'),
-						message.channel.id,
-					);
+					if (this.users.size === 0) {
+						this.emit('message', '誰もTTSを使用してないよ😌');
+					} else {
+						this.emit(
+							'message',
+							Array.from(this.users)
+								.map((user) => `* <@${user}> - ${state.userVoices[user]}`)
+								.join('\n'),
+							message.channel.id,
+						);
+					}
 				} else {
 					const voices: Voice[] = Object.values(Voice);
 					this.emit('message', stripIndent`
 						* TTS [start] - TTSを開始 (\`-\`で始まるメッセージは読み上げられません)
 						* TTS stop - TTSを停止
-						* TTS voice <${voices.join(' | ')}> - 声を変更
+						* TTS voice <${voices.join(' | ')}> - ボイスを変更
+						* TTS voices - 利用可能なボイスの一覧を表示
 						* TTS status - ステータスを表示
 						* TTS help - ヘルプを表示
 					`, message.channel.id);
@@ -224,20 +243,24 @@ export default class TTS extends EventEmitter {
 					content = content.replace(new RegExp(key, 'g'), value);
 				}
 
-				const speech = await getSpeech(content, 1.2, id);
-				await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), speech.data);
+				try {
+					const speech = await getSpeech(content, 1.2, id);
+					await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), speech.data);
 
-				await Promise.race([
-					new Promise<void>((resolve) => {
-						const dispatcher = this.connection.play(path.join(__dirname, 'tempAudio.mp3'));
-						dispatcher.on('finish', () => {
-							resolve();
-						});
-					}),
-					new Promise<void>((resolve) => {
-						setTimeout(resolve, 10 * 1000);
-					}),
-				]);
+					await Promise.race([
+						new Promise<void>((resolve) => {
+							const dispatcher = this.connection.play(path.join(__dirname, 'tempAudio.mp3'));
+							dispatcher.on('finish', () => {
+								resolve();
+							});
+						}),
+						new Promise<void>((resolve) => {
+							setTimeout(resolve, 10 * 1000);
+						}),
+					]);
+				} catch (error) {
+					this.emit('message', `エラー😢: ${error.stack ? error.stack : inspect(error, {depth: null, colors: false})}`);
+				}
 			}
 		});
 	}
