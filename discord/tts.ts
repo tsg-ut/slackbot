@@ -153,7 +153,7 @@ export default class TTS extends EventEmitter {
 			const user = message.member.user.id;
 			const state = await this.state.load();
 
-			if (tokens[0]?.toUpperCase() === 'TTSDEV') {
+			if (tokens[0]?.toUpperCase() === 'TTS-DEV') {
 				if (tokens.length === 1 || tokens[1] === 'start') {
 					if (!this.users.has(user)) {
 						if (!{}.hasOwnProperty.call(state.userVoices, user)) {
@@ -206,8 +206,10 @@ export default class TTS extends EventEmitter {
 							providerName = 'Google Cloud Text-to-Speech';
 						} else if (config.provider === 'azure') {
 							providerName = 'Microsoft Azure Text-to-Speech';
-						} else {
+						} else if (config.provider === 'amazon') {
 							providerName = 'Amazon Polly';
+						} else {
+							providerName = 'VoiceText Web API';
 						}
 						return `* \`${voice}\`: **${config.name}** (${providerName})`;
 					}).join('\n');
@@ -245,11 +247,11 @@ export default class TTS extends EventEmitter {
 
 				try {
 					const speech = await getSpeech(content, 1.2, id);
-					await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), speech.data);
+					await fs.writeFile(path.join(__dirname, 'tempAudio.wav'), speech.data);
 
 					await Promise.race([
 						new Promise<void>((resolve) => {
-							const dispatcher = this.connection.play(path.join(__dirname, 'tempAudio.mp3'));
+							const dispatcher = this.connection.play(path.join(__dirname, 'tempAudio.wav'));
 							dispatcher.on('finish', () => {
 								resolve();
 							});
