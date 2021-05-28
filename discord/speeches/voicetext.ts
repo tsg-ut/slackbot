@@ -1,19 +1,33 @@
 import {SynthesizeFunction} from './types.d';
 import axios from 'axios';
-import querystring from 'querystring';
+import {URLSearchParams} from 'url';
+import logger from '../../lib/logger';
 
-const speech: SynthesizeFunction = (text: string, speed: number, voiceType: string) => {
-    const postData = querystring.stringify({
+enum Emotion {
+    normal = 'normal',
+    happiness = 'happiness',
+    anger = 'anger',
+    sadness = 'sadness',
+};
+type EmoLV = number;
+export {Emotion, EmoLV};
+
+export const speech: SynthesizeFunction = (text: string, speed: number, voiceType: string, emotion?: Emotion, emolv?: EmoLV) => {
+    const postData = new URLSearchParams({
         text,
         speaker: voiceType,
-        speed: Math.floor(speed * 100),
-        pitch: 100,
-        volume: 100,
+        speed: Math.floor(speed * 100).toString(),
+        pitch: '100',
+        volume: '100',
         format: 'mp3',
         // for other options, see https://cloud.voicetext.jp/webapi/docs/api
     });
+    if (emotion && emolv && emotion !== Emotion.normal) {
+        postData.set('emotion', emotion);
+        postData.set('emotion_level', emolv.toString());
+    }
     return new Promise((resolve, reject) => {
-        axios.post('https://api.voicetext.jp/v1/tts', postData, {
+        axios.post('https://api.voicetext.jp/v1/tts', postData.toString(), {
             auth: {
                 username: process.env.VOICETEXT_API_KEY,
                 password: '',
@@ -29,5 +43,3 @@ const speech: SynthesizeFunction = (text: string, speed: number, voiceType: stri
         });
     });
 };
-
-export default speech;
