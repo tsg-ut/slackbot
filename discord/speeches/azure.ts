@@ -1,7 +1,7 @@
 import {SpeechConfig, SpeechSynthesizer} from 'microsoft-cognitiveservices-speech-sdk';
 import {SynthesizeFunction} from './types.d';
 
-const speech: SynthesizeFunction = (text: string, speed: number, voiceType: string) => {
+const speech: SynthesizeFunction = (text: string, voiceType: string, {speed}: {speed: number}) => {
 	const speechConfig = SpeechConfig.fromSubscription(process.env.AZURE_SUBSCRIPTION_KEY, 'japaneast');
 	const synthesizer = new SpeechSynthesizer(speechConfig);
 

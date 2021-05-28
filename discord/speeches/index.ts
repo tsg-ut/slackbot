@@ -2,19 +2,23 @@ import logger from '../../lib/logger';
 import amazon from './amazon';
 import azure from './azure';
 import google from './google';
-import {speech as voicetext, Emotion, EmoLV} from './voicetext'
+import {speech as voicetext, Emotion, EmoLV} from './voicetext';
 
 enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q'}
 export {Voice};
 
 export interface VoiceMeta {
-	emotion: Emotion,
-	emolv: EmoLV,
+	speed: number,
+	emotion?: Emotion,
+	emolv?: EmoLV,
 }
-export const getDefaultVoiceMeta = () => ({
-	emotion: Emotion.normal,
-	emolv: 2,
-});
+export function getDefaultVoiceMeta(): VoiceMeta {
+	return {
+		speed: 1.2,
+		emotion: Emotion.normal,
+		emolv: 2,
+	};
+}
 
 interface Config {
 	provider: 'google' | 'amazon' | 'azure' | 'voicetext',
@@ -42,21 +46,21 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.Q, {provider: 'voicetext', name: 'bear', emotional: true}],
 ])
 
-export const getSpeech = (text: string, speed: number, voiceType: Voice, meta?: VoiceMeta) => {
+export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta) => {
 	const config = speechConfig.get(voiceType);
 	if (!config) {
 		logger.error(`AssertionError: Voice config not found for ${voiceType}`);
-		return google(text, speed, 'ja-JP-Wavenet-A');
+		return google(text, 'ja-JP-Wavenet-A', meta);
 	}
 
 	if (config.provider === 'google') {
-		return google(text, speed, config.name);
+		return google(text, config.name, meta);
 	}
 	if (config.provider === 'azure') {
-		return azure(text, speed, config.name);
+		return azure(text, config.name, meta);
 	}
 	if (config.provider === 'amazon') {
-		return amazon(text, speed, config.name);
+		return amazon(text, config.name, meta);
 	}
-	return voicetext(text, speed, config.name, meta?.emotion, meta?.emolv);
+	return voicetext(text, config.name, meta);
 };

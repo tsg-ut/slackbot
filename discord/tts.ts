@@ -159,7 +159,7 @@ export default class TTS extends EventEmitter {
 			const user = message.member.user.id;
 			const state = await this.state.load();
 
-			if (tokens[0]?.toUpperCase() === 'TTS') {
+			if (tokens[0]?.toUpperCase() === 'TTS-DEV') {
 				if (tokens.length === 1 || tokens[1] === 'start') {
 					if (!this.users.has(user)) {
 						if (!{}.hasOwnProperty.call(state.userVoices, user)) {
@@ -277,7 +277,7 @@ export default class TTS extends EventEmitter {
 				}
 
 				try {
-					const speech = await getSpeech(content, 1.2, id, meta);
+					const speech = await getSpeech(content, id, meta);
 					await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), speech.data);
 
 					await Promise.race([

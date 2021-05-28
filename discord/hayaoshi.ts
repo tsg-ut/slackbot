@@ -9,7 +9,7 @@ import {max, get} from 'lodash';
 import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
 import {extractValidAnswers, judgeAnswer} from './hayaoshiUtils';
-import {getSpeech} from './speeches';
+import {Voice, getSpeech} from './speeches';
 
 const mutex = new Mutex();
 
@@ -277,7 +277,7 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	getTTS(text: string) {
-		return getSpeech(text, 0.9, 'C');
+		return getSpeech(text, Voice.C, {speed: 0.9});
 	}
 
 	async speak(text: string) {
