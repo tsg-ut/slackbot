@@ -159,7 +159,7 @@ export default class TTS extends EventEmitter {
 			const user = message.member.user.id;
 			const state = await this.state.load();
 
-			if (tokens[0]?.toUpperCase() === 'TTS-DEV') {
+			if (tokens[0]?.toUpperCase() === 'TTS') {
 				if (tokens.length === 1 || tokens[1] === 'start') {
 					if (!this.users.has(user)) {
 						if (!{}.hasOwnProperty.call(state.userVoices, user)) {
