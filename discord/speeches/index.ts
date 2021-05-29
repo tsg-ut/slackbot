@@ -2,11 +2,13 @@ import logger from '../../lib/logger';
 import amazon from './amazon';
 import azure from './azure';
 import google from './google';
-import {speech as voicetext, Emotion, EmoLV} from './voicetext';
+import voicetext from './voicetext';
+import {Emotion, EmoLV} from './types.d';
 
 enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q'}
 export {Voice};
 
+export {Emotion, EmoLV};
 export interface VoiceMeta {
 	speed: number,
 	emotion?: Emotion,

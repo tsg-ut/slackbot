@@ -1,16 +1,14 @@
-import axios from 'axios';
-import {SynthesizeFunction} from './types.d';
+import logger from '../../lib/logger';
+import axios, {AxiosError} from 'axios';
+import {SynthesizeFunction, Emotion} from './types.d';
 
-enum Emotion {
-    normal = 'normal',
-    happiness = 'happiness',
-    anger = 'anger',
-    sadness = 'sadness',
+interface IErrorResponse {
+	error: {
+		message: string,
+	},
 }
-type EmoLV = number;
-export {Emotion, EmoLV};
 
-export const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emotion, emolv}) => {
+const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emotion, emolv}) => {
 	const postData = new URLSearchParams({
 		text,
 		speaker: voiceType,
@@ -30,14 +28,14 @@ export const speech: SynthesizeFunction = (text: string, voiceType: string, {spe
 				username: process.env.VOICETEXT_API_KEY,
 				password: '',
 			},
-			validateStatus: (status) => (status === 200),
 			responseType: 'arraybuffer',
 		}).then((response) => {
 			resolve({ data: response.data });
-		}).catch((reason) => {
-			console.log(reason);
-			console.log(reason.response.data.error);
+		}).catch((reason: AxiosError<IErrorResponse>) => {
+			logger.error(`The VoiceText API server has returned an error: ${reason.response.data.error.message}`);
 			reject(reason);
 		});
 	});
 };
+
+export default speech;
