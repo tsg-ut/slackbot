@@ -9,7 +9,7 @@ import {max, get} from 'lodash';
 import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
 import {extractValidAnswers, judgeAnswer} from './hayaoshiUtils';
-import {Voice, getSpeech} from './speeches';
+import {getSpeech, Voice} from './speeches';
 
 const mutex = new Mutex();
 
