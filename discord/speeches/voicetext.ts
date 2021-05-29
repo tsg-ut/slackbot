@@ -1,12 +1,15 @@
 import logger from '../../lib/logger';
 import axios, {AxiosError} from 'axios';
-import {SynthesizeFunction, Emotion} from './types.d';
+import {SynthesizeFunction} from './types.d';
 
-interface IErrorResponse {
-	error: {
-		message: string,
-	},
+enum Emotion {
+    normal = 'normal',
+    happiness = 'happiness',
+    anger = 'anger',
+    sadness = 'sadness',
 }
+type EmoLV = number;
+export {Emotion, EmoLV};
 
 const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emotion, emolv}) => {
 	const postData = new URLSearchParams({
@@ -18,7 +21,7 @@ const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emo
 		format: 'mp3',
 		// for other options, see https://cloud.voicetext.jp/webapi/docs/api
 	});
-	if (emotion && emolv && emotion !== Emotion.normal) {
+	if (emotion && emolv && voiceType !== 'show' && emotion !== Emotion.normal) {
 		postData.set('emotion', emotion);
 		postData.set('emotion_level', emolv.toString());
 	}
@@ -31,8 +34,8 @@ const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emo
 			responseType: 'arraybuffer',
 		}).then((response) => {
 			resolve({ data: response.data });
-		}).catch((reason: AxiosError<IErrorResponse>) => {
-			logger.error(`The VoiceText API server has returned an error: ${reason.response.data.error.message}`);
+		}).catch((reason: AxiosError) => {
+			logger.error(`The VoiceText API server has returned an error: ${reason.response?.data?.toString()}`);
 			reject(reason);
 		});
 	});
