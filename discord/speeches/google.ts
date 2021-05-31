@@ -5,7 +5,7 @@ const {TextToSpeechClient} = GoogleCloudTextToSpeech;
 
 const client = new TextToSpeechClient();
 
-const speech: SynthesizeFunction = async (text: string, speed: number, voiceType: string) => {
+const speech: SynthesizeFunction = async (text: string, voiceType: string, {speed}: {speed: number}) => {
 	const [response] = await client.synthesizeSpeech({
 		input: {
 			ssml: text,

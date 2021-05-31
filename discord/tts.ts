@@ -9,7 +9,7 @@ import {inspect} from 'util';
 import logger from '../lib/logger';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';
-import {getSpeech, Voice, speechConfig} from './speeches';
+import {getSpeech, Voice, speechConfig, Emotion, VoiceMeta, getDefaultVoiceMeta} from './speeches';
 
 const mutex = new Mutex();
 
@@ -60,7 +60,9 @@ class Timer {
 
 interface StateObj {
 	userVoices: {[id: string]: Voice},
+	userMetas: {[id: string]: VoiceMeta},
 }
+
 
 export default class TTS extends EventEmitter {
 	users: Set<string>;
@@ -89,7 +91,10 @@ export default class TTS extends EventEmitter {
 		this.lastActiveVoiceChannel = null;
 		this.ttsDictionary = ttsDictionary;
 		this.state = new Loader<StateObj>(() => (
-			State.init<StateObj>('discord-tts', {userVoices: Object.create(null)})
+			State.init<StateObj>('discord-tts', {
+				userVoices: Object.create(null),
+				userMetas: Object.create(null),
+			})
 		));
 	}
 
@@ -160,6 +165,9 @@ export default class TTS extends EventEmitter {
 							const newVoice = await this.assignNewVoice();
 							state.userVoices[user] = newVoice;
 						}
+						if (!{}.hasOwnProperty.call(state.userMetas, user)) {
+							state.userMetas[user] = getDefaultVoiceMeta();
+						}
 						this.users.add(user);
 						const timer = new Timer(() => {
 							mutex.runExclusive(async () => {
@@ -206,8 +214,10 @@ export default class TTS extends EventEmitter {
 							providerName = 'Google Cloud Text-to-Speech';
 						} else if (config.provider === 'azure') {
 							providerName = 'Microsoft Azure Text-to-Speech';
-						} else {
+						} else if (config.provider === 'amazon') {
 							providerName = 'Amazon Polly';
+						} else {
+							providerName = 'VoiceText Web API';
 						}
 						return `* \`${voice}\`: **${config.name}** (${providerName})`;
 					}).join('\n');
@@ -219,24 +229,47 @@ export default class TTS extends EventEmitter {
 						this.emit(
 							'message',
 							Array.from(this.users)
-								.map((user) => `* <@${user}> - ${state.userVoices[user]}`)
+								.map((user) => `* <@${user}> - ${state.userVoices[user]} ${state.userMetas[user].emotion}-lv.${state.userMetas[user].emolv}`)
 								.join('\n'),
 							message.channel.id,
 						);
 					}
+				} else if (tokens.length === 3 && tokens[1] === 'emotion') {
+					const emotion: Emotion = Emotion[tokens[2] as keyof typeof Emotion] || Emotion.normal;
+					if (this.users.has(user)) {
+						state.userMetas[user].emotion = emotion;
+						await message.react('🆗');
+					} else {
+						await message.react('🤔');
+					}
+				} else if (tokens.length === 3 && tokens[1] === 'emolv') {
+					let level: number = parseInt(tokens[2]);
+					if (isNaN(level) || level < 1 || level > 4) {
+						level = 2;
+					}
+					if (this.users.has(user)) {
+						state.userMetas[user].emolv = level;
+						await message.react('🆗');
+					} else {
+						await message.react('🤔');
+					}
 				} else {
 					const voices: Voice[] = Object.values(Voice);
+					const emotionalVoices: Voice[] = voices.filter((v: Voice) => (speechConfig.get(v).emotional));
 					this.emit('message', stripIndent`
 						* TTS [start] - TTSを開始 (\`-\`で始まるメッセージは読み上げられません)
 						* TTS stop - TTSを停止
 						* TTS voice <${voices.join(' | ')}> - ボイスを変更
 						* TTS voices - 利用可能なボイスの一覧を表示
 						* TTS status - ステータスを表示
+						* TTS emotion <normal | happiness | anger | sadness> - 感情を付与 (ボイス${emotionalVoices.join('/')}のみ可能)
+						* TTS emolv <1 | 2 | 3 | 4> - 感情の強度を設定 (ボイス${emotionalVoices.join('/')}のみ可能)
 						* TTS help - ヘルプを表示
 					`, message.channel.id);
 				}
 			} else if (this.users.has(user) && !message.content.startsWith('-') && !this.isPaused) {
 				const id = state.userVoices[user] || Voice.A;
+				const meta = state.userMetas[user] || getDefaultVoiceMeta();
 				this.userTimers.get(user)?.resetTimer();
 				let {content} = message;
 				for (const {key, value} of this.ttsDictionary) {
@@ -244,7 +277,7 @@ export default class TTS extends EventEmitter {
 				}
 
 				try {
-					const speech = await getSpeech(content, 1.2, id);
+					const speech = await getSpeech(content, id, meta);
 					await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), speech.data);
 
 					await Promise.race([
