@@ -20,12 +20,7 @@ const clientKSN = getAxiosClientKSN();
 
 const getDateKSN = (dateStr: string) => {
 	const ymds = dateStr.split('/');
-	const date = new Date();
-	date.setFullYear(Number(ymds[0]));
-	date.setMonth(Number(ymds[1]) - 1);
-	date.setDate(Number(ymds[2]));
-	date.setHours(23);
-	date.setMinutes(59);
+	const date = new Date(Number(ymds[0]), Number(ymds[1]) - 1, Number(ymds[2]), 23, 59);
 	return date;
 };
 
