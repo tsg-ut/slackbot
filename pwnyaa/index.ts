@@ -654,6 +654,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 										スコア   : ${userProfile.score}
 										ランキング: ${userProfile.rank}
 										${userProfile.comment}
+										<@${message.user}> よかったら#sig-pwnyaaにも参加してね!
 										`,
 								});
 							} else {																// user is not found on the contest
