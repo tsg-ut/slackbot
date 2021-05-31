@@ -13,13 +13,11 @@ export interface VoiceMeta {
 	emotion?: Emotion,
 	emolv?: EmoLV,
 }
-export function getDefaultVoiceMeta(): VoiceMeta {
-	return {
-		speed: 1.2,
-		emotion: Emotion.normal,
-		emolv: 2,
-	};
-}
+export const getDefaultVoiceMeta: () => VoiceMeta = () => ({
+	speed: 1.2,
+	emotion: Emotion.normal,
+	emolv: 2,
+});
 
 interface Config {
 	provider: 'google' | 'amazon' | 'azure' | 'voicetext',

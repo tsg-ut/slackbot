@@ -1,5 +1,5 @@
-import logger from '../../lib/logger';
 import axios, {AxiosError} from 'axios';
+import logger from '../../lib/logger';
 import {SynthesizeFunction} from './types.d';
 
 enum Emotion {
@@ -33,7 +33,7 @@ const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emo
 			},
 			responseType: 'arraybuffer',
 		}).then((response) => {
-			resolve({ data: response.data });
+			resolve({data: response.data});
 		}).catch((reason: AxiosError) => {
 			logger.error(`The VoiceText API server has returned an error: ${reason.response?.data?.toString()}`);
 			reject(reason);

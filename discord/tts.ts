@@ -165,8 +165,9 @@ export default class TTS extends EventEmitter {
 							const newVoice = await this.assignNewVoice();
 							state.userVoices[user] = newVoice;
 						}
-						if (!{}.hasOwnProperty.call(state.userMetas, user))
+						if (!{}.hasOwnProperty.call(state.userMetas, user)) {
 							state.userMetas[user] = getDefaultVoiceMeta();
+						}
 						this.users.add(user);
 						const timer = new Timer(() => {
 							mutex.runExclusive(async () => {
