@@ -298,4 +298,3 @@ export default class TTS extends EventEmitter {
 		});
 	}
 }
-
