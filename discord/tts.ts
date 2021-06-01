@@ -118,7 +118,7 @@ export default class TTS extends EventEmitter {
 
 	async assignNewVoice() {
 		const state = await this.state.load();
-		const voices: Voice[] = Object.values(Voice);
+    const voices: Voice[] = Object.values(Voice);
 		const assignedVoices: Voice[] = Object.values(state.userVoices);
 		const voiceCounts = countBy(assignedVoices);
 		const voice = minBy(voices, (voice) => voiceCounts[voice] || 0);
