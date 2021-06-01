@@ -79,6 +79,7 @@ const allBots = [
 	'amongyou',
 	'api',
 	'hangman',
+	'hakatashi-visor',
 ];
 
 logger.info('slackbot started');
