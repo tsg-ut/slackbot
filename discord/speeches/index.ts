@@ -43,7 +43,7 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.O, {provider: 'voicetext', name: 'takeru', emotional: true}],
 	[Voice.P, {provider: 'voicetext', name: 'santa', emotional: true}],
 	[Voice.Q, {provider: 'voicetext', name: 'bear', emotional: true}],
-])
+]);
 
 export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta) => {
 	const config = speechConfig.get(voiceType);

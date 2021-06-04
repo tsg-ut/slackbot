@@ -1,11 +1,11 @@
 import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
+import {inspect} from 'util';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord, {VoiceConnection} from 'discord.js';
 import {minBy, countBy} from 'lodash';
-import {inspect} from 'util';
 import logger from '../lib/logger';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';

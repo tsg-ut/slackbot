@@ -4,11 +4,10 @@ import path from 'path';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord, {StreamDispatcher, VoiceConnection} from 'discord.js';
-import {tokenize, KuromojiToken} from 'kuromojin';
 import {max, get} from 'lodash';
 import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
-import {extractValidAnswers, judgeAnswer} from './hayaoshiUtils';
+import {extractValidAnswers, judgeAnswer, formatQuizToSsml} from './hayaoshiUtils';
 import {getSpeech, Voice} from './speeches';
 
 const mutex = new Mutex();
@@ -322,10 +321,6 @@ export default class Hayaoshi extends EventEmitter {
 		}, this.state.isContestMode ? 20000 : 10000);
 	}
 
-	isFuzokugo(token: KuromojiToken) {
-		return token.pos === '助詞' || token.pos === '助動詞' || token.pos_detail_1 === '接尾' || token.pos_detail_1 === '非自立';
-	}
-
 	getQuiz() {
 		const seed = Math.random();
 		if (seed < 0.1) {
@@ -346,32 +341,9 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.quiz = await this.getQuiz();
 		this.state.validAnswers = extractValidAnswers(this.state.quiz.question, this.state.quiz.answer, this.state.quiz.note);
 
-		const normalizedQuestion = this.state.quiz.question.replace(/\(.+?\)/g, '').replace(/（.+?）/g, '');
+		const {ssml, clauses} = await formatQuizToSsml(this.state.quiz.question);
 
-		const tokens = await tokenize(normalizedQuestion);
-
-		const clauses: string[] = [];
-		for (const [index, token] of tokens.entries()) {
-			let prevPos: string = null;
-			if (index !== 0) {
-				prevPos = tokens[index - 1].pos;
-			}
-			if (clauses.length === 0 || token.pos === '記号') {
-				clauses.push(token.surface_form);
-			} else if (prevPos === '名詞' && token.pos === '名詞') {
-				clauses[clauses.length - 1] += token.surface_form;
-			} else if (this.isFuzokugo(token)) {
-				clauses[clauses.length - 1] += token.surface_form;
-			} else {
-				clauses.push(token.surface_form);
-			}
-		}
-
-		const spannedQuestionText = clauses.map((clause, index) => (
-			`${clause}<mark name="c${index}"/>`
-		)).join('');
-
-		const questionAudio = await this.getTTS(`<speak>${spannedQuestionText}</speak>`);
+		const questionAudio = await this.getTTS(ssml);
 		const answerAudio = await this.getTTS(`<speak>答えは、${get(this.state.validAnswers, 0, '')}、でした。</speak>`);
 
 		this.state.clauses = clauses;
