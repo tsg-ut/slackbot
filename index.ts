@@ -78,6 +78,7 @@ const allBots = [
 	'amongyou',
 	'api',
 	'hangman',
+	'hakatashi-visor',
 	'nojoin',
 ];
 
