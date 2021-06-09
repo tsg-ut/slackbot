@@ -57,7 +57,6 @@ const allBots = [
 	'voiperrobot',
 	'atcoder',
 	'lyrics',
-	'ojigineko-life',
 	'better-custom-response',
 	'emoxpand',
 	'ponpe',
