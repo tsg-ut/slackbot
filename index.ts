@@ -57,7 +57,6 @@ const allBots = [
 	'voiperrobot',
 	'atcoder',
 	'lyrics',
-	'ojigineko-life',
 	'better-custom-response',
 	'emoxpand',
 	'ponpe',
@@ -80,6 +79,7 @@ const allBots = [
 	'api',
 	'hangman',
 	'hakatashi-visor',
+	'nojoin',
 ];
 
 logger.info('slackbot started');
