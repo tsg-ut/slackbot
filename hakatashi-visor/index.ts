@@ -24,8 +24,8 @@ const checkSolidity = async () => {
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	rtm.on('message', async (message) => {
 		// @ts-ignore
-		if (message.text && message.subtype === undefined &&
-      message.text.startsWith(CALLME) && (message.channel === process.env.CHANNEL_SANDBOX || message.channel.startsWith('D'))) { // message is toward me
+		if (message.text && message.subtype === undefined && message.text.startsWith(CALLME) && (message.channel === process.env.CHANNEL_SANDBOX || message.channel.startsWith('D'))) {
+			// message is toward me
 			const args = message.text.split(' ').slice(1);
 			if (args.length !== 0) {
 				await postHelp(message);
@@ -62,8 +62,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	const postHelp = async (receivedMessage: any) => {
 		postMessageDefault(receivedMessage, {
 			text: stripIndent`
-        hakatashiがsolidかどうかを監視するよ!
-        solidなpersonになる確率は1/32768だよ :eyes: :eyes:
+				hakatashiがsolidかどうかを監視するよ!
+				solidなpersonになる確率は1/32768だよ :eyes: :eyes:
       `,
 		});
 	};
