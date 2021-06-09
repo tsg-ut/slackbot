@@ -45,7 +45,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				text: stripIndent`
 					今日はhakatashiがsolid personだよ！！！ :among_us_report: :among_us_report: :among_us_report:
 					1/32768の確率だよ :waiwai: :hakatashi: :azaika-crying:
-        `,
+				`,
 			});
 		} else {
 			await slack.chat.postMessage({
@@ -54,7 +54,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				channel: process.env.CHANNEL_SANDBOX,
 				text: stripIndent`
 					今日もhakatashiはsolidじゃないよ...
-        `,
+				`,
 			});
 		}
 	};
@@ -64,7 +64,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			text: stripIndent`
 				hakatashiがsolidかどうかを監視するよ!
 				solidなpersonになる確率は1/32768だよ :eyes: :eyes:
-      `,
+			`,
 		});
 	};
 
