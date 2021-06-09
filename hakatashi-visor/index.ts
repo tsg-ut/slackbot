@@ -43,8 +43,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				icon_emoji: ':heavy-exclamation-mark:',
 				channel: process.env.CHANNEL_SANDBOX,
 				text: stripIndent`
-          今日はhakatashiがsolid personだよ！！！ :among_us_report: :among_us_report: :among_us_report:
-          1/32768の確率だよ :waiwai: :hakatashi: :azaika-crying:
+					今日はhakatashiがsolid personだよ！！！ :among_us_report: :among_us_report: :among_us_report:
+					1/32768の確率だよ :waiwai: :hakatashi: :azaika-crying:
         `,
 			});
 		} else {
@@ -53,7 +53,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				icon_emoji: ':sorehasou:',
 				channel: process.env.CHANNEL_SANDBOX,
 				text: stripIndent`
-          今日もhakatashiはsolidじゃないよ...
+					今日もhakatashiはsolidじゃないよ...
         `,
 			});
 		}
