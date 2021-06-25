@@ -338,11 +338,11 @@ module.exports = ({ rtmClient: rtm, webClient: slack }) => {
         } // ( end hangman .+ command )
 
         if (!!message.thread_ts) { // available only within the thread
-            const {slackid, _challenger} = getChallengerByTs(message.thread_ts);
-            if (_challenger === null) {
-                logger.error(`Not found the user with ts(${message.thread_ts})`);
+            const challenger_result = getChallengerByTs(message.thread_ts);
+            if (challenger_result === null) {
                 return;
             }
+            const { slackid, challenger } = challenger_result;
             if (text.match(/^[a-z]$/)) {
                 if (state[slackid].phase !== 'playing') {
                     return;
