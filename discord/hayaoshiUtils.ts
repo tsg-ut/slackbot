@@ -232,7 +232,7 @@ export const formatQuizToSsml = async (text: string) => {
 			`${clause}<mark name="c${offset + index}"/>`
 		)).join('');
 		offset += component.length;
-		if (componentText.endsWith('すが、') || componentText.endsWith('たが、')) {
+		if (componentText.endsWith('すが、') || componentText.endsWith('たが、') || componentText.endsWith('対し、')) {
 			spannedQuestionText += `<emphasis level="strong"><prosody pitch="+3st">${spannedText}</prosody></emphasis>`;
 		} else {
 			spannedQuestionText += spannedText;
