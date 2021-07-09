@@ -4,7 +4,7 @@ import azure from './azure';
 import google from './google';
 import voicetext, {Emotion, EmoLV} from './voicetext';
 
-enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q'}
+enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q', R = 'R', S = 'S'}
 export {Voice};
 
 export {Emotion, EmoLV};
@@ -23,13 +23,14 @@ interface Config {
 	provider: 'google' | 'amazon' | 'azure' | 'voicetext',
 	name: string,
 	emotional?: boolean,
+	lang?: string,
 }
 
 export const speechConfig: Map<Voice, Config> = new Map([
-	[Voice.A, {provider: 'google', name: 'ja-JP-Wavenet-A'}],
-	[Voice.B, {provider: 'google', name: 'ja-JP-Wavenet-B'}],
-	[Voice.C, {provider: 'google', name: 'ja-JP-Wavenet-C'}],
-	[Voice.D, {provider: 'google', name: 'ja-JP-Wavenet-D'}],
+	[Voice.A, {provider: 'google', name: 'ja-JP-Wavenet-A', lang: 'ja-JP'}],
+	[Voice.B, {provider: 'google', name: 'ja-JP-Wavenet-B', lang: 'ja-JP'}],
+	[Voice.C, {provider: 'google', name: 'ja-JP-Wavenet-C', lang: 'ja-JP'}],
+	[Voice.D, {provider: 'google', name: 'ja-JP-Wavenet-D', lang: 'ja-JP'}],
 	[Voice.E, {provider: 'amazon', name: 'Mizuki'}],
 	[Voice.F, {provider: 'amazon', name: 'Takumi'}],
 	[Voice.G, {provider: 'azure', name: 'ja-JP-NanamiNeural'}],
@@ -43,6 +44,8 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.O, {provider: 'voicetext', name: 'takeru', emotional: true}],
 	[Voice.P, {provider: 'voicetext', name: 'santa', emotional: true}],
 	[Voice.Q, {provider: 'voicetext', name: 'bear', emotional: true}],
+	[Voice.R, {provider: 'google', name: 'en-US-Wavenet-H', lang: 'en-US'}],
+	[Voice.S, {provider: 'google', name: 'en-US-Wavenet-I', lang: 'en-US'}],
 ]);
 
 export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta) => {
@@ -53,7 +56,7 @@ export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta) => {
 	}
 
 	if (config.provider === 'google') {
-		return google(text, config.name, meta);
+		return google(text, config.name, {...meta, lang: config.lang});
 	}
 	if (config.provider === 'azure') {
 		return azure(text, config.name, meta);

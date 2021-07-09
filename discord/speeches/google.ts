@@ -5,13 +5,13 @@ const {TextToSpeechClient} = GoogleCloudTextToSpeech;
 
 const client = new TextToSpeechClient();
 
-const speech: SynthesizeFunction = async (text: string, voiceType: string, {speed}: {speed: number}) => {
+const speech: SynthesizeFunction = async (text: string, voiceType: string, {speed, lang}) => {
 	const [response] = await client.synthesizeSpeech({
 		input: {
 			ssml: text,
 		},
 		voice: {
-			languageCode: 'ja-JP',
+			languageCode: lang || 'ja-JP',
 			name: voiceType,
 		},
 		audioConfig: {
