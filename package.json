@@ -62,6 +62,7 @@
     "dockerode": "^3.2.1",
     "dotenv": "^8.2.0",
     "download": "^8.0.0",
+    "ebisu-js": "^2.0.0",
     "emoji-data-ts": "0.0.5",
     "encoding-japanese": "^1.0.30",
     "fast-levenshtein": "^3.0.0",

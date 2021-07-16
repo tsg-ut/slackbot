@@ -80,6 +80,7 @@ const allBots = [
 	'hangman',
 	'hakatashi-visor',
 	'nojoin',
+	'remember-english',
 ];
 
 logger.info('slackbot started');

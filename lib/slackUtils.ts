@@ -1,4 +1,4 @@
-import {WebClient} from '@slack/web-api';
+import {MrkdwnElement, PlainTextElement, WebClient} from '@slack/web-api';
 import {flatten} from 'lodash';
 import {getTokens, getRtmClient} from './slack';
 import {Deferred} from './utils';
@@ -99,3 +99,14 @@ export const getEmoji = async (name: string, team: string): Promise<string> => {
 	const emoji = emojis.find((emoji: any) => emoji.name === name && emoji.team === team);
 	return emoji ? emoji.url : undefined;
 };
+
+export const plainText = (text: string, emoji: boolean = true): PlainTextElement => ({
+	type: 'plain_text' as 'plain_text',
+	text,
+	emoji,
+});
+
+export const mrkdwn = (text: string): MrkdwnElement => ({
+	type: 'mrkdwn' as 'mrkdwn',
+	text,
+});
