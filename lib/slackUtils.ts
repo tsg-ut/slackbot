@@ -104,9 +104,9 @@ export const plainText = (text: string, emoji: boolean = true): PlainTextElement
 	type: 'plain_text' as 'plain_text',
 	text,
 	emoji,
-})
+});
 
 export const mrkdwn = (text: string): MrkdwnElement => ({
 	type: 'mrkdwn' as 'mrkdwn',
 	text,
-})
+});

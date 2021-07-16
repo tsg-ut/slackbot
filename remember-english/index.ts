@@ -387,22 +387,20 @@ export class RememberEnglish {
 			return;
 		}
 
-		this.state.words.push({
-			en,
-			ja,
-			createdAt: now,
-		});
+		const word: Word = {en, ja, createdAt: now};
+
+		this.state.words.push(word);
+		this.dictionary.addWord(word);
 
 		await this.postMessage({
 			username,
 			icon_url: icon,
 			text: `Today's English: ${en} (${ja})`,
-			blocks: [],
 		});
 	}
 
 	// eslint-disable-next-line camelcase
-	private postMessage(message: {text: string, blocks?: KnownBlock[], username?: string, icon_url?: string}) {
+	postMessage(message: {text: string, blocks?: KnownBlock[], username?: string, icon_url?: string}) {
 		return this.slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			username: 'rememberbot',
@@ -411,14 +409,14 @@ export class RememberEnglish {
 		});
 	}
 
-	private updateMessage(message: {text: string, ts: string, blocks?: KnownBlock[]}) {
+	updateMessage(message: {text: string, ts: string, blocks?: KnownBlock[]}) {
 		return this.slack.chat.update({
 			channel: process.env.CHANNEL_SANDBOX,
 			...message,
 		});
 	}
 
-	private viewsOpen(data: ViewsOpenArguments) {
+	viewsOpen(data: ViewsOpenArguments) {
 		return this.slack.views.open(data);
 	}
 }
