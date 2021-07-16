@@ -247,7 +247,7 @@ export class RememberEnglish {
 					...(userIcons.map((icon) => ({
 						type: 'image',
 						image_url: icon,
-						alt_text: 'cute cat',
+						alt_text: 'user',
 					} as ImageBlock))),
 				],
 			},
@@ -374,8 +374,6 @@ export class RememberEnglish {
 			ts: challenge.ts,
 			blocks: await this.getChallengeBlocks(challenge),
 		});
-
-		await this.dailyJob();
 	}
 
 	async addWord({en, ja, user}: {en: string, ja: string, user: string}) {
