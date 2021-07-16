@@ -400,7 +400,7 @@ export class RememberEnglish {
 	// eslint-disable-next-line camelcase
 	postMessage(message: {text: string, blocks?: KnownBlock[], username?: string, icon_url?: string}) {
 		return this.slack.chat.postMessage({
-			channel: process.env.CHANNEL_SANDBOX,
+			channel: process.env.CHANNEL_SIG_ENGLISH,
 			username: 'rememberbot',
 			...(message.icon_url ? {} : {icon_emoji: ':abcd:'}),
 			...message,
@@ -409,7 +409,7 @@ export class RememberEnglish {
 
 	updateMessage(message: {text: string, ts: string, blocks?: KnownBlock[]}) {
 		return this.slack.chat.update({
-			channel: process.env.CHANNEL_SANDBOX,
+			channel: process.env.CHANNEL_SIG_ENGLISH,
 			...message,
 		});
 	}
