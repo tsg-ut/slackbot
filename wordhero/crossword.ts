@@ -1,8 +1,7 @@
 import type {SlackInterface} from '../lib/slack';
 import cloudinary from 'cloudinary';
-// @ts-ignore
 import {stripIndent} from 'common-tags';
-// @ts-ignore
+// @ts-expect-error
 import {hiraganize} from 'japanese';
 import Queue from 'p-queue';
 import {renderCrossword} from './render';
@@ -43,7 +42,6 @@ const uploadImage = async (board: {color: string, letter: string}[], boardId: st
 	const imageData = await renderCrossword(board, boardId);
 	const cloudinaryData: any = await new Promise((resolve, reject) => {
 		cloudinary.v2.uploader
-			// @ts-ignore ref: https://github.com/cloudinary/cloudinary_npm/pull/327
 			.upload_stream({resource_type: 'image'}, (error, response) => {
 				if (error) {
 					reject(error);

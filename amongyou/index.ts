@@ -3,7 +3,6 @@ import path from 'path';
 import {RTMClient} from '@slack/rtm-api';
 import {ChatPostMessageArguments, WebClient} from '@slack/web-api';
 import {stripIndent} from 'common-tags';
-// @ts-ignore
 import type {FastifyPluginCallback} from 'fastify';
 import plugin from 'fastify-plugin';
 import {range} from 'lodash';

@@ -1,9 +1,9 @@
-// @ts-ignore
+// @ts-expect-error
 import {katakanaRegex} from 'japanese';
 import {tokenize, KuromojiToken} from 'kuromojin';
 import {last, uniq} from 'lodash';
 import {isCorrectAnswer, normalize} from '../hayaoshi';
-// @ts-ignore
+// @ts-expect-error
 import getReading from '../lib/getReading.js';
 
 const katakanaMatchRegex = new RegExp(`^(?:${katakanaRegex.source}|ー|・|･)+$`);

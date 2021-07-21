@@ -1,5 +1,5 @@
 import {Mutex} from 'async-mutex';
-// @ts-ignore
+// @ts-expect-error
 import levenshtein from 'fast-levenshtein';
 import {sample, shuffle, flatten, times, constant} from 'lodash';
 import type {SlackInterface} from '../lib/slack';

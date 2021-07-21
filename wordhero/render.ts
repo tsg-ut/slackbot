@@ -1,4 +1,3 @@
-// @ts-ignore
 import sharp from 'sharp';
 import loadFont from '../lib/loadFont';
 import path from 'path';

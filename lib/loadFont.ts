@@ -1,6 +1,5 @@
-// @ts-ignore
 import * as opentype from 'opentype.js';
-// @ts-ignore
+// @ts-expect-error
 import download from 'download';
 import path from 'path';
 import fs from 'fs';
@@ -43,7 +42,6 @@ const loadFont = async (fontName: string): Promise<opentype.Font | null> => {
 		});
 	}
 
-	// @ts-ignore
 	const font: opentype.Font = await new Promise((resolve, reject) => {
 		opentype.load(fontPath, (error: any, f?: opentype.Font) => {
 			if (error) {

@@ -1,5 +1,5 @@
 import winston from 'winston';
-// @ts-ignore
+// @ts-expect-error
 import {Syslog as WinstonSyslog} from 'winston-syslog';
 import {inspect} from 'util';
 

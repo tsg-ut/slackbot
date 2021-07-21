@@ -1,5 +1,5 @@
 import cubebot from './index';
-// @ts-ignore
+// @ts-expect-error
 import Slack from '../lib/slackMock.js';
 
 let slack: Slack = null;

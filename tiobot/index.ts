@@ -1,4 +1,3 @@
-// @ts-ignore
 import {stripIndent} from 'common-tags';
 import * as zlib from 'zlib';
 import type {SlackInterface} from '../lib/slack';

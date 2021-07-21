@@ -2,9 +2,9 @@ jest.mock('tinyreq');
 jest.mock('axios');
 
 import lyrics from './index';
-// @ts-ignore
+// @ts-expect-error
 import Slack from '../lib/slackMock.js';
-// @ts-ignore
+// @ts-expect-error
 import tinyreq from 'tinyreq';
 import axios from 'axios';
 import { oneLineTrim, stripIndent } from 'common-tags';
@@ -19,7 +19,6 @@ beforeEach(async () => {
 
 describe('lyrics', () => {
     it('responds to @lyrics query', async () => {
-        // @ts-ignore
         tinyreq.impl = jest.fn(async (url, callback) => {
             if (url.includes('index_search')) { // Song search result
                 const data = oneLineTrim`
@@ -76,7 +75,7 @@ describe('lyrics', () => {
             }
         });
 
-        // @ts-ignore
+        // @ts-expect-error
         axios.get = jest.fn(async (url) => {
             if (url.includes('itunes')) { // iTunes Search API
                 return { data: {

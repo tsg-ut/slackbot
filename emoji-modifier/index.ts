@@ -1,5 +1,4 @@
 import axios from 'axios';
-// @ts-ignore
 import {v2 as cloudinary} from 'cloudinary';
 import {stripIndent} from 'common-tags';
 import {EmojiData} from 'emoji-data-ts';
@@ -9,7 +8,6 @@ import {utils, buildPalette, applyPalette} from 'image-q';
 import _ from 'lodash';
 import sharp from 'sharp';
 import loadFont from '../lib/loadFont';
-// @ts-ignore
 import logger from '../lib/logger';
 /* eslint-disable no-unused-vars  */
 import type {SlackInterface} from '../lib/slack';
@@ -87,7 +85,6 @@ const lookupEmoji = async (name: string): Promise<Emoji> => {
 
 const uploadImage = async (image: Buffer): Promise<string> => {
   const response = await new Promise((resolve, reject) => {
-    // @ts-ignore it seems that cloudinary type definitions are not accurate
     cloudinary.uploader.upload_stream((error: any, data: any) => {
       if (error) {
         reject(error);
@@ -97,7 +94,7 @@ const uploadImage = async (image: Buffer): Promise<string> => {
       }
     }).end(image);
   });
-  // @ts-ignore
+  // @ts-expect-error
   return response.secure_url;
 };
 
