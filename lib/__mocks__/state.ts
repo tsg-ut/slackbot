@@ -39,3 +39,5 @@ const State: StateInterface = class State<StateObj> {
 }
 
 export default State;
+
+export const ReadOnlyState = State;
