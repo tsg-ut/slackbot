@@ -43,7 +43,7 @@ class Dictionary {
 
 	words: Map<string, Word>;
 
-	static t = 7 * 24 * 60 * 60 * 1000;
+	static t = 30 * 24 * 60 * 60 * 1000;
 
 	constructor(words: Word[]) {
 		this.models = new Map(words.map((word) => (
