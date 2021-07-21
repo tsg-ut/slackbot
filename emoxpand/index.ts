@@ -2,7 +2,6 @@ import {promises as fs} from 'fs';
 import path from 'path';
 import plugin from 'fastify-plugin';
 import _ from 'lodash';
-// @ts-ignore
 import logger from '../lib/logger';
 /* eslint-disable no-unused-vars */
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';

@@ -7,7 +7,7 @@ import fs from 'fs';
 
 jest.mock('fs');
 
-// @ts-ignore
+// @ts-expect-error
 fs.virtualFiles = {
 	[path.join(__dirname, 'data')]: '',
 	[path.join(__dirname, 'data','emoji.json')]: `[{"short_names":["hoge","huga"]}]`,
@@ -15,7 +15,7 @@ fs.virtualFiles = {
 };
 
 import ponpe from './index';
-// @ts-ignore
+// @ts-expect-error
 import Slack from '../lib/slackMock.js';
 
 let slack: Slack = null;

@@ -7,7 +7,6 @@ import path from 'path';
 import type {RTMClient} from '@slack/rtm-api';
 import type {KnownBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
-// @ts-ignore
 import {stripIndent} from 'common-tags';
 import type {FastifyPluginCallback} from 'fastify';
 import plugin from 'fastify-plugin';

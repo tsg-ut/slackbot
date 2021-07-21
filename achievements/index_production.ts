@@ -5,7 +5,6 @@ import axios from 'axios';
 import {stripIndent} from 'common-tags';
 import {countBy, throttle, groupBy, get as getter, chunk} from 'lodash';
 import moment from 'moment';
-// @ts-ignore
 import db from '../lib/firestore';
 // eslint-disable-next-line no-unused-vars
 import type {SlackInterface} from '../lib/slack';

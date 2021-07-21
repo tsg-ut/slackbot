@@ -1,7 +1,7 @@
 /* eslint-disable no-undef */
 import {constants, promises as fs} from 'fs';
 import path from 'path';
-// @ts-ignore
+// @ts-expect-error
 import Slack from '../lib/slackMock.js';
 import {getMemberName} from '../lib/slackUtils';
 import {Challenge, SolvedInfo, Profile} from './lib/BasicTypes';

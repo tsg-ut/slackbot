@@ -1,12 +1,12 @@
 jest.mock('axios');
 
 import slacklog from './index';
-// @ts-ignore
+// @ts-expect-error
 import Slack from '../lib/slackMock.js';
 import axios from 'axios';
 import qs from 'querystring';
 
-// @ts-ignore
+// @ts-expect-error
 axios.response = {data: {messages: [{
 	channel: 'CYYYYYY',
 	user: 'UYYYYYY',
@@ -60,7 +60,7 @@ describe('slacklog', () => {
 
 	it('respond to slack hook of slacklog unfurling', async () => {
 		const done = new Promise<void>((resolve) => {
-			// @ts-ignore
+			// @ts-expect-error
 			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
 				if (url === 'https://slack.com/api/chat.unfurl') {
 					const parsed = qs.parse(data);
@@ -70,11 +70,11 @@ describe('slacklog', () => {
 					resolve();
 					return Promise.resolve({data: {ok: true}});
 				}
-				// @ts-ignore
+				// @ts-expect-error
 				return Promise.resolve(axios.response);
 			});
 		});
-		
+
 		slack.eventClient.emit('link_shared', {
 			type: 'link_shared',
 			channel: 'Cxxxxxx',

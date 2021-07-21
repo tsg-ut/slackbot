@@ -1,7 +1,7 @@
 jest.mock('cloudinary');
 
 import octas from './index';
-// @ts-ignore
+// @ts-expect-error
 import Slack from '../lib/slackMock.js';
 import { List } from 'lodash';
 

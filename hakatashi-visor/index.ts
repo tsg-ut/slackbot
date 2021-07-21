@@ -2,7 +2,6 @@ import {ChatPostMessageArguments} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import axios from 'axios';
-// @ts-ignore
 import schedule from 'node-schedule';
 import type {SlackInterface} from '../lib/slack';
 import logger from '../lib/logger';
@@ -23,7 +22,6 @@ const checkSolidity = async () => {
 
 export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	rtm.on('message', async (message) => {
-		// @ts-ignore
 		if (message.text && message.subtype === undefined && message.text.startsWith(CALLME) && (message.channel === process.env.CHANNEL_SANDBOX || message.channel.startsWith('D'))) {
 			// message is toward me
 			const args = message.text.split(' ').slice(1);
