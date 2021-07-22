@@ -1,5 +1,5 @@
 import db from './firestore';
-import { StateInterface, StateDevelopment } from './state';
+import State, {StateInterface, StateDevelopment} from './state';
 
 export interface ReadOnlyStateInterface extends StateInterface {
 	init<StateObj>(name: string, defaultValues: StateObj): Promise<Readonly<StateObj>>;
@@ -40,4 +40,29 @@ export const ReadOnlyStateProduction: ReadOnlyStateInterface = class ReadOnlySta
 	}
 }
 
+/**
+ * 読み取り専用の{@link State}クラス。
+ *
+ * {@link State}と同じインターフェイスを実装しているが、変更はできず、読み取り専用です。
+ * DBへの変更はFirestore→ローカルへの一方向にのみ反映され、変更が検出されたら即座にローカルのオブジェクトが変更されます。
+ *
+ * ```typescript
+ * import {ReadOnlyState} from '../lib/state.ts';
+ *
+ * interface TestState {
+ *   a: string,
+ *   b: {c: string, d: number[]}[],
+ * }
+ *
+ * const state = await ReadOnlyState.init<TestState>('test', {a: 'hoge', b: [{c: 'fuga', d: []}]});
+ *
+ * state.a = 'fuga'; // Error: Cannot assign to 'a' because it is a read-only property.
+ *
+ * // 変更が追跡されるのはstateオブジェクトのルートからアクセスした場合のみです。
+ * // 参照を保持した場合そのプロパティに対するDBへの変更はローカルに反映されません。
+ * const b1 = state.b[1];
+ * console.log(b1.c); // .b[1].cがFirestore上で変更されても反映されない
+ * console.log(state.b[1].c); // .b[1].cがFirestore上で変更されたら反映される
+ * ```
+ */
 export const ReadOnlyState: ReadOnlyStateInterface = process.env.NODE_ENV === 'production' ? ReadOnlyStateProduction : StateDevelopment;
