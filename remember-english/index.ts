@@ -6,6 +6,7 @@ import type {Model} from 'ebisu-js';
 import ebisu from 'ebisu-js';
 import {sortBy, get, clamp} from 'lodash';
 import schedule from 'node-schedule';
+import {increment} from '../achievements';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName, mrkdwn, plainText} from '../lib/slackUtils';
 import State from '../lib/state';
@@ -369,6 +370,11 @@ export class RememberEnglish {
 
 		challenge.participants.push(user);
 
+		await increment(user, 'remember-english-challenge');
+		if (challenge.participants.length === 1) {
+			await increment(user, 'remember-english-challenge-first');
+		}
+
 		await this.updateMessage({
 			text: '',
 			ts: challenge.ts,
@@ -389,6 +395,8 @@ export class RememberEnglish {
 
 		this.state.words.push(word);
 		this.dictionary.addWord(word);
+
+		await increment(user, 'remember-english-add-word');
 
 		await this.postMessage({
 			username,
