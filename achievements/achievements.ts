@@ -2759,6 +2759,15 @@ const achievements: Achievement[] = [
 		value: 30,
 		category: 'remember-english',
 	},
+	{
+		id: 'remember-english-challenge-first-100',
+		difficulty: 'professional',
+		title: 'Happy as a Lark',
+		condition: 'rememberbotに他の誰よりも早く100回回答する',
+		counter: 'remember-english-challenge-first',
+		value: 100,
+		category: 'remember-english',
+	},
 
 	// achievements
 
