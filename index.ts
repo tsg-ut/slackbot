@@ -116,13 +116,6 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 	});
 	fastify.use('/slack-event', eventClient.expressMiddleware());
 	fastify.use('/slack-message', messageClient.requestListener());
-	fastify.listen(process.env.PORT || 21864, (error, address) => {
-		if (error) {
-			logger.error(error);
-		} else {
-			logger.info(`Server launched at ${address}`);
-		}
-	});
 
 	const loadedPlugins = new Set<string>();
 
@@ -170,6 +163,14 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 
 		throttleLoadingMessageUpdate();
 	}));
+
+	fastify.listen(process.env.PORT || 21864, (error, address) => {
+		if (error) {
+			logger.error(error);
+		} else {
+			logger.info(`Server launched at ${address}`);
+		}
+	});
 
 	logger.info('Launched');
 	webClient.chat.postMessage({
