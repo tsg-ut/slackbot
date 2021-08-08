@@ -20,6 +20,8 @@ import fastifyExpress from 'fastify-express';
 
 import sharp from 'sharp';
 
+import {throttle} from 'lodash';
+
 // Disable the cache since it likely hits the swap anyway
 sharp.cache(false);
 
@@ -124,7 +126,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 
 	const loadedPlugins = new Set<string>();
 
-	const initializationMessagePromise = webClient.chat.postMessage({
+	const initializationMessage = await webClient.chat.postMessage({
 		username: `tsgbot [${os.hostname()}]`,
 		channel: process.env.CHANNEL_SANDBOX,
 		text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
@@ -134,21 +136,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 		})),
 	});
 
-	await Promise.all(plugins.map(async (name) => {
-		const plugin = await import(`./${name}`);
-		if (typeof plugin === 'function') {
-			await plugin({rtmClient, webClient, eventClient, messageClient});
-		}
-		if (typeof plugin.default === 'function') {
-			await plugin.default({rtmClient, webClient, eventClient, messageClient});
-		}
-		if (typeof plugin.server === 'function') {
-			await fastify.register(plugin.server({rtmClient, webClient, eventClient, messageClient}));
-		}
-		loadedPlugins.add(name);
-		logger.info(`plugin "${name}" successfully loaded`);
-
-		const initializationMessage = await initializationMessagePromise;
+	const throttleLoadingMessageUpdate = throttle(() => {
 		webClient.chat.update({
 			channel: process.env.CHANNEL_SANDBOX,
 			ts: initializationMessage.ts as string,
@@ -164,6 +152,23 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 				})),
 			],
 		})
+	}, 0.5 * 1000);
+
+	await Promise.all(plugins.map(async (name) => {
+		const plugin = await import(`./${name}`);
+		if (typeof plugin === 'function') {
+			await plugin({rtmClient, webClient, eventClient, messageClient});
+		}
+		if (typeof plugin.default === 'function') {
+			await plugin.default({rtmClient, webClient, eventClient, messageClient});
+		}
+		if (typeof plugin.server === 'function') {
+			await fastify.register(plugin.server({rtmClient, webClient, eventClient, messageClient}));
+		}
+		loadedPlugins.add(name);
+		logger.info(`plugin "${name}" successfully loaded`);
+
+		throttleLoadingMessageUpdate();
 	}));
 
 	logger.info('Launched');
