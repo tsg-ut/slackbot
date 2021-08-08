@@ -20,7 +20,7 @@ import fastifyExpress from 'fastify-express';
 
 import sharp from 'sharp';
 
-import { throttle } from 'lodash';
+import {throttle} from 'lodash';
 
 // Disable the cache since it likely hits the swap anyway
 sharp.cache(false);
