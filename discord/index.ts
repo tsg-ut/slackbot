@@ -50,7 +50,7 @@ const getMembersBlock = (roomName: string, members: Collection<Snowflake, GuildM
 export default async ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	const state = await State.init<StateObj>('discord', {
 		users: [],
-		ttsDictionary: [{key: 'https?:.*', value: 'URL省略'}],
+		ttsDictionary: [{key: 'https?:\\S*', value: 'URL省略'}],
 	});
 
 	const joinVoiceChannelFn = (channelId: string = process.env.DISCORD_SANDBOX_VOICE_CHANNEL_ID) => {
