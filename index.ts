@@ -20,7 +20,7 @@ import fastifyExpress from 'fastify-express';
 
 import sharp from 'sharp';
 
-import {throttle} from 'lodash';
+import {uniq, throttle} from 'lodash';
 
 // Disable the cache since it likely hits the swap anyway
 sharp.cache(false);
@@ -94,7 +94,12 @@ const argv = yargs
 	.default('startup', 'ｼｭｯｼｭｯ (起動音)')
 	.argv;
 
-const plugins = argv.only;
+const plugins = uniq(argv.only);
+
+if (plugins.length !== argv.only.length) {
+	logger.info(`Some plugins are specified more than once. Duplicated plugins were removed.`)
+}
+
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
 	logger.error(error.stack);
