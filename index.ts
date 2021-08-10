@@ -95,6 +95,11 @@ const argv = yargs
 	.argv;
 
 const plugins = uniq(argv.only);
+
+if (plugins.length !== argv.only.length) {
+	logger.info(`Some plugins are specified more than once. Ignore except the first for each.`)
+}
+
 const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
 	logger.error(error.stack);
