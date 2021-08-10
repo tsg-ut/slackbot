@@ -1,0 +1,14 @@
+# Doc: https://www.gitpod.io/docs/references/gitpod-yml
+
+tasks:
+  - init: npm install
+
+github:
+  prebuilds:
+    master: true
+    branches: true
+    pullRequests: true
+    pullRequestsFromForks: false
+    addComment: true
+    addBadge: true
+    addLabel: prebuilt-in-gitpod
