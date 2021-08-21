@@ -1,5 +1,5 @@
 import { stripIndent } from 'common-tags';
-// @ts-ignore
+// @ts-expect-error
 import { romanize, katakanize } from 'japanese';
 import { shuffle } from 'lodash';
 import omikuji from './omikuji.json';
@@ -85,7 +85,7 @@ const customResponses: CustomResponse[] = [
         input: [/^(.+)っちへ$/],
         outputFunction: input => [ stripIndent`
             ${input[1]}っちへ
-            
+
             ういっすー!
             朝から、完全にぽんぽんぺいんで、つらみが深いので、1日おふとんでスヤァしておきます。
             明日は行けたら行くマンです!` ],
@@ -104,7 +104,7 @@ const customResponses: CustomResponse[] = [
             もうまじ退職しか勝たんから
             明日からはおうちカフェで
             働くことにしました🐰
-            
+
             いままで397❤❤
             また会おーね👋😃` ],
         icon_emoji: ':shakaijin-ichinensei:',

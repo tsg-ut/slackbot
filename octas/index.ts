@@ -3,11 +3,10 @@ import logger from '../lib/logger';
 import cloudinary from 'cloudinary';
 import sharp from 'sharp';
 import path from 'path';
-// @ts-ignore
 import {stripIndent} from 'common-tags';
-// @ts-ignore
+// @ts-expect-error
 import Board from './lib/Board';
-// @ts-ignore
+// @ts-expect-error
 import BoardElement from './lib/Render';
 import {JSDOM} from 'jsdom';
 import Queue from 'p-queue';
@@ -66,7 +65,6 @@ const uploadImage = async (paper: any) => {
     const png = await sharp(svg).png().toBuffer();
     const cloudinaryData: any = await new Promise((resolve, reject) => {
         cloudinary.v2.uploader
-            // @ts-ignore ref: https://github.com/cloudinary/cloudinary_npm/pull/327
 			.upload_stream({resource_type: 'image'}, (error, response) => {
 				if (error) {
 					reject(error);

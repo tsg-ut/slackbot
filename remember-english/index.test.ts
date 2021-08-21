@@ -5,7 +5,7 @@ jest.mock('../lib/slackUtils');
 jest.mock('../lib/state');
 
 import type {KnownBlock, WebAPICallResult, ViewsOpenArguments} from '@slack/web-api';
-// @ts-ignore
+// @ts-expect-error
 import Slack from '../lib/slackMock.js';
 import {RememberEnglish} from '.';
 

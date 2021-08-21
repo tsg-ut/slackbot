@@ -4,14 +4,13 @@ import path from 'path';
 import assert from 'assert';
 import type {SlackInterface} from '../lib/slack';
 import {flatten, sum, sample, random, sortBy, maxBy, sumBy, shuffle} from 'lodash';
-// @ts-ignore
+// @ts-expect-error
 import trie from './trie';
 import cloudinary from 'cloudinary';
-// @ts-ignore
 import {stripIndent} from 'common-tags';
-// @ts-ignore
+// @ts-expect-error
 import {hiraganize} from 'japanese';
-// @ts-ignore
+// @ts-expect-error
 import download from 'download';
 import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
@@ -302,7 +301,6 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			const imageData = await render(board, {color: isHard ? '#D50000' : 'black'});
 			const cloudinaryData: any = await new Promise((resolve, reject) => {
 				cloudinary.v2.uploader
-					// @ts-ignore ref: https://github.com/cloudinary/cloudinary_npm/pull/327
 					.upload_stream({resource_type: 'image'}, (error, response) => {
 						if (error) {
 							reject(error);

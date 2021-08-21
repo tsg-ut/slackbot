@@ -3,7 +3,6 @@ import path from 'path';
 import {ChatPostMessageArguments} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-// @ts-ignore
 import schedule from 'node-schedule';
 import {unlock} from '../achievements/index.js';
 import logger from '../lib/logger';

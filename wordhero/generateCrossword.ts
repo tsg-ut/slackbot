@@ -2,7 +2,7 @@ import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import {spawn} from 'child_process';
-// @ts-ignore
+// @ts-expect-error
 import concat from 'concat-stream';
 import {sortBy} from 'lodash';
 import boardConfigs from './boards.json';
@@ -11,7 +11,7 @@ import type {Crossword} from './crossword';
 const stocks: any[] = [];
 
 // 6x6 format to 20x20 format
-const convertToNewFormat = (board: string[]) => ( 
+const convertToNewFormat = (board: string[]) => (
 	Array(400).fill(null).map((e, i) => {
 		const x = i % 20;
 		const y = Math.floor(i / 20);

@@ -19,7 +19,7 @@ const speech: SynthesizeFunction = async (text: string, voiceType: string, {spee
 			speakingRate: speed,
 			effectsProfileId: ['headphone-class-device'],
 		},
-		// @ts-ignore
+		// @ts-expect-error
 		enableTimePointing: ['SSML_MARK'],
 	});
 	const data = Buffer.from(response.audioContent as string, 'binary');
