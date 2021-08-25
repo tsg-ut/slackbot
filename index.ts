@@ -83,6 +83,7 @@ const allBots = [
 	'hakatashi-visor',
 	'nojoin',
 	'remember-english',
+	'golfbot',
 ];
 
 logger.info('slackbot started');
