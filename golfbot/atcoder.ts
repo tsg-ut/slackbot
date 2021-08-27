@@ -29,6 +29,7 @@ interface CrawlSubmissionsQuery {
 	task?: string;
 	user?: string;
 	since?: Date;
+	until?: Date;
 }
 
 export const crawlSubmissions = async (contestId: string, query: CrawlSubmissionsQuery) => {
@@ -102,6 +103,9 @@ export const crawlSubmissions = async (contestId: string, query: CrawlSubmission
 		});
 
 		for (const submission of data.submissions) {
+			if (query.until && submission.time.getTime() >= query.until.getTime()) {
+				continue;
+			}
 			if (query.since && submission.time.getTime() < query.since.getTime()) {
 				break loop;
 			}
@@ -116,4 +120,51 @@ export const crawlSubmissions = async (contestId: string, query: CrawlSubmission
 	}
 
 	return Array.from(submissionsMap.values()).sort((a, b) => a.time.getTime() - b.time.getTime());
+};
+
+interface SubmissionData {
+	code: string;
+}
+
+export const crawlSourceCode = async (contestId: string, submissionId: number) => {
+	const url = `https://atcoder.jp/contests/${contestId}/submissions/${submissionId}`;
+	const {data} = await scrapeIt<SubmissionData>(url, {
+		code: {
+			selector: '#submission-code',
+		},
+	});
+	return data.code;
+};
+
+export type Standings = {
+	userId: string;
+	submission: Submission;
+}[];
+
+const compareSubmissions = (a: Submission, b: Submission): number => {
+	const byLength = a.length - b.length;
+	if (byLength !== 0) return byLength;
+
+	const byTime = a.time.getTime() - b.time.getTime();
+	if (byTime !== 0) return byTime;
+
+	const byId = a.id - b.id;
+	return byId;
+};
+
+export const computeStandings = (submissions: Submission[]): Standings => {
+	const standings = new Map<string, Submission>();
+	for (const submission of submissions) {
+		const currentShortest = standings.get(submission.userId);
+		if (currentShortest) {
+			if (compareSubmissions(submission, currentShortest) < 0) {
+				standings.set(submission.userId, submission);
+			}
+		} else {
+			standings.set(submission.userId, submission);
+		}
+	}
+	return Array.from(standings.entries())
+		.map(([userId, submission]) => ({userId, submission}))
+		.sort((a, b) => compareSubmissions(a.submission, b.submission));
 };

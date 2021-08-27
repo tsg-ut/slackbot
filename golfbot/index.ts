@@ -1,12 +1,14 @@
 import {Mutex} from 'async-mutex';
-import {stripIndent} from 'common-tags';
+import {source, stripIndent} from 'common-tags';
 import moment from 'moment';
 import {SlackInterface} from '../lib/slack';
+import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import logger from '../lib/logger';
 import State from '../lib/state';
 import config from './config';
 import * as views from './views';
 import * as atcoder from './atcoder';
+import {MessageAttachment} from '@slack/web-api';
 
 const USERNAME = 'golfbot';
 const ICON_EMOJI = ':golf:';
@@ -119,8 +121,8 @@ interface StateObj {
 }
 
 interface User {
-	slack: string;
-	atcoder: string;
+	slackId: string;
+	atcoderId: string;
 }
 
 interface Contest {
@@ -143,6 +145,15 @@ interface AtCoderProblem {
 
 type Submission = atcoder.Submission;
 
+const formatContestTime = (contest: Contest): string => {
+	const start = moment(contest.startAt)
+		.locale('ja')
+		.format('YYYY-MM-DD (ddd) HH:mm');
+	const end = moment(contest.endAt).format('HH:mm');
+	const duration = Math.floor((contest.endAt - contest.startAt) / (60 * 1000));
+	return `${start} ～ ${end} (${duration}分)`;
+};
+
 export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
 	const state = await State.init<StateObj>('golfbot', {
 		users: [],
@@ -160,6 +171,20 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 
 		switch (cmd.type) {
 			case 'join': {
+				const user = state.users.find(u => u.slackId === message.user);
+				if (user) {
+					user.atcoderId = cmd.username;
+				} else {
+					state.users.push({
+						slackId: message.user,
+						atcoderId: cmd.username,
+					});
+				}
+				await slack.reactions.add({
+					name: '+1',
+					channel: message.channel,
+					timestamp: message.ts,
+				});
 				return;
 			}
 			case 'post': {
@@ -273,7 +298,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 			logger.info(`[golfbot] post ${JSON.stringify(values)}`);
 
 			mutex.runExclusive(async () => {
-				state.contests.push({
+				const contest: Contest = {
 					owner: payload.user.id,
 					problem: {
 						service: 'atcoder',
@@ -285,19 +310,26 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 					startAt,
 					endAt,
 					submissions: [],
-				});
+				};
+				state.contests.push(contest);
+
 				await slack.chat.postMessage({
 					username: USERNAME,
 					icon_emoji: ICON_EMOJI,
 					channel: process.env.CHANNEL_SIG_CODEGOLF!,
 					text: stripIndent`
-						??? が問題を追加したよ！
-
-						問題: ひみつ
-						言語: ひみつ
-						開始日時: ${moment(startAt).format('YYYY-MM-DD HH:mm')}
-						終了日時: ${moment(endAt).format('YYYY-MM-DD HH:mm')}
+						コンテストが追加されたよ！
 					`,
+					attachments: [
+						{
+							fields: [
+								{title: '投稿者', value: `<@${payload.user.id}>`},
+								{title: '形式', value: 'AtCoder'},
+								{title: '言語', value: config.atcoder.languages.find(l => l.id === values.language)?.name ?? ''},
+								{title: 'コンテスト時間', value: formatContestTime(contest)},
+							],
+						},
+					],
 				});
 			});
 
@@ -318,31 +350,24 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 			mutex.runExclusive(async () => {
 				for (const contest of state.contests) {
 					// ちょうど開始のコンテスト
-					if (oldTime <= contest.startAt && contest.startAt < newTime) {
+					if (oldTime < contest.startAt && contest.startAt <= newTime) {
 						await slack.chat.postMessage({
 							username: USERNAME,
 							icon_emoji: ICON_EMOJI,
 							channel: process.env.CHANNEL_SIG_CODEGOLF!,
 							text: stripIndent`
-							コンテストが始まったよ～ :golfer:
-
-							投稿者: <@${contest.owner}>
-							問題: ${contest.problem.url}
-							言語: ${config.atcoder.languages.find(l => l.id === contest.problem.language)?.name}
-							開始日時: ${moment(contest.startAt).format('YYYY-MM-DD HH:mm')}
-							終了日時: ${moment(contest.endAt).format('YYYY-MM-DD HH:mm')}
-						`,
-						});
-					}
-					// ちょうど終了のコンテスト
-					if (oldTime <= contest.endAt && contest.endAt < newTime) {
-						await slack.chat.postMessage({
-							username: USERNAME,
-							icon_emoji: ICON_EMOJI,
-							channel: process.env.CHANNEL_SIG_CODEGOLF!,
-							text: stripIndent`
-								お疲れさまでした！
+								コンテストが始まったよ～ :golfer:
 							`,
+							attachments: [
+								{
+									fields: [
+										{title: '投稿者', value: `<@${contest.owner}>`},
+										{title: '問題', value: contest.problem.url},
+										{title: '言語', value: config.atcoder.languages.find(l => l.id === contest.problem.language)?.name ?? '', short: true},
+										{title: 'コンテスト時間', value: formatContestTime(contest)},
+									],
+								},
+							],
 						});
 					}
 				}
@@ -350,7 +375,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		}, 5 * 1000);
 	}
 
-	// 30 秒ごとに提出判定
+	// 30 秒ごとに提出判定、その後終了判定
 	{
 		let time = Date.now();
 		setInterval(() => {
@@ -360,47 +385,102 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 
 			mutex.runExclusive(async () => {
 				for (const contest of state.contests) {
-					// 開催中のコンテスト
-					if (contest.startAt <= newTime && newTime < contest.endAt) {
-						const updates = new Map<string, {from: number; to: number}>();
+					// 開催中、またはちょうど終了のコンテスト
+					if (contest.startAt <= newTime && oldTime < contest.endAt) {
+						const getShortests = (submissions: Submission[]) => {
+							const shortests = new Map<string, number>();
+							for (const {userId, length} of submissions) {
+								if (!shortests.has(userId) || shortests.get(userId)! > length) {
+									shortests.set(userId, length);
+								}
+							}
+							return shortests;
+						};
 
-						const crawledSubmissions = await atcoder.crawlSubmissions(contest.problem.contestId, {
+						const oldShortests = getShortests(contest.submissions);
+
+						const newSubmissions = await atcoder.crawlSubmissions(contest.problem.contestId, {
 							language: contest.problem.language,
 							status: 'AC',
 							task: contest.problem.taskId,
-							since: new Date(oldTime),
+							since: new Date(contest.startAt),
+							until: new Date(contest.endAt),
 						});
-						for (const submission of crawledSubmissions) {
-							const user = state.users.find(u => u.atcoder === submission.userId);
+
+						const newShortests = getShortests(newSubmissions);
+						for (const [atcoderId, newLength] of newShortests.entries()) {
+							if (oldShortests.has(atcoderId) && oldShortests.get(atcoderId)! <= newLength) {
+								continue;
+							}
+
+							const user = state.users.find(u => u.atcoderId === atcoderId);
 							if (!user) {
 								continue;
 							}
-							const userSubmissions = contest.submissions.filter(s => s.userId === user.slack);
-							const oldShortest = Math.min(...userSubmissions.map(s => s.length));
-							if (submission.length < oldShortest) {
-								const from = updates.get(user.slack)?.from ?? oldShortest;
-								updates.set(user.slack, {from, to: submission.length});
-							}
-							contest.submissions.push(submission);
-						}
-						for (const [slackId, {from, to}] of updates.entries()) {
 							await slack.chat.postMessage({
 								username: USERNAME,
 								icon_emoji: ICON_EMOJI,
 								channel: process.env.CHANNEL_SIG_CODEGOLF!,
-								text: Number.isFinite(from)
+								text: oldShortests.has(atcoderId)
 									? stripIndent`
-										<@${slackId}> がコードを短縮しました！
-										${from} Byte → ${to} Byte
+										<@${user.slackId}> がコードを短縮しました！
+										${oldShortests.get(atcoderId)!} Byte → ${newLength} Byte
 									`
 									: stripIndent`
-										<@${slackId}> が :ac: しました！
-										${to} Byte
+										<@${user.slackId}> が :ac: しました！
+										${newLength} Byte
 									`,
 							});
 						}
+
+						contest.submissions = newSubmissions;
+					}
+
+					// ちょうど終了のコンテスト
+					if (oldTime < contest.endAt && contest.endAt <= newTime) {
+						const standings = atcoder.computeStandings(contest.submissions);
+
+						const sourceCodes = new Map<string, string>();
+						for (const {userId, submission} of standings) {
+							const code = await atcoder.crawlSourceCode(contest.problem.contestId, submission.id);
+							sourceCodes.set(userId, code);
+						}
+
+						const attachments: MessageAttachment[] = [];
+						for (const {userId: atcoderId, submission} of standings) {
+							const user = state.users.find(u => u.atcoderId === atcoderId);
+							if (!user) {
+								continue;
+							}
+
+							const code = await atcoder.crawlSourceCode(contest.problem.contestId, submission.id);
+
+							attachments.push({
+								mrkdwn_in: ['text'],
+								author_name: `${await getMemberName(user.slackId)}: ${submission.length} Byte`,
+								author_icon: await getMemberIcon(user.slackId),
+								author_link: `https://atcoder.jp/contests/${contest.problem.contestId}/submissions/${submission.id}`,
+								text: `\`\`\`${code}\`\`\``,
+								footer: `提出: ${moment(submission.time).format('HH:mm:ss')}`,
+							});
+						}
+
+						await slack.chat.postMessage({
+							username: USERNAME,
+							icon_emoji: ICON_EMOJI,
+							channel: process.env.CHANNEL_SIG_CODEGOLF!,
+							text: stripIndent`
+								お疲れさまでした！
+
+								${standings.length === 0 ? '今回は :ac: した人がいなかったよ :cry:' : ''}
+							`,
+							attachments,
+						});
 					}
 				}
+
+				// 終了したコンテストを削除
+				state.contests = state.contests.filter(contest => !(contest.endAt <= newTime));
 			});
 		}, 30 * 1000);
 	}
