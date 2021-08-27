@@ -9,7 +9,7 @@ export const createEditBlocks = (): KnownBlock[] => [
 		elements: [
 			{
 				type: 'button',
-				text: plainText('Edit'),
+				text: plainText('編集'),
 				action_id: 'edit',
 				value: 'edit',
 			},
@@ -28,13 +28,13 @@ export interface PostValues {
 export const createPostView = (initialValues: Partial<PostValues> = {}): View => ({
 	type: 'modal',
 	callback_id: 'golfbot_post',
-	title: plainText(`Post a problem`),
-	submit: plainText(`Post`),
+	title: plainText(`コンテストを追加する`),
+	submit: plainText(`追加`),
 	blocks: [
 		{
 			type: 'input',
 			block_id: 'golfbot_post_problem_url',
-			label: plainText(`Problem URL`),
+			label: plainText(`問題 URL`),
 			element: {
 				type: 'plain_text_input',
 				action_id: 'action',
@@ -45,7 +45,7 @@ export const createPostView = (initialValues: Partial<PostValues> = {}): View =>
 		{
 			type: 'input',
 			block_id: 'golfbot_post_language',
-			label: plainText('Language'),
+			label: plainText('言語'),
 			element: {
 				type: 'static_select',
 				action_id: 'action',
@@ -66,7 +66,7 @@ export const createPostView = (initialValues: Partial<PostValues> = {}): View =>
 		{
 			type: 'input',
 			block_id: 'golfbot_post_date',
-			label: plainText(`Date`),
+			label: plainText(`日にち`),
 			element: {
 				type: 'datepicker',
 				action_id: 'action',
@@ -76,7 +76,7 @@ export const createPostView = (initialValues: Partial<PostValues> = {}): View =>
 		{
 			type: 'input',
 			block_id: 'golfbot_post_start_time',
-			label: plainText(`Start time`),
+			label: plainText(`開始時刻`),
 			element: {
 				type: 'timepicker', // time picker element is a beta feature
 				action_id: 'action',
@@ -86,7 +86,7 @@ export const createPostView = (initialValues: Partial<PostValues> = {}): View =>
 		{
 			type: 'input',
 			block_id: 'golfbot_post_end_time',
-			label: plainText(`End time`),
+			label: plainText(`終了時刻`),
 			element: {
 				type: 'timepicker', // time picker element is a beta feature
 				action_id: 'action',

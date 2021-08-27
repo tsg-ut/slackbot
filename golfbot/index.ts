@@ -1,9 +1,9 @@
 import plugin from 'fastify-plugin';
 import {Mutex} from 'async-mutex';
-import {source, stripIndent} from 'common-tags';
+import {stripIndent} from 'common-tags';
 import moment from 'moment';
 import {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
-import {getMemberIcon, getMemberName} from '../lib/slackUtils';
+import {getMemberIcon, getMemberName, mrkdwn} from '../lib/slackUtils';
 import logger from '../lib/logger';
 import State from '../lib/state';
 import config from './config';
@@ -36,6 +36,10 @@ type ParseResult =
 	  }
 	| {
 			type: 'post';
+	  }
+	| {
+			type: 'remove';
+			messageTs: string;
 	  };
 
 const parseMessage = (text: string): ParseResult | null => {
@@ -67,6 +71,15 @@ const parseMessage = (text: string): ParseResult | null => {
 		}
 		case 'post': {
 			return {type: 'post'};
+		}
+		case 'remove': {
+			re = /^(?<messageTs>[0-9.]+)\s*$/i;
+			match = re.exec(text);
+			if (!match) {
+				return {type: 'error', message: `引数がおかしいよ`, subcommand: 'remove'};
+			}
+			const {messageTs} = match.groups!;
+			return {type: 'remove', messageTs};
 		}
 		case 'help': {
 			re = /^(?<subcommand>[a-z0-9-]+)\s*$/i;
@@ -199,6 +212,25 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 						icon_emoji: ICON_EMOJI,
 						channel: message.channel,
 						text: help('help'),
+					});
+					return;
+				}
+				case 'remove': {
+					state.contests = state.contests.filter(c => c.messageTs !== cmd.messageTs);
+
+					await slack.reactions.add({
+						name: '+1',
+						channel: message.channel,
+						timestamp: message.ts,
+					});
+
+					await slack.chat.postMessage({
+						username: USERNAME,
+						icon_emoji: ICON_EMOJI,
+						channel: process.env.CHANNEL_SIG_CODEGOLF!,
+						text: stripIndent`
+							コンテストが削除されたよ :cry:
+						`,
 					});
 					return;
 				}
@@ -337,7 +369,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 
 				const messageTs = payload.view.private_metadata;
 				if (messageTs) {
-					// 編集
+					// コンテストを編集
 					logger.info(`[golfbot] edit ${JSON.stringify(values)}`);
 
 					mutex.runExclusive(async () => {
@@ -366,15 +398,9 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 							users: payload.user.id,
 						});
 						await slack.chat.update({
-							username: USERNAME,
-							icon_emoji: ICON_EMOJI,
 							channel: channel.id,
 							ts: messageTs,
-							text: stripIndent`
-								コンテストを追加したよ！
-								内容を編集するにはこのメッセージを使ってね！
-							`,
-							blocks: views.createEditBlocks(),
+							text: '',
 							attachments: [
 								{
 									fields: [
@@ -409,7 +435,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 						});
 					});
 				} else {
-					// 追加
+					// コンテストを追加
 					logger.info(`[golfbot] post ${JSON.stringify(values)}`);
 
 					mutex.runExclusive(async () => {
@@ -437,6 +463,17 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 							icon_emoji: ICON_EMOJI,
 							channel: channel.id,
 							text: '',
+							blocks: [
+								{
+									type: 'section',
+									text: mrkdwn(stripIndent`
+										コンテストを追加したよ！
+										内容を編集するにはこのボタンを使ってね！
+										このコンテストを削除するには \`@golfbot remove ${messageTs}\` と送ってね！
+									`),
+								},
+								...views.createEditBlocks(),
+							],
 							attachments: [
 								{
 									fields: [
@@ -446,7 +483,6 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 									],
 								},
 							],
-							blocks: views.createEditBlocks(),
 						});
 
 						contest.messageTs = message.ts;
