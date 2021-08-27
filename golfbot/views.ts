@@ -2,23 +2,30 @@ import {KnownBlock, View} from '@slack/web-api';
 import {plainText} from '../lib/slackUtils';
 import config from './config';
 
-export const createPostBlocks = (): KnownBlock[] => [
+export const createEditBlocks = (): KnownBlock[] => [
 	{
 		type: 'actions',
-		block_id: 'golfbot_post',
+		block_id: 'golfbot_edit',
 		elements: [
 			{
 				type: 'button',
-				text: plainText('Post a probelm'),
-				action_id: 'post',
-				value: 'post',
-				style: 'primary',
+				text: plainText('Edit'),
+				action_id: 'edit',
+				value: 'edit',
 			},
 		],
 	},
 ];
 
-export const createPostView = (): View => ({
+export interface PostValues {
+	problemURL: string;
+	language: string;
+	date: string;
+	startTime: string;
+	endTime: string;
+}
+
+export const createPostView = (initialValues: Partial<PostValues> = {}): View => ({
 	type: 'modal',
 	callback_id: 'golfbot_post',
 	title: plainText(`Post a problem`),
@@ -32,6 +39,7 @@ export const createPostView = (): View => ({
 				type: 'plain_text_input',
 				action_id: 'action',
 				placeholder: plainText(`https://atcoder.jp/contests/abc187/tasks/abc187_a`),
+				...(initialValues.problemURL ? {initial_value: initialValues.problemURL} : {}),
 			},
 		},
 		{
@@ -45,6 +53,14 @@ export const createPostView = (): View => ({
 					text: plainText(l.name),
 					value: l.id,
 				})),
+				...(initialValues.language
+					? {
+							initial_option: {
+								text: plainText(config.atcoder.languages.find(l => l.id === initialValues.language)!.name),
+								value: initialValues.language,
+							},
+					  }
+					: {}),
 			},
 		},
 		{
@@ -54,6 +70,7 @@ export const createPostView = (): View => ({
 			element: {
 				type: 'datepicker',
 				action_id: 'action',
+				...(initialValues.date ? {initial_date: initialValues.date} : {}),
 			},
 		},
 		{
@@ -63,7 +80,7 @@ export const createPostView = (): View => ({
 			element: {
 				type: 'timepicker', // time picker element is a beta feature
 				action_id: 'action',
-				initial_time: '15:00',
+				...(initialValues.startTime ? {initial_time: initialValues.startTime} : {initial_time: '15:00'}),
 			} as any,
 		},
 		{
@@ -73,19 +90,11 @@ export const createPostView = (): View => ({
 			element: {
 				type: 'timepicker', // time picker element is a beta feature
 				action_id: 'action',
-				initial_time: '21:00',
+				...(initialValues.endTime ? {initial_time: initialValues.endTime} : {initial_time: '21:00'}),
 			} as any,
 		},
 	],
 });
-
-export interface PostValues {
-	problemURL: string;
-	language: string;
-	date: string;
-	startTime: string;
-	endTime: string;
-}
 
 export const getPostValues = (values: any): PostValues => ({
 	problemURL: values['golfbot_post_problem_url']['action'].value,
