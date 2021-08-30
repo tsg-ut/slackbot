@@ -36,6 +36,9 @@ type ParseResult =
 			username: string;
 	  }
 	| {
+			type: 'list';
+	  }
+	| {
 			type: 'post';
 	  }
 	| {
@@ -68,6 +71,9 @@ const parseMessage = (text: string): ParseResult | null => {
 			}
 			const {service, username} = match.groups!;
 			return {type: 'join', service, username};
+		}
+		case 'list': {
+			return {type: 'list'};
 		}
 		case 'post': {
 			return {type: 'post'};
@@ -119,6 +125,7 @@ const help = (subcommand?: string): string => {
 		default: {
 			return stripIndent`
 				\`join\` : アカウント登録
+				\`list\` : コンテスト一覧
 				\`post\` : 問題投稿 (スラッシュコマンド)
 
 				詳しい使い方は \`@golfbot help <subcommand>\` で聞いてね！
@@ -178,7 +185,7 @@ const getLanguageName = (service: 'atcoder' | 'anagol', languageId: string): str
 	return config[service].languages.find(l => l.id === languageId)?.name ?? '';
 };
 
-const createContestAttachment = (contest: Contest, mode: 'owner' | 'hidden' | 'revealed'): MessageAttachment => {
+const createContestAttachment = async (contest: Contest, mode: 'owner' | 'list' | 'hidden' | 'revealed'): Promise<MessageAttachment> => {
 	// prepend `\u200a` to display language names starting with `>`, such as `><>`
 	// https://stackoverflow.com/questions/46331295/how-to-display-a-greater-than-symbol-at-the-start-of-a-slack-attachment-line-wit
 
@@ -187,6 +194,16 @@ const createContestAttachment = (contest: Contest, mode: 'owner' | 'hidden' | 'r
 			return {
 				fields: [
 					{title: '問題', value: contest.problem.url},
+					{title: '言語', value: '\u200a' + getLanguageName(contest.service, contest.language)},
+					{title: 'コンテスト時間', value: formatContestTime(contest)},
+				],
+			};
+		}
+		case 'list': {
+			return {
+				fields: [
+					{title: '投稿者', value: await getMemberName(contest.owner)},
+					{title: '形式', value: getServiceName(contest.service)},
 					{title: '言語', value: '\u200a' + getLanguageName(contest.service, contest.language)},
 					{title: 'コンテスト時間', value: formatContestTime(contest)},
 				],
@@ -250,6 +267,18 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 						name: '+1',
 						channel: message.channel,
 						timestamp: message.ts,
+					});
+					return;
+				}
+				case 'list': {
+					await slack.chat.postMessage({
+						username: USERNAME,
+						icon_emoji: ICON_EMOJI,
+						channel: message.channel,
+						text: stripIndent`
+							${state.contests.length > 0 ? '現在のコンテスト一覧だよ' : '現在コンテストの予定は無いよ'}
+						`,
+						attachments: await Promise.all(state.contests.map(contest => createContestAttachment(contest, 'list'))),
 					});
 					return;
 				}
@@ -506,7 +535,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 							channel: channel.id,
 							ts: messageTs,
 							text: '',
-							attachments: [createContestAttachment(contest, 'owner')],
+							attachments: [await createContestAttachment(contest, 'owner')],
 						});
 
 						state.contests = state.contests.map(c => (c.messageTs === contest.messageTs ? contest : c));
@@ -519,7 +548,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 							text: stripIndent`
 								コンテストが変更されたよ！
 							`,
-							attachments: [createContestAttachment(contest, 'hidden')],
+							attachments: [await createContestAttachment(contest, 'hidden')],
 						});
 					});
 				} else {
@@ -558,7 +587,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 								},
 								...views.createEditBlocks(),
 							],
-							attachments: [createContestAttachment(contest, 'owner')],
+							attachments: [await createContestAttachment(contest, 'owner')],
 						});
 
 						contest.messageTs = message.ts;
@@ -572,7 +601,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 							text: stripIndent`
 								コンテストが追加されたよ！
 							`,
-							attachments: [createContestAttachment(contest, 'hidden')],
+							attachments: [await createContestAttachment(contest, 'hidden')],
 						});
 					});
 				}
@@ -602,7 +631,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 								text: stripIndent`
 									コンテストが始まったよ～ :golfer:
 								`,
-								attachments: [createContestAttachment(contest, 'revealed')],
+								attachments: [await createContestAttachment(contest, 'revealed')],
 							});
 						}
 					}
