@@ -3,6 +3,12 @@
 import {last} from 'lodash';
 import scrapeIt from 'scrape-it';
 
+export interface Problem {
+	url: string;
+	contestId: string;
+	taskId: string;
+}
+
 export interface Submission {
 	time: Date;
 	problemId: string;
@@ -32,7 +38,7 @@ interface CrawlSubmissionsQuery {
 	until?: Date;
 }
 
-export const crawlSubmissions = async (contestId: string, query: CrawlSubmissionsQuery) => {
+export const crawlSubmissions = async (contestId: string, query: CrawlSubmissionsQuery): Promise<Submission[]> => {
 	let page = 1;
 	const submissionsMap: Map<number, Submission> = new Map();
 
@@ -126,7 +132,7 @@ interface SubmissionData {
 	code: string;
 }
 
-export const crawlSourceCode = async (contestId: string, submissionId: number) => {
+export const crawlSourceCode = async (contestId: string, submissionId: number): Promise<string> => {
 	const url = `https://atcoder.jp/contests/${contestId}/submissions/${submissionId}`;
 	const {data} = await scrapeIt<SubmissionData>(url, {
 		code: {

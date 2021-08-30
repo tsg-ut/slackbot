@@ -2,6 +2,7 @@ import plugin from 'fastify-plugin';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import moment from 'moment';
+import {MessageAttachment} from '@slack/web-api';
 import {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberIcon, getMemberName, mrkdwn} from '../lib/slackUtils';
 import logger from '../lib/logger';
@@ -9,7 +10,7 @@ import State from '../lib/state';
 import config from './config';
 import * as views from './views';
 import * as atcoder from './atcoder';
-import {MessageAttachment} from '@slack/web-api';
+import * as anagol from './anagol';
 
 const USERNAME = 'golfbot';
 const ICON_EMOJI = ':golf:';
@@ -35,11 +36,16 @@ type ParseResult =
 			username: string;
 	  }
 	| {
+			type: 'whoami';
+	  }
+	| {
 			type: 'post';
 	  }
 	| {
+			type: 'list';
+	  }
+	| {
 			type: 'remove';
-			messageTs: string;
 	  };
 
 const parseMessage = (text: string): ParseResult | null => {
@@ -61,7 +67,7 @@ const parseMessage = (text: string): ParseResult | null => {
 
 	switch (subcommand) {
 		case 'join': {
-			re = /^(?<service>atcoder)\s+(?<username>[a-z0-9-]+)\s*$/i;
+			re = /^(?<service>atcoder|anagol)\s+(?<username>.+?)\s*$/i;
 			match = re.exec(text);
 			if (!match) {
 				return {type: 'error', message: `引数がおかしいよ`, subcommand: 'join'};
@@ -69,17 +75,17 @@ const parseMessage = (text: string): ParseResult | null => {
 			const {service, username} = match.groups!;
 			return {type: 'join', service, username};
 		}
+		case 'whoami': {
+			return {type: 'whoami'};
+		}
 		case 'post': {
 			return {type: 'post'};
 		}
+		case 'list': {
+			return {type: 'list'};
+		}
 		case 'remove': {
-			re = /^(?<messageTs>[0-9.]+)\s*$/i;
-			match = re.exec(text);
-			if (!match) {
-				return {type: 'error', message: `引数がおかしいよ`, subcommand: 'remove'};
-			}
-			const {messageTs} = match.groups!;
-			return {type: 'remove', messageTs};
+			return {type: 'remove'};
 		}
 		case 'help': {
 			re = /^(?<subcommand>[a-z0-9-]+)\s*$/i;
@@ -107,6 +113,7 @@ const help = (subcommand?: string): string => {
 
 				\`\`\`
 				@golfbot join atcoder <username>
+				@golfbot join anagol <username>
 				\`\`\`
 			`;
 		}
@@ -118,13 +125,15 @@ const help = (subcommand?: string): string => {
 				/golfbot post
 				\`\`\`
 
-				ダイアログが開くので、問題 URL、開始日時、終了日時を入力してね！
+				ダイアログが開くので、形式、問題 URL、開始日時、終了日時を入力してね！
 			`;
 		}
 		default: {
 			return stripIndent`
 				\`join\` : アカウント登録
+				\`whoami\` : アカウント確認
 				\`post\` : 問題投稿 (スラッシュコマンド)
+				\`list\` : コンテスト一覧
 
 				詳しい使い方は \`@golfbot help <subcommand>\` で聞いてね！
 			`;
@@ -139,29 +148,32 @@ interface StateObj {
 
 interface User {
 	slackId: string;
-	atcoderId: string;
+	atcoderId?: string;
+	anagolId?: string;
 }
 
-interface Contest {
+type Contest = AtCoderContest | AnagolContest;
+
+interface BasicContest {
 	owner: string;
 	messageTs: string;
-	problem: Problem;
 	startAt: number;
 	endAt: number;
-	submissions: Submission[];
 }
 
-type Problem = AtCoderProblem;
-
-interface AtCoderProblem {
+interface AtCoderContest extends BasicContest {
 	service: 'atcoder';
-	url: string;
-	contestId: string;
-	taskId: string;
+	problem: atcoder.Problem;
 	language: string;
+	submissions: atcoder.Submission[];
 }
 
-type Submission = atcoder.Submission;
+interface AnagolContest extends BasicContest {
+	service: 'anagol';
+	problem: anagol.Problem;
+	language: string;
+	submissions: anagol.Submission[];
+}
 
 const formatContestTime = (contest: Contest): string => {
 	const start = moment(contest.startAt)
@@ -172,6 +184,61 @@ const formatContestTime = (contest: Contest): string => {
 	return `${start} ～ ${end} (${duration}分)`;
 };
 
+const getServiceName = (service: 'atcoder' | 'anagol'): string => {
+	return config[service].name;
+};
+
+const getLanguageName = (service: 'atcoder' | 'anagol', languageId: string): string => {
+	return config[service].languages.find(l => l.id === languageId)?.name ?? '';
+};
+
+const createContestAttachment = async (contest: Contest, mode: 'owner' | 'list' | 'hidden' | 'revealed'): Promise<MessageAttachment> => {
+	// prepend `\u200a` to display language names starting with `>`, such as `><>`
+	// https://stackoverflow.com/questions/46331295/how-to-display-a-greater-than-symbol-at-the-start-of-a-slack-attachment-line-wit
+
+	switch (mode) {
+		case 'owner': {
+			return {
+				fields: [
+					{title: '問題', value: contest.problem.url},
+					{title: '言語', value: '\u200a' + getLanguageName(contest.service, contest.language)},
+					{title: 'コンテスト時間', value: formatContestTime(contest)},
+				],
+			};
+		}
+		case 'list': {
+			return {
+				fields: [
+					{title: '投稿者', value: await getMemberName(contest.owner)},
+					{title: '形式', value: getServiceName(contest.service)},
+					{title: '言語', value: '\u200a' + getLanguageName(contest.service, contest.language)},
+					{title: 'コンテスト時間', value: formatContestTime(contest)},
+				],
+			};
+		}
+		case 'hidden': {
+			return {
+				fields: [
+					{title: '投稿者', value: `<@${contest.owner}>`},
+					{title: '形式', value: getServiceName(contest.service)},
+					{title: '言語', value: '\u200a' + getLanguageName(contest.service, contest.language)},
+					{title: 'コンテスト時間', value: formatContestTime(contest)},
+				],
+			};
+		}
+		case 'revealed': {
+			return {
+				fields: [
+					{title: '投稿者', value: `<@${contest.owner}>`},
+					{title: '問題', value: contest.problem.url},
+					{title: '言語', value: '\u200a' + getLanguageName(contest.service, contest.language)},
+					{title: 'コンテスト時間', value: formatContestTime(contest)},
+				],
+			};
+		}
+	}
+};
+
 export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackInteractions}: SlackInterface) =>
 	plugin(async fastify => {
 		const state = await State.init<StateObj>('golfbot', {
@@ -179,7 +246,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 			contests: [],
 		});
 
-		// メッセージ
+		// メッセージ呼び出し
 		rtm.on('message', async (message: any) => {
 			const cmd = parseMessage(message.text);
 			if (cmd === null) {
@@ -190,14 +257,18 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 
 			switch (cmd.type) {
 				case 'join': {
-					const user = state.users.find(u => u.slackId === message.user);
-					if (user) {
-						user.atcoderId = cmd.username;
-					} else {
-						state.users.push({
+					let user = state.users.find(u => u.slackId === message.user);
+					if (!user) {
+						user = {
 							slackId: message.user,
-							atcoderId: cmd.username,
-						});
+						};
+						state.users.push(user);
+					}
+					if (cmd.service === 'atcoder') {
+						user.atcoderId = cmd.username;
+					}
+					if (cmd.service === 'anagol') {
+						user.anagolId = cmd.username;
 					}
 					await slack.reactions.add({
 						name: '+1',
@@ -206,32 +277,62 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 					});
 					return;
 				}
+				case 'whoami': {
+					const user = state.users.find(u => u.slackId === message.user);
+
+					await slack.chat.postMessage({
+						username: USERNAME,
+						icon_emoji: ICON_EMOJI,
+						channel: message.channel,
+						text: stripIndent`
+							${await getMemberName(message.user)} さんのアカウント
+							AtCoder: ${user?.atcoderId ?? '登録なし'}
+							Anarchy Golf: ${user?.anagolId ?? '登録なし'}
+						`,
+					});
+					return;
+				}
 				case 'post': {
 					await slack.chat.postMessage({
 						username: USERNAME,
 						icon_emoji: ICON_EMOJI,
 						channel: message.channel,
-						text: help('help'),
+						text: help('post'),
+					});
+					return;
+				}
+				case 'list': {
+					await slack.chat.postMessage({
+						username: USERNAME,
+						icon_emoji: ICON_EMOJI,
+						channel: message.channel,
+						text: stripIndent`
+							${state.contests.length > 0 ? '現在のコンテスト一覧だよ' : '現在コンテストの予定は無いよ'}
+						`,
+						attachments: await Promise.all(state.contests.map(contest => createContestAttachment(contest, 'list'))),
 					});
 					return;
 				}
 				case 'remove': {
-					state.contests = state.contests.filter(c => c.messageTs !== cmd.messageTs);
+					const prevLength = state.contests.length;
+					state.contests = state.contests.filter(c => c.messageTs !== message.thread_ts);
 
-					await slack.reactions.add({
-						name: '+1',
-						channel: message.channel,
-						timestamp: message.ts,
-					});
+					if (state.contests.length < prevLength) {
+						await slack.reactions.add({
+							name: '+1',
+							channel: message.channel,
+							timestamp: message.ts,
+						});
 
-					await slack.chat.postMessage({
-						username: USERNAME,
-						icon_emoji: ICON_EMOJI,
-						channel: process.env.CHANNEL_SIG_CODEGOLF!,
-						text: stripIndent`
-							コンテストが削除されたよ :cry:
-						`,
-					});
+						await slack.chat.postMessage({
+							username: USERNAME,
+							icon_emoji: ICON_EMOJI,
+							channel: process.env.CHANNEL_SIG_CODEGOLF!,
+							text: stripIndent`
+								コンテストが削除されたよ :cry:
+							`,
+						});
+					}
 					return;
 				}
 				case 'help': {
@@ -264,6 +365,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 			}
 		});
 
+		// スラッシュコマンド呼び出し
 		const {team: tsgTeam}: any = await slack.team.info();
 		fastify.post<SlashCommandEndpoint>('/slash/golfbot', async (request, response) => {
 			if (request.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
@@ -302,8 +404,9 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 						trigger_id: payload.trigger_id,
 						view: {
 							...views.createPostView({
+								service: contest.service,
 								problemURL: contest.problem.url,
-								language: contest.problem.language,
+								language: contest.language,
 								date: moment(contest.startAt).format('YYYY-MM-DD'),
 								startTime: moment(contest.startAt).format('HH:mm'),
 								endTime: moment(contest.endAt).format('HH:mm'),
@@ -311,6 +414,27 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 							private_metadata: contest.messageTs,
 						},
 					});
+				});
+			}
+		);
+
+		slackInteractions.action(
+			{
+				blockId: 'golfbot_post_service',
+			},
+			async (payload: any) => {
+				const values: Partial<views.PostValues> = {
+					...views.getPostValues(payload.view.state.values),
+					problemURL: undefined,
+					language: undefined,
+				};
+
+				await slack.views.update({
+					view_id: payload.view.id,
+					view: {
+						...views.createPostView(values),
+						private_metadata: payload.view.private_metadata,
+					},
 				});
 			}
 		);
@@ -327,6 +451,15 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 				const today = moment(now).format('YYYY-MM-DD');
 				const startAt = new Date(`${values.date} ${values.startTime}`).getTime();
 				const endAt = new Date(`${values.date} ${values.endTime}`).getTime();
+
+				if (!config[values.service].languages.some(l => l.id === values.language)) {
+					return {
+						response_action: 'errors',
+						errors: {
+							golfbot_post_language: '言語がおかしいよ',
+						},
+					};
+				}
 
 				if (values.date < today) {
 					return {
@@ -355,17 +488,44 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 					};
 				}
 
-				const re = /^https:\/\/atcoder\.jp\/contests\/(?<contestId>[a-z0-9_-]+)\/tasks\/(?<taskId>[a-z0-9_-]+)$/i;
-				const match = re.exec(values.problemURL);
-				if (!match) {
-					return {
-						response_action: 'errors',
-						errors: {
-							golfbot_post_problem_url: '問題 URL がおかしいよ',
-						},
+				let problem: atcoder.Problem | anagol.Problem;
+
+				if (values.service === 'atcoder') {
+					const re = /^https:\/\/atcoder\.jp\/contests\/(?<contestId>[a-z0-9_-]+)\/tasks\/(?<taskId>[a-z0-9_-]+)$/i;
+					const match = re.exec(values.problemURL);
+					if (!match) {
+						return {
+							response_action: 'errors',
+							errors: {
+								golfbot_post_problem_url: '問題 URL がおかしいよ',
+							},
+						};
+					}
+					const {contestId, taskId} = match.groups!;
+					problem = {
+						url: values.problemURL,
+						contestId,
+						taskId,
 					};
 				}
-				const {contestId, taskId} = match.groups!;
+
+				if (values.service === 'anagol') {
+					const re = /^http:\/\/golf\.shinh\.org\/p\.rb\?(?<problemId>\S+)$/i;
+					const match = re.exec(values.problemURL);
+					if (!match) {
+						return {
+							response_action: 'errors',
+							errors: {
+								golfbot_post_problem_url: '問題 URL がおかしいよ',
+							},
+						};
+					}
+					const {problemId} = match.groups!;
+					problem = {
+						url: values.problemURL,
+						problemId,
+					};
+				}
 
 				const messageTs = payload.view.private_metadata;
 				if (messageTs) {
@@ -376,13 +536,9 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 						const contest: Contest = {
 							owner: payload.user.id,
 							messageTs,
-							problem: {
-								service: 'atcoder',
-								url: values.problemURL,
-								contestId,
-								taskId,
-								language: values.language,
-							},
+							service: values.service,
+							problem: problem as any,
+							language: values.language,
 							startAt,
 							endAt,
 							submissions: [],
@@ -401,15 +557,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 							channel: channel.id,
 							ts: messageTs,
 							text: '',
-							attachments: [
-								{
-									fields: [
-										{title: '問題', value: contest.problem.url},
-										{title: '言語', value: config.atcoder.languages.find(l => l.id === values.language)?.name ?? ''},
-										{title: 'コンテスト時間', value: formatContestTime(contest)},
-									],
-								},
-							],
+							attachments: [await createContestAttachment(contest, 'owner')],
 						});
 
 						state.contests = state.contests.map(c => (c.messageTs === contest.messageTs ? contest : c));
@@ -422,16 +570,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 							text: stripIndent`
 								コンテストが変更されたよ！
 							`,
-							attachments: [
-								{
-									fields: [
-										{title: '投稿者', value: `<@${payload.user.id}>`},
-										{title: '形式', value: 'AtCoder'},
-										{title: '言語', value: config.atcoder.languages.find(l => l.id === values.language)?.name ?? ''},
-										{title: 'コンテスト時間', value: formatContestTime(contest)},
-									],
-								},
-							],
+							attachments: [await createContestAttachment(contest, 'hidden')],
 						});
 					});
 				} else {
@@ -442,13 +581,9 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 						const contest: Contest = {
 							owner: payload.user.id,
 							messageTs: '',
-							problem: {
-								service: 'atcoder',
-								url: values.problemURL,
-								contestId,
-								taskId,
-								language: values.language,
-							},
+							service: values.service,
+							problem: problem as any,
+							language: values.language,
 							startAt,
 							endAt,
 							submissions: [],
@@ -469,20 +604,12 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 									text: mrkdwn(stripIndent`
 										コンテストを追加したよ！
 										内容を編集するにはこのボタンを使ってね！
-										このコンテストを削除するには \`@golfbot remove ${messageTs}\` と送ってね！
+										コンテストを削除するにはこのメッセージに \`@golfbot remove\` とリプライしてね！
 									`),
 								},
 								...views.createEditBlocks(),
 							],
-							attachments: [
-								{
-									fields: [
-										{title: '問題', value: contest.problem.url},
-										{title: '言語', value: config.atcoder.languages.find(l => l.id === values.language)?.name ?? ''},
-										{title: 'コンテスト時間', value: formatContestTime(contest)},
-									],
-								},
-							],
+							attachments: [await createContestAttachment(contest, 'owner')],
 						});
 
 						contest.messageTs = message.ts;
@@ -496,16 +623,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 							text: stripIndent`
 								コンテストが追加されたよ！
 							`,
-							attachments: [
-								{
-									fields: [
-										{title: '投稿者', value: `<@${payload.user.id}>`},
-										{title: '形式', value: 'AtCoder'},
-										{title: '言語', value: config.atcoder.languages.find(l => l.id === values.language)?.name ?? ''},
-										{title: 'コンテスト時間', value: formatContestTime(contest)},
-									],
-								},
-							],
+							attachments: [await createContestAttachment(contest, 'hidden')],
 						});
 					});
 				}
@@ -535,16 +653,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 								text: stripIndent`
 									コンテストが始まったよ～ :golfer:
 								`,
-								attachments: [
-									{
-										fields: [
-											{title: '投稿者', value: `<@${contest.owner}>`},
-											{title: '問題', value: contest.problem.url},
-											{title: '言語', value: config.atcoder.languages.find(l => l.id === contest.problem.language)?.name ?? '', short: true},
-											{title: 'コンテスト時間', value: formatContestTime(contest)},
-										],
-									},
-								],
+								attachments: [await createContestAttachment(contest, 'revealed')],
 							});
 						}
 					}
@@ -564,82 +673,139 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 					for (const contest of state.contests) {
 						// 開催中、またはちょうど終了のコンテスト
 						if (contest.startAt <= newTime && oldTime < contest.endAt) {
-							const getShortests = (submissions: Submission[]) => {
-								const shortests = new Map<string, number>();
-								for (const {userId, length} of submissions) {
-									if (!shortests.has(userId) || shortests.get(userId)! > length) {
-										shortests.set(userId, length);
+							if (contest.service === 'atcoder') {
+								const getShortests = (submissions: atcoder.Submission[]) => {
+									const shortests = new Map<string, number>();
+									for (const {userId, length} of submissions) {
+										if (!shortests.has(userId) || shortests.get(userId)! > length) {
+											shortests.set(userId, length);
+										}
 									}
-								}
-								return shortests;
-							};
+									return shortests;
+								};
 
-							const oldShortests = getShortests(contest.submissions);
+								const oldShortests = getShortests(contest.submissions);
 
-							const newSubmissions = await atcoder.crawlSubmissions(contest.problem.contestId, {
-								language: contest.problem.language,
-								status: 'AC',
-								task: contest.problem.taskId,
-								since: new Date(contest.startAt),
-								until: new Date(contest.endAt),
-							});
-
-							const newShortests = getShortests(newSubmissions);
-							for (const [atcoderId, newLength] of newShortests.entries()) {
-								if (oldShortests.has(atcoderId) && oldShortests.get(atcoderId)! <= newLength) {
-									continue;
-								}
-
-								const user = state.users.find(u => u.atcoderId === atcoderId);
-								if (!user) {
-									continue;
-								}
-								await slack.chat.postMessage({
-									username: USERNAME,
-									icon_emoji: ICON_EMOJI,
-									channel: process.env.CHANNEL_SIG_CODEGOLF!,
-									text: oldShortests.has(atcoderId)
-										? stripIndent`
-											<@${user.slackId}> がコードを短縮しました！
-											${oldShortests.get(atcoderId)!} Byte → ${newLength} Byte
-										`
-										: stripIndent`
-											<@${user.slackId}> が :ac: しました！
-											${newLength} Byte
-										`,
+								const newSubmissions = await atcoder.crawlSubmissions(contest.problem.contestId, {
+									language: contest.language,
+									status: 'AC',
+									task: contest.problem.taskId,
+									since: new Date(contest.startAt),
+									until: new Date(contest.endAt),
 								});
+
+								const newShortests = getShortests(newSubmissions);
+								for (const [atcoderId, newLength] of newShortests.entries()) {
+									if (oldShortests.has(atcoderId) && oldShortests.get(atcoderId)! <= newLength) {
+										continue;
+									}
+
+									const user = state.users.find(u => u.atcoderId === atcoderId);
+									if (!user) {
+										continue;
+									}
+
+									await slack.chat.postMessage({
+										username: USERNAME,
+										icon_emoji: ICON_EMOJI,
+										channel: process.env.CHANNEL_SIG_CODEGOLF!,
+										text: oldShortests.has(atcoderId)
+											? stripIndent`
+												<@${user.slackId}> がコードを短縮しました！
+												${oldShortests.get(atcoderId)!} Byte → ${newLength} Byte
+											`
+											: stripIndent`
+												<@${user.slackId}> が :ac: しました！
+												${newLength} Byte
+											`,
+									});
+								}
+
+								contest.submissions = newSubmissions;
 							}
 
-							contest.submissions = newSubmissions;
+							if (contest.service === 'anagol') {
+								const newSubmissions = (await anagol.crawlStandings(contest.problem.problemId, contest.language)).filter(submission => {
+									return contest.startAt <= submission.date.getTime() && submission.date.getTime() < contest.endAt;
+								});
+
+								for (const submission of newSubmissions) {
+									const oldUserSubmission = contest.submissions.find(s => s.user === submission.user);
+									if (oldUserSubmission && oldUserSubmission.size <= submission.size) {
+										continue;
+									}
+
+									const user = state.users.find(u => u.anagolId === submission.user);
+									if (!user) {
+										continue;
+									}
+
+									await slack.chat.postMessage({
+										username: USERNAME,
+										icon_emoji: ICON_EMOJI,
+										channel: process.env.CHANNEL_SIG_CODEGOLF!,
+										text: oldUserSubmission
+											? stripIndent`
+												<@${user.slackId}> がコードを短縮しました！
+												${oldUserSubmission.size} Byte → ${submission.size} Byte
+											`
+											: stripIndent`
+												<@${user.slackId}> が :ac: しました！
+												${submission.size} Byte
+											`,
+									});
+								}
+
+								contest.submissions = newSubmissions;
+							}
 						}
 
 						// ちょうど終了のコンテスト
 						if (oldTime < contest.endAt && contest.endAt <= newTime) {
-							const standings = atcoder.computeStandings(contest.submissions);
+							const attachments: MessageAttachment[] = [];
 
-							const sourceCodes = new Map<string, string>();
-							for (const {userId, submission} of standings) {
-								const code = await atcoder.crawlSourceCode(contest.problem.contestId, submission.id);
-								sourceCodes.set(userId, code);
+							if (contest.service === 'atcoder') {
+								const standings = atcoder.computeStandings(contest.submissions);
+
+								for (const {userId: atcoderId, submission} of standings) {
+									const user = state.users.find(u => u.atcoderId === atcoderId);
+									if (!user) {
+										continue;
+									}
+
+									const code = await atcoder.crawlSourceCode(contest.problem.contestId, submission.id);
+
+									attachments.push({
+										mrkdwn_in: ['text'],
+										author_name: `${await getMemberName(user.slackId)}: ${submission.length} Byte`,
+										author_icon: await getMemberIcon(user.slackId),
+										author_link: `https://atcoder.jp/contests/${contest.problem.contestId}/submissions/${submission.id}`,
+										text: `\`\`\`${code}\`\`\``,
+										footer: `提出: ${moment(submission.time).format('HH:mm:ss')}`,
+									});
+								}
 							}
 
-							const attachments: MessageAttachment[] = [];
-							for (const {userId: atcoderId, submission} of standings) {
-								const user = state.users.find(u => u.atcoderId === atcoderId);
-								if (!user) {
-									continue;
+							if (contest.service === 'anagol') {
+								const languageName = getLanguageName('anagol', contest.language);
+
+								for (const submission of contest.submissions) {
+									const user = state.users.find(u => u.anagolId === submission.user);
+									if (!user) {
+										continue;
+									}
+
+									const code = submission.url && (await anagol.crawlSourceCode(submission.url));
+
+									attachments.push({
+										mrkdwn_in: ['text'],
+										author_name: `${await getMemberName(user.slackId)}: ${submission.size} Byte`,
+										author_icon: await getMemberIcon(user.slackId),
+										author_link: `http://golf.shinh.org/p.rb?${contest.problem.problemId}#${languageName}`,
+										text: code ? `\`\`\`${code}\`\`\`` : '(hidden)',
+										footer: `提出: ${moment(submission.date).format('HH:mm:ss')}`,
+									});
 								}
-
-								const code = await atcoder.crawlSourceCode(contest.problem.contestId, submission.id);
-
-								attachments.push({
-									mrkdwn_in: ['text'],
-									author_name: `${await getMemberName(user.slackId)}: ${submission.length} Byte`,
-									author_icon: await getMemberIcon(user.slackId),
-									author_link: `https://atcoder.jp/contests/${contest.problem.contestId}/submissions/${submission.id}`,
-									text: `\`\`\`${code}\`\`\``,
-									footer: `提出: ${moment(submission.time).format('HH:mm:ss')}`,
-								});
 							}
 
 							await slack.chat.postMessage({
@@ -649,7 +815,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 								text: stripIndent`
 									お疲れさまでした！
 
-									${standings.length === 0 ? '今回は :ac: した人がいなかったよ :cry:' : ''}
+									${attachments.length === 0 ? '今回は :ac: した人がいなかったよ :cry:' : ''}
 								`,
 								attachments,
 							});
