@@ -12,6 +12,7 @@ export interface Submission {
 	time: number;
 	date: Date;
 	statistics: string;
+	url: string | null;
 }
 
 interface SubmissionsData {
@@ -19,7 +20,7 @@ interface SubmissionsData {
 	byLanguage: {submissions: Submission[]}[];
 }
 
-export const crawlStandings = async (problemId: string, languageId: string) => {
+export const crawlStandings = async (problemId: string, languageId: string): Promise<Submission[]> => {
 	const url = `http://golf.shinh.org/p.rb?${problemId}`;
 	const {data} = await scrapeIt<SubmissionsData>(url, {
 		languages: {
@@ -60,6 +61,11 @@ export const crawlStandings = async (problemId: string, languageId: string) => {
 						statistics: {
 							selector: 'td:nth-child(6)',
 						},
+						url: {
+							selector: 'td:nth-child(2) > a',
+							attr: 'href',
+							convert: text => (text ? new URL(text, url).toString() : null),
+						},
 					},
 				},
 			},
@@ -72,4 +78,18 @@ export const crawlStandings = async (problemId: string, languageId: string) => {
 	} else {
 		return data.byLanguage[index]?.submissions ?? [];
 	}
+};
+
+interface SubmissionData {
+	code: string | null;
+}
+
+export const crawlSourceCode = async (url: string): Promise<string | null> => {
+	const {data} = await scrapeIt<SubmissionData>(url, {
+		code: {
+			selector: 'body > pre',
+			convert: text => text || null,
+		},
+	});
+	return data.code;
 };

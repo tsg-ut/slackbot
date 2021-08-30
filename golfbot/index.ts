@@ -795,12 +795,14 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 										continue;
 									}
 
+									const code = submission.url && (await anagol.crawlSourceCode(submission.url));
+
 									attachments.push({
 										mrkdwn_in: ['text'],
 										author_name: `${await getMemberName(user.slackId)}: ${submission.size} Byte`,
 										author_icon: await getMemberIcon(user.slackId),
 										author_link: `http://golf.shinh.org/p.rb?${contest.problem.problemId}#${languageName}`,
-										text: '',
+										text: code ? `\`\`\`${code}\`\`\`` : '(hidden)',
 										footer: `提出: ${moment(submission.date).format('HH:mm:ss')}`,
 									});
 								}
