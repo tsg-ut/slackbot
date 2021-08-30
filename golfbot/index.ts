@@ -67,7 +67,7 @@ const parseMessage = (text: string): ParseResult | null => {
 
 	switch (subcommand) {
 		case 'join': {
-			re = /^(?<service>atcoder|anagol)\s+(?<username>[a-z0-9-]+)\s*$/i;
+			re = /^(?<service>atcoder|anagol)\s+(?<username>.+?)\s*$/i;
 			match = re.exec(text);
 			if (!match) {
 				return {type: 'error', message: `引数がおかしいよ`, subcommand: 'join'};
