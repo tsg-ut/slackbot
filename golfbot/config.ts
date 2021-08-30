@@ -1,5 +1,6 @@
 export default {
 	atcoder: {
+		name: 'AtCoder',
 		languages: [
 			{id: '4001', name: 'C (GCC 9.2.1)'},
 			{id: '4002', name: 'C (Clang 10.0.0)'},
@@ -71,6 +72,7 @@ export default {
 		],
 	},
 	anagol: {
+		name: 'Anarchy Golf',
 		languages: [
 			{id: 'fsh', name: '><>'},
 			{id: 'a+', name: 'A+'},

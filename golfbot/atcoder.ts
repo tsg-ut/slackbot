@@ -3,6 +3,12 @@
 import {last} from 'lodash';
 import scrapeIt from 'scrape-it';
 
+export interface Problem {
+	url: string;
+	contestId: string;
+	taskId: string;
+}
+
 export interface Submission {
 	time: Date;
 	problemId: string;
