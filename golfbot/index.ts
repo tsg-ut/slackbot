@@ -36,10 +36,13 @@ type ParseResult =
 			username: string;
 	  }
 	| {
-			type: 'list';
+			type: 'whoami';
 	  }
 	| {
 			type: 'post';
+	  }
+	| {
+			type: 'list';
 	  }
 	| {
 			type: 'remove';
@@ -72,11 +75,14 @@ const parseMessage = (text: string): ParseResult | null => {
 			const {service, username} = match.groups!;
 			return {type: 'join', service, username};
 		}
-		case 'list': {
-			return {type: 'list'};
+		case 'whoami': {
+			return {type: 'whoami'};
 		}
 		case 'post': {
 			return {type: 'post'};
+		}
+		case 'list': {
+			return {type: 'list'};
 		}
 		case 'remove': {
 			return {type: 'remove'};
@@ -125,8 +131,9 @@ const help = (subcommand?: string): string => {
 		default: {
 			return stripIndent`
 				\`join\` : アカウント登録
-				\`list\` : コンテスト一覧
+				\`whoami\` : アカウント確認
 				\`post\` : 問題投稿 (スラッシュコマンド)
+				\`list\` : コンテスト一覧
 
 				詳しい使い方は \`@golfbot help <subcommand>\` で聞いてね！
 			`;
@@ -270,15 +277,18 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 					});
 					return;
 				}
-				case 'list': {
+				case 'whoami': {
+					const user = state.users.find(u => u.slackId === message.user);
+
 					await slack.chat.postMessage({
 						username: USERNAME,
 						icon_emoji: ICON_EMOJI,
 						channel: message.channel,
 						text: stripIndent`
-							${state.contests.length > 0 ? '現在のコンテスト一覧だよ' : '現在コンテストの予定は無いよ'}
+							${await getMemberName(message.user)} さんのアカウント
+							AtCoder: ${user?.atcoderId ?? '登録なし'}
+							Anarchy Golf: ${user?.anagolId ?? '登録なし'}
 						`,
-						attachments: await Promise.all(state.contests.map(contest => createContestAttachment(contest, 'list'))),
 					});
 					return;
 				}
@@ -288,6 +298,18 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 						icon_emoji: ICON_EMOJI,
 						channel: message.channel,
 						text: help('post'),
+					});
+					return;
+				}
+				case 'list': {
+					await slack.chat.postMessage({
+						username: USERNAME,
+						icon_emoji: ICON_EMOJI,
+						channel: message.channel,
+						text: stripIndent`
+							${state.contests.length > 0 ? '現在のコンテスト一覧だよ' : '現在コンテストの予定は無いよ'}
+						`,
+						attachments: await Promise.all(state.contests.map(contest => createContestAttachment(contest, 'list'))),
 					});
 					return;
 				}
