@@ -259,10 +259,11 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 				case 'join': {
 					let user = state.users.find(u => u.slackId === message.user);
 					if (!user) {
-						user = {
+						state.users.push({
 							slackId: message.user,
-						};
-						state.users.push(user);
+						});
+						// get observable object
+						user = state.users[state.users.length - 1];
 					}
 					if (cmd.service === 'atcoder') {
 						user.atcoderId = cmd.username;
