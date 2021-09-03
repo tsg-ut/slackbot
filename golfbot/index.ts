@@ -674,6 +674,9 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 					for (const contest of state.contests) {
 						// 開催中、またはちょうど終了のコンテスト
 						if (contest.startAt <= newTime && oldTime < contest.endAt) {
+							type Notification = {user: string; from: number; to: number};
+							const notifications: Notification[] = [];
+
 							if (contest.service === 'atcoder') {
 								const getShortests = (submissions: atcoder.Submission[]) => {
 									const shortests = new Map<string, number>();
@@ -701,17 +704,10 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 										continue;
 									}
 
-									await slack.chat.postMessage({
-										username: USERNAME,
-										icon_emoji: ICON_EMOJI,
-										channel: process.env.CHANNEL_SIG_CODEGOLF!,
-										text: oldShortests.has(atcoderId)
-											? stripIndent`
-												*${atcoderId}* がコードを短縮しました！ (*${oldShortests.get(atcoderId)!} Byte* → *${newLength} Byte*)
-											`
-											: stripIndent`
-												*${atcoderId}* が :ac: しました！ (*${newLength} Byte*)
-											`,
+									notifications.push({
+										user: atcoderId,
+										from: oldShortests.get(atcoderId) ?? Infinity,
+										to: newLength,
 									});
 								}
 
@@ -729,21 +725,29 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 										continue;
 									}
 
-									await slack.chat.postMessage({
-										username: USERNAME,
-										icon_emoji: ICON_EMOJI,
-										channel: process.env.CHANNEL_SIG_CODEGOLF!,
-										text: oldUserSubmission
-											? stripIndent`
-												*${submission.user}* がコードを短縮しました！ (*${oldUserSubmission.size} Byte* → *${submission.size} Byte*)
-											`
-											: stripIndent`
-												*${submission.user}* が :ac: しました！ (*${submission.size} Byte*)
-											`,
+									notifications.push({
+										user: submission.user,
+										from: oldUserSubmission?.size ?? Infinity,
+										to: submission.size,
 									});
 								}
 
 								contest.submissions = newSubmissions;
+							}
+
+							for (const {user, from, to} of notifications) {
+								await slack.chat.postMessage({
+									username: USERNAME,
+									icon_emoji: ICON_EMOJI,
+									channel: process.env.CHANNEL_SIG_CODEGOLF!,
+									text: Number.isFinite(from)
+										? stripIndent`
+											*${user}* がコードを短縮しました！ (*${from} Byte* → *${to} Byte*)
+										`
+										: stripIndent`
+											*${user}* が :ac: しました！ (*${to} Byte*)
+										`,
+								});
 							}
 						}
 
