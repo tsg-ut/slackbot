@@ -7,6 +7,7 @@ import {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberIcon, getMemberName, mrkdwn} from '../lib/slackUtils';
 import logger from '../lib/logger';
 import State from '../lib/state';
+import * as achievements from '../achievements/index.js';
 import config from './config';
 import * as views from './views';
 import * as atcoder from './atcoder';
@@ -259,10 +260,11 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 				case 'join': {
 					let user = state.users.find(u => u.slackId === message.user);
 					if (!user) {
-						user = {
+						state.users.push({
 							slackId: message.user,
-						};
-						state.users.push(user);
+						});
+						// get observable object
+						user = state.users[state.users.length - 1];
 					}
 					if (cmd.service === 'atcoder') {
 						user.atcoderId = cmd.username;
@@ -673,6 +675,9 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 					for (const contest of state.contests) {
 						// 開催中、またはちょうど終了のコンテスト
 						if (contest.startAt <= newTime && oldTime < contest.endAt) {
+							type Notification = {user: string; from: number; to: number};
+							const notifications: Notification[] = [];
+
 							if (contest.service === 'atcoder') {
 								const getShortests = (submissions: atcoder.Submission[]) => {
 									const shortests = new Map<string, number>();
@@ -700,24 +705,10 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 										continue;
 									}
 
-									const user = state.users.find(u => u.atcoderId === atcoderId);
-									if (!user) {
-										continue;
-									}
-
-									await slack.chat.postMessage({
-										username: USERNAME,
-										icon_emoji: ICON_EMOJI,
-										channel: process.env.CHANNEL_SIG_CODEGOLF!,
-										text: oldShortests.has(atcoderId)
-											? stripIndent`
-												<@${user.slackId}> がコードを短縮しました！
-												${oldShortests.get(atcoderId)!} Byte → ${newLength} Byte
-											`
-											: stripIndent`
-												<@${user.slackId}> が :ac: しました！
-												${newLength} Byte
-											`,
+									notifications.push({
+										user: atcoderId,
+										from: oldShortests.get(atcoderId) ?? Infinity,
+										to: newLength,
 									});
 								}
 
@@ -735,54 +726,57 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 										continue;
 									}
 
-									const user = state.users.find(u => u.anagolId === submission.user);
-									if (!user) {
-										continue;
-									}
-
-									await slack.chat.postMessage({
-										username: USERNAME,
-										icon_emoji: ICON_EMOJI,
-										channel: process.env.CHANNEL_SIG_CODEGOLF!,
-										text: oldUserSubmission
-											? stripIndent`
-												<@${user.slackId}> がコードを短縮しました！
-												${oldUserSubmission.size} Byte → ${submission.size} Byte
-											`
-											: stripIndent`
-												<@${user.slackId}> が :ac: しました！
-												${submission.size} Byte
-											`,
+									notifications.push({
+										user: submission.user,
+										from: oldUserSubmission?.size ?? Infinity,
+										to: submission.size,
 									});
 								}
 
 								contest.submissions = newSubmissions;
+							}
+
+							for (const {user, from, to} of notifications) {
+								await slack.chat.postMessage({
+									username: USERNAME,
+									icon_emoji: ICON_EMOJI,
+									channel: process.env.CHANNEL_SIG_CODEGOLF!,
+									text: Number.isFinite(from)
+										? stripIndent`
+											*${user}* がコードを短縮しました！ (*${from} Byte* → *${to} Byte*)
+										`
+										: stripIndent`
+											*${user}* が :ac: しました！ (*${to} Byte*)
+										`,
+								});
 							}
 						}
 
 						// ちょうど終了のコンテスト
 						if (oldTime < contest.endAt && contest.endAt <= newTime) {
 							const attachments: MessageAttachment[] = [];
+							const participants: string[] = [];
 
 							if (contest.service === 'atcoder') {
 								const standings = atcoder.computeStandings(contest.submissions);
 
 								for (const {userId: atcoderId, submission} of standings) {
 									const user = state.users.find(u => u.atcoderId === atcoderId);
-									if (!user) {
-										continue;
-									}
 
 									const code = await atcoder.crawlSourceCode(contest.problem.contestId, submission.id);
 
 									attachments.push({
 										mrkdwn_in: ['text'],
-										author_name: `${await getMemberName(user.slackId)}: ${submission.length} Byte`,
-										author_icon: await getMemberIcon(user.slackId),
+										author_name: `${user ? await getMemberName(user.slackId) : submission.userId}: ${submission.length} Byte`,
+										author_icon: user ? await getMemberIcon(user.slackId) : undefined,
 										author_link: `https://atcoder.jp/contests/${contest.problem.contestId}/submissions/${submission.id}`,
 										text: `\`\`\`${code}\`\`\``,
 										footer: `提出: ${moment(submission.time).format('HH:mm:ss')}`,
 									});
+
+									if (user) {
+										participants.push(user.slackId);
+									}
 								}
 							}
 
@@ -791,20 +785,21 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 
 								for (const submission of contest.submissions) {
 									const user = state.users.find(u => u.anagolId === submission.user);
-									if (!user) {
-										continue;
-									}
 
 									const code = submission.url && (await anagol.crawlSourceCode(submission.url));
 
 									attachments.push({
 										mrkdwn_in: ['text'],
-										author_name: `${await getMemberName(user.slackId)}: ${submission.size} Byte`,
-										author_icon: await getMemberIcon(user.slackId),
+										author_name: `${user ? await getMemberName(user.slackId) : submission.user}: ${submission.size} Byte`,
+										author_icon: user ? await getMemberIcon(user.slackId) : undefined,
 										author_link: `http://golf.shinh.org/p.rb?${contest.problem.problemId}#${languageName}`,
 										text: code ? `\`\`\`${code}\`\`\`` : '(hidden)',
 										footer: `提出: ${moment(submission.date).format('HH:mm:ss')}`,
 									});
+
+									if (user) {
+										participants.push(user.slackId);
+									}
 								}
 							}
 
@@ -819,6 +814,12 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 								`,
 								attachments,
 							});
+
+							await achievements.increment(contest.owner, 'golfbot-host');
+
+							for (const user of participants) {
+								await achievements.increment(user, 'golfbot-participate');
+							}
 						}
 					}
 
