@@ -701,23 +701,16 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 										continue;
 									}
 
-									const user = state.users.find(u => u.atcoderId === atcoderId);
-									if (!user) {
-										continue;
-									}
-
 									await slack.chat.postMessage({
 										username: USERNAME,
 										icon_emoji: ICON_EMOJI,
 										channel: process.env.CHANNEL_SIG_CODEGOLF!,
 										text: oldShortests.has(atcoderId)
 											? stripIndent`
-												<@${user.slackId}> がコードを短縮しました！
-												${oldShortests.get(atcoderId)!} Byte → ${newLength} Byte
+												*${atcoderId}* がコードを短縮しました！ (*${oldShortests.get(atcoderId)!} Byte* → *${newLength} Byte*)
 											`
 											: stripIndent`
-												<@${user.slackId}> が :ac: しました！
-												${newLength} Byte
+												*${atcoderId}* が :ac: しました！ (*${newLength} Byte*)
 											`,
 									});
 								}
@@ -736,23 +729,16 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 										continue;
 									}
 
-									const user = state.users.find(u => u.anagolId === submission.user);
-									if (!user) {
-										continue;
-									}
-
 									await slack.chat.postMessage({
 										username: USERNAME,
 										icon_emoji: ICON_EMOJI,
 										channel: process.env.CHANNEL_SIG_CODEGOLF!,
 										text: oldUserSubmission
 											? stripIndent`
-												<@${user.slackId}> がコードを短縮しました！
-												${oldUserSubmission.size} Byte → ${submission.size} Byte
+												*${submission.user}* がコードを短縮しました！ (*${oldUserSubmission.size} Byte* → *${submission.size} Byte*)
 											`
 											: stripIndent`
-												<@${user.slackId}> が :ac: しました！
-												${submission.size} Byte
+												*${submission.user}* が :ac: しました！ (*${submission.size} Byte*)
 											`,
 									});
 								}
