@@ -2775,10 +2775,19 @@ const achievements: Achievement[] = [
 		id: 'golfbot-participate',
 		difficulty: 'medium',
 		title: 'カップイン',
-		condition: 'golfbotのコンテストに参加して AC する',
+		condition: 'golfbotのコンテストに参加してACする',
 		category: 'golfbot',
 		counter: 'golfbot-participate',
 		value: 1,
+	},
+	{
+		id: 'golfbot-participate-10',
+		difficulty: 'hard',
+		title: '常連ゴルファー',
+		condition: 'golfbotのコンテストに10回参加してACする',
+		category: 'golfbot',
+		counter: 'golfbot-participate',
+		value: 10,
 	},
 	{
 		id: 'golfbot-host',
@@ -2788,6 +2797,15 @@ const achievements: Achievement[] = [
 		category: 'golfbot',
 		counter: 'golfbot-host',
 		value: 1,
+	},
+	{
+		id: 'golfbot-host-10',
+		difficulty: 'professional',
+		title: '日本ゴルフ協会',
+		condition: 'golfbotのコンテストを10回主催する',
+		category: 'golfbot',
+		counter: 'golfbot-host',
+		value: 10,
 	},
 
 	// achievements
