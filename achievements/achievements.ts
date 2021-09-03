@@ -2769,6 +2769,27 @@ const achievements: Achievement[] = [
 		category: 'remember-english',
 	},
 
+	// golfbot
+
+	{
+		id: 'golfbot-participate',
+		difficulty: 'medium',
+		title: 'カップイン',
+		condition: 'golfbotのコンテストに参加して AC する',
+		category: 'golfbot',
+		counter: 'golfbot-participate',
+		value: 1,
+	},
+	{
+		id: 'golfbot-host',
+		difficulty: 'hard',
+		title: 'ゴルフやろうぜ！',
+		condition: 'golfbotのコンテストを主催する',
+		category: 'golfbot',
+		counter: 'golfbot-host',
+		value: 1,
+	},
+
 	// achievements
 
 	{

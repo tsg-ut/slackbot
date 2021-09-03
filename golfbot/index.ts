@@ -7,6 +7,7 @@ import {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberIcon, getMemberName, mrkdwn} from '../lib/slackUtils';
 import logger from '../lib/logger';
 import State from '../lib/state';
+import * as achievements from '../achievements/index.js';
 import config from './config';
 import * as views from './views';
 import * as atcoder from './atcoder';
@@ -754,6 +755,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 						// ちょうど終了のコンテスト
 						if (oldTime < contest.endAt && contest.endAt <= newTime) {
 							const attachments: MessageAttachment[] = [];
+							const participants: string[] = [];
 
 							if (contest.service === 'atcoder') {
 								const standings = atcoder.computeStandings(contest.submissions);
@@ -774,6 +776,8 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 										text: `\`\`\`${code}\`\`\``,
 										footer: `提出: ${moment(submission.time).format('HH:mm:ss')}`,
 									});
+
+									participants.push(user.slackId);
 								}
 							}
 
@@ -796,6 +800,8 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 										text: code ? `\`\`\`${code}\`\`\`` : '(hidden)',
 										footer: `提出: ${moment(submission.date).format('HH:mm:ss')}`,
 									});
+
+									participants.push(user.slackId);
 								}
 							}
 
@@ -810,6 +816,12 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 								`,
 								attachments,
 							});
+
+							await achievements.increment(contest.owner, 'golfbot-host');
+
+							for (const user of participants) {
+								await achievements.increment(user, 'golfbot-participate');
+							}
 						}
 					}
 
