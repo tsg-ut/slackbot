@@ -762,22 +762,21 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 
 								for (const {userId: atcoderId, submission} of standings) {
 									const user = state.users.find(u => u.atcoderId === atcoderId);
-									if (!user) {
-										continue;
-									}
 
 									const code = await atcoder.crawlSourceCode(contest.problem.contestId, submission.id);
 
 									attachments.push({
 										mrkdwn_in: ['text'],
-										author_name: `${await getMemberName(user.slackId)}: ${submission.length} Byte`,
-										author_icon: await getMemberIcon(user.slackId),
+										author_name: `${user ? await getMemberName(user.slackId) : submission.userId}: ${submission.length} Byte`,
+										author_icon: user ? await getMemberIcon(user.slackId) : undefined,
 										author_link: `https://atcoder.jp/contests/${contest.problem.contestId}/submissions/${submission.id}`,
 										text: `\`\`\`${code}\`\`\``,
 										footer: `提出: ${moment(submission.time).format('HH:mm:ss')}`,
 									});
 
-									participants.push(user.slackId);
+									if (user) {
+										participants.push(user.slackId);
+									}
 								}
 							}
 
@@ -786,22 +785,21 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 
 								for (const submission of contest.submissions) {
 									const user = state.users.find(u => u.anagolId === submission.user);
-									if (!user) {
-										continue;
-									}
 
 									const code = submission.url && (await anagol.crawlSourceCode(submission.url));
 
 									attachments.push({
 										mrkdwn_in: ['text'],
-										author_name: `${await getMemberName(user.slackId)}: ${submission.size} Byte`,
-										author_icon: await getMemberIcon(user.slackId),
+										author_name: `${user ? await getMemberName(user.slackId) : submission.user}: ${submission.size} Byte`,
+										author_icon: user ? await getMemberIcon(user.slackId) : undefined,
 										author_link: `http://golf.shinh.org/p.rb?${contest.problem.problemId}#${languageName}`,
 										text: code ? `\`\`\`${code}\`\`\`` : '(hidden)',
 										footer: `提出: ${moment(submission.date).format('HH:mm:ss')}`,
 									});
 
-									participants.push(user.slackId);
+									if (user) {
+										participants.push(user.slackId);
+									}
 								}
 							}
 
