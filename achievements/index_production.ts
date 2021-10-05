@@ -1,13 +1,12 @@
-import qs from 'querystring';
 // eslint-disable-next-line no-unused-vars
 import {WebClient} from '@slack/web-api';
-import axios from 'axios';
 import {stripIndent} from 'common-tags';
 import {countBy, throttle, groupBy, get as getter, chunk} from 'lodash';
 import moment from 'moment';
 import db from '../lib/firestore';
 // eslint-disable-next-line no-unused-vars
 import type {SlackInterface} from '../lib/slack';
+import {getReactions} from '../lib/slackUtils';
 import {Deferred} from '../lib/utils';
 import achievements, {Difficulty} from './achievements';
 
@@ -102,26 +101,13 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 			if (reactionAchievements.length === 0) {
 				return;
 			}
-			const {data}: any = await axios.get(`https://slack.com/api/conversations.history?${qs.stringify({
-				channel: event.item.channel,
-				latest: event.item.ts,
-				limit: 1,
-				inclusive: true,
-			})}`, {
-				headers: {
-					Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
-				},
-			});
-			const reactions = getter(data, ['messages', 0, 'reactions'], []);
-			const targetReaction = reactions.find(({name}: any) => name === event.reaction);
-			if (!targetReaction) {
-				return;
-			}
+			const reactions = await getReactions(event.item.channel, event.item.ts);
+			const targetReaction = reactions[event.reaction] || 0;
 			const messageURL = event.item.type === 'message'
 				? `<https://tsg-ut.slack.com/archives/${event.item.channel}/p${event.item.ts.replace('.', '')}|[メッセージ]>`
 				: '';
 			for (const achievement of reactionAchievements) {
-				if (achievement.value <= targetReaction.count) {
+				if (achievement.value <= targetReaction) {
 					await unlock(event.item_user, achievement.id, messageURL);
 				}
 			}
