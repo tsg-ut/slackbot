@@ -1,4 +1,4 @@
-import axios, {AxiosError} from 'axios';
+import axios from 'axios';
 import logger from '../../lib/logger';
 import {SynthesizeFunction} from './types.d';
 
@@ -26,7 +26,7 @@ const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emo
 		postData.set('emotion_level', emolv.toString());
 	}
 	return new Promise((resolve, reject) => {
-		axios.post('https://api.voicetext.jp/v1/tts', postData.toString(), {
+		axios.post<Buffer>('https://api.voicetext.jp/v1/tts', Buffer.from(postData.toString()), {
 			auth: {
 				username: process.env.VOICETEXT_API_KEY,
 				password: '',
@@ -34,8 +34,10 @@ const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emo
 			responseType: 'arraybuffer',
 		}).then((response) => {
 			resolve({data: response.data});
-		}).catch((reason: AxiosError) => {
-			logger.error(`The VoiceText API server has returned an error: ${reason.response?.data?.toString()}`);
+		}).catch((reason) => {
+			if (axios.isAxiosError(reason)) {
+				logger.error(`The VoiceText API server has returned an error: ${reason.response?.data}`);
+			}
 			reject(reason);
 		});
 	});

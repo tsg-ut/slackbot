@@ -29,6 +29,7 @@
   "homepage": "https://github.com/tsg-ut/slackbot#readme",
   "dependencies": {
     "@discordjs/opus": "^0.6.0",
+    "@discordjs/voice": "^0.6.0",
     "@google-cloud/text-to-speech": "^3.3.1",
     "@hakatashi/riichi-core": "^1.0.4",
     "@slack/events-api": "^3.0.1",
@@ -85,6 +86,7 @@
     "jszip": "^3.7.1",
     "kuromojin": "^3.0.0",
     "libmime": "^5.0.0",
+    "libsodium-wrappers": "^0.7.9",
     "lodash": "^4.17.21",
     "microsoft-cognitiveservices-speech-sdk": "^1.18.1",
     "miller-rabin": "^4.0.1",
