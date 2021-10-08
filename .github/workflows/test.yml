@@ -29,8 +29,7 @@ jobs:
       - name: Test
         run: npm test
         env:
-          NODE_OPTIONS: --trace-warnings --trace-deprecation --unhandled-rejections=warn
-
+          NODE_OPTIONS: --trace-warnings --trace-deprecation --trace-exit --trace-uncaught --unhandled-rejections=strict
 
       - name: Set up reviewdog
         if: ${{ github.event_name == 'pull_request' }}
