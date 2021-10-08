@@ -87,7 +87,7 @@ const parseProfileTW = async (html: any) => {
 };
 
 
-const getCsrfsTW = (res: AxiosResponse) => {
+const getCsrfsTW = (res: AxiosResponse<string>) => {
 	const html = res.data;
 	const candMiddle = html.match((/<input type="hidden" name="csrfmiddlewaretoken" value="([A-Za-z0-9]+)">/))[1];
 	csrfmiddlewaretokenTW = candMiddle ? candMiddle : csrfmiddlewaretokenTW;

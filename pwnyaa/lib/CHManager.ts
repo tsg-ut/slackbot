@@ -17,7 +17,7 @@ let csrftokenCH = '';
 let tempCookie = '';
 let sessionidCH = '';
 
-const getCsrfsCH = (res: AxiosResponse) => {
+const getCsrfsCH = (res: AxiosResponse<string>) => {
 	const html = res.data;
 	const candCsrf = html.match(/<input name="_csrf_token" type="hidden" value="([A-Za-z0-9]+)" \/>/)[1];
 	const candCookie = String(res.headers['set-cookie']).split(' ')[0];
@@ -197,7 +197,7 @@ export const fetchChallsCH = async function () {
 // NOTE: no need to login
 // NOTE: userid and name is identical
 export const findUserByNameCH = async function (username: string): Promise<{userid: string, name: string}> {
-	const {data: infojson} = await clientCH.get(`https://cryptohack.org/api/search_user/${username}.json`, {
+	const {data: infojson} = await clientCH.get<any>(`https://cryptohack.org/api/search_user/${username}.json`, {
 		headers: {},
 	});
 	if (infojson.users.length > 0) {

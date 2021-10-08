@@ -2,16 +2,18 @@ import axios from 'axios';
 import logger from '../lib/logger';
 import type {LinkUnfurls} from '@slack/web-api';
 import qs from 'querystring';
+import type {ChatUnfurlResponse} from '@slack/web-api';
 
 const slacklogAPIDomain = 'localhost:9292';
 const slacklogURLRegexp = new RegExp('^https?://slack-log.tsg.ne.jp/([A-Z0-9]+)/([0-9]+\.[0-9]+)');
 const getAroundMessagesUrl = (channel: string) => `http://${slacklogAPIDomain}/around_messages/${channel}.json`;
 
 import type {SlackInterface} from '../lib/slack';
+import { AxiosResponse } from '@slack/web-api/node_modules/axios';
 
 export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
-    const users = await axios.get(`http://${slacklogAPIDomain}/users.json`).then(({data}) => data);
-    const channels = await axios.get(`http://${slacklogAPIDomain}/channels.json`).then(({data}) => data);
+    const users = await axios.get<any>(`http://${slacklogAPIDomain}/users.json`).then(({data}) => data);
+    const channels = await axios.get<any>(`http://${slacklogAPIDomain}/channels.json`).then(({data}) => data);
 
     rtm.on('message', async ({channel, text}) => {
 
@@ -73,7 +75,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
             const [_, chanid, ts] = slacklogURLRegexp.exec(url);
 
             const aroundMessagesUrl = getAroundMessagesUrl(chanid);
-            const response = await axios.post(aroundMessagesUrl, qs.stringify({ts}));
+            const response = await axios.post<any>(aroundMessagesUrl, qs.stringify({ts}));
             const message = response.data.messages.find((m: {ts: string}) => m.ts === ts);
             if (!message) {
                 continue;
@@ -97,7 +99,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
         }
         if (Object.values(unfurls).length > 0) {
             try {
-                const {data} = await axios({
+                const {data}: AxiosResponse<ChatUnfurlResponse> = await axios({
                     method: 'POST',
                     url: 'https://slack.com/api/chat.unfurl',
                     data: qs.stringify({

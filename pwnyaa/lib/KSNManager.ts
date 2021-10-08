@@ -140,7 +140,7 @@ const fetchAllKSN = async function () {
 	// fetch all information
 	while (SAFEBAR < SAFELIMIT) {
 		try {
-			const {data: html} = await clientKSN.get(`https://ksnctf.sweetduet.info/log?page=${SAFEBAR}`, {
+			const {data: html} = await clientKSN.get<string>(`https://ksnctf.sweetduet.info/log?page=${SAFEBAR}`, {
 				headers: {},
 			});
 			htmls.push(html);

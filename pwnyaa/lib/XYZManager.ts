@@ -19,7 +19,7 @@ let csrfmiddlewaretokenXYZ = '';
 let csrftokenXYZ = '';
 let sessionidXYZ = '';
 
-const getCsrfsXYZ = (res: AxiosResponse) => {
+const getCsrfsXYZ = (res: AxiosResponse<string>) => {
 	const html = res.data;
 	const candMiddle = html.match(/<input type="hidden" name="csrfmiddlewaretoken" value="([A-Za-z0-9]+)">/)[1];
 	csrfmiddlewaretokenXYZ = candMiddle ? candMiddle : csrfmiddlewaretokenXYZ;
