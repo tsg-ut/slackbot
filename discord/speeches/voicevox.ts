@@ -11,7 +11,7 @@ enum VoiceType {
 const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emotion}) => {
 	if (text.length >= 30) {
 		return new Promise((_, reject) => {
-			reject('Text must be shorter than 30 characters for VOICEVOX.');
+			reject(new Error('Text must be shorter than 30 characters for VOICEVOX.'));
 		});
 	}
 	const voiceMapping: { [name: string]: { [emo: string]: number } } = {
