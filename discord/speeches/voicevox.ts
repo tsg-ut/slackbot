@@ -11,17 +11,17 @@ enum VoiceType {
 const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emotion}) => {
 	if (text.length >= 30) {
 		return new Promise((_, reject) => {
-			reject("Text must be shorter than 30 characters for VOICEVOX.");
+			reject('Text must be shorter than 30 characters for VOICEVOX.');
 		});
 	}
 	const voiceMapping: { [name: string]: { [emo: string]: number } } = {
-		"metan": {
+		metan: {
 			normal: 0,
 			happiness: 2,
 			anger: 4,
 			sadness: 6,
 		},
-		"zundamon": {
+		zundamon: {
 			normal: 1,
 			happiness: 3,
 			anger: 5,
@@ -31,7 +31,7 @@ const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emo
 	const postData = {
 		text,
 		speaker: voiceMapping[voiceType][emotion],
-		speed: 1.0 + (speed - 1.0)/2,
+		speed: 1.0 + (speed - 1.0) / 2,
 	};
 	return new Promise((resolve, reject) => {
 		axios.post(process.env.VOICEVOX_API_URL, postData, {
