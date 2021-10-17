@@ -119,6 +119,7 @@
   },
   "devDependencies": {
     "@hakatashi/eslint-config": "^1.15.0",
+    "@types/fast-levenshtein": "^0.0.2",
     "@typescript-eslint/eslint-plugin": "^4.21.0",
     "@typescript-eslint/parser": "^4.21.0",
     "byline": "^5.0.0",
