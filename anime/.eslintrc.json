@@ -1,5 +1,5 @@
 {
-    "extends": "@hakatashi",
+    "extends": "@hakatashi/eslint-config/typescript",
     "parserOptions": {
         "ecmaVersion": 2018,
         "ecmaFeatures": {
