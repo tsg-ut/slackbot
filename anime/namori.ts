@@ -1,4 +1,4 @@
-import {ImageBlock, MrkdwnElement} from '@slack/types';
+import type {ImageBlock, MrkdwnElement} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import axios from 'axios';
 import cloudinary from 'cloudinary';
@@ -6,7 +6,7 @@ import type {CommonTransformationOptions} from 'cloudinary';
 // @ts-expect-error
 import {hiraganize} from 'japanese';
 import {random, sample, range} from 'lodash';
-import {unlock, increment} from '../achievements';
+import {increment} from '../achievements';
 import {SlackInterface} from '../lib/slack';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';
