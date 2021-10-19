@@ -57,6 +57,8 @@ typings/
 # dotenv environment variables file
 .env
 
+kirafan/timestamp.json
+kirafan/kirafan-cards.json
 mahjong/current-point.json
 twitter-dm-notifier/after.txt
 .restart-trigger
