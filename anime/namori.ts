@@ -48,7 +48,7 @@ const loader = new Loader<CharacterData[]>(async () => {
 		const characterRubys = characterRuby.split('、');
 
 		const names = [...characterNames, ...characterRubys];
-		const namePartsList = names.map((name) => name.split(' '));
+		const namePartsList = names.map((name) => name.split(/[ &]/));
 
 		return {
 			tweetId,
