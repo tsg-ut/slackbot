@@ -291,8 +291,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
-		if (message.text && message.text === 'なもり当てクイズ' && state.answer === null) {
-			mutex.runExclusive(async () => {
+		mutex.runExclusive(async () => {
+			if (message.text && message.text === 'なもり当てクイズ' && state.answer === null) {
 				const characters = await loader.load();
 				const candidateCharacters = characters.filter((character) => (
 					!persistentState.recentMediaIds.includes(character.mediaId)
@@ -342,11 +342,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				while (persistentState.recentMediaIds.length > 50) {
 					persistentState.recentMediaIds.shift();
 				}
-			});
-		}
+			}
 
-		if (state.answer !== null && message.text && message.thread_ts === state.thread && message.username !== 'namori') {
-			mutex.runExclusive(async () => {
+			if (state.answer !== null && message.text && message.thread_ts === state.thread && message.username !== 'namori') {
 				const userAnswer = hiraganize(message.text.replace(/\P{Letter}/gu, '').toLowerCase());
 				const isCorrect = state.answer.validAnswers.some((rawAnswer) => {
 					const answer = hiraganize(rawAnswer.replace(/\P{Letter}/gu, '').toLowerCase());
@@ -411,7 +409,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						timestamp: message.ts,
 					});
 				}
-			});
-		}
+			}
+		});
 	});
 };
