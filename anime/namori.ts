@@ -74,19 +74,7 @@ const getUrl = (publicId: string, options = {}) => (
 );
 
 const uploadImage = async (url: string) => {
-	const {data: imageData} = await axios.get<Buffer>(url, {responseType: 'arraybuffer'});
-
-	const cloudinaryDatum = await new Promise<cloudinary.UploadApiResponse>((resolve, reject) => {
-		cloudinary.v2.uploader
-			.upload_stream({resource_type: 'image'}, (error, data) => {
-				if (error) {
-					reject(error);
-				} else {
-					resolve(data);
-				}
-			})
-			.end(imageData);
-	});
+	const cloudinaryDatum = await cloudinary.v2.uploader.upload(url);
 
 	return {
 		imageId: cloudinaryDatum.public_id,
