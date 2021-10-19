@@ -2212,7 +2212,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'namori-answer-500',
 		difficulty: 'professional',
-		title: 'なもり職人',
+		title: '（：3）三',
 		condition: 'なもり当てクイズで500回正解する',
 		category: 'anime',
 		counter: 'namori-answer',
