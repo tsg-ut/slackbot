@@ -80,11 +80,6 @@ export const getKirafanCards = async (): Promise<KirafanCard[]> => {
     return cards;
   }
 
-  fs.writeFileSync(
-    path.join(__dirname, 'timestamp.json'),
-    JSON.stringify({ timestamp: Date.now() })
-  );
-
   interface rawCharacter {
     m_CharaID: number;
     m_Name: string;
@@ -173,6 +168,11 @@ export const getKirafanCards = async (): Promise<KirafanCard[]> => {
   fs.writeFileSync(
     path.join(__dirname, 'kirafan-cards.json'),
     JSON.stringify(cards)
+  );
+
+  fs.writeFileSync(
+    path.join(__dirname, 'timestamp.json'),
+    JSON.stringify({ timestamp: Date.now() })
   );
 
   return cards;
