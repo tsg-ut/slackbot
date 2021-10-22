@@ -59,7 +59,9 @@ export const getKirafanCardPictureUrl = (cardId: number): string => {
   );
 };
 
-export const getKirafanCards = async (): Promise<KirafanCard[]> => {
+export const getKirafanCards = async (
+  forceUpdate = false
+): Promise<KirafanCard[]> => {
   const { timestamp } = fs.existsSync(path.join(__dirname, 'timestamp.json'))
     ? Object.assign(
         { timestamp: undefined },
@@ -71,7 +73,11 @@ export const getKirafanCards = async (): Promise<KirafanCard[]> => {
       )
     : { timestamp: undefined };
 
-  if (timestamp && Date.now() - timestamp < 1000 * 60 * 60 * 24) {
+  if (
+    !forceUpdate &&
+    timestamp &&
+    Date.now() - timestamp < 1000 * 60 * 60 * 24
+  ) {
     const cards = JSON.parse(
       fs.readFileSync(path.join(__dirname, 'kirafan-cards.json'), {
         encoding: 'utf8',
