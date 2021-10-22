@@ -1,14 +1,16 @@
-import { WebClient } from '@slack/web-api';
+import { WebAPICallOptions, WebClient } from '@slack/web-api';
 import { RTMClient } from '@slack/rtm-api';
 import { SlackInterface } from '../lib/slack';
 import { ChatPostMessageArguments } from '@slack/web-api/dist/methods';
 import assert from 'assert';
 import { Mutex } from 'async-mutex';
 import { Deferred } from '../lib/utils';
+import { option } from 'yargs';
 
 export interface AteQuizProblem {
   problem: ChatPostMessageArguments;
   hints: ChatPostMessageArguments[];
+  immediateMessage: ChatPostMessageArguments;
   solvedMessage: ChatPostMessageArguments;
   unsolvedMessage: ChatPostMessageArguments;
   answerMessage: ChatPostMessageArguments;
@@ -39,16 +41,19 @@ export class AteQuiz {
   private waitSecGen: (hintIndex: number) => number;
   private state: AteQuizState = 'waiting';
   private mutex: Mutex;
+  private postOption: WebAPICallOptions;
 
   constructor(
     { rtmClient: rtm, webClient: slack }: SlackInterface,
-    quiz: AteQuizProblem
+    quiz: AteQuizProblem,
+    option?: WebAPICallOptions
   ) {
     this.rtm = rtm;
     this.slack = slack;
     this.quiz = quiz;
     this.waitSecGen =
       quiz.waitSecGen ?? ((hintIndex: number) => (hintIndex === 0 ? 30 : 15));
+    this.postOption = option ?? {};
 
     assert(
       this.quiz.hints.every(hint => hint.channel === this.quiz.problem.channel)
@@ -61,17 +66,24 @@ export class AteQuiz {
     }
 
     this.mutex = new Mutex();
-
-    return this;
   }
 
+  /**
+   * Start AteQuiz.
+   * @returns A promise that resolves when the quiz is solved.
+   */
   start = async (): Promise<AteQuizResult> => {
     this.state = 'solving';
 
-    const { ts: thread_ts } = await this.slack.chat.postMessage(
-      this.quiz.problem
-    );
+    const postMessage = async (message: ChatPostMessageArguments) => {
+      return await this.slack.chat.postMessage(
+        Object.assign(message, this.postOption)
+      );
+    };
+
+    const { ts: thread_ts } = await postMessage(this.quiz.problem);
     assert(typeof thread_ts === 'string');
+    await postMessage(Object.assign(this.quiz.immediateMessage, { thread_ts }));
 
     const result: AteQuizResult = {
       quiz: this.quiz,
@@ -88,27 +100,22 @@ export class AteQuiz {
     const onTick = () => {
       this.mutex.runExclusive(async () => {
         const now = Date.now();
-        const nextHintTime = previousHintTime + this.waitSecGen(hintIndex);
+        const nextHintTime =
+          previousHintTime + 1000 * this.waitSecGen(hintIndex);
 
         if (this.state === 'solving' && nextHintTime <= now) {
           previousHintTime = now;
           if (hintIndex < this.quiz.hints.length) {
             const hint = this.quiz.hints[hintIndex];
-            await this.slack.chat.postMessage(
-              Object.assign(hint, { thread_ts })
-            );
+            await postMessage(Object.assign(hint, { thread_ts }));
             hintIndex++;
           } else {
             this.state = 'unsolved';
-            await this.slack.chat.postMessage(
-              Object.assign(this.quiz.unsolvedMessage, {
-                thread_ts,
-              })
+            await postMessage(
+              Object.assign(this.quiz.unsolvedMessage, { thread_ts })
             );
-            await this.slack.chat.postMessage(
-              Object.assign(this.quiz.answerMessage, {
-                thread_ts,
-              })
+            await postMessage(
+              Object.assign(this.quiz.answerMessage, { thread_ts })
             );
             clearInterval(tickTimer);
             deffered.resolve(result);
@@ -127,16 +134,14 @@ export class AteQuiz {
           if (isCorrect) {
             this.state = 'solved';
             clearInterval(tickTimer);
-            await this.slack.chat.postMessage(
-              Object.assign(this.quiz.solvedMessage, {
-                thread_ts,
-              })
+
+            await postMessage(
+              Object.assign(this.quiz.solvedMessage, { thread_ts })
             );
-            await this.slack.chat.postMessage(
-              Object.assign(this.quiz.answerMessage, {
-                thread_ts,
-              })
+            await postMessage(
+              Object.assign(this.quiz.answerMessage, { thread_ts })
             );
+
             result.correctAnswerer = message.user;
             result.hintIndex = hintIndex;
             result.state = 'solved';
@@ -144,6 +149,8 @@ export class AteQuiz {
           } else {
             this.slack.reactions.add({
               name: this.quiz.ngReaction ?? 'no_good',
+              channel: message.channel,
+              timestamp: message.ts,
             });
           }
         }
