@@ -5,7 +5,6 @@ import { ChatPostMessageArguments } from '@slack/web-api/dist/methods';
 import assert from 'assert';
 import { Mutex } from 'async-mutex';
 import { Deferred } from '../lib/utils';
-import { option } from 'yargs';
 
 export interface AteQuizProblem {
   problem: ChatPostMessageArguments;
