@@ -80,7 +80,7 @@ export class AteQuiz {
       hintIndex: null,
     };
 
-    let previousHintTime = 0;
+    let previousHintTime = Date.now();
     let hintIndex = 0;
 
     const deffered = new Deferred<AteQuizResult>();
