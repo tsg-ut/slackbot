@@ -148,7 +148,7 @@ export default class TTS extends EventEmitter {
 		});
 	}
 
-	onMessage(message: Discord.Message) {
+	async onMessage(message: Discord.Message) {
 		if (message.member.user.bot) {
 			return;
 		}
@@ -283,7 +283,7 @@ export default class TTS extends EventEmitter {
 				`, message.channel.id);
 			}
 		} else if (this.users.has(user) && !message.content.startsWith('-') && !this.isPaused) {
-			mutex.runExclusive(async () => {
+			const {content, id, meta} = await mutex.runExclusive(async () => {
 				const state = await this.state.load();
 				const id = state.userVoices[user] || Voice.A;
 				const meta = state.userMetas[user] || getDefaultVoiceMeta();
@@ -293,10 +293,10 @@ export default class TTS extends EventEmitter {
 					content = content.replace(new RegExp(key, 'g'), value);
 				}
 				return {content, id, meta};
-			}).then(
-				({content, id, meta}) => getSpeech(content, id, meta),
-			).then((speech) => {
-				mutex.runExclusive(async () => {
+			});
+			try {
+				const speech = await getSpeech(content, id, meta);
+				await mutex.runExclusive(async () => {
 					if (!this.connection) {
 						return; // 再生時にTTSBotがログアウトしていたら諦める
 					}
@@ -315,9 +315,9 @@ export default class TTS extends EventEmitter {
 						}),
 					]);
 				});
-			}).catch((error) => {
+			} catch (error) {
 				this.emit('message', `エラー😢: ${error.stack ? error.stack : inspect(error, {depth: null, colors: false})}`);
-			});
+			}
 		}
 	}
 }
