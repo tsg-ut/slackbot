@@ -100,7 +100,7 @@ const loginTW = async () => {
 	// csrfmiddlewaretokenTW = null;
 	// sessionidTW = null;
 
-	const res1 = await clientTW.get('https://pwnable.tw/user/login');
+	const res1 = await clientTW.get<string>('https://pwnable.tw/user/login');
 	getCsrfsTW(res1);
 	await clientTW.request({
 		url: 'https://pwnable.tw/user/login',
@@ -139,7 +139,7 @@ export const fetchUserProfileTW = async function(userId: string) {
 // update challs and solved-state of pwnable.tw
 export const fetchChallsTW = async function() {
 	// fetch data
-	const {data: html} = await clientTW.get('https://pwnable.tw/challenge/', {
+	const {data: html} = await clientTW.get<string>('https://pwnable.tw/challenge/', {
 		headers: {},
 	});
 	const {fetchedChalls} = await scrapeIt.scrapeHTML<{ fetchedChalls: Challenge[] }>(html, {

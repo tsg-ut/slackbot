@@ -97,10 +97,10 @@ export const fetchUserProfileKSN = async function(userId: string) {
 // update challs and solved-state of ksnctf
 export const fetchChallsKSN = async function() {
 	// fetch information
-	const {data: html} = await clientKSN.get('https://ksnctf.sweetduet.info', {
+	const {data: html} = await clientKSN.get<string>('https://ksnctf.sweetduet.info', {
 		headers: {},
 	});
-	const {fetchedChalls} = await scrapeIt.scrapeHTML<{ fetchedChalls: Challenge[] }>(html, {
+	const {fetchedChalls} = scrapeIt.scrapeHTML<{ fetchedChalls: Challenge[] }>(html, {
 		fetchedChalls: {
 			listItem: 'table > tbody > tr',
 			data: {

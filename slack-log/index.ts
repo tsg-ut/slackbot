@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, {AxiosPromise} from 'axios';
 import logger from '../lib/logger';
 import type {LinkUnfurls} from '@slack/web-api';
 import qs from 'querystring';
@@ -9,7 +9,6 @@ const slacklogURLRegexp = new RegExp('^https?://slack-log.tsg.ne.jp/([A-Z0-9]+)/
 const getAroundMessagesUrl = (channel: string) => `http://${slacklogAPIDomain}/around_messages/${channel}.json`;
 
 import type {SlackInterface} from '../lib/slack';
-import { AxiosResponse } from '@slack/web-api/node_modules/axios';
 
 export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
     const users = await axios.get<any>(`http://${slacklogAPIDomain}/users.json`).then(({data}) => data);
@@ -99,7 +98,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
         }
         if (Object.values(unfurls).length > 0) {
             try {
-                const {data}: AxiosResponse<ChatUnfurlResponse> = await axios({
+                const {data} = await (axios({
                     method: 'POST',
                     url: 'https://slack.com/api/chat.unfurl',
                     data: qs.stringify({
@@ -111,7 +110,7 @@ export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: Sl
                     headers: {
                         'content-type': 'application/x-www-form-urlencoded',
                     },
-                });
+                }) as AxiosPromise<ChatUnfurlResponse>);
 
                 if (!data.ok) {
                     throw data;

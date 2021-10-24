@@ -175,7 +175,7 @@ export const getQuiz = async () => {
 	const id = sample(state.easyCandidates);
 	const page = id > 1200 ? 7 : Math.ceil(id / 200);
 	const url = `http://www.chukai.ne.jp/~shintaku/hayaoshi/haya${page.toString().padStart(3, '0')}.htm`;
-	const {data} = await axios.get(url, {responseType: 'arraybuffer'});
+	const {data} = await axios.get<Buffer>(url, {responseType: 'arraybuffer'});
 	const $ = cheerio.load(iconv.decode(data, 'sjis'));
 	const {quizes} = await scrapeIt.scrapeHTML<Data>($, {
 		test: 'tbody',

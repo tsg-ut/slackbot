@@ -40,7 +40,7 @@ type Emoji = StaticEmoji | GifEmoji;
 
 // emoji download/upload {{{
 const downloadEmoji = async (url: string): Promise<Emoji> => {
-  const response = await axios.get(
+  const response = await axios.get<Buffer>(
     url,
     {responseType: 'arraybuffer'}
   );
