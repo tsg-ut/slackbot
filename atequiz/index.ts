@@ -94,7 +94,7 @@ export class AteQuiz {
     let previousHintTime = Date.now();
     let hintIndex = 0;
 
-    const deffered = new Deferred<AteQuizResult>();
+    const deferred = new Deferred<AteQuizResult>();
 
     const onTick = () => {
       this.mutex.runExclusive(async () => {
@@ -117,7 +117,7 @@ export class AteQuiz {
               Object.assign(this.quiz.answerMessage, { thread_ts })
             );
             clearInterval(tickTimer);
-            deffered.resolve(result);
+            deferred.resolve(result);
           }
         }
       });
@@ -144,7 +144,7 @@ export class AteQuiz {
             result.correctAnswerer = message.user;
             result.hintIndex = hintIndex;
             result.state = 'solved';
-            deffered.resolve(result);
+            deferred.resolve(result);
           } else {
             this.slack.reactions.add({
               name: this.quiz.ngReaction ?? 'no_good',
@@ -156,6 +156,6 @@ export class AteQuiz {
       }
     });
 
-    return deffered.promise;
+    return deferred.promise;
   };
 }
