@@ -76,13 +76,15 @@ export class AteQuiz {
 
     const postMessage = async (message: ChatPostMessageArguments) => {
       return await this.slack.chat.postMessage(
-        Object.assign(message, this.postOption)
+        Object.assign({}, message, this.postOption)
       );
     };
 
     const { ts: thread_ts } = await postMessage(this.quiz.problem);
     assert(typeof thread_ts === 'string');
-    await postMessage(Object.assign(this.quiz.immediateMessage, { thread_ts }));
+    await postMessage(
+      Object.assign({}, this.quiz.immediateMessage, { thread_ts })
+    );
 
     const result: AteQuizResult = {
       quiz: this.quiz,
@@ -106,15 +108,15 @@ export class AteQuiz {
           previousHintTime = now;
           if (hintIndex < this.quiz.hints.length) {
             const hint = this.quiz.hints[hintIndex];
-            await postMessage(Object.assign(hint, { thread_ts }));
+            await postMessage(Object.assign({}, hint, { thread_ts }));
             hintIndex++;
           } else {
             this.state = 'unsolved';
             await postMessage(
-              Object.assign(this.quiz.unsolvedMessage, { thread_ts })
+              Object.assign({}, this.quiz.unsolvedMessage, { thread_ts })
             );
             await postMessage(
-              Object.assign(this.quiz.answerMessage, { thread_ts })
+              Object.assign({}, this.quiz.answerMessage, { thread_ts })
             );
             clearInterval(tickTimer);
             deferred.resolve(result);
@@ -135,10 +137,10 @@ export class AteQuiz {
             clearInterval(tickTimer);
 
             await postMessage(
-              Object.assign(this.quiz.solvedMessage, { thread_ts })
+              Object.assign({}, this.quiz.solvedMessage, { thread_ts })
             );
             await postMessage(
-              Object.assign(this.quiz.answerMessage, { thread_ts })
+              Object.assign({}, this.quiz.answerMessage, { thread_ts })
             );
 
             result.correctAnswerer = message.user;
