@@ -74,8 +74,8 @@ export class AteQuiz {
   async start(): Promise<AteQuizResult> {
     this.state = 'solving';
 
-    const postMessage = async (message: ChatPostMessageArguments) => {
-      return await this.slack.chat.postMessage(
+    const postMessage = (message: ChatPostMessageArguments) => {
+      return this.slack.chat.postMessage(
         Object.assign({}, message, this.postOption)
       );
     };
