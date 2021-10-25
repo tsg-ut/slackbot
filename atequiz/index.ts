@@ -69,9 +69,9 @@ export class AteQuiz {
 
   /**
    * Start AteQuiz.
-   * @returns A promise that resolves when the quiz is solved.
+   * @returns A promise of AteQuizResult that becomes resolved when the quiz is solved.
    */
-  start = async (): Promise<AteQuizResult> => {
+  async start(): Promise<AteQuizResult> {
     this.state = 'solving';
 
     const postMessage = async (message: ChatPostMessageArguments) => {
@@ -159,5 +159,5 @@ export class AteQuiz {
     });
 
     return deferred.promise;
-  };
+  }
 }
