@@ -2201,13 +2201,22 @@ const achievements: Achievement[] = [
 		value: 20,
 	},
 	{
-		id: 'namori-answer-20',
+		id: 'namori-answer-50',
 		difficulty: 'hard',
 		title: 'なもり職人',
 		condition: 'なもり当てクイズで50回正解する',
 		category: 'anime',
 		counter: 'namori-answer',
 		value: 50,
+	},
+	{
+		id: 'namori-answer-500',
+		difficulty: 'professional',
+		title: '（：3）三',
+		condition: 'なもり当てクイズで500回正解する',
+		category: 'anime',
+		counter: 'namori-answer',
+		value: 500,
 	},
 	{
 		id: 'namori-answer-first-hint',

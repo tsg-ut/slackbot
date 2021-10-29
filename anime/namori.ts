@@ -40,7 +40,7 @@ interface PersistentState {
 }
 
 const loader = new Loader<CharacterData[]>(async () => {
-	const {data} = await axios.get<string>('https://github.com/hakatashi/namori_rakugaki_animation/raw/master/namori.csv');
+	const {data} = await axios.get<string>('https://github.com/hakatashi/namori_rakugaki_annotation/raw/master/namori.csv');
 	const lines = data.split('\n').slice(1).filter((line) => line.length > 0);
 	return lines.map((line) => {
 		const [tweetId, mediaId, imageUrl, characterName, characterRuby, workName] = line.split(',');
@@ -48,7 +48,7 @@ const loader = new Loader<CharacterData[]>(async () => {
 		const characterRubys = characterRuby.split('、');
 
 		const names = [...characterNames, ...characterRubys];
-		const namePartsList = names.map((name) => name.split(' '));
+		const namePartsList = names.map((name) => name.split(/[ &]/));
 
 		return {
 			tweetId,
@@ -74,19 +74,7 @@ const getUrl = (publicId: string, options = {}) => (
 );
 
 const uploadImage = async (url: string) => {
-	const {data: imageData} = await axios.get<Buffer>(url, {responseType: 'arraybuffer'});
-
-	const cloudinaryDatum = await new Promise<cloudinary.UploadApiResponse>((resolve, reject) => {
-		cloudinary.v2.uploader
-			.upload_stream({resource_type: 'image'}, (error, data) => {
-				if (error) {
-					reject(error);
-				} else {
-					resolve(data);
-				}
-			})
-			.end(imageData);
-	});
+	const cloudinaryDatum = await cloudinary.v2.uploader.upload(url);
 
 	return {
 		imageId: cloudinaryDatum.public_id,
@@ -291,8 +279,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
-		if (message.text && message.text === 'なもり当てクイズ' && state.answer === null) {
-			mutex.runExclusive(async () => {
+		mutex.runExclusive(async () => {
+			if (message.text && message.text === 'なもり当てクイズ' && state.answer === null) {
 				const characters = await loader.load();
 				const candidateCharacters = characters.filter((character) => (
 					!persistentState.recentMediaIds.includes(character.mediaId)
@@ -342,11 +330,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				while (persistentState.recentMediaIds.length > 50) {
 					persistentState.recentMediaIds.shift();
 				}
-			});
-		}
+			}
 
-		if (state.answer !== null && message.text && message.thread_ts === state.thread && message.username !== 'namori') {
-			mutex.runExclusive(async () => {
+			if (state.answer !== null && message.text && message.thread_ts === state.thread && message.username !== 'namori') {
 				const userAnswer = hiraganize(message.text.replace(/\P{Letter}/gu, '').toLowerCase());
 				const isCorrect = state.answer.validAnswers.some((rawAnswer) => {
 					const answer = hiraganize(rawAnswer.replace(/\P{Letter}/gu, '').toLowerCase());
@@ -411,7 +397,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						timestamp: message.ts,
 					});
 				}
-			});
-		}
+			}
+		});
 	});
 };
