@@ -7,8 +7,8 @@ import { Mutex } from 'async-mutex';
 import { Deferred } from '../lib/utils';
 
 export interface AteQuizProblem {
-  problem: ChatPostMessageArguments;
-  hints: ChatPostMessageArguments[];
+  problemMessage: ChatPostMessageArguments;
+  hintMessages: ChatPostMessageArguments[];
   immediateMessage: ChatPostMessageArguments;
   solvedMessage: ChatPostMessageArguments;
   unsolvedMessage: ChatPostMessageArguments;
@@ -25,6 +25,13 @@ export interface AteQuizResult {
   hintIndex: number | null;
 }
 
+export const typicalAteQuizHintTexts = [
+  'しょうがないにゃあ、ヒントだよ',
+  'もう一つヒントだよ、早く答えてね',
+  'まだわからないの？ヒント追加するからね',
+  '最後のヒントだよ！もうわかるよね？',
+];
+
 /**
  * A Class for XX当てクイズ for #sandbox.
  * Channels of hints must be same as problem channel. thread_ts will be ignored.
@@ -33,32 +40,34 @@ export interface AteQuizResult {
 export class AteQuiz {
   rtm: RTMClient;
   slack: WebClient;
-  quiz: AteQuizProblem;
+  problem: AteQuizProblem;
   ngReaction = 'no_good';
   state: AteQuizState = 'waiting';
   mutex: Mutex;
   postOption: WebAPICallOptions;
   judge(answer: string): boolean {
-    return this.quiz.correctAnswers.some(correctAnswer => {
+    return this.problem.correctAnswers.some(correctAnswer => {
       answer === correctAnswer;
     });
   }
   waitSecGen(hintIndex: number): number {
-    return hintIndex === this.quiz.hints.length - 1 ? 30 : 15;
+    return hintIndex === this.problem.hintMessages.length ? 30 : 15;
   }
 
   constructor(
     { rtmClient: rtm, webClient: slack }: SlackInterface,
-    quiz: AteQuizProblem,
+    problem: AteQuizProblem,
     option?: WebAPICallOptions
   ) {
     this.rtm = rtm;
     this.slack = slack;
-    this.quiz = JSON.parse(JSON.stringify(quiz));
+    this.problem = JSON.parse(JSON.stringify(problem));
     this.postOption = JSON.parse(JSON.stringify(option));
 
     assert(
-      this.quiz.hints.every(hint => hint.channel === this.quiz.problem.channel)
+      this.problem.hintMessages.every(
+        hint => hint.channel === this.problem.problemMessage.channel
+      )
     );
 
     this.mutex = new Mutex();
@@ -77,14 +86,14 @@ export class AteQuiz {
       );
     };
 
-    const { ts: thread_ts } = await postMessage(this.quiz.problem);
+    const { ts: thread_ts } = await postMessage(this.problem.problemMessage);
     assert(typeof thread_ts === 'string');
     await postMessage(
-      Object.assign({}, this.quiz.immediateMessage, { thread_ts })
+      Object.assign({}, this.problem.immediateMessage, { thread_ts })
     );
 
     const result: AteQuizResult = {
-      quiz: this.quiz,
+      quiz: this.problem,
       state: 'unsolved',
       correctAnswerer: null,
       hintIndex: null,
@@ -103,17 +112,17 @@ export class AteQuiz {
 
         if (this.state === 'solving' && nextHintTime <= now) {
           previousHintTime = now;
-          if (hintIndex < this.quiz.hints.length) {
-            const hint = this.quiz.hints[hintIndex];
+          if (hintIndex < this.problem.hintMessages.length) {
+            const hint = this.problem.hintMessages[hintIndex];
             await postMessage(Object.assign({}, hint, { thread_ts }));
             hintIndex++;
           } else {
             this.state = 'unsolved';
             await postMessage(
-              Object.assign({}, this.quiz.unsolvedMessage, { thread_ts })
+              Object.assign({}, this.problem.unsolvedMessage, { thread_ts })
             );
             await postMessage(
-              Object.assign({}, this.quiz.answerMessage, { thread_ts })
+              Object.assign({}, this.problem.answerMessage, { thread_ts })
             );
             clearInterval(tickTimer);
             deferred.resolve(result);
@@ -134,10 +143,10 @@ export class AteQuiz {
             clearInterval(tickTimer);
 
             await postMessage(
-              Object.assign({}, this.quiz.solvedMessage, { thread_ts })
+              Object.assign({}, this.problem.solvedMessage, { thread_ts })
             );
             await postMessage(
-              Object.assign({}, this.quiz.answerMessage, { thread_ts })
+              Object.assign({}, this.problem.answerMessage, { thread_ts })
             );
 
             result.correctAnswerer = message.user;
