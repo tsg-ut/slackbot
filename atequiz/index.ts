@@ -25,6 +25,13 @@ export interface AteQuizResult {
   hintIndex: number | null;
 }
 
+export const typicalAteQuizHintTexts = [
+  'しょうがないにゃあ、ヒントだよ',
+  'もう一つヒントだよ、早く答えてね',
+  'まだわからないの？ヒント追加するからね',
+  '最後のヒントだよ！もうわかるよね？',
+];
+
 /**
  * A Class for XX当てクイズ for #sandbox.
  * Channels of hints must be same as problem channel. thread_ts will be ignored.
