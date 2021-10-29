@@ -51,7 +51,7 @@ export class AteQuiz {
     });
   }
   waitSecGen(hintIndex: number): number {
-    return hintIndex === this.quiz.hints.length - 1 ? 30 : 15;
+    return hintIndex === this.quiz.hints.length ? 30 : 15;
   }
 
   constructor(
