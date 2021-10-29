@@ -13,10 +13,7 @@ export interface AteQuizProblem {
   solvedMessage: ChatPostMessageArguments;
   unsolvedMessage: ChatPostMessageArguments;
   answerMessage: ChatPostMessageArguments;
-  ngReaction?: string;
   correctAnswers: string[];
-  judge?: (correctAnswers: string[], answer: string) => boolean;
-  waitSecGen?: (hintIndex: number) => number;
 }
 
 type AteQuizState = 'waiting' | 'solving' | 'solved' | 'unsolved';
@@ -31,16 +28,24 @@ export interface AteQuizResult {
 /**
  * A Class for XX当てクイズ for #sandbox.
  * Channels of hints must be same as problem channel. thread_ts will be ignored.
+ * To use other judge/watSecGen/ngReaction, please extend this class.
  */
 export class AteQuiz {
   rtm: RTMClient;
   slack: WebClient;
   quiz: AteQuizProblem;
-
-  private waitSecGen: (hintIndex: number) => number;
-  private state: AteQuizState = 'waiting';
-  private mutex: Mutex;
-  private postOption: WebAPICallOptions;
+  ngReaction = 'no_good';
+  state: AteQuizState = 'waiting';
+  mutex: Mutex;
+  postOption: WebAPICallOptions;
+  judge(answer: string): boolean {
+    return this.quiz.correctAnswers.some(correctAnswer => {
+      answer === correctAnswer;
+    });
+  }
+  waitSecGen(hintIndex: number): number {
+    return hintIndex === this.quiz.hints.length - 1 ? 30 : 15;
+  }
 
   constructor(
     { rtmClient: rtm, webClient: slack }: SlackInterface,
@@ -49,27 +54,19 @@ export class AteQuiz {
   ) {
     this.rtm = rtm;
     this.slack = slack;
-    this.quiz = quiz;
-    this.waitSecGen =
-      quiz.waitSecGen ?? ((hintIndex: number) => (hintIndex === 0 ? 30 : 15));
-    this.postOption = option ?? {};
+    this.quiz = JSON.parse(JSON.stringify(quiz));
+    this.postOption = JSON.parse(JSON.stringify(option));
 
     assert(
       this.quiz.hints.every(hint => hint.channel === this.quiz.problem.channel)
     );
-
-    if (!this.quiz.judge) {
-      this.quiz.judge = (correctAnswers: string[], answer: string) => {
-        return correctAnswers.some(correctAnswer => answer === correctAnswer);
-      };
-    }
 
     this.mutex = new Mutex();
   }
 
   /**
    * Start AteQuiz.
-   * @returns A promise of AteQuizResult that becomes resolved when the quiz is solved.
+   * @returns A promise of AteQuizResult that becomes resolved when the quiz ends.
    */
   async start(): Promise<AteQuizResult> {
     this.state = 'solving';
@@ -131,7 +128,7 @@ export class AteQuiz {
       if (message.thread_ts === thread_ts) {
         if (this.state === 'solving') {
           const answer = message.text as string;
-          const isCorrect = this.quiz.judge(this.quiz.correctAnswers, answer);
+          const isCorrect = this.judge(answer);
           if (isCorrect) {
             this.state = 'solved';
             clearInterval(tickTimer);
@@ -149,7 +146,7 @@ export class AteQuiz {
             deferred.resolve(result);
           } else {
             this.slack.reactions.add({
-              name: this.quiz.ngReaction ?? 'no_good',
+              name: this.ngReaction,
               channel: message.channel,
               timestamp: message.ts,
             });
