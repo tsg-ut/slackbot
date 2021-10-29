@@ -29,34 +29,26 @@ interface KirafanTitle {
 const dbHost = 'https://database.kirafan.cn/database/';
 const assetHost = 'https://asset.kirafan.cn/';
 
-export const kirafanClassNames: string[] = [
-  'せんし',
-  'まほうつかい',
-  'そうりょ',
-  'ナイト',
-  'アルケミスト',
-];
-
-export const kirafanElementNames: string[] = [
-  '炎',
-  '水',
-  '土',
-  '風',
-  '月',
-  '陽',
-];
-
-export const getKirafanIllustUrl = (cardId: number): string => {
-  return (
-    assetHost +
-    `texture/charauiresource/charaillustchara/charaillust_chara_${cardId}.png`
-  );
-};
-
-export const getKirafanCardPictureUrl = (cardId: number): string => {
-  return (
-    assetHost + `texture/charauiresource/characard/characard_${cardId}.png`
-  );
+export const kirafanTools = {
+  kirafanClassNames: [
+    'せんし',
+    'まほうつかい',
+    'そうりょ',
+    'ナイト',
+    'アルケミスト',
+  ],
+  kirafanElementNames: ['炎', '水', '土', '風', '月', '陽'],
+  getKirafanIllustUrl(cardId: number): string {
+    return (
+      assetHost +
+      `texture/charauiresource/charaillustchara/charaillust_chara_${cardId}.png`
+    );
+  },
+  getKirafanCardPictureUrl(cardId: number): string {
+    return (
+      assetHost + `texture/charauiresource/characard/characard_${cardId}.png`
+    );
+  },
 };
 
 export const getKirafanCards = async (
