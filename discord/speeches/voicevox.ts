@@ -24,9 +24,6 @@ const voiceMapping: { [name: string]: { [emo: string]: number } } = {
 };
 
 const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emotion}) => {
-	if (text.length >= 30) {
-		return Promise.reject(new Error('Text must be shorter than 30 characters for VOICEVOX.'));
-	}
 	const postData = {
 		text,
 		speaker: voiceMapping[voiceType][emotion],
