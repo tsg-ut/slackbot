@@ -296,7 +296,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					await setState({phase: 'collecting'});
 					await setState({theme: genTheme(1)[0]});
 					const end = Date.now() + 0.5 * 60 * 1000;
-					// setTimeout(onFinish, 0.5 * 60 * 1000);
+					setTimeout(onFinish, 0.5 * 60 * 1000);
 					await postMessage(stripIndent`
                         語彙力の戦い:fire:*弓箭*:fire:を始めるよ:bow_and_arrow:
                         お題は「 *${state.theme}* 」:muscle:
@@ -337,7 +337,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					await setState({phase: 'collecting'});
 					state.theme = word;
 					const end = Date.now() + 0.5 * 60 * 1000;
-					// setTimeout(onFinish, 0.5 * 60 * 1000);
+					setTimeout(onFinish, 0.5 * 60 * 1000);
 					await postMessage(stripIndent`
                         語彙力の戦い:fire:*弓箭*:fire:を始めるよ:bow_and_arrow:
                         お題は「 *${state.theme}* 」:muscle:
@@ -356,7 +356,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					await setState({theme: word});
 
 					const end = Date.now() + 0.5 * 60 * 1000;
-					// setTimeout(onFinish, 0.5 * 60 * 1000);
+					setTimeout(onFinish, 0.5 * 60 * 1000);
 
 					await postMessage(stripIndent`
                         お題 *「${word}」* に決定:bow_and_arrow:
