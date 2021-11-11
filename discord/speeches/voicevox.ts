@@ -30,7 +30,7 @@ const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emo
 		speed: 1.0 + (speed - 1.0) / 2,
 	};
 	return new Promise((resolve, reject) => {
-		axios.post(process.env.VOICEVOX_API_URL, postData, {
+		axios.post<Buffer>(process.env.VOICEVOX_API_URL, postData, {
 			headers: {
 				'content-type': 'application/json',
 			},
