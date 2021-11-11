@@ -870,7 +870,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					return;
 				}
 
-				if (text.startsWith('@tahoiya') || text.match(/(って(なに|何)|とは)[？?⋯…・]*$/)) {
+				if (text.startsWith('@tahoiya')) {
 					const isMention = text.startsWith('@tahoiya');
 					const body = text.replace(/^@\w+/, '').replace(/(って(なに|何)|とは)[？?⋯…・]*$/, '').trim();
 					const ruby = hiraganize(await getReading(body)).replace(/[^\p{Script=Hiragana}ー]/gu, '');

@@ -64,6 +64,7 @@ const allBots = [
 	'ponpe',
 	'anime',
 	'anime/anison',
+	'anime/namori',
 	'oogiri',
 	'sorting-riddles',
 	'tsglive',
