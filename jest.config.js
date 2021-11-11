@@ -12,5 +12,4 @@ module.exports = {
 		'coverage',
 		'/node_modules/',
 	],
-	timers: 'fake',
 };
