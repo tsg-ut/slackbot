@@ -156,6 +156,8 @@ export class AteQuiz {
 
     this.rtm.on('message', async message => {
       if (message.thread_ts === thread_ts) {
+        if (message.subtype === 'bot_message') return;
+
         if (this.state === 'solving') {
           const answer = message.text as string;
           const isCorrect = this.judge(answer);
