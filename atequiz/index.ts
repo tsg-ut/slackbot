@@ -60,9 +60,9 @@ export class AteQuiz {
   mutex: Mutex;
   postOption: WebAPICallOptions;
   judge(answer: string): boolean {
-    return this.problem.correctAnswers.some(correctAnswer => {
-      answer === correctAnswer;
-    });
+    return this.problem.correctAnswers.some(
+      correctAnswer => answer === correctAnswer
+    );
   }
   waitSecGen(hintIndex: number): number {
     return hintIndex === this.problem.hintMessages.length ? 30 : 15;
