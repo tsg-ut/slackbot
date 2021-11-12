@@ -28,9 +28,6 @@ class KirafanAteQuiz extends AteQuiz {
       correctAnswer => normalizedAnswer === normalize(correctAnswer)
     );
   }
-  waitSecGen() {
-    return 0.5;
-  }
 }
 
 type ImageFilter = (image: sharp.Sharp) => Promise<Buffer>;
