@@ -151,8 +151,6 @@ const generateHintPictures = async (url: string) => {
     )
   );
 
-  console.log(urlsArray);
-
   return urlsArray;
 };
 
@@ -284,8 +282,6 @@ const generateProblem = async (
     correctAnswers,
     correctAnswerCard: JSON.parse(JSON.stringify(card)),
   } as KirafanAteQuizProblem;
-
-  console.log(problem);
 
   return problem;
 };
