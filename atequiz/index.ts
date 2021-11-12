@@ -32,11 +32,15 @@ export const typicalAteQuizHintTexts = [
   '最後のヒントだよ！もうわかるよね？',
 ];
 
+/**
+ * Generator functions for typical quiz messages.
+ * In default, a subtext '[[!user]]' automatically replaced with the message.user in solvedMessage.
+ */
 export const typicalMessageTextsGenerator = {
   problem: (genre: string): string => `この${genre}なーんだ`,
   immediate: (): string => '15秒経過でヒントを出すよ♫',
-  solved: (answer: string, user: string): string =>
-    `<@${user}> 正解:tada:\n答えは＊${answer}) だよ:muscle:`,
+  solved: (answer: string): string =>
+    `<@[[!user]]> 正解:tada:\n答えは＊${answer}) だよ:muscle:`,
   unsolved: (answer: string): string =>
     `もう、しっかりして！\n答えは＊${answer}) だよ:anger:`,
 };
@@ -52,6 +56,7 @@ export class AteQuiz {
   problem: AteQuizProblem;
   ngReaction = 'no_good';
   state: AteQuizState = 'waiting';
+  replaceKeys: { correctAnswerer: string } = { correctAnswerer: '[[!user]]' };
   mutex: Mutex;
   postOption: WebAPICallOptions;
   judge(answer: string): boolean {
@@ -89,10 +94,17 @@ export class AteQuiz {
   async start(): Promise<AteQuizResult> {
     this.state = 'solving';
 
-    const postMessage = (message: ChatPostMessageArguments) => {
-      return this.slack.chat.postMessage(
-        Object.assign({}, message, this.postOption)
-      );
+    const postMessage = (
+      message: ChatPostMessageArguments,
+      replaces?: [string, string][]
+    ) => {
+      const toSend = Object.assign({}, message, this.postOption);
+      if (replaces) {
+        replaces.forEach(([pre, post]) => {
+          toSend.text = toSend.text.replace(pre, post);
+        });
+      }
+      return this.slack.chat.postMessage(toSend);
     };
 
     const { ts: thread_ts } = await postMessage(this.problem.problemMessage);
@@ -152,7 +164,8 @@ export class AteQuiz {
             clearInterval(tickTimer);
 
             await postMessage(
-              Object.assign({}, this.problem.solvedMessage, { thread_ts })
+              Object.assign({}, this.problem.solvedMessage, { thread_ts }),
+              [this.replaceKeys.correctAnswerer, message.user]
             );
             await postMessage(
               Object.assign({}, this.problem.answerMessage, { thread_ts })
