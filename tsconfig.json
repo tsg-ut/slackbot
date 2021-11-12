@@ -6,7 +6,7 @@
     "noImplicitAny": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "lib": ["es2021", "DOM"],
+    "lib": ["es2020", "DOM"],
     "skipLibCheck": true,
     "experimentalDecorators": true
   }
