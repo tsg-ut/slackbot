@@ -101,7 +101,7 @@ export class AteQuiz {
       const toSend = Object.assign({}, message, this.postOption);
       if (replaces) {
         replaces.forEach(([pre, post]) => {
-          toSend.text = toSend.text.replace(pre, post);
+          toSend.text = toSend.text.replaceAll(pre, post);
         });
       }
       return this.slack.chat.postMessage(toSend);
