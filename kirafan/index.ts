@@ -38,7 +38,7 @@ export const kirafanTools = {
     'アルケミスト',
   ],
   kirafanElementNames: ['炎', '水', '土', '風', '月', '陽'],
-  getKirafanIllustUrl(cardId: number): string {
+  getKirafanCardIllustUrl(cardId: number): string {
     return (
       assetHost +
       `texture/charauiresource/charaillustchara/charaillust_chara_${cardId}.png`
@@ -47,6 +47,12 @@ export const kirafanTools = {
   getKirafanCardPictureUrl(cardId: number): string {
     return (
       assetHost + `texture/charauiresource/characard/characard_${cardId}.png`
+    );
+  },
+  getKirafanCardBustIllustUrl(cardId: number): string {
+    return (
+      assetHost +
+      `texture/charauiresource/charaillustbust/charaillust_bust_${cardId}.png`
     );
   },
 };

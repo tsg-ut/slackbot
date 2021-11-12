@@ -78,7 +78,7 @@ const generateHintPictures = async (url: string) => {
     }),
     [
       async (image: sharp.Sharp) => {
-        const newSize = 200;
+        const newSize = 150;
         const pixelSize = newSize / 10;
         return sharp(
           await image
@@ -98,7 +98,7 @@ const generateHintPictures = async (url: string) => {
     ],
     [
       (image: sharp.Sharp) => {
-        const newSize = 200;
+        const newSize = 150;
         return image
           .clone()
           .extract({
@@ -165,7 +165,7 @@ const generateProblem = async (
 ): Promise<KirafanAteQuizProblem> => {
   const channel = process.env.CHANNEL_SANDBOX;
   const hintImageUrls = await generateHintPictures(
-    kirafanTools.getKirafanIllustUrl(card.cardId)
+    kirafanTools.getKirafanCardBustIllustUrl(card.cardId)
   );
 
   const problemMessage: ChatPostMessageArguments = {
