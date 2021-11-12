@@ -40,9 +40,9 @@ export const typicalMessageTextsGenerator = {
   problem: (genre: string): string => `この${genre}なーんだ`,
   immediate: (): string => '15秒経過でヒントを出すよ♫',
   solved: (answer: string): string =>
-    `<@[[!user]]> 正解:tada:\n答えは＊${answer}) だよ:muscle:`,
+    `<@[[!user]]> 正解:tada:\n答えは${answer}だよ:muscle:`,
   unsolved: (answer: string): string =>
-    `もう、しっかりして！\n答えは＊${answer}) だよ:anger:`,
+    `もう、しっかりして！\n答えは${answer}だよ:anger:`,
 };
 
 /**
