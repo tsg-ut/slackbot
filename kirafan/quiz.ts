@@ -9,7 +9,7 @@ import { SlackInterface } from '../lib/slack';
 import sharp from 'sharp';
 import axios from 'axios';
 import { random, range, sample } from 'lodash';
-import { ChatPostMessageArguments } from '@slack/web-api';
+import { ChatPostMessageArguments, MrkdwnElement } from '@slack/web-api';
 import cloudinary, { UploadApiResponse } from 'cloudinary';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error
@@ -228,7 +228,7 @@ const generateProblem = async (
     text: typicalMessageTextsGenerator.immediate(),
   };
 
-  const answerText = `＊${card.fullname}＊`;
+  const answerText = `＊${card.fullname}＊ (${card.title})`;
 
   const solvedMessage = {
     channel,
@@ -249,16 +249,25 @@ const generateProblem = async (
       {
         type: 'section',
         text: {
-          type: 'plain_text',
-          text: card.fullname,
-          emoji: true,
+          type: 'mrkdwn',
+          text:
+            `＊${card.fullname}＊ (${card.title})\n` +
+            '★'.repeat(card.rare + 1) +
+            ` ${kirafanTools.kirafanElementNames[card.element]} ${
+              kirafanTools.kirafanClassNames[card.class]
+            }`,
         },
       },
       {
         type: 'image',
         block_id: 'image',
         image_url: kirafanTools.getKirafanCardPictureUrl(card.cardId),
-        alt_text: card.fullname,
+        alt_text:
+          `＊${card.fullname}＊ (${card.title})\n` +
+          '★'.repeat(card.rare + 1) +
+          ` ${kirafanTools.kirafanElementNames[card.element]} ${
+            kirafanTools.kirafanClassNames[card.class]
+          }`,
       },
     ],
   };
