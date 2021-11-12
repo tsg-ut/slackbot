@@ -9,7 +9,7 @@ import { SlackInterface } from '../lib/slack';
 import sharp from 'sharp';
 import axios from 'axios';
 import { random, range, sample } from 'lodash';
-import { ChatPostMessageArguments, MrkdwnElement } from '@slack/web-api';
+import { ChatPostMessageArguments } from '@slack/web-api';
 import cloudinary, { UploadApiResponse } from 'cloudinary';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error
