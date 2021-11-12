@@ -11,11 +11,24 @@ import axios from 'axios';
 import { random, range, sample } from 'lodash';
 import { ChatPostMessageArguments } from '@slack/web-api';
 import cloudinary, { UploadApiResponse } from 'cloudinary';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error
+import { hiraganize } from 'japanese';
 
 interface KirafanAteQuizProblem extends AteQuizProblem {
   correctAnswerCard: KirafanCard;
 }
-class KirafanAteQuiz extends AteQuiz {}
+
+class KirafanAteQuiz extends AteQuiz {
+  judge(answer: string): boolean {
+    const normalize = (s: string) =>
+      hiraganize(s.replace(/\P{Letter}/gu, '').toLowerCase());
+    const normalizedAnswer = normalize(answer);
+    return this.problem.correctAnswers.some(correctAnswer => {
+      normalizedAnswer === normalize(correctAnswer);
+    });
+  }
+}
 
 type ImageFilter = (image: sharp.Sharp) => sharp.Sharp;
 
@@ -116,6 +129,10 @@ const generateHintPictures = async (url: string) => {
   console.log(urlsArray);
 
   return urlsArray;
+};
+
+const generateCorrectAnswers = (card: KirafanCard) => {
+  return [card.fullname, ...card.fullname.split(/\s+/), card.nickname];
 };
 
 const generateProblem = async (
@@ -221,11 +238,7 @@ const generateProblem = async (
     ],
   };
 
-  const correctAnswers = [
-    card.fullname,
-    ...card.fullname.split(/\s+/),
-    card.nickname,
-  ];
+  const correctAnswers = generateCorrectAnswers(card);
 
   const problem = {
     problemMessage,
