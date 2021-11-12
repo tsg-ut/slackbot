@@ -32,7 +32,14 @@ export const typicalAteQuizHintTexts = [
   '最後のヒントだよ！もうわかるよね？',
 ];
 
-export const typicalImmediateMessageText = '15秒経過でヒントを出すよ♫';
+export const typicalMessageTextsGenerator = {
+  problem: (genre: string): string => `この${genre}なーんだ`,
+  immediate: (): string => '15秒経過でヒントを出すよ♫',
+  solved: (answer: string, user: string): string =>
+    `<@${user}> 正解:tada:\n答えは＊${answer}) だよ:muscle:`,
+  unsolved: (answer: string): string =>
+    `もう、しっかりして！\n答えは＊${answer}) だよ:anger:`,
+};
 
 /**
  * A Class for XX当てクイズ for #sandbox.
