@@ -165,7 +165,7 @@ export class AteQuiz {
 
             await postMessage(
               Object.assign({}, this.problem.solvedMessage, { thread_ts }),
-              [this.replaceKeys.correctAnswerer, message.user]
+              [[this.replaceKeys.correctAnswerer, message.user as string]]
             );
             await postMessage(
               Object.assign({}, this.problem.answerMessage, { thread_ts })
