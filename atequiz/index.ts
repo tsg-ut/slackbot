@@ -32,6 +32,8 @@ export const typicalAteQuizHintTexts = [
   '最後のヒントだよ！もうわかるよね？',
 ];
 
+export const typicalImmediateMessageText = '15秒経過でヒントを出すよ♫';
+
 /**
  * A Class for XX当てクイズ for #sandbox.
  * Channels of hints must be same as problem channel. thread_ts will be ignored.
