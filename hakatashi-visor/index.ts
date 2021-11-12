@@ -12,7 +12,7 @@ const CALLME = '@hakatashi-visor';
 
 const checkSolidity = async () => {
 	/* eslint-disable max-len */
-	const res = await axios.get('https://github.com/hakatashi/hakatashi/workflows/Being%20a%20solid%20person/badge.svg');
+	const res = await axios.get<string>('https://github.com/hakatashi/hakatashi/workflows/Being%20a%20solid%20person/badge.svg');
 
 	if (res.data.includes('failing')) {
 		return false;

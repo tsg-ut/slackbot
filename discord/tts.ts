@@ -2,9 +2,10 @@ import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
 import {inspect} from 'util';
+import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, createAudioPlayer} from '@discordjs/voice';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-import Discord, {VoiceConnection} from 'discord.js';
+import Discord from 'discord.js';
 import {minBy, countBy} from 'lodash';
 import logger from '../lib/logger';
 import State from '../lib/state';
@@ -71,17 +72,21 @@ export default class TTS extends EventEmitter {
 
 	connection: VoiceConnection;
 
+	audioPlayer: AudioPlayer;
+
+	subscription: PlayerSubscription;
+
 	isPaused: boolean;
 
 	lastActiveVoiceChannel: string;
 
-	joinVoiceChannelFn: (channelId?: string) => Promise<Discord.VoiceConnection>;
+	joinVoiceChannelFn: (channelId?: string) => VoiceConnection;
 
 	ttsDictionary: {key: string, value: string}[];
 
 	state: Loader<StateObj>;
 
-	constructor(joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>, ttsDictionary: {key: string, value: string}[]) {
+	constructor(joinVoiceChannelFn: () => VoiceConnection, ttsDictionary: {key: string, value: string}[]) {
 		super();
 		this.joinVoiceChannelFn = joinVoiceChannelFn;
 		this.users = new Set();
@@ -98,19 +103,22 @@ export default class TTS extends EventEmitter {
 		));
 	}
 
-	async onUsersModified() {
+	onUsersModified() {
 		if (this.isPaused) {
 			return;
 		}
 		if (this.connection === null) {
 			if (this.lastActiveVoiceChannel === null) {
-				this.connection = await this.joinVoiceChannelFn();
+				this.connection = this.joinVoiceChannelFn();
 			} else {
-				this.connection = await this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
+				this.connection = this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
 			}
+			this.audioPlayer = createAudioPlayer();
+			this.subscription = this.connection.subscribe(this.audioPlayer);
 		} else {
 			if (this.users.size === 0) {
-				this.connection.disconnect();
+				this.subscription.unsubscribe();
+				this.connection.destroy();
 				this.connection = null;
 			}
 		}
@@ -138,9 +146,9 @@ export default class TTS extends EventEmitter {
 			await new Promise((resolve) => setTimeout(resolve, 200));
 			if (this.users.size !== 0) {
 				if (this.lastActiveVoiceChannel === null) {
-					this.connection = await this.joinVoiceChannelFn();
+					this.connection = this.joinVoiceChannelFn();
 				} else {
-					this.connection = await this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
+					this.connection = this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
 				}
 			}
 			logger.info('[TTS] unpause - connected');
@@ -148,19 +156,19 @@ export default class TTS extends EventEmitter {
 		});
 	}
 
-	onMessage(message: Discord.Message) {
+	async onMessage(message: Discord.Message) {
 		if (message.member.user.bot) {
 			return;
 		}
 
-		mutex.runExclusive(async () => {
-			const tokens = message.content.split(/\s+/);
-			const user = message.member.user.id;
-			const state = await this.state.load();
+		const tokens = message.content.split(/\s+/);
+		const user = message.member.user.id;
 
-			if (tokens[0]?.toUpperCase() === 'TTS') {
-				if (tokens.length === 1 || tokens[1] === 'start') {
+		if (tokens[0]?.toUpperCase() === 'TTS') {
+			if (tokens.length === 1 || tokens[1] === 'start') {
+				mutex.runExclusive(async () => {
 					if (!this.users.has(user)) {
+						const state = await this.state.load();
 						if (!{}.hasOwnProperty.call(state.userVoices, user)) {
 							const newVoice = await this.assignNewVoice();
 							state.userVoices[user] = newVoice;
@@ -170,62 +178,68 @@ export default class TTS extends EventEmitter {
 						}
 						this.users.add(user);
 						const timer = new Timer(() => {
-							mutex.runExclusive(async () => {
-								this.users.delete(user);
-								this.userTimers.get(user)?.cancel();
-								this.emit('message', stripIndent`
-									30分以上発言がなかったので<@${user}>のTTSを解除しました
-								`);
-								await this.onUsersModified();
-							});
+							this.users.delete(user);
+							this.userTimers.get(user)?.cancel();
+							this.emit('message', stripIndent`
+								30分以上発言がなかったので<@${user}>のTTSを解除しました
+							`);
+							this.onUsersModified();
 						}, 30 * 60 * 1000);
 						this.userTimers.set(user, timer);
-						if (message.member.voice?.channelID) {
-							this.lastActiveVoiceChannel = message.member.voice.channelID;
+						if (message.member.voice?.channelId) {
+							this.lastActiveVoiceChannel = message.member.voice.channelId;
 						}
-						await this.onUsersModified();
+						this.onUsersModified();
 						await message.react('🆗');
 					} else {
 						await message.react('🤔');
 					}
-				} else if (tokens[1] === 'stop') {
+				});
+			} else if (tokens[1] === 'stop') {
+				mutex.runExclusive(async () => {
 					if (this.users.has(user)) {
 						this.users.delete(user);
 						this.userTimers.get(user)?.cancel();
-						await this.onUsersModified();
+						this.onUsersModified();
 						await message.react('🆗');
 					} else {
 						await message.react('🤔');
 					}
-				} else if (tokens.length === 3 && tokens[1] === 'voice') {
+				});
+			} else if (tokens.length === 3 && tokens[1] === 'voice') {
+				mutex.runExclusive(async () => {
 					const voice: Voice = Voice[tokens[2] as keyof typeof Voice] || Voice.A;
 					if (this.users.has(user)) {
+						const state = await this.state.load();
 						state.userVoices[user] = voice;
 						await message.react('🆗');
 					} else {
 						await message.react('🤔');
 					}
-				} else if (tokens[1] === 'voices') {
-					const voices: Voice[] = Object.values(Voice);
-					const voicesText = voices.map((voice) => {
-						const config = speechConfig.get(voice);
-						let providerName = '';
-						if (config.provider === 'google') {
-							providerName = 'Google Cloud Text-to-Speech';
-						} else if (config.provider === 'azure') {
-							providerName = 'Microsoft Azure Text-to-Speech';
-						} else if (config.provider === 'amazon') {
-							providerName = 'Amazon Polly';
-						} else {
-							providerName = 'VoiceText Web API';
-						}
-						return `* \`${voice}\`: **${config.name}** (${providerName})`;
-					}).join('\n');
-					this.emit('message', voicesText);
-				} else if (tokens[1] === 'status') {
+				});
+			} else if (tokens[1] === 'voices') {
+				const voices: Voice[] = Object.values(Voice);
+				const voicesText = voices.map((voice) => {
+					const config = speechConfig.get(voice);
+					let providerName = '';
+					if (config.provider === 'google') {
+						providerName = 'Google Cloud Text-to-Speech';
+					} else if (config.provider === 'azure') {
+						providerName = 'Microsoft Azure Text-to-Speech';
+					} else if (config.provider === 'amazon') {
+						providerName = 'Amazon Polly';
+					} else {
+						providerName = 'VoiceText Web API';
+					}
+					return `* \`${voice}\`: **${config.name}** (${providerName})`;
+				}).join('\n');
+				this.emit('message', voicesText);
+			} else if (tokens[1] === 'status') {
+				mutex.runExclusive(async () => {
 					if (this.users.size === 0) {
 						this.emit('message', '誰もTTSを使用してないよ😌');
 					} else {
+						const state = await this.state.load();
 						this.emit(
 							'message',
 							Array.from(this.users)
@@ -234,40 +248,49 @@ export default class TTS extends EventEmitter {
 							message.channel.id,
 						);
 					}
-				} else if (tokens.length === 3 && tokens[1] === 'emotion') {
+				});
+			} else if (tokens.length === 3 && tokens[1] === 'emotion') {
+				mutex.runExclusive(async () => {
 					const emotion: Emotion = Emotion[tokens[2] as keyof typeof Emotion] || Emotion.normal;
 					if (this.users.has(user)) {
+						const state = await this.state.load();
 						state.userMetas[user].emotion = emotion;
 						await message.react('🆗');
 					} else {
 						await message.react('🤔');
 					}
-				} else if (tokens.length === 3 && tokens[1] === 'emolv') {
+				});
+			} else if (tokens.length === 3 && tokens[1] === 'emolv') {
+				mutex.runExclusive(async () => {
 					let level: number = parseInt(tokens[2]);
 					if (isNaN(level) || level < 1 || level > 4) {
 						level = 2;
 					}
 					if (this.users.has(user)) {
+						const state = await this.state.load();
 						state.userMetas[user].emolv = level;
 						await message.react('🆗');
 					} else {
 						await message.react('🤔');
 					}
-				} else {
-					const voices: Voice[] = Object.values(Voice);
-					const emotionalVoices: Voice[] = voices.filter((v: Voice) => (speechConfig.get(v).emotional));
-					this.emit('message', stripIndent`
-						* TTS [start] - TTSを開始 (\`-\`で始まるメッセージは読み上げられません)
-						* TTS stop - TTSを停止
-						* TTS voice <${voices.join(' | ')}> - ボイスを変更
-						* TTS voices - 利用可能なボイスの一覧を表示
-						* TTS status - ステータスを表示
-						* TTS emotion <normal | happiness | anger | sadness> - 感情を付与 (ボイス${emotionalVoices.join('/')}のみ可能)
-						* TTS emolv <1 | 2 | 3 | 4> - 感情の強度を設定 (ボイス${emotionalVoices.join('/')}のみ可能)
-						* TTS help - ヘルプを表示
-					`, message.channel.id);
-				}
-			} else if (this.users.has(user) && !message.content.startsWith('-') && !this.isPaused) {
+				});
+			} else {
+				const voices: Voice[] = Object.values(Voice);
+				const emotionalVoices: Voice[] = voices.filter((v: Voice) => (speechConfig.get(v).emotional));
+				this.emit('message', stripIndent`
+					* TTS [start] - TTSを開始 (\`-\`で始まるメッセージは読み上げられません)
+					* TTS stop - TTSを停止
+					* TTS voice <${voices.join(' | ')}> - ボイスを変更
+					* TTS voices - 利用可能なボイスの一覧を表示
+					* TTS status - ステータスを表示
+					* TTS emotion <normal | happiness | anger | sadness> - 感情を付与 (ボイス${emotionalVoices.join('/')}のみ可能)
+					* TTS emolv <1 | 2 | 3 | 4> - 感情の強度を設定 (ボイス${emotionalVoices.join('/')}のみ可能)
+					* TTS help - ヘルプを表示
+				`, message.channel.id);
+			}
+		} else if (this.users.has(user) && !message.content.startsWith('-') && !this.isPaused) {
+			const {content, id, meta} = await mutex.runExclusive(async () => {
+				const state = await this.state.load();
 				const id = state.userVoices[user] || Voice.A;
 				const meta = state.userMetas[user] || getDefaultVoiceMeta();
 				this.userTimers.get(user)?.resetTimer();
@@ -275,15 +298,22 @@ export default class TTS extends EventEmitter {
 				for (const {key, value} of this.ttsDictionary) {
 					content = content.replace(new RegExp(key, 'g'), value);
 				}
+				return {content, id, meta};
+			});
+			try {
+				const speech = await getSpeech(content, id, meta);
+				await mutex.runExclusive(async () => {
+					if (!this.connection) {
+						return; // 再生時にTTSBotがログアウトしていたら諦める
+					}
 
-				try {
-					const speech = await getSpeech(content, id, meta);
 					await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), speech.data);
 
 					await Promise.race([
 						new Promise<void>((resolve) => {
-							const dispatcher = this.connection.play(path.join(__dirname, 'tempAudio.mp3'));
-							dispatcher.on('finish', () => {
+							const resource = createAudioResource(path.join(__dirname, 'tempAudio.mp3'));
+							this.audioPlayer.play(resource);
+							resource.playStream.on('finish', () => {
 								resolve();
 							});
 						}),
@@ -291,10 +321,10 @@ export default class TTS extends EventEmitter {
 							setTimeout(resolve, 10 * 1000);
 						}),
 					]);
-				} catch (error) {
-					this.emit('message', `エラー😢: ${error.stack ? error.stack : inspect(error, {depth: null, colors: false})}`);
-				}
+				});
+			} catch (error) {
+				this.emit('message', `エラー😢: ${error.stack ? error.stack : inspect(error, {depth: null, colors: false})}`);
 			}
-		});
+		}
 	}
 }

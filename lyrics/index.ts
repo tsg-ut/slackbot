@@ -33,7 +33,7 @@ interface iTunesInfo {
 
 const getiTunesInfo = async (title: string, artist: string): Promise<iTunesInfo> => {
     const iTunesSearchAPIUrl = 'https://itunes.apple.com/search';
-    const response = await axios.get(iTunesSearchAPIUrl, {
+    const response = await axios.get<any>(iTunesSearchAPIUrl, {
         params: {
             term: `${title} ${artist}`,
             country: 'JP',

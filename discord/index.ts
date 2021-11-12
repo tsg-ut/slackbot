@@ -1,6 +1,8 @@
+import {VoiceConnectionStatus, joinVoiceChannel} from '@discordjs/voice';
+import type {DiscordGatewayAdapterCreator} from '@discordjs/voice';
 import type {ContextBlock, WebAPICallResult} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
-import Discord, {TextChannel, Collection, Snowflake, GuildMember, VoiceChannel} from 'discord.js';
+import Discord, {Intents, TextChannel, Collection, Snowflake, GuildMember, VoiceChannel} from 'discord.js';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
@@ -17,7 +19,10 @@ interface StateObj {
 	ttsDictionary: {key: string, value: string}[],
 }
 
-const discord = new Discord.Client();
+// eslint-disable-next-line import/no-named-as-default-member
+const discord = new Discord.Client({
+	intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_VOICE_STATES],
+});
 discord.login(process.env.TSGBOT_DISCORD_TOKEN);
 
 const mutex = new Mutex();
@@ -54,8 +59,14 @@ export default async ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 	});
 
 	const joinVoiceChannelFn = (channelId: string = process.env.DISCORD_SANDBOX_VOICE_CHANNEL_ID) => {
-		const discordSandbox = discord.channels.cache.get(channelId) as VoiceChannel;
-		return discordSandbox.join();
+		const channel = discord.channels.cache.get(channelId) as VoiceChannel;
+		const connection = joinVoiceChannel({
+			channelId,
+			guildId: channel.guild.id,
+			// https://github.com/discordjs/voice/issues/166
+			adapterCreator: channel.guild.voiceAdapterCreator as unknown as DiscordGatewayAdapterCreator,
+		});
+		return connection;
 	};
 	const roomNotifyCache = {
 		lastUnixTime: 0, usernames: <string[]>[], ts: '', action: '',

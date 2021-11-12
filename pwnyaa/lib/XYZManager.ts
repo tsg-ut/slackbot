@@ -19,7 +19,7 @@ let csrfmiddlewaretokenXYZ = '';
 let csrftokenXYZ = '';
 let sessionidXYZ = '';
 
-const getCsrfsXYZ = (res: AxiosResponse) => {
+const getCsrfsXYZ = (res: AxiosResponse<string>) => {
 	const html = res.data;
 	const candMiddle = html.match(/<input type="hidden" name="csrfmiddlewaretoken" value="([A-Za-z0-9]+)">/)[1];
 	csrfmiddlewaretokenXYZ = candMiddle ? candMiddle : csrfmiddlewaretokenXYZ;
@@ -29,7 +29,7 @@ const getCsrfsXYZ = (res: AxiosResponse) => {
 };
 
 const loginXYZ = async () => {
-	const res1 = await clientXYZ.get('https://pwnable.xyz/login');
+	const res1 = await clientXYZ.get<string>('https://pwnable.xyz/login');
 	getCsrfsXYZ(res1);
 	await clientXYZ.request({
 		url: 'https://pwnable.xyz/login/',
@@ -175,10 +175,10 @@ export const fetchChallsXYZ = async function () {
 	}
 
 	// fetch data
-	const {data: html} = await axios.get('https://pwnable.xyz/challenges', {
+	const {data: html} = await axios.get<string>('https://pwnable.xyz/challenges', {
 		headers: {},
 	});
-	const {fetchedChalls} = await scrapeIt.scrapeHTML<{ fetchedChalls: Challenge[] }>(html, {
+	const {fetchedChalls} = scrapeIt.scrapeHTML<{ fetchedChalls: Challenge[] }>(html, {
 		fetchedChalls: {
 			listItem: 'div.col-lg-2',
 			data: {

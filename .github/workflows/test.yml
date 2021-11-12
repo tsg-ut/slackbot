@@ -14,7 +14,7 @@ jobs:
       - name: Install Node.js (latest)
         uses: actions/setup-node@v2
         with:
-          node-version: 15
+          node-version: 16
 
       - name: Before Install
         run: |
@@ -28,6 +28,8 @@ jobs:
 
       - name: Test
         run: npm test
+        env:
+          NODE_OPTIONS: --trace-warnings --trace-deprecation --trace-exit --trace-uncaught --unhandled-rejections=strict
 
       - name: Set up reviewdog
         if: ${{ github.event_name == 'pull_request' }}

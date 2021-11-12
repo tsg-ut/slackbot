@@ -7,7 +7,7 @@ import {WebClient} from '@slack/web-api';
 import type {SlackInterface} from '../lib/slack';
 
 async function postWelcomeMessage(slack: WebClient, channel: string) {
-	const {data} = await axios.get(welcomeScrapboxUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
+	const {data} = await axios.get<any>(welcomeScrapboxUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
 	const text = data.lines.map(({text}: {text: string}) => text).slice(1).join('\n');
 
 	return slack.chat.postMessage({
