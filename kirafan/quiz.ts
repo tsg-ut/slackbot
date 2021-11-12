@@ -24,17 +24,20 @@ class KirafanAteQuiz extends AteQuiz {
     const normalize = (s: string) =>
       hiraganize(s.replace(/\P{Letter}/gu, '').toLowerCase());
     const normalizedAnswer = normalize(answer);
-    return this.problem.correctAnswers.some(correctAnswer => {
-      normalizedAnswer === normalize(correctAnswer);
-    });
+    return this.problem.correctAnswers.some(
+      correctAnswer => normalizedAnswer === normalize(correctAnswer)
+    );
+  }
+  waitSecGen() {
+    return 0.5;
   }
 }
 
-type ImageFilter = (image: sharp.Sharp) => sharp.Sharp;
+type ImageFilter = (image: sharp.Sharp) => Promise<Buffer>;
 
 /**
  * Generate pictures for hints and store them in the local storage.
- * @param original filepath of the original image
+ * @param url url of the original image
  * @returns an array of string that contains filepaths of images
  */
 const generateHintPictures = async (url: string) => {
@@ -42,61 +45,86 @@ const generateHintPictures = async (url: string) => {
     await axios.get(url, { responseType: 'arraybuffer' }).then(res => res.data)
   );
   const { width, height } = await originalSharp.metadata();
+  const biasedRandom = (max: number) => {
+    const r = Math.random() * 2 - 1;
+    return Math.max(
+      0,
+      Math.min(max - 1, Math.floor(((r * r * r + r + 2) / 4) * max))
+    );
+  };
   const filtersArray = [
     [
       (image: sharp.Sharp) => {
         const newHeight = Math.floor(width / 100);
-        return image.clone().extract({
-          left: 0,
-          top: random(height - newHeight),
-          width: width,
-          height: newHeight,
-        });
+        return image
+          .clone()
+          .extract({
+            left: 0,
+            top: random(height - newHeight),
+            width: width,
+            height: newHeight,
+          })
+          .toBuffer();
       },
     ],
     new Array<ImageFilter>(30).fill((image: sharp.Sharp) => {
       const newSize = 20;
-      return image.clone().extract({
-        left: random(width - newSize),
-        top: random(height - newSize),
-        width: newSize,
-        height: newSize,
-      });
+      return image
+        .clone()
+        .extract({
+          left: biasedRandom(width - newSize),
+          top: random(height - newSize),
+          width: newSize,
+          height: newSize,
+        })
+        .toBuffer();
     }),
+    [
+      async (image: sharp.Sharp) => {
+        const newSize = 200;
+        const pixelSize = newSize / 10;
+        return sharp(
+          await image
+            .clone()
+            .extract({
+              left: biasedRandom(width - newSize),
+              top: random(height - newSize),
+              width: newSize,
+              height: newSize,
+            })
+            .resize(pixelSize, pixelSize)
+            .toBuffer()
+        )
+          .resize(newSize, newSize, { kernel: sharp.kernel.nearest })
+          .toBuffer();
+      },
+    ],
     [
       (image: sharp.Sharp) => {
         const newSize = 200;
         return image
           .clone()
           .extract({
-            left: random(width - newSize),
+            left: biasedRandom(width - newSize),
             top: random(height - newSize),
             width: newSize,
             height: newSize,
           })
-          .blur();
-      },
-    ],
-    [
-      (image: sharp.Sharp) => {
-        const newSize = 200;
-        return image.clone().extract({
-          left: random(width - newSize),
-          top: random(height - newSize),
-          width: newSize,
-          height: newSize,
-        });
+          .toBuffer();
       },
     ],
     [
       (image: sharp.Sharp) => {
         const newHeight = Math.floor(width / 2);
-        return image.clone().extract({
-          left: 0,
-          top: random(height - newHeight),
-          width,
-          height: newHeight,
-        });
+        return image
+          .clone()
+          .extract({
+            left: 0,
+            top: random(height - newHeight),
+            width,
+            height: newHeight,
+          })
+          .toBuffer();
       },
     ],
   ];
@@ -106,7 +134,7 @@ const generateHintPictures = async (url: string) => {
       async filters =>
         await Promise.all(
           filters.map(async filter => {
-            const imageBuffer = await filter(originalSharp).toBuffer();
+            const imageBuffer = await filter(originalSharp);
             return ((await new Promise((resolve, reject) =>
               cloudinary.v2.uploader
                 .upload_stream(
