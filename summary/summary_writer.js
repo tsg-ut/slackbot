@@ -5,7 +5,6 @@ const moment = require('moment');
 const {tokenize} = require('kuromojin');
 const cloud = require('d3-cloud');
 const {JSDOM} = require('jsdom');
-const d3 = require('d3');
 const cloudinary = require('cloudinary');
 const {createCanvas, Image, registerFont} = require('canvas');
 const path = require('path');
@@ -32,6 +31,9 @@ function filtering(messages) {
 }
 
 module.exports.makeSummary = async (messages, slack) => {
+    // 7.0からD3.jsはESM必須
+    const d3 = await import('d3');
+
     if (!fontloaded) {
         const fontPath = path.resolve(
             __dirname, '../lib/NotoSerifCJKjp-Bold.otf');
