@@ -1,10 +1,5 @@
 import { KirafanCard, kirafanTools, getKirafanCards } from './';
-import {
-  AteQuizProblem,
-  typicalAteQuizHintTexts,
-  typicalMessageTextsGenerator,
-  AteQuiz,
-} from '../atequiz';
+import { AteQuizProblem, AteQuiz } from '../atequiz';
 import { SlackInterface } from '../lib/slack';
 import sharp from 'sharp';
 import axios from 'axios';
@@ -198,7 +193,7 @@ const generateProblem = async (
     'まだまだいきますよー！',
     '最後のヒントです！わかりましたか？',
   ];
-  const hintMessages: ChatPostMessageArguments[] = typicalAteQuizHintTexts.map(
+  const hintMessages: ChatPostMessageArguments[] = hintTexts.map(
     (text, index) => ({
       channel,
       text,
