@@ -32,13 +32,17 @@ export const typicalAteQuizHintTexts = [
   '最後のヒントだよ！もうわかるよね？',
 ];
 
+/**
+ * Generator functions for typical quiz messages.
+ * In default, a subtext '[[!user]]' automatically replaced with the message.user in solvedMessage.
+ */
 export const typicalMessageTextsGenerator = {
   problem: (genre: string): string => `この${genre}なーんだ`,
   immediate: (): string => '15秒経過でヒントを出すよ♫',
-  solved: (answer: string, user: string): string =>
-    `<@${user}> 正解:tada:\n答えは＊${answer}) だよ:muscle:`,
+  solved: (answer: string): string =>
+    `<@[[!user]]> 正解:tada:\n答えは${answer}だよ:muscle:`,
   unsolved: (answer: string): string =>
-    `もう、しっかりして！\n答えは＊${answer}) だよ:anger:`,
+    `もう、しっかりして！\n答えは${answer}だよ:anger:`,
 };
 
 /**
@@ -52,12 +56,13 @@ export class AteQuiz {
   problem: AteQuizProblem;
   ngReaction = 'no_good';
   state: AteQuizState = 'waiting';
+  replaceKeys: { correctAnswerer: string } = { correctAnswerer: '[[!user]]' };
   mutex: Mutex;
   postOption: WebAPICallOptions;
   judge(answer: string): boolean {
-    return this.problem.correctAnswers.some(correctAnswer => {
-      answer === correctAnswer;
-    });
+    return this.problem.correctAnswers.some(
+      correctAnswer => answer === correctAnswer
+    );
   }
   waitSecGen(hintIndex: number): number {
     return hintIndex === this.problem.hintMessages.length ? 30 : 15;
@@ -89,10 +94,17 @@ export class AteQuiz {
   async start(): Promise<AteQuizResult> {
     this.state = 'solving';
 
-    const postMessage = (message: ChatPostMessageArguments) => {
-      return this.slack.chat.postMessage(
-        Object.assign({}, message, this.postOption)
-      );
+    const postMessage = (
+      message: ChatPostMessageArguments,
+      replaces?: [string, string][]
+    ) => {
+      const toSend = Object.assign({}, message, this.postOption);
+      if (replaces) {
+        replaces.forEach(([pre, post]) => {
+          toSend.text = toSend.text.replaceAll(pre, post);
+        });
+      }
+      return this.slack.chat.postMessage(toSend);
     };
 
     const { ts: thread_ts } = await postMessage(this.problem.problemMessage);
@@ -144,6 +156,8 @@ export class AteQuiz {
 
     this.rtm.on('message', async message => {
       if (message.thread_ts === thread_ts) {
+        if (message.subtype === 'bot_message') return;
+
         if (this.state === 'solving') {
           const answer = message.text as string;
           const isCorrect = this.judge(answer);
@@ -152,7 +166,8 @@ export class AteQuiz {
             clearInterval(tickTimer);
 
             await postMessage(
-              Object.assign({}, this.problem.solvedMessage, { thread_ts })
+              Object.assign({}, this.problem.solvedMessage, { thread_ts }),
+              [[this.replaceKeys.correctAnswerer, message.user as string]]
             );
             await postMessage(
               Object.assign({}, this.problem.answerMessage, { thread_ts })

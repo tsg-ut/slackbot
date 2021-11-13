@@ -50,7 +50,7 @@ const calculateTimeout = (answer: string): number => {
 };
 
 const getRandomTitle = async (): Promise<string> => {
-	const { data } = await axios.get(`https://ja.wikipedia.org/w/api.php`, {
+	const { data } = await axios.get<any>(`https://ja.wikipedia.org/w/api.php`, {
 		params: {
 			action: 'query',
 			format: 'json',

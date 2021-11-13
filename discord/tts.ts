@@ -2,9 +2,10 @@ import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
 import {inspect} from 'util';
+import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, createAudioPlayer} from '@discordjs/voice';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-import Discord, {VoiceConnection} from 'discord.js';
+import Discord from 'discord.js';
 import {minBy, countBy} from 'lodash';
 import logger from '../lib/logger';
 import State from '../lib/state';
@@ -71,17 +72,21 @@ export default class TTS extends EventEmitter {
 
 	connection: VoiceConnection;
 
+	audioPlayer: AudioPlayer;
+
+	subscription: PlayerSubscription;
+
 	isPaused: boolean;
 
 	lastActiveVoiceChannel: string;
 
-	joinVoiceChannelFn: (channelId?: string) => Promise<Discord.VoiceConnection>;
+	joinVoiceChannelFn: (channelId?: string) => VoiceConnection;
 
 	ttsDictionary: {key: string, value: string}[];
 
 	state: Loader<StateObj>;
 
-	constructor(joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>, ttsDictionary: {key: string, value: string}[]) {
+	constructor(joinVoiceChannelFn: () => VoiceConnection, ttsDictionary: {key: string, value: string}[]) {
 		super();
 		this.joinVoiceChannelFn = joinVoiceChannelFn;
 		this.users = new Set();
@@ -98,19 +103,22 @@ export default class TTS extends EventEmitter {
 		));
 	}
 
-	async onUsersModified() {
+	onUsersModified() {
 		if (this.isPaused) {
 			return;
 		}
 		if (this.connection === null) {
 			if (this.lastActiveVoiceChannel === null) {
-				this.connection = await this.joinVoiceChannelFn();
+				this.connection = this.joinVoiceChannelFn();
 			} else {
-				this.connection = await this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
+				this.connection = this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
 			}
+			this.audioPlayer = createAudioPlayer();
+			this.subscription = this.connection.subscribe(this.audioPlayer);
 		} else {
 			if (this.users.size === 0) {
-				this.connection.disconnect();
+				this.subscription.unsubscribe();
+				this.connection.destroy();
 				this.connection = null;
 			}
 		}
@@ -138,9 +146,9 @@ export default class TTS extends EventEmitter {
 			await new Promise((resolve) => setTimeout(resolve, 200));
 			if (this.users.size !== 0) {
 				if (this.lastActiveVoiceChannel === null) {
-					this.connection = await this.joinVoiceChannelFn();
+					this.connection = this.joinVoiceChannelFn();
 				} else {
-					this.connection = await this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
+					this.connection = this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
 				}
 			}
 			logger.info('[TTS] unpause - connected');
@@ -170,20 +178,18 @@ export default class TTS extends EventEmitter {
 						}
 						this.users.add(user);
 						const timer = new Timer(() => {
-							mutex.runExclusive(async () => {
-								this.users.delete(user);
-								this.userTimers.get(user)?.cancel();
-								this.emit('message', stripIndent`
-									30分以上発言がなかったので<@${user}>のTTSを解除しました
-								`);
-								await this.onUsersModified();
-							});
+							this.users.delete(user);
+							this.userTimers.get(user)?.cancel();
+							this.emit('message', stripIndent`
+								30分以上発言がなかったので<@${user}>のTTSを解除しました
+							`);
+							this.onUsersModified();
 						}, 30 * 60 * 1000);
 						this.userTimers.set(user, timer);
-						if (message.member.voice?.channelID) {
-							this.lastActiveVoiceChannel = message.member.voice.channelID;
+						if (message.member.voice?.channelId) {
+							this.lastActiveVoiceChannel = message.member.voice.channelId;
 						}
-						await this.onUsersModified();
+						this.onUsersModified();
 						await message.react('🆗');
 					} else {
 						await message.react('🤔');
@@ -194,7 +200,7 @@ export default class TTS extends EventEmitter {
 					if (this.users.has(user)) {
 						this.users.delete(user);
 						this.userTimers.get(user)?.cancel();
-						await this.onUsersModified();
+						this.onUsersModified();
 						await message.react('🆗');
 					} else {
 						await message.react('🤔');
@@ -305,8 +311,9 @@ export default class TTS extends EventEmitter {
 
 					await Promise.race([
 						new Promise<void>((resolve) => {
-							const dispatcher = this.connection.play(path.join(__dirname, 'tempAudio.mp3'));
-							dispatcher.on('finish', () => {
+							const resource = createAudioResource(path.join(__dirname, 'tempAudio.mp3'));
+							this.audioPlayer.play(resource);
+							resource.playStream.on('finish', () => {
 								resolve();
 							});
 						}),

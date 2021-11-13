@@ -1,7 +1,9 @@
 import {MrkdwnElement, PlainTextElement, WebClient} from '@slack/web-api';
-import {flatten} from 'lodash';
+import type {Reaction} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
+import {flatten, get} from 'lodash';
 import {getTokens, getRtmClient} from './slack';
 import {Deferred} from './utils';
+import type {Token} from '../oauth/tokens';
 
 const webClient = new WebClient();
 
@@ -10,10 +12,55 @@ const additionalEmojis: any[] = [];
 
 const loadMembersDeferred = new Deferred<Array<any>>();
 const loadEmojisDeferred = new Deferred<Array<any>>();
+const tokensDeferred = new Deferred<Token[]>();
+
+// Cache for message reactions. Currently it only holds counts of reactions.
+const reactionsCache = new Map<string, Record<string, number>>();
 
 getTokens().then(async (tokens) => {
+	tokensDeferred.resolve(tokens);
+
 	for (const token of tokens) {
 		const rtmClient = await getRtmClient(token.team_id);
+
+		const incrementReactions = async ({channel, ts, reaction, by}: {channel: string, ts: string, reaction: string, by: number}) => {
+			const key = `${channel}\0${ts}`;
+
+			if (reactionsCache.has(key)) {
+				const reactions = reactionsCache.get(key);
+				if (!{}.hasOwnProperty.call(reactions, reaction)) {
+					reactions[reaction] = 0;
+				}
+				reactions[reaction] += by;
+				return;
+			}
+
+			const data = await webClient.conversations.history({
+				token: token.access_token,
+				channel: channel,
+				latest: ts,
+				limit: 1,
+				inclusive: true,
+			});
+
+			// race condition
+			if (reactionsCache.has(key)) {
+				const reactions = reactionsCache.get(key);
+				if (!{}.hasOwnProperty.call(reactions, reaction)) {
+					reactions[reaction] = 0;
+				}
+				reactions[reaction] += by;
+				return;
+			}
+
+			const remoteReactions = get(data, ['messages', 0, 'reactions'], [] as Reaction[]);
+			const remoteReactionsObj = Object.fromEntries(remoteReactions.map((reaction) => (
+				[reaction.name, reaction.count]
+			)));
+			reactionsCache.set(key, remoteReactionsObj);
+			return;
+		}
+
 		rtmClient.on('team_join', (event) => {
 			additionalMembers.unshift(event.user);
 		});
@@ -29,6 +76,28 @@ getTokens().then(async (tokens) => {
 					url: event.value,
 				});
 			}
+		});
+		rtmClient.on('message', (message) => {
+			const key = `${message.channel}\0${message.ts}`;
+			if (!reactionsCache.has(key)) {
+				reactionsCache.set(key, Object.create(null));
+			}
+		});
+		rtmClient.on('reaction_added', async (event) => {
+			incrementReactions({
+				channel: event.item.channel,
+				ts: event.item.ts,
+				reaction: event.reaction,
+				by: 1,
+			});
+		});
+		rtmClient.on('reaction_removed', (event) => {
+			incrementReactions({
+				channel: event.item.channel,
+				ts: event.item.ts,
+				reaction: event.reaction,
+				by: -1,
+			});
 		});
 	}
 
@@ -51,6 +120,42 @@ getTokens().then(async (tokens) => {
 		loadEmojisDeferred.resolve(flatten(emojisArray));
 	});
 });
+
+export const getReactions = async (channel: string, ts: string) => {
+	// reaction_addedイベントの中から呼ばれても安全なように常にnextTickを待つ
+	await new Promise(process.nextTick);
+
+	const key = `${channel}\0${ts}`;
+	if (reactionsCache.has(key)) {
+		return reactionsCache.get(key);
+	}
+
+	const tokens = await tokensDeferred.promise;
+	const token = tokens.find((token) => token.team_id === process.env.TEAM_ID);
+	if (!token) {
+		throw new Error('Available token not found');
+	}
+
+	const data = await webClient.conversations.history({
+		token: token.access_token,
+		channel: channel,
+		latest: ts,
+		limit: 1,
+		inclusive: true,
+	});
+
+	// race condition
+	if (reactionsCache.has(key)) {
+		return reactionsCache.get(key);
+	}
+
+	const remoteReactions = get(data, ['messages', 0, 'reactions'], [] as Reaction[]);
+	const remoteReactionsObj = Object.fromEntries(remoteReactions.map((reaction) => (
+		[reaction.name, reaction.count]
+	)));
+	reactionsCache.set(key, remoteReactionsObj);
+	return remoteReactionsObj;
+};
 
 export const getAllMembers = async (): Promise<Array<any>> => {
 	return [
