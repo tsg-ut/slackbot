@@ -1,4 +1,5 @@
 import type {Message} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
+import {increment} from '../achievements';
 import type {SlackInterface} from '../lib/slack';
 import {getReactions} from '../lib/slackUtils';
 
@@ -91,6 +92,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
+		increment(message.user, 'topic-adopted');
 		updateTopic(message.text.trim());
 	});
 };
