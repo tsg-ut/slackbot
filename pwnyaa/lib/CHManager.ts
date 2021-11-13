@@ -17,7 +17,7 @@ let csrftokenCH = '';
 let tempCookie = '';
 let sessionidCH = '';
 
-const getCsrfsCH = (res: AxiosResponse) => {
+const getCsrfsCH = (res: AxiosResponse<string>) => {
 	const html = res.data;
 	const candCsrf = html.match(/<input name="_csrf_token" type="hidden" value="([A-Za-z0-9]+)" \/>/)[1];
 	const candCookie = String(res.headers['set-cookie']).split(' ')[0];
@@ -26,7 +26,7 @@ const getCsrfsCH = (res: AxiosResponse) => {
 };
 
 const loginCH = async () => {
-	const res1 = await clientCH.get('https://cryptohack.org/login/');
+	const res1 = await clientCH.get<string>('https://cryptohack.org/login/');
 	getCsrfsCH(res1);
 	await clientCH.request({
 		url: 'https://cryptohack.org/login/',
@@ -134,7 +134,7 @@ export const fetchUserProfileCH = async function(userId: string) {
 // fetch URL for each Daimon
 // NOTE: no need to login
 export const collectDaimonCH = async function () {
-	const {data: html} = await axios.get('https://cryptohack.org/challenges/', {
+	const {data: html} = await axios.get<string>('https://cryptohack.org/challenges/', {
 		headers: {},
 	});
 	const {partUrls} = await scrapeIt.scrapeHTML<{ partUrls: {url: String}[] }>(html, {
@@ -162,7 +162,7 @@ export const fetchChallsCH = async function () {
 
 	// fetch challs for each Daimon-s
 	for (const url of daimonUrls) {
-		const {data: html} = await axios.get(String(url), {
+		const {data: html} = await axios.get<string>(String(url), {
 			headers: {
 				Cookie: sessionidCH,
 			},
@@ -197,7 +197,7 @@ export const fetchChallsCH = async function () {
 // NOTE: no need to login
 // NOTE: userid and name is identical
 export const findUserByNameCH = async function (username: string): Promise<{userid: string, name: string}> {
-	const {data: infojson} = await clientCH.get(`https://cryptohack.org/api/search_user/${username}.json`, {
+	const {data: infojson} = await clientCH.get<any>(`https://cryptohack.org/api/search_user/${username}.json`, {
 		headers: {},
 	});
 	if (infojson.users.length > 0) {

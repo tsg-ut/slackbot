@@ -118,12 +118,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 	const updateContests = async () => {
 		logger.info('Updating AtCoder contests...');
-		const {data: html} = await axios.get('https://atcoder.jp/contests/', {
+		const {data: html} = await axios.get<string>('https://atcoder.jp/contests/', {
 			headers: {
 				'Accept-Language': 'ja-JP',
 			},
 		});
-		const {contests} = await scrapeIt.scrapeHTML<{contests: ContestEntry[]}>(html, {
+		const {contests} = scrapeIt.scrapeHTML<{contests: ContestEntry[]}>(html, {
 			contests: {
 				listItem: 'tbody tr',
 				data: {
