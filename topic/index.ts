@@ -64,7 +64,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}
 
 		const reactions = await getReactions(event.item.channel, event.item.ts);
-		if (reactions.koresuki < 1) {
+		if (reactions.koresuki < 5) {
 			return;
 		}
 
