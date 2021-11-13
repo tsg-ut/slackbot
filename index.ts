@@ -85,6 +85,7 @@ const allBots = [
 	'nojoin',
 	'remember-english',
 	'golfbot',
+	'kirafan/quiz',
 	'topic',
 ];
 
