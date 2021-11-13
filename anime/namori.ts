@@ -292,7 +292,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				const result = await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: 'このキャラだーれだ',
-					username: 'anime',
+					username: 'namori',
 					icon_emoji: ':namori:',
 					blocks: [
 						{
