@@ -1,6 +1,7 @@
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
+import { promisify } from 'util';
 
 export interface KirafanCard {
   cardId: number;
@@ -60,11 +61,13 @@ export const kirafanTools = {
 export const getKirafanCards = async (
   forceUpdate = false
 ): Promise<KirafanCard[]> => {
-  const { timestamp } = fs.existsSync(path.join(__dirname, 'timestamp.json'))
+  const { timestamp } = (await promisify(fs.exists)(
+    path.join(__dirname, 'timestamp.json')
+  ))
     ? Object.assign(
         { timestamp: undefined },
         JSON.parse(
-          fs.readFileSync(path.join(__dirname, 'timestamp.json'), {
+          await promisify(fs.readFile)(path.join(__dirname, 'timestamp.json'), {
             encoding: 'utf8',
           })
         )
@@ -77,7 +80,7 @@ export const getKirafanCards = async (
     Date.now() - timestamp < 1000 * 60 * 60 * 24
   ) {
     const cards = JSON.parse(
-      fs.readFileSync(path.join(__dirname, 'kirafan-cards.json'), {
+      await promisify(fs.readFile)(path.join(__dirname, 'kirafan-cards.json'), {
         encoding: 'utf8',
       })
     );
@@ -169,12 +172,12 @@ export const getKirafanCards = async (
     return card;
   });
 
-  fs.writeFileSync(
+  await promisify(fs.writeFile)(
     path.join(__dirname, 'kirafan-cards.json'),
     JSON.stringify(cards)
   );
 
-  fs.writeFileSync(
+  await promisify(fs.writeFile)(
     path.join(__dirname, 'timestamp.json'),
     JSON.stringify({ timestamp: Date.now() })
   );
