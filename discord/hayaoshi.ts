@@ -9,6 +9,7 @@ import Discord from 'discord.js';
 import {max, get} from 'lodash';
 import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
+import logger from '../lib/logger';
 import {extractValidAnswers, judgeAnswer, formatQuizToSsml} from './hayaoshiUtils';
 import {getSpeech, Voice} from './speeches';
 
@@ -249,16 +250,20 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	readQuestion() {
+		logger.info('readQuestion');
 		this.state.audioResource = createAudioResource(path.join(__dirname, 'questionText.mp3'));
 		this.state.audioPlayer.play(this.state.audioResource);
 		this.state.playStartTime = Date.now();
 		this.state.audioResource.playStream.on('start', () => {
+			logger.info('readQuestion start');
 			this.state.playStartTime = Date.now();
 		});
 		this.state.audioResource.playStream.on('finish', async () => {
+			logger.info('readQuestion finish');
 			await new Promise((resolve) => {
 				this.state.timeupTimeoutId = setTimeout(resolve, 5000);
 			});
+			logger.info('readQuestion timeout');
 			mutex.runExclusive(async () => {
 				if (this.state.phase !== 'gaming') {
 					return;
@@ -276,6 +281,7 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	async speak(text: string) {
+		logger.info(`speak: ${text}`);
 		if (!this.state.connection) {
 			return;
 		}
@@ -285,6 +291,7 @@ export default class Hayaoshi extends EventEmitter {
 		await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), audio.data);
 
 		await this.playSound('../tempAudio');
+		logger.info(`speak end: ${text}`);
 	}
 
 	setAnswerTimeout() {
@@ -322,10 +329,12 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	playSound(name: string) {
+		logger.info(`playSound: ${name}`);
 		return new Promise<void>((resolve) => {
 			this.state.audioResource = createAudioResource(path.join(__dirname, `sounds/${name}.mp3`));
 			this.state.audioPlayer.play(this.state.audioResource);
 			this.state.audioResource.playStream.on('finish', () => {
+				logger.info(`playSound finish: ${name}`);
 				resolve();
 			});
 		});
@@ -446,14 +455,14 @@ export default class Hayaoshi extends EventEmitter {
 				this.state.answerTimeoutId = this.setAnswerTimeout();
 			}
 
-			if ((message.content === '早押しクイズ' || message.content === '早押しクイズ大会') && this.state.phase === 'waiting') {
+			if ((message.content === '早押しクイズdev' || message.content === '早押しクイズ大会dev') && this.state.phase === 'waiting') {
 				try {
 					this.state.phase = 'gaming';
 					this.state.playStartTime = 0;
 					this.state.maximumPushTime = 0;
 					this.state.quizThroughCount = 0;
 					this.state.participants = new Map();
-					this.state.isContestMode = message.content === '早押しクイズ大会';
+					this.state.isContestMode = message.content === '早押しクイズ大会dev';
 					this.state.questionCount = 0;
 
 					this.emit('start-game');

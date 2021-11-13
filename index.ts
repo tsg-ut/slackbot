@@ -85,6 +85,7 @@ const allBots = [
 	'nojoin',
 	'remember-english',
 	'golfbot',
+	'topic',
 ];
 
 logger.info('slackbot started');
