@@ -1,9 +1,11 @@
 import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
+import {createAudioResource, createAudioPlayer} from '@discordjs/voice';
+import type {AudioPlayer, AudioResource, PlayerSubscription, VoiceConnection} from '@discordjs/voice';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-import Discord, {StreamDispatcher, VoiceConnection} from 'discord.js';
+import Discord from 'discord.js';
 import {max, get} from 'lodash';
 import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
@@ -14,8 +16,10 @@ const mutex = new Mutex();
 
 interface State {
 	phase: 'waiting' | 'gaming' | 'answering' | 'timeup',
-	dispatcher: StreamDispatcher,
 	connection: VoiceConnection,
+	audioResource: AudioResource,
+	audioPlayer: AudioPlayer,
+	subscription: PlayerSubscription,
 	quiz: Quiz,
 	pusher: string,
 	penaltyUsers: Set<string>,
@@ -38,16 +42,18 @@ export default class Hayaoshi extends EventEmitter {
 
 	users: {discord: string, slack: string}[];
 
-	joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>;
+	joinVoiceChannelFn: () => VoiceConnection;
 
-	constructor(joinVoiceChannelFn: () => Promise<Discord.VoiceConnection>, users: {discord: string, slack: string}[]) {
+	constructor(joinVoiceChannelFn: () => VoiceConnection, users: {discord: string, slack: string}[]) {
 		super();
 		this.joinVoiceChannelFn = joinVoiceChannelFn;
 		this.users = users;
 		this.state = {
 			phase: 'waiting',
-			dispatcher: null,
 			connection: null,
+			audioResource: null,
+			audioPlayer: null,
+			subscription: null,
 			quiz: null,
 			pusher: null,
 			penaltyUsers: new Set(),
@@ -103,14 +109,14 @@ export default class Hayaoshi extends EventEmitter {
 		}
 	}
 
-	async endGame() {
+	endGame() {
 		const oldConnection = this.state.connection;
 		this.state.phase = 'waiting';
 		this.state.connection = null;
 		this.state.quizThroughCount = 0;
 
 		if (oldConnection) {
-			await oldConnection.disconnect();
+			oldConnection.destroy();
 		}
 		this.emit('end-game');
 	}
@@ -120,7 +126,6 @@ export default class Hayaoshi extends EventEmitter {
 
 		const {quiz} = this.state;
 
-		this.state.dispatcher = null;
 		this.state.quiz = null;
 		this.state.pusher = null;
 		this.state.penaltyUsers = new Set();
@@ -227,12 +232,7 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	async readAnswer() {
-		await new Promise<void>((resolve) => {
-			const dispatcher = this.state.connection.play(path.join(__dirname, 'answerText.mp3'));
-			dispatcher.on('finish', () => {
-				resolve();
-			});
-		});
+		await this.playSound('../answerText');
 
 		this.emit('message', stripIndent`
 			正解者: なし
@@ -249,12 +249,13 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	readQuestion() {
-		this.state.dispatcher = this.state.connection.play(path.join(__dirname, 'questionText.mp3'));
+		this.state.audioResource = createAudioResource(path.join(__dirname, 'questionText.mp3'));
+		this.state.audioPlayer.play(this.state.audioResource);
 		this.state.playStartTime = Date.now();
-		this.state.dispatcher.on('start', () => {
+		this.state.audioResource.playStream.on('start', () => {
 			this.state.playStartTime = Date.now();
 		});
-		this.state.dispatcher.on('finish', async () => {
+		this.state.audioResource.playStream.on('finish', async () => {
 			await new Promise((resolve) => {
 				this.state.timeupTimeoutId = setTimeout(resolve, 5000);
 			});
@@ -263,12 +264,7 @@ export default class Hayaoshi extends EventEmitter {
 					return;
 				}
 				this.state.phase = 'timeup';
-				await new Promise<void>((resolve) => {
-					const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/timeup.mp3'));
-					dispatcher.on('finish', () => {
-						resolve();
-					});
-				});
+				await this.playSound('timeup');
 				await this.readAnswer();
 				this.endQuiz({correct: true});
 			});
@@ -288,23 +284,13 @@ export default class Hayaoshi extends EventEmitter {
 
 		await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), audio.data);
 
-		await new Promise<void>((resolve) => {
-			const dispatcher = this.state.connection.play(path.join(__dirname, 'tempAudio.mp3'));
-			dispatcher.on('finish', () => {
-				resolve();
-			});
-		});
+		await this.playSound('../tempAudio');
 	}
 
 	setAnswerTimeout() {
 		return setTimeout(() => {
 			mutex.runExclusive(async () => {
-				await new Promise<void>((resolve) => {
-					const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/timeup.mp3'));
-					dispatcher.on('finish', () => {
-						resolve();
-					});
-				});
+				await this.playSound('timeup');
 				this.state.penaltyUsers.add(this.state.pusher);
 				this.incrementPenalty(this.state.pusher);
 				this.state.pusher = null;
@@ -335,6 +321,16 @@ export default class Hayaoshi extends EventEmitter {
 		return getHardQuiz();
 	}
 
+	playSound(name: string) {
+		return new Promise<void>((resolve) => {
+			this.state.audioResource = createAudioResource(path.join(__dirname, `sounds/${name}.mp3`));
+			this.state.audioPlayer.play(this.state.audioResource);
+			this.state.audioResource.playStream.on('finish', () => {
+				resolve();
+			});
+		});
+	}
+
 	async startQuiz() {
 		this.state.maximumPushTime = 0;
 		this.state.questionCount++;
@@ -352,25 +348,17 @@ export default class Hayaoshi extends EventEmitter {
 		await fs.writeFile(path.join(__dirname, 'questionText.mp3'), questionAudio.data);
 		await fs.writeFile(path.join(__dirname, 'answerText.mp3'), answerAudio.data);
 
-		this.state.connection = await this.joinVoiceChannelFn();
+		this.state.connection = this.joinVoiceChannelFn();
+		this.state.audioPlayer = createAudioPlayer();
+		this.state.subscription = this.state.connection.subscribe(this.state.audioPlayer);
 
 		await new Promise((resolve) => setTimeout(resolve, 3000));
 		if (this.state.isContestMode) {
 			await this.speak(`第${this.state.questionCount}問`);
 		} else {
-			await new Promise<void>((resolve) => {
-				const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/mondai.mp3'));
-				dispatcher.on('finish', () => {
-					resolve();
-				});
-			});
+			await this.playSound('mondai');
 		}
-		await new Promise<void>((resolve) => {
-			const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/question.mp3'));
-			dispatcher.on('finish', () => {
-				resolve();
-			});
-		});
+		await this.playSound('question');
 		this.readQuestion();
 	}
 
@@ -384,7 +372,7 @@ export default class Hayaoshi extends EventEmitter {
 				clearTimeout(this.state.answerTimeoutId);
 				const judgement = await judgeAnswer(this.state.validAnswers, message.content);
 				if (judgement === 'correct') {
-					this.state.connection.play(path.join(__dirname, 'sounds/correct.mp3'));
+					this.playSound('correct');
 					this.incrementPoint(message.member.user.id);
 
 					const user = this.users.find(({discord}) => discord === message.member.user.id);
@@ -411,21 +399,11 @@ export default class Hayaoshi extends EventEmitter {
 				} else if (!this.state.isOneChance && judgement === 'onechance') {
 					clearTimeout(this.state.answerTimeoutId);
 					this.state.isOneChance = true;
-					await new Promise<void>((resolve) => {
-						const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/timeup.mp3'));
-						dispatcher.on('finish', () => {
-							resolve();
-						});
-					});
+					await this.playSound('timeup');
 					await this.speak('もう一度お願いします。');
 					this.state.answerTimeoutId = this.setAnswerTimeout();
 				} else {
-					await new Promise<void>((resolve) => {
-						const dispatcher = this.state.connection.play(path.join(__dirname, 'sounds/wrong.mp3'));
-						dispatcher.on('finish', () => {
-							resolve();
-						});
-					});
+					await this.playSound('wrong');
 					this.state.penaltyUsers.add(this.state.pusher);
 					this.incrementPenalty(this.state.pusher);
 					this.state.pusher = null;
@@ -459,8 +437,8 @@ export default class Hayaoshi extends EventEmitter {
 				const pushTime = now - this.state.playStartTime;
 				this.state.maximumPushTime = Math.max(pushTime, this.state.maximumPushTime);
 				clearTimeout(this.state.timeupTimeoutId);
-				this.state.dispatcher.pause();
-				this.state.connection.play(path.join(__dirname, 'sounds/buzzer.mp3'));
+				this.state.audioResource.playStream.pause();
+				this.playSound('buzzer');
 				this.state.pusher = message.member.user.id;
 				this.state.phase = 'answering';
 				this.state.isOneChance = false;

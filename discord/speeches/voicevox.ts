@@ -24,16 +24,13 @@ const voiceMapping: { [name: string]: { [emo: string]: number } } = {
 };
 
 const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emotion}) => {
-	if (text.length >= 30) {
-		return Promise.reject(new Error('Text must be shorter than 30 characters for VOICEVOX.'));
-	}
 	const postData = {
 		text,
 		speaker: voiceMapping[voiceType][emotion],
 		speed: 1.0 + (speed - 1.0) / 2,
 	};
 	return new Promise((resolve, reject) => {
-		axios.post(process.env.VOICEVOX_API_URL, postData, {
+		axios.post<Buffer>(process.env.VOICEVOX_API_URL, postData, {
 			headers: {
 				'content-type': 'application/json',
 			},

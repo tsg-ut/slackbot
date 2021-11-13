@@ -28,6 +28,10 @@ describe('hyperrobot', () => {
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		hyperrobot(slack);
+		jest.useFakeTimers();
+	});
+	afterAll(() => {
+		jest.useRealTimers();
 	});
 	describe('base', () => {
 		it('responds to ハイパーロボット', async () => {

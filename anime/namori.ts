@@ -40,7 +40,7 @@ interface PersistentState {
 }
 
 const loader = new Loader<CharacterData[]>(async () => {
-	const {data} = await axios.get<string>('https://github.com/hakatashi/namori_rakugaki_animation/raw/master/namori.csv');
+	const {data} = await axios.get<string>('https://github.com/hakatashi/namori_rakugaki_annotation/raw/master/namori.csv');
 	const lines = data.split('\n').slice(1).filter((line) => line.length > 0);
 	return lines.map((line) => {
 		const [tweetId, mediaId, imageUrl, characterName, characterRuby, workName] = line.split(',');
