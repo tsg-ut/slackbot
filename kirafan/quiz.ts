@@ -237,8 +237,6 @@ const generateProblem = async (
     text: '15秒でヒントです！',
   };
 
-  const answerText = ` (${card.title})`;
-
   const solvedMessage = {
     channel,
     text: `<@[[!user]]>さん、正解です！:tada:\nこの方は『${card.title}』の＊${card.fullname}＊さんです！す、す、すごかったです！:cherry_blossom:`,
