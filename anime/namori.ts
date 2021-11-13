@@ -210,7 +210,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						channel: process.env.CHANNEL_SANDBOX,
 						text: hintText,
 						username: 'namori',
-						icon_emoji: ':tv:',
+						icon_emoji: ':namori:',
 						thread_ts: state.thread,
 						blocks: [
 							{
@@ -231,7 +231,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						channel: process.env.CHANNEL_SANDBOX,
 						text: `もう、しっかりして！\n答えは＊${state.answer.characterName}＊ (${state.answer.workName}) だよ:anger:`,
 						username: 'namori',
-						icon_emoji: ':tv:',
+						icon_emoji: ':namori:',
 						thread_ts: state.thread,
 						reply_broadcast: true,
 					});
@@ -240,7 +240,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						channel: process.env.CHANNEL_SANDBOX,
 						text: state.answer.characterName,
 						username: 'namori',
-						icon_emoji: ':tv:',
+						icon_emoji: ':namori:',
 						thread_ts: state.thread,
 						unfurl_links: true,
 						unfurl_media: true,
@@ -292,8 +292,8 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				const result = await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: 'このキャラだーれだ',
-					username: 'anime',
-					icon_emoji: ':tv:',
+					username: 'namori',
+					icon_emoji: ':namori:',
 					blocks: [
 						{
 							type: 'section',
@@ -321,7 +321,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					channel: process.env.CHANNEL_SANDBOX,
 					text: '15秒経過でヒントを出すよ♫',
 					username: 'namori',
-					icon_emoji: ':tv:',
+					icon_emoji: ':namori:',
 					thread_ts: result.ts as string,
 				});
 
@@ -344,7 +344,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						channel: process.env.CHANNEL_SANDBOX,
 						text: `<@${message.user}> 正解:tada:\n答えは＊${state.answer.characterName}＊ (${state.answer.workName}) だよ:muscle:`,
 						username: 'namori',
-						icon_emoji: ':tv:',
+						icon_emoji: ':namori:',
 						thread_ts: state.thread,
 						reply_broadcast: true,
 					});
@@ -353,7 +353,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						channel: process.env.CHANNEL_SANDBOX,
 						text: state.answer.characterName,
 						username: 'namori',
-						icon_emoji: ':tv:',
+						icon_emoji: ':namori:',
 						thread_ts: state.thread,
 						unfurl_links: true,
 						unfurl_media: true,
