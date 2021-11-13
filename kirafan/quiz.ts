@@ -41,7 +41,7 @@ const generateHintPictures = async (url: string) => {
   const originalSharp = sharp(
     await axios.get(url, { responseType: 'arraybuffer' }).then(res => res.data)
   );
-  const { width, height } = await originalSharp.metadata();
+  const trimmedSharp = sharp(await originalSharp.trim().toBuffer());
   const biasedRandom = (max: number) => {
     const r = Math.random() * 2 - 1;
     return Math.max(
@@ -51,7 +51,8 @@ const generateHintPictures = async (url: string) => {
   };
   const filtersArray = [
     [
-      (image: sharp.Sharp) => {
+      async (image: sharp.Sharp) => {
+        const { width, height } = await image.metadata();
         const newHeight = Math.floor(width / 100);
         return image
           .clone()
@@ -64,7 +65,8 @@ const generateHintPictures = async (url: string) => {
           .toBuffer();
       },
     ],
-    new Array<ImageFilter>(30).fill((image: sharp.Sharp) => {
+    new Array<ImageFilter>(30).fill(async (image: sharp.Sharp) => {
+      const { width, height } = await image.metadata();
       const newSize = 20;
       return image
         .clone()
@@ -78,6 +80,7 @@ const generateHintPictures = async (url: string) => {
     }),
     [
       async (image: sharp.Sharp) => {
+        const { width, height } = await image.metadata();
         const newSize = 150;
         const pixelSize = newSize / 10;
         return sharp(
@@ -97,7 +100,8 @@ const generateHintPictures = async (url: string) => {
       },
     ],
     [
-      (image: sharp.Sharp) => {
+      async (image: sharp.Sharp) => {
+        const { width, height } = await image.metadata();
         const newSize = 150;
         return image
           .clone()
@@ -111,7 +115,8 @@ const generateHintPictures = async (url: string) => {
       },
     ],
     [
-      (image: sharp.Sharp) => {
+      async (image: sharp.Sharp) => {
+        const { width, height } = await image.metadata();
         const newHeight = Math.floor(width / 2);
         return image
           .clone()
@@ -131,7 +136,7 @@ const generateHintPictures = async (url: string) => {
       async filters =>
         await Promise.all(
           filters.map(async filter => {
-            const imageBuffer = await filter(originalSharp);
+            const imageBuffer = await filter(trimmedSharp);
             return ((await new Promise((resolve, reject) =>
               cloudinary.v2.uploader
                 .upload_stream(
@@ -168,13 +173,13 @@ const generateProblem = async (
 
   const problemMessage: ChatPostMessageArguments = {
     channel,
-    text: 'このキャラクターは誰でしょう？',
+    text: 'こちらの方、どなたでしょう？',
     blocks: [
       {
         type: 'section',
         text: {
           type: 'plain_text',
-          text: 'このキャラクターは誰でしょう？',
+          text: 'こちらの方、どなたでしょう？',
           emoji: true,
         },
       },
@@ -182,11 +187,17 @@ const generateProblem = async (
         type: 'image',
         block_id: 'image',
         image_url: hintImageUrls[0][0],
-        alt_text: 'このキャラクターは誰でしょう？',
+        alt_text: 'こちらの方、どなたでしょう？',
       },
     ],
   };
 
+  const hintTexts = [
+    'ヒント、開きますよーっ！',
+    '次のヒントです！この方は…',
+    'まだまだいきますよー！',
+    '最後のヒントです！わかりましたか？',
+  ];
   const hintMessages: ChatPostMessageArguments[] = typicalAteQuizHintTexts.map(
     (text, index) => ({
       channel,
@@ -223,20 +234,20 @@ const generateProblem = async (
 
   const immediateMessage = {
     channel,
-    text: typicalMessageTextsGenerator.immediate(),
+    text: '15秒でヒントです！',
   };
 
-  const answerText = `＊${card.fullname}＊ (${card.title})`;
+  const answerText = ` (${card.title})`;
 
   const solvedMessage = {
     channel,
-    text: typicalMessageTextsGenerator.solved(answerText),
+    text: `<@[[!user]]>さん、正解です！:tada:\nこの方は『${card.title}』の＊${card.fullname}＊さんです！す、す、すごかったです！:cherry_blossom:`,
     reply_broadcast: true,
   };
 
   const unsolvedMessage = {
     channel,
-    text: typicalMessageTextsGenerator.unsolved(answerText),
+    text: `正解は『${card.title}』の＊${card.fullname}＊さんでした！またいつでも来てくださいね！:key:`,
     reply_broadcast: true,
   };
 
