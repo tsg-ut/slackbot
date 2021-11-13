@@ -2862,6 +2862,45 @@ const achievements: Achievement[] = [
 		value: 10,
 	},
 
+	// topic
+
+	{
+		id: 'topic-adopted-1',
+		difficulty: 'easy',
+		title: '話題の近傍',
+		condition: 'Slackでの発言がtopicに採用される',
+		category: 'topic',
+		counter: 'topic-adopted',
+		value: 1,
+	},
+	{
+		id: 'topic-adopted-10',
+		difficulty: 'medium',
+		title: '話題の中心',
+		condition: 'Slackでの発言がtopicに10回採用される',
+		category: 'topic',
+		counter: 'topic-adopted',
+		value: 10,
+	},
+	{
+		id: 'topic-adopted-100',
+		difficulty: 'hard',
+		title: '話題の天元',
+		condition: 'Slackでの発言がtopicに100回採用される',
+		category: 'topic',
+		counter: 'topic-adopted',
+		value: 100,
+	},
+	{
+		id: 'topic-adopted-500',
+		difficulty: 'professional',
+		title: '話題の有頂天',
+		condition: 'Slackでの発言がtopicに500回採用される',
+		category: 'topic',
+		counter: 'topic-adopted',
+		value: 500,
+	},
+
 	// achievements
 
 	{

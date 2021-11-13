@@ -86,6 +86,7 @@ const allBots = [
 	'remember-english',
 	'golfbot',
 	'kirafan/quiz',
+	'topic',
 ];
 
 logger.info('slackbot started');
