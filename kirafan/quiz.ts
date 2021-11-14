@@ -33,16 +33,57 @@ type ImageFilter = (image: sharp.Sharp) => Promise<Buffer>;
  * @returns an array of string that contains filepaths of images
  */
 const generateHintPictures = async (url: string) => {
-  const rawSharp = sharp(
+  const originalSharp = sharp(
     await axios.get(url, { responseType: 'arraybuffer' }).then(res => res.data)
   );
-  const originalSharp = await (async () => {
-    const { width, height } = await rawSharp.metadata();
-    return sharp({
-      create: { width, height, channels: 4, background: '#FFFFFFFF' },
-    }).composite([{ input: await rawSharp.toBuffer(), gravity: 'center' }]);
+
+  const trimmedSharp = await (async () => {
+    const {
+      data: halfTrimmedBuffer,
+      info: { trimOffsetTop: trimmedFromTop },
+    } = await originalSharp
+      .clone()
+      .trim()
+      .rotate(180)
+      .toBuffer({ resolveWithObject: true });
+
+    const trimmedOriginal = sharp(halfTrimmedBuffer)
+      .trim()
+      .rotate(180);
+
+    const trimmedFromBottom = (
+      await trimmedOriginal.toBuffer({ resolveWithObject: true })
+    ).info.trimOffsetTop;
+
+    const { width, height } = await originalSharp.metadata();
+
+    console.log({ trimmedFromTop, trimmedFromBottom });
+
+    const trimmedTopBottomBuffer = await originalSharp
+      .clone()
+      .extract({
+        top: -trimmedFromTop,
+        left: 0,
+        width,
+        height: height - -trimmedFromTop - trimmedFromBottom,
+      })
+      .toBuffer();
+
+    return sharp(
+      await sharp({
+        create: {
+          width,
+          height: height - -trimmedFromTop - trimmedFromBottom,
+          channels: 4,
+          background: '#FFFFFFFF',
+        },
+      })
+        .composite([{ input: trimmedTopBottomBuffer, top: 0, left: 0 }])
+        .png()
+        .toBuffer()
+    );
   })();
-  const trimmedSharp = sharp(await originalSharp.trim().toBuffer());
+
   const biasedRandom = (max: number) => {
     const r = Math.random() * 2 - 1;
     return Math.max(
@@ -101,7 +142,7 @@ const generateHintPictures = async (url: string) => {
           })
         );
 
-        return await sharp({
+        const ret = await sharp({
           create: {
             width: newSize * cols + gap * (cols - 1),
             height: newSize * rows + gap * (rows - 1),
@@ -112,6 +153,8 @@ const generateHintPictures = async (url: string) => {
           .composite(fracs)
           .png()
           .toBuffer();
+
+        return ret;
       },
     ],
     [
@@ -169,10 +212,12 @@ const generateHintPictures = async (url: string) => {
 
   const urlsArray = await Promise.all(
     filtersArray.map(
-      async filters =>
+      async (filters, index) =>
         await Promise.all(
           filters.map(async filter => {
             const imageBuffer = await filter(trimmedSharp);
+            console.log(index);
+            console.log(imageBuffer.length);
             return ((await new Promise((resolve, reject) =>
               cloudinary.v2.uploader
                 .upload_stream(
@@ -345,7 +390,7 @@ export default (slackClients: SlackInterface): void => {
     }
 
     // クイズ開始処理
-    if (message.text.match(/^きらファン当てクイズ$/)) {
+    if (message.text.match(/^kirafan$/)) {
       const randomKirafanCard = sample(await getKirafanCards());
       const problem = await generateProblem(randomKirafanCard);
       const quiz = new KirafanAteQuiz(slackClients, problem, postOption);
