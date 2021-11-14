@@ -135,7 +135,7 @@ const generateHintPictures = async (url: string) => {
           new Array<number>(cols * rows).fill(0).map(async (_, index) => {
             return {
               input: await getFrac(image, { width, height }),
-              top: Math.round(index / cols) * (newSize + gap),
+              top: Math.floor(index / cols) * (newSize + gap),
               left: (index % cols) * (newSize + gap),
             } as OverlayOptions;
           })
