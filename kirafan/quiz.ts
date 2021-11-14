@@ -57,8 +57,6 @@ const generateHintPictures = async (url: string) => {
 
     const { width, height } = await originalSharp.metadata();
 
-    console.log({ trimmedFromTop, trimmedFromBottom });
-
     const trimmedTopBottomBuffer = await originalSharp
       .clone()
       .extract({
@@ -142,7 +140,7 @@ const generateHintPictures = async (url: string) => {
           })
         );
 
-        const ret = await sharp({
+        return sharp({
           create: {
             width: newSize * cols + gap * (cols - 1),
             height: newSize * rows + gap * (rows - 1),
@@ -153,8 +151,6 @@ const generateHintPictures = async (url: string) => {
           .composite(fracs)
           .png()
           .toBuffer();
-
-        return ret;
       },
     ],
     [
@@ -212,12 +208,10 @@ const generateHintPictures = async (url: string) => {
 
   const urlsArray = await Promise.all(
     filtersArray.map(
-      async (filters, index) =>
+      async filters =>
         await Promise.all(
           filters.map(async filter => {
             const imageBuffer = await filter(trimmedSharp);
-            console.log(index);
-            console.log(imageBuffer.length);
             return ((await new Promise((resolve, reject) =>
               cloudinary.v2.uploader
                 .upload_stream(
@@ -390,7 +384,7 @@ export default (slackClients: SlackInterface): void => {
     }
 
     // クイズ開始処理
-    if (message.text.match(/^kirafan$/)) {
+    if (message.text.match(/^きらファン当てクイズ$/)) {
       const randomKirafanCard = sample(await getKirafanCards());
       const problem = await generateProblem(randomKirafanCard);
       const quiz = new KirafanAteQuiz(slackClients, problem, postOption);
