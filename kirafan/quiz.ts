@@ -235,7 +235,7 @@ const generateHintPictures = async (url: string) => {
   );
   */
 
-  const sequentialUploadTimeout = 0;
+  const sequentialUploadTimeout = 300;
   const urlsArray: string[][] = new Array(filtersArray.length)
     .fill(0)
     .map(() => []);
