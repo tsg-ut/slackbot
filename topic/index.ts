@@ -22,7 +22,8 @@ const isQualifiableMessage = (message: Message) => {
 	}
 
 	const [line] = lines;
-	return line.length >= 1 && line.length <= 30;
+	const lineLength = Buffer.from(line).length;
+	return lineLength >= 1 && lineLength <= 100;
 };
 
 interface StateObj {
