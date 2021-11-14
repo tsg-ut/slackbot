@@ -138,14 +138,17 @@ const generateHintPictures = async (url: string) => {
                   { resource_type: 'image' },
                   (error, response) => {
                     if (error) {
-                      reject(error);
+                      resolve({
+                        secure_url:
+                          'https://res.cloudinary.com/settyan117/image/upload/v1636848894/xgtfk3jijsrllfgcgso4.jpg',
+                      });
                     } else {
                       resolve(response);
                     }
                   }
                 )
                 .end(imageBuffer)
-            )) as UploadApiResponse).secure_url as string;
+            )) as { secure_url: string }).secure_url as string;
           })
         )
     )
