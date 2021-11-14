@@ -145,7 +145,7 @@ const generateHintPictures = async (url: string) => {
             width: newSize * cols + gap * (cols - 1),
             height: newSize * rows + gap * (rows - 1),
             channels: 4,
-            background: '#FFFFFFFF',
+            background: '#FFFFFF00',
           },
         })
           .composite(fracs)
