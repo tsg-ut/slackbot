@@ -1,9 +1,9 @@
 import { KirafanCard, kirafanTools, getKirafanCards } from './';
 import { AteQuizProblem, AteQuiz } from '../atequiz';
 import { SlackInterface } from '../lib/slack';
-import sharp from 'sharp';
+import sharp, { OverlayOptions } from 'sharp';
 import axios from 'axios';
-import { random, range, sample } from 'lodash';
+import { random, sample } from 'lodash';
 import { ChatPostMessageArguments } from '@slack/web-api';
 import cloudinary, { UploadApiResponse } from 'cloudinary';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -44,7 +44,24 @@ const generateHintPictures = async (url: string) => {
       Math.min(max - 1, Math.floor(((r * r * r + r + 2) / 4) * max))
     );
   };
-  const filtersArray = [
+
+  const getFrac = async (
+    image: sharp.Sharp,
+    metadata: { width: number; height: number }
+  ) => {
+    const { width, height } = metadata;
+    const newSize = 20;
+    return image
+      .clone()
+      .extract({
+        left: biasedRandom(width - newSize),
+        top: random(height - newSize),
+        width: newSize,
+        height: newSize,
+      })
+      .toBuffer();
+  };
+  const filtersArray: ImageFilter[][] = [
     [
       async (image: sharp.Sharp) => {
         const { width, height } = await image.metadata();
@@ -60,19 +77,37 @@ const generateHintPictures = async (url: string) => {
           .toBuffer();
       },
     ],
-    new Array<ImageFilter>(30).fill(async (image: sharp.Sharp) => {
-      const { width, height } = await image.metadata();
-      const newSize = 20;
-      return image
-        .clone()
-        .extract({
-          left: biasedRandom(width - newSize),
-          top: random(height - newSize),
-          width: newSize,
-          height: newSize,
+    [
+      async (image: sharp.Sharp) => {
+        const { width, height } = await image.metadata();
+        const newSize = 20;
+        const cols = 10;
+        const rows = 3;
+        const gap = 5;
+
+        const fracs = await Promise.all(
+          new Array<number>(cols * rows).fill(0).map(async (_, index) => {
+            return {
+              input: await getFrac(image, { width, height }),
+              top: Math.round(index / cols) * (newSize + gap),
+              left: (index % cols) * (newSize + gap),
+            } as OverlayOptions;
+          })
+        );
+
+        return await sharp({
+          create: {
+            width: newSize * cols + gap * (cols - 1),
+            height: newSize * rows + gap * (rows - 1),
+            channels: 4,
+            background: '#FFFFFFFF',
+          },
         })
-        .toBuffer();
-    }),
+          .composite(fracs)
+          .png()
+          .toBuffer();
+      },
+    ],
     [
       async (image: sharp.Sharp) => {
         const { width, height } = await image.metadata();
@@ -206,23 +241,14 @@ const generateProblem = async (
             emoji: true,
           },
         },
-        ...(index === 0
-          ? range(3).map(i => ({
-              type: 'context',
-              elements: range(10).map(j => ({
-                type: 'image',
-                image_url: hintImageUrls[index + 1][i * 10 + j],
-                alt_text: text,
-              })),
-            }))
-          : [
-              {
-                type: 'image',
-                block_id: 'image',
-                image_url: hintImageUrls[index + 1][0],
-                alt_text: text,
-              },
-            ]),
+        ...[
+          {
+            type: 'image',
+            block_id: 'image',
+            image_url: hintImageUrls[index + 1][0],
+            alt_text: text,
+          },
+        ],
       ],
     })
   );
