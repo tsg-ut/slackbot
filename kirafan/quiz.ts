@@ -106,6 +106,7 @@ const generateHintPictures = async (url: string) => {
       })
       .toBuffer();
   };
+
   const filtersArray: ImageFilter[][] = [
     [
       async (image: sharp.Sharp) => {
