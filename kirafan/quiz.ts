@@ -82,6 +82,7 @@ const generateHintPictures = async (url: string) => {
     );
   })();
 
+  const uniformedRandom = (max: number) => random(0, max - 1);
   const biasedRandom = (max: number) => {
     const r = Math.random() * 2 - 1;
     return Math.max(
@@ -100,7 +101,7 @@ const generateHintPictures = async (url: string) => {
       .clone()
       .extract({
         left: biasedRandom(width - newSize),
-        top: random(height - newSize),
+        top: uniformedRandom(height - newSize),
         width: newSize,
         height: newSize,
       })
@@ -116,7 +117,7 @@ const generateHintPictures = async (url: string) => {
           .clone()
           .extract({
             left: 0,
-            top: random(height - newHeight),
+            top: uniformedRandom(height - newHeight),
             width: width,
             height: newHeight,
           })
@@ -164,7 +165,7 @@ const generateHintPictures = async (url: string) => {
             .clone()
             .extract({
               left: biasedRandom(width - newSize),
-              top: random(height - newSize),
+              top: uniformedRandom(height - newSize),
               width: newSize,
               height: newSize,
             })
@@ -183,7 +184,7 @@ const generateHintPictures = async (url: string) => {
           .clone()
           .extract({
             left: biasedRandom(width - newSize),
-            top: random(height - newSize),
+            top: uniformedRandom(height - newSize),
             width: newSize,
             height: newSize,
           })
@@ -198,7 +199,7 @@ const generateHintPictures = async (url: string) => {
           .clone()
           .extract({
             left: 0,
-            top: random(height - newHeight),
+            top: uniformedRandom(height - newHeight),
             width,
             height: newHeight,
           })
@@ -207,6 +208,7 @@ const generateHintPictures = async (url: string) => {
     ],
   ];
 
+  /*
   const urlsArray = await Promise.all(
     filtersArray.map(
       async filters =>
@@ -231,6 +233,35 @@ const generateHintPictures = async (url: string) => {
         )
     )
   );
+  */
+
+  const sequentialUploadTimeout = 0;
+  const urlsArray: string[][] = new Array(filtersArray.length)
+    .fill(0)
+    .map(() => []);
+  for (let i = 0; i < filtersArray.length; i++) {
+    for (const filter of filtersArray[i]) {
+      const imageBuffer = await filter(trimmedSharp);
+      urlsArray[i].push(
+        ((await new Promise((resolve, reject) =>
+          cloudinary.v2.uploader
+            .upload_stream({ resource_type: 'image' }, (error, response) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve(response);
+              }
+            })
+            .end(imageBuffer)
+        )) as UploadApiResponse).secure_url as string
+      );
+      await new Promise<void>(resolve => {
+        setTimeout(() => {
+          resolve();
+        }, sequentialUploadTimeout);
+      });
+    }
+  }
 
   return urlsArray;
 };
