@@ -33,9 +33,15 @@ type ImageFilter = (image: sharp.Sharp) => Promise<Buffer>;
  * @returns an array of string that contains filepaths of images
  */
 const generateHintPictures = async (url: string) => {
-  const originalSharp = sharp(
+  const rawSharp = sharp(
     await axios.get(url, { responseType: 'arraybuffer' }).then(res => res.data)
   );
+  const originalSharp = await (async () => {
+    const { width, height } = await rawSharp.metadata();
+    return sharp({
+      create: { width, height, channels: 4, background: '#FFFFFFFF' },
+    }).composite([{ input: await rawSharp.toBuffer(), gravity: 'center' }]);
+  })();
   const trimmedSharp = sharp(await originalSharp.trim().toBuffer());
   const biasedRandom = (max: number) => {
     const r = Math.random() * 2 - 1;
