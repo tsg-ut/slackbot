@@ -385,7 +385,7 @@ export default (slackClients: SlackInterface): void => {
     }
 
     // クイズ開始処理
-    if (message.text.match(/^kirafan$/)) {
+    if (message.text.match(/^きらファン当てクイズ$/)) {
       const randomKirafanCard = sample(await getKirafanCards());
       const problem = await generateProblem(randomKirafanCard);
       const quiz = new KirafanAteQuiz(slackClients, problem, postOption);
