@@ -5,7 +5,7 @@ import { sample, random } from 'lodash';
 import type { SlackInterface } from '../lib/slack';
 import { AteQuizProblem, AteQuiz, typicalMessageTextsGenerator } from '../atequiz';
 import { isCorrectAnswer } from '../hayaoshi';
-import { increment } from '../achievements';
+import { unlock, increment } from '../achievements';
 
 const mutex = new Mutex();
 const decoder = new TextDecoder('shift-jis');
@@ -125,7 +125,7 @@ export default ({ rtmClient: rtm, webClient: slack }: SlackInterface) => {
           if (result.state === 'solved') {
             await increment(result.correctAnswerer, 'bungo-answer');
             if (result.hintIndex === 0) {
-              await increment(result.correctAnswerer, 'bungo-answer-first-hint');
+              await unlock(result.correctAnswerer, 'bungo-answer-first-hint');
             }
           }
         }
@@ -176,7 +176,7 @@ export default ({ rtmClient: rtm, webClient: slack }: SlackInterface) => {
           if (result.state === 'solved') {
             await increment(result.correctAnswerer, 'bungo-answer');
             if (result.hintIndex === 0) {
-              await increment(result.correctAnswerer, 'bungo-answer-first-hint');
+              await unlock(result.correctAnswerer, 'bungo-answer-first-hint');
             }
           }
         }

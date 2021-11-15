@@ -2280,8 +2280,6 @@ const achievements: Achievement[] = [
 		title: 'Google Scholar',
 		condition: '文豪/文豪当てクイズでヒント1回以内で正解する',
 		category: 'bungo-quiz',
-		counter: 'bungo-answer-first-hint',
-		value: 1,
 	},
 
 	// crossword
