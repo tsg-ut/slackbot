@@ -5,6 +5,7 @@ import { sample, random } from 'lodash';
 import type { SlackInterface } from '../lib/slack';
 import { AteQuizProblem, AteQuiz, typicalMessageTextsGenerator } from '../atequiz';
 import { isCorrectAnswer } from '../hayaoshi';
+import { increment } from '../achievements';
 
 const mutex = new Mutex();
 const decoder = new TextDecoder('shift-jis');
@@ -120,7 +121,13 @@ export default ({ rtmClient: rtm, webClient: slack }: SlackInterface) => {
             problem,
             commonOption,
           );
-          quiz.start();
+          const result = await quiz.start();
+          if (result.state === 'solved') {
+            await increment(result.correctAnswerer, 'bungo-answer');
+            if (result.hintIndex === 0) {
+              await increment(result.correctAnswerer, 'bungo-answer-first-hint');
+            }
+          }
         }
 
         if (message.text && (message.text === '文豪当てクイズ')) {
@@ -165,7 +172,13 @@ export default ({ rtmClient: rtm, webClient: slack }: SlackInterface) => {
               correctAnswer => isCorrectAnswer(correctAnswer, answer)
             );
           };
-          quiz.start();
+          const result = await quiz.start();
+          if (result.state === 'solved') {
+            await increment(result.correctAnswerer, 'bungo-answer');
+            if (result.hintIndex === 0) {
+              await increment(result.correctAnswerer, 'bungo-answer-first-hint');
+            }
+          }
         }
       } catch (error) {
         await slack.chat.postMessage({
