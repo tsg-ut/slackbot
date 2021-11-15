@@ -208,7 +208,6 @@ const generateHintPictures = async (url: string) => {
     ],
   ];
 
-  /*
   const urlsArray = await Promise.all(
     filtersArray.map(
       async filters =>
@@ -233,8 +232,8 @@ const generateHintPictures = async (url: string) => {
         )
     )
   );
-  */
 
+  /* 直列処理
   const sequentialUploadTimeout = 300;
   const urlsArray: string[][] = new Array(filtersArray.length)
     .fill(0)
@@ -262,6 +261,7 @@ const generateHintPictures = async (url: string) => {
       });
     }
   }
+  */
 
   return urlsArray;
 };
