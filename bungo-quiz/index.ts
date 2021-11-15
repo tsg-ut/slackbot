@@ -1,9 +1,9 @@
 import { Mutex } from 'async-mutex';
-import cherrio from 'cheerio';
+import cheerio from 'cheerio';
 import axios from 'axios';
 import { sample, random } from 'lodash';
 import path from 'path';
-import { readFileSync } from 'fs';
+import { readFile } from 'fs/promises';
 import type { SlackInterface } from '../lib/slack';
 import { AteQuizProblem, AteQuiz, typicalMessageTextsGenerator } from '../atequiz';
 import { isCorrectAnswer } from '../hayaoshi';
@@ -38,7 +38,7 @@ const fetchCorpus = async (cardURL: string) => {
       },
     },
   );
-  const $ = cherrio.load(data);
+  const $ = cheerio.load(data);
   const wholeText = removeWhiteSpaces(
     $('.main_text').children().map((_, e) => $(e).text() + $(e.next).text()).toArray().join("")
   );
@@ -73,7 +73,7 @@ export default ({ rtmClient: rtm, webClient: slack }: SlackInterface) => {
 
     mutex.runExclusive(async () => {
       if (message.text && (message.text === '文豪クイズ')) {
-        const cards: string[] = JSON.parse(readFileSync(problemsPath).toString());
+        const cards: string[] = JSON.parse(await readFile(problemsPath, 'utf-8'));
         const cardURL = sample(cards);
         try {
           const {hints, title, author} = await fetchCorpus(cardURL);
@@ -119,7 +119,7 @@ export default ({ rtmClient: rtm, webClient: slack }: SlackInterface) => {
       }
 
       if (message.text && (message.text === '文豪当てクイズ')) {
-        const cards: string[] = JSON.parse(readFileSync(problemsPath).toString());
+        const cards: string[] = JSON.parse(await readFile(problemsPath, 'utf-8'));
         const cardURL = sample(cards);
         try {
           const {hints, title, author} = await fetchCorpus(cardURL);
