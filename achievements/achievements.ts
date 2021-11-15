@@ -2236,6 +2236,9 @@ const achievements: Achievement[] = [
 		counter: 'namori-answer-first-hint',
 		value: 10,
 	},
+
+	// kirafan
+
 	{
 		id: 'kirafan-answer',
 		difficulty: 'easy',
