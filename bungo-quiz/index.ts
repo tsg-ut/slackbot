@@ -22,6 +22,18 @@ const removeWhiteSpaces = (text: string) => {
   return text.replace(/\s/g, '');
 };
 
+const fetchCards = async () => {
+  const accessRankingBase = "https://raw.githubusercontent.com/aozorabunko/aozorabunko/master/access_ranking/";
+  const { data: rankingData } = await axios.get<string>(accessRankingBase + "index.html");
+  const [ latestBest500File, year, month ] = rankingData.match(/(\d+)_(\d+)_xhtml.html/);
+  const { data: best500Data } = await axios.get<string>(accessRankingBase + latestBest500File);
+  return {
+    cards: best500Data.match(/http.*\/cards\/\d+\/card\d+.html/g),
+    year,
+    month
+  };
+};
+
 const fetchCorpus = async (cardURL: string) => {
   const [cardRelPath, cardFolder, cardNumber] = cardURL.match(/cards\/(\d+)\/card(\d+).html/);
   const { data: cardData } = await axios.get<string>(
@@ -72,10 +84,13 @@ export default ({ rtmClient: rtm, webClient: slack }: SlackInterface) => {
     }
 
     mutex.runExclusive(async () => {
-      if (message.text && (message.text === '文豪クイズ')) {
-        const cards: string[] = JSON.parse(await readFile(problemsPath, 'utf-8'));
-        const cardURL = sample(cards);
-        try {
+      const debugInfo = [];
+      try {
+        if (message.text && (message.text === '文豪クイズ')) {
+          const { cards, year, month } = await fetchCards();
+          debugInfo.push(`ranking: ${year}/${month}`);
+          const cardURL = sample(cards);
+          debugInfo.push(`URL: ${cardURL}`);
           const {hints, title, author} = await fetchCorpus(cardURL);
           const problem: AteQuizProblem = {
             problemMessage: { channel, text: `この作品のタイトルは何でしょう？\n> ${hints[0]}` },
@@ -109,19 +124,13 @@ export default ({ rtmClient: rtm, webClient: slack }: SlackInterface) => {
             commonOption,
           );
           quiz.start();
-        } catch (error) {
-          await slack.chat.postMessage({
-            channel: process.env.CHANNEL_SANDBOX,
-            text: `エラー😢\n${error.toString()}\nURL: ${cardURL}`,
-            ...commonOption,
-          });
         }
-      }
 
-      if (message.text && (message.text === '文豪当てクイズ')) {
-        const cards: string[] = JSON.parse(await readFile(problemsPath, 'utf-8'));
-        const cardURL = sample(cards);
-        try {
+        if (message.text && (message.text === '文豪当てクイズ')) {
+          const { cards, year, month } = await fetchCards();
+          debugInfo.push(`ranking: ${year}/${month}`);
+          const cardURL = sample(cards);
+          debugInfo.push(`URL: ${cardURL}`);
           const {hints, title, author} = await fetchCorpus(cardURL);
           const problem: AteQuizProblem = {
             problemMessage: { channel, text: `この作品の作者は誰でしょう？\n> ${hints[0]}` },
@@ -160,13 +169,13 @@ export default ({ rtmClient: rtm, webClient: slack }: SlackInterface) => {
             );
           };
           quiz.start();
-        } catch (error) {
-          await slack.chat.postMessage({
-            channel: process.env.CHANNEL_SANDBOX,
-            text: `エラー😢\n${error.toString()}\nURL: ${cardURL}`,
-            ...commonOption,
-          });
         }
+      } catch (error) {
+        await slack.chat.postMessage({
+          channel: process.env.CHANNEL_SANDBOX,
+          text: `エラー😢\n${error.toString()}\n--debugInfo--\n${debugInfo.join('\n')}`,
+          ...commonOption,
+        });
       }
     });
   });
