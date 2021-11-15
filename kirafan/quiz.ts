@@ -324,10 +324,10 @@ export default (slackClients: SlackInterface): void => {
         if (result.hintIndex === 0) {
           await increment(result.correctAnswerer, 'kirafan-answer-first-hint');
         }
-        if (result.hintIndex <= 2) {
+        if (result.hintIndex <= 1) {
           await increment(result.correctAnswerer, 'kirafan-answer-second-hint');
         }
-        if (result.hintIndex <= 3) {
+        if (result.hintIndex <= 2) {
           await increment(result.correctAnswerer, 'kirafan-answer-third-hint');
         }
       }
