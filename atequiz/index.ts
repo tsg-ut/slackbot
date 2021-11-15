@@ -157,34 +157,35 @@ export class AteQuiz {
     this.rtm.on('message', async message => {
       if (message.thread_ts === thread_ts) {
         if (message.subtype === 'bot_message') return;
+        this.mutex.runExclusive(async () => {
+          if (this.state === 'solving') {
+            const answer = message.text as string;
+            const isCorrect = this.judge(answer);
+            if (isCorrect) {
+              this.state = 'solved';
+              clearInterval(tickTimer);
 
-        if (this.state === 'solving') {
-          const answer = message.text as string;
-          const isCorrect = this.judge(answer);
-          if (isCorrect) {
-            this.state = 'solved';
-            clearInterval(tickTimer);
+              await postMessage(
+                Object.assign({}, this.problem.solvedMessage, { thread_ts }),
+                [[this.replaceKeys.correctAnswerer, message.user as string]]
+              );
+              await postMessage(
+                Object.assign({}, this.problem.answerMessage, { thread_ts })
+              );
 
-            await postMessage(
-              Object.assign({}, this.problem.solvedMessage, { thread_ts }),
-              [[this.replaceKeys.correctAnswerer, message.user as string]]
-            );
-            await postMessage(
-              Object.assign({}, this.problem.answerMessage, { thread_ts })
-            );
-
-            result.correctAnswerer = message.user;
-            result.hintIndex = hintIndex;
-            result.state = 'solved';
-            deferred.resolve(result);
-          } else {
-            this.slack.reactions.add({
-              name: this.ngReaction,
-              channel: message.channel,
-              timestamp: message.ts,
-            });
+              result.correctAnswerer = message.user;
+              result.hintIndex = hintIndex;
+              result.state = 'solved';
+              deferred.resolve(result);
+            } else {
+              this.slack.reactions.add({
+                name: this.ngReaction,
+                channel: message.channel,
+                timestamp: message.ts,
+              });
+            }
           }
-        }
+        });
       }
     });
 
