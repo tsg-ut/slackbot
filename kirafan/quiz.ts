@@ -321,7 +321,7 @@ export default (slackClients: SlackInterface): void => {
       const result = await quiz.start();
       if (result.state === 'solved') {
         await increment(result.correctAnswerer, 'kirafan-answer');
-        if (result.hintIndex === 1) {
+        if (result.hintIndex === 0) {
           await increment(result.correctAnswerer, 'kirafan-answer-first-hint');
         }
         if (result.hintIndex <= 2) {
