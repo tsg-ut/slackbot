@@ -819,6 +819,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		for (const contest of state.contests) {
 			for (const user of contest.joiningUsers) {
 				const profile = await fetchUserProfile(user.idCtf, contest.id);
+				if (!profile) {
+					return;
+				}
 				if (profile.solvedChalls.length >= contest.numChalls) {
 					logger.info(`[+] pwnyaa: unlocking: pwnyaa-${contest.achievementStr}-complete`);
 					await unlock(user.slackId, `pwnyaa-${contest.achievementStr}-complete`);
