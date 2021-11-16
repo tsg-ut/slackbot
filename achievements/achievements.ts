@@ -2237,6 +2237,51 @@ const achievements: Achievement[] = [
 		value: 10,
 	},
 
+	// bungo-quiz
+	{
+		id: 'bungo-answer',
+		difficulty: 'easy',
+		title: '読書初心者',
+		condition: '文豪/文豪当てクイズで正解する',
+		category: 'bungo-quiz',
+		counter: 'bungo-answer',
+		value: 1,
+	},
+	{
+		id: 'bungo-answer-20',
+		difficulty: 'medium',
+		title: '読書名人',
+		condition: '文豪/文豪当てクイズで20回正解する',
+		category: 'bungo-quiz',
+		counter: 'bungo-answer',
+		value: 20,
+	},
+	{
+		id: 'bungo-answer-50',
+		difficulty: 'hard',
+		title: '趣味は読書です',
+		condition: '文豪/文豪当てクイズで50回正解する',
+		category: 'bungo-quiz',
+		counter: 'bungo-answer',
+		value: 50,
+	},
+	{
+		id: 'bungo-answer-500',
+		difficulty: 'professional',
+		title: '歩く図書館',
+		condition: '文豪/文豪当てクイズで500回正解する',
+		category: 'bungo-quiz',
+		counter: 'bungo-answer',
+		value: 500,
+	},
+	{
+		id: 'bungo-answer-first-hint',
+		difficulty: 'hard',
+		title: 'Google Scholar',
+		condition: '文豪/文豪当てクイズでヒント1回以内で正解する',
+		category: 'bungo-quiz',
+	},
+
 	// crossword
 
 	{
