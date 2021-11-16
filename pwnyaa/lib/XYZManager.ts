@@ -53,7 +53,7 @@ const loginXYZ = async () => {
 
 // parse as UTC and return Date as UTC
 const str2dateXYZ = (strDate: string): Date => {
-	const strmons = ['Jan.', 'Feb.', 'March', 'April', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov', 'Dec.'];
+	const strmons = ['Jan.', 'Feb.', 'March', 'April', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'];
 
 	// format is like: Jan. 7, 2019, 7:46 a.m.
 	const elements = strDate.split(' ');
