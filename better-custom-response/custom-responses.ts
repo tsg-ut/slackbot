@@ -214,16 +214,12 @@ const customResponses: CustomResponse[] = [
             const tokens = await tokenize(str);
             const choices = tokens.reduce<string[]>((prev, cur) => {
                 if (cur.pos === '助詞' && cur.surface_form === 'か') {
-                    return [
-                        ...prev,
-                        '',
-                    ];
+                    prev.push('');
+                    return prev;
                 }
-                return [
-                    ...prev.slice(0, -1),
-                    (prev[prev.length - 1] || '') + cur.surface_form,
-                ];
-            }, []).filter(s => s !== '');
+                prev[prev.length - 1] += cur.surface_form;
+                return prev;
+            }, ['']).filter(s => s !== '');
             const fukukitarify = (c: string) => stripIndent`\
                 :meishodoto_umamusume: 「救いは無いのですか～？」
                 :matikanefukukitaru_umamusume: 「むむっ…　:palms_up_together::crystal_ball:」
