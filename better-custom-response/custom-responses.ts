@@ -2,6 +2,7 @@ import { stripIndent } from 'common-tags';
 // @ts-expect-error
 import { romanize, katakanize } from 'japanese';
 import { shuffle } from 'lodash';
+import { tokenize } from 'kuromojin';
 import omikuji from './omikuji.json';
 
 interface Achievement {
@@ -208,25 +209,24 @@ const customResponses: CustomResponse[] = [
     },
     {
         input: [/^(?:.+か)+(?:.+)?占い$/],
-        outputFunction: (input: string[]) => {
-            const matchedString = input[0];
-            const choice = (() =>{
-                const lackChoice = [...matchedString.matchAll(/(.+?)か/g)].map(m => m[1]);
-                const lastIndex = lackChoice.join('か').length;
-                if(lastIndex < matchedString.length - 3){
-                    return lackChoice.concat([matchedString.slice(lastIndex + 1, matchedString.length - 2)]);
+        outputFunction: async (input: string[]) => {
+            const str = input[0].slice(0, -2);
+            const tokens = await tokenize(str);
+            let choices = [''];
+            for (const token of tokens) {
+                if (token.pos === '助詞' && token.surface_form === 'か') {
+                    choices.push('');
                 } else {
-                    return lackChoice;
+                    choices[choices.length - 1] += token.surface_form;
                 }
-            })();
-            const fukukitarify = (c: string) => {
-                return stripIndent`\
+            }
+            choices = choices.filter(choice => choice !== '');
+            const fukukitarify = (c: string) => stripIndent`\
                 :meishodoto_umamusume: 「救いは無いのですか～？」
                 :matikanefukukitaru_umamusume: 「むむっ…　:palms_up_together::crystal_ball:」
                 :matikanefukukitaru_umamusume: 「出ました！　＊『${c.trim()}』＊です！」
-                `;
-            }
-            return choice.map(fukukitarify);
+            `;
+            return choices.map(fukukitarify);
         },
         icon_emoji: ":camping:",
         username: "表はあっても占い",
