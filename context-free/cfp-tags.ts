@@ -1,7 +1,7 @@
 import {sample} from 'lodash';
 
 export const tags: Map<string, {(): string}> = new Map([
-  // ['testTag', ['test1', 'test2', 'test4']],
+  // ['testTag', () => sample(['test1', 'test2', 'test4'])],
   [
     'no-drum',
     () =>
