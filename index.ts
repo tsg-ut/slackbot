@@ -135,7 +135,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 		text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
 		attachments: plugins.map((name) => ({
 			color: '#F44336',
-			text: `loading: ${name}`,
+			text: `*loading:* ${name}`,
 		})),
 	});
 
@@ -147,11 +147,11 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 			attachments: [
 				{
 					color: '#4CAF50',
-					text: `loaded: ${Array.from(loadedPlugins).join(', ')}`,
+					text: `*loaded:* ${Array.from(loadedPlugins).join(', ')}`,
 				},
 				...plugins.filter((name) => !loadedPlugins.has(name)).map((name) => ({
 					color: '#F44336',
-					text: `loading: ${name}`,
+					text: `*loading:* ${name}`,
 				})),
 			],
 		})
