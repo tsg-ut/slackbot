@@ -2,6 +2,7 @@ import { stripIndent } from 'common-tags';
 // @ts-expect-error
 import { romanize, katakanize } from 'japanese';
 import { shuffle } from 'lodash';
+import { tokenize } from 'kuromojin';
 import omikuji from './omikuji.json';
 
 interface Achievement {
@@ -208,25 +209,27 @@ const customResponses: CustomResponse[] = [
     },
     {
         input: [/^(?:.+か)+(?:.+)?占い$/],
-        outputFunction: (input: string[]) => {
-            const matchedString = input[0];
-            const choice = (() =>{
-                const lackChoice = [...matchedString.matchAll(/(.+?)か/g)].map(m => m[1]);
-                const lastIndex = lackChoice.join('か').length;
-                if(lastIndex < matchedString.length - 3){
-                    return lackChoice.concat([matchedString.slice(lastIndex + 1, matchedString.length - 2)]);
-                } else {
-                    return lackChoice;
+        outputFunction: async (input: string[]) => {
+            const str = input[0].slice(0, -2);
+            const tokens = await tokenize(str);
+            const choices = tokens.reduce<string[]>((prev, cur) => {
+                if (cur.pos === '助詞' && cur.surface_form === 'か') {
+                    return [
+                        ...prev,
+                        '',
+                    ];
                 }
-            })();
-            const fukukitarify = (c: string) => {
-                return stripIndent`\
+                return [
+                    ...prev.slice(0, -1),
+                    (prev[prev.length - 1] || '') + cur.surface_form,
+                ];
+            }, []).filter(s => s !== '');
+            const fukukitarify = (c: string) => stripIndent`\
                 :meishodoto_umamusume: 「救いは無いのですか～？」
                 :matikanefukukitaru_umamusume: 「むむっ…　:palms_up_together::crystal_ball:」
                 :matikanefukukitaru_umamusume: 「出ました！　＊『${c.trim()}』＊です！」
-                `;
-            }
-            return choice.map(fukukitarify);
+            `;
+            return choices.map(fukukitarify);
         },
         icon_emoji: ":camping:",
         username: "表はあっても占い",
