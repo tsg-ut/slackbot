@@ -1,6 +1,6 @@
 import axios from 'axios';
 import plugin from 'fastify-plugin';
-import {escapeRegExp, sample} from 'lodash';
+import {escapeRegExp} from 'lodash';
 import scrapeIt from 'scrape-it';
 /* eslint-disable no-unused-vars */
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
@@ -115,7 +115,7 @@ const composePost = async (message: string): Promise<string> => {
       }
     }
 
-    const word = (phTag === undefined ? (await randomWord()).word : sample(tags.get(phTag)));
+    const word = (phTag === undefined ? (await randomWord()).word : tags.get(phTag)());
 
     if (phName === '') {
       response = response.replace(placeholder, word);
