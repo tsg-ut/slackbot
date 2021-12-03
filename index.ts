@@ -88,6 +88,7 @@ const allBots = [
 	'kirafan/quiz',
 	'topic',
 	'bungo-quiz',
+	'adventar',
 ];
 
 logger.info('slackbot started');
