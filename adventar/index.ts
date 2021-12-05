@@ -150,7 +150,7 @@ export default async ({
         ) {
           postMessage(
             stripIndent`
-            『<https://adventar.org/calendars/${ss.pageID}|*${ss.title}*>』の${i}日目の *${ssNew.entryList[i]?.user.name}* さんの記事が公開されたよ :tada::iihanashi::essential_information:
+            『<https://adventar.org/calendars/${ss.pageID}|*${ss.title}*>』の${i}日目の *${ssNew.entryList[i]?.user.name}* さんの記事が公開されたよ :tada::iihanashi::essential-information:
             <${ssNew.entryList[i]?.articleURI}>`,
             true
           );
