@@ -4,6 +4,7 @@ import { romanize, katakanize } from 'japanese';
 import { shuffle } from 'lodash';
 import { tokenize } from 'kuromojin';
 import omikuji from './omikuji.json';
+import moment from 'moment-timezone';
 
 interface Achievement {
     trigger: RegExp[],
@@ -230,6 +231,23 @@ const customResponses: CustomResponse[] = [
         },
         icon_emoji: ":camping:",
         username: "表はあっても占い",
+    },
+    {
+        input: [/^こおしいず時間$/, /^kcztime$/, /^kczclock$/],
+        outputFunction: (input: string[]) => {
+            const nowBoston = moment().tz('America/New_York');
+            const date = nowBoston.format('YYYY年 M月D日');
+            const ampm = nowBoston.hour() < 12 ? '午前' : '午後';
+            const yobi = ['日', '月', '火', '水', '木', '金', '土'][nowBoston.day()] + '曜日';
+            const hour = nowBoston.hour() % 12;
+            const minute = nowBoston.minute();
+            return [stripIndent`\
+                現在のボストンの時刻は
+                *${date} ${yobi} ${ampm}${hour}時${minute}分*
+                だよ`];
+        },
+        icon_emoji: ':kczclock:',
+        username: 'kcztime',
     },
 ];
 
