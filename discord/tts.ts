@@ -2,7 +2,7 @@ import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
 import {inspect} from 'util';
-import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, createAudioPlayer} from '@discordjs/voice';
+import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discordjs/voice';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord from 'discord.js';
@@ -313,7 +313,7 @@ export default class TTS extends EventEmitter {
 						new Promise<void>((resolve) => {
 							const resource = createAudioResource(path.join(__dirname, 'tempAudio.mp3'));
 							this.audioPlayer.play(resource);
-							resource.playStream.on('finish', () => {
+							this.audioPlayer.on(AudioPlayerStatus.Idle, () => {
 								resolve();
 							});
 						}),
