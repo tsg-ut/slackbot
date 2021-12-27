@@ -228,8 +228,12 @@ export default class TTS extends EventEmitter {
 						providerName = 'Microsoft Azure Text-to-Speech';
 					} else if (config.provider === 'amazon') {
 						providerName = 'Amazon Polly';
-					} else {
+					} else if (config.provider === 'voicetext') {
 						providerName = 'VoiceText Web API';
+					} else if (config.provider === 'voicevox') {
+						providerName = 'VoiceVox Web API';
+					} else {
+						providerName = 'Unknown';
 					}
 					return `* \`${voice}\`: **${config.name}** (${providerName})`;
 				}).join('\n');
