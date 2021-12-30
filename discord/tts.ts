@@ -2,14 +2,14 @@ import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
 import {inspect} from 'util';
-import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, createAudioPlayer, AudioPlayerStatus, entersState} from '@discordjs/voice';
+import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discordjs/voice';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord from 'discord.js';
 import {minBy, countBy} from 'lodash';
 import logger from '../lib/logger';
 import State from '../lib/state';
-import {Loader} from '../lib/utils';
+import {Loader, Deferred} from '../lib/utils';
 import {getSpeech, Voice, speechConfig, Emotion, VoiceMeta, getDefaultVoiceMeta} from './speeches';
 
 const mutex = new Mutex();
@@ -313,8 +313,22 @@ export default class TTS extends EventEmitter {
 
 					await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), speech.data);
 					const resource = createAudioResource(path.join(__dirname, 'tempAudio.mp3'));
+
+					const playDeferred = new Deferred<void>();
+					const onFinishPlaying = () => {
+						playDeferred.resolve();
+					};
+					this.audioPlayer.once(AudioPlayerStatus.Idle, onFinishPlaying);
 					this.audioPlayer.play(resource);
-					await entersState(this.audioPlayer, AudioPlayerStatus.Idle, 10 * 1000).then(() => true).catch(() => false);
+					await Promise.race([
+						playDeferred.promise,
+						new Promise<void>((resolve) => {
+							setTimeout(() => {
+								this.audioPlayer.off(AudioPlayerStatus.Idle, onFinishPlaying);
+								resolve();
+							}, 10 * 1000);
+						}),
+					]);
 				});
 			} catch (error) {
 				this.emit('message', `エラー😢: ${error.stack ? error.stack : inspect(error, {depth: null, colors: false})}`);
