@@ -5,7 +5,7 @@ import google from './google';
 import voicetext, {Emotion, EmoLV} from './voicetext';
 import voicevox from './voicevox';
 
-enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q', R = 'R', S = 'S', T = 'T', U = 'U', V = 'V', W = 'W'}
+enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q', R = 'R', S = 'S', T = 'T', U = 'U', V = 'V', W = 'W', X = 'X'}
 export {Voice};
 
 export {Emotion, EmoLV};
@@ -51,6 +51,7 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.U, {provider: 'voicevox', name: 'zundamon', emotional: true}],
 	[Voice.V, {provider: 'voicevox', name: 'tsumugi'}],
 	[Voice.W, {provider: 'voicevox', name: 'ritsu'}],
+	[Voice.X, {provider: 'voicevox', name: 'hau'}],
 ]);
 
 export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta) => {

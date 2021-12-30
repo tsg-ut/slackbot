@@ -27,6 +27,12 @@ const voiceMapping: { [name: string]: { [emo: string]: number } } = {
 		anger: 9,
 		sadness: 9,
 	},
+	hau: {
+		normal: 10,
+		happiness: 10,
+		anger: 10,
+		sadness: 10,
+	},
 };
 
 const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emotion}) => {
