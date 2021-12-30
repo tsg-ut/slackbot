@@ -1,12 +1,6 @@
 import axios, {AxiosError} from 'axios';
 import logger from '../../lib/logger';
 import {SynthesizeFunction} from './types.d';
-import {Emotion} from './voicetext';
-
-enum VoiceType {
-	metan = 0,
-	zundamon = 1,
-}
 
 const voiceMapping: { [name: string]: { [emo: string]: number } } = {
 	metan: {
@@ -32,13 +26,19 @@ const voiceMapping: { [name: string]: { [emo: string]: number } } = {
 		happiness: 9,
 		anger: 9,
 		sadness: 9,
-	}
+	},
+	hau: {
+		normal: 10,
+		happiness: 10,
+		anger: 10,
+		sadness: 10,
+	},
 };
 
 const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emotion}) => {
 	const postData = {
 		text,
-		speaker: voiceMapping[voiceType][emotion],
+		speaker: voiceMapping[voiceType][emotion || 'normal'],
 		speed: 1.0 + (speed - 1.0) / 2,
 	};
 	return new Promise((resolve, reject) => {
