@@ -2,7 +2,7 @@ import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
 import {inspect} from 'util';
-import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discordjs/voice';
+import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, createAudioPlayer, AudioPlayerStatus, entersState} from '@discordjs/voice';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord from 'discord.js';
@@ -312,19 +312,9 @@ export default class TTS extends EventEmitter {
 					}
 
 					await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), speech.data);
-
-					await Promise.race([
-						new Promise<void>((resolve) => {
-							const resource = createAudioResource(path.join(__dirname, 'tempAudio.mp3'));
-							this.audioPlayer.play(resource);
-							this.audioPlayer.on(AudioPlayerStatus.Idle, () => {
-								resolve();
-							});
-						}),
-						new Promise<void>((resolve) => {
-							setTimeout(resolve, 10 * 1000);
-						}),
-					]);
+					const resource = createAudioResource(path.join(__dirname, 'tempAudio.mp3'));
+					this.audioPlayer.play(resource);
+					await entersState(this.audioPlayer, AudioPlayerStatus.Idle, 10 * 1000).then(() => true).catch(() => false);
 				});
 			} catch (error) {
 				this.emit('message', `エラー😢: ${error.stack ? error.stack : inspect(error, {depth: null, colors: false})}`);
