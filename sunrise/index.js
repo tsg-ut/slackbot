@@ -323,12 +323,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			const [tayori, saijiki, tenkijp] = await getEntries();
 
 			let entry = null;
-			if (!lastEntryUrl || lastEntryUrl.tayori !== tayori[0].link) {
+			if (!lastEntryUrl || (tayori.length > 0 && lastEntryUrl.tayori !== tayori[0].link)) {
 				entry = {
 					title: tayori[0].title,
 					link: tayori[0].link,
 				};
-			} else if (lastEntryUrl.saijiki !== saijiki[0].link) {
+			} else if (saijiki.length > 0 && lastEntryUrl.saijiki !== saijiki[0].link) {
 				entry = {
 					title: `${saijiki[0].category}「${saijiki[0].title}」`,
 					link: saijiki[0].link,
