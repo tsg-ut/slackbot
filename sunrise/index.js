@@ -319,11 +319,11 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					.end(imageData);
 			});
 
-			const lastEntryUrl = await storage.getItem('lastEntryUrl');
+			const lastEntryUrl = await storage.getItem('lastEntryUrl') || {};
 			const [tayori, saijiki, tenkijp] = await getEntries();
 
 			let entry = null;
-			if (!lastEntryUrl || (tayori.length > 0 && lastEntryUrl.tayori !== tayori[0].link)) {
+			if (tayori.length > 0 && (!lastEntryUrl || lastEntryUrl.tayori !== tayori[0].link)) {
 				entry = {
 					title: tayori[0].title,
 					link: tayori[0].link,
@@ -333,7 +333,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					title: `${saijiki[0].category}「${saijiki[0].title}」`,
 					link: saijiki[0].link,
 				};
-			} else if (lastEntryUrl.tenkijp !== tenkijp[0].link) {
+			} else if (tenkijp.length > 0 && lastEntryUrl.tenkijp !== tenkijp[0].link) {
 				entry = {
 					title: tenkijp[0].title,
 					link: tenkijp[0].link,
@@ -384,9 +384,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			});
 
 			await storage.setItem('lastEntryUrl', {
-				tayori: tayori[0].link,
-				saijiki: saijiki[0].link,
-				tenkijp: tenkijp[0].link,
+				tayori: get(tayori, [0, 'link'], ''),
+				saijiki: get(saijiki, [0, 'link'], ''),
+				tenkijp: get(tenkijp, [0, 'link'], ''),
 			});
 		}
 
@@ -406,9 +406,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	};
 
 	queue.add(tick);
+
+	/*
 	setInterval(() => {
 		queue.add(tick);
 	}, 10 * 1000);
+	*/
 
 	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
