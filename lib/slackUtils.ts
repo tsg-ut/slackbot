@@ -1,4 +1,5 @@
 import {MrkdwnElement, PlainTextElement, WebClient} from '@slack/web-api';
+import type {RTMClient} from '@slack/rtm-api';
 import type {Reaction} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
 import {flatten, get} from 'lodash';
 import {getTokens, getRtmClient} from './slack';
@@ -21,7 +22,12 @@ getTokens().then(async (tokens) => {
 	tokensDeferred.resolve(tokens);
 
 	for (const token of tokens) {
-		const rtmClient = await getRtmClient(token.team_id);
+		const rtmClient: RTMClient = await getRtmClient(token.team_id).catch(() => undefined);
+
+		if (!rtmClient) {
+			console.error(`Failed to get RTM client for team ${token.team_name}`);
+			continue;
+		}
 
 		const incrementReactions = async ({channel, ts, reaction, by}: {channel: string, ts: string, reaction: string, by: number}) => {
 			const key = `${channel}\0${ts}`;
@@ -102,20 +108,30 @@ getTokens().then(async (tokens) => {
 	}
 
 	Promise.all(tokens.map(async (token) => {
-		const {members} = await webClient.users.list({token: token.bot_access_token});
-		return members;
+		try {
+			const {members} = await webClient.users.list({token: token.bot_access_token});
+			return members;
+		} catch (error) {
+			console.error(`Error loading members for team ${token.team_name}:`, error);
+			return [];
+		}
 	})).then((usersArray) => {
 		loadMembersDeferred.resolve(flatten(usersArray));
 	});
 
 	Promise.all(tokens.map(async (token) => {
-		const {emoji}: any = await webClient.emoji.list({token: token.access_token});
-		const {team}: any = await webClient.team.info({token: token.bot_access_token});
-		return Object.entries(emoji).map(([name, url]) => ({
-			team: team.id,
-			name,
-			url,
-		}));
+		try {
+			const {emoji}: any = await webClient.emoji.list({token: token.access_token});
+			const {team}: any = await webClient.team.info({token: token.bot_access_token});
+			return Object.entries(emoji).map(([name, url]) => ({
+				team: team.id,
+				name,
+				url,
+			}));
+		} catch (error) {
+			console.error(`Error loading emojis for team ${token.team_name}:`, error);
+			return [];
+		}
 	})).then((emojisArray) => {
 		loadEmojisDeferred.resolve(flatten(emojisArray));
 	});
