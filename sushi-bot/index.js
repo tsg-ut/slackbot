@@ -101,7 +101,7 @@ function numToEmoji(num) {
 }
 
 module.exports = (clients) => {
-	const { rtmClient: rtm, webClient: slack } = clients;
+	const { eventClient, webClient: slack } = clients;
 
 	const sushiCounter = new Counter('sushi');
 	const suspendCounter = new Counter('suspend');
@@ -111,7 +111,7 @@ module.exports = (clients) => {
 	const exerciseCounter = new Counter('exercise');
 	const kasuCounter = new Counter('kasu');
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		const { channel, text, user, ts: timestamp } = message;
 		if (!text) {
 			return;
