@@ -238,7 +238,7 @@ const load = async () => {
 	return loadDeferred.resolve({seedWords, hardSeedWords, tree, db});
 };
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const state: {
 		thread: string,
 		isHolding: boolean,
@@ -251,7 +251,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		users: {},
 	};
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (!message.text || message.subtype || message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
