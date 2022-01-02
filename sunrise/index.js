@@ -407,11 +407,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 
 	queue.add(tick);
 
-	/*
 	setInterval(() => {
 		queue.add(tick);
 	}, 10 * 1000);
-	*/
 
 	rtm.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
