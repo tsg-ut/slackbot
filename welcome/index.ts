@@ -19,11 +19,11 @@ async function postWelcomeMessage(slack: WebClient, channel: string) {
 	});
 }
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const general = await slack.conversations.list({exclude_archived: true, limit: 1000})
 		.then((list: any) => list.channels.find(({is_general}: {is_general: boolean}) => is_general).id);
 
-	rtm.on('member_joined_channel', async ({channel, user}: any) => {
+	eventClient.on('member_joined_channel', async ({channel, user}: any) => {
 		if (channel !== general) {
 			return;
 		}
@@ -53,7 +53,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}
 	});
 
-	rtm.on('message', async ({channel, text}) => {
+	eventClient.on('message', async ({channel, text}) => {
 		// preview mode
 
 		if (!channel || !text) {
