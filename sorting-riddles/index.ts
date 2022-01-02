@@ -62,7 +62,7 @@ const getRandomTitle = async (): Promise<string> => {
 	return data.query.random[0].title;
 };
 
-export default async ({ rtmClient, webClient }: SlackInterface) => {
+export default async ({ eventClient, webClient }: SlackInterface) => {
 	let state: State = { type: 'Sleeping' };
 
 	const candidateWords = await getCandidateWords({ min: 0, max: Infinity }) as Candidate[];
@@ -75,7 +75,7 @@ export default async ({ rtmClient, webClient }: SlackInterface) => {
 		stop: /^ア(?:ソート|そーと)なぞなぞ\s*終了$/,
 	};
 
-	rtmClient.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
