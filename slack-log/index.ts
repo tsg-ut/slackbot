@@ -10,11 +10,11 @@ const getAroundMessagesUrl = (channel: string) => `http://${slacklogAPIDomain}/a
 
 import type {SlackInterface} from '../lib/slack';
 
-export default async ({rtmClient: rtm, webClient: slack, eventClient: event}: SlackInterface) => {
+export default async ({eventClient, webClient: slack, eventClient: event}: SlackInterface) => {
     const users = await axios.get<any>(`http://${slacklogAPIDomain}/users.json`).then(({data}) => data);
     const channels = await axios.get<any>(`http://${slacklogAPIDomain}/channels.json`).then(({data}) => data);
 
-    rtm.on('message', async ({channel, text}) => {
+    eventClient.on('message', async ({channel, text}) => {
 
         if (!text) {
             return;
