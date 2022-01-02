@@ -399,9 +399,9 @@ const postOption = {
 };
 
 export default (slackClients: SlackInterface): void => {
-  const { rtmClient: rtm } = slackClients;
+  const { eventClient } = slackClients;
 
-  rtm.on('message', async message => {
+  eventClient.on('message', async message => {
     if (message.channel !== process.env.CHANNEL_SANDBOX) {
       return;
     }
