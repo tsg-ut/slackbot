@@ -166,7 +166,7 @@ const getHintOptions = ({width, height}: {width: number, height: number}, n: num
 	};
 };
 
-module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+module.exports = async ({eventClient, webClient: slack}: SlackInterface) => {
 	const state: LocalState = {
 		answer: null,
 		previousTick: 0,
@@ -274,7 +274,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 	setInterval(onTick, 1000);
 
-	rtm.on('message', (message) => {
+	eventClient.on('message', (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
