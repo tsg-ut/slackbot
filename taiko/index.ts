@@ -87,8 +87,8 @@ const emojifyScore = (score: (TaikoNote | string)[]) => {
 	return resultTexts.join("");
 }
 
-export default ({ rtmClient: rtm, webClient: slack }: SlackInterface) => {
-	rtm.on('message', async (message: any) => {
+export default ({ eventClient, webClient: slack }: SlackInterface) => {
+	eventClient.on('message', async (message: any) => {
 		// if (message.channel !== process.env.CHANNEL_SANDBOX) {
 		// if (!message.channel.startsWith('D')) {
 		if (message.channel !== process.env.CHANNEL_SANDBOX && !message.channel.startsWith('D')) {
