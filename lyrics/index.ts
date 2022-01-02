@@ -149,8 +149,8 @@ const search = async (keyword: string): Promise<SongInfo | null> => {
     return songInfo;
 };
 
-export default async ({rtmClient, webClient}: SlackInterface) => {
-    rtmClient.on('message', async message => {
+export default async ({eventClient, webClient}: SlackInterface) => {
+    eventClient.on('message', async message => {
         if (message.channel !== process.env.CHANNEL_SANDBOX) return;
         if (!message.text) return;
         if (message.text.startsWith('@lyrics ')) {
