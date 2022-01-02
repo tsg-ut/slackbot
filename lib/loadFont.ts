@@ -6,20 +6,20 @@ import fs from 'fs';
 import * as _ from 'lodash';
 
 const fontURLs = new Map<string, string>([
-  ['Noto Serif JP Thin', 'https://github.com/googlefonts/noto-cjk/raw/master/NotoSerifCJKjp-Thin.otf'],
-  ['Noto Serif JP Light', 'https://github.com/googlefonts/noto-cjk/raw/master/NotoSerifCJKjp-Light.otf'],
-  ['Noto Serif JP DemiLight', 'https://github.com/googlefonts/noto-cjk/raw/master/NotoSerifCJKjp-DemiLight.otf'],
-  ['Noto Serif JP Regular', 'https://github.com/googlefonts/noto-cjk/raw/master/NotoSerifCJKjp-Regular.otf'],
-  ['Noto Serif JP Medium', 'https://github.com/googlefonts/noto-cjk/raw/master/NotoSerifCJKjp-Medium.otf'],
-  ['Noto Serif JP Bold', 'https://github.com/googlefonts/noto-cjk/raw/master/NotoSerifCJKjp-Bold.otf'],
-  ['Noto Serif JP Black', 'https://github.com/googlefonts/noto-cjk/raw/master/NotoSerifCJKjp-Black.otf'],
-  ['Noto Sans JP Thin', 'https://github.com/googlefonts/noto-cjk/raw/master/NotoSansJP-Thin.otf'],
-  ['Noto Sans JP Light', 'https://github.com/googlefonts/noto-cjk/raw/master/NotoSansJP-Light.otf'],
-  ['Noto Sans JP DemiLight', 'https://github.com/googlefonts/noto-cjk/raw/master/NotoSansJP-DemiLight.otf'],
-  ['Noto Sans JP Regular', 'https://github.com/googlefonts/noto-cjk/raw/master/NotoSansJP-Regular.otf'],
-  ['Noto Sans JP Medium', 'https://github.com/googlefonts/noto-cjk/raw/master/NotoSansJP-Medium.otf'],
-  ['Noto Sans JP Bold', 'https://github.com/googlefonts/noto-cjk/raw/master/NotoSansJP-Bold.otf'],
-  ['Noto Sans JP Black', 'https://github.com/googlefonts/noto-cjk/raw/master/NotoSansJP-Black.otf'],
+  ['Noto Serif JP Thin', 'https://github.com/googlefonts/noto-cjk/raw/main/Serif/OTF/Japanese/NotoSerifCJKjp-Thin.otf'],
+  ['Noto Serif JP Light', 'https://github.com/googlefonts/noto-cjk/raw/main/Serif/OTF/Japanese/NotoSerifCJKjp-Light.otf'],
+  ['Noto Serif JP DemiLight', 'https://github.com/googlefonts/noto-cjk/raw/main/Serif/OTF/Japanese/NotoSerifCJKjp-DemiLight.otf'],
+  ['Noto Serif JP Regular', 'https://github.com/googlefonts/noto-cjk/raw/main/Serif/OTF/Japanese/NotoSerifCJKjp-Regular.otf'],
+  ['Noto Serif JP Medium', 'https://github.com/googlefonts/noto-cjk/raw/main/Serif/OTF/Japanese/NotoSerifCJKjp-Medium.otf'],
+  ['Noto Serif JP Bold', 'https://github.com/googlefonts/noto-cjk/raw/main/Serif/OTF/Japanese/NotoSerifCJKjp-Bold.otf'],
+  ['Noto Serif JP Black', 'https://github.com/googlefonts/noto-cjk/raw/main/Serif/OTF/Japanese/NotoSerifCJKjp-Black.otf'],
+  ['Noto Sans JP Thin', 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansCJKjp-Thin.otf'],
+  ['Noto Sans JP Light', 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansCJKjp-Light.otf'],
+  ['Noto Sans JP DemiLight', 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansCJKjp-DemiLight.otf'],
+  ['Noto Sans JP Regular', 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf'],
+  ['Noto Sans JP Medium', 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansCJKjp-Medium.otf'],
+  ['Noto Sans JP Bold', 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansCJKjp-Bold.otf'],
+  ['Noto Sans JP Black', 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansCJKjp-Black.otf'],
 ]);
 
 const loadFont = async (fontName: string): Promise<opentype.Font | null> => {
