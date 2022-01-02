@@ -85,7 +85,7 @@ const FtoC = (F) => (F - 32) * 5 / 9;
 const miphToMps = (miph) => miph * 0.447;
 const inchToMm = (inch) => inch * 25.4;
 
-module.exports = async ({rtmClient: rtm, webClient: slack}) => {
+module.exports = async ({eventClient, webClient: slack}) => {
 	const storage = nodePersist.create({
 		dir: path.resolve(__dirname, '__state__'),
 	});
@@ -411,7 +411,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		queue.add(tick);
 	}, 10 * 1000);
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
