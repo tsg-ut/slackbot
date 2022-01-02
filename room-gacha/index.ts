@@ -104,7 +104,7 @@ const pickOneResult = async (cityIDs: string[], ar: string, bs: string, ta: stri
     return { title: searchResult.title, hit: searchResult.hit, room: pickedRoom };
 };
 
-export default async ({rtmClient, webClient}: SlackInterface) => {
+export default async ({eventClient, webClient}: SlackInterface) => {
     interface Data {
         sc: {[key in PrefectureKanji]: {[key: string]: string}};
         hiddenValue: {[key in PrefectureKanji]: {
@@ -117,7 +117,7 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
     const dataStr = await fs.readFile(`${__dirname}/data.json`, 'utf-8');
     const data: Data = JSON.parse(dataStr);
     const { sc, hiddenValue } = data;
-    rtmClient.on('message', async message => {
+    eventClient.on('message', async message => {
         const username = '物件ガチャ';
         if (message.channel !== process.env.CHANNEL_SANDBOX) return;
         if (!message.text) return;
