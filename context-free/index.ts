@@ -130,7 +130,7 @@ const composePost = async (message: string): Promise<string> => {
 const randomInterval = () =>
   1000 * 60 * (90 + (Math.random() - 0.5) * 2 * 60);
 
-export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => plugin(async (fastify) => {
+export const server = ({eventClient, webClient: slack}: SlackInterface) => plugin(async (fastify) => {
   const postWord = async () => {
     const {word, description} = await randomWord();
     await slack.chat.postMessage({
@@ -152,7 +152,7 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
     setTimeout(repeatPost, randomInterval());
   };
   /* eslint-disable require-await */
-  rtm.on('message', async (message) => {
+  eventClient.on('message', async (message) => {
     if (message.channel !== process.env.CHANNEL_SANDBOX ||
         message.subtype === 'bot_message') {
       return;
