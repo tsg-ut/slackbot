@@ -175,9 +175,9 @@ const saveState = async () => {
 };
 
 module.exports = (clients) => {
-	const {rtmClient: rtm, webClient: slack} = clients;
+	const {eventClient, webClient: slack} = clients;
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		const postMessage = (text, {手牌 = null, 王牌 = null, 王牌Status = 'normal', mode = 'thread'} = {}) => (
 			slack.chat.postMessage({
 				channel: message.channel,
