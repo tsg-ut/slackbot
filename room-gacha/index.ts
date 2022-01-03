@@ -121,7 +121,7 @@ export default async ({eventClient, webClient}: SlackInterface) => {
         const username = '物件ガチャ';
         if (message.channel !== process.env.CHANNEL_SANDBOX) return;
         if (!message.text) return;
-        if (message.username === username) return;
+        if (message.user === process.env.USER_TSGBOT) return;
         if (message.text === '物件ガチャ' || message.text.startsWith('物件ガチャ ')) {
             const args: string[] = message.text.split(' ');
             const prefs = Object.keys(prefectures);
