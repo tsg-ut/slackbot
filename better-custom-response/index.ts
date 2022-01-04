@@ -148,12 +148,12 @@ const reaction = async (text: string, context: Context) => {
     return null;
 };
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
     const state = await ReadOnlyState.init<StateObj>('better-custom-response', {
         textResponses: [],
     });
 
-    rtm.on('message', async (message) => {
+    eventClient.on('message', async (message) => {
         if (!message.user || message.user.startsWith('B') || message.user === 'UEJTPN6R5' || message.user === 'USLACKBOT') return;
         const {channel, text, ts: timestamp, user} = message;
         if (!text) return;
