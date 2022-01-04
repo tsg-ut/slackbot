@@ -240,7 +240,7 @@ const createContestAttachment = async (contest: Contest, mode: 'owner' | 'list' 
 	}
 };
 
-export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackInteractions}: SlackInterface) =>
+export const server = ({eventClient, webClient: slack, messageClient: slackInteractions}: SlackInterface) =>
 	plugin(async fastify => {
 		const state = await State.init<StateObj>('golfbot', {
 			users: [],
@@ -248,7 +248,7 @@ export const server = ({rtmClient: rtm, webClient: slack, messageClient: slackIn
 		});
 
 		// メッセージ呼び出し
-		rtm.on('message', async (message: any) => {
+		eventClient.on('message', async (message: any) => {
 			const cmd = parseMessage(message.text);
 			if (cmd === null) {
 				return;
