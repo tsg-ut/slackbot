@@ -190,28 +190,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 		text: argv.startup,
 	});
 
-	let firstLogin = true;
-	let lastLogin: number = null;
-	let combos = 1;
 	rtmClient.on('authenticated', (data) => {
 		logger.info(`Logged in as ${data.self.name} of team ${data.team.name}`);
-		const now = Date.now();
-		if (!firstLogin) {
-			let comboStr = '';
-			if (now - lastLogin <= 2 * 60 * 1000) {
-				combos++;
-				comboStr = `(${combos}コンボ${'!'.repeat(combos)})`
-			}
-			else {
-				combos = 1;
-			}
-			webClient.chat.postMessage({
-				username: `tsgbot [${os.hostname()}]`,
-				channel: process.env.CHANNEL_SANDBOX,
-				text: `再接続しました ${comboStr}`,
-			});
-		}
-		firstLogin = false;
-		lastLogin = now;
 	});
 })();
