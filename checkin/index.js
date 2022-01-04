@@ -9,7 +9,7 @@ const places = [
 	{id: '5b1a2ff17269fe002ce4f8de', name: 'TSG部室'},
 ];
 
-module.exports = ({rtmClient: rtm, webClient: slack}) => {
+module.exports = ({eventClient, webClient: slack}) => {
 	const state = {
 		herenow: new Map(),
 	};
@@ -57,7 +57,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		schedule.scheduleJob('*/3 * * * *', job);
 	}
 
-	rtm.on('message', (message) => {
+	eventClient.on('message', (message) => {
 		if (message.text === 'checkin-check' && message.channel === process.env.CHANNEL_SANDBOX) {
 			job();
 		}

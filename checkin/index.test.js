@@ -27,7 +27,7 @@ describe('tiobot', () => {
 			},
 		};
 
-		slack.rtmClient.emit('message', {
+		slack.eventClient.emit('message', {
 			channel: slack.fakeChannel,
 			text: 'checkin-check',
 			user: slack.fakeUser,
