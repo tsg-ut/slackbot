@@ -7,7 +7,7 @@ const tokenize = require('./tokenize');
 const {findDajare, listAlternativeReadings} = require('./dajare');
 const {unlock} = require('../achievements');
 
-module.exports = ({rtmClient: rtm, webClient: slack}) => {
+module.exports = ({eventClient, webClient: slack}) => {
 	const slackDecode = (text) => text
 		.replace(/<[^>]+>/g, (link) => {
 			const matches = (/^(.+)\|(.+)$/).exec(link);
@@ -142,7 +142,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		return ':zabuton:';
 	};
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX && !message.channel.startsWith('D')) {
 			return;
 		}
