@@ -134,7 +134,7 @@ const getHint = async (songInfos, n) => {
 	return '';
 };
 
-module.exports = ({rtmClient: rtm, webClient: slack}) => {
+module.exports = ({eventClient, webClient: slack}) => {
 	const state = {
 		answer: null,
 		previousTick: 0,
@@ -204,7 +204,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 
 	setInterval(onTick, 1000);
 
-	rtm.on('message', (message) => {
+	eventClient.on('message', (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
