@@ -12,7 +12,7 @@ const byline = require('byline');
 const w2v = require('word2vec');
 const {download} = require('../lib/download');
 
-module.exports = async ({rtmClient: rtm, webClient: slack}) => {
+module.exports = async ({eventClient, webClient: slack}) => {
 	const state = (() => {
 		try {
 			// eslint-disable-next-line global-require
@@ -278,7 +278,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		});
 	};
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (!message.text || message.subtype !== undefined) {
 			return;
 		}
