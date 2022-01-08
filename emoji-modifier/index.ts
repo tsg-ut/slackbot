@@ -567,7 +567,7 @@ const buildResponse = async (message: string): Promise<Emoji | EmodiError | Help
 
 // user interaction {{{
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
   const {team}: any = await slack.team.info();
   team_id = team.id;
   const postImage = (url: string): void => {
@@ -599,7 +599,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
     });
   };
 
-  rtm.on('message', async (message) => {
+  eventClient.on('message', async (message) => {
     if (message.channel !== process.env.CHANNEL_SANDBOX ||
       message.subtype === 'bot_message') {
       return;
