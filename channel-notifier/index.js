@@ -2,7 +2,7 @@ const axios = require('axios');
 const {stripIndent} = require('common-tags');
 
 module.exports = (clients) => {
-	const {rtmClient: rtm, webClient: slack} = clients;
+	const {eventClient, webClient: slack} = clients;
 
 	const notify = async ({type, channel, user}) => {
 		await slack.conversations.invite({
@@ -24,7 +24,7 @@ module.exports = (clients) => {
 		});
 	};
 
-	rtm.on('channel_created', (data) => (
+	eventClient.on('channel_created', (data) => (
 		notify({
 			type: 'create',
 			channel: data.channel.id,
@@ -32,7 +32,7 @@ module.exports = (clients) => {
 		})
 	));
 
-	rtm.on('channel_unarchive', (data) => (
+	eventClient.on('channel_unarchive', (data) => (
 		notify({
 			type: 'unarchive',
 			channel: data.channel,
