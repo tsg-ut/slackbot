@@ -6,9 +6,9 @@ import concat from 'concat-stream';
 import {FastifyInstance} from 'fastify';
 import {get} from 'lodash';
 import pm2 from 'pm2';
+import {Webhooks} from '@octokit/webhooks';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
-import {Webhooks} from '@octokit/webhooks';
 
 // @ts-expect-error
 import Blocker from './block.js';
