@@ -1,9 +1,9 @@
 const {stripIndent} = require('common-tags');
 
 module.exports = (clients) => {
-	const {rtmClient: rtm, webClient: slack} = clients;
+	const {eventClient, webClient: slack} = clients;
 
-	rtm.on('emoji_changed', async (data) => {
+	eventClient.on('emoji_changed', async (data) => {
 		if (data.subtype === 'add') {
 			const message = await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
