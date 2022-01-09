@@ -270,7 +270,7 @@ const draw = async (count) => {
 	return drewCards;
 };
 
-module.exports = ({rtmClient: rtm, webClient: slack}) => {
+module.exports = ({eventClient, webClient: slack}) => {
 	const postMessage = (text, attachments, options) => slack.chat.postMessage({
 		channel: process.env.CHANNEL_SANDBOX,
 		text,
@@ -314,7 +314,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 	};
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
