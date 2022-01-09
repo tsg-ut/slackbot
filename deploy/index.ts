@@ -8,7 +8,7 @@ import {get} from 'lodash';
 import pm2 from 'pm2';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
-import {Webhooks} from "@octokit/webhooks";
+import {Webhooks} from '@octokit/webhooks';
 
 // @ts-expect-error
 import Blocker from './block.js';
