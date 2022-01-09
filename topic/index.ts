@@ -30,7 +30,7 @@ interface StateObj {
 	processedMessages: string[],
 }
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const state = await State.init<StateObj>('topic', {processedMessages: []});
 
 	const getTopic = async () => {
@@ -63,7 +63,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 	const processedMessages = new Set(state.processedMessages);
 
-	rtm.on('reaction_added', async (event) => {
+	eventClient.on('reaction_added', async (event) => {
 		if (
 			event.reaction !== 'koresuki' ||
 			event.item.channel !== process.env.CHANNEL_SANDBOX ||
