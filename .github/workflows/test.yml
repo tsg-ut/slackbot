@@ -48,11 +48,13 @@ jobs:
         run: npx codecov
 
 
-  reviewdog:
+  lint:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
 
       - name: Install Node.js (latest)
         uses: actions/setup-node@v2
@@ -60,6 +62,14 @@ jobs:
           node-version: 16
 
       - run: npm ci
+
+      - name: List changed files
+        id: changes
+        run: |
+          echo "::debug::$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | sort | xargs)"
+          echo "::set-output name=files::$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | sort | xargs)"
+          echo "::debug::$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | xargs -L1 dirname | sort | uniq | xargs)"
+          echo "::set-output name=dirs::$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | xargs -L1 dirname | sort | uniq | xargs)"
 
       - name: Set up reviewdog
         if: ${{ github.event_name == 'pull_request' }}
@@ -73,4 +83,8 @@ jobs:
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git ls-files | grep eslintrc | xargs -L 1 dirname | paste -sd ' ' | xargs -I {} sh -c "npx eslint --ext js,ts -f rdjson {} | reviewdog -f=rdjson -name=ESLint -reporter=github-pr-review"
+          join \
+            <(git ls-files | grep eslintrc | xargs -L1 dirname | sort)  \
+            <(echo ${{ steps.changes.outputs.dirs }} | xargs -n1) | \
+          xargs | tee >(echo "::debug::eslint files: "; cat) | \
+          xargs -I {} sh -c "npx eslint --ext js,ts -f rdjson {} | reviewdog -f=rdjson -name=ESLint -reporter=github-pr-review"
