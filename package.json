@@ -32,6 +32,7 @@
     "@discordjs/voice": "^0.7.5",
     "@google-cloud/text-to-speech": "^3.3.1",
     "@hakatashi/riichi-core": "^1.0.4",
+    "@octokit/webhooks": "^9.22.0",
     "@slack/events-api": "^3.0.1",
     "@slack/interactive-messages": "^2.0.2",
     "@slack/rtm-api": "^6.0.0",
