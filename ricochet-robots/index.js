@@ -19,11 +19,11 @@ function getTimeLink(time){
 	return `<${url}|${text}>`;
 };
 
-module.exports = ({rtmClient: rtm, webClient: slack}) => {
+module.exports = ({eventClient, webClient: slack}) => {
 	let state = undefined;
 	const mutex = new Mutex();
 	
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		function toMention(user){
 			return `<@${user}>`;
 		}
