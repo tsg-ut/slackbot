@@ -49,7 +49,7 @@ const queue = new Queue({concurrency: 1});
 
 const transaction = (func) => queue.add(func);
 
-module.exports = async ({rtmClient: rtm, webClient: slack}) => {
+module.exports = async ({eventClient, webClient: slack}) => {
 	const state = (() => {
 		try {
 			// eslint-disable-next-line global-require
@@ -804,7 +804,7 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 		}
 	};
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (!message.text || message.subtype !== undefined) {
 			return;
 		}
@@ -911,23 +911,10 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 						transaction(async () => {
 							let data = await storage.getItem(key);
 							if (!data) {
-								let thinking = true;
-								const sendTyping = () => {
-									rtm.sendTyping(message.channel);
-									setTimeout(() => {
-										if (thinking) {
-											sendTyping();
-										}
-									}, 3000);
-								};
-
 								try {
-									sendTyping();
 									data = await bot.getResult(ruby, modelData[0]);
-									thinking = false;
 									await storage.setItem(key, data);
 								} catch (error) {
-									thinking = false;
 									failed(error);
 								}
 							}
