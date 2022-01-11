@@ -249,6 +249,23 @@ const customResponses: CustomResponse[] = [
         icon_emoji: ':kczclock:',
         username: 'kcztime',
     },
+    {
+        input: [/^(博多|はかた)[市し]?時間$/, /^haka((ta)?sh?i)?time$/, /^haka((ta)?sh?i)?clock$/, /^はかたいむ$/],
+        outputFunction: (input: string[]) => {
+            const nowBoston = moment().tz('Asia/Tokyo');
+            const date = nowBoston.format('YYYY年 M月D日');
+            const ampm = nowBoston.hour() < 12 ? '午前' : '午後';
+            const yobi = ['日', '月', '火', '水', '木', '金', '土'][nowBoston.day()] + '曜日';
+            const hour = nowBoston.hour() % 12;
+            const minute = nowBoston.minute();
+            return [stripIndent`\
+                現在の博多市の時刻は
+                *${date} ${yobi} ${ampm}${hour}時${minute}分*
+                だよ`];
+        },
+        icon_emoji: ':hakatashi-on-fire:',
+        username: 'hakatime',
+    },
 ];
 
 export default customResponses;
