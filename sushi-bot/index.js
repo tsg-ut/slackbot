@@ -240,7 +240,7 @@ module.exports = (clients) => {
 			if(cnt >= 1) {
 				Promise.resolve()
 					.then(() => slack.reactions.add({name: 'no_good', channel, timestamp}))
-					.then(() => slack.reactions.add({name: 'cookies146', channel, timestamp}))
+					.then(() => slack.reactions.add({name: 'shaved_ice', channel, timestamp}))
 					.then(() =>
 						cnt >= 2 &&
 						Promise.resolve()
@@ -367,7 +367,7 @@ module.exports = (clients) => {
 				channel: process.env.CHANNEL_SANDBOX,
 				username: 'sushi-bot',
 				text: '今週の凍結ランキング',
-				icon_emoji: ':cookies146:',
+				icon_emoji: ':shaved_ice:',
 				attachments: suspendCounter.entries().map(([user, count], index) => {
 					const member = members.find(({id}) => id === user);
 					if (!member) {

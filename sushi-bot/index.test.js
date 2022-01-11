@@ -41,7 +41,7 @@ it('reacts to "おすし"', () => new Promise((resolve) => {
 }));
 
 it('reacts to ":korosuzo:"', () => new Promise((resolve) => {
-	const table = {no_good: false, cookies146: false};
+	const table = {no_good: false, shaved_ice: false};
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
 		expect(Object.keys(table)).toContain(name); // FIXME
 		expect(channel).toBe(slack.fakeChannel);
@@ -144,7 +144,7 @@ it('reacts to "凍結ランキング 確認"', () => new Promise((resolve) => {
 
 	(async () => {
 		const promise = new Promise(resolve => {
-			const table = {no_good: false, cookies146: false};
+			const table = {no_good: false, shaved_ice: false};
 			slack.on('reactions.add', ({name, timestamp}) => {
 				if (timestamp === slack.fakeTimestamp && table.hasOwnProperty(name)) {
 					table[name] = true;
