@@ -31,7 +31,7 @@ it('responds to emoji addition', () => {
 			});
 		}),
 	]);
-	slack.rtmClient.emit('emoji_changed', {
+	slack.eventClient.emit('emoji_changed', {
 		subtype: 'add',
 		name: 'hoge',
 	});
@@ -49,7 +49,7 @@ it('responds to emoji removal', () => new Promise((resolve) => {
 		resolve();
 	});
 
-	slack.rtmClient.emit('emoji_changed', {
+	slack.eventClient.emit('emoji_changed', {
 		subtype: 'remove',
 		names: ['hoge'],
 	});
