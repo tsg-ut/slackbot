@@ -1,6 +1,6 @@
 // Based on https://github.com/ut-ap2021/ap2021bot/blob/main/src/adventar/index.ts
 
-import { RTMClient } from '@slack/rtm-api';
+import { SlackEventAdapter } from '@slack/events-api';
 import { WebClient } from '@slack/web-api';
 import { stripIndent } from 'common-tags';
 import { JSDOM } from 'jsdom';
@@ -90,10 +90,10 @@ const saveAdventarSnapshots = async (snapshots: AdventarCalendarSnapshot[]) => {
 };
 
 export default async ({
-  rtmClient: rtm,
+  eventClient,
   webClient: slack,
 }: {
-  rtmClient: RTMClient;
+  eventClient: SlackEventAdapter;
   webClient: WebClient;
 }): Promise<void> => {
   const mutex = new Mutex();
@@ -172,7 +172,7 @@ export default async ({
 
   setInterval(notifyAdventarCalendarsUpdate, 60 * 1000);
 
-  rtm.on('message', async message => {
+  eventClient.on('message', async message => {
     if (message.channel !== process.env.CHANNEL_SANDBOX) {
       return;
     }
