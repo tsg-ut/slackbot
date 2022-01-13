@@ -1,5 +1,5 @@
 import { WebAPICallOptions, WebClient } from '@slack/web-api';
-import { RTMClient } from '@slack/rtm-api';
+import { SlackEventAdapter } from '@slack/events-api';
 import { SlackInterface } from '../lib/slack';
 import { ChatPostMessageArguments } from '@slack/web-api/dist/methods';
 import assert from 'assert';
@@ -51,7 +51,7 @@ export const typicalMessageTextsGenerator = {
  * To use other judge/watSecGen/ngReaction, please extend this class.
  */
 export class AteQuiz {
-  rtm: RTMClient;
+  eventClient: SlackEventAdapter;
   slack: WebClient;
   problem: AteQuizProblem;
   ngReaction = 'no_good';
@@ -69,11 +69,11 @@ export class AteQuiz {
   }
 
   constructor(
-    { rtmClient: rtm, webClient: slack }: SlackInterface,
+    { eventClient, webClient: slack }: SlackInterface,
     problem: AteQuizProblem,
     option?: WebAPICallOptions
   ) {
-    this.rtm = rtm;
+    this.eventClient = eventClient;
     this.slack = slack;
     this.problem = JSON.parse(JSON.stringify(problem));
     this.postOption = JSON.parse(JSON.stringify(option));
@@ -154,7 +154,7 @@ export class AteQuiz {
 
     const tickTimer = setInterval(onTick, 1000);
 
-    this.rtm.on('message', async message => {
+    this.eventClient.on('message', async message => {
       if (message.thread_ts === thread_ts) {
         if (message.subtype === 'bot_message') return;
         this.mutex.runExclusive(async () => {
