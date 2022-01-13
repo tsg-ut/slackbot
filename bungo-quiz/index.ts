@@ -75,8 +75,8 @@ const fetchCorpus = async (cardURL: string) => {
 };
 
 
-export default ({ rtmClient: rtm, webClient: slack }: SlackInterface) => {
-  rtm.on('message', (message) => {
+export default ({ eventClient, webClient: slack }: SlackInterface) => {
+  eventClient.on('message', (message) => {
     if (message.channel !== process.env.CHANNEL_SANDBOX) {
       return;
     }
@@ -117,7 +117,7 @@ export default ({ rtmClient: rtm, webClient: slack }: SlackInterface) => {
           };
 
           const quiz = new AteQuiz(
-            { rtmClient: rtm, webClient: slack } as SlackInterface,
+            { eventClient, webClient: slack } as SlackInterface,
             problem,
             commonOption,
           );
@@ -160,7 +160,7 @@ export default ({ rtmClient: rtm, webClient: slack }: SlackInterface) => {
           };
 
           const quiz = new AteQuiz(
-            { rtmClient: rtm, webClient: slack } as SlackInterface,
+            { eventClient, webClient: slack } as SlackInterface,
             problem,
             commonOption,
           );
