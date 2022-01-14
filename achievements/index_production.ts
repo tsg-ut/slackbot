@@ -45,10 +45,10 @@ const difficultyToStars = (difficulty: Difficulty) => (
 const loadDeferred = new Deferred<WebClient>();
 const initializeDeferred = new Deferred<void>();
 
-export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
+export default async ({eventClient, webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
 	loadDeferred.resolve(slack);
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (message.text && message.user && !message.bot_id && !message.subtype && message.channel.startsWith('C')) {
 			const day = moment(parseFloat(message.ts) * 1000).utcOffset(9).format('YYYY-MM-DD');
 			increment(message.user, 'chats');
@@ -93,7 +93,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		}
 	});
 
-	rtm.on('reaction_added', async (event) => {
+	eventClient.on('reaction_added', async (event) => {
 		if (event.user && event.item && event.item.channel.startsWith('C') && event.item_user && state.achievements.has(event.item_user)) {
 			const reactionAchievements = Array.from(achievements.values()).filter((achievement) => (
 				achievement.reaction === event.reaction
@@ -114,13 +114,13 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		}
 	});
 
-	rtm.on('user_change', (event) => {
+	eventClient.on('user_change', (event) => {
 		db.collection('users').doc(event.user.id).update({
 			info: event.user,
 		});
 	});
 
-	rtm.on('team_join', (event) => {
+	eventClient.on('team_join', (event) => {
 		db.collection('users').doc(event.user.id).set({
 			info: event.user,
 		});
