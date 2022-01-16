@@ -20,89 +20,89 @@ const tokensDeferred = new Deferred<Token[]>();
 const reactionsCache = new Map<string, Record<string, number>>();
 
 export const initilizeEventClient = (eventClient: SlackEventAdapter) => {
-		const incrementReactions = async ({team_id, channel, ts, reaction, by}: {team_id: string, channel: string, ts: string, reaction: string, by: number}) => {
-			const key = `${channel}\0${ts}`;
+	const incrementReactions = async ({team_id, channel, ts, reaction, by}: {team_id: string, channel: string, ts: string, reaction: string, by: number}) => {
+		const key = `${channel}\0${ts}`;
 
-			if (reactionsCache.has(key)) {
-				const reactions = reactionsCache.get(key);
-				if (!{}.hasOwnProperty.call(reactions, reaction)) {
-					reactions[reaction] = 0;
-				}
-				reactions[reaction] += by;
-				return;
+		if (reactionsCache.has(key)) {
+			const reactions = reactionsCache.get(key);
+			if (!{}.hasOwnProperty.call(reactions, reaction)) {
+				reactions[reaction] = 0;
 			}
-
-			const token = (await getTokens()).find(({team_id: tid}) => team_id === tid);
-			if (!token) {
-				logger.warn(`slackUtils: unknown team: ${team_id}`);
-				return;
-			}
-
-			const data = await webClient.conversations.history({
-				token: token.access_token,
-				channel: channel,
-				latest: ts,
-				limit: 1,
-				inclusive: true,
-			});
-
-			// race condition
-			if (reactionsCache.has(key)) {
-				const reactions = reactionsCache.get(key);
-				if (!{}.hasOwnProperty.call(reactions, reaction)) {
-					reactions[reaction] = 0;
-				}
-				reactions[reaction] += by;
-				return;
-			}
-
-			const remoteReactions = get(data, ['messages', 0, 'reactions'], [] as Reaction[]);
-			const remoteReactionsObj = Object.fromEntries(remoteReactions.map((reaction) => (
-				[reaction.name, reaction.count]
-			)));
-			reactionsCache.set(key, remoteReactionsObj);
+			reactions[reaction] += by;
 			return;
 		}
 
-		eventClient.on('team_join', (event) => {
-			additionalMembers.unshift(event.user);
+		const token = (await getTokens()).find(({team_id: tid}) => team_id === tid);
+		if (!token) {
+			logger.warn(`slackUtils: unknown team: ${team_id}`);
+			return;
+		}
+
+		const data = await webClient.conversations.history({
+			token: token.access_token,
+			channel: channel,
+			latest: ts,
+			limit: 1,
+			inclusive: true,
 		});
-		eventClient.on('user_change', (event) => {
-			additionalMembers.unshift(event.user);
-		});
-		eventClient.on('emoji_changed', async (event) => {
-			if (event.subtype === 'add') {
-				additionalEmojis.unshift({
-					team: event.team_id,
-					name: event.name,
-					url: event.value,
-				});
+
+		// race condition
+		if (reactionsCache.has(key)) {
+			const reactions = reactionsCache.get(key);
+			if (!{}.hasOwnProperty.call(reactions, reaction)) {
+				reactions[reaction] = 0;
 			}
-		});
-		eventClient.on('message', (message) => {
-			const key = `${message.channel}\0${message.ts}`;
-			if (!reactionsCache.has(key)) {
-				reactionsCache.set(key, Object.create(null));
-			}
-		});
-		eventClient.on('reaction_added', async (event) => {
-			incrementReactions({
-				team_id: event.team_id,
-				channel: event.item.channel,
-				ts: event.item.ts,
-				reaction: event.reaction,
-				by: 1,
+			reactions[reaction] += by;
+			return;
+		}
+
+		const remoteReactions = get(data, ['messages', 0, 'reactions'], [] as Reaction[]);
+		const remoteReactionsObj = Object.fromEntries(remoteReactions.map((reaction) => (
+			[reaction.name, reaction.count]
+		)));
+		reactionsCache.set(key, remoteReactionsObj);
+		return;
+	}
+
+	eventClient.on('team_join', (event) => {
+		additionalMembers.unshift(event.user);
+	});
+	eventClient.on('user_change', (event) => {
+		additionalMembers.unshift(event.user);
+	});
+	eventClient.on('emoji_changed', async (event) => {
+		if (event.subtype === 'add') {
+			additionalEmojis.unshift({
+				team: event.team_id,
+				name: event.name,
+				url: event.value,
 			});
+		}
+	});
+	eventClient.on('message', (message) => {
+		const key = `${message.channel}\0${message.ts}`;
+		if (!reactionsCache.has(key)) {
+			reactionsCache.set(key, Object.create(null));
+		}
+	});
+	eventClient.on('reaction_added', async (event) => {
+		incrementReactions({
+			team_id: event.team_id,
+			channel: event.item.channel,
+			ts: event.item.ts,
+			reaction: event.reaction,
+			by: 1,
 		});
-		eventClient.on('reaction_removed', (event) => {
-			incrementReactions({
-				team_id: event.team_id,
-				channel: event.item.channel,
-				ts: event.item.ts,
-				reaction: event.reaction,
-				by: -1,
-			});
+	});
+	eventClient.on('reaction_removed', (event) => {
+		incrementReactions({
+			team_id: event.team_id,
+			channel: event.item.channel,
+			ts: event.item.ts,
+			reaction: event.reaction,
+			by: -1,
 		});
+	});
 };
 
 
