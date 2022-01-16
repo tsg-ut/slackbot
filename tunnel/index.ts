@@ -220,7 +220,7 @@ export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 			}
 		};
 
-		for(const eventType of ['reaction_added', 'reaction_removed']) {
+		for (const eventType of ['reaction_added', 'reaction_removed']) {
 			eventClient.on(eventType, (event: any) => {
 				const team =
 					event.team_id === process.env.TEAM_ID ? 'TSG' :
