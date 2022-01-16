@@ -1,9 +1,10 @@
 import {MrkdwnElement, PlainTextElement, WebClient} from '@slack/web-api';
-import type {RTMClient} from '@slack/rtm-api';
+import type {SlackEventAdapter} from '@slack/events-api';
 import type {Reaction} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
 import {flatten, get} from 'lodash';
-import {getTokens, getRtmClient} from './slack';
+import {getTokens} from './slack';
 import {Deferred} from './utils';
+import logger from './logger';
 import type {Token} from '../oauth/tokens';
 
 const webClient = new WebClient();
@@ -18,18 +19,8 @@ const tokensDeferred = new Deferred<Token[]>();
 // Cache for message reactions. Currently it only holds counts of reactions.
 const reactionsCache = new Map<string, Record<string, number>>();
 
-getTokens().then(async (tokens) => {
-	tokensDeferred.resolve(tokens);
-
-	for (const token of tokens) {
-		const rtmClient: RTMClient = await getRtmClient(token.team_id).catch(() => undefined);
-
-		if (!rtmClient) {
-			console.error(`Failed to get RTM client for team ${token.team_name}`);
-			continue;
-		}
-
-		const incrementReactions = async ({channel, ts, reaction, by}: {channel: string, ts: string, reaction: string, by: number}) => {
+export const initilizeEventClient = (eventClient: SlackEventAdapter) => {
+		const incrementReactions = async ({team_id, channel, ts, reaction, by}: {team_id: string, channel: string, ts: string, reaction: string, by: number}) => {
 			const key = `${channel}\0${ts}`;
 
 			if (reactionsCache.has(key)) {
@@ -38,6 +29,12 @@ getTokens().then(async (tokens) => {
 					reactions[reaction] = 0;
 				}
 				reactions[reaction] += by;
+				return;
+			}
+
+			const token = (await getTokens()).find(({team_id: tid}) => team_id === tid);
+			if (!token) {
+				logger.warn(`slackUtils: unknown team: ${team_id}`);
 				return;
 			}
 
@@ -67,45 +64,50 @@ getTokens().then(async (tokens) => {
 			return;
 		}
 
-		rtmClient.on('team_join', (event) => {
+		eventClient.on('team_join', (event) => {
 			additionalMembers.unshift(event.user);
 		});
-		rtmClient.on('user_change', (event) => {
+		eventClient.on('user_change', (event) => {
 			additionalMembers.unshift(event.user);
 		});
-		rtmClient.on('emoji_changed', async (event) => {
-			const {team}: any = await webClient.team.info({token: token.bot_access_token});
+		eventClient.on('emoji_changed', async (event) => {
 			if (event.subtype === 'add') {
 				additionalEmojis.unshift({
-					team: team.id,
+					team: event.team_id,
 					name: event.name,
 					url: event.value,
 				});
 			}
 		});
-		rtmClient.on('message', (message) => {
+		eventClient.on('message', (message) => {
 			const key = `${message.channel}\0${message.ts}`;
 			if (!reactionsCache.has(key)) {
 				reactionsCache.set(key, Object.create(null));
 			}
 		});
-		rtmClient.on('reaction_added', async (event) => {
+		eventClient.on('reaction_added', async (event) => {
 			incrementReactions({
+				team_id: event.team_id,
 				channel: event.item.channel,
 				ts: event.item.ts,
 				reaction: event.reaction,
 				by: 1,
 			});
 		});
-		rtmClient.on('reaction_removed', (event) => {
+		eventClient.on('reaction_removed', (event) => {
 			incrementReactions({
+				team_id: event.team_id,
 				channel: event.item.channel,
 				ts: event.item.ts,
 				reaction: event.reaction,
 				by: -1,
 			});
 		});
-	}
+};
+
+
+getTokens().then(async (tokens) => {
+	tokensDeferred.resolve(tokens);
 
 	Promise.all(tokens.map(async (token) => {
 		try {

@@ -8,6 +8,7 @@ process.on('unhandledRejection', (error: Error) => {
 
 import os from 'os';
 import {rtmClient, webClient} from './lib/slack';
+import {initilizeEventClient} from './lib/slackUtils';
 import {createEventAdapter} from '@slack/events-api';
 import {createMessageAdapter} from '@slack/interactive-messages';
 import Fastify from 'fastify';
@@ -110,6 +111,7 @@ const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
 	logger.error(error.stack);
 });
+initilizeEventClient(eventClient);
 
 const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 
