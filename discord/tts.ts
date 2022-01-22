@@ -4,6 +4,7 @@ import path from 'path';
 import {inspect} from 'util';
 import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discordjs/voice';
 import {Mutex} from 'async-mutex';
+import axios from 'axios';
 import {stripIndent} from 'common-tags';
 import Discord from 'discord.js';
 import {minBy, countBy} from 'lodash';
@@ -11,6 +12,23 @@ import logger from '../lib/logger';
 import State from '../lib/state';
 import {Loader, Deferred} from '../lib/utils';
 import {getSpeech, Voice, speechConfig, Emotion, VoiceMeta, getDefaultVoiceMeta} from './speeches';
+
+const dictionaryScrapboxUrl = 'https://scrapbox.io/tsg/TTSbot_カスタム辞書';
+
+const fetchDictionary = async () => {
+	const {data} = await axios.get<any>(dictionaryScrapboxUrl, {headers: {Cookie: `connect.sid=${process.env.SCRAPBOX_SID}`}});
+	console.log(data);
+	const result = await getSpeech(`
+		<speak>
+			<phoneme alphabet="ipa" ph="ˈpɑːpjəlɚ">hoge</phoneme>
+			<phoneme alphabet="x-sampa" ph='m@"hA:g@%ni:'>fuga</phoneme>
+		</speak>
+	`, Voice.R, getDefaultVoiceMeta());
+	await fs.writeFile('temp.mp3', result.data);
+};
+
+logger.info('start');
+fetchDictionary();
 
 const mutex = new Mutex();
 
