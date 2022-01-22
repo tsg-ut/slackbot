@@ -12,6 +12,7 @@ const {getMemberName} = require('../lib/slackUtils');
 const {default: State} = require('../lib/state.ts');
 
 const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，．…・?!：；:;\s]+$/g;
+const kanaOnlyRe = /^[\u3040-\u309F\u30A0-\u30FF]+$/;
 
 const ignoreRe = /( 英語| 韓国語| 中国語|の?意味|meaning|とは)+$/i;
 
@@ -149,7 +150,7 @@ module.exports = async (clients) => {
 			channel,
 			text: message,
 			as_user: false,
-			username: "pocky",
+			username: "hakatashi pocky",
 			icon_emoji: ":google:",
 			thread_ts: threadPosted ? threadPosted : null,
 			reply_broadcast: broadcast,
@@ -159,6 +160,13 @@ module.exports = async (clients) => {
 	let theme = null;
 	let thread = null;
 	let hints = [];
+
+	let shiritoriThread = null;
+	let shiritoriState = {
+		lastWord: null,
+		lastResponse: null,
+		lastUser: null,
+	};
 
 	async function pockygame() {
 		if (theme !== null) {
@@ -216,6 +224,15 @@ module.exports = async (clients) => {
 		}, 3 * 60 * 1000);
 	};
 
+	async function pockyshiritori(ts) {
+		const message = await postMessage(stripIndents`
+			ポッキーしりとりを始めるよ～
+			スレッドに回答してね!
+		`, process.env.CHANNEL_SANDBOX, {broadcast: true, threadPosted: ts});
+
+		shiritoriThread = ts;
+	};
+
 	rtm.on('message', async (message) => {
 		if (message.subtype) {
 			return;
@@ -256,8 +273,12 @@ module.exports = async (clients) => {
 		if (channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
-		if (text === 'ポッキーゲーム') {
+		if (false && text === 'ポッキーゲーム') {
 			pockygame();
+			return;
+		}
+		if (shiritoriThread === null && text === 'ポッキーしりとり') {
+			pockyshiritori(ts);
 			return;
 		}
 		const query = slackDecode(text.trim());
@@ -266,7 +287,76 @@ module.exports = async (clients) => {
 			return;
 		}
 		const result = await reply(match[1], match[2].length - 1);
-		if (result !== null) {
+		if (shiritoriThread === thread_ts) {
+			if (shiritoriState.lastUser === message.user) {
+				await postMessage('同じ人が連続してしりとりしてるよ～', channel, {broadcast: false, threadPosted: shiritoriThread});
+				return;
+			}
+			if (!match[1].match(kanaOnlyRe)) {
+				await postMessage('ひらがな/カタカナ以外は使えないよ～', channel, {broadcast: false, threadPosted: shiritoriThread});
+				return;
+			}
+			if (result === null) {
+				await postMessage(stripIndents`
+					結果が返ってこなかったよ:cry:
+					<@${shiritoriState.lastUser}>の勝ち:tada:
+				`, channel, {broadcast: true, threadPosted: shiritoriThread});
+				shiritoriThread = null;
+				shiritoriState = {
+					lastWord: null,
+					lastResponse: null,
+					lastUser: null,
+				};
+				return;
+			}
+			await postMessage(htmlEscape(result), channel, {broadcast: false, threadPosted: shiritoriThread});
+			if (!result.match(kanaOnlyRe)) {
+				await postMessage('ひらがな/カタカナ以外が返ってきたよ\nもう一回!', channel, {broadcast: false, threadPosted: shiritoriThread});
+				return;
+			}
+			if (shiritoriState.lastWord !== null && shiritoriState.lastResponse !== null) {
+				const expectedWordPrefix = hiraganize(Array.from(shiritoriState.lastWord).slice(-1)[0]);
+				const expectedResponsePrefix = hiraganize(Array.from(shiritoriState.lastResponse).slice(-1)[0]);
+
+				const wordPrefix = hiraganize(Array.from(match[1])[0]);
+				const responsePrefix = hiraganize(Array.from(result)[0]);
+
+				if (expectedWordPrefix !== wordPrefix || expectedResponsePrefix !== responsePrefix) {
+					await postMessage(stripIndents`
+						しりとりが成立しなかったよ:cry:
+						<@${shiritoriState.lastUser}>の勝ち:tada:
+					`, channel, {broadcast: false, threadPosted: shiritoriThread});
+					shiritoriThread = null;
+					shiritoriState = {
+						lastWord: null,
+						lastResponse: null,
+						lastUser: null,
+					};
+					return;
+				}
+			}
+			shiritoriState.lastWord = match[1];
+			shiritoriState.lastResponse = result;
+			shiritoriState.lastUser = message.user;
+			const nextWordPrefix = hiraganize(Array.from(shiritoriState.lastWord).slice(-1)[0]);
+			const nextResponsePrefix = hiraganize(Array.from(shiritoriState.lastResponse).slice(-1)[0]);
+			if (nextWordPrefix === 'ん' || nextResponsePrefix === 'ん') {
+				await postMessage(stripIndents`
+					んで終わっちゃったよ:cry:
+					<@${shiritoriState.lastUser}>の勝ち:tada:
+				`, channel, {broadcast: false, threadPosted: shiritoriThread});
+				shiritoriThread = null;
+				shiritoriState = {
+					lastWord: null,
+					lastResponse: null,
+					lastUser: null,
+				};
+				return;
+			}
+			await postMessage(stripIndents`
+				次は「${nextWordPrefix}」から始まる言葉で「${nextResponsePrefix}」から始まる言葉を返してね:thinking_face:
+			`, channel, {broadcast: false, threadPosted: shiritoriThread});
+		} else if (result !== null) {
 			postMessage(htmlEscape(result), channel, {broadcast: false, threadPosted: thread_ts});
 			unlock(message.user, "pocky");
 			getMemberName(message.user).then((value) => {
