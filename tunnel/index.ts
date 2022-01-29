@@ -7,7 +7,7 @@ import {flatten, uniq} from 'lodash';
 import sql from 'sql-template-strings';
 import {open} from 'sqlite';
 import sqlite3 from 'sqlite3';
-import {getRtmClient} from '../lib/slack';
+import logger from '../lib/logger';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 
 import {getEmoji, getMemberIcon, getMemberName} from '../lib/slackUtils';
@@ -30,7 +30,7 @@ const getEmojiImageUrl = async (name: string, team: string): Promise<string> => 
 	return null;
 };
 
-export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface) => {
+export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
 		const db = await open({
 			filename: path.join(__dirname, '..', 'tokens.sqlite3'),
@@ -40,7 +40,6 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 		await db.close();
 
 		const kmcSlack = kmcToken === undefined ? null : new WebClient(kmcToken.bot_access_token);
-		const kmcRtm = kmcToken === undefined ? null : await getRtmClient(process.env.KMC_TEAM_ID);
 
 		const {team: tsgTeam}: any = await tsgSlack.team.info();
 
@@ -221,10 +220,18 @@ export const server = ({webClient: tsgSlack, rtmClient: tsgRtm}: SlackInterface)
 			}
 		};
 
-		for (const {rtm, team} of [{rtm: tsgRtm, team: 'TSG'}, {rtm: kmcRtm, team: 'KMC'}]) {
-			rtm.on('reaction_added', (event: any) => {
-				onReactionUpdated(event, team);
-			}).on('reaction_removed', (event: any) => {
+		for (const eventType of ['reaction_added', 'reaction_removed']) {
+			eventClient.on(eventType, (event: any) => {
+				const team =
+					event.team_id === process.env.TEAM_ID ? 'TSG'
+						: event.team_id === process.env.KMC_TEAM_ID ? 'KMC'
+							: null;
+
+				if (!team) {
+					logger.warn(`unknown team: ${event.team_id}`);
+					return;
+				}
+
 				onReactionUpdated(event, team);
 			});
 		}
