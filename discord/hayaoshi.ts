@@ -3,7 +3,6 @@ import {promises as fs} from 'fs';
 import path from 'path';
 import type {AudioPlayer, AudioResource, PlayerSubscription, VoiceConnection} from '@discordjs/voice';
 import {createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discordjs/voice';
-
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord from 'discord.js';
