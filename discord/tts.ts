@@ -150,6 +150,8 @@ export default class TTS extends EventEmitter {
 				} else {
 					this.connection = this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
 				}
+				this.audioPlayer = createAudioPlayer();
+				this.subscription = this.connection.subscribe(this.audioPlayer);
 			}
 			logger.info('[TTS] unpause - connected');
 			this.isPaused = false;
