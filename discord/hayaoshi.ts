@@ -1,14 +1,16 @@
 import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
-import {createAudioResource, createAudioPlayer} from '@discordjs/voice';
 import type {AudioPlayer, AudioResource, PlayerSubscription, VoiceConnection} from '@discordjs/voice';
+import {createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discordjs/voice';
+
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord from 'discord.js';
 import {max, get} from 'lodash';
 import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
+import logger from '../lib/logger';
 import {extractValidAnswers, judgeAnswer, formatQuizToSsml} from './hayaoshiUtils';
 import {getSpeech, Voice} from './speeches';
 
@@ -248,27 +250,35 @@ export default class Hayaoshi extends EventEmitter {
 		}
 	}
 
+	async onFinishReadingQuestion() {
+		logger.info('[hayaoshi] onFinishReadingQuestion');
+		await new Promise((resolve) => {
+			this.state.timeupTimeoutId = setTimeout(resolve, 5000);
+		});
+		logger.info('[hayaoshi] onFinishReadingQuestion - timeout');
+		mutex.runExclusive(async () => {
+			if (this.state.phase !== 'gaming') {
+				return;
+			}
+			this.state.phase = 'timeup';
+			await this.playSound('timeup');
+			await this.readAnswer();
+			this.endQuiz({correct: true});
+		});
+	}
+
 	readQuestion() {
+		logger.info('[hayaoshi] readQuestion');
+		this.state.audioPlayer.off(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
+
 		this.state.audioResource = createAudioResource(path.join(__dirname, 'questionText.mp3'));
 		this.state.audioPlayer.play(this.state.audioResource);
 		this.state.playStartTime = Date.now();
 		this.state.audioResource.playStream.on('start', () => {
 			this.state.playStartTime = Date.now();
 		});
-		this.state.audioResource.playStream.on('finish', async () => {
-			await new Promise((resolve) => {
-				this.state.timeupTimeoutId = setTimeout(resolve, 5000);
-			});
-			mutex.runExclusive(async () => {
-				if (this.state.phase !== 'gaming') {
-					return;
-				}
-				this.state.phase = 'timeup';
-				await this.playSound('timeup');
-				await this.readAnswer();
-				this.endQuiz({correct: true});
-			});
-		});
+		logger.info('[hayaoshi] readQuestion - started');
+		this.state.audioPlayer.once(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
 	}
 
 	getTTS(text: string) {
@@ -322,10 +332,12 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	playSound(name: string) {
+		this.state.audioPlayer.off(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
+
 		return new Promise<void>((resolve) => {
 			this.state.audioResource = createAudioResource(path.join(__dirname, `sounds/${name}.mp3`));
 			this.state.audioPlayer.play(this.state.audioResource);
-			this.state.audioResource.playStream.on('finish', () => {
+			this.state.audioPlayer.once(AudioPlayerStatus.Idle, () => {
 				resolve();
 			});
 		});
