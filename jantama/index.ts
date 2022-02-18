@@ -170,19 +170,13 @@ const calculateNewRating = async (players: Player[]) => {
 	for (const player of players) {
 		if (!oldRatings.has(player.accountId.toString())) {
 			oldRatings.set(player.accountId.toString(), new Rating());
-			console.log(new Rating().mu);
 		}
-	}
-
-	for (const [user, rating] of oldRatings) {
-		console.log(`${user}: ${rating.mu}`);
 	}
 
 	const newRatings = rate(players.map((player) => [oldRatings.get(player.accountId.toString())]));
 	const ratingChanges: RatingChange[] = [];
 	for (const [player, [newRating]] of zip(players, newRatings)) {
 		const oldRating = oldRatings.get(player.accountId.toString());
-		console.log(`${player.nickname}: ${oldRating.mu} -> ${newRating.mu}`);
 		ratingChanges.push({
 			player,
 			oldRating: oldRating.mu - oldRating.sigma * 3,
