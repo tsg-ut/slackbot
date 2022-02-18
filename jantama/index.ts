@@ -185,8 +185,8 @@ const calculateNewRating = async (players: Player[]) => {
 		console.log(`${player.nickname}: ${oldRating.mu} -> ${newRating.mu}`);
 		ratingChanges.push({
 			player,
-			oldRating: oldRating.mu,
-			newRating: newRating.mu,
+			oldRating: oldRating.mu - oldRating.sigma * 3,
+			newRating: newRating.mu - newRating.sigma * 3,
 		});
 	}
 
@@ -223,7 +223,7 @@ export const server = async ({webClient: slack}: SlackInterface) => {
 				const ranking = Array.from(ratings.entries()).map(([user, rating]) => ({
 					accountId: user,
 					nickname: nicknames.get(user),
-					rating: rating.mu,
+					rating: rating.mu - rating.sigma * 3,
 				}));
 				ranking.sort((a, b) => b.rating - a.rating);
 
