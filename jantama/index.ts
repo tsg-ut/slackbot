@@ -198,7 +198,7 @@ export const server = async ({webClient: slack}: SlackInterface) => {
 		users: [],
 	});
 
-	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
+	const callback: FastifyPluginCallback = (fastify, opts, next) => {
 		fastify.post<SlashCommandEndpoint>('/slash/jantama', async (req, res) => {
 			if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
 				res.code(400);
@@ -220,6 +220,7 @@ export const server = async ({webClient: slack}: SlackInterface) => {
 
 			if (req.body.text === 'ranking') {
 				const {ratings, nicknames} = await generateRatingsFromHistory();
+				// eslint-disable-next-line array-plural/array-plural
 				const ranking = Array.from(ratings.entries()).map(([user, rating]) => ({
 					accountId: user,
 					nickname: nicknames.get(user),
