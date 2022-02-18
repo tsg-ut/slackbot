@@ -5,6 +5,7 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
+    "postinstall": "cp -f jantama/amae-koromo-env.js node_modules/amae-koromo/env.js",
     "start": "pm2 start ecosystem.config.js",
     "stop": "pm2 stop ecosystem.config.js",
     "restart": "pm2 restart ecosystem.config.js",
@@ -49,6 +50,7 @@
     "@types/opentype.js": "^1.3.3",
     "@types/sharp": "^0.29.3",
     "@types/twitter": "^1.7.1",
+    "amae-koromo": "github:SAPikachu/amae-koromo-scripts",
     "async-mutex": "^0.3.2",
     "aws-sdk": "^2.1027.0",
     "axios": "^0.24.0",
@@ -114,6 +116,7 @@
     "suncalc": "^1.8.0",
     "trie-prefix-tree": "^1.5.1",
     "ts-node": "^10.4.0",
+    "ts-trueskill": "^3.3.0",
     "twitter": "^1.7.1",
     "typescript": "^4.4.4",
     "utf-8-validate": "^5.0.7",
