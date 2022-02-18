@@ -1,6 +1,5 @@
-import {inspect} from 'util';
 import {createMajsoulConnection} from 'amae-koromo/majsoul';
-import type {lq} from 'amae-koromo/majsoulPB';
+import type {lq} from 'amae-koromo/majsoulPb';
 
 export interface Player {
 	accountId: number,
