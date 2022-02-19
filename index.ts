@@ -89,6 +89,7 @@ const allBots = [
 	'topic',
 	'bungo-quiz',
 	'adventar',
+	'jantama',
 ];
 
 logger.info('slackbot started');
