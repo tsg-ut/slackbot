@@ -173,11 +173,11 @@ export const getReactions = async (channel: string, ts: string) => {
 	return remoteReactionsObj;
 };
 
-export const getAllMembers = async (): Promise<Array<any>> => {
+export const getAllTSGMembers = async (): Promise<Array<any>> => {
 	return [
 		...additionalMembers,
 		...(await loadMembersDeferred.promise),
-	];
+	].filter(user => user.team_id === process.env.TEAM_ID);
 };
 
 export const getMemberName = async (user: string): Promise<string> => {

@@ -1,6 +1,6 @@
 import Fastify from 'fastify';
 import logger from '../lib/logger';
-import {getAllMembers} from '../lib/slackUtils';
+import {getAllTSGMembers} from '../lib/slackUtils';
 
 interface RootRoute {
 	Querystring: {
@@ -26,7 +26,7 @@ export default () => {
 	});
 
 	fastify.get('/slack/users', async (request, reply) => {
-		const members = await getAllMembers();
+		const members = await getAllTSGMembers();
 		reply.send(members);
 	});
 
