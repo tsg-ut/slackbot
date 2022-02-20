@@ -1,0 +1,9 @@
+{
+	"ok": true,
+	"emoji": {
+		"slack": "https://emoji.slack-edge.com/T00000000/slack/0123456789.png",
+		"white_square": "alias:slack",
+		"ojigineko": "https://emoji.slack-edge.com/T00000000/ojigineko/0123456789.gif"
+	},
+	"cache_ts": "1640000000.000000"
+}
