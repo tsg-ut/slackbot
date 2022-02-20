@@ -2,7 +2,6 @@ import {WebClient} from '@slack/web-api';
 import {RTMClient} from '@slack/rtm-api';
 import {createEventAdapter} from '@slack/events-api';
 import {createMessageAdapter} from '@slack/interactive-messages';
-import type {TSGEventClient} from './slackEventClient';
 import {Deferred} from './utils';
 import {Token} from '../oauth/tokens';
 import sql from 'sql-template-strings';
@@ -13,7 +12,7 @@ import path from 'path';
 export interface SlackInterface {
 	rtmClient: RTMClient;
 	webClient: WebClient;
-	eventClient: TSGEventClient;
+	eventClient: ReturnType<typeof createEventAdapter>;
 	messageClient: ReturnType<typeof createMessageAdapter>;
 };
 
