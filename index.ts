@@ -10,6 +10,7 @@ import os from 'os';
 import {rtmClient, webClient} from './lib/slack';
 import {createEventAdapter} from '@slack/events-api';
 import {createMessageAdapter} from '@slack/interactive-messages';
+import {createTSGEventClient} from './lib/slackEventClient';
 import Fastify from 'fastify';
 
 import logger from './lib/logger';
@@ -111,6 +112,7 @@ const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
 	logger.error(error.stack);
 });
+const tsgEventClient = createTSGEventClient(process.env.TEAM_ID, eventClient);
 
 const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 
@@ -162,13 +164,13 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 	await Promise.all(plugins.map(async (name) => {
 		const plugin = await import(`./${name}`);
 		if (typeof plugin === 'function') {
-			await plugin({rtmClient, webClient, eventClient, messageClient});
+			await plugin({rtmClient, webClient, eventClient: tsgEventClient, messageClient});
 		}
 		if (typeof plugin.default === 'function') {
-			await plugin.default({rtmClient, webClient, eventClient, messageClient});
+			await plugin.default({rtmClient, webClient, eventClient: tsgEventClient, messageClient});
 		}
 		if (typeof plugin.server === 'function') {
-			await fastify.register(plugin.server({rtmClient, webClient, eventClient, messageClient}));
+			await fastify.register(plugin.server({rtmClient, webClient, eventClient: tsgEventClient, messageClient}));
 		}
 		loadedPlugins.add(name);
 		logger.info(`plugin "${name}" successfully loaded`);
