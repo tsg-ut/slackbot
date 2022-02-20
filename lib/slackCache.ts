@@ -113,7 +113,6 @@ export default class SlackCache {
 		return this.emojis.get(emoji);
 	}
 
-	// support only self team
 	public async getReactions(channel: string, ts: string): Promise<Record<string,number>> {
 		if (!this.config.enableReactions) {
 			throw new Error('reactionsCache disabled');
