@@ -1,60 +1,48 @@
 import fs from 'fs/promises';
 import path from 'path';
-import Method from '@slack/web-api/dist/methods';
 import type {
 	ConversationsHistoryArguments,
-	TeamInfoArguments,
 	UsersListArguments,
 	EmojiListArguments,
 } from '@slack/web-api/dist/methods';
 import type {
 	ConversationsHistoryResponse,
-	TeamInfoResponse,
 	UsersListResponse,
 	EmojiListResponse,
 } from '@slack/web-api/dist/response';
 
-jest.mock('@slack/web-api', () => {
-	const original = jest.requireActual('@slack/web-api');
-
-	class WebClient {
-		readonly users = {
-			async list(args: UsersListArguments): Promise<UsersListResponse> {
-				const fn = path.join(__dirname, '__testdata__/users.list.json');
-				const json = await fs.readFile(fn);
-				return JSON.parse(json.toString());
-			},
-		};
-		readonly emoji = {
-			async list(args: EmojiListArguments): Promise<EmojiListResponse> {
-				const fn = path.join(__dirname, '__testdata__/emoji.list.json');
-				const json = await fs.readFile(fn);
-				return JSON.parse(json.toString());
-			},
-		};
-		readonly conversations = {
-			async history(args: ConversationsHistoryArguments): Promise<ConversationsHistoryResponse> {
-				if (args.limit && args.limit !== 1) {
-					throw Error('unsupported mock');
-				}
-				const fn = path.join(__dirname, '__testdata__/conversations.history.json');
-				const json = await fs.readFile(fn);
-				const res = JSON.parse(json.toString());
-
-				if (!args.limit) {
-					return res;
-				}
-				res.messages = res.messages.filter(({ts}: {ts: string}) => ts === args.latest);
-				return res;
-			},
-		};
-	}
-	return {
-		__esModule: true,
-		...original,
-		WebClient,
+class WebClientMock {
+	readonly users = {
+		async list(args: UsersListArguments): Promise<UsersListResponse> {
+			const fn = path.join(__dirname, '__testdata__/users.list.json');
+			const json = await fs.readFile(fn);
+			return JSON.parse(json.toString());
+		},
 	};
-});
+	readonly emoji = {
+		async list(args: EmojiListArguments): Promise<EmojiListResponse> {
+			const fn = path.join(__dirname, '__testdata__/emoji.list.json');
+			const json = await fs.readFile(fn);
+			return JSON.parse(json.toString());
+		},
+	};
+	readonly conversations = {
+		async history(args: ConversationsHistoryArguments): Promise<ConversationsHistoryResponse> {
+			if (args.limit && args.limit !== 1) {
+				throw Error('unsupported mock');
+			}
+			const fn = path.join(__dirname, '__testdata__/conversations.history.json');
+			const json = await fs.readFile(fn);
+			const res = JSON.parse(json.toString());
+
+			if (!args.limit) {
+				return res;
+			}
+			res.messages = res.messages.filter(({ts}: {ts: string}) => ts === args.latest);
+			return res;
+		},
+	};
+}
 
 // @ts-expect-error
 import Slack from './slackMock';
@@ -74,6 +62,7 @@ describe('SlackCache', () => {
 				bot_access_token: 'xoxb-bot',
 			},
 			rtmClient: rtm,
+			webClient: new WebClientMock,
 			enableUsers: true,
 			enableEmojis: true,
 			enableReactions: true,

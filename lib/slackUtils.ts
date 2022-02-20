@@ -1,4 +1,5 @@
 import {MrkdwnElement, PlainTextElement} from '@slack/web-api';
+import {WebClient} from '@slack/web-api';
 import type {RTMClient} from '@slack/rtm-api';
 import {getTokens, getRtmClient} from './slack';
 import {Deferred} from './utils';
@@ -15,6 +16,7 @@ const initializedSlackCachesDeferred = new Deferred<void>();
 			slackCaches.set(token.team_id, new SlackCache({
 				token,
 				rtmClient,
+				webClient: new WebClient,
 				enableUsers: true,
 				enableEmojis: true,
 				enableReactions: token.team_id === process.env.TEAM_ID,

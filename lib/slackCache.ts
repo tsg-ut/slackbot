@@ -1,16 +1,37 @@
-import {WebClient} from '@slack/web-api';
-import type {RTMClient} from '@slack/rtm-api';
 import {get} from 'lodash';
+import type {RTMClient} from '@slack/rtm-api';
 import type {Reaction} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
 import type {Token} from '../oauth/tokens';
 import {Deferred} from './utils';
 import logger from './logger';
 
-const webClient = new WebClient();
+import type {
+	ConversationsHistoryArguments,
+	UsersListArguments,
+	EmojiListArguments,
+} from '@slack/web-api/dist/methods';
+import type {
+	ConversationsHistoryResponse,
+	UsersListResponse,
+	EmojiListResponse,
+} from '@slack/web-api/dist/response';
+
+interface WebClient {
+	users: {
+		list(args: UsersListArguments): Promise<UsersListResponse>;
+	};
+	emoji: {
+		list(args: EmojiListArguments): Promise<EmojiListResponse>;
+	};
+	conversations: {
+		history(args: ConversationsHistoryArguments): Promise<ConversationsHistoryResponse>;
+	};
+}
 
 interface Config {
 	token: Token;
 	rtmClient: RTMClient;
+	webClient: WebClient;
 	enableUsers?: boolean;
 	enableEmojis?: boolean;
 	enableReactions?: boolean;
@@ -36,7 +57,7 @@ export default class SlackCache {
 				this.users.set(user.id, user);
 			});
 
-			webClient.users.list({token: this.config.token.bot_access_token})
+			this.config.webClient.users.list({token: this.config.token.bot_access_token})
 				.then(({members}) => {
 					for (const member of members) {
 						this.users.set(member.id, member);
@@ -54,7 +75,7 @@ export default class SlackCache {
 			});
 			// TODO: should be bot access token after migration to new OAuth Scope.
 			// FIXME: node-slack-sdkの型情報ミスってない？そんなことない？なんでas要るの？
-			(webClient.emoji.list({token: this.config.token.access_token}) as Promise<{emoji: any}>)
+			(this.config.webClient.emoji.list({token: this.config.token.access_token}) as Promise<{emoji: any}>)
 				.then(({emoji: emojis}: {emoji: any}) => {
 					for (const name in emojis) {
 						this.emojis.set(name, emojis[name]);
@@ -122,7 +143,7 @@ export default class SlackCache {
 			return this.reactionsCache.get(key);
 		}
 
-		const data = await webClient.conversations.history({
+		const data = await this.config.webClient.conversations.history({
 			token: this.config.token.access_token,
 			channel: channel,
 			latest: ts,
@@ -165,7 +186,7 @@ export default class SlackCache {
 			return;
 		}
 
-		const data = await webClient.conversations.history({
+		const data = await this.config.webClient.conversations.history({
 			token: this.config.token.access_token,
 			channel: channel,
 			latest: ts,
