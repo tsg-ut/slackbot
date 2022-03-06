@@ -42,7 +42,7 @@ const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emo
 	const emoDict = voiceMapping[voiceType];
 	const postData = {
 		text,
-		speaker: emoDict[emotion || 'normal'] || emoDict['normal'],
+		speaker: emoDict[emotion || 'normal'] || emoDict.normal,
 		speed: 1.0 + (speed - 1.0) / 2,
 	};
 	return new Promise((resolve, reject) => {
