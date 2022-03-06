@@ -17,28 +17,32 @@ const voiceMapping: { [name: string]: { [emo: string]: number } } = {
 	},
 	tsumugi: {
 		normal: 8,
-		happiness: 8,
-		anger: 8,
-		sadness: 8,
 	},
 	ritsu: {
 		normal: 9,
-		happiness: 9,
-		anger: 9,
-		sadness: 9,
 	},
 	hau: {
 		normal: 10,
-		happiness: 10,
-		anger: 10,
-		sadness: 10,
+	},
+	takehiro: {
+		normal: 11,
+	},
+	torataro: {
+		normal: 12,
+	},
+	ryusei: {
+		normal: 13,
+	},
+	himari: {
+		normal: 14,
 	},
 };
 
 const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emotion}) => {
+	const emoDict = voiceMapping[voiceType];
 	const postData = {
 		text,
-		speaker: voiceMapping[voiceType][emotion || 'normal'],
+		speaker: emoDict[emotion || 'normal'] || emoDict['normal'],
 		speed: 1.0 + (speed - 1.0) / 2,
 	};
 	return new Promise((resolve, reject) => {
