@@ -132,8 +132,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 						convert: (time) => new Date(time).getTime(),
 					},
 					title: {
-						selector: 'td:nth-child(2)',
-						convert: (title) => title.replace('◉', '').trim(),
+						selector: 'td:nth-child(2) a',
 					},
 					id: {
 						selector: 'td:nth-child(2) a',
