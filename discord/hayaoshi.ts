@@ -71,6 +71,7 @@ export default class Hayaoshi extends EventEmitter {
 			validAnswers: [],
 			isOneChance: false,
 		};
+		this.onFinishReadingQuestion = this.onFinishReadingQuestion.bind(this);
 	}
 
 	getSlashedText() {
