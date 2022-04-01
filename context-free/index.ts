@@ -2,9 +2,13 @@ import axios from 'axios';
 import plugin from 'fastify-plugin';
 import {escapeRegExp} from 'lodash';
 import scrapeIt from 'scrape-it';
+// @ts-expect-error
+import getReading from '../lib/getReading';
 /* eslint-disable no-unused-vars */
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils';
+// @ts-expect-error
+import tahoiyaBot from '../tahoiya/bot';
 import {tags} from './cfp-tags';
 
 const normalizeMeaning = (input: string) => {
@@ -74,6 +78,19 @@ const randomWord = async (): Promise<Word> => {
       },
     }
   );
+  const date = new Date().toLocaleString('en-US', {
+    timeZone: 'Asia/Tokyo',
+    month: 'numeric',
+    day: 'numeric',
+  });
+  if (date === '4/1') {
+    const reading = await getReading(response.data.word);
+    const result = await tahoiyaBot.getResult(reading, 'tahoiyabot-02');
+    return {
+      word: response.data.word,
+      description: result.result,
+    };
+  }
   const description = extractMeaning(response.data.description);
   return {
     word: response.data.word,
