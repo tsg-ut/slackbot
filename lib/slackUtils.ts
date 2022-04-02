@@ -55,11 +55,11 @@ export const getMemberName = async (user: string): Promise<string|undefined> => 
 };
 
 type IconResolution = 24 | 32 | 48 | 72 | 192 | 512;
-export const getMemberIcon = async (user: string, res: IconResolution = 24): Promise<string> => {
+export const getMemberIcon = async (user: string, res: IconResolution = 24): Promise<string|undefined> => {
 	await initializedSlackCachesDeferred.promise;
 
 	// TODO: receive team_id and use it to choose slackCache
-	let member: any = null;
+	let member: Member|null = null;
 	for (const [_, caches] of slackCaches) {
 		const found = await caches.getUser(user);
 		if (found) {
@@ -67,19 +67,22 @@ export const getMemberIcon = async (user: string, res: IconResolution = 24): Pro
 			break;
 		}
 	}
+	if (!member) {
+		return undefined;
+	}
 	switch (res) {
 		case 32:
-			return member?.profile.image_32;
+			return member?.profile?.image_32;
 		case 48:
-			return member?.profile.image_48;
+			return member?.profile?.image_48;
 		case 72:
-			return member?.profile.image_72;
+			return member?.profile?.image_72;
 		case 192:
-			return member?.profile.image_192;
+			return member?.profile?.image_192;
 		case 512:
-			return member?.profile.image_512;
+			return member?.profile?.image_512;
 		default:
-			return member?.profile.image_24;
+			return member?.profile?.image_24;
 	}
 };
 
