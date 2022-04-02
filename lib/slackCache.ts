@@ -1,6 +1,7 @@
 import {get} from 'lodash';
 import type {RTMClient} from '@slack/rtm-api';
 import type {Reaction} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
+import type {Member} from '@slack/web-api/dist/response/UsersListResponse';
 import type {Token} from '../oauth/tokens';
 import {Deferred} from './utils';
 import logger from './logger';
@@ -39,7 +40,7 @@ interface Config {
 
 export default class SlackCache {
 	private config: Config;
-	private users = new Map<string, any>();
+	private users = new Map<string, Member>();
 	private emojis = new Map<string, string>();
 	// Cache for message reactions. Currently it only holds counts of reactions.
 	private reactionsCache = new Map<string, Record<string, number>>();
@@ -50,17 +51,17 @@ export default class SlackCache {
 		this.config = config;
 
 		if (this.config.enableUsers) {
-			this.config.rtmClient.on('team_join', ({user}: {user: any}) => {
-				this.users.set(user.id, user);
+			this.config.rtmClient.on('team_join', ({user}: {user: Member}) => {
+				this.users.set(user.id!, user);
 			});
-			this.config.rtmClient.on('user_change', ({user}: {user: any}) => {
-				this.users.set(user.id, user);
+			this.config.rtmClient.on('user_change', ({user}: {user: Member}) => {
+				this.users.set(user.id!, user);
 			});
 
 			this.config.webClient.users.list({token: this.config.token.bot_access_token})
 				.then(({members}) => {
-					for (const member of members) {
-						this.users.set(member.id, member);
+					for (const member of members!) {
+						this.users.set(member.id!, member);
 					}
 				})
 				.then(() => this.loadUsersDeferred.resolve())
@@ -110,7 +111,7 @@ export default class SlackCache {
 			});
 		}
 	}
-	public async getUsers(): Promise<IterableIterator<any>> {
+	public async getUsers(): Promise<IterableIterator<Member>> {
 		if (!this.config.enableUsers) {
 			throw new Error('usersCache disabled');
 		}
@@ -118,7 +119,7 @@ export default class SlackCache {
 		return this.users.values();
 	}
 
-	public async getUser(user: string): Promise<any> {
+	public async getUser(user: string): Promise<Member|undefined> {
 		if (!this.config.enableUsers) {
 			throw new Error('usersCache disabled');
 		}
@@ -126,7 +127,7 @@ export default class SlackCache {
 		return this.users.get(user);
 	}
 
-	public async getEmoji(emoji: string): Promise<string> {
+	public async getEmoji(emoji: string): Promise<string|undefined> {
 		if (!this.config.enableEmojis) {
 			throw new Error('emojisCache disabled');
 		}
@@ -134,7 +135,7 @@ export default class SlackCache {
 		return this.emojis.get(emoji);
 	}
 
-	public async getReactions(channel: string, ts: string): Promise<Record<string,number>> {
+	public async getReactions(channel: string, ts: string): Promise<Record<string,number>|undefined> {
 		if (!this.config.enableReactions) {
 			throw new Error('reactionsCache disabled');
 		}
@@ -156,7 +157,7 @@ export default class SlackCache {
 			return this.reactionsCache.get(key);
 		}
 
-		const remoteReactions = get(data, ['messages', 0, 'reactions'], [] as Reaction[]);
+		const remoteReactions: Reaction[] = get(data, ['messages', 0, 'reactions'], [] as Reaction[]);
 		const remoteReactionsObj = Object.fromEntries(remoteReactions.map((reaction) => (
 			[reaction.name, reaction.count]
 		)));
@@ -177,13 +178,15 @@ export default class SlackCache {
 	}): Promise<void> {
 		const key = `${channel}\0${ts}`;
 
-		if (this.reactionsCache.has(key)) {
+		{
 			const reactions = this.reactionsCache.get(key);
-			if (!{}.hasOwnProperty.call(reactions, reaction)) {
-				reactions[reaction] = 0;
+			if (reactions) {
+				if (!{}.hasOwnProperty.call(reactions, reaction)) {
+					reactions[reaction] = 0;
+				}
+				reactions[reaction] += by;
+				return;
 			}
-			reactions[reaction] += by;
-			return;
 		}
 
 		const data = await this.config.webClient.conversations.history({
@@ -194,17 +197,19 @@ export default class SlackCache {
 			inclusive: true,
 		});
 
-		// race condition
-		if (this.reactionsCache.has(key)) {
+		{
+			// race condition
 			const reactions = this.reactionsCache.get(key);
-			if (!{}.hasOwnProperty.call(reactions, reaction)) {
-				reactions[reaction] = 0;
+			if (reactions) {
+				if (!{}.hasOwnProperty.call(reactions, reaction)) {
+					reactions[reaction] = 0;
+				}
+				reactions[reaction] += by;
+				return;
 			}
-			reactions[reaction] += by;
-			return;
 		}
 
-		const remoteReactions = get(data, ['messages', 0, 'reactions'], [] as Reaction[]);
+		const remoteReactions: Reaction[] = get(data, ['messages', 0, 'reactions'], [] as Reaction[]);
 		const remoteReactionsObj = Object.fromEntries(remoteReactions.map((reaction) => (
 			[reaction.name, reaction.count]
 		)));

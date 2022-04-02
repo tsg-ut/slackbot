@@ -1,4 +1,5 @@
-import {MrkdwnElement, PlainTextElement} from '@slack/web-api';
+import type {MrkdwnElement, PlainTextElement} from '@slack/web-api';
+import type {Member} from '@slack/web-api/dist/response/UsersListResponse';
 import {WebClient} from '@slack/web-api';
 import type {RTMClient} from '@slack/rtm-api';
 import {getTokens, getRtmClient} from './slack';
@@ -29,19 +30,19 @@ const initializedSlackCachesDeferred = new Deferred<void>();
 // Note: support only TSG
 export const getReactions = async (channel: string, ts: string) => {
 	await initializedSlackCachesDeferred.promise;
-	return slackCaches.get(process.env.TEAM_ID).getReactions(channel, ts);
+	return slackCaches.get(process.env.TEAM_ID!)!.getReactions(channel, ts);
 };
 
-export const getAllTSGMembers = async (): Promise<Array<any>> => {
+export const getAllTSGMembers = async (): Promise<Array<Member>> => {
 	await initializedSlackCachesDeferred.promise;
-	return Array.from(await slackCaches.get(process.env.TEAM_ID).getUsers());
+	return Array.from(await slackCaches.get(process.env.TEAM_ID!)!.getUsers());
 };
 
-export const getMemberName = async (user: string): Promise<string> => {
+export const getMemberName = async (user: string): Promise<string|undefined> => {
 	await initializedSlackCachesDeferred.promise;
 
 	// TODO: receive team_id and use it to choose slackCache
-	let member: any = null;
+	let member: Member|null = null;
 	for (const [_, caches] of slackCaches) {
 		const found = await caches.getUser(user);
 		if (found) {
@@ -82,9 +83,9 @@ export const getMemberIcon = async (user: string, res: IconResolution = 24): Pro
 	}
 };
 
-export const getEmoji = async (name: string, team: string): Promise<string> => {
+export const getEmoji = async (name: string, team: string): Promise<string|undefined> => {
 	await initializedSlackCachesDeferred.promise;
-	return slackCaches.get(team).getEmoji(name);
+	return slackCaches.get(team)?.getEmoji(name);
 };
 
 export const plainText = (text: string, emoji: boolean = true): PlainTextElement => ({
