@@ -221,14 +221,14 @@ export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 		};
 
 		for (const eventType of ['reaction_added', 'reaction_removed']) {
-			eventClient.on(eventType, (event: any) => {
+			eventClient.onAllTeam(eventType, (event: any, body: any) => {
 				const team =
-					event.team_id === process.env.TEAM_ID ? 'TSG'
-						: event.team_id === process.env.KMC_TEAM_ID ? 'KMC'
-							: null;
+					body.team_id === process.env.TEAM_ID ? 'TSG'
+					: body.team_id === process.env.KMC_TEAM_ID ? 'KMC'
+					: null;
 
 				if (!team) {
-					logger.warn(`unknown team: ${event.team_id}`);
+					logger.warn(`unknown team: ${body.team_id}`);
 					return;
 				}
 
