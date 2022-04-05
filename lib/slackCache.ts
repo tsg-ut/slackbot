@@ -65,7 +65,7 @@ export default class SlackCache {
 					}
 				})
 				.then(() => this.loadUsersDeferred.resolve())
-				.catch((err: any) => logger.error(`SlackCache/users.list(${this.config.token.team_id})`,  err));
+				.catch((err: any) => logger.error(`SlackCache/users.list(${this.config.token.team_id})`, err));
 		}
 
 		if (this.config.enableEmojis) {
@@ -83,7 +83,7 @@ export default class SlackCache {
 					}
 				})
 				.then(() => this.loadEmojisDeferred.resolve())
-				.catch((err: any) => logger.error(`SlackCache/emoji.list(${this.config.token.team_id})`,  err));
+				.catch((err: any) => logger.error(`SlackCache/emoji.list(${this.config.token.team_id})`, err));
 		}
 
 		if (this.config.enableReactions) {
