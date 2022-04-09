@@ -180,7 +180,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
             try {
                 await slack.reactions.add({name: reaction, channel, timestamp});
             } catch (e) {
-                if(e.data.error !== "already_reacted")throw e;
+                if (e.data.error !== "already_reacted") throw e;
             }
         }
     });
