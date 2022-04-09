@@ -10,19 +10,18 @@ const slackCaches = new Map<string, SlackCache>();
 const initializedSlackCachesDeferred = new Deferred<void>();
 
 // Immediately Invoked Function Expression
-(function initializedSlackCaches() {
-	getTokens().then(async (tokens) => {
-		for (const token of tokens) {
-			const rtmClient: RTMClient = await getRtmClient(token.team_id);
-			slackCaches.set(token.team_id, new SlackCache({
-				token,
-				rtmClient,
-				webClient: new WebClient,
-				enableReactions: token.team_id === process.env.TEAM_ID,
-			}));
-		}
-		initializedSlackCachesDeferred.resolve();
-	});
+(async function initializedSlackCaches() {
+	const tokens = await getTokens();
+	for (const token of tokens) {
+		const rtmClient: RTMClient = await getRtmClient(token.team_id);
+		slackCaches.set(token.team_id, new SlackCache({
+			token,
+			rtmClient,
+			webClient: new WebClient,
+			enableReactions: token.team_id === process.env.TEAM_ID,
+		}));
+	}
+	initializedSlackCachesDeferred.resolve();
 })();
 
 // Note: support only TSG
