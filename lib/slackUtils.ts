@@ -18,8 +18,6 @@ const initializedSlackCachesDeferred = new Deferred<void>();
 				token,
 				rtmClient,
 				webClient: new WebClient,
-				enableUsers: true,
-				enableEmojis: true,
 				enableReactions: token.team_id === process.env.TEAM_ID,
 			}));
 		}

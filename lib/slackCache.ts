@@ -33,8 +33,6 @@ interface Config {
 	token: Token;
 	rtmClient: RTMClient;
 	webClient: WebClient;
-	enableUsers?: boolean;
-	enableEmojis?: boolean;
 	enableReactions?: boolean;
 }
 
@@ -50,7 +48,8 @@ export default class SlackCache {
 	constructor(config: Config) {
 		this.config = config;
 
-		if (this.config.enableUsers) {
+		{
+			// user cache
 			this.config.rtmClient.on('team_join', ({user}: {user: Member}) => {
 				this.users.set(user.id!, user);
 			});
@@ -68,7 +67,8 @@ export default class SlackCache {
 				.catch((err: any) => logger.error(`SlackCache/users.list(${this.config.token.team_id})`, err));
 		}
 
-		if (this.config.enableEmojis) {
+		{
+			// emoji cache
 			this.config.rtmClient.on('emoji_changed', async (event) => {
 				if (event.subtype === 'add') {
 					this.emojis.set(event.name, event.value);
@@ -112,25 +112,16 @@ export default class SlackCache {
 		}
 	}
 	public async getUsers(): Promise<IterableIterator<Member>> {
-		if (!this.config.enableUsers) {
-			throw new Error('usersCache disabled');
-		}
 		await this.loadUsersDeferred.promise;
 		return this.users.values();
 	}
 
 	public async getUser(user: string): Promise<Member|undefined> {
-		if (!this.config.enableUsers) {
-			throw new Error('usersCache disabled');
-		}
 		await this.loadUsersDeferred.promise;
 		return this.users.get(user);
 	}
 
 	public async getEmoji(emoji: string): Promise<string|undefined> {
-		if (!this.config.enableEmojis) {
-			throw new Error('emojisCache disabled');
-		}
 		await this.loadEmojisDeferred.promise;
 		return this.emojis.get(emoji);
 	}
