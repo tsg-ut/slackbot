@@ -155,7 +155,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 
     eventClient.on('message', async (message) => {
         if (!message.user || message.user.startsWith('B') || message.user === 'UEJTPN6R5' || message.user === 'USLACKBOT') return;
-        const {channel, text, ts: timestamp, user} = message;
+        const {channel, text, ts: timestamp, user, thread_broadcast} = message;
         if (!text) return;
         const context: Context = {user};
         const resp = await response(text, context, state.textResponses);
@@ -167,6 +167,8 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                 text: resp.text,
                 username,
                 icon_emoji,
+                thread_ts: timestamp,
+                reply_broadcast: thread_broadcast,
             });
             for (const achievementID of resp.achievements) {
                 await unlock(message.user, achievementID);
