@@ -111,9 +111,9 @@ export default class SlackCache {
 			});
 		}
 	}
-	public async getUsers(): Promise<IterableIterator<Member>> {
+	public async getUsers(): Promise<Member[]> {
 		await this.loadUsersDeferred.promise;
-		return this.users.values();
+		return Array.from(this.users.values());
 	}
 
 	public async getUser(user: string): Promise<Member|undefined> {
@@ -126,13 +126,16 @@ export default class SlackCache {
 		return this.emojis.get(emoji);
 	}
 
-	public async getReactions(channel: string, ts: string): Promise<Record<string,number>|undefined> {
+	public async getReactions(channel: string, ts: string): Promise<Record<string,number>> {
 		if (!this.config.enableReactions) {
 			throw new Error('reactionsCache disabled');
 		}
 		const key = `${channel}\0${ts}`;
-		if (this.reactionsCache.has(key)) {
-			return this.reactionsCache.get(key);
+		{
+			const reactions = this.reactionsCache.get(key);
+			if (reactions) {
+				return reactions;
+			}
 		}
 
 		const data = await this.config.webClient.conversations.history({
@@ -143,9 +146,12 @@ export default class SlackCache {
 			inclusive: true,
 		});
 
-		// race condition
-		if (this.reactionsCache.has(key)) {
-			return this.reactionsCache.get(key);
+		{
+			// race condition
+			const reactions = this.reactionsCache.get(key);
+			if (reactions) {
+				return reactions;
+			}
 		}
 
 		const remoteReactions: Reaction[] = get(data, ['messages', 0, 'reactions'], [] as Reaction[]);

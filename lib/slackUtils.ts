@@ -32,7 +32,7 @@ export const getReactions = async (channel: string, ts: string) => {
 
 export const getAllTSGMembers = async (): Promise<Array<Member>> => {
 	await initializedSlackCachesDeferred.promise;
-	return Array.from(await slackCaches.get(process.env.TEAM_ID!)!.getUsers());
+	return await slackCaches.get(process.env.TEAM_ID!)!.getUsers();
 };
 
 export const getMemberName = async (user: string): Promise<string|undefined> => {
