@@ -1,4 +1,4 @@
-import fs from 'fs/promises';
+import fs from 'fs-extra';
 import path from 'path';
 import type {
 	ConversationsHistoryArguments,
@@ -15,15 +15,13 @@ class WebClientMock {
 	readonly users = {
 		async list(args: UsersListArguments): Promise<UsersListResponse> {
 			const fn = path.join(__dirname, '__testdata__/users.list.json');
-			const json = await fs.readFile(fn);
-			return JSON.parse(json.toString());
+			return await fs.readJson(fn);
 		},
 	};
 	readonly emoji = {
 		async list(args: EmojiListArguments): Promise<EmojiListResponse> {
 			const fn = path.join(__dirname, '__testdata__/emoji.list.json');
-			const json = await fs.readFile(fn);
-			return JSON.parse(json.toString());
+			return await fs.readJson(fn);
 		},
 	};
 	readonly conversations = {
@@ -32,8 +30,7 @@ class WebClientMock {
 				throw Error('unsupported mock');
 			}
 			const fn = path.join(__dirname, '__testdata__/conversations.history.json');
-			const json = await fs.readFile(fn);
-			const res = JSON.parse(json.toString());
+			const res = await fs.readJson(fn);
 
 			if (!args.limit) {
 				return res;
