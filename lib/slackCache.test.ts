@@ -86,12 +86,12 @@ describe('SlackCache', () => {
 		});
 
 		it('watches team_join', async () => {
-			/// NOTE: 適当に作りました、たぶんこんなフォーマットでしょ
-			rtm.emit('team_join', {
-				"user": {
-					"id": "U22222222",
-					"team_id": "T00000000",
-					"name": "new user",
+			// NOTE: 適当に作りました、たぶんこんなフォーマットでしょ
+			await rtm.emit('team_join', {
+				'user': {
+					'id': 'U22222222',
+					'team_id': 'T00000000',
+					'name': 'new user',
 				}
 			});
 
@@ -105,12 +105,12 @@ describe('SlackCache', () => {
 			expect(gotIds).toEqual(new Set(['U12345678', 'U22222222', 'USLACKBOT']));
 		});
 		it('watches user_change', async () => {
-			/// NOTE: 適当に作りました、たぶんこんなフォーマットでしょ２
+			// NOTE: 適当に作りました、たぶんこんなフォーマットでしょ２
 			await rtm.emit('user_change', {
-				"user": {
-					"id": "U12345678",
-					"team_id": "T00000000",
-					"name": "special user",
+				'user': {
+					'id': 'U12345678',
+					'team_id': 'T00000000',
+					'name': 'special user',
 				}
 			});
 
