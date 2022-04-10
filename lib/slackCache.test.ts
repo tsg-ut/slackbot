@@ -72,7 +72,7 @@ describe('SlackCache', () => {
 		//  constructorのwebClient callが処理されるより前に、RTM eventが来ちゃうとテストがおかしくなるので、
 		//  loadUsersDeferred.promiseを待つ（ためにgetUsersを呼ぶ）。
 		//  現実世界では、まあ、初期化の瞬間にRTM eventが来ることなんて滅多にないだろうし、気にしない気にしない。
-		const _ = await slackCache.getUsers();
+		await slackCache.getUsers();
 	});
 
 	describe('getUsers', () => {
