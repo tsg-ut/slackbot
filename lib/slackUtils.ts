@@ -17,7 +17,7 @@ const initializedSlackCachesDeferred = new Deferred<void>();
 		slackCaches.set(token.team_id, new SlackCache({
 			token,
 			rtmClient,
-			webClient: new WebClient,
+			webClient: new WebClient(),
 			enableReactions: token.team_id === process.env.TEAM_ID,
 		}));
 	}

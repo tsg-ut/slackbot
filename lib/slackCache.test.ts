@@ -62,7 +62,7 @@ describe('SlackCache', () => {
 				bot_access_token: 'xoxb-bot',
 			},
 			rtmClient: rtm,
-			webClient: new WebClientMock,
+			webClient: new WebClientMock(),
 			enableReactions: true,
 		});
 
