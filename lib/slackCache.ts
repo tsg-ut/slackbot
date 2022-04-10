@@ -64,7 +64,7 @@ export default class SlackCache {
 					}
 				})
 				.then(() => this.loadUsersDeferred.resolve())
-				.catch((err: any) => logger.error(`SlackCache/users.list(${this.config.token.team_id})`, err));
+				.catch((err: any) => logger.error(`SlackCache/users.list(${this.config.token.team_id}): ${err}`, err));
 		}
 
 		{
