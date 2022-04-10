@@ -10,6 +10,9 @@ import type {
 	UsersListResponse,
 	EmojiListResponse,
 } from '@slack/web-api/dist/response';
+// @ts-expect-error
+import Slack from './slackMock';
+import SlackCache from './slackCache';
 
 class WebClientMock {
 	readonly users = {
@@ -40,10 +43,6 @@ class WebClientMock {
 		},
 	};
 }
-
-// @ts-expect-error
-import Slack from './slackMock';
-import SlackCache from './slackCache';
 
 describe('SlackCache', () => {
 	let slackCache: SlackCache = null;
