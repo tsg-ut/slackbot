@@ -63,8 +63,6 @@ describe('SlackCache', () => {
 			},
 			rtmClient: rtm,
 			webClient: new WebClientMock,
-			enableUsers: true,
-			enableEmojis: true,
 			enableReactions: true,
 		});
 
