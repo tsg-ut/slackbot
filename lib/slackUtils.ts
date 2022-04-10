@@ -60,7 +60,7 @@ export const getMemberIcon = async (user: string, res: IconResolution = 24): Pro
 
 	// TODO: receive team_id and use it to choose slackCache
 	let member: Member|null = null;
-	for (const [_, caches] of slackCaches) {
+	for (const caches of slackCaches.values()) {
 		const found = await caches.getUser(user);
 		if (found) {
 			member = found;
