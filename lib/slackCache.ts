@@ -93,7 +93,7 @@ export default class SlackCache {
 					this.reactionsCache.set(key, Object.create(null));
 				}
 			});
-			this.config.rtmClient.on('reaction_added', async (event) => {
+			this.config.rtmClient.on('reaction_added', (event) => {
 				this.incrementReactions({
 					channel: event.item.channel,
 					ts: event.item.ts,
