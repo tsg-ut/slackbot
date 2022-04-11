@@ -7,10 +7,7 @@ process.on('unhandledRejection', (error: Error) => {
 });
 
 import os from 'os';
-import {rtmClient, webClient} from './lib/slack';
-import {createEventAdapter} from '@slack/events-api';
-import {createMessageAdapter} from '@slack/interactive-messages';
-import {TSGEventClient} from './lib/slackEventClient';
+import {rtmClient, webClient, messageClient, eventClient, tsgEventClient} from './lib/slack';
 import Fastify from 'fastify';
 
 import logger from './lib/logger';
@@ -108,13 +105,9 @@ if (plugins.length !== argv.only.length) {
 	logger.info(`Some plugins are specified more than once. Duplicated plugins were removed.`)
 }
 
-const eventClient = createEventAdapter(process.env.SIGNING_SECRET, {includeBody: true});
 eventClient.on('error', (error) => {
 	logger.error(error.stack);
 });
-const tsgEventClient = new TSGEventClient(eventClient, process.env.TEAM_ID);
-
-const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 
 (async () => {
 	await fastify.register(fastifyFormbody);
