@@ -6,8 +6,8 @@ import type {SlackInterface} from '../lib/slack';
 
 const range = (lower: number, upper: number) => Math.random() * (upper - lower) + lower;
 
-export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
-	rtm.on('message', async (message) => {
+export default ({eventClient, webClient: slack}: SlackInterface) => {
+	eventClient.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX || !message.text?.startsWith('ダーツの旅')) {
 			return;
 		}
