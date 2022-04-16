@@ -4,8 +4,9 @@ const path = require('path');
 const qs = require('querystring');
 const {promisify} = require('util');
 const {source} = require('common-tags');
-const {chunk, shuffle} = require('lodash');
-const {unlock} = require('../achievements');
+const {chunk, shuffle, sampleSize, sample} = require('lodash');
+const {unlock, increment} = require('../achievements');
+const {AteQuiz} = require('../atequiz/index.ts');
 const {blockDeploy} = require('../deploy/index.ts');
 
 const calculator = require('./calculator.js');
@@ -173,6 +174,17 @@ const saveState = async () => {
 		大麻雀Loses: state.大麻雀Loses,
 	}));
 };
+
+class TenpaiAteQuiz extends AteQuiz {
+	judge(answer) {
+		const normalizedAnswer = answer.replace(/\s/g, '').split('').sort().join('');
+		return this.problem.correctAnswers.map((correctAnswer) => correctAnswer.replace(/\s/g, '').split('').sort().join('')).includes(normalizedAnswer);
+	}
+
+	waitSecGen() {
+		return 60;
+	}
+}
 
 module.exports = (clients) => {
 	const {eventClient, webClient: slack} = clients;
@@ -813,6 +825,93 @@ module.exports = (clients) => {
 				state.thread = null;
 				await saveState();
 				await checkPoints();
+			}
+		}
+
+		const getQuiz = (isTenpai, isHardMode) => {
+			while (true) {
+				const 牌Numbers = Array.from(Array(9).keys()).flatMap((i) => [i + 1, i + 1, i + 1, i + 1]);
+				const sampled牌Numbers = sampleSize(牌Numbers, 13);
+				const color = sample(['m', 'p', 's']);
+				const 牌s = sampled牌Numbers.map((n) => (
+					String.fromCodePoint(0x1F000 + calculator.paiIndices.indexOf(`${n}${color}`))
+				));
+				if (!isHardMode) {
+					sort(牌s);
+				}
+				const tenpai牌s = Array.from(new Set(麻雀牌)).filter((牌) => {
+					// 5枚使いはNG
+					if (牌s.filter((s) => s === 牌).length === 4) {
+						return false;
+					}
+					const {agari} = calculator.agari([...牌s, 牌], {isRiichi: true});
+					return agari.isAgari;
+				}).map((牌) => (
+					calculator.paiIndices[牌.codePointAt(0) - 0x1F000][0]
+				));
+				const answer = tenpai牌s.length === 0 ? 'ノーテン' : Array.from(new Set(tenpai牌s)).join('');
+				if (isTenpai === (answer !== 'ノーテン')) {
+					return {answer, 牌s, numbers: sampled牌Numbers};
+				}
+			}
+		};
+
+		if (text === 'チンイツクイズ' || text === 'チンイツクイズhard') {
+			const isHardMode = text === 'チンイツクイズhard';
+			const channel = process.env.CHANNEL_SANDBOX;
+			const {牌s, answer} = getQuiz(Math.random() < 0.9, isHardMode);
+			const problem = {
+				problemMessage: {
+					channel,
+					text: '待ちは何でしょう？ (回答例: `45` `258 3` `ノーテン`)',
+					attachments: [{
+						image_url: `https://mahjong.hakatashi.com/images/${encodeURIComponent(牌s.join(''))}`,
+						fallback: 牌s.join(''),
+					}],
+				},
+				hintMessages: [],
+				immediateMessage: {channel, text: '制限時間: 60秒'},
+				solvedMessage: {
+					channel,
+					text: `<@[[!user]]> 正解:tada:\n答えは \`${answer}\` だよ:muscle:`,
+					reply_broadcast: true,
+				},
+				unsolvedMessage: {
+					channel,
+					text: `もう、しっかりして！\n答えは \`${answer}\` だよ:anger:`,
+					reply_broadcast: true,
+				},
+				answerMessage: {channel, text: `答え: \`${answer}\``},
+				correctAnswers: [answer],
+			};
+
+			const ateQuiz = new TenpaiAteQuiz(
+				{eventClient, webClient: slack},
+				problem,
+				{username: 'mahjong', icon_emoji: ':mahjong:'},
+			);
+
+			const result = await ateQuiz.start();
+
+			if (result.state === 'solved') {
+				await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-answer');
+				if (isHardMode) {
+					await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-hard-answer');
+				}
+				if (answer === 'ノーテン') {
+					await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-noten');
+				} else {
+					await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-men', answer.length);
+					if (answer.length === 1) {
+						await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-1men');
+					}
+					if (answer.length >= 5) {
+						await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-tamen');
+					}
+					if (answer.length === 9) {
+						await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-9men');
+					}
+				}
 			}
 		}
 	});
