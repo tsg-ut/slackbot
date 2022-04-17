@@ -3,8 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const qs = require('querystring');
 const {promisify} = require('util');
+const {v2: cloudinary} = require('cloudinary');
 const {source} = require('common-tags');
-const {chunk, shuffle, sampleSize, sample} = require('lodash');
+const {chunk, shuffle, sampleSize, sample, random, uniqueId} = require('lodash');
 const {unlock, increment} = require('../achievements');
 const {AteQuiz} = require('../atequiz/index.ts');
 const {blockDeploy} = require('../deploy/index.ts');
@@ -173,6 +174,20 @@ const saveState = async () => {
 		大麻雀Wins: state.大麻雀Wins,
 		大麻雀Loses: state.大麻雀Loses,
 	}));
+};
+
+const uploadImage = async (imageUrl) => {
+	const response = await new Promise((resolve, reject) => {
+		cloudinary.uploader.upload(imageUrl, (error, data) => {
+			if (error) {
+				reject(error);
+			}
+			else {
+				resolve(data);
+			}
+		});
+	});
+	return response.secure_url;
 };
 
 class TenpaiAteQuiz extends AteQuiz {
@@ -846,7 +861,7 @@ module.exports = (clients) => {
 			}
 		}
 
-		const getQuiz = (isTenpai, isHardMode) => {
+		const getQuiz = ([min待ち牌, max待ち牌], isHardMode) => {
 			while (true) {
 				const 牌Numbers = Array.from(Array(9).keys()).flatMap((i) => [i + 1, i + 1, i + 1, i + 1]);
 				const sampled牌Numbers = sampleSize(牌Numbers, 13);
@@ -857,7 +872,7 @@ module.exports = (clients) => {
 				if (!isHardMode) {
 					sort(牌s);
 				}
-				const tenpai牌s = Array.from(new Set(麻雀牌)).filter((牌) => {
+				const 聴牌s = Array.from(new Set(麻雀牌)).filter((牌) => {
 					// 5枚使いはNG
 					if (牌s.filter((s) => s === 牌).length === 4) {
 						return false;
@@ -867,8 +882,8 @@ module.exports = (clients) => {
 				}).map((牌) => (
 					calculator.paiIndices[牌.codePointAt(0) - 0x1F000][0]
 				));
-				const answer = tenpai牌s.length === 0 ? 'ノーテン' : Array.from(new Set(tenpai牌s)).join('');
-				if (isTenpai === (answer !== 'ノーテン')) {
+				const answer = 聴牌s.length === 0 ? 'ノーテン' : Array.from(new Set(聴牌s)).join('');
+				if (聴牌s.length >= min待ち牌 && 聴牌s.length <= max待ち牌) {
 					return {answer, 牌s, numbers: sampled牌Numbers};
 				}
 			}
@@ -877,13 +892,25 @@ module.exports = (clients) => {
 		if (text === 'チンイツクイズ' || text === 'チンイツクイズhard') {
 			const isHardMode = text === 'チンイツクイズhard';
 			const channel = process.env.CHANNEL_SANDBOX;
-			const {牌s, answer} = getQuiz(Math.random() < 0.9, isHardMode);
+			const [min待ち牌, max待ち牌] = [
+				[0, 0],
+				[1, 1],
+				[2, 2],
+				[3, 5],
+				[3, 5],
+				[4, 5],
+				[4, 5],
+				[5, 9],
+				[5, 9],
+				[6, 9],
+			][random(0, 9)];
+			const {牌s, answer} = getQuiz([min待ち牌, max待ち牌], isHardMode);
 			const problem = {
 				problemMessage: {
 					channel,
 					text: '待ちは何でしょう？ (回答例: `45` `258 3` `ノーテン`)\n⚠️回答は1人1回までです!',
 					attachments: [{
-						image_url: `https://mahjong.hakatashi.com/images/${encodeURIComponent(牌s.join(''))}`,
+						image_url: await uploadImage(`https://mahjong.hakatashi.com/images/${encodeURIComponent(牌s.join(''))}`),
 						fallback: 牌s.join(''),
 					}],
 				},
