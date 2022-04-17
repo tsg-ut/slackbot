@@ -5,7 +5,7 @@ const qs = require('querystring');
 const {promisify} = require('util');
 const {v2: cloudinary} = require('cloudinary');
 const {source} = require('common-tags');
-const {chunk, shuffle, sampleSize, sample, random, uniqueId} = require('lodash');
+const {chunk, shuffle, sampleSize, sample, random} = require('lodash');
 const {unlock, increment} = require('../achievements');
 const {AteQuiz} = require('../atequiz/index.ts');
 const {blockDeploy} = require('../deploy/index.ts');
@@ -181,8 +181,7 @@ const uploadImage = async (imageUrl) => {
 		cloudinary.uploader.upload(imageUrl, (error, data) => {
 			if (error) {
 				reject(error);
-			}
-			else {
+			} else {
 				resolve(data);
 			}
 		});
