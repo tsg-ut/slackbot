@@ -59,11 +59,12 @@ export class AteQuiz {
   replaceKeys: { correctAnswerer: string } = { correctAnswerer: '[[!user]]' };
   mutex: Mutex;
   postOption: WebAPICallOptions;
-  judge(answer: string): boolean {
+  judge(answer: string, _user: string): boolean {
     return this.problem.correctAnswers.some(
       correctAnswer => answer === correctAnswer
     );
   }
+
   waitSecGen(hintIndex: number): number {
     return hintIndex === this.problem.hintMessages.length ? 30 : 15;
   }
@@ -160,7 +161,7 @@ export class AteQuiz {
         this.mutex.runExclusive(async () => {
           if (this.state === 'solving') {
             const answer = message.text as string;
-            const isCorrect = this.judge(answer);
+            const isCorrect = this.judge(answer, message.user as string);
             if (isCorrect) {
               this.state = 'solved';
               clearInterval(tickTimer);

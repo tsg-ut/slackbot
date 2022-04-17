@@ -176,9 +176,27 @@ const saveState = async () => {
 };
 
 class TenpaiAteQuiz extends AteQuiz {
-	judge(answer) {
+	constructor(clients, problem, option) {
+		super(clients, problem, option);
+		this.answeredUsers = new Set();
+	}
+
+	judge(answer, user) {
 		const normalizedAnswer = answer.replace(/\s/g, '').split('').sort().join('');
-		return this.problem.correctAnswers.map((correctAnswer) => correctAnswer.replace(/\s/g, '').split('').sort().join('')).includes(normalizedAnswer);
+
+		if (answer !== 'ノーテン' && !normalizedAnswer.match(/^\d+$/)) {
+			// invalid answer
+			return false;
+		}
+
+		if (this.answeredUsers.has(user)) {
+			return false;
+		}
+		this.answeredUsers.add(user);
+
+		return this.problem.correctAnswers.map((correctAnswer) => (
+			correctAnswer.replace(/\s/g, '').split('').sort().join('')
+		)).includes(normalizedAnswer);
 	}
 
 	waitSecGen() {
@@ -863,7 +881,7 @@ module.exports = (clients) => {
 			const problem = {
 				problemMessage: {
 					channel,
-					text: '待ちは何でしょう？ (回答例: `45` `258 3` `ノーテン`)',
+					text: '待ちは何でしょう？ (回答例: `45` `258 3` `ノーテン`)\n⚠️回答は1人1回までです!',
 					attachments: [{
 						image_url: `https://mahjong.hakatashi.com/images/${encodeURIComponent(牌s.join(''))}`,
 						fallback: 牌s.join(''),
