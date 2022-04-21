@@ -107,7 +107,7 @@ describe('vocabwar', () => {
 			resolve();
 		});
 
-		slack.rtmClient.emit('message', {
+		slack.eventClient.emit('message', {
 			channel: slack.fakeChannel,
 			text: '鋭い',
 			user: slack.fakeUser,
@@ -121,7 +121,7 @@ describe('vocabwar', () => {
 			resolve();
 		});
 
-		slack.rtmClient.emit('message', {
+		slack.eventClient.emit('message', {
 			channel: slack.fakeChannel,
 			text: '鋭い',
 			user: `${slack.fakeUser}hoge`,

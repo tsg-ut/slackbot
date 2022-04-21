@@ -52,7 +52,7 @@ const getMembersBlock = (roomName: string, members: Collection<Snowflake, GuildM
 	} as ContextBlock
 );
 
-export default async ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
+export default async ({webClient: slack, eventClient}: SlackInterface) => {
 	const state = await State.init<StateObj>('discord', {
 		users: [],
 		ttsDictionary: [{key: 'https?:\\S*', value: 'URL省略'}],
@@ -266,7 +266,7 @@ export default async ({webClient: slack, rtmClient: rtm}: SlackInterface) => {
 		});
 	});
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (message.text && message.subtype === undefined && message.text.startsWith('@discord ')) {
 			const text = message.text.replace(/^@discord/, '').trim();
 			if (text === 'ユーザー一覧') {

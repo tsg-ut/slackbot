@@ -148,14 +148,14 @@ const reaction = async (text: string, context: Context) => {
     return null;
 };
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
     const state = await ReadOnlyState.init<StateObj>('better-custom-response', {
         textResponses: [],
     });
 
-    rtm.on('message', async (message) => {
+    eventClient.on('message', async (message) => {
         if (!message.user || message.user.startsWith('B') || message.user === 'UEJTPN6R5' || message.user === 'USLACKBOT') return;
-        const {channel, text, ts: timestamp, user} = message;
+        const {channel, text, ts: timestamp, user, thread_ts, subtype} = message;
         if (!text) return;
         const context: Context = {user};
         const resp = await response(text, context, state.textResponses);
@@ -167,6 +167,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
                 text: resp.text,
                 username,
                 icon_emoji,
+                thread_ts,
+                reply_broadcast: subtype === 'thread_broadcast',
             });
             for (const achievementID of resp.achievements) {
                 await unlock(message.user, achievementID);
@@ -178,7 +180,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
             try {
                 await slack.reactions.add({name: reaction, channel, timestamp});
             } catch (e) {
-                if(e.data.error !== "already_reacted")throw e;
+                if (e.data.error !== "already_reacted") throw e;
             }
         }
     });

@@ -1,5 +1,5 @@
 import { WebAPICallOptions, WebClient } from '@slack/web-api';
-import { RTMClient } from '@slack/rtm-api';
+import type { TSGEventClient } from '../lib/slackEventClient';
 import { SlackInterface } from '../lib/slack';
 import { ChatPostMessageArguments } from '@slack/web-api/dist/methods';
 import assert from 'assert';
@@ -51,7 +51,7 @@ export const typicalMessageTextsGenerator = {
  * To use other judge/watSecGen/ngReaction, please extend this class.
  */
 export class AteQuiz {
-  rtm: RTMClient;
+  eventClient: TSGEventClient;
   slack: WebClient;
   problem: AteQuizProblem;
   ngReaction = 'no_good';
@@ -59,21 +59,22 @@ export class AteQuiz {
   replaceKeys: { correctAnswerer: string } = { correctAnswerer: '[[!user]]' };
   mutex: Mutex;
   postOption: WebAPICallOptions;
-  judge(answer: string): boolean {
+  judge(answer: string, _user: string): boolean {
     return this.problem.correctAnswers.some(
       correctAnswer => answer === correctAnswer
     );
   }
+
   waitSecGen(hintIndex: number): number {
     return hintIndex === this.problem.hintMessages.length ? 30 : 15;
   }
 
   constructor(
-    { rtmClient: rtm, webClient: slack }: SlackInterface,
+    { eventClient, webClient: slack }: SlackInterface,
     problem: AteQuizProblem,
     option?: WebAPICallOptions
   ) {
-    this.rtm = rtm;
+    this.eventClient = eventClient;
     this.slack = slack;
     this.problem = JSON.parse(JSON.stringify(problem));
     this.postOption = JSON.parse(JSON.stringify(option));
@@ -154,37 +155,38 @@ export class AteQuiz {
 
     const tickTimer = setInterval(onTick, 1000);
 
-    this.rtm.on('message', async message => {
+    this.eventClient.on('message', async message => {
       if (message.thread_ts === thread_ts) {
         if (message.subtype === 'bot_message') return;
+        this.mutex.runExclusive(async () => {
+          if (this.state === 'solving') {
+            const answer = message.text as string;
+            const isCorrect = this.judge(answer, message.user as string);
+            if (isCorrect) {
+              this.state = 'solved';
+              clearInterval(tickTimer);
 
-        if (this.state === 'solving') {
-          const answer = message.text as string;
-          const isCorrect = this.judge(answer);
-          if (isCorrect) {
-            this.state = 'solved';
-            clearInterval(tickTimer);
+              await postMessage(
+                Object.assign({}, this.problem.solvedMessage, { thread_ts }),
+                [[this.replaceKeys.correctAnswerer, message.user as string]]
+              );
+              await postMessage(
+                Object.assign({}, this.problem.answerMessage, { thread_ts })
+              );
 
-            await postMessage(
-              Object.assign({}, this.problem.solvedMessage, { thread_ts }),
-              [[this.replaceKeys.correctAnswerer, message.user as string]]
-            );
-            await postMessage(
-              Object.assign({}, this.problem.answerMessage, { thread_ts })
-            );
-
-            result.correctAnswerer = message.user;
-            result.hintIndex = hintIndex;
-            result.state = 'solved';
-            deferred.resolve(result);
-          } else {
-            this.slack.reactions.add({
-              name: this.ngReaction,
-              channel: message.channel,
-              timestamp: message.ts,
-            });
+              result.correctAnswerer = message.user;
+              result.hintIndex = hintIndex;
+              result.state = 'solved';
+              deferred.resolve(result);
+            } else {
+              this.slack.reactions.add({
+                name: this.ngReaction,
+                channel: message.channel,
+                timestamp: message.ts,
+              });
+            }
           }
-        }
+        });
       }
     });
 

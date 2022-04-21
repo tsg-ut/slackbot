@@ -7,12 +7,12 @@ interface StateObj {
 	optoutUsers: string[],
 }
 
-export const server = async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export const server = async ({eventClient, webClient: slack}: SlackInterface) => {
 	const state = await State.init<StateObj>('nojoin', {
 		optoutUsers: [],
 	});
 
-	rtm.on('message', async (message: any) => {
+	eventClient.on('message', async (message: any) => {
 		if (
 			(message.subtype === 'channel_join' && message.channel === process.env.CHANNEL_SANDBOX) ||
 			message.subtype === 'channel_leave'

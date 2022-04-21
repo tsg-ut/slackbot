@@ -90,7 +90,7 @@ interface State {
 
 const processQueue = new Queue({concurrency: 1});
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
     const state: State = {
         thread: null,
         isHolding: false,
@@ -363,7 +363,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
         }
     };
 
-    rtm.on('message', async (message: any) => {
+    eventClient.on('message', async (message: any) => {
         if (!message.text || message.subtype || message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
         }

@@ -135,7 +135,7 @@ describe('dajare', () => {
 			resolve();
 		});
 
-		slack.rtmClient.emit('message', {
+		slack.eventClient.emit('message', {
 			channel: slack.fakeChannel,
 			text: 'アルミ缶の上にあるミカン',
 			user: slack.fakeUser,

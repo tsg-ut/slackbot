@@ -110,7 +110,7 @@ interface ContestEntry {
 	duration: number,
 }
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const state = await State.init<StateObj>('atcoder', {
 		users: [],
 		contests: [],
@@ -132,8 +132,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 						convert: (time) => new Date(time).getTime(),
 					},
 					title: {
-						selector: 'td:nth-child(2)',
-						convert: (title) => title.replace('◉', '').trim(),
+						selector: 'td:nth-child(2) a',
 					},
 					id: {
 						selector: 'td:nth-child(2) a',
@@ -591,7 +590,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}
 	};
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (message.text && message.subtype === undefined && message.text.startsWith('@atcoder ')) {
 			const text = message.text.replace(/^@atcoder/, '').trim();
 

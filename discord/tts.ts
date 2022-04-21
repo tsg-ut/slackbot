@@ -2,14 +2,14 @@ import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
 import {inspect} from 'util';
-import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, createAudioPlayer} from '@discordjs/voice';
+import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discordjs/voice';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord from 'discord.js';
 import {minBy, countBy} from 'lodash';
 import logger from '../lib/logger';
 import State from '../lib/state';
-import {Loader} from '../lib/utils';
+import {Loader, Deferred} from '../lib/utils';
 import {getSpeech, Voice, speechConfig, Emotion, VoiceMeta, getDefaultVoiceMeta} from './speeches';
 
 const mutex = new Mutex();
@@ -150,6 +150,8 @@ export default class TTS extends EventEmitter {
 				} else {
 					this.connection = this.joinVoiceChannelFn(this.lastActiveVoiceChannel);
 				}
+				this.audioPlayer = createAudioPlayer();
+				this.subscription = this.connection.subscribe(this.audioPlayer);
 			}
 			logger.info('[TTS] unpause - connected');
 			this.isPaused = false;
@@ -228,8 +230,12 @@ export default class TTS extends EventEmitter {
 						providerName = 'Microsoft Azure Text-to-Speech';
 					} else if (config.provider === 'amazon') {
 						providerName = 'Amazon Polly';
-					} else {
+					} else if (config.provider === 'voicetext') {
 						providerName = 'VoiceText Web API';
+					} else if (config.provider === 'voicevox') {
+						providerName = 'VoiceVox Web API';
+					} else {
+						providerName = 'Unknown';
 					}
 					return `* \`${voice}\`: **${config.name}** (${providerName})`;
 				}).join('\n');
@@ -308,17 +314,21 @@ export default class TTS extends EventEmitter {
 					}
 
 					await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), speech.data);
+					const resource = createAudioResource(path.join(__dirname, 'tempAudio.mp3'));
 
+					const playDeferred = new Deferred<void>();
+					const onFinishPlaying = () => {
+						playDeferred.resolve();
+					};
+					this.audioPlayer.once(AudioPlayerStatus.Idle, onFinishPlaying);
+					this.audioPlayer.play(resource);
 					await Promise.race([
+						playDeferred.promise,
 						new Promise<void>((resolve) => {
-							const resource = createAudioResource(path.join(__dirname, 'tempAudio.mp3'));
-							this.audioPlayer.play(resource);
-							resource.playStream.on('finish', () => {
+							setTimeout(() => {
+								this.audioPlayer.off(AudioPlayerStatus.Idle, onFinishPlaying);
 								resolve();
-							});
-						}),
-						new Promise<void>((resolve) => {
-							setTimeout(resolve, 10 * 1000);
+							}, 10 * 1000);
 						}),
 					]);
 				});

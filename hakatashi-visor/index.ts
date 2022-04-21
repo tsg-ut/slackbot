@@ -20,8 +20,8 @@ const checkSolidity = async () => {
 	return true;
 };
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
-	rtm.on('message', async (message) => {
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
+	eventClient.on('message', async (message) => {
 		if (message.text && message.subtype === undefined && message.text.startsWith(CALLME) && (message.channel === process.env.CHANNEL_SANDBOX || message.channel.startsWith('D'))) {
 			// message is toward me
 			const args = message.text.split(' ').slice(1);

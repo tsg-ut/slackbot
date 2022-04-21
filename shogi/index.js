@@ -27,7 +27,7 @@ const {
 const iconUrl =
 	'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/kenNldpvFDI6baHIW0XnB6JzITdh3hB2gCLcBGAs/s400/character_game_syougi.png';
 
-module.exports = ({rtmClient: rtm, webClient: slack}) => {
+module.exports = ({eventClient, webClient: slack}) => {
 	const state = {
 		previousPosition: null,
 		previousBoard: new Shogi({
@@ -277,7 +277,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		}
 	};
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}

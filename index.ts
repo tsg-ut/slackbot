@@ -7,9 +7,7 @@ process.on('unhandledRejection', (error: Error) => {
 });
 
 import os from 'os';
-import {rtmClient, webClient} from './lib/slack';
-import {createEventAdapter} from '@slack/events-api';
-import {createMessageAdapter} from '@slack/interactive-messages';
+import {rtmClient, webClient, messageClient, eventClient, tsgEventClient} from './lib/slack';
 import Fastify from 'fastify';
 
 import logger from './lib/logger';
@@ -87,6 +85,10 @@ const allBots = [
 	'golfbot',
 	'kirafan/quiz',
 	'topic',
+	'bungo-quiz',
+	'adventar',
+	'jantama',
+	'tabi-gatcha',
 ];
 
 logger.info('slackbot started');
@@ -104,12 +106,9 @@ if (plugins.length !== argv.only.length) {
 	logger.info(`Some plugins are specified more than once. Duplicated plugins were removed.`)
 }
 
-const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
 eventClient.on('error', (error) => {
 	logger.error(error.stack);
 });
-
-const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 
 (async () => {
 	await fastify.register(fastifyFormbody);
@@ -134,7 +133,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 		text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
 		attachments: plugins.map((name) => ({
 			color: '#F44336',
-			text: `loading: ${name}`,
+			text: `*loading:* ${name}`,
 		})),
 	});
 
@@ -146,11 +145,11 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 			attachments: [
 				{
 					color: '#4CAF50',
-					text: `loaded: ${Array.from(loadedPlugins).join(', ')}`,
+					text: `*loaded:* ${Array.from(loadedPlugins).join(', ')}`,
 				},
 				...plugins.filter((name) => !loadedPlugins.has(name)).map((name) => ({
 					color: '#F44336',
-					text: `loading: ${name}`,
+					text: `*loading:* ${name}`,
 				})),
 			],
 		})
@@ -159,13 +158,13 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 	await Promise.all(plugins.map(async (name) => {
 		const plugin = await import(`./${name}`);
 		if (typeof plugin === 'function') {
-			await plugin({rtmClient, webClient, eventClient, messageClient});
+			await plugin({rtmClient, webClient, eventClient: tsgEventClient, messageClient});
 		}
 		if (typeof plugin.default === 'function') {
-			await plugin.default({rtmClient, webClient, eventClient, messageClient});
+			await plugin.default({rtmClient, webClient, eventClient: tsgEventClient, messageClient});
 		}
 		if (typeof plugin.server === 'function') {
-			await fastify.register(plugin.server({rtmClient, webClient, eventClient, messageClient}));
+			await fastify.register(plugin.server({rtmClient, webClient, eventClient: tsgEventClient, messageClient}));
 		}
 		loadedPlugins.add(name);
 		logger.info(`plugin "${name}" successfully loaded`);
@@ -188,28 +187,7 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 		text: argv.startup,
 	});
 
-	let firstLogin = true;
-	let lastLogin: number = null;
-	let combos = 1;
 	rtmClient.on('authenticated', (data) => {
 		logger.info(`Logged in as ${data.self.name} of team ${data.team.name}`);
-		const now = Date.now();
-		if (!firstLogin) {
-			let comboStr = '';
-			if (now - lastLogin <= 2 * 60 * 1000) {
-				combos++;
-				comboStr = `(${combos}コンボ${'!'.repeat(combos)})`
-			}
-			else {
-				combos = 1;
-			}
-			webClient.chat.postMessage({
-				username: `tsgbot [${os.hostname()}]`,
-				channel: process.env.CHANNEL_SANDBOX,
-				text: `再接続しました ${comboStr}`,
-			});
-		}
-		firstLogin = false;
-		lastLogin = now;
 	});
 })();

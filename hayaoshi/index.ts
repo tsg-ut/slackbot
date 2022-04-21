@@ -56,7 +56,7 @@ export const isCorrectAnswer = (answerText: string, userAnswerText: string) => {
 	return distance <= answer.length / 3;
 };
 
-export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export default ({eventClient, webClient: slack}: SlackInterface) => {
 	const state: State = {
 		question: [],
 		answer: null,
@@ -116,7 +116,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 
 	setInterval(onTick, 1000);
 
-	rtm.on('message', (message) => {
+	eventClient.on('message', (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}

@@ -1,4 +1,13 @@
 {
+  "ts-node": {
+    "files": true
+  },
+  "files": [
+    "globals.d.ts"
+  ],
+  "include": [
+    "**/*"
+  ],
   "compilerOptions": {
     "target": "es2015",
     "module": "CommonJS",

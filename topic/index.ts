@@ -2,6 +2,7 @@ import type {Message} from '@slack/web-api/dist/response/ConversationsHistoryRes
 import {increment} from '../achievements';
 import type {SlackInterface} from '../lib/slack';
 import {getReactions} from '../lib/slackUtils';
+import State from '../lib/state';
 
 const isQualifiableMessage = (message: Message) => {
 	if (message?.attachments?.length > 0) {
@@ -21,10 +22,17 @@ const isQualifiableMessage = (message: Message) => {
 	}
 
 	const [line] = lines;
-	return line.length >= 1 && line.length <= 30;
+	const lineLength = Buffer.from(line).length;
+	return lineLength >= 1 && lineLength <= 100;
 };
 
-export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+interface StateObj {
+	processedMessages: string[],
+}
+
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
+	const state = await State.init<StateObj>('topic', {processedMessages: []});
+
 	const getTopic = async () => {
 		const res = await slack.conversations.info({
 			channel: process.env.CHANNEL_SANDBOX,
@@ -53,9 +61,9 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		});
 	};
 
-	const processedMessages = new Set<string>();
+	const processedMessages = new Set(state.processedMessages);
 
-	rtm.on('reaction_added', async (event) => {
+	eventClient.on('reaction_added', async (event) => {
 		if (
 			event.reaction !== 'koresuki' ||
 			event.item.channel !== process.env.CHANNEL_SANDBOX ||
@@ -88,6 +96,7 @@ export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		}
 
 		processedMessages.add(event.item.ts);
+		state.processedMessages.push(event.item.ts);
 		if (!isQualifiableMessage(message)) {
 			return;
 		}

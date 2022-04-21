@@ -270,8 +270,8 @@ const isValidBoard = (board, completeBoard) => {
 		givenPieces.filter((piece) => piece !== ':void:').every((piece) => okPieces.includes(piece));
 };
 
-module.exports = ({rtmClient: rtm, webClient: slack}) => {
-	rtm.on('message', async (message) => {
+module.exports = ({eventClient, webClient: slack}) => {
+	eventClient.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 		// if (!message.channel.startsWith('D')) {
 		// if (message.channel !== process.env.CHANNEL_SANDBOX && !message.channel.startsWith('D')) {

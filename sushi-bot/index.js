@@ -101,7 +101,7 @@ function numToEmoji(num) {
 }
 
 module.exports = (clients) => {
-	const { rtmClient: rtm, webClient: slack } = clients;
+	const { eventClient, webClient: slack } = clients;
 
 	const sushiCounter = new Counter('sushi');
 	const suspendCounter = new Counter('suspend');
@@ -111,7 +111,7 @@ module.exports = (clients) => {
 	const exerciseCounter = new Counter('exercise');
 	const kasuCounter = new Counter('kasu');
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		const { channel, text, user, ts: timestamp } = message;
 		if (!text) {
 			return;
@@ -240,7 +240,7 @@ module.exports = (clients) => {
 			if(cnt >= 1) {
 				Promise.resolve()
 					.then(() => slack.reactions.add({name: 'no_good', channel, timestamp}))
-					.then(() => slack.reactions.add({name: 'cookies146', channel, timestamp}))
+					.then(() => slack.reactions.add({name: 'shaved_ice', channel, timestamp}))
 					.then(() =>
 						cnt >= 2 &&
 						Promise.resolve()
@@ -367,7 +367,7 @@ module.exports = (clients) => {
 				channel: process.env.CHANNEL_SANDBOX,
 				username: 'sushi-bot',
 				text: '今週の凍結ランキング',
-				icon_emoji: ':cookies146:',
+				icon_emoji: ':shaved_ice:',
 				attachments: suspendCounter.entries().map(([user, count], index) => {
 					const member = members.find(({id}) => id === user);
 					if (!member) {

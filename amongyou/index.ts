@@ -1,6 +1,6 @@
 import {constants, promises as fs} from 'fs';
 import path from 'path';
-import {RTMClient} from '@slack/rtm-api';
+import type {TSGEventClient} from '../lib/slackEventClient';
 import {ChatPostMessageArguments, WebClient} from '@slack/web-api';
 import {stripIndent} from 'common-tags';
 import type {FastifyPluginCallback} from 'fastify';
@@ -131,7 +131,7 @@ const getBlocks = () => [
 ];
 
 class Among {
-	rtm: RTMClient;
+	eventClient: TSGEventClient;
 
 	slack: WebClient;
 
@@ -145,15 +145,15 @@ class Among {
 	activeSchedular: NodeJS.Timeout;
 
 	constructor({
-		rtm,
+		eventClient,
 		slack,
 		slackInteractions,
 	}: {
-		rtm: RTMClient,
+		eventClient: TSGEventClient,
 		slack: WebClient,
 		slackInteractions: any,
 	}) {
-		this.rtm = rtm;
+		this.eventClient = eventClient;
 		this.slack = slack;
 		this.slackInteractions = slackInteractions;
 		this.loadDeferred = new Deferred();
@@ -294,8 +294,8 @@ class Among {
 			this.setNumPeople(payload.user.id, payload.actions[0].selected_option.text.text);
 		});
 
-		// register RTM
-		this.rtm.on('message', async (message) => {
+		// register message event receiver
+		this.eventClient.on('message', async (message) => {
 			// eslint-disable-next-line max-len
 			if (!message.text || message.subtype || (message.channel !== process.env.CHANNEL_SANDBOX && message.channel !== process.env.CHANNEL_AMONGUS) || !message.text.startsWith(CALLME)) {
 				return;
@@ -651,9 +651,9 @@ const getNumOptions = () => {
 	return options;
 };
 
-export const server = ({webClient: slack, rtmClient: rtm, messageClient: slackInteractions}: SlackInterface) => {
+export const server = ({webClient: slack, eventClient, messageClient: slackInteractions}: SlackInterface) => {
 	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
-		const among = new Among({slack, rtm, slackInteractions});
+		const among = new Among({slack, eventClient, slackInteractions});
 		await among.initialize();
 
 		// eslint-disable-next-line require-await

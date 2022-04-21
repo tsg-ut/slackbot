@@ -1,4 +1,4 @@
-import { RTMClient } from '@slack/rtm-api';
+import { SlackEventAdapter } from '@slack/events-api';
 import { WebClient } from '@slack/web-api';
 import { range, shuffle, round } from 'lodash';
 import { stripIndent } from 'common-tags';
@@ -87,10 +87,10 @@ const answerLength2TimeLimit = (answerLength: number) => {
 };
 
 export default ({
-  rtmClient: rtm,
+  eventClient,
   webClient: slack,
 }: {
-  rtmClient: RTMClient;
+  eventClient: SlackEventAdapter;
   webClient: WebClient;
 }) => {
   const state = new HitAndBlowState();
@@ -147,7 +147,7 @@ export default ({
     state.clear();
   };
 
-  rtm.on('message', async message => {
+  eventClient.on('message', async message => {
     if (message.channel !== process.env.CHANNEL_SANDBOX) {
       return;
     }

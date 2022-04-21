@@ -1,7 +1,6 @@
 const qs = require('querystring');
 const axios = require('axios');
 const cheerio = require('cheerio');
-const iconv = require('iconv-lite');
 const {flatten, sortBy} = require('lodash');
 const scrapeIt = require('scrape-it');
 

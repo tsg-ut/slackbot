@@ -132,7 +132,7 @@ async function getDictionary() {
 }
 
 module.exports = async (clients) => {
-	const { rtmClient: rtm, webClient: slack } = clients;
+	const { eventClient, webClient: slack } = clients;
 
 	const state = await State.init('pocky', {
 		quineSolutions: [],
@@ -216,7 +216,7 @@ module.exports = async (clients) => {
 		}, 3 * 60 * 1000);
 	};
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (message.subtype) {
 			return;
 		}

@@ -82,7 +82,7 @@ const getColor = (isGrossword: boolean, descriptionId: string) => {
 	return colors[parseInt(descriptionId) % colors.length];
 };
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const state: State = {
 		thread: null,
 		isHolding: false,
@@ -97,7 +97,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		misses: new Map(),
 	};
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (!message.text || message.subtype || message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
