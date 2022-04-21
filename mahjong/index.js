@@ -891,6 +891,11 @@ module.exports = (clients) => {
 		};
 
 		if (text === 'チンイツクイズ' || text === 'チンイツクイズhard') {
+			if (mutex.isLocked()) {
+				postMessage('今クイズ中だよ😠', {mode: 'initial'});
+				return;
+			}
+
 			const isHardMode = text === 'チンイツクイズhard';
 			const channel = process.env.CHANNEL_SANDBOX;
 			const [min待ち牌, max待ち牌] = [

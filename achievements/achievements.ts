@@ -1404,10 +1404,10 @@ const achievements: Achievement[] = [
 		id: 'mahjong-chinitsu-quiz-hard-answer-200',
 		difficulty: 'professional',
 		title: '0.2秒で分かっちゃいますよ',
-		condition: 'チンイツクイズhardで200回正解する',
+		condition: 'チンイツクイズhardで500回正解する',
 		category: 'mahjong',
 		counter: 'mahjong-chinitsu-quiz-hard-answer',
-		value: 200,
+		value: 500,
 	},
 	{
 		id: 'mahjong-chinitsu-quiz-noten-1',
