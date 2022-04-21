@@ -2344,7 +2344,7 @@ const achievements: Achievement[] = [
 		title: 'かけだし召喚士',
 		condition: 'きらファン当てクイズで正解する',
 		category: 'kirafan',
-		counter: 'kirafankirafan-answer',
+		counter: 'kirafan-answer',
 		value: 1,
 	},
 	{
@@ -2353,7 +2353,7 @@ const achievements: Achievement[] = [
 		title: '一人前の召喚士',
 		condition: 'きらファン当てクイズで20回正解する',
 		category: 'kirafan',
-		counter: 'kirafankirafan-answer',
+		counter: 'kirafan-answer',
 		value: 20,
 	},
 	{
