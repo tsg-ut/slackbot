@@ -9,6 +9,7 @@ import cloudinary, { UploadApiResponse } from 'cloudinary';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error
 import { hiraganize } from 'japanese';
+import { increment } from '../achievements';
 
 interface KirafanAteQuizProblem extends AteQuizProblem {
   correctAnswerCard: KirafanCard;
@@ -420,7 +421,19 @@ export default (slackClients: SlackInterface): void => {
       const randomKirafanCard = sample(await getKirafanCards());
       const problem = await generateProblem(randomKirafanCard);
       const quiz = new KirafanAteQuiz(slackClients, problem, postOption);
-      await quiz.start();
+      const result = await quiz.start();
+      if (result.state === 'solved') {
+        await increment(result.correctAnswerer, 'kirafan-answer');
+        if (result.hintIndex === 0) {
+          await increment(result.correctAnswerer, 'kirafan-answer-first-hint');
+        }
+        if (result.hintIndex <= 1) {
+          await increment(result.correctAnswerer, 'kirafan-answer-second-hint');
+        }
+        if (result.hintIndex <= 2) {
+          await increment(result.correctAnswerer, 'kirafan-answer-third-hint');
+        }
+      }
     }
   });
 };
