@@ -937,7 +937,9 @@ module.exports = (clients) => {
 				{username: 'mahjong', icon_emoji: ':mahjong:'},
 			);
 
-			const result = await mutex.runExclusive(ateQuiz.start);
+			const result = await mutex.runExclusive(async () => {
+				return ateQuiz.start();
+			});
 
 			if (result.state === 'solved') {
 				await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-answer');
