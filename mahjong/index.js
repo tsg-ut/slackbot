@@ -9,8 +9,10 @@ const {chunk, shuffle, sampleSize, sample, random} = require('lodash');
 const {unlock, increment} = require('../achievements');
 const {AteQuiz} = require('../atequiz/index.ts');
 const {blockDeploy} = require('../deploy/index.ts');
-
+const {Mutex} = require('async-mutex');
 const calculator = require('./calculator.js');
+
+const mutex = new Mutex();
 
 const savedState = (() => {
 	try {
@@ -935,7 +937,7 @@ module.exports = (clients) => {
 				{username: 'mahjong', icon_emoji: ':mahjong:'},
 			);
 
-			const result = await ateQuiz.start();
+			const result = await mutex.runExclusive(ateQuiz.start);
 
 			if (result.state === 'solved') {
 				await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-answer');
