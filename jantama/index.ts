@@ -5,6 +5,7 @@ import {google} from 'googleapis';
 import {zip} from 'lodash';
 import {Rating, rate} from 'ts-trueskill';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
+import {getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
 import {extractMajsoulId, getMajsoulResult} from './util';
 import type {Player} from './util';
@@ -25,6 +26,14 @@ interface UserEntry {
 interface StateObj {
 	users: UserEntry[],
 }
+
+const getSlackNameOrNickname = async (accountId: string, nickname: string, users: UserEntry[]) => {
+	const user = users.find((user) => user.jantama === accountId);
+	if (!user) {
+		return nickname;
+	}
+	return getMemberName(user.slack);
+};
 
 const getSlackMentionOrNickname = (accountId: string, nickname: string, users: UserEntry[]) => {
 	const user = users.find((user) => user.jantama === accountId);
@@ -227,9 +236,9 @@ export const server = async ({webClient: slack}: SlackInterface) => {
 					username: 'jantama',
 					icon_emoji: ':ichihime:',
 					text: 'TSG麻雀ランキングだにゃ！',
-					attachments: ranking.map((rank, i) => ({
-						title: `#${i + 1}: ${getSlackMentionOrNickname(rank.accountId, rank.nickname, state.users)} (${rank.rating.toFixed(2)})`,
-					})),
+					attachments: await Promise.all(ranking.map(async (rank, i) => ({
+						title: `#${i + 1}: ${await getSlackNameOrNickname(rank.accountId, rank.nickname, state.users)} (${rank.rating.toFixed(2)})`,
+					}))),
 				});
 				return '';
 			}
