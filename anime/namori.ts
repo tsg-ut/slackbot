@@ -20,6 +20,9 @@ interface CharacterData {
 	characterName: string,
 	workName: string,
 	validAnswers: string[],
+	author: string,
+	rating: string,
+	characterId: string,
 }
 
 interface LocalState {
@@ -37,32 +40,44 @@ interface LocalState {
 
 interface PersistentState {
 	recentMediaIds: string[],
+	recentCharacterIds: string[],
 }
 
-const loader = new Loader<CharacterData[]>(async () => {
-	const {data} = await axios.get<string>('https://github.com/hakatashi/namori_rakugaki_annotation/raw/master/namori.csv');
+const loadCharacters = async (author: string) => {
+	const {data} = await axios.get<string>(`https://github.com/hakatashi/namori_rakugaki_annotation/raw/master/${author}.csv`);
 	const lines = data.split('\n').slice(1).filter((line) => line.length > 0);
 	return lines.map((line) => {
-		const [tweetId, mediaId, imageUrl, characterName, characterRuby, workName] = line.split(',');
-		const characterNames = characterName.split('、');
-		const characterRubys = characterRuby.split('、');
+		const [tweetId, mediaId, imageUrl, characterName, characterRuby, workName, rating] = line.split(',');
+
+		const characterNames = characterName.split(/[、&]/);
+		const characterRubys = characterRuby.split(/[、&]/);
 
 		const names = [...characterNames, ...characterRubys];
-		const namePartsList = names.map((name) => name.split(/[ &]/));
+		const namePartsList = names.map((name) => name.split(' '));
+
+		const normalizedWorkName = workName.startsWith('"') ? workName.slice(1, -1) : workName;
 
 		return {
 			tweetId,
 			mediaId,
 			imageUrl,
 			characterName: characterNames[0].replace(/ /g, ''),
-			workName,
+			workName: normalizedWorkName,
 			validAnswers: [
 				...namePartsList.map((parts) => parts.join('')),
 				...namePartsList.flat(),
 			],
+			author,
+			rating: rating ?? '0',
+			characterId: `${namePartsList[0].join('')}\0${normalizedWorkName}`,
 		} as CharacterData;
-	});
-});
+	}).filter(({rating}) => rating === '0');
+};
+
+const loader = new Loader<CharacterData[]>(async () => [
+	...await loadCharacters('namori'),
+	...await loadCharacters('ixy'),
+]);
 
 const getUrl = (publicId: string, options = {}) => (
 	cloudinary.v2.url(`${publicId}.jpg`, {
@@ -178,6 +193,7 @@ module.exports = async ({eventClient, webClient: slack}: SlackInterface) => {
 
 	const persistentState = await State.init<PersistentState>('anime-namori', {
 		recentMediaIds: [],
+		recentCharacterIds: [],
 	});
 
 	const onTick = () => {
@@ -280,12 +296,16 @@ module.exports = async ({eventClient, webClient: slack}: SlackInterface) => {
 		}
 
 		mutex.runExclusive(async () => {
-			if (message.text && message.text === 'なもり当てクイズ' && state.answer === null) {
+			if (message.text && (message.text === 'なもり当てクイズ' || message.text === 'キャラ当てクイズ') && state.answer === null) {
 				const characters = await loader.load();
-				const candidateCharacters = characters.filter((character) => (
-					!persistentState.recentMediaIds.includes(character.mediaId)
-				));
-				const answer = sample(candidateCharacters);
+				const candidateCharacterIds = characters.filter((character) => (
+					!persistentState.recentCharacterIds.includes(character.characterId)
+				)).map(({characterId}) => characterId);
+				const answerCharacterId = sample(candidateCharacterIds);
+
+				const answer = sample(characters.filter((character) => (
+					character.characterId === answerCharacterId
+				)));
 
 				const image = await uploadImage(answer.imageUrl);
 
@@ -326,9 +346,9 @@ module.exports = async ({eventClient, webClient: slack}: SlackInterface) => {
 				});
 
 				state.answer = answer;
-				persistentState.recentMediaIds.push(answer.mediaId);
-				while (persistentState.recentMediaIds.length > 50) {
-					persistentState.recentMediaIds.shift();
+				persistentState.recentCharacterIds.push(answer.characterId);
+				while (persistentState.recentCharacterIds.length > 200) {
+					persistentState.recentCharacterIds.shift();
 				}
 			}
 
@@ -349,6 +369,8 @@ module.exports = async ({eventClient, webClient: slack}: SlackInterface) => {
 						reply_broadcast: true,
 					});
 
+					const authorId = state.answer.author === 'namori' ? '_namori_' : 'Ixy';
+
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
 						text: state.answer.characterName,
@@ -362,7 +384,7 @@ module.exports = async ({eventClient, webClient: slack}: SlackInterface) => {
 								type: 'section',
 								text: {
 									type: 'mrkdwn',
-									text: `https://twitter.com/_namori_/status/${state.answer.tweetId}`,
+									text: `https://twitter.com/${authorId}/status/${state.answer.tweetId}`,
 								} as MrkdwnElement,
 							},
 							{
@@ -374,15 +396,28 @@ module.exports = async ({eventClient, webClient: slack}: SlackInterface) => {
 						],
 					});
 
-					await increment(message.user, 'namori-answer');
+					if (state.answer.author === 'namori') {
+						await increment(message.user, 'namori-answer');
+						if (state.hints === 1) {
+							await increment(message.user, 'namori-answer-first-hint');
+						}
+						if (state.hints <= 2) {
+							await increment(message.user, 'namori-answer-second-hint');
+						}
+						if (state.hints <= 3) {
+							await increment(message.user, 'namori-answer-third-hint');
+						}
+					}
+
+					await increment(message.user, 'chara-ate-answer');
 					if (state.hints === 1) {
-						await increment(message.user, 'namori-answer-first-hint');
+						await increment(message.user, 'chara-ate-answer-first-hint');
 					}
 					if (state.hints <= 2) {
-						await increment(message.user, 'namori-answer-second-hint');
+						await increment(message.user, 'chara-ate-answer-second-hint');
 					}
 					if (state.hints <= 3) {
-						await increment(message.user, 'namori-answer-third-hint');
+						await increment(message.user, 'chara-ate-answer-third-hint');
 					}
 
 					state.answer = null;
