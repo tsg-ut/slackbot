@@ -301,7 +301,7 @@ module.exports = async ({eventClient, webClient: slack}: SlackInterface) => {
 				const candidateCharacterIds = characters.filter((character) => (
 					!persistentState.recentCharacterIds.includes(character.characterId)
 				)).map(({characterId}) => characterId);
-				const answerCharacterId = sample(candidateCharacterIds);
+				const answerCharacterId = sample(Array.from(new Set(candidateCharacterIds)));
 
 				const answer = sample(characters.filter((character) => (
 					character.characterId === answerCharacterId
