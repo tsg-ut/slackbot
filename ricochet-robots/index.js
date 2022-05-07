@@ -233,7 +233,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 							await postmessage(`経過時間: ${round(passedMs / 1000, 3)} 秒`);
 							state = undefined;
 							await unlock(message.user, 'ricochet-robots-clear');
-							if (answerLength >= 8) {
+							if (answerLength >= 8 && cmd.moves.length <= answerLength) {
 								if (passedMs <= answerLength * 10 * 1000) {
 									await unlock(message.user, 'ricochet-robots-clear-in-10sec-per-move-over8');
 								}
