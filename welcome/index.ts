@@ -4,6 +4,8 @@ import logger from '../lib/logger';
 // https://scrapbox.io/help-jp/API
 const welcomeScrapboxUrl = `https://scrapbox.io/api/pages/tsg/welcome/text`;
 
+const PrefixComment = '///';
+
 import { WebClient } from '@slack/web-api';
 import type { SlackInterface } from '../lib/slack';
 
@@ -15,7 +17,11 @@ async function extractWelcomeMessage(): Promise<string> {
 		},
 	});
 
-	const body = data.split('\n').slice(1).join('\n');
+	const body = data
+		.split('\n')
+		.slice(1)
+		.filter((line: string) => !line.startsWith(PrefixComment))
+		.join('\n');
 
 	return body;
 }
