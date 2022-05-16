@@ -12,7 +12,8 @@
     "dev": "ts-node-dev --respawn --rs --ignore-watch \".json$\" index.ts",
     "lint": "sed \"s/\\/.\\+//g\" CODEOWNERS | grep \"^[a-z]\" | awk '{print $1}' | xargs -n 1 eslint --ext js,ts",
     "fix": "npm run lint -- --fix",
-    "test": "jest --verbose --coverage --detectOpenHandles --forceExit"
+    "test": "jest --verbose --detectOpenHandles --forceExit",
+    "test:coverage": "npm run test -- --coverage"
   },
   "engines": {
     "node": ">=16.10.0"
