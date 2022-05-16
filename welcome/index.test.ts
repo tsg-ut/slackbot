@@ -41,8 +41,8 @@ describe('welcome', () => {
 
 		const resp = await slack.getResponseTo('welcome'); 
 
-		const {body} = resp;
+		const {text} = resp;
 
-		expect(body).toBe(welcomeMessage);
+		expect(text).toBe(welcomeMessage);
 	});
 });

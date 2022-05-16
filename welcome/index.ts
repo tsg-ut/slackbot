@@ -30,10 +30,10 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
 	const general = await slack.conversations.list({ exclude_archived: true, limit: 1000 })
 		.then((list: any) => list.channels.find(({ is_general }: { is_general: boolean }) => is_general).id);
 
-	const postWelcomeMessage = async (slack: WebClient, channel: string, body: string) => {
+	const postWelcomeMessage = async (slack: WebClient, channel: string, text: string) => {
 		return slack.chat.postMessage({
 			channel,
-			body,
+			text,
 			link_names: true,
 			icon_emoji: ':tsg:',
 			username: 'TSG',
