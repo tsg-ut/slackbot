@@ -37,6 +37,7 @@ const logger = winston.createLogger({
 				new WinstonSyslog({
 					host: process.env.PAPERTRAIL_HOSTNAME,
 					port: parseInt(process.env.PAPERTRAIL_PORT),
+					protocol: 'tls4',
 				}),
 			] : []
 		),
