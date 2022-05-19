@@ -227,8 +227,8 @@ module.exports = ({eventClient, webClient: slack}) => {
 						}
 					}
 					else{
+						const passedMs = Date.now() - state.startDate;
 						if(await verifycommand(cmd)){
-							passedMs = Date.now() - state.startDate;
 							answerLength = state.answer.length;
 							await postmessage(`経過時間: ${round(passedMs / 1000, 3)} 秒`);
 							state = undefined;
