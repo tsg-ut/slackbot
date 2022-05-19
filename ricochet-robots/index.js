@@ -181,12 +181,12 @@ module.exports = ({eventClient, webClient: slack}) => {
 						state = {
 							board: bo,
 							answer: ans,
+							startDate: Date.now(),
 							battles: {
 								bids: {},
 								isbattle: isbattle,
 								isbedding: isbattle,
 								startbedding: false,
-								startDate: Date.now(),
 							},
 						};
 					}
