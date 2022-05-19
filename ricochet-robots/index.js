@@ -6,7 +6,7 @@ const moment = require('moment');
 const querystring = require('querystring');
 const {Mutex} = require('async-mutex');
 const {unlock} = require('../achievements');
-const {round} = require('lodash')
+const {round} = require('lodash');
 
 function getTimeLink(time){
 	const text = moment(time).utcOffset('+0900').format('HH:mm:ss');
