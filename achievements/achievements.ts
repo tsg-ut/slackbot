@@ -1734,6 +1734,27 @@ const achievements: Achievement[] = [
 		condition: 'ハイパーロボットのバグを突く',
 		category: 'ricochet-robots',
 	},
+	{
+		id: 'ricochet-robots-clear-in-10sec-per-move-over8',
+		difficulty: 'medium',
+		title: 'ハイパーロボットロボット',
+		condition: 'ハイパーロボットで8手詰め以上の問題を、1手あたり10秒以内で最短勝利する',
+		category: 'ricochet-robots',
+	},
+	{
+		id: 'ricochet-robots-clear-in-5sec-per-move-over8',
+		difficulty: 'hard',
+		title: 'スーパーハイパーロボットロボット',
+		condition: 'ハイパーロボットで8手詰め以上の問題を、1手あたり5秒以内で最短勝利する',
+		category: 'ricochet-robots',
+	},
+	{
+		id: 'ricochet-robots-clear-in-1sec-per-move-over8',
+		difficulty: 'professional',
+		title: 'ハイパーハイパーロボットロボット',
+		condition: 'ハイパーロボットで8手詰め以上の問題を、1手あたり1秒以内で最短勝利する',
+		category: 'ricochet-robots',
+	},
 
 	// hitandblow
 

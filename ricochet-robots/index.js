@@ -189,7 +189,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 						};
 					}
 					await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,await image.upload(state.board));
-					
+					state.startDate = Date.now();
 					if(isbattle){
 						await unlock(message.user, 'ricochet-robots-buttle-play');
 					}
@@ -227,9 +227,23 @@ module.exports = ({eventClient, webClient: slack}) => {
 						}
 					}
 					else{
+						const passedMs = Date.now() - state.startDate;
 						if(await verifycommand(cmd)){
+							const answerLength = state.answer.length;
+							await postmessage(`経過時間: ${round(passedMs / 1000, 3)} 秒`);
 							state = undefined;
 							await unlock(message.user, 'ricochet-robots-clear');
+							if (answerLength >= 8 && cmd.moves.length <= answerLength) {
+								if (passedMs <= answerLength * 10 * 1000) {
+									await unlock(message.user, 'ricochet-robots-clear-in-10sec-per-move-over8');
+								}
+								if (passedMs <= answerLength * 5 * 1000) {
+									await unlock(message.user, 'ricochet-robots-clear-in-5sec-per-move-over8');
+								}
+								if (passedMs <= answerLength * 1 * 1000) {
+									await unlock(message.user, 'ricochet-robots-clear-in-1sec-per-move-over8');
+								}
+							}
 						}
 					}
 				}
