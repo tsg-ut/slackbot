@@ -229,7 +229,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 					else{
 						const passedMs = Date.now() - state.startDate;
 						if(await verifycommand(cmd)){
-							answerLength = state.answer.length;
+							const answerLength = state.answer.length;
 							await postmessage(`経過時間: ${round(passedMs / 1000, 3)} 秒`);
 							state = undefined;
 							await unlock(message.user, 'ricochet-robots-clear');
