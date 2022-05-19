@@ -106,6 +106,9 @@ const getFrequency = async (numberString) => {
 	}
 
 	if (numberString.length <= 200) {
+		if (parseInt(numberString[numberString.length - 1]) % 2 === 0) {
+			return false;
+		}
 		return millerRabin.test(new BN(numberString));
 	}
 
