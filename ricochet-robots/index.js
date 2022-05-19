@@ -186,11 +186,11 @@ module.exports = ({eventClient, webClient: slack}) => {
 								isbattle: isbattle,
 								isbedding: isbattle,
 								startbedding: false,
+								startDate: Date.now(),
 							},
 						};
 					}
 					await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,await image.upload(state.board));
-					state.startDate = Date.now();
 					if(isbattle){
 						await unlock(message.user, 'ricochet-robots-buttle-play');
 					}
