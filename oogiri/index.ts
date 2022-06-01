@@ -4,7 +4,7 @@
 // eslint-disable-next-line no-unused-vars
 import {constants, promises as fs} from 'fs';
 import path from 'path';
-import type {TSGEventClient} from '../lib/slackEventClient';
+import type {TeamEventClient} from '../lib/slackEventClient';
 import type {KnownBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
@@ -47,7 +47,7 @@ interface State {
 const mutex = new Mutex();
 
 class Oogiri {
-	eventClient: TSGEventClient;
+	eventClient: TeamEventClient;
 
 	slack: WebClient;
 
@@ -64,7 +64,7 @@ class Oogiri {
 		slack,
 		slackInteractions,
 	}: {
-		eventClient: TSGEventClient,
+		eventClient: TeamEventClient,
 		slack: WebClient,
 		slackInteractions: any,
 	}) {
