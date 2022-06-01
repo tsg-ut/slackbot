@@ -1,8 +1,7 @@
 import type {MrkdwnElement, PlainTextElement} from '@slack/web-api';
 import type {Member} from '@slack/web-api/dist/response/UsersListResponse';
 import {WebClient} from '@slack/web-api';
-import type {RTMClient} from '@slack/rtm-api';
-import {getTokens, getRtmClient} from './slack';
+import {eventClient, getTokens} from './slack';
 import {Deferred} from './utils';
 import SlackCache from './slackCache';
 
@@ -13,10 +12,9 @@ const initializedSlackCachesDeferred = new Deferred<void>();
 (async function initializedSlackCaches() {
 	const tokens = await getTokens();
 	for (const token of tokens) {
-		const rtmClient: RTMClient = await getRtmClient(token.team_id);
 		slackCaches.set(token.team_id, new SlackCache({
 			token,
-			rtmClient,
+			eventClient,
 			webClient: new WebClient(),
 			enableReactions: token.team_id === process.env.TEAM_ID,
 		}));
