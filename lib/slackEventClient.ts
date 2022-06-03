@@ -1,6 +1,6 @@
 import type {SlackEventAdapter} from '@slack/events-api';
 
-export class TSGEventClient {
+export class TeamEventClient {
 	private readonly eventAdapter: SlackEventAdapter;
 	private readonly team: string;
 
@@ -14,7 +14,7 @@ export class TSGEventClient {
 	onAllTeam(event: string, listener: (...args: any[]) => void): any {
 		return this.eventAdapter.on(event, listener);
 	}
-	// listen on events against TSG team.
+	// listen on events against the team.
 	on(event: string, listener: (...args: any[]) => void): any {
 		return this.eventAdapter.on(event, (...args: any[]) => {
 			// https://slack.dev/node-slack-sdk/events-api#receive-additional-event-data

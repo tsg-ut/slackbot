@@ -1,6 +1,6 @@
 import {constants, promises as fs} from 'fs';
 import path from 'path';
-import type {TSGEventClient} from '../lib/slackEventClient';
+import type {TeamEventClient} from '../lib/slackEventClient';
 import {ChatPostMessageArguments, WebClient} from '@slack/web-api';
 import {stripIndent} from 'common-tags';
 import type {FastifyPluginCallback} from 'fastify';
@@ -131,7 +131,7 @@ const getBlocks = () => [
 ];
 
 class Among {
-	eventClient: TSGEventClient;
+	eventClient: TeamEventClient;
 
 	slack: WebClient;
 
@@ -149,7 +149,7 @@ class Among {
 		slack,
 		slackInteractions,
 	}: {
-		eventClient: TSGEventClient,
+		eventClient: TeamEventClient,
 		slack: WebClient,
 		slackInteractions: any,
 	}) {

@@ -6,14 +6,14 @@ import sql from 'sql-template-strings';
 import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
-import {TSGEventClient} from './slackEventClient';
+import {TeamEventClient} from './slackEventClient';
 import {Deferred} from './utils';
 import {Token} from '../oauth/tokens';
 
 export interface SlackInterface {
 	rtmClient: RTMClient;
 	webClient: WebClient;
-	eventClient: TSGEventClient;
+	eventClient: TeamEventClient;
 	messageClient: ReturnType<typeof createMessageAdapter>;
 };
 
@@ -46,7 +46,7 @@ export const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
 export const webClient = new WebClient(process.env.SLACK_TOKEN);
 export const eventClient = createEventAdapter(process.env.SIGNING_SECRET, {includeBody: true});
 export const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
-export const tsgEventClient = new TSGEventClient(
+export const tsgEventClient = new TeamEventClient(
 	eventClient,
 	process.env.TEAM_ID,
 );

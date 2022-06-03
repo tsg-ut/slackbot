@@ -1,11 +1,12 @@
 import {get} from 'lodash';
-import type {RTMClient} from '@slack/rtm-api';
-import type {Reaction} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
-import type {Member} from '@slack/web-api/dist/response/UsersListResponse';
 import type {Token} from '../oauth/tokens';
 import {Deferred} from './utils';
+import {TeamEventClient} from './slackEventClient';
 import logger from './logger';
 
+import type {SlackEventAdapter} from '@slack/events-api';
+import type {Reaction} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
+import type {Member} from '@slack/web-api/dist/response/UsersListResponse';
 import type {
 	ConversationsHistoryArguments,
 	UsersListArguments,
@@ -31,7 +32,7 @@ interface WebClient {
 
 interface Config {
 	token: Token;
-	rtmClient: RTMClient;
+	eventClient: SlackEventAdapter;
 	webClient: WebClient;
 	enableReactions?: boolean;
 }
@@ -47,13 +48,14 @@ export default class SlackCache {
 
 	constructor(config: Config) {
 		this.config = config;
+		const teamEventClient = new TeamEventClient(this.config.eventClient, this.config.token.team_id);
 
 		{
 			// user cache
-			this.config.rtmClient.on('team_join', ({user}: {user: Member}) => {
+			teamEventClient.on('team_join', ({user}: {user: Member}) => {
 				this.users.set(user.id!, user);
 			});
-			this.config.rtmClient.on('user_change', ({user}: {user: Member}) => {
+			teamEventClient.on('user_change', ({user}: {user: Member}) => {
 				this.users.set(user.id!, user);
 			});
 
@@ -69,7 +71,7 @@ export default class SlackCache {
 
 		{
 			// emoji cache
-			this.config.rtmClient.on('emoji_changed', async (event) => {
+			teamEventClient.on('emoji_changed', async (event) => {
 				if (event.subtype === 'add') {
 					this.emojis.set(event.name, event.value);
 				}
@@ -87,13 +89,13 @@ export default class SlackCache {
 		}
 
 		if (this.config.enableReactions) {
-			this.config.rtmClient.on('message', (message) => {
+			teamEventClient.on('message', (message) => {
 				const key = `${message.channel}\0${message.ts}`;
 				if (!this.reactionsCache.has(key)) {
 					this.reactionsCache.set(key, Object.create(null));
 				}
 			});
-			this.config.rtmClient.on('reaction_added', (event) => {
+			teamEventClient.on('reaction_added', (event) => {
 				this.incrementReactions({
 					channel: event.item.channel,
 					ts: event.item.ts,
@@ -101,7 +103,7 @@ export default class SlackCache {
 					by: 1,
 				});
 			});
-			this.config.rtmClient.on('reaction_removed', (event) => {
+			teamEventClient.on('reaction_removed', (event) => {
 				this.incrementReactions({
 					channel: event.item.channel,
 					ts: event.item.ts,
