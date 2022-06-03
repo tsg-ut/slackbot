@@ -7,7 +7,7 @@ process.on('unhandledRejection', (error: Error) => {
 });
 
 import os from 'os';
-import {rtmClient, webClient, messageClient, eventClient, tsgEventClient} from './lib/slack';
+import {webClient, messageClient, eventClient, tsgEventClient} from './lib/slack';
 import Fastify from 'fastify';
 
 import logger from './lib/logger';
@@ -158,13 +158,13 @@ eventClient.on('error', (error) => {
 	await Promise.all(plugins.map(async (name) => {
 		const plugin = await import(`./${name}`);
 		if (typeof plugin === 'function') {
-			await plugin({rtmClient, webClient, eventClient: tsgEventClient, messageClient});
+			await plugin({webClient, eventClient: tsgEventClient, messageClient});
 		}
 		if (typeof plugin.default === 'function') {
-			await plugin.default({rtmClient, webClient, eventClient: tsgEventClient, messageClient});
+			await plugin.default({webClient, eventClient: tsgEventClient, messageClient});
 		}
 		if (typeof plugin.server === 'function') {
-			await fastify.register(plugin.server({rtmClient, webClient, eventClient: tsgEventClient, messageClient}));
+			await fastify.register(plugin.server({webClient, eventClient: tsgEventClient, messageClient}));
 		}
 		loadedPlugins.add(name);
 		logger.info(`plugin "${name}" successfully loaded`);
@@ -185,9 +185,5 @@ eventClient.on('error', (error) => {
 		username: `tsgbot [${os.hostname()}]`,
 		channel: process.env.CHANNEL_SANDBOX,
 		text: argv.startup,
-	});
-
-	rtmClient.on('authenticated', (data) => {
-		logger.info(`Logged in as ${data.self.name} of team ${data.team.name}`);
 	});
 })();
