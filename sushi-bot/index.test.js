@@ -1,21 +1,22 @@
 /* eslint-env node, jest */
 jest.mock('../achievements');
 jest.mock('moment');
-jest.mock('fs');
+jest.mock('fs-extra', () => ({
+	mkdirp: jest.fn(),
+	readFile: jest.fn(() => Promise.resolve(Buffer.from(''))),
+	writeFile: jest.fn(),
+	pathExists: jest.fn(() => Promise.resolve(false)),
+}));
 
 const moment = require('moment');
 const sushi = require('./index.js');
 const Slack = require('../lib/slackMock.js');
-const fs = require('fs');
-
-jest.unmock('fs');
 
 let slack = null;
 
 beforeEach(async () => {
-	fs.virtualFiles = {};
 	slack = new Slack();
-	sushi(slack);
+	await sushi(slack);
 
 	moment.mockImplementation(() => ({
 		utcOffset: () => ({

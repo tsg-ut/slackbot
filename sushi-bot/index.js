@@ -6,64 +6,61 @@ const {sortBy} = require('lodash');
 const moment = require('moment');
 const {unlock, increment} = require('../achievements');
 
+const State = require('../lib/state.ts').default;
+
 class Counter {
+	static async init(name) {
+		const instance = new Counter(name);
+		await instance.#setup()
+		return instance;
+	}
+
+	// DO NOT USE DIRECTLY. Use `init()` instead.
 	constructor(name) {
 		this.name = name;
-		this.map = new Map();
-		this.load();
+		this.state = State.init(`sushi-bot-counter-${name}`, {data: {}});
+		this.isSetup = false;
+	}
+
+	async #setup() {
+		this.state = await this.state;
+		this.isSetup = true;
+	}
+
+	#check() {
+		if(!this.isSetup) {
+			throw new Error('DO NOT USE DIRECTLYって言ったが??');
+		}
 	}
 
 	add(key, cnt = 1) {
-		if (this.map.has(key)) {
-			this.map.set(key, this.map.get(key) + cnt);
-		} else {
-			this.map.set(key, cnt);
-		}
+		this.#check();
 
-		this.save();
+		this.state.data[key] = (this.state.data[key] || 0) + cnt;
 	}
 
 	max(key, value) {
-		if (this.map.has(key)) {
-			this.map.set(key, Math.max(value, this.map.get(key)));
-		} else {
-			this.map.set(key, value);
-		}
+		this.#check();
 
-		this.save();
+		if (this.state.data[key]) {
+			this.state.data[key] = Math.max(value, this.state.data[key]);
+		} else {
+			this.state.data[key] = value;
+		}
 	}
 
 	clear() {
-		this.map = new Map();
-		this.save();
+		this.#check();
+
+		this.state.data = {};
 	}
 
 	entries() {
-		const keys = Array.from(this.map.keys());
-		const sortedKeys = sortBy(keys, (key) => this.map.get(key)).reverse();
-		return sortedKeys.map((key) => [key, this.map.get(key)]);
-	}
+		this.#check();
 
-	async save() {
-		const filePath = path.join(__dirname, `${this.name}.json`);
-		await promisify(fs.writeFile)(filePath, JSON.stringify(Array.from(this.map.entries())));
-	}
-
-	async load() {
-		const filePath = path.join(__dirname, `${this.name}.json`);
-
-		const exists = await new Promise((resolve) => {
-			fs.access(filePath, fs.constants.F_OK, (error) => {
-				resolve(!Boolean(error));
-			});
-		});
-
-		if (exists) {
-			const data = await promisify(fs.readFile)(filePath);
-			this.map = new Map(JSON.parse(data));
-		} else {
-			this.map = new Map();
-		}
+		const keys = Array.from(Object.keys(this.state.data));
+		const sortedKeys = sortBy(keys, (key) => this.state.data[key]).reverse();
+		return sortedKeys.map((key) => [key, this.state.data[key]]);
 	}
 }
 
@@ -100,16 +97,24 @@ function numToEmoji(num) {
 	}
 }
 
-module.exports = (clients) => {
-	const { eventClient, webClient: slack } = clients;
-
-	const sushiCounter = new Counter('sushi');
-	const suspendCounter = new Counter('suspend');
-	const dailyAsaCounter = new Counter('dailyAsa');
-	const weeklyAsaCounter = new Counter('asa');
-	const dailyexerciseCounter = new Counter('dailyexercise');
-	const exerciseCounter = new Counter('exercise');
-	const kasuCounter = new Counter('kasu');
+module.exports = async ({eventClient, webClient: slack}) => {
+	const [
+		sushiCounter,
+		suspendCounter,
+		dailyAsaCounter,
+		weeklyAsaCounter,
+		dailyexerciseCounter,
+		exerciseCounter,
+		kasuCounter,
+	] = await Promise.all([
+		Counter.init('sushi'),
+		Counter.init('suspend'),
+		Counter.init('dailyAsa'),
+		Counter.init('asa'),
+		Counter.init('dailyexercise'),
+		Counter.init('exercise'),
+		Counter.init('kasu'),
+	]);
 
 	eventClient.on('message', async (message) => {
 		const { channel, text, user, ts: timestamp } = message;
