@@ -349,9 +349,9 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 	// let mut res = init.log;
 	let mut goal = (0, init.robots[0]);
 
-	let mut gone: HashSet<State> = HashSet::new();
+	// let mut gone: HashSet<State> = HashSet::new();
 	//let mut gone: HashSet<Vec<Pos>> = HashSet::new();
-	let mut prev: HashMap<State, Prev> = HashMap::new();
+	let mut prev: HashMap<State, Option<Prev>> = HashMap::new();
 
 	let mut que = VecDeque::new();
 	let mut depth = 0;
@@ -364,7 +364,8 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 
 	let mut last_state = init;
 
-	gone.insert(init);
+	// gone.insert(init);
+	prev.insert(init, None);
 
 	let mut dnum = 1;
 	while let Some(st) = que.pop_front() {
@@ -396,11 +397,10 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 				for (ts, m) in st.enumerate_states(&bo) {
 					//moving gone.contains & gone.insert to here decreased speed.
 					//I don't understand why this happened. :thinking_face:
-					if !gone.contains(&ts) {
-						gone.insert(ts);
+					if !prev.contains_key(&ts) {
 						que.push_back(Some(ts));
 						let p = st.robots[m.c];
-						prev.insert(ts, Prev::serailize(&m, &p));
+						prev.insert(ts, Some(Prev::serailize(&m, &p)));
 					}
 				}
 				// gone.insert(st);
@@ -432,7 +432,7 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 	let mut l = vec![];
 	let mut s = last_state;
 	loop {
-		match prev.get(&s) {
+		match &prev[&s] {
 			Some(prev) => {
 				let (m, p) = prev.deserialize();
 				l.push(m);
