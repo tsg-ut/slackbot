@@ -373,13 +373,15 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 					break;
 				}
 				for (ts, m) in st.enumerate_states(&bo) {
-					//moving prev.contains & prev.insert to here decreased speed.
-					//I don't understand why this happened. :thinking_face:
-					if !prev.contains_key(&ts) {
+					// kcz-san and satos-san say that performing `push_back` here
+					// decreases speed, but this is necessary for path reconstruction.
+					// However, using `entry` instead of `contains_key` and `insert`
+					// increases speed a bit. (ura)
+					prev.entry(ts).or_insert_with(|| {
 						que.push_back(Some(ts));
 						let p = st.robots[m.c];
-						prev.insert(ts, Some(Prev::serailize(&m, &p)));
-					}
+						Some(Prev::serailize(&m, &p))
+					});
 				}
 			}
 			None => {
