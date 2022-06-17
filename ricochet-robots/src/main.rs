@@ -21,7 +21,7 @@ use atoi::atoi;
 extern crate itertools;
 use itertools::Itertools;
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub struct Pos {
 	y: i8,
 	x: i8,
