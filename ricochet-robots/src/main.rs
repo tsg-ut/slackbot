@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::env;
 use std::hash::{Hash, Hasher};
@@ -202,19 +201,13 @@ pub struct Move {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct State {
-	// bo: &'a Board,
 	robots: [Pos; ROBOTS_COUNT],
-	//log: SinglyLinkedList
-	// log: usize,
 }
 
 impl State {
 	pub fn init_state(bo: &Board) -> State {
-		//State{bo: &bo,robots: bo.robots.clone(), log: SinglyLinkedList::nil()}
 		State {
-			// bo: &bo,
 			robots: bo.robots.clone(),
-			// log: 1,
 		}
 	}
 
@@ -277,11 +270,8 @@ impl State {
 			x: p.x + dir.x * mind,
 		};
 
-		// let tolog = self.log << 4 | robot_index << 2 | robot_dir; //self.log.cons(Move{c: robot_index,d: robot_dir});
 		let mut res = State {
-			// bo: self.bo,
 			robots: self.robots.clone(),
-			// log: tolog,
 		};
 		res.robots[robot_index] = p;
 		Some(res)
@@ -292,7 +282,6 @@ impl State {
 		for i in 0..self.robots.len() {
 			for j in 0..4 {
 				if let Some(ts) = self.move_to(board, i, j) {
-					// res.push(ts);
 					res.push((ts, Move { c: i, d: j }));
 				}
 			}
@@ -300,13 +289,6 @@ impl State {
 		return res;
 	}
 }
-
-// impl PartialEq for State {
-// 	fn eq(&self, ts: &State) -> bool {
-// 		return self.robots == ts.robots;
-// 	}
-// }
-// impl Eq for State {}
 
 impl Hash for State {
 	fn hash<H: Hasher>(&self, state: &mut H) {
@@ -349,12 +331,8 @@ impl Prev {
 
 pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 	let init = State::init_state(&bo);
-	//let mut res = init.log.head.clone();
-	// let mut res = init.log;
 	let mut goal = (0, init.robots[0]);
 
-	// let mut gone: HashSet<State> = HashSet::new();
-	//let mut gone: HashSet<Vec<Pos>> = HashSet::new();
 	let mut prev: HashMap<State, Option<Prev>> = HashMap::new();
 
 	let mut que = VecDeque::new();
@@ -368,14 +346,12 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 
 	let mut last_state = init;
 
-	// gone.insert(init);
 	prev.insert(init, None);
 
 	let mut dnum = 1;
 	while let Some(st) = que.pop_front() {
 		match st {
 			Some(st) => {
-				// if !gone.contains(&st) {
 				last_state = st;
 				dnum += 1;
 				//println!("{:?}",st.robots);
@@ -386,8 +362,6 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 						//println!("{} {} {} : {} ",p.y,p.x,i,depth);
 						found[p.y as usize][p.x as usize][i] = true;
 						found_count += 1;
-						//res = st.log.head.clone();
-						// res = st.log;
 						goal = (i, p);
 						if depth >= target || found_count >= max_pattern_num {
 							ok = true;
@@ -399,7 +373,7 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 					break;
 				}
 				for (ts, m) in st.enumerate_states(&bo) {
-					//moving gone.contains & gone.insert to here decreased speed.
+					//moving prev.contains & prev.insert to here decreased speed.
 					//I don't understand why this happened. :thinking_face:
 					if !prev.contains_key(&ts) {
 						que.push_back(Some(ts));
@@ -407,8 +381,6 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 						prev.insert(ts, Some(Prev::serailize(&m, &p)));
 					}
 				}
-				// gone.insert(st);
-				// }
 			}
 			None => {
 				depth += 1;
@@ -421,17 +393,6 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 			}
 		}
 	}
-
-	// {
-	// 	// Faster!!. Haee! 0.69s to 0.53s
-	// 	let mut l = vec![];
-	// 	while res > 1 {
-	// 		let c = (res & 12) >> 2;
-	// 		let d = res & 3;
-	// 		l.push(Move { c: c, d: d });
-	// 		res >>= 4;
-	// 	}
-	// }
 
 	let mut l = vec![];
 	let mut s = last_state;
@@ -449,8 +410,6 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 	}
 
 	return (goal, l);
-	//let l = SinglyLinkedList{head: res};
-	//return (goal,l.to_vec());
 }
 
 fn main() {
