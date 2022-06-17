@@ -317,7 +317,7 @@ impl Hash for State {
 struct Prev(u64);
 
 impl Prev {
-	fn serailize(m: &Move, p: &Pos) -> Self {
+	fn serialize(m: &Move, p: &Pos) -> Self {
 		let prev = ((m.c as u64) << 18) | ((m.d as u64) << 16) | ((p.y as u64) << 8) | (p.x as u64);
 		Prev(prev)
 	}
@@ -391,7 +391,7 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 					prev.entry(ts).or_insert_with(|| {
 						que.push_back(Some(ts));
 						let p = st.robots[m.c];
-						Some(Prev::serailize(&m, &p))
+						Some(Prev::serialize(&m, &p))
 					});
 				}
 			}
