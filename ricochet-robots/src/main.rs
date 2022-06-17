@@ -303,6 +303,17 @@ impl Hash for State {
 	}
 }
 
+/**
+ * its internal representation is like below:
+ *
+ * 	                0b_0000_00000000_00000000
+ *     robot_index     ^^
+ *       robot_dir       ^^
+ *          prev_y          ^^^^^^^^
+ *          prev_x                   ^^^^^^^^
+ *
+ * making the data compact increases speed a little. (ura)
+ */
 struct Prev(u64);
 
 impl Prev {
@@ -396,19 +407,13 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 		}
 	}
 
+	// path reconstruction
 	let mut l = vec![];
 	let mut s = last_state;
-	loop {
-		match &prev[&s] {
-			Some(prev) => {
-				let (m, p) = prev.deserialize();
-				l.push(m);
-				s.robots[m.c] = p;
-			}
-			None => {
-				break;
-			}
-		}
+	while let Some(prev) = &prev[&s] {
+		let (m, p) = prev.deserialize();
+		l.push(m);
+		s.robots[m.c] = p;
 	}
 
 	return (goal, l);
