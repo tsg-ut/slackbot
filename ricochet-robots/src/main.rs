@@ -200,7 +200,7 @@ pub struct Move {
 	d: usize,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 struct State {
 	// bo: &'a Board,
 	robots: [Pos; ROBOTS_COUNT],
@@ -308,14 +308,18 @@ impl State {
 // }
 // impl Eq for State {}
 
-// impl Hash for State {
-// 	fn hash<H: Hasher>(&self, state: &mut H) {
-// 		//Surprisingly, this makes program very slowly!
-// 		//:thinking_face:
-// 		// self.robots[0].y.hash(state);
-// 		self.robots.hash(state);
-// 	}
-// }
+impl Hash for State {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		//Surprisingly, this makes program very fast!
+		//:waiwai:
+		let mut bits: u64 = 0;
+		for i in 0..ROBOTS_COUNT {
+			let p = self.robots[i];
+			bits |= (((p.y as u64) << 8) | (p.x as u64)) << (i * 16);
+		}
+		bits.hash(state);
+	}
+}
 
 struct Prev(u64);
 
