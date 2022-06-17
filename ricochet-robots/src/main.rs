@@ -200,28 +200,28 @@ pub struct Move {
 	d: usize,
 }
 
-#[derive(Clone, Copy)]
-struct State<'a> {
-	bo: &'a Board,
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct State {
+	// bo: &'a Board,
 	robots: [Pos; ROBOTS_COUNT],
 	//log: SinglyLinkedList
 	// log: usize,
 }
 
-impl<'a> State<'a> {
-	pub fn init_state(bo: &'a Board) -> State<'a> {
+impl State {
+	pub fn init_state(bo: &Board) -> State {
 		//State{bo: &bo,robots: bo.robots.clone(), log: SinglyLinkedList::nil()}
 		State {
-			bo: &bo,
+			// bo: &bo,
 			robots: bo.robots.clone(),
 			// log: 1,
 		}
 	}
 
-	fn move_to(&self, robot_index: usize, robot_dir: usize) -> Option<State<'a>> {
+	fn move_to(&self, board: &Board, robot_index: usize, robot_dir: usize) -> Option<State> {
 		let dir = &DIRECTIONS[robot_dir];
 		let mut p = self.robots[robot_index];
-		let mut mind = self.bo.walldist[p.y as usize][p.x as usize][robot_dir] as i8;
+		let mut mind = board.walldist[p.y as usize][p.x as usize][robot_dir] as i8;
 		//removing "as i8" by changing type of walldist doesn't make well difference.
 
 		// if mind == 0 { return None } //pruning with little (0.2~3sec) speedup.
@@ -279,7 +279,7 @@ impl<'a> State<'a> {
 
 		// let tolog = self.log << 4 | robot_index << 2 | robot_dir; //self.log.cons(Move{c: robot_index,d: robot_dir});
 		let mut res = State {
-			bo: self.bo,
+			// bo: self.bo,
 			robots: self.robots.clone(),
 			// log: tolog,
 		};
@@ -287,11 +287,11 @@ impl<'a> State<'a> {
 		Some(res)
 	}
 
-	fn enumerate_states(&self) -> Vec<(State<'a>, Move)> {
+	fn enumerate_states(&self, board: &Board) -> Vec<(State, Move)> {
 		let mut res = Vec::with_capacity(16);
 		for i in 0..self.robots.len() {
 			for j in 0..4 {
-				if let Some(ts) = self.move_to(i, j) {
+				if let Some(ts) = self.move_to(board, i, j) {
 					// res.push(ts);
 					res.push((ts, Move { c: i, d: j }));
 				}
@@ -301,21 +301,21 @@ impl<'a> State<'a> {
 	}
 }
 
-impl<'a> PartialEq for State<'a> {
-	fn eq(&self, ts: &State) -> bool {
-		return self.robots == ts.robots;
-	}
-}
-impl<'a> Eq for State<'a> {}
+// impl PartialEq for State {
+// 	fn eq(&self, ts: &State) -> bool {
+// 		return self.robots == ts.robots;
+// 	}
+// }
+// impl Eq for State {}
 
-impl<'a> Hash for State<'a> {
-	fn hash<H: Hasher>(&self, state: &mut H) {
-		//Surprisingly, this makes program very slowly!
-		//:thinking_face:
-		// self.robots[0].y.hash(state);
-		self.robots.hash(state);
-	}
-}
+// impl Hash for State {
+// 	fn hash<H: Hasher>(&self, state: &mut H) {
+// 		//Surprisingly, this makes program very slowly!
+// 		//:thinking_face:
+// 		// self.robots[0].y.hash(state);
+// 		self.robots.hash(state);
+// 	}
+// }
 
 struct Prev(u64);
 
@@ -393,7 +393,7 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 				if ok {
 					break;
 				}
-				for (ts, m) in st.enumerate_states() {
+				for (ts, m) in st.enumerate_states(&bo) {
 					//moving gone.contains & gone.insert to here decreased speed.
 					//I don't understand why this happened. :thinking_face:
 					if !gone.contains(&ts) {
