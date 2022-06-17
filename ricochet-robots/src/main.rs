@@ -306,7 +306,7 @@ impl Hash for State {
 /**
  * its internal representation is like below:
  *
- * 	                0b_0000_00000000_00000000
+ *                  0b_0000_00000000_00000000
  *     robot_index     ^^
  *       robot_dir       ^^
  *          prev_y          ^^^^^^^^
