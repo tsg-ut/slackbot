@@ -73,7 +73,8 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		}
 
 		const reactions = await getReactions(event.item.channel, event.item.ts);
-		if (reactions.koresuki < 5) {
+		const koresukiCount = reactions.koresuki?.length || 0;
+		if (koresukiCount < 5) {
 			return;
 		}
 

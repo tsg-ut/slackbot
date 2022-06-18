@@ -102,7 +102,7 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 				return;
 			}
 			const reactions = await getReactions(event.item.channel, event.item.ts);
-			const targetReaction = reactions[event.reaction] || 0;
+			const targetReaction = reactions[event.reaction]?.length || 0;
 			const messageURL = event.item.type === 'message'
 				? `<https://tsg-ut.slack.com/archives/${event.item.channel}/p${event.item.ts.replace('.', '')}|[メッセージ]>`
 				: '';
