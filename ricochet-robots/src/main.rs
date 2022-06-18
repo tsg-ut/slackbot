@@ -199,7 +199,7 @@ pub struct Move {
 	d: usize,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 struct State {
 	robots: [Pos; ROBOTS_COUNT],
 }
@@ -342,9 +342,11 @@ impl Prev {
 
 pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 	let init = State::init_state(&bo);
+	let mut last_state = init.clone();
 	let mut goal = (0, init.robots[0]);
 
 	let mut prev: HashMap<State, Option<Prev>> = HashMap::new();
+	prev.insert(init.clone(), None);
 
 	let mut que = VecDeque::new();
 	let mut depth = 0;
@@ -355,15 +357,11 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 	let mut found_count = 0;
 	let max_pattern_num = bo.h * bo.w * bo.robots.len();
 
-	let mut last_state = init;
-
-	prev.insert(init, None);
-
 	let mut dnum = 1;
 	while let Some(st) = que.pop_front() {
 		match st {
 			Some(st) => {
-				last_state = st;
+				last_state = st.clone();
 				dnum += 1;
 				//println!("{:?}",st.robots);
 				let mut ok = false;
@@ -388,7 +386,7 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 					// decreases speed, but this is necessary for path reconstruction.
 					// However, using `entry` instead of `contains_key` and `insert`
 					// increases speed a bit. (ura)
-					prev.entry(ts).or_insert_with(|| {
+					prev.entry(ts.clone()).or_insert_with(|| {
 						que.push_back(Some(ts));
 						let p = st.robots[m.c];
 						Some(Prev::serialize(&m, &p))
