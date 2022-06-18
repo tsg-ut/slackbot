@@ -7,6 +7,8 @@ const welcomeScrapboxUrl = `https://scrapbox.io/api/pages/tsg/welcome/text`;
 const PrefixComment = '///';
 
 import { WebClient } from '@slack/web-api';
+import type { Member } from '@slack/web-api/dist/response/UsersListResponse';
+
 import type { SlackInterface } from '../lib/slack';
 
 async function extractWelcomeMessage(): Promise<string> {
@@ -27,9 +29,6 @@ async function extractWelcomeMessage(): Promise<string> {
 }
 
 export default async ({ eventClient, webClient: slack }: SlackInterface) => {
-	const general = await slack.conversations.list({ exclude_archived: true, limit: 1000 })
-		.then((list: any) => list.channels.find(({ is_general }: { is_general: boolean }) => is_general).id);
-
 	const postWelcomeMessage = async (slack: WebClient, channel: string, text: string) => {
 		return slack.chat.postMessage({
 			channel,
@@ -40,29 +39,20 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
 		});
 	};
 
-	eventClient.on('team_join', async ({ user }: any) => {
-		// FIXME:
-		//   This event should be used instead of member_joined_channel with channel value condition
-		//   cf. https://api.slack.com/events/team_join
-		logger.info(`welcome:team_join: ${JSON.stringify(user)}`);
-	});
+	eventClient.on('team_join', async ({ user }: { user: Member }) => {
+		const userid = user.id;
 
-	eventClient.on('member_joined_channel', async ({ channel, user }: any) => {
-		if (channel !== general) {
-			return;
-		}
-
-		if (!user) {
+		if (!userid) {
 			return;
 		}
 
 		try {
 			const message = await extractWelcomeMessage();
-			await postWelcomeMessage(slack, user, message);
+			await postWelcomeMessage(slack, userid, message);
 
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
-				text: `Welcome <@${user}> to TSG! :tada:`,
+				text: `Welcome <@${userid}> to TSG! :tada:`,
 				icon_emoji: ':tsg:',
 				username: 'welcome',
 			});
@@ -71,7 +61,7 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
 
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
-				text: `welcome for <@${user}> error :cry:`,
+				text: `welcome for <@${userid}> error :cry:`,
 				icon_emoji: ':exclamation:',
 				username: 'welcome',
 			});
