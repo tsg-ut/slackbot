@@ -90,7 +90,7 @@ const getRecordedPaipuIds = async () => {
 	return new Set(sheetsData.slice(1).map(([paipuId]) => paipuId));
 };
 
-const generateRatingsFromHistory = async () => {
+const getSheetsData = async (spreadsheetId: string, range: string) => {
 	const auth = await new google.auth.GoogleAuth({
 		scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 	}).getClient();
@@ -98,8 +98,8 @@ const generateRatingsFromHistory = async () => {
 
 	const sheetsData = await new Promise<string[][]>((resolve, reject) => {
 		sheets.spreadsheets.values.get({
-			spreadsheetId: BATTLE_LOG_ID,
-			range: 'log!A:N',
+			spreadsheetId,
+			range,
 		}, (error, response) => {
 			if (error) {
 				reject(error);
@@ -111,10 +111,20 @@ const generateRatingsFromHistory = async () => {
 		});
 	});
 
+	return sheetsData;
+};
+
+const generateRatingsFromHistory = async () => {
+	const sheetsData = await getSheetsData(BATTLE_LOG_ID, 'log!A:N');
+	const sheetsDataSamma = await getSheetsData(BATTLE_LOG_ID, 'samma!A:K');
+
 	const ratings = new Map<string, Rating>();
 	const nicknameMap = new Map<string, string>();
 
+	const battles = [] as {date: number, users: string[]}[];
+
 	for (const cells of sheetsData.slice(1)) {
+		const date = new Date(cells[0]).getTime();
 		const users = [cells[3], cells[6], cells[9], cells[12]];
 		const nicknames = [cells[2], cells[5], cells[8], cells[11]];
 
@@ -122,6 +132,24 @@ const generateRatingsFromHistory = async () => {
 			nicknameMap.set(user, nickname);
 		}
 
+		battles.push({date, users});
+	}
+
+	for (const cells of sheetsDataSamma.slice(1)) {
+		const date = new Date(cells[0]).getTime();
+		const users = [cells[3], cells[6], cells[9]];
+		const nicknames = [cells[2], cells[5], cells[8]];
+
+		for (const [user, nickname] of zip(users, nicknames)) {
+			nicknameMap.set(user, nickname);
+		}
+
+		battles.push({date, users});
+	}
+
+	battles.sort((a, b) => a.date - b.date);
+
+	for (const {users} of battles) {
 		for (const user of users) {
 			if (!ratings.has(user)) {
 				ratings.set(user, new Rating());
@@ -143,14 +171,16 @@ const appendResultToHistory = async (paipuId: string, date: Date, players: Playe
 	}).getClient();
 	const sheets = google.sheets({version: 'v4', auth});
 
+	const targetRange = players.length === 4 ? 'log!A:N' : 'samma!A:K';
+
 	await new Promise<any>((resolve, reject) => {
 		sheets.spreadsheets.values.append({
 			spreadsheetId: BATTLE_LOG_ID,
-			range: 'log!A:N',
+			range: targetRange,
 			insertDataOption: 'INSERT_ROWS',
 			valueInputOption: 'USER_ENTERED',
 			requestBody: {
-				range: 'log!A:N',
+				range: targetRange,
 				majorDimension: 'ROWS',
 				values: [[
 					date.toISOString(),
@@ -272,74 +302,82 @@ export const server = async ({webClient: slack}: SlackInterface) => {
 				return ':ichihime:その牌譜はすでに登録されているにゃ！';
 			}
 
-			const {players, date} = await getMajsoulResult(paipuId);
-			if (players === null) {
-				return ':ichihime:牌譜が見つからなかったにゃ⋯⋯';
-			}
+			(async () => {
+				const {players, date} = await getMajsoulResult(paipuId);
+				if (players === null) {
+					await slack.chat.postMessage({
+						channel: req.body.channel_id,
+						username: 'jantama',
+						icon_emoji: ':ichihime:',
+						text: ':ichihime:牌譜が見つからなかったにゃ⋯⋯',
+					});
+					return;
+				}
 
-			const ratingChanges = await calculateNewRating(players);
-			await appendResultToHistory(paipuId, date, players);
+				const ratingChanges = await calculateNewRating(players);
+				await appendResultToHistory(paipuId, date, players);
 
-			await slack.chat.postMessage({
-				channel: req.body.channel_id,
-				username: 'jantama',
-				icon_emoji: ':ichihime:',
-				text: '',
-				blocks: [
-					{
-						type: 'section',
-						text: {
-							type: 'mrkdwn',
-							text: '対戦結果を記録したにゃ！\n牌譜ID: <https://game.mahjongsoul.com/?paipu=220217-340f8623-e1e4-4b52-b52d-5705331fe1fa|220217-340f8623-e1e4-4b52-b52d-5705331fe1fa>',
+				await slack.chat.postMessage({
+					channel: req.body.channel_id,
+					username: 'jantama',
+					icon_emoji: ':ichihime:',
+					text: '',
+					blocks: [
+						{
+							type: 'section',
+							text: {
+								type: 'mrkdwn',
+								text: `対戦結果を記録したにゃ！\n牌譜ID: <https://game.mahjongsoul.com/?paipu=${paipuId}|${paipuId}>`,
+							},
 						},
-					},
-					{
-						type: 'header',
-						text: {
-							type: 'plain_text',
-							text: '対戦結果',
-							emoji: true,
+						{
+							type: 'header',
+							text: {
+								type: 'plain_text',
+								text: '対戦結果',
+								emoji: true,
+							},
 						},
-					},
-					{
-						type: 'section',
-						text: {
-							type: 'mrkdwn',
-							text: getResultText(players, state.users),
+						{
+							type: 'section',
+							text: {
+								type: 'mrkdwn',
+								text: getResultText(players, state.users),
+							},
 						},
-					},
-					{
-						type: 'divider',
-					},
-					{
-						type: 'header',
-						text: {
-							type: 'plain_text',
-							text: 'TSG麻雀レート',
-							emoji: true,
+						{
+							type: 'divider',
 						},
-					},
-					{
-						type: 'section',
-						text: {
-							type: 'mrkdwn',
-							text: getRatingChangeText(ratingChanges, state.users),
+						{
+							type: 'header',
+							text: {
+								type: 'plain_text',
+								text: 'TSG麻雀レート',
+								emoji: true,
+							},
 						},
-					},
-					{
-						type: 'divider',
-					},
-					{
-						type: 'section',
-						text: {
-							type: 'mrkdwn',
-							text: `Slackアカウントを登録するには、<https://docs.google.com/spreadsheets/d/${BATTLE_LOG_ID}|対戦ログ>を確認して \`/jantama [自分のID]\` と入力するにゃ！`,
+						{
+							type: 'section',
+							text: {
+								type: 'mrkdwn',
+								text: getRatingChangeText(ratingChanges, state.users),
+							},
 						},
-					},
-				],
-			});
+						{
+							type: 'divider',
+						},
+						{
+							type: 'section',
+							text: {
+								type: 'mrkdwn',
+								text: `Slackアカウントを登録するには、<https://docs.google.com/spreadsheets/d/${BATTLE_LOG_ID}|対戦ログ>を確認して \`/jantama [自分のID]\` と入力するにゃ！`,
+							},
+						},
+					],
+				});
+			})();
 
-			return 'ok';
+			return ':ichihime:登録を受け付けたにゃ！処理が終わるまでしばらく待つにゃ！';
 		});
 
 		next();
