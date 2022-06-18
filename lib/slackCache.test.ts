@@ -14,6 +14,11 @@ import type {
 import Slack from './slackMock';
 import SlackCache from './slackCache';
 
+const userA = "USLACKBOT";
+const userB = "U12345678";
+const userC = "U31415926";
+const userD = "UTSGTSGTS";
+
 class WebClientMock {
 	readonly users = {
 		async list(args: UsersListArguments): Promise<UsersListResponse> {
@@ -206,7 +211,10 @@ describe('SlackCache', () => {
 	describe('getReactions', () => {
 		it('returns reactions', async () => {
 			const react1 = await slackCache.getReactions('C00000000', '1640000000.000000');
-			expect(react1).toEqual({ojigineko: 1, slack: 2});
+			expect(react1).toEqual({
+				ojigineko: [userB],
+				slack: [userA, userB],
+			});
 			const react2 = await slackCache.getReactions('C00000000', '1640001000.000000');
 			expect(react2).toEqual({});
 		});
@@ -214,41 +222,60 @@ describe('SlackCache', () => {
 			await emit('reaction_added', {
 				"item": { "channel": "C00000000", "ts": "1640000000.000000" },
 				"reaction": "ojigineko",
-			}); // history fetch, {ojigineko: 1, slack: 2}
+				"user": userC,
+			}); // history fetch, {ojigineko: [B], slack: [A, B]}
 			await emit('reaction_added', {
 				"item": { "channel": "C00000000", "ts": "1640000000.000000" },
 				"reaction": "ojigineko",
-			}); // ojigineko: 2
+				"user": userB,
+			}); // ojigineko: [B] (already reacted)
 			await emit('reaction_added', {
 				"item": { "channel": "C00000000", "ts": "1640000000.000000" },
 				"reaction": "white_square",
-			}); // white_square: 1
+				"user": userD,
+			}); // white_square: [D]
 			await emit('reaction_added', {
 				"item": { "channel": "C00000000", "ts": "1640000000.000000" },
 				"reaction": "ojigineko",
-			}); // ojigineko: 3
+				"user": userA,
+			}); // ojigineko: [B, A]
 			await emit('reaction_removed', {
 				"item": { "channel": "C00000000", "ts": "1640000000.000000" },
 				"reaction": "slack",
-			}); // slack: 1
+				"user": userA,
+			}); // slack: [B]
 			await emit('reaction_added', {
 				"item": { "channel": "C00000000", "ts": "1640000000.000000" },
 				"reaction": "white_square",
-			}); // white_square: 2
+				"user": userD,
+			}); // white_square: [D] (already reacted)
+			await emit('reaction_removed', {
+				"item": { "channel": "C00000000", "ts": "1640000000.000000" },
+				"reaction": "slack",
+				"user": userA,
+			}); // slack: [B] (already removed)
 
 			await emit('reaction_added', {
 				"item": { "channel": "C00000000", "ts": "1640001000.000000" },
 				"reaction": "dummy",
+				"user": userA,
 			}); // history fetch, {}
 			await emit('reaction_added', {
 				"item": { "channel": "C00000000", "ts": "1640001000.000000" },
 				"reaction": "ojigineko",
-			}); // ojigineko: 1
+				"user": userA,
+			}); // ojigineko: [A]
 
 			const react1 = await slackCache.getReactions('C00000000', '1640000000.000000');
-			expect(react1).toEqual({ojigineko: 3, slack: 1, white_square: 2});
+			expect(react1).toEqual({
+				ojigineko: [userB, userA],
+				slack: [userB],
+				white_square: [userD],
+			});
 			const react2 = await slackCache.getReactions('C00000000', '1640001000.000000');
-			expect(react2).toEqual({ojigineko: 1});
+			expect(react2).toEqual({
+				ojigineko: [userA],
+			});
 		});
 	});
 })

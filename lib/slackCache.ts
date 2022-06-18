@@ -41,8 +41,9 @@ export default class SlackCache {
 	private config: Config;
 	private users = new Map<string, Member>();
 	private emojis = new Map<string, string>();
-	// Cache for message reactions. Currently it only holds counts of reactions.
-	private reactionsCache = new Map<string, Record<string, number>>();
+	// Cache for message reactions. This property holds user IDs who reacted to a message,
+	// ordered by the time of reaction.
+	private reactionsCache = new Map<string, Record<string, string[]>>();
 	private loadUsersDeferred = new Deferred<void>();
 	private loadEmojisDeferred = new Deferred<void>();
 
@@ -96,19 +97,21 @@ export default class SlackCache {
 				}
 			});
 			teamEventClient.on('reaction_added', (event) => {
-				this.incrementReactions({
+				this.modifyReaction({
+					type: 'add',
 					channel: event.item.channel,
 					ts: event.item.ts,
 					reaction: event.reaction,
-					by: 1,
+					user: event.user,
 				});
 			});
 			teamEventClient.on('reaction_removed', (event) => {
-				this.incrementReactions({
+				this.modifyReaction({
+					type: 'remove',
 					channel: event.item.channel,
 					ts: event.item.ts,
 					reaction: event.reaction,
-					by: -1,
+					user: event.user,
 				});
 			});
 		}
@@ -128,7 +131,7 @@ export default class SlackCache {
 		return this.emojis.get(emoji);
 	}
 
-	public async getReactions(channel: string, ts: string): Promise<Record<string,number>> {
+	public async getReactions(channel: string, ts: string): Promise<Record<string, string[]>> {
 		if (!this.config.enableReactions) {
 			throw new Error('reactionsCache disabled');
 		}
@@ -158,22 +161,24 @@ export default class SlackCache {
 
 		const remoteReactions: Reaction[] = get(data, ['messages', 0, 'reactions'], [] as Reaction[]);
 		const remoteReactionsObj = Object.fromEntries(remoteReactions.map((reaction) => (
-			[reaction.name, reaction.count]
+			[reaction.name, reaction.users ?? []]
 		)));
 		this.reactionsCache.set(key, remoteReactionsObj);
 		return remoteReactionsObj;
 	}
 
-	private async incrementReactions({
+	private async modifyReaction({
 		channel,
 		ts,
 		reaction,
-		by,
+		user,
+		type,
 	}: {
 		channel: string,
 		ts: string,
 		reaction: string,
-		by: number,
+		user: string,
+		type: 'add' | 'remove',
 	}): Promise<void> {
 		const key = `${channel}\0${ts}`;
 
@@ -181,9 +186,18 @@ export default class SlackCache {
 			const reactions = this.reactionsCache.get(key);
 			if (reactions) {
 				if (!{}.hasOwnProperty.call(reactions, reaction)) {
-					reactions[reaction] = 0;
+					reactions[reaction] = [];
 				}
-				reactions[reaction] += by;
+				if (type === 'add') {
+					if (!reactions[reaction].includes(user)) {
+						reactions[reaction].push(user);
+					}
+				} else {
+					let index = reactions[reaction].indexOf(user);
+					if (index !== -1) {
+						reactions[reaction].splice(index, 1);
+					}
+				}
 				return;
 			}
 		}
@@ -201,16 +215,25 @@ export default class SlackCache {
 			const reactions = this.reactionsCache.get(key);
 			if (reactions) {
 				if (!{}.hasOwnProperty.call(reactions, reaction)) {
-					reactions[reaction] = 0;
+					reactions[reaction] = [];
 				}
-				reactions[reaction] += by;
+				if (type === 'add') {
+					if (!reactions[reaction].includes(user)) {
+						reactions[reaction].push(user);
+					}
+				} else {
+					let index = reactions[reaction].indexOf(user);
+					if (index !== -1) {
+						reactions[reaction].splice(index, 1);
+					}
+				}
 				return;
 			}
 		}
 
 		const remoteReactions: Reaction[] = get(data, ['messages', 0, 'reactions'], [] as Reaction[]);
 		const remoteReactionsObj = Object.fromEntries(remoteReactions.map((reaction) => (
-			[reaction.name, reaction.count]
+			[reaction.name, reaction.users ?? []]
 		)));
 		this.reactionsCache.set(key, remoteReactionsObj);
 		return;
