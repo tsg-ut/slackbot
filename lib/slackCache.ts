@@ -193,7 +193,7 @@ export default class SlackCache {
 						reactions[reaction].push(user);
 					}
 				} else {
-					let index = reactions[reaction].indexOf(user);
+					const index = reactions[reaction].indexOf(user);
 					if (index !== -1) {
 						reactions[reaction].splice(index, 1);
 					}
@@ -222,7 +222,7 @@ export default class SlackCache {
 						reactions[reaction].push(user);
 					}
 				} else {
-					let index = reactions[reaction].indexOf(user);
+					const index = reactions[reaction].indexOf(user);
 					if (index !== -1) {
 						reactions[reaction].splice(index, 1);
 					}
