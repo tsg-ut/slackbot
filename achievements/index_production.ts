@@ -1,5 +1,6 @@
 // eslint-disable-next-line no-unused-vars
 import {WebClient} from '@slack/web-api';
+import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import {countBy, throttle, groupBy, get as getter, chunk} from 'lodash';
 import moment from 'moment';
@@ -9,6 +10,8 @@ import type {SlackInterface} from '../lib/slack';
 import {getReactions} from '../lib/slackUtils';
 import {Deferred} from '../lib/utils';
 import achievements, {Difficulty} from './achievements';
+
+const mutex = new Mutex();
 
 type users = {
 	chats?: number,
@@ -94,21 +97,39 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 	});
 
 	eventClient.on('reaction_added', async (event) => {
-		if (event.user && event.item && event.item.channel.startsWith('C') && event.item_user && state.achievements.has(event.item_user)) {
+		if (event.user && event.item && event.item.channel.startsWith('C') && event.item_user) {
 			const reactionAchievements = Array.from(achievements.values()).filter((achievement) => (
 				achievement.reaction === event.reaction
 			));
-			if (reactionAchievements.length === 0) {
-				return;
-			}
 			const reactions = await getReactions(event.item.channel, event.item.ts);
-			const targetReaction = reactions[event.reaction]?.length || 0;
+			const reactedUsers = reactions[event.reaction] || [];
 			const messageURL = event.item.type === 'message'
 				? `<https://tsg-ut.slack.com/archives/${event.item.channel}/p${event.item.ts.replace('.', '')}|[メッセージ]>`
 				: '';
+
 			for (const achievement of reactionAchievements) {
-				if (achievement.value <= targetReaction) {
+				if (achievement.value <= reactedUsers.length) {
 					await unlock(event.item_user, achievement.id, messageURL);
+				}
+			}
+
+			if (reactedUsers.length >= 1) {
+				const firstReactedUser = reactedUsers[0];
+
+				for (const threshold of [5, 10, 15, 20, 25, 30]) {
+					if (reactedUsers.length >= threshold) {
+						const messagesKey = `reaction-${event.reaction}-${threshold}-first-reaction-messages`;
+						const achievementName = `reaction-${event.reaction}-${threshold}-first-reaction`;
+
+						mutex.runExclusive(async () => {
+							const reactionMessages = (await get(firstReactedUser, messagesKey)) || [];
+							if (!reactionMessages.includes(event.item.ts)) {
+								await set(firstReactedUser, messagesKey, [...reactionMessages, event.item.ts]);
+								await increment(firstReactedUser, achievementName, 1, messageURL);
+								await increment(firstReactedUser, `reaction-${threshold}-reactions-first-reaction`, 1, messageURL);
+							}
+						});
+					}
 				}
 			}
 		}
@@ -369,7 +390,7 @@ export const isUnlocked = async (user: string, name: string) => {
 	return state.achievements.get(user).has(name);
 };
 
-export const increment = async (user: string, name: string, value: number = 1) => {
+export const increment = async (user: string, name: string, value: number = 1, additionalInfo: string = undefined) => {
 	await initializeDeferred.promise;
 
 	if (!user || !user.startsWith('U') || user === 'USLACKBOT') {
@@ -385,7 +406,7 @@ export const increment = async (user: string, name: string, value: number = 1) =
 
 	const unlocked = Array.from(achievements.values()).filter((achievement) => achievement.counter === name && achievement.value <= newValue);
 	for (const achievement of unlocked) {
-		unlock(user, achievement.id);
+		unlock(user, achievement.id, additionalInfo);
 	}
 
 	updateDb({type: 'increment', name, value, user});
