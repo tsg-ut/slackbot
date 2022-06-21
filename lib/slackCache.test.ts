@@ -54,7 +54,7 @@ describe('SlackCache', () => {
 	let slackCache: SlackCache = null;
 	let slack: Slack = null;
 	const emit = async (event: string, payload: any) => {
-		slack.eventClient.emit(event, payload, {
+		await slack.eventClient.emit(event, payload, {
 			team_id: teamId,
 		});
 	};
