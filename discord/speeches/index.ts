@@ -5,7 +5,7 @@ import google from './google';
 import voicetext, {Emotion, EmoLV} from './voicetext';
 import voicevox from './voicevox';
 
-enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q', R = 'R', S = 'S', T = 'T', U = 'U', V = 'V', W = 'W', X = 'X', Y = 'Y', Z = 'Z', AA = 'AA', AB = 'AB'}
+enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q', R = 'R', S = 'S', T = 'T', U = 'U', V = 'V', W = 'W', X = 'X', Y = 'Y', Z = 'Z', AA = 'AA', AB = 'AB', AC = 'AC', AD = 'AD', AE = 'AE'}
 export {Voice};
 
 export {Emotion, EmoLV};
@@ -56,6 +56,9 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.Z, {provider: 'voicevox', name: 'torataro'}],
 	[Voice.AA, {provider: 'voicevox', name: 'ryusei'}],
 	[Voice.AB, {provider: 'voicevox', name: 'himari'}],
+	[Voice.AC, {provider: 'voicevox', name: 'sora', emotional: true}],
+	[Voice.AD, {provider: 'voicevox', name: 'sora_whisper'}],
+	[Voice.AE, {provider: 'voicevox', name: 'mochiko'}],
 ]);
 
 export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta) => {
