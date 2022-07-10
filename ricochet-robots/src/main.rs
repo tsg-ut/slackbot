@@ -304,29 +304,32 @@ impl Hash for State {
 }
 
 /**
- * its internal representation is like below:
+ * Its internal representation is like below:
  *
- *                  0b_0000_00000000_00000000
+ *                  0b_00000000_00000000
  *     robot_index     ^^
  *       robot_dir       ^^
- *          prev_y          ^^^^^^^^
- *          prev_x                   ^^^^^^^^
+ *          prev_y         ^^^^ ^^
+ *          prev_x                ^^^^^^
  *
- * making the data compact increases speed a little. (ura)
+ * Assume that
+ *   - the number of robots < 4 and
+ *   - the width and height of the board < 64.
+ * Making the data compact increases speed a little. (ura)
  */
-struct Prev(u64);
+struct Prev(u16);
 
 impl Prev {
 	fn serialize(m: &Move, p: &Pos) -> Self {
-		let prev = ((m.c as u64) << 18) | ((m.d as u64) << 16) | ((p.y as u64) << 8) | (p.x as u64);
+		let prev = ((m.c as u16) << 14) | ((m.d as u16) << 12) | ((p.y as u16) << 6) | (p.x as u16);
 		Prev(prev)
 	}
 
 	fn deserialize(&self) -> (Move, Pos) {
-		let robot_index = (self.0 >> 18) as usize;
-		let robot_dir = ((self.0 >> 16) & 0b11) as usize;
-		let prev_y = ((self.0 >> 8) & 0xff) as i8;
-		let prev_x = (self.0 & 0xff) as i8;
+		let robot_index = (self.0 >> 14) as usize;
+		let robot_dir = ((self.0 >> 12) & 0b11) as usize;
+		let prev_y = ((self.0 >> 6) & 0b111111) as i8;
+		let prev_x = (self.0 & 0b111111) as i8;
 		(
 			Move {
 				c: robot_index,
