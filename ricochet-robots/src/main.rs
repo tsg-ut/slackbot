@@ -320,6 +320,15 @@ impl Hash for State {
 struct Prev(u16);
 
 impl Prev {
+	/**
+	 * The initial state has no previous state, so use this dummy value.
+	 * However, there is no mechanism to check if it is a dummy or not,
+	 * so please check if the state is the initial state or not.
+	 */
+	fn dummy() -> Self {
+		Prev(!0)
+	}
+
 	fn serialize(m: &Move, p: &Pos) -> Self {
 		let prev = ((m.c as u16) << 14) | ((m.d as u16) << 12) | ((p.y as u16) << 6) | (p.x as u16);
 		Prev(prev)
@@ -348,12 +357,12 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 	let mut last_state = init.clone();
 	let mut goal = (0, init.robots[0]);
 
-	let mut prev: HashMap<State, Option<Prev>> = HashMap::new();
-	prev.insert(init.clone(), None);
+	let mut prev: HashMap<State, Prev> = HashMap::new();
+	prev.insert(init.clone(), Prev::dummy());
 
 	let mut que = VecDeque::new();
 	let mut depth = 0;
-	que.push_back(Some(init));
+	que.push_back(Some(init.clone()));
 	que.push_back(None);
 
 	let mut found = vec![vec![[false; ROBOTS_COUNT]; bo.w]; bo.h];
@@ -392,7 +401,7 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 					prev.entry(ts.clone()).or_insert_with(|| {
 						que.push_back(Some(ts));
 						let p = st.robots[m.c];
-						Some(Prev::serialize(&m, &p))
+						Prev::serialize(&m, &p)
 					});
 				}
 			}
@@ -411,8 +420,8 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 	// path reconstruction
 	let mut l = vec![];
 	let mut s = last_state;
-	while let Some(prev) = &prev[&s] {
-		let (m, p) = prev.deserialize();
+	while s != init {
+		let (m, p) = prev[&s].deserialize();
 		l.push(m);
 		s.robots[m.c] = p;
 	}
