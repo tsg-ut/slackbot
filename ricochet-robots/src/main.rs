@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::env;
 use std::hash::{Hash, Hasher};
@@ -21,7 +21,7 @@ use atoi::atoi;
 extern crate itertools;
 use itertools::Itertools;
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub struct Pos {
 	y: i8,
 	x: i8,
@@ -199,27 +199,22 @@ pub struct Move {
 	d: usize,
 }
 
-struct State<'a> {
-	bo: &'a Board,
+#[derive(Clone, PartialEq, Eq)]
+struct State {
 	robots: [Pos; ROBOTS_COUNT],
-	//log: SinglyLinkedList
-	log: usize,
 }
 
-impl<'a> State<'a> {
-	pub fn init_state(bo: &'a Board) -> State<'a> {
-		//State{bo: &bo,robots: bo.robots.clone(), log: SinglyLinkedList::nil()}
+impl State {
+	pub fn init_state(bo: &Board) -> State {
 		State {
-			bo: &bo,
 			robots: bo.robots.clone(),
-			log: 1,
 		}
 	}
 
-	fn move_to(&self, robot_index: usize, robot_dir: usize) -> Option<State<'a>> {
+	fn move_to(&self, board: &Board, robot_index: usize, robot_dir: usize) -> Option<State> {
 		let dir = &DIRECTIONS[robot_dir];
 		let mut p = self.robots[robot_index];
-		let mut mind = self.bo.walldist[p.y as usize][p.x as usize][robot_dir] as i8;
+		let mut mind = board.walldist[p.y as usize][p.x as usize][robot_dir] as i8;
 		//removing "as i8" by changing type of walldist doesn't make well difference.
 
 		// if mind == 0 { return None } //pruning with little (0.2~3sec) speedup.
@@ -275,22 +270,19 @@ impl<'a> State<'a> {
 			x: p.x + dir.x * mind,
 		};
 
-		let tolog = self.log << 4 | robot_index << 2 | robot_dir; //self.log.cons(Move{c: robot_index,d: robot_dir});
 		let mut res = State {
-			bo: self.bo,
 			robots: self.robots.clone(),
-			log: tolog,
 		};
 		res.robots[robot_index] = p;
 		Some(res)
 	}
 
-	fn enumerate_states(&self) -> Vec<State<'a>> {
+	fn enumerate_states(&self, board: &Board) -> Vec<(State, Move)> {
 		let mut res = Vec::with_capacity(16);
 		for i in 0..self.robots.len() {
 			for j in 0..4 {
-				if let Some(ts) = self.move_to(i, j) {
-					res.push(ts);
+				if let Some(ts) = self.move_to(board, i, j) {
+					res.push((ts, Move { c: i, d: j }));
 				}
 			}
 		}
@@ -298,34 +290,79 @@ impl<'a> State<'a> {
 	}
 }
 
-impl<'a> PartialEq for State<'a> {
-	fn eq(&self, ts: &State) -> bool {
-		return self.robots == ts.robots;
+impl Hash for State {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		//Surprisingly, this makes program very fast!
+		//:waiwai:
+		let mut bits: u64 = 0;
+		for i in 0..ROBOTS_COUNT {
+			let p = self.robots[i];
+			bits |= (((p.y as u64) << 8) | (p.x as u64)) << (i * 16);
+		}
+		bits.hash(state);
 	}
 }
-impl<'a> Eq for State<'a> {}
 
-impl<'a> Hash for State<'a> {
-	fn hash<H: Hasher>(&self, state: &mut H) {
-		//Surprisingly, this makes program very slowly!
-		//:thinking_face:
-		// self.robots[0].y.hash(state);
-		self.robots.hash(state);
+/**
+ * Its internal representation is like below:
+ *
+ *                  0b_00000000_00000000
+ *     robot_index     ^^
+ *       robot_dir       ^^
+ *          prev_y         ^^^^ ^^
+ *          prev_x                ^^^^^^
+ *
+ * Assume that
+ *   - the number of robots < 4 and
+ *   - the width and height of the board < 64.
+ * Making the data compact increases speed a little. (ura)
+ */
+struct Prev(u16);
+
+impl Prev {
+	/**
+	 * The initial state has no previous state, so use this dummy value.
+	 * However, there is no mechanism to check if it is a dummy or not,
+	 * so please check if the state is the initial state or not.
+	 */
+	fn dummy() -> Self {
+		Prev(!0)
+	}
+
+	fn serialize(m: &Move, p: &Pos) -> Self {
+		let prev = ((m.c as u16) << 14) | ((m.d as u16) << 12) | ((p.y as u16) << 6) | (p.x as u16);
+		Prev(prev)
+	}
+
+	fn deserialize(&self) -> (Move, Pos) {
+		let robot_index = (self.0 >> 14) as usize;
+		let robot_dir = ((self.0 >> 12) & 0b11) as usize;
+		let prev_y = ((self.0 >> 6) & 0b111111) as i8;
+		let prev_x = (self.0 & 0b111111) as i8;
+		(
+			Move {
+				c: robot_index,
+				d: robot_dir,
+			},
+			Pos {
+				y: prev_y,
+				x: prev_x,
+			},
+		)
 	}
 }
 
 pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 	let init = State::init_state(&bo);
-	//let mut res = init.log.head.clone();
-	let mut res = init.log;
+	let mut last_state = init.clone();
 	let mut goal = (0, init.robots[0]);
 
-	let mut gone: HashSet<State> = HashSet::new();
-	//let mut gone: HashSet<Vec<Pos>> = HashSet::new();
+	let mut prev: HashMap<State, Prev> = HashMap::new();
+	prev.insert(init.clone(), Prev::dummy());
 
 	let mut que = VecDeque::new();
 	let mut depth = 0;
-	que.push_back(Some(init));
+	que.push_back(Some(init.clone()));
 	que.push_back(None);
 
 	let mut found = vec![vec![[false; ROBOTS_COUNT]; bo.w]; bo.h];
@@ -336,34 +373,36 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 	while let Some(st) = que.pop_front() {
 		match st {
 			Some(st) => {
-				if !gone.contains(&st) {
-					dnum += 1;
-					//println!("{:?}",st.robots);
-					let mut ok = false;
-					for i in 0..st.robots.len() {
-						let p = st.robots[i];
-						if !found[p.y as usize][p.x as usize][i] {
-							//println!("{} {} {} : {} ",p.y,p.x,i,depth);
-							found[p.y as usize][p.x as usize][i] = true;
-							found_count += 1;
-							//res = st.log.head.clone();
-							res = st.log;
-							goal = (i, p);
-							if depth >= target || found_count >= max_pattern_num {
-								ok = true;
-								break;
-							}
+				last_state = st.clone();
+				dnum += 1;
+				//println!("{:?}",st.robots);
+				let mut ok = false;
+				for i in 0..st.robots.len() {
+					let p = st.robots[i];
+					if !found[p.y as usize][p.x as usize][i] {
+						//println!("{} {} {} : {} ",p.y,p.x,i,depth);
+						found[p.y as usize][p.x as usize][i] = true;
+						found_count += 1;
+						goal = (i, p);
+						if depth >= target || found_count >= max_pattern_num {
+							ok = true;
+							break;
 						}
 					}
-					if ok {
-						break;
-					}
-					for ts in st.enumerate_states() {
-						//moving gone.contains & gone.insert to here decreased speed.
-						//I don't understand why this happened. :thinking_face:
+				}
+				if ok {
+					break;
+				}
+				for (ts, m) in st.enumerate_states(&bo) {
+					// kcz-san and satos-san say that performing `push_back` here
+					// decreases speed, but this is necessary for path reconstruction.
+					// However, using `entry` instead of `contains_key` and `insert`
+					// increases speed a bit. (ura)
+					prev.entry(ts.clone()).or_insert_with(|| {
 						que.push_back(Some(ts));
-					}
-					gone.insert(st);
+						let p = st.robots[m.c];
+						Prev::serialize(&m, &p)
+					});
 				}
 			}
 			None => {
@@ -378,18 +417,16 @@ pub fn bfs<'a, 'b>(target: u8, bo: &'a Board) -> ((usize, Pos), Vec<Move>) {
 		}
 	}
 
-	// Faster!!. Haee! 0.69s to 0.53s
+	// path reconstruction
 	let mut l = vec![];
-	while res > 1 {
-		let c = (res & 12) >> 2;
-		let d = res & 3;
-		l.push(Move { c: c, d: d });
-		res >>= 4;
+	let mut s = last_state;
+	while s != init {
+		let (m, p) = prev[&s].deserialize();
+		l.push(m);
+		s.robots[m.c] = p;
 	}
 
 	return (goal, l);
-	//let l = SinglyLinkedList{head: res};
-	//return (goal,l.to_vec());
 }
 
 fn main() {
