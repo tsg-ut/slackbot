@@ -5,6 +5,7 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
+    "install": "cd functions && npm install",
     "postinstall": "cp -f jantama/amae-koromo-env.js node_modules/amae-koromo/env.js",
     "start": "pm2 start ecosystem.config.js",
     "stop": "pm2 stop ecosystem.config.js",
