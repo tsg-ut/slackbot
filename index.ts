@@ -7,13 +7,10 @@ process.on('unhandledRejection', (error: Error) => {
 });
 
 import os from 'os';
-import {rtmClient, webClient} from './lib/slack';
-import {createEventAdapter} from '@slack/events-api';
-import {createMessageAdapter} from '@slack/interactive-messages';
+import {rtmClient, webClient, messageClient, eventClient, tsgEventClient} from './lib/slack';
 import Fastify from 'fastify';
 
-// @ts-ignore
-import logger from './lib/logger.js';
+import logger from './lib/logger';
 import yargs from 'yargs';
 
 import fastifyFormbody from 'fastify-formbody';
@@ -21,11 +18,12 @@ import fastifyExpress from 'fastify-express';
 
 import sharp from 'sharp';
 
+import {uniq, throttle} from 'lodash';
+
 // Disable the cache since it likely hits the swap anyway
 sharp.cache(false);
 
 const fastify = Fastify({
-	logger: true,
 	pluginTimeout: 50000,
 });
 
@@ -59,12 +57,12 @@ const allBots = [
 	'voiperrobot',
 	'atcoder',
 	'lyrics',
-	'ojigineko-life',
 	'better-custom-response',
 	'emoxpand',
 	'ponpe',
 	'anime',
 	'anime/anison',
+	'anime/namori',
 	'oogiri',
 	'sorting-riddles',
 	'tsglive',
@@ -81,6 +79,17 @@ const allBots = [
 	'pwnyaa',
 	'amongyou',
 	'api',
+	'hangman',
+	'hakatashi-visor',
+	'nojoin',
+	'remember-english',
+	'golfbot',
+	'kirafan/quiz',
+	'topic',
+	'bungo-quiz',
+	'adventar',
+	'jantama',
+	'tabi-gatcha',
 ];
 
 logger.info('slackbot started');
@@ -92,13 +101,15 @@ const argv = yargs
 	.default('startup', 'ｼｭｯｼｭｯ (起動音)')
 	.argv;
 
-const plugins = argv.only;
-const eventClient = createEventAdapter(process.env.SIGNING_SECRET);
+const plugins = uniq(argv.only);
+
+if (plugins.length !== argv.only.length) {
+	logger.info(`Some plugins are specified more than once. Duplicated plugins were removed.`)
+}
+
 eventClient.on('error', (error) => {
 	logger.error(error.stack);
 });
-
-const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 
 (async () => {
 	await fastify.register(fastifyFormbody);
@@ -114,6 +125,54 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 	});
 	fastify.use('/slack-event', eventClient.expressMiddleware());
 	fastify.use('/slack-message', messageClient.requestListener());
+
+	const loadedPlugins = new Set<string>();
+
+	const initializationMessage = await webClient.chat.postMessage({
+		username: `tsgbot [${os.hostname()}]`,
+		channel: process.env.CHANNEL_SANDBOX,
+		text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
+		attachments: plugins.map((name) => ({
+			color: '#F44336',
+			text: `*loading:* ${name}`,
+		})),
+	});
+
+	const throttleLoadingMessageUpdate = throttle(() => {
+		webClient.chat.update({
+			channel: process.env.CHANNEL_SANDBOX,
+			ts: initializationMessage.ts as string,
+			text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
+			attachments: [
+				{
+					color: '#4CAF50',
+					text: `*loaded:* ${Array.from(loadedPlugins).join(', ')}`,
+				},
+				...plugins.filter((name) => !loadedPlugins.has(name)).map((name) => ({
+					color: '#F44336',
+					text: `*loading:* ${name}`,
+				})),
+			],
+		})
+	}, 0.5 * 1000);
+
+	await Promise.all(plugins.map(async (name) => {
+		const plugin = await import(`./${name}`);
+		if (typeof plugin === 'function') {
+			await plugin({rtmClient, webClient, eventClient: tsgEventClient, messageClient});
+		}
+		if (typeof plugin.default === 'function') {
+			await plugin.default({rtmClient, webClient, eventClient: tsgEventClient, messageClient});
+		}
+		if (typeof plugin.server === 'function') {
+			await fastify.register(plugin.server({rtmClient, webClient, eventClient: tsgEventClient, messageClient}));
+		}
+		loadedPlugins.add(name);
+		logger.info(`plugin "${name}" successfully loaded`);
+
+		throttleLoadingMessageUpdate();
+	}));
+
 	fastify.listen(process.env.PORT || 21864, (error, address) => {
 		if (error) {
 			logger.error(error);
@@ -122,81 +181,14 @@ const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
 		}
 	});
 
-	const loadedPlugins = new Set<string>();
-
-	const initializationMessagePromise = webClient.chat.postMessage({
-		username: `tsgbot [${os.hostname()}]`,
-		channel: process.env.CHANNEL_SANDBOX,
-		text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
-		attachments: plugins.map((name) => ({
-			color: '#F44336',
-			text: `loading: ${name}`,
-		})),
-	});
-
-	await Promise.all(plugins.map(async (name) => {
-		const plugin = await import(`./${name}`);
-		if (typeof plugin === 'function') {
-			await plugin({rtmClient, webClient, eventClient, messageClient});
-		}
-		if (typeof plugin.default === 'function') {
-			await plugin.default({rtmClient, webClient, eventClient, messageClient});
-		}
-		if (typeof plugin.server === 'function') {
-			await fastify.register(plugin.server({rtmClient, webClient, eventClient, messageClient}));
-		}
-		loadedPlugins.add(name);
-		logger.info(`plugin "${name}" successfully loaded`);
-
-		const initializationMessage = await initializationMessagePromise;
-		webClient.chat.update({
-			channel: process.env.CHANNEL_SANDBOX,
-			ts: initializationMessage.ts as string,
-			text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
-			attachments: [
-				{
-					color: '#4CAF50',
-					text: `loaded: ${Array.from(loadedPlugins).join(', ')}`,
-				},
-				...plugins.filter((name) => !loadedPlugins.has(name)).map((name) => ({
-					color: '#F44336',
-					text: `loading: ${name}`,
-				})),
-			],
-		})
-	}));
-
 	logger.info('Launched');
-	/*
 	webClient.chat.postMessage({
 		username: `tsgbot [${os.hostname()}]`,
 		channel: process.env.CHANNEL_SANDBOX,
 		text: argv.startup,
 	});
-	*/
 
-	let firstLogin = true;
-	let lastLogin: number = null;
-	let combos = 1;
 	rtmClient.on('authenticated', (data) => {
 		logger.info(`Logged in as ${data.self.name} of team ${data.team.name}`);
-		const now = Date.now();
-		if (!firstLogin) {
-			let comboStr = '';
-			if (now - lastLogin <= 2 * 60 * 1000) {
-				combos++;
-				comboStr = `(${combos}コンボ${'!'.repeat(combos)})`
-			}
-			else {
-				combos = 1;
-			}
-			webClient.chat.postMessage({
-				username: `tsgbot [${os.hostname()}]`,
-				channel: process.env.CHANNEL_SANDBOX,
-				text: `再接続しました ${comboStr}`,
-			});
-		}
-		firstLogin = false;
-		lastLogin = now;
 	});
 })();

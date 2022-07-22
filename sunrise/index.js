@@ -85,7 +85,7 @@ const FtoC = (F) => (F - 32) * 5 / 9;
 const miphToMps = (miph) => miph * 0.447;
 const inchToMm = (inch) => inch * 25.4;
 
-module.exports = async ({rtmClient: rtm, webClient: slack}) => {
+module.exports = async ({eventClient, webClient: slack}) => {
 	const storage = nodePersist.create({
 		dir: path.resolve(__dirname, '__state__'),
 	});
@@ -319,21 +319,21 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 					.end(imageData);
 			});
 
-			const lastEntryUrl = await storage.getItem('lastEntryUrl');
+			const lastEntryUrl = await storage.getItem('lastEntryUrl') || {};
 			const [tayori, saijiki, tenkijp] = await getEntries();
 
 			let entry = null;
-			if (!lastEntryUrl || lastEntryUrl.tayori !== tayori[0].link) {
+			if (tayori.length > 0 && (!lastEntryUrl || lastEntryUrl.tayori !== tayori[0].link)) {
 				entry = {
 					title: tayori[0].title,
 					link: tayori[0].link,
 				};
-			} else if (lastEntryUrl.saijiki !== saijiki[0].link) {
+			} else if (saijiki.length > 0 && lastEntryUrl.saijiki !== saijiki[0].link) {
 				entry = {
 					title: `${saijiki[0].category}「${saijiki[0].title}」`,
 					link: saijiki[0].link,
 				};
-			} else if (lastEntryUrl.tenkijp !== tenkijp[0].link) {
+			} else if (tenkijp.length > 0 && lastEntryUrl.tenkijp !== tenkijp[0].link) {
 				entry = {
 					title: tenkijp[0].title,
 					link: tenkijp[0].link,
@@ -384,9 +384,9 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 			});
 
 			await storage.setItem('lastEntryUrl', {
-				tayori: tayori[0].link,
-				saijiki: saijiki[0].link,
-				tenkijp: tenkijp[0].link,
+				tayori: get(tayori, [0, 'link'], ''),
+				saijiki: get(saijiki, [0, 'link'], ''),
+				tenkijp: get(tenkijp, [0, 'link'], ''),
 			});
 		}
 
@@ -406,11 +406,12 @@ module.exports = async ({rtmClient: rtm, webClient: slack}) => {
 	};
 
 	queue.add(tick);
+
 	setInterval(() => {
 		queue.add(tick);
 	}, 10 * 1000);
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}

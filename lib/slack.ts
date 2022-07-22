@@ -1,18 +1,19 @@
 import {WebClient} from '@slack/web-api';
 import {RTMClient} from '@slack/rtm-api';
-import {createEventAdapter} from '@slack/events-api';
 import {createMessageAdapter} from '@slack/interactive-messages';
-import {Deferred} from './utils';
-import {Token} from '../oauth/tokens';
+import {createEventAdapter} from '@slack/events-api';
 import sql from 'sql-template-strings';
 import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
+import {TSGEventClient} from './slackEventClient';
+import {Deferred} from './utils';
+import {Token} from '../oauth/tokens';
 
 export interface SlackInterface {
 	rtmClient: RTMClient;
 	webClient: WebClient;
-	eventClient: ReturnType<typeof createEventAdapter>;
+	eventClient: TSGEventClient;
 	messageClient: ReturnType<typeof createMessageAdapter>;
 };
 
@@ -43,12 +44,19 @@ export interface SlackOauthEndpoint {
 
 export const rtmClient = new RTMClient(process.env.SLACK_TOKEN);
 export const webClient = new WebClient(process.env.SLACK_TOKEN);
+export const eventClient = createEventAdapter(process.env.SIGNING_SECRET, {includeBody: true});
+export const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
+export const tsgEventClient = new TSGEventClient(
+	eventClient,
+	process.env.TEAM_ID,
+);
+
 
 rtmClient.start();
 const rtmClients = new Map<string, RTMClient>();
 rtmClients.set(process.env.TEAM_ID, rtmClient);
 
-const loadTokensDeferred = new Deferred();
+const loadTokensDeferred = new Deferred<Token[]>();
 const loadTokens = async () => {
 	const db = await sqlite.open({
 		filename: path.join(__dirname, '..', 'tokens.sqlite3'),

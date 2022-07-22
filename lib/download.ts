@@ -1,5 +1,6 @@
 import fs from 'fs';
 import axios from 'axios';
+import type {Stream} from 'stream';
 
 export const download = async (path: string, url: string): undefined | Promise<undefined> => {
     const dataExists = await new Promise((resolve) => {
@@ -8,7 +9,7 @@ export const download = async (path: string, url: string): undefined | Promise<u
         });
     });
     return dataExists ? undefined : new Promise(async (resolve, reject) => {
-        const response = await axios.get(url, {responseType: 'stream'});
+        const response = await axios.get<Stream>(url, {responseType: 'stream'});
         response.data.pipe(fs.createWriteStream(path))
             .on('finish', () => {
                 resolve(undefined);

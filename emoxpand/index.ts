@@ -2,7 +2,6 @@ import {promises as fs} from 'fs';
 import path from 'path';
 import plugin from 'fastify-plugin';
 import _ from 'lodash';
-// @ts-ignore
 import logger from '../lib/logger';
 /* eslint-disable no-unused-vars */
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
@@ -171,7 +170,7 @@ const expandEmoji = (text: string): string =>
 
 // }}}
 
-export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => plugin(async (fastify) => {
+export const server = ({eventClient, webClient: slack}: SlackInterface) => plugin(async (fastify) => {
   const postMessage = (text: string): void => {
     slack.chat.postMessage({
       channel: process.env.CHANNEL_SANDBOX,
@@ -219,7 +218,7 @@ export const server = ({rtmClient: rtm, webClient: slack}: SlackInterface) => pl
   let state: RegistrationState = 'WaitingRegistration';
 
   /* eslint-disable require-await */
-  rtm.on('message', async (message) => {
+  eventClient.on('message', async (message) => {
     if (message.channel !== process.env.CHANNEL_SANDBOX) {
       return;
     }

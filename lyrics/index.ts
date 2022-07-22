@@ -33,7 +33,7 @@ interface iTunesInfo {
 
 const getiTunesInfo = async (title: string, artist: string): Promise<iTunesInfo> => {
     const iTunesSearchAPIUrl = 'https://itunes.apple.com/search';
-    const response = await axios.get(iTunesSearchAPIUrl, {
+    const response = await axios.get<any>(iTunesSearchAPIUrl, {
         params: {
             term: `${title} ${artist}`,
             country: 'JP',
@@ -63,10 +63,10 @@ export const getSongInfo = async (songInfoUrl: string, keyword: string): Promise
             selector: 'link[rel=canonical]',
             attr: 'href',
         },
-        title: '.title h2',
-        artist: '.artist',
-        lyricist: 'h4[itemprop=lyricist]',
-        composer: 'h4[itemprop=composer]',
+        title: 'h2',
+        artist: 'span[itemprop^=byArtist]',
+        lyricist: 'a[itemprop=lyricist]',
+        composer: 'a[itemprop=composer]',
         kashiHTML: {
             selector: '#kashi_area',
             how: 'html',
@@ -149,8 +149,8 @@ const search = async (keyword: string): Promise<SongInfo | null> => {
     return songInfo;
 };
 
-export default async ({rtmClient, webClient}: SlackInterface) => {
-    rtmClient.on('message', async message => {
+export default async ({eventClient, webClient}: SlackInterface) => {
+    eventClient.on('message', async message => {
         if (message.channel !== process.env.CHANNEL_SANDBOX) return;
         if (!message.text) return;
         if (message.text.startsWith('@lyrics ')) {

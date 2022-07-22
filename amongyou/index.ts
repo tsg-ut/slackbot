@@ -1,9 +1,8 @@
 import {constants, promises as fs} from 'fs';
 import path from 'path';
-import {RTMClient} from '@slack/rtm-api';
+import type {TSGEventClient} from '../lib/slackEventClient';
 import {ChatPostMessageArguments, WebClient} from '@slack/web-api';
 import {stripIndent} from 'common-tags';
-// @ts-ignore
 import type {FastifyPluginCallback} from 'fastify';
 import plugin from 'fastify-plugin';
 import {range} from 'lodash';
@@ -13,12 +12,19 @@ import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Deferred} from '../lib/utils';
 
 const CALLME = '@amongyou';
-const AMONGABLE_CHECK_INTERVAL = 10 * 60 * 1000;
+const AMONGABLE_CHECK_INTERVAL = 60 *1000;
 
-const timeList = range(moment().hours(), moment().hours() + 24).map((n) => {
-	const h = (n % 24).toString().padStart(2, '0');
-	return [`${h}:00`, `${h}:30`];
-}).flat();
+const timeList = () => {
+	const isOver30 = moment().minutes() >= 30;
+	const ret = range(moment().hours(), moment().hours() + 24).map((n) => {
+		const h = (n % 24).toString().padStart(2, '0');
+		return [`${h}:00`, `${h}:30`];
+	}).flat();
+	if (isOver30) {
+		return ret.splice(1);
+	}
+	return ret;
+};
 
 const numList = [
 	'5', '8',
@@ -26,7 +32,6 @@ const numList = [
 
 export interface User{
 	slackId: string,
-	probability: number,
 	timeStart: Date | null,
 	timeEnd: Date | null,
 	people: number | null,
@@ -126,7 +131,7 @@ const getBlocks = () => [
 ];
 
 class Among {
-	rtm: RTMClient;
+	eventClient: TSGEventClient;
 
 	slack: WebClient;
 
@@ -134,21 +139,21 @@ class Among {
 
 	state: State;
 
-	loadDeferred: Deferred;
+	loadDeferred: Deferred<void>;
 
 	// eslint-disable-next-line no-undef
 	activeSchedular: NodeJS.Timeout;
 
 	constructor({
-		rtm,
+		eventClient,
 		slack,
 		slackInteractions,
 	}: {
-		rtm: RTMClient,
+		eventClient: TSGEventClient,
 		slack: WebClient,
 		slackInteractions: any,
 	}) {
-		this.rtm = rtm;
+		this.eventClient = eventClient;
 		this.slack = slack;
 		this.slackInteractions = slackInteractions;
 		this.loadDeferred = new Deferred();
@@ -289,8 +294,8 @@ class Among {
 			this.setNumPeople(payload.user.id, payload.actions[0].selected_option.text.text);
 		});
 
-		// register RTM
-		this.rtm.on('message', async (message) => {
+		// register message event receiver
+		this.eventClient.on('message', async (message) => {
 			// eslint-disable-next-line max-len
 			if (!message.text || message.subtype || (message.channel !== process.env.CHANNEL_SANDBOX && message.channel !== process.env.CHANNEL_AMONGUS) || !message.text.startsWith(CALLME)) {
 				return;
@@ -377,7 +382,6 @@ class Among {
 				text: stripIndent`
 					${user.people}人   ${printableDate(user.timeStart)} ~ ${printableDate(user.timeEnd)}
 				`,
-				footer: `確度 ${user.probability}`,
 			});
 		}
 		return attachments;
@@ -439,7 +443,9 @@ class Among {
 		const date = parseDate(start);
 		const targets = this.state.tmpUsers.filter((user) => user.slackId === slackid);
 		if (targets.length === 1) {
-			if (targets[0].timeEnd !== null && targets[0].timeEnd.getTime() - date.getTime() <= 20 * 60 * 1000) {
+			// regard time of previous 30mins as today (this means "I can join from now on")
+			// it assumes the user choose the time as quickly as in few mins
+			if (targets[0].timeEnd !== null && targets[0].timeEnd.getTime() - date.getTime() < 30 * 60 * 1000) {
 				return;
 			}
 			this.setState({
@@ -453,7 +459,6 @@ class Among {
 				timeEnd: null,
 				slackId: slackid,
 				people: null,
-				probability: 100,
 			});
 			this.setState(this.state);
 		}
@@ -464,7 +469,9 @@ class Among {
 		const date = parseDate(end);
 		const targets = this.state.tmpUsers.filter((user) => user.slackId === slackid);
 		if (targets.length === 1) {
-			if (targets[0].timeStart !== null && date.getTime() - targets[0].timeStart.getTime() <= 20 * 60 * 1000) {
+			// regard time of previous 30mins as today (this means "I can join from now on")
+			// it assumes the user choose the time as quickly as in few mins
+			if (targets[0].timeStart !== null && date.getTime() - targets[0].timeStart.getTime() < 30 * 60 * 1000) {
 				return;
 			}
 			this.setState({
@@ -477,7 +484,6 @@ class Among {
 				timeEnd: date,
 				slackId: slackid,
 				people: null,
-				probability: 100,
 			});
 			this.setState(this.state);
 		}
@@ -500,10 +506,21 @@ class Among {
 				timeEnd: null,
 				slackId: slackid,
 				people: num,
-				probability: 100,
 			});
 			this.setState(this.state);
 		}
+	}
+
+	checkValidity(slackid: string) {
+		const targetix = this.state.tmpUsers.findIndex((user) => user.slackId === slackid);
+		if (targetix === -1) {
+			return false;
+		}
+		// eslint-disable-next-line max-len
+		if (this.state.tmpUsers[targetix].people === null || this.state.tmpUsers[targetix].timeStart === null || this.state.tmpUsers[targetix].timeEnd === null) {
+			return false;
+		}
+		return true;
 	}
 
 	// eslint-disable-next-line require-await
@@ -576,7 +593,7 @@ class Among {
 		if (amongableUsers !== null) {
 			this.postMessageChannelDefault(this.state.activeChannel, {
 				text: stripIndent`
-					*AmongUsが開催できるよ〜〜* (${amongableUsers.length}人) :among_us_report: :among_us_report: 
+					*AmongUsが開催できるよ〜〜* (${amongableUsers.length}人) :among_us_report: :among_us_report:
 					${amongableUsers.map((user) => `<@${user.slackId}>`).join(' ')}
 				`,
 			});
@@ -606,7 +623,7 @@ class Among {
 
 const getTimeOptions = () => {
 	const options: any[] = [];
-	timeList.forEach((t, ix) => {
+	timeList().forEach((t, ix) => {
 		options.push({
 			text: {
 				type: 'plain_text',
@@ -634,9 +651,9 @@ const getNumOptions = () => {
 	return options;
 };
 
-export const server = ({webClient: slack, rtmClient: rtm, messageClient: slackInteractions}: SlackInterface) => {
+export const server = ({webClient: slack, eventClient, messageClient: slackInteractions}: SlackInterface) => {
 	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
-		const among = new Among({slack, rtm, slackInteractions});
+		const among = new Among({slack, eventClient, slackInteractions});
 		await among.initialize();
 
 		// eslint-disable-next-line require-await

@@ -1,8 +1,9 @@
-// @ts-ignore
+// @ts-expect-error
 import {katakanaRegex} from 'japanese';
+import {tokenize, KuromojiToken} from 'kuromojin';
 import {last, uniq} from 'lodash';
 import {isCorrectAnswer, normalize} from '../hayaoshi';
-// @ts-ignore
+// @ts-expect-error
 import getReading from '../lib/getReading.js';
 
 const katakanaMatchRegex = new RegExp(`^(?:${katakanaRegex.source}|ー|・|･)+$`);
@@ -84,8 +85,10 @@ const parseDescriptiveComponentSection = (text: string) => {
 	const answers = [];
 	const section = text.trim();
 	let matches = null;
-	if (section.match(/(?:◯|○|OK)$/)) {
-		if ((matches = section.match(/^(?<body>.+?)(?:もおまけで|のみで|でも|で|も)(?:◯|○|OK)$/))) {
+	if (section.match(/(?:◯|○|〇|OK)$/)) {
+		if ((matches = section.match(/^(?<body>.+?)(?:もおまけで|のみで|でも|で|も)(?:◯|○|〇|OK)$/))) {
+			answers.push(...parseSectionWords(matches.groups.body.trim()));
+		} else if ((matches = section.match(/^(?:◯|○|〇)(?<body>.+?)$/))) {
 			answers.push(...parseSectionWords(matches.groups.body.trim()));
 		}
 	} else if ((matches = section.match(/^(?<body>.+?)はもう一度$/))) {
@@ -105,6 +108,9 @@ const parseDescriptiveComponent = (text: string) => {
 	if (component.startsWith('△')) {
 		component = component.slice(1);
 	}
+	if (component.match(/^[英独仏羅西伊露瑞西][:：]/)) {
+		component = component.slice(2);
+	}
 	const sections = component.split(/[、。/,:]/);
 	for (const section of sections) {
 		answers.push(...parseDescriptiveComponentSection(section));
@@ -112,7 +118,7 @@ const parseDescriptiveComponent = (text: string) => {
 	return answers;
 };
 
-export const extractValidAnswers = (question: string, answerText: string) => {
+export const extractValidAnswers = (question: string, answerText: string, note: string = '') => {
 	let baseText = answerText;
 
 	// basic normalization
@@ -144,6 +150,12 @@ export const extractValidAnswers = (question: string, answerText: string) => {
 
 	answers.push(...newAnswers);
 
+	for (const line of note.split('\n')) {
+		if (line.length > 0) {
+			answers.push(...parseDescriptiveComponent(line));
+		}
+	}
+
 	return uniq(answers);
 };
 
@@ -172,4 +184,62 @@ export const judgeAnswer = async (validAnswers: string[], answer: string) => {
 	}
 
 	return 'incorrect';
+};
+const isFuzokugo = (token: KuromojiToken) => token.pos === '助詞' || token.pos === '助動詞' || token.pos_detail_1 === '接尾' || token.pos_detail_1 === '非自立';
+
+export const formatQuizToSsml = async (text: string) => {
+	const normalizedQuestion = text.replace(/\(.+?\)/g, '').replace(/（.+?）/g, '');
+
+	const tokens = await tokenize(normalizedQuestion);
+
+	const clauses: string[] = [];
+	for (const [index, token] of tokens.entries()) {
+		let prevPos: string = null;
+		let prevForm: string = null;
+		if (index !== 0) {
+			prevPos = tokens[index - 1].pos;
+			prevForm = tokens[index - 1].surface_form;
+		}
+		if (clauses.length === 0 || token.pos === '記号' || prevPos === '記号' || token.surface_form === '、' || prevForm === '、') {
+			clauses.push(token.surface_form);
+		} else if (prevPos === '名詞' && token.pos === '名詞') {
+			clauses[clauses.length - 1] += token.surface_form;
+		} else if (isFuzokugo(token)) {
+			clauses[clauses.length - 1] += token.surface_form;
+		} else {
+			clauses.push(token.surface_form);
+		}
+	}
+
+	const components: string[][] = [];
+	let isPrevComponentEnd = false;
+	for (const clause of clauses) {
+		if (components.length === 0 || isPrevComponentEnd) {
+			components.push([clause]);
+		} else {
+			components[components.length - 1].push(clause);
+		}
+		isPrevComponentEnd = Boolean(clause.match(/[、。?？]$/));
+	}
+
+	let spannedQuestionText = '';
+	let offset = 0;
+
+	for (const component of components) {
+		const componentText = component.join('');
+		// eslint-disable-next-line no-loop-func
+		const spannedText = component.map((clause, index) => (
+			`${clause}<mark name="c${offset + index}"/>`
+		)).join('');
+		offset += component.length;
+		if (componentText.endsWith('すが、') || componentText.endsWith('たが、') || componentText.endsWith('対し、')) {
+			spannedQuestionText += `<emphasis level="strong"><prosody pitch="+3st">${spannedText}</prosody></emphasis>`;
+		} else {
+			spannedQuestionText += spannedText;
+		}
+	}
+
+	const ssml = `<speak>${spannedQuestionText}</speak>`;
+
+	return {clauses, ssml};
 };

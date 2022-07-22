@@ -3,12 +3,15 @@
 
 achievement-quiz/** @settyan117
 achievements/** @hakatashi
+adventar/** @settyan117
 ahokusa/** @kurgm
 amongyou/** @smallkirby
 anime/** @hakatashi
 api/** @hakatashi
 atcoder/** @hakatashi
+atequiz/** @settyan117
 better-custom-response/** @naan4UGen
+bungo-quiz/** @Yosshi999
 channel-notifier/** @hakatashi
 checkin/** @hakatashi
 context-free/** @KPCCoiL
@@ -18,11 +21,16 @@ discord/** @hakatashi
 emoji-modifier/** @KPCCoiL
 emoji-notifier/** @hakatashi
 emoxpand/** @KPCCoiL
+golfbot/** @n4o847
+hakatashi-visor/** @smallkirby
+hangman/** @platypus999
 hayaoshi/** @hakatashi
 hitandblow/** @settyan117
+kirafan/** @settyan117
 lyrics/** @hideo54
 mahjong/** @hakatashi
 mail-hook/** @cookie-s
+nojoin/** @hakatashi
 oauth/** @hakatashi
 octas/** @Yosshi999
 ojigineko-life/** @cookie-s
@@ -31,6 +39,7 @@ pocky/** @kurgm
 ponpe/** @satos---jp
 prime/** @hakatashi
 pwnyaa/** @smallkirby
+remember-english/** @hakatashi
 ricochet-robots/** @satos---jp
 room-gacha/** @hideo54
 scrapbox/** @hakatashi
@@ -43,6 +52,7 @@ sushi-bot/** @cookie-s
 tahoiya/** @hakatashi
 taiko/** @kurgm
 tiobot/** @hakatashi
+topic/** @hakatashi
 tsglive/** @hakatashi
 tunnel/** @hakatashi
 twitter-dm-notifier/** @hideo54

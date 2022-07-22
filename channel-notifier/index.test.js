@@ -25,7 +25,7 @@ describe('channel-notifier', () => {
 		});
 
 		// https://api.slack.com/events/channel_created
-		slack.rtmClient.emit('channel_created', {
+		slack.eventClient.emit('channel_created', {
 			channel: {
 				id: 'C024BE91L',
 				name: 'fun',
@@ -46,7 +46,7 @@ describe('channel-notifier', () => {
 		});
 
 		// https://api.slack.com/events/channel_unarchiveu
-		slack.rtmClient.emit('channel_unarchive', {
+		slack.eventClient.emit('channel_unarchive', {
 			type: 'channel_unarchive',
 			channel: 'C024BE91L',
 			user: 'U024BE7LH',

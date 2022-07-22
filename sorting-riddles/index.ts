@@ -3,7 +3,7 @@ import type { SlackInterface } from '../lib/slack';
 import axios from 'axios';
 import { stripIndent } from 'common-tags';
 import sample from 'lodash/sample';
-// @ts-ignore
+// @ts-expect-error
 import { getPageTitle, getWordUrl, getCandidateWords } from '../tahoiya/lib';
 import { unlock, increment } from '../achievements';
 
@@ -50,7 +50,7 @@ const calculateTimeout = (answer: string): number => {
 };
 
 const getRandomTitle = async (): Promise<string> => {
-	const { data } = await axios.get(`https://ja.wikipedia.org/w/api.php`, {
+	const { data } = await axios.get<any>(`https://ja.wikipedia.org/w/api.php`, {
 		params: {
 			action: 'query',
 			format: 'json',
@@ -62,7 +62,7 @@ const getRandomTitle = async (): Promise<string> => {
 	return data.query.random[0].title;
 };
 
-export default async ({ rtmClient, webClient }: SlackInterface) => {
+export default async ({ eventClient, webClient }: SlackInterface) => {
 	let state: State = { type: 'Sleeping' };
 
 	const candidateWords = await getCandidateWords({ min: 0, max: Infinity }) as Candidate[];
@@ -75,7 +75,7 @@ export default async ({ rtmClient, webClient }: SlackInterface) => {
 		stop: /^ア(?:ソート|そーと)なぞなぞ\s*終了$/,
 	};
 
-	rtmClient.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}

@@ -1,11 +1,14 @@
-// @ts-ignore
 import {stripIndent} from 'common-tags';
 import * as zlib from 'zlib';
 import type {SlackInterface} from '../lib/slack';
 
-export default ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
-	rtm.on('message', async (message) => {
+export default ({eventClient, webClient: slack}: SlackInterface) => {
+	eventClient.on('message', async (message) => {
 		if (!message.text) {
+			return;
+		}
+
+		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
 

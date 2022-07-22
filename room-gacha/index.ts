@@ -104,7 +104,7 @@ const pickOneResult = async (cityIDs: string[], ar: string, bs: string, ta: stri
     return { title: searchResult.title, hit: searchResult.hit, room: pickedRoom };
 };
 
-export default async ({rtmClient, webClient}: SlackInterface) => {
+export default async ({eventClient, webClient}: SlackInterface) => {
     interface Data {
         sc: {[key in PrefectureKanji]: {[key: string]: string}};
         hiddenValue: {[key in PrefectureKanji]: {
@@ -117,12 +117,12 @@ export default async ({rtmClient, webClient}: SlackInterface) => {
     const dataStr = await fs.readFile(`${__dirname}/data.json`, 'utf-8');
     const data: Data = JSON.parse(dataStr);
     const { sc, hiddenValue } = data;
-    rtmClient.on('message', async message => {
+    eventClient.on('message', async message => {
         const username = '物件ガチャ';
         if (message.channel !== process.env.CHANNEL_SANDBOX) return;
         if (!message.text) return;
-        if (message.username === username) return;
-        if (message.text.startsWith('物件ガチャ')) {
+        if (message.user === process.env.USER_TSGBOT) return;
+        if (message.text === '物件ガチャ' || message.text.startsWith('物件ガチャ ')) {
             const args: string[] = message.text.split(' ');
             const prefs = Object.keys(prefectures);
             const isValidPrefSpecified = args.length > 1 && prefs.includes(args[1]);

@@ -4,3 +4,5 @@ coverage:
       default:
         threshold: 20%
     patch: off
+ignore:
+  - bin

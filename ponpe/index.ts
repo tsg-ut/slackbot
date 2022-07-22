@@ -1,7 +1,7 @@
 import type {SlackInterface} from '../lib/slack';
 import moment from 'moment';
 import axios from 'axios';
-// @ts-ignore
+// @ts-expect-error
 import {hiraganize} from 'japanese';
 import sample from 'lodash/sample';
 import fs from 'fs';
@@ -56,9 +56,9 @@ async function loadFile(filepath:string) : Promise<string> {
 	});
 }
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const states : State[] = [];
-	
+
 	const emojipath = path.join(__dirname, 'data', 'emoji.json');
 	await download(emojipath, 'https://raw.githubusercontent.com/iamcal/emoji-data/master/emoji.json');
 	const default_emoji_list = JSON.parse(await loadFile(emojipath))
@@ -69,8 +69,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		return default_emoji_list.includes(name) ||
 			await getEmoji(name,tsgTeam.id) !== undefined;
 	}
-	
-	// cat BCCWJ_frequencylist_luw_ver1_0.tsv | grep "名詞" | grep -v "人名" | grep -v "数詞" 
+
+	// cat BCCWJ_frequencylist_luw_ver1_0.tsv | grep "名詞" | grep -v "人名" | grep -v "数詞"
 	// | awk '{ print $2 "," $3 }' | grep -E -v "^([^,]{1,5}|[^,]{10,100})," | head -n 50000 | tail -n 20000 > common_word_list
 
 	const themepath = path.join(__dirname, 'data', 'common_word_list');
@@ -84,8 +84,8 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			ruby: hiraganize(theme[0]),
 		};
 	}
-	
-	rtm.on('message', async (message) => {
+
+	eventClient.on('message', async (message) => {
 		if(!message.text || message.type !== 'message' || message.subtype === 'message_replied'){
 			return;
 		}
@@ -97,7 +97,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 				icon_emoji: ':art',
 			});
 		}
-		
+
 		const answertime = 3 * 60 * 1000;
 		const registertime = 5 * 60 * 1000;
 		async function chainbids(){
@@ -122,7 +122,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 			if(states[0].answering){
 				await reply(`今は回答中だよ`);
-				return;				
+				return;
 			}
 			await reply(`今の登録中のお題は「${states.slice(-1)[0].answer.ruby}」だよ！`);
 			states.slice(-1)[0].registants.push(message.user);
@@ -134,14 +134,14 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			}
 			if(states[0].answering){
 				await reply(`今は回答中だよ`);
-				return;				
+				return;
 			}
 			const ponpe = message.text.split('\n').slice(1).map((x:string)=>{return x.replace(/\s/gi,'');}).join('\n');
 			if(!ponpe.match(/^(:[^:\s]+:\s*)*$/)){
 				await reply('emojiのみからなる文字列を登録してください');
 				return;
 			}
-				
+
 			let emoji_count = 0;
 			for (let matchArray, re = /:([^:\s]+):\s*/g; (matchArray = re.exec(ponpe));) {
 				const name = matchArray[1];
@@ -153,12 +153,12 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					emoji_count += 1;
 				}
 			}
-			
+
 			const user = await getMemberName(message.user);
 			states.slice(-1)[0].hints = states.slice(-1)[0].hints.filter((x)=>{
 				return x.user !== user;
 			});
-			
+
 			states.slice(-1)[0].hints.push({
 				data: ponpe,
 				cost: emoji_count,
@@ -167,7 +167,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 			});
 			await reply(`お題「${states.slice(-1)[0].answer.ruby}」に対してコスト${emoji_count}のぽんぺが登録されたよ:tada:`);
 			states.slice(-1)[0].registants.push(message.user);
-			
+
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: `${user}さんがぽんぺに登録したよ。`,
@@ -216,7 +216,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 					});
 				}
 			}
-			
+
 			if(message.text === 'ぽんぺ出題'){
 				if(states.length > 0 && Date.now() <= states[0].registerend){
 					await reply(`ぽんぺはすでに始まってるよ。${getTimeLink(states[0].registerend)}までに登録してね。`);

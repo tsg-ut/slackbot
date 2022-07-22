@@ -14,7 +14,7 @@ jobs:
       - name: Install Node.js (latest)
         uses: actions/setup-node@v2
         with:
-          node-version: 15
+          node-version: 16
 
       - name: Before Install
         run: |
@@ -27,7 +27,9 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Test
-        run: npm test
+        run: npm run test:coverage
+        env:
+          NODE_OPTIONS: --trace-warnings --trace-deprecation --trace-exit --trace-uncaught --unhandled-rejections=strict
 
       - name: Set up reviewdog
         if: ${{ github.event_name == 'pull_request' }}
@@ -41,7 +43,7 @@ jobs:
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          sed "s/\/.\+//g" CODEOWNERS | grep "^[a-z]" | xargs -n 1 -I {} sh -c "npx eslint --ext js,ts -f rdjson {} | reviewdog -f=rdjson -name=ESLint -reporter=github-pr-review"
+          git ls-files | grep eslintrc | xargs -L 1 dirname | paste -sd ' ' | xargs -I {} sh -c "npx eslint --ext js,ts -f rdjson {} | reviewdog -f=rdjson -name=ESLint -reporter=github-pr-review"
 
       - name: codecov
         run: npx codecov

@@ -2,14 +2,14 @@ const axios = require('axios');
 const {stripIndent} = require('common-tags');
 const get = require('lodash/get');
 const schedule = require('node-schedule');
-const logger = require('../lib/logger.js');
+const {default: logger} = require('../lib/logger.ts');
 
 const places = [
 	{id: '4bff8900daf9c9b68c58faef', name: '理学部7号館'},
 	{id: '5b1a2ff17269fe002ce4f8de', name: 'TSG部室'},
 ];
 
-module.exports = ({rtmClient: rtm, webClient: slack}) => {
+module.exports = ({eventClient, webClient: slack}) => {
 	const state = {
 		herenow: new Map(),
 	};
@@ -57,7 +57,7 @@ module.exports = ({rtmClient: rtm, webClient: slack}) => {
 		schedule.scheduleJob('*/3 * * * *', job);
 	}
 
-	rtm.on('message', (message) => {
+	eventClient.on('message', (message) => {
 		if (message.text === 'checkin-check' && message.channel === process.env.CHANNEL_SANDBOX) {
 			job();
 		}

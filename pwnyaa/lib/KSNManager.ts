@@ -20,12 +20,7 @@ const clientKSN = getAxiosClientKSN();
 
 const getDateKSN = (dateStr: string) => {
 	const ymds = dateStr.split('/');
-	const date = new Date();
-	date.setFullYear(Number(ymds[0]));
-	date.setMonth(Number(ymds[1]) - 1);
-	date.setDate(Number(ymds[2]));
-	date.setHours(23);
-	date.setMinutes(59);
+	const date = new Date(Number(ymds[0]), Number(ymds[1]) - 1, Number(ymds[2]), 23, 59);
 	return date;
 };
 
@@ -102,10 +97,10 @@ export const fetchUserProfileKSN = async function(userId: string) {
 // update challs and solved-state of ksnctf
 export const fetchChallsKSN = async function() {
 	// fetch information
-	const {data: html} = await clientKSN.get('https://ksnctf.sweetduet.info', {
+	const {data: html} = await clientKSN.get<string>('https://ksnctf.sweetduet.info', {
 		headers: {},
 	});
-	const {fetchedChalls} = await scrapeIt.scrapeHTML<{ fetchedChalls: Challenge[] }>(html, {
+	const {fetchedChalls} = scrapeIt.scrapeHTML<{ fetchedChalls: Challenge[] }>(html, {
 		fetchedChalls: {
 			listItem: 'table > tbody > tr',
 			data: {
@@ -145,7 +140,7 @@ const fetchAllKSN = async function () {
 	// fetch all information
 	while (SAFEBAR < SAFELIMIT) {
 		try {
-			const {data: html} = await clientKSN.get(`https://ksnctf.sweetduet.info/log?page=${SAFEBAR}`, {
+			const {data: html} = await clientKSN.get<string>(`https://ksnctf.sweetduet.info/log?page=${SAFEBAR}`, {
 				headers: {},
 			});
 			htmls.push(html);

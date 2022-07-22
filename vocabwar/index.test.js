@@ -36,6 +36,11 @@ describe('vocabwar', () => {
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		await vocabwar(slack);
+		jest.useFakeTimers();
+	});
+
+	afterEach(() => {
+		jest.useRealTimers();
 	});
 
 	it('responds to "弓箭"', async () => {
@@ -76,7 +81,12 @@ describe('vocabwar', () => {
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		await vocabwar(slack);
+		jest.useFakeTimers();
 		await slack.getResponseTo('弓箭 丸い');
+	});
+
+	afterEach(() => {
+		jest.useRealTimers();
 	});
 
 	it('rejects the same word as theme', async () => {
@@ -97,7 +107,7 @@ describe('vocabwar', () => {
 			resolve();
 		});
 
-		slack.rtmClient.emit('message', {
+		slack.eventClient.emit('message', {
 			channel: slack.fakeChannel,
 			text: '鋭い',
 			user: slack.fakeUser,
@@ -111,7 +121,7 @@ describe('vocabwar', () => {
 			resolve();
 		});
 
-		slack.rtmClient.emit('message', {
+		slack.eventClient.emit('message', {
 			channel: slack.fakeChannel,
 			text: '鋭い',
 			user: `${slack.fakeUser}hoge`,

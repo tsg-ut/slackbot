@@ -1,6 +1,7 @@
 import qs from 'querystring';
 import axios, {AxiosResponse} from 'axios';
 import scrapeIt from 'scrape-it';
+import logger from '../../lib/logger';
 import {Challenge, SolvedInfo, Profile} from './BasicTypes';
 
 const SAFELIMIT = 100;
@@ -18,7 +19,7 @@ let csrfmiddlewaretokenXYZ = '';
 let csrftokenXYZ = '';
 let sessionidXYZ = '';
 
-const getCsrfsXYZ = (res: AxiosResponse) => {
+const getCsrfsXYZ = (res: AxiosResponse<string>) => {
 	const html = res.data;
 	const candMiddle = html.match(/<input type="hidden" name="csrfmiddlewaretoken" value="([A-Za-z0-9]+)">/)[1];
 	csrfmiddlewaretokenXYZ = candMiddle ? candMiddle : csrfmiddlewaretokenXYZ;
@@ -28,7 +29,7 @@ const getCsrfsXYZ = (res: AxiosResponse) => {
 };
 
 const loginXYZ = async () => {
-	const res1 = await clientXYZ.get('https://pwnable.xyz/login');
+	const res1 = await clientXYZ.get<string>('https://pwnable.xyz/login');
 	getCsrfsXYZ(res1);
 	await clientXYZ.request({
 		url: 'https://pwnable.xyz/login/',
@@ -52,7 +53,7 @@ const loginXYZ = async () => {
 
 // parse as UTC and return Date as UTC
 const str2dateXYZ = (strDate: string): Date => {
-	const strmons = ['Jan.', 'Feb.', 'March', 'April', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov', 'Dec.'];
+	const strmons = ['Jan.', 'Feb.', 'March', 'April', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'];
 
 	// format is like: Jan. 7, 2019, 7:46 a.m.
 	const elements = strDate.split(' ');
@@ -145,7 +146,12 @@ const parseProfileXYZ = async (html: any) => {
 };
 
 export const fetchUserProfileXYZ = async function(userId: string) {
-	await loginXYZ();
+	try {
+		await loginXYZ();
+	} catch {
+		logger.error('failed to login to XYZ');
+		return null;
+	}
 	try {
 		const {data: html} = await clientXYZ.get(`https://pwnable.xyz/user/${userId}/`, {
 			headers: {
@@ -160,11 +166,19 @@ export const fetchUserProfileXYZ = async function(userId: string) {
 
 // update challs and solved-state of pwnable.xyz
 export const fetchChallsXYZ = async function () {
+	// connection check
+	try {
+		await loginXYZ();
+	} catch {
+		logger.error('failed to login to XYZ');
+		return [];
+	}
+
 	// fetch data
-	const {data: html} = await axios.get('https://pwnable.xyz/challenges', {
+	const {data: html} = await axios.get<string>('https://pwnable.xyz/challenges', {
 		headers: {},
 	});
-	const {fetchedChalls} = await scrapeIt.scrapeHTML<{ fetchedChalls: Challenge[] }>(html, {
+	const {fetchedChalls} = scrapeIt.scrapeHTML<{ fetchedChalls: Challenge[] }>(html, {
 		fetchedChalls: {
 			listItem: 'div.col-lg-2',
 			data: {
@@ -209,7 +223,12 @@ const parseUsersXYZ = async function(data: any): Promise<{userid: string, name: 
 
 // crawl for specified user and get userID
 export const findUserByNameXYZ = async function (username: string): Promise<{userid: string, name: string}> {
-	loginXYZ();
+	try {
+		await loginXYZ();
+	} catch {
+		logger.error('failed to login to XYZ');
+		return null;
+	}
 	let lastFetchedUser: {userid: string, name: string } = null;
 	let pageNum = 1;
 	let safebar = 0; // to prevent DoS

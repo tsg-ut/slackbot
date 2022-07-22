@@ -1,0 +1,80 @@
+{
+	"ok": true,
+	"messages": [
+		{
+			"client_msg_id": "665bef3b-9588-4fff-85f7-e37dc3c9b7ad",
+			"type": "message",
+			"text": "うおん",
+			"user": "U12345678",
+			"ts": "1640000000.000000",
+			"team": "T00000000",
+			"blocks": [
+				{
+					"type": "rich_text",
+					"block_id": "FfZw",
+					"elements": [
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "うおん"
+								}
+							]
+						}
+					]
+				}
+			],
+			"reactions": [
+				{
+					"name": "slack",
+					"users": [
+						"USLACKBOT",
+						"U12345678"
+					],
+					"count": 2
+				},
+				{
+					"name": "ojigineko",
+					"users": [
+						"U12345678"
+					],
+					"count": 1
+				}
+			]
+		},
+		{
+			"client_msg_id": "6d46a60c-1f45-40a5-a079-35f35da04da9",
+			"type": "message",
+			"text": "すし",
+			"user": "U12345678",
+			"ts": "1640001000.000000",
+			"team": "T00000000",
+			"blocks": [
+				{
+					"type": "rich_text",
+					"block_id": "lU8+",
+					"elements": [
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "すし"
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	],
+	"has_more": true,
+	"is_limited": false,
+	"pin_count": 0,
+	"channel_actions_ts": null,
+	"channel_actions_count": 0,
+	"response_metadata": {
+		"next_cursor": "bmVrb25la28K"
+	}
+}

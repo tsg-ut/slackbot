@@ -4,10 +4,9 @@
 // eslint-disable-next-line no-unused-vars
 import {constants, promises as fs} from 'fs';
 import path from 'path';
-import type {RTMClient} from '@slack/rtm-api';
+import type {TSGEventClient} from '../lib/slackEventClient';
 import type {KnownBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
-// @ts-ignore
 import {stripIndent} from 'common-tags';
 import type {FastifyPluginCallback} from 'fastify';
 import plugin from 'fastify-plugin';
@@ -48,7 +47,7 @@ interface State {
 const mutex = new Mutex();
 
 class Oogiri {
-	rtm: RTMClient;
+	eventClient: TSGEventClient;
 
 	slack: WebClient;
 
@@ -56,20 +55,20 @@ class Oogiri {
 
 	state: State;
 
-	loadDeferred: Deferred;
+	loadDeferred: Deferred<void>;
 
 	previousTick: number;
 
 	constructor({
-		rtm,
+		eventClient,
 		slack,
 		slackInteractions,
 	}: {
-		rtm: RTMClient,
+		eventClient: TSGEventClient,
 		slack: WebClient,
 		slackInteractions: any,
 	}) {
-		this.rtm = rtm;
+		this.eventClient = eventClient;
 		this.slack = slack;
 		this.slackInteractions = slackInteractions;
 		this.loadDeferred = new Deferred();
@@ -92,7 +91,7 @@ class Oogiri {
 			Object.assign(this.state, JSON.parse(stateData.toString()));
 		}
 
-		this.rtm.on('message', async (message) => {
+		this.eventClient.on('message', async (message) => {
 			if (!message.text || message.subtype || message.channel !== process.env.CHANNEL_SANDBOX) {
 				return;
 			}
@@ -765,9 +764,9 @@ class Oogiri {
 	}
 }
 
-export const server = ({webClient: slack, rtmClient: rtm, messageClient: slackInteractions}: SlackInterface) => {
+export const server = ({webClient: slack, eventClient, messageClient: slackInteractions}: SlackInterface) => {
 	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
-		const oogiri = new Oogiri({slack, rtm, slackInteractions});
+		const oogiri = new Oogiri({slack, eventClient, slackInteractions});
 		await oogiri.initialize();
 
 		// eslint-disable-next-line require-await

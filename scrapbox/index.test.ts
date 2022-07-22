@@ -1,12 +1,12 @@
 import qs from 'querystring';
 import axios from 'axios';
-// @ts-ignore
+// @ts-expect-error
 import Slack from '../lib/slackMock.js';
 import scrapbox, {scrapbox2slack} from './index';
 
 jest.mock('axios');
 
-// @ts-ignore
+// @ts-expect-error
 axios.response = {data: {
 	title: 'hoge',
 	descriptions: ['fuga', 'piyo'],
@@ -33,7 +33,7 @@ beforeEach(async () => {
 describe('scrapbox', () => {
 	it('respond to slack hook of scrapbox unfurling', () => {
 		const done = new Promise<void>((resolve) => {
-			// @ts-ignore
+			// @ts-expect-error
 			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
 				if (url === 'https://slack.com/api/chat.unfurl') {
 					const parsed = qs.parse(data);
@@ -43,7 +43,7 @@ describe('scrapbox', () => {
 					resolve();
 					return Promise.resolve({data: {ok: true}});
 				}
-				// @ts-ignore
+				// @ts-expect-error
 				return Promise.resolve(axios.response);
 			});
 		});
@@ -67,7 +67,7 @@ describe('scrapbox', () => {
 
 	it('respond to slack hook of scrapbox unfurling with line specified', () => {
 		const done = new Promise<void>((resolve) => {
-			// @ts-ignore
+			// @ts-expect-error
 			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
 				if (url === 'https://slack.com/api/chat.unfurl') {
 					const parsed = qs.parse(data);
@@ -77,7 +77,7 @@ describe('scrapbox', () => {
 					resolve();
 					return Promise.resolve({data: {ok: true}});
 				}
-				// @ts-ignore
+				// @ts-expect-error
 				return Promise.resolve(axios.response);
 			});
 		});

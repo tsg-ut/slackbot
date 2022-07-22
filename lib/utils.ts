@@ -1,5 +1,5 @@
-export class Deferred {
-	promise: Promise<any>;
+export class Deferred<T> {
+	promise: Promise<T>;
 	isResolved: boolean;
 	isRejected: boolean;
 	private nativeReject: (...args: any[]) => any;
@@ -14,8 +14,8 @@ export class Deferred {
 		this.isRejected = false;
 	}
 
-	resolve(...args: any[]) {
-		this.nativeResolve(...args);
+	resolve(value: T) {
+		this.nativeResolve(value);
 		this.isResolved = true;
 		return this.promise;
 	}
@@ -24,5 +24,34 @@ export class Deferred {
 		this.nativeReject(...args);
 		this.isRejected = true;
 		return this.promise;
+	}
+}
+
+/**
+ * データを非同期に取得する関数 loader をコンストラクタ引数にとり、load()を呼ぶとloaderの返り値を返すクラス。
+ * loaderは1度しか呼ばれないことが保証される。
+ */
+export class Loader<T> {
+	isTriggered: boolean;
+	loader: () => Promise<T>;
+	private deferred: Deferred<T>;
+
+	constructor(loader: () => Promise<T>) {
+		this.loader = loader;
+		this.isTriggered = false;
+		this.deferred = new Deferred<T>();
+	}
+
+	load() {
+		if (this.isTriggered) {
+			return this.deferred.promise;
+		}
+		this.isTriggered = true;
+		this.loader().then((value) => {
+			this.deferred.resolve(value);
+		}, (error) => {
+			this.deferred.reject(error);
+		});
+		return this.deferred.promise;
 	}
 }

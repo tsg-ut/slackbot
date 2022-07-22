@@ -101,7 +101,7 @@ function numToEmoji(num) {
 }
 
 module.exports = (clients) => {
-	const { rtmClient: rtm, webClient: slack } = clients;
+	const { eventClient, webClient: slack } = clients;
 
 	const sushiCounter = new Counter('sushi');
 	const suspendCounter = new Counter('suspend');
@@ -111,7 +111,7 @@ module.exports = (clients) => {
 	const exerciseCounter = new Counter('exercise');
 	const kasuCounter = new Counter('kasu');
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		const { channel, text, user, ts: timestamp } = message;
 		if (!text) {
 			return;
@@ -240,7 +240,7 @@ module.exports = (clients) => {
 			if(cnt >= 1) {
 				Promise.resolve()
 					.then(() => slack.reactions.add({name: 'no_good', channel, timestamp}))
-					.then(() => slack.reactions.add({name: 'cookies146', channel, timestamp}))
+					.then(() => slack.reactions.add({name: 'shaved_ice', channel, timestamp}))
 					.then(() =>
 						cnt >= 2 &&
 						Promise.resolve()
@@ -329,12 +329,8 @@ module.exports = (clients) => {
 		{
 			const kasu = 'カス';
 			if (channel === process.env.CHANNEL_SANDBOX && text.includes(kasu)) {
-				if (user === 'U01AM9D17RV') { // ishitatsuyuki
-					slack.chat.delete({channel, ts: timestamp, token: process.env.HAKATASHI_TOKEN, as_user: true});
-				} else {
-					slack.reactions.add({name: 'kasukasu_dance', channel, timestamp});
-					kasuCounter.add(user);
-				}
+				slack.reactions.add({name: 'kasukasu_dance', channel, timestamp});
+				kasuCounter.add(user);
 			}
 		}
 
@@ -342,10 +338,10 @@ module.exports = (clients) => {
 			if(text.includes(":exercise-done:")||text.includes(":kintore_houkoku:")){
 				slack.reactions.add({name: 'erai', channel, timestamp})
 				slack.reactions.add({name: 'sugoi', channel, timestamp})
-
+	
 				if (channel.startsWith('C')) {
 					unlock(user, 'first-exercise');
-
+					
 					dailyexerciseCounter.add(user, 1);
 				}
 			}
@@ -371,7 +367,7 @@ module.exports = (clients) => {
 				channel: process.env.CHANNEL_SANDBOX,
 				username: 'sushi-bot',
 				text: '今週の凍結ランキング',
-				icon_emoji: ':cookies146:',
+				icon_emoji: ':shaved_ice:',
 				attachments: suspendCounter.entries().map(([user, count], index) => {
 					const member = members.find(({id}) => id === user);
 					if (!member) {

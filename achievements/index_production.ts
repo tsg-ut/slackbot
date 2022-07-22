@@ -1,14 +1,12 @@
-import qs from 'querystring';
 // eslint-disable-next-line no-unused-vars
 import {WebClient} from '@slack/web-api';
-import axios from 'axios';
 import {stripIndent} from 'common-tags';
 import {countBy, throttle, groupBy, get as getter, chunk} from 'lodash';
 import moment from 'moment';
-// @ts-ignore
 import db from '../lib/firestore';
 // eslint-disable-next-line no-unused-vars
 import type {SlackInterface} from '../lib/slack';
+import {getReactions} from '../lib/slackUtils';
 import {Deferred} from '../lib/utils';
 import achievements, {Difficulty} from './achievements';
 
@@ -44,13 +42,13 @@ const difficultyToStars = (difficulty: Difficulty) => (
 	}[difficulty]
 );
 
-const loadDeferred = new Deferred();
-const initializeDeferred = new Deferred();
+const loadDeferred = new Deferred<WebClient>();
+const initializeDeferred = new Deferred<void>();
 
-export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
+export default async ({eventClient, webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
 	loadDeferred.resolve(slack);
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		if (message.text && message.user && !message.bot_id && !message.subtype && message.channel.startsWith('C')) {
 			const day = moment(parseFloat(message.ts) * 1000).utcOffset(9).format('YYYY-MM-DD');
 			increment(message.user, 'chats');
@@ -95,7 +93,7 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 		}
 	});
 
-	rtm.on('reaction_added', async (event) => {
+	eventClient.on('reaction_added', async (event) => {
 		if (event.user && event.item && event.item.channel.startsWith('C') && event.item_user && state.achievements.has(event.item_user)) {
 			const reactionAchievements = Array.from(achievements.values()).filter((achievement) => (
 				achievement.reaction === event.reaction
@@ -103,39 +101,26 @@ export default async ({rtmClient: rtm, webClient: slack, messageClient: slackInt
 			if (reactionAchievements.length === 0) {
 				return;
 			}
-			const {data}: any = await axios.get(`https://slack.com/api/conversations.history?${qs.stringify({
-				channel: event.item.channel,
-				latest: event.item.ts,
-				limit: 1,
-				inclusive: true,
-			})}`, {
-				headers: {
-					Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
-				},
-			});
-			const reactions = getter(data, ['messages', 0, 'reactions'], []);
-			const targetReaction = reactions.find(({name}: any) => name === event.reaction);
-			if (!targetReaction) {
-				return;
-			}
+			const reactions = await getReactions(event.item.channel, event.item.ts);
+			const targetReaction = reactions[event.reaction] || 0;
 			const messageURL = event.item.type === 'message'
 				? `<https://tsg-ut.slack.com/archives/${event.item.channel}/p${event.item.ts.replace('.', '')}|[メッセージ]>`
 				: '';
 			for (const achievement of reactionAchievements) {
-				if (achievement.value <= targetReaction.count) {
+				if (achievement.value <= targetReaction) {
 					await unlock(event.item_user, achievement.id, messageURL);
 				}
 			}
 		}
 	});
 
-	rtm.on('user_change', (event) => {
+	eventClient.on('user_change', (event) => {
 		db.collection('users').doc(event.user.id).update({
 			info: event.user,
 		});
 	});
 
-	rtm.on('team_join', (event) => {
+	eventClient.on('team_join', (event) => {
 		db.collection('users').doc(event.user.id).set({
 			info: event.user,
 		});
@@ -300,12 +285,15 @@ export const unlock = async (user: string, name: string, additionalInfo?: string
 	});
 
 	const holdingAchievements = Array.from(state.achievements.get(user));
+	const userUrl = `https://achievements.tsg.ne.jp/users/${user}`;
+	const achievementUrl = `https://achievements.tsg.ne.jp/achievements/${achievement.id}`;
+
 	slack.chat.postMessage({
 		channel: process.env.CHANNEL_SANDBOX,
 		username: 'achievements',
 		icon_emoji: ':unlock:',
 		text: stripIndent`
-			<@${user}>が実績【${achievement.title}】を解除しました:tada::tada::tada: <https://achievements.tsg.ne.jp/users/${user}|[実績一覧]>
+			<@${user}>が実績【<${achievementUrl}|${achievement.title}>】を解除しました:tada::tada::tada: <${userUrl}|[実績一覧]>
 			_${achievement.condition}_
 			難易度${difficultyToStars(achievement.difficulty)} (${achievement.difficulty}) ${isFirst ? '*初達成者!!:ojigineko-superfast:*' : ''}
 			${additionalInfo === undefined ? '' : additionalInfo}`,
@@ -429,5 +417,14 @@ export const set = async (user: string, name: string, value: any) => {
 	}
 
 	state.users.get(user)[name] = value;
+
+	if (typeof value === 'number') {
+		const unlocked = Array.from(achievements.values()).filter((achievement) => achievement.counter === name && achievement.value <= value);
+		for (const achievement of unlocked) {
+			unlock(user, achievement.id);
+		}
+	}
+
 	updateDb({type: 'set', user, name, value});
 };
+

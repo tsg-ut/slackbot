@@ -155,3 +155,5 @@ module.exports.tenpai = (牌s) => {
 	const tenpaiDecomp = decomp.decompTenpai(Pai.binsFromArray(pais));
 	return tenpaiDecomp.decomps.length > 0;
 };
+
+module.exports.paiIndices = paiIndices;

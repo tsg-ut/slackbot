@@ -3,11 +3,9 @@ import path from 'path';
 import {ChatPostMessageArguments} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-// @ts-ignore
 import schedule from 'node-schedule';
 import {unlock} from '../achievements/index.js';
-// @ts-ignore
-import logger from '../lib/logger.js';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Contest, User, SolvedInfo} from './lib/BasicTypes';
@@ -165,7 +163,7 @@ const getLastUpdateDate = () => {
 	return last;
 };
 
-export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	let pendingUsers: { slackid: string, contestid: number, contestUserId: string, threadId: string }[] = [];
 
 	// Restore state
@@ -559,7 +557,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 	};
 
 
-	rtm.on('message', async (message) => {
+	eventClient.on('message', async (message) => {
 		// resolve pending join request
 		if (message.text && message.text.startsWith(':pwn:')) {
 			for (const user of pendingUsers) {
@@ -582,6 +580,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 								スコア   : ${userProfile.score}
 								ランキング: ${userProfile.rank}
 								${userProfile.comment}
+								<@${message.user}> よかったら#sig-pwnyaaにも参加してね!
 						`,
 						});
 					}
@@ -654,6 +653,7 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 										スコア   : ${userProfile.score}
 										ランキング: ${userProfile.rank}
 										${userProfile.comment}
+										<@${message.user}> よかったら#sig-pwnyaaにも参加してね!
 										`,
 								});
 							} else {																// user is not found on the contest
@@ -819,6 +819,9 @@ export default async ({rtmClient: rtm, webClient: slack}: SlackInterface) => {
 		for (const contest of state.contests) {
 			for (const user of contest.joiningUsers) {
 				const profile = await fetchUserProfile(user.idCtf, contest.id);
+				if (!profile) {
+					return;
+				}
 				if (profile.solvedChalls.length >= contest.numChalls) {
 					logger.info(`[+] pwnyaa: unlocking: pwnyaa-${contest.achievementStr}-complete`);
 					await unlock(user.slackId, `pwnyaa-${contest.achievementStr}-complete`);

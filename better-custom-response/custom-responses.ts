@@ -1,18 +1,24 @@
 import { stripIndent } from 'common-tags';
-// @ts-ignore
+// @ts-expect-error
 import { romanize, katakanize } from 'japanese';
 import { shuffle } from 'lodash';
+import { tokenize } from 'kuromojin';
 import omikuji from './omikuji.json';
+import moment from 'moment-timezone';
 
 interface Achievement {
     trigger: RegExp[],
     name: string,
 }
 
-interface CustomResponse {
+export interface Context {
+    user: string,
+}
+
+export interface CustomResponse {
     input: RegExp[],
     outputArray?: string[],
-    outputFunction?: ((input: string[]) => string[] | Promise<string[]>),
+    outputFunction?: ((input: string[], context: Context) => string[] | Promise<string[]>),
     shuffle?: true,
     username?: string,
     icon_emoji?: string,
@@ -81,7 +87,7 @@ const customResponses: CustomResponse[] = [
         input: [/^(.+)っちへ$/],
         outputFunction: input => [ stripIndent`
             ${input[1]}っちへ
-            
+
             ういっすー!
             朝から、完全にぽんぽんぺいんで、つらみが深いので、1日おふとんでスヤァしておきます。
             明日は行けたら行くマンです!` ],
@@ -100,7 +106,7 @@ const customResponses: CustomResponse[] = [
             もうまじ退職しか勝たんから
             明日からはおうちカフェで
             働くことにしました🐰
-            
+
             いままで397❤❤
             また会おーね👋😃` ],
         icon_emoji: ':shakaijin-ichinensei:',
@@ -158,6 +164,22 @@ const customResponses: CustomResponse[] = [
         ],
     },
     {
+        input: [/^実績一覧 <@(U[A-Z0-9]+)>$/],
+        outputFunction: (input: string[]) => {
+            return [`https://achievements.tsg.ne.jp/users/${input[1]}`];
+        },
+        icon_emoji: ":achievement:",
+        username: "実績一覧",
+    },
+    {
+        input: [/^実績一覧$/],
+        outputFunction: (input: string[], context: Context) => {
+            return [`https://achievements.tsg.ne.jp/users/${context.user}`];
+        },
+        icon_emoji: ":achievement:",
+        username: "実績一覧",
+    },
+    {
         input: [/^おみくじ$/],
         outputArray: omikuji,
     },
@@ -185,6 +207,47 @@ const customResponses: CustomResponse[] = [
         },
         icon_emoji: ":fireworks:",
         username: "鍵屋",
+    },
+    {
+        input: [/^(?:.+か)+(?:.+)?占い$/],
+        outputFunction: async (input: string[]) => {
+            const str = input[0].slice(0, -2);
+            const tokens = await tokenize(str);
+            let choices = [''];
+            for (const token of tokens) {
+                if (token.pos === '助詞' && token.surface_form === 'か') {
+                    choices.push('');
+                } else {
+                    choices[choices.length - 1] += token.surface_form;
+                }
+            }
+            choices = choices.filter(choice => choice !== '');
+            const fukukitarify = (c: string) => stripIndent`\
+                :meishodoto_umamusume: 「救いは無いのですか～？」
+                :matikanefukukitaru_umamusume: 「むむっ…　:palms_up_together::crystal_ball:」
+                :matikanefukukitaru_umamusume: 「出ました！　＊『${c.trim()}』＊です！」
+            `;
+            return choices.map(fukukitarify);
+        },
+        icon_emoji: ":camping:",
+        username: "表はあっても占い",
+    },
+    {
+        input: [/^こおしいず時間$/, /^kcztime$/, /^kczclock$/],
+        outputFunction: (input: string[]) => {
+            const nowBoston = moment().tz('America/New_York');
+            const date = nowBoston.format('YYYY年 M月D日');
+            const ampm = nowBoston.hour() < 12 ? '午前' : '午後';
+            const yobi = ['日', '月', '火', '水', '木', '金', '土'][nowBoston.day()] + '曜日';
+            const hour = nowBoston.hour() % 12;
+            const minute = nowBoston.minute();
+            return [stripIndent`\
+                現在のボストンの時刻は
+                *${date} ${yobi} ${ampm}${hour}時${minute}分*
+                だよ`];
+        },
+        icon_emoji: ':kczclock:',
+        username: 'kcztime',
     },
 ];
 

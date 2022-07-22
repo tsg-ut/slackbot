@@ -7,7 +7,7 @@ const fs = require('fs');
 const concatStream = require('concat-stream');
 const schedule = require('node-schedule');
 
-const logger = require('../lib/logger.js');
+const {default: logger} = require('../lib/logger.ts');
 const {makeSummary} = require('./summary_writer.js');
 
 
@@ -112,7 +112,7 @@ async function job(slack) {
     });
 }
 
-module.exports = async ({rtmClient: rtm, webClient: slack}) => {
+module.exports = async ({webClient: slack}) => {
     if (process.env.NODE_ENV === 'production') {
         schedule.scheduleJob('0 7 * * *', async () => {
             job(slack);

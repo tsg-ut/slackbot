@@ -1,8 +1,7 @@
 import qs from 'querystring';
 import type {LinkUnfurls} from '@slack/web-api';
-import axios from 'axios';
-// @ts-ignore
-import logger from '../lib/logger.js';
+import axios, {AxiosResponse} from 'axios';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
@@ -99,7 +98,7 @@ export default ({eventClient: event}: SlackInterface) => {
 		}
 		if (Object.values(unfurls).length > 0) {
 			try {
-				const {data} = await axios({
+				const {data}: AxiosResponse<any> = await axios({
 					method: 'POST',
 					url: 'https://slack.com/api/chat.unfurl',
 					data: qs.stringify({

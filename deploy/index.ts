@@ -1,16 +1,24 @@
 import {spawn} from 'child_process';
 import os from 'os';
 import {PassThrough} from 'stream';
-// @ts-ignore
+// @ts-expect-error
 import concat from 'concat-stream';
 import {FastifyInstance} from 'fastify';
 import {get} from 'lodash';
-// @ts-ignore
-import logger from '../lib/logger.js';
+import pm2 from 'pm2';
+import {Webhooks} from '@octokit/webhooks';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 
-// @ts-ignore
+// @ts-expect-error
 import Blocker from './block.js';
+
+const webhooks = process.env.GITHUB_WEBHOOK_SECRET ? new Webhooks({
+	secret: process.env.GITHUB_WEBHOOK_SECRET,
+}) : null;
+if (process.env.NODE_ENV === 'production' && !webhooks) {
+	logger.warn('[INSECURE] GitHub webhook endpoint is not protected');
+}
 
 const commands = [
 	['git', 'checkout', '--', 'package.json', 'package-lock.json'],
@@ -25,17 +33,26 @@ export const blockDeploy = (name: string) => deployBlocker.block(name);
 // eslint-disable-next-line require-await
 export const server = ({webClient: slack}: SlackInterface) => async (fastify: FastifyInstance) => {
 	let triggered = false;
+	let thread: string = null;
 
 	const postMessage = (text: string) => (
 		slack.chat.postMessage({
 			username: `tsgbot-deploy [${os.hostname()}]`,
 			channel: process.env.CHANNEL_SANDBOX,
 			text,
+			...(thread === null ? {} : {thread_ts: thread}),
 		})
 	);
 
 	// eslint-disable-next-line require-await
 	fastify.post('/hooks/github', async (req, res) => {
+		if (webhooks) {
+			if (await webhooks.verify(req.body as any, req.headers['x-hub-signature-256'] as string) !== true) {
+				res.code(400);
+				return 'invalid signature';
+			}
+		}
+
 		logger.info(JSON.stringify({body: req.body, headers: req.headers}));
 
 		const name = req.headers['x-github-event'];
@@ -44,7 +61,6 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 		}
 
 		if (name === 'push') {
-			// TODO: Validation
 			if (get(req.body, ['repository', 'id']) !== 105612722) {
 				res.code(400);
 				return 'repository id not match';
@@ -61,7 +77,8 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 
 			deployBlocker.wait(
 				async () => {
-					await postMessage('デプロイを開始します');
+					const message = await postMessage('デプロイを開始します');
+					thread = message.ts as string;
 
 					for (const [command, ...args] of commands) {
 						const proc = spawn(command, args, {cwd: process.cwd()});
@@ -87,14 +104,28 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 						await postMessage(text);
 					}
 
+					await new Promise<void>((resolve, reject) => {
+						pm2.connect((error) => {
+							if (error) {
+								reject(error);
+							} else {
+								resolve();
+							}
+						});
+					});
+
+					thread = null;
 					await postMessage('死にます:wave:');
 
-					await new Promise<void>((resolve) => setTimeout(() => {
-						// eslint-disable-next-line no-process-exit, node/no-process-exit
-						process.exit(0);
-						// eslint-disable-next-line no-unreachable
-						resolve();
-					}, 2000));
+					await new Promise<void>((resolve, reject) => {
+						pm2.restart('app', (error) => {
+							if (error) {
+								reject(error);
+							} else {
+								resolve();
+							}
+						});
+					});
 				},
 				30 * 60 * 1000, // 30min
 				(blocks: any) => {

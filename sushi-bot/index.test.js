@@ -32,7 +32,7 @@ it('reacts to "おすし"', () => new Promise((resolve) => {
 		resolve();
 	});
 
-	slack.rtmClient.emit('message', {
+	slack.eventClient.emit('message', {
 		channel: slack.fakeChannel,
 		text: 'おすし',
 		user: slack.fakeUser,
@@ -41,7 +41,7 @@ it('reacts to "おすし"', () => new Promise((resolve) => {
 }));
 
 it('reacts to ":korosuzo:"', () => new Promise((resolve) => {
-	const table = {no_good: false, cookies146: false};
+	const table = {no_good: false, shaved_ice: false};
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
 		expect(Object.keys(table)).toContain(name); // FIXME
 		expect(channel).toBe(slack.fakeChannel);
@@ -53,7 +53,7 @@ it('reacts to ":korosuzo:"', () => new Promise((resolve) => {
 	});
 
 
-	slack.rtmClient.emit('message', {
+	slack.eventClient.emit('message', {
 		channel: slack.fakeChannel,
 		text: ':korosuzo:',
 		user: slack.fakeUser,
@@ -73,7 +73,7 @@ it('marks :x::four: to "sushi"x4', () => new Promise((resolve) => {
 		}
 	});
 
-	slack.rtmClient.emit('message', {
+	slack.eventClient.emit('message', {
 		channel: slack.fakeChannel,
 		text: 'sushisushisushisushi',
 		user: slack.fakeUser,
@@ -89,7 +89,7 @@ it('reacts to "\u3059\u0328"', () => new Promise((resolve) => {
 		resolve();
 	});
 
-	slack.rtmClient.emit('message', {
+	slack.eventClient.emit('message', {
 		channel: slack.fakeChannel,
 		text: '\u3059\u0328',
 		user: slack.fakeUser,
@@ -115,7 +115,7 @@ it('reacts to "寿司ランキング 確認"', () => new Promise((resolve) => {
 			});
 		});
 
-		slack.rtmClient.emit('message', {
+		slack.eventClient.emit('message', {
 			channel: slack.fakeChannel,
 			text: 'sushi',
 			user: slack.fakeUser,
@@ -124,7 +124,7 @@ it('reacts to "寿司ランキング 確認"', () => new Promise((resolve) => {
 
 		await promise;
 
-		slack.rtmClient.emit('message', {
+		slack.eventClient.emit('message', {
 			channel: "D00000000",
 			text: '寿司ランキング 確認',
 			user: slack.fakeUser,
@@ -144,7 +144,7 @@ it('reacts to "凍結ランキング 確認"', () => new Promise((resolve) => {
 
 	(async () => {
 		const promise = new Promise(resolve => {
-			const table = {no_good: false, cookies146: false};
+			const table = {no_good: false, shaved_ice: false};
 			slack.on('reactions.add', ({name, timestamp}) => {
 				if (timestamp === slack.fakeTimestamp && table.hasOwnProperty(name)) {
 					table[name] = true;
@@ -155,7 +155,7 @@ it('reacts to "凍結ランキング 確認"', () => new Promise((resolve) => {
 			});
 		});
 
-		slack.rtmClient.emit('message', {
+		slack.eventClient.emit('message', {
 			channel: slack.fakeChannel,
 			text: '死',
 			user: slack.fakeUser,
@@ -164,7 +164,7 @@ it('reacts to "凍結ランキング 確認"', () => new Promise((resolve) => {
 
 		await promise;
 
-		slack.rtmClient.emit('message', {
+		slack.eventClient.emit('message', {
 			channel: "D00000000",
 			text: '凍結ランキング 確認',
 			user: slack.fakeUser,
@@ -189,7 +189,7 @@ it('reacts to "あさ！" with :100: at 8:59:59', () => new Promise((resolve) =>
 		resolve();
 	});
 
-	slack.rtmClient.emit('message', {
+	slack.eventClient.emit('message', {
 		channel: slack.fakeChannel,
 		text: 'あさ！',
 		user: slack.fakeUser,
@@ -213,7 +213,7 @@ it('reacts to "あさ！" with :95: at 9:00:01', () => new Promise((resolve) => 
 		resolve();
 	});
 
-	slack.rtmClient.emit('message', {
+	slack.eventClient.emit('message', {
 		channel: slack.fakeChannel,
 		text: 'あさ！',
 		user: slack.fakeUser,
@@ -247,7 +247,7 @@ it('reacts to "起床ランキング 確認', () => new Promise((resolve) => {
 			});
 		});
 
-		slack.rtmClient.emit('message', {
+		slack.eventClient.emit('message', {
 			channel: slack.fakeChannel,
 			text: 'あさ',
 			user: slack.fakeUser,
@@ -256,7 +256,7 @@ it('reacts to "起床ランキング 確認', () => new Promise((resolve) => {
 
 		await promise;
 
-		slack.rtmClient.emit('message', {
+		slack.eventClient.emit('message', {
 			channel: "D00000000",
 			text: '起床ランキング 確認',
 			user: slack.fakeUser,
@@ -287,7 +287,7 @@ it('reacts to "エクササイズランキング 確認"', () => new Promise((re
 			});
 		});
 
-		slack.rtmClient.emit('message', {
+		slack.eventClient.emit('message', {
 			channel: slack.fakeChannel,
 			text: ':exercise-done:',
 			user: slack.fakeUser,
@@ -296,7 +296,7 @@ it('reacts to "エクササイズランキング 確認"', () => new Promise((re
 
 		await promise;
 
-		slack.rtmClient.emit('message', {
+		slack.eventClient.emit('message', {
 			channel: "D00000000",
 			text: 'エクササイズランキング 確認',
 			user: slack.fakeUser,

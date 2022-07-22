@@ -1,9 +1,9 @@
 jest.mock('tinyreq');
 
 import roomGacha from './index';
-// @ts-ignore
+// @ts-expect-error
 import Slack from '../lib/slackMock.js';
-// @ts-ignore
+// @ts-expect-error
 import tinyreq from 'tinyreq';
 import { promises as fs } from 'fs';
 import { stripIndents } from 'common-tags';
