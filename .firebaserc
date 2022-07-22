@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "production": "tsg-slackbot",
+    "default": "tsg-slackbot"
+  }
+}

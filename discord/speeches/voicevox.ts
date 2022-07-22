@@ -36,6 +36,18 @@ const voiceMapping: { [name: string]: { [emo: string]: number } } = {
 	himari: {
 		normal: 14,
 	},
+	sora: {
+		normal: 15,
+		hapiness: 16,
+		anger: 17,
+		sadness: 18,
+	},
+	sora_whisper: {
+		normal: 19,
+	},
+	mochiko: {
+		normal: 20,
+	},
 };
 
 const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emotion}) => {

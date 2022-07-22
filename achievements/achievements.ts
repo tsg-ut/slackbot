@@ -845,6 +845,52 @@ const achievements: Achievement[] = [
 		value: 5,
 	},
 
+	{
+		id: 'reaction-koresuki-5-first-reaction-1',
+		difficulty: 'medium',
+		title: '目利き',
+		condition: '5人以上から:koresuki:でリアクションされたメッセージに最初にリアクションする',
+		category: 'reactions',
+		counter: 'reaction-koresuki-5-first-reaction',
+		value: 1,
+	},
+	{
+		id: 'reaction-koresuki-5-first-reaction-10',
+		difficulty: 'hard',
+		title: 'これすき職人',
+		condition: '「5人以上から:koresuki:でリアクションされたメッセージに最初にリアクションする」を10回達成する',
+		category: 'reactions',
+		counter: 'reaction-koresuki-5-first-reaction',
+		value: 10,
+	},
+	{
+		id: 'reaction-koresuki-5-first-reaction-100',
+		difficulty: 'professional',
+		title: 'これすき発掘王',
+		condition: '「5人以上から:koresuki:でリアクションされたメッセージに最初にリアクションする」を100回達成する',
+		category: 'reactions',
+		counter: 'reaction-koresuki-5-first-reaction',
+		value: 100,
+	},
+	{
+		id: 'reaction-koresuki-10-first-reaction-1',
+		difficulty: 'hard',
+		title: '流行の火付け役',
+		condition: '10人以上から:koresuki:でリアクションされたメッセージに最初にリアクションする',
+		category: 'reactions',
+		counter: 'reaction-koresuki-10-first-reaction',
+		value: 1,
+	},
+	{
+		id: 'reaction-20-reactions-first-reaction-1',
+		difficulty: 'professional',
+		title: 'アジテーション',
+		condition: '20人以上から同じリアクションがつけられたメッセージに、最初にそのリアクションをする',
+		category: 'reactions',
+		counter: 'reaction-20-reactions-first-reaction',
+		value: 1,
+	},
+
 	// sushi-bot
 
 	{
@@ -2412,8 +2458,8 @@ const achievements: Achievement[] = [
 		category: 'kirafan',
 		counter: 'kirafan-answer-first-hint',
 		value: 10,
-  },
-  
+	},
+
 	// bungo-quiz
 	{
 		id: 'bungo-answer',
