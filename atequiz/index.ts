@@ -9,10 +9,10 @@ import { Deferred } from '../lib/utils';
 export interface AteQuizProblem {
   problemMessage: ChatPostMessageArguments;
   hintMessages: ChatPostMessageArguments[];
-  immediateMessage: ChatPostMessageArguments;
+  immediateMessage: ChatPostMessageArguments | null;
   solvedMessage: ChatPostMessageArguments;
   unsolvedMessage: ChatPostMessageArguments;
-  answerMessage: ChatPostMessageArguments;
+  answerMessage: ChatPostMessageArguments | null;
   correctAnswers: string[];
 }
 
@@ -110,9 +110,12 @@ export class AteQuiz {
 
     const { ts: thread_ts } = await postMessage(this.problem.problemMessage);
     assert(typeof thread_ts === 'string');
-    await postMessage(
-      Object.assign({}, this.problem.immediateMessage, { thread_ts })
-    );
+
+    if (this.problem.immediateMessage){
+      await postMessage(
+        Object.assign({}, this.problem.immediateMessage, { thread_ts })
+      );
+    }
 
     const result: AteQuizResult = {
       quiz: this.problem,
@@ -143,9 +146,12 @@ export class AteQuiz {
             await postMessage(
               Object.assign({}, this.problem.unsolvedMessage, { thread_ts })
             );
-            await postMessage(
-              Object.assign({}, this.problem.answerMessage, { thread_ts })
-            );
+
+            if (this.problem.answerMessage){
+              await postMessage(
+                Object.assign({}, this.problem.answerMessage, { thread_ts })
+              );
+            }
             clearInterval(tickTimer);
             deferred.resolve(result);
           }
@@ -170,9 +176,12 @@ export class AteQuiz {
                 Object.assign({}, this.problem.solvedMessage, { thread_ts }),
                 [[this.replaceKeys.correctAnswerer, message.user as string]]
               );
-              await postMessage(
-                Object.assign({}, this.problem.answerMessage, { thread_ts })
-              );
+              
+              if (this.problem.answerMessage){
+                await postMessage(
+                  Object.assign({}, this.problem.answerMessage, { thread_ts })
+                );
+              }
 
               result.correctAnswerer = message.user;
               result.hintIndex = hintIndex;
