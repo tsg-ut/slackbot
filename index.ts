@@ -90,6 +90,7 @@ const allBots = [
 	'adventar',
 	'jantama',
 	'tabi-gatcha',
+	'achievement-quiz',
 ];
 
 logger.info('slackbot started');

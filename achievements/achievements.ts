@@ -2712,7 +2712,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'achievement-quiz-clear-baby',
 		difficulty: 'medium',
-		title: '',
+		title: 'BE MY BABY',
 		condition: '実績当てクイズで難易度babyの実績の名前を当てる',
 		category: 'achievement-quiz',
 	},
@@ -2751,7 +2751,7 @@ const achievements: Achievement[] = [
 		condition: '実績当てクイズでこの実績の名前を当てる',
 		category: 'achievement-quiz',
 	},
-	
+
 	// sorting-riddles
 	{
 		id: 'sorting-riddles-answer',
