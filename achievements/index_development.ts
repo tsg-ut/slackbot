@@ -7,7 +7,7 @@ export const unlock = (user: string, name: string, additionalInfo?: string) => {
 };
 export const isUnlocked = () => false;
 export const increment = (user: string, name: string, value: number = 1) => {
-	logger.debug(`${user} incresed ${name} by ${value}`);
+	logger.debug(`${user} increased ${name} by ${value}`);
 };
 export const get = (): any => null;
 export const set = (user: string, name: string, value: any) => {
