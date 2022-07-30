@@ -17,9 +17,9 @@ interface AchievementAteQuizProblem extends AteQuizProblem {
 }
 
 class AchievementAteQuiz extends AteQuiz {
-  // ヒントはない
-  waitSecGen(): number {
-    return timeLimitSec;
+  // 雛形postをヒント扱いに
+  waitSecGen(hintIndex: number): number {
+    return hintIndex === 0 ? 0 : timeLimitSec;
   }
 }
 
@@ -57,9 +57,16 @@ const generateProblem = (answer: Achievement): AchievementAteQuizProblem => {
     })\n解答はスレッドへ`,
   };
 
+  const hintMessages = [
+    {
+      channel,
+      text: titleHided,
+    },
+  ];
+
   const immediateMessage = {
     channel,
-    text: `制限時間は2分です。解答の雛形↓\n${titleHided}`,
+    text: `制限時間は2分です。解答の雛形↓`,
   };
 
   const solvedMessage = {
@@ -78,7 +85,7 @@ const generateProblem = (answer: Achievement): AchievementAteQuizProblem => {
 
   const problem = {
     problemMessage,
-    hintMessages: [],
+    hintMessages,
     immediateMessage,
     solvedMessage,
     unsolvedMessage,
@@ -100,10 +107,8 @@ const achievements = Array.from(achievementsMap.values());
 
 export default (slackClients: SlackInterface): void => {
   const { eventClient } = slackClients;
-  console.log('debug');
 
   eventClient.on('message', async message => {
-    console.log('debug');
     if (message.channel !== process.env.CHANNEL_SANDBOX) {
       return;
     }
