@@ -224,7 +224,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
     const ProcessHand = async (message: any) => {
         if (state.board.ended) {
             // いつのまにか終っている　強制終了
-            await processQueue.add(Halt);
+            processQueue.add(Halt);
             return;
         }
         const cmd2dir = new Map([
@@ -358,7 +358,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                     }
                 }
             }
-            await processQueue.add(Halt);
+            processQueue.add(Halt);
             return;
         }
     };
