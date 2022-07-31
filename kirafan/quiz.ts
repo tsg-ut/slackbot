@@ -441,7 +441,7 @@ export default (slackClients: SlackInterface): void => {
       }
     }
 
-    if (message.text.match(/^きらファン当てクイズ (easy|[☆★]3)$/)) {
+    if (message.text.match(/^きらファン当てクイズ\s?(easy|[☆★]3)$/)) {
       const randomKirafanCard = sample((await getKirafanCards()).filter(card => card.rare === 2));
       const problem = await generateProblem(randomKirafanCard);
       const quiz = new KirafanAteQuiz(slackClients, problem, postOptionEasy);
