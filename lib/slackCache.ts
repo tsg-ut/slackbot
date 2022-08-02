@@ -97,7 +97,7 @@ export default class SlackCache {
 				}
 			});
 			teamEventClient.on('reaction_added', (event) => {
-				this.modifyReaction({
+				return this.modifyReaction({
 					type: 'add',
 					channel: event.item.channel,
 					ts: event.item.ts,
@@ -106,7 +106,7 @@ export default class SlackCache {
 				});
 			});
 			teamEventClient.on('reaction_removed', (event) => {
-				this.modifyReaction({
+				return this.modifyReaction({
 					type: 'remove',
 					channel: event.item.channel,
 					ts: event.item.ts,
