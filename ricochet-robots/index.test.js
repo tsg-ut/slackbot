@@ -24,13 +24,13 @@ rust_proxy.get_data.mockImplementation((x) => {
 
 describe('hyperrobot', () => {
 	let slack = null;
-	beforeAll(() => {
+	beforeEach(() => {
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		hyperrobot(slack);
 		jest.useFakeTimers();
 	});
-	afterAll(() => {
+	afterEach(() => {
 		jest.useRealTimers();
 	});
 	describe('base', () => {
@@ -44,17 +44,19 @@ describe('hyperrobot', () => {
 		}, 60000);
 	});
 	describe('battle', () => {
-		it('responds to ハイパーロボットバトル', async () => {
+		it('responds to ハイパーロボットバトル & responds to first bidding', async () => {
 			cloudinary.url = 'https://hoge.com/hoge.png';
-			const {username, attachments, text,} = await slack.getResponseTo('ハイパーロボットバトル');
-			expect(username).toBe('hyperrobot');
-			expect(text).toContain(':question:手詰めです');
-			expect(attachments).toHaveLength(1);
-		}, 60000);
-		it('responds to first bidding', async () => {
-			const {username, text,} = await slack.getResponseTo('3');
-			expect(username).toBe('hyperrobot');
-			expect(text).toContain('宣言終了予定時刻:');
+			{
+				const {username, attachments, text,} = await slack.getResponseTo('ハイパーロボットバトル');
+				expect(username).toBe('hyperrobot');
+				expect(text).toContain(':question:手詰めです');
+				expect(attachments).toHaveLength(1);
+			}
+			{
+				const {username, text,} = await slack.getResponseTo('3');
+				expect(username).toBe('hyperrobot');
+				expect(text).toContain('宣言終了予定時刻:');
+			}
 		});
 	});
 });
