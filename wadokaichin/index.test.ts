@@ -52,7 +52,7 @@ describe('wadokaichin works', () => {
       expect(text).toContain('arrow_right::question::arrow_right:');
     }
     {
-      const {username,text,thread_ts,reply_broadcast} = await slack.getResponse();
+      const {username,text,thread_ts,reply_broadcast} = await slack.waitForResponse();
       expect(username).toBe('和同開珎');
       expect(text).toBe(':question:に共通して入る常用漢字は何でしょう？3分以内に答えてね。');
       expect(thread_ts).toBe(ts);
@@ -60,7 +60,7 @@ describe('wadokaichin works', () => {
     }
     {
       slack.postMessage('山',{thread_ts: ts});
-      const {name,timestamp} = await slack.getReactionAdd();
+      const {name,timestamp} = await slack.waitForReaction();
       expect(name).toBe('no_good');
       expect(timestamp).toBe(slack.fakeTimestamp);
     }
@@ -82,7 +82,7 @@ describe('wadokaichin works', () => {
       expect(text).toContain('arrow_right::question::arrow_right:');
     }
     {
-      const {username,text,thread_ts,reply_broadcast} = await slack.getResponse();
+      const {username,text,thread_ts,reply_broadcast} = await slack.waitForResponse();
       expect(username).toBe('和同開珎');
       expect(text).toBe(':question:に共通して入る常用漢字は何でしょう？3分以内に答えてね。');
       expect(thread_ts).toBe(ts);
@@ -90,7 +90,7 @@ describe('wadokaichin works', () => {
     }
     jest.advanceTimersByTime(3*60*1000);
     {
-      const {username,text,thread_ts,reply_broadcast} = await slack.getResponse();
+      const {username,text,thread_ts,reply_broadcast} = await slack.waitForResponse();
       expect(username).toBe('和同開珎');
       expect(text).toBe(`時間切れ！\n正解は『川/海/谷』でした。`);
       expect(thread_ts).toBe(ts);
@@ -98,4 +98,3 @@ describe('wadokaichin works', () => {
     }
   });
 });
-
