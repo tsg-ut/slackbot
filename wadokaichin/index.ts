@@ -6,6 +6,7 @@ import {sample,sampleSize} from 'lodash';
 import type {SlackInterface} from '../lib/slack';
 import {download} from '../lib/download';
 import csv_parse from 'csv-parse';
+import {AteQuiz,AteQuizProblem} from '../atequiz';
 
 /*
 Future works
@@ -28,10 +29,10 @@ type jukugoDict = [
 async function getDictionary() : Promise<jukugoDict>{
   const dictionaryPath = path.resolve(__dirname, 'data','2KanjiWords.txt');
   const dictionaryExists = await new Promise((resolve) => {
-		fs.access(dictionaryPath, fs.constants.F_OK, (error) => {
-			resolve(!error);
-		});
-	});
+    fs.access(dictionaryPath, fs.constants.F_OK, (error) => {
+      resolve(!error);
+    });
+  });
   if(!dictionaryExists){
     const corpusPath = path.resolve(__dirname, 'data','corpus.zip');
     await download(corpusPath,"https://repository.ninjal.ac.jp/?action=repository_uri&item_id=3231&file_id=22&file_no=1");
@@ -126,7 +127,6 @@ async function generateProblem(jukugo:jukugoDict){
     lcnt += 1;
     if(lcnt > 100)break;
   }
-  // console.log('cnt',lcnt);
 
   // フォントがどうしてもずれる
   const repr = `
@@ -149,90 +149,63 @@ async function generateProblem(jukugo:jukugoDict){
   }
 }
 
-const botUsername = '和同開珎';
-const botIcon = ':coin';
+class WadoQuiz extends AteQuiz {
+  waitSecGen() {
+    return 180;
+  }
+}
 
-export default ({eventClient, webClient: slack}: SlackInterface) => {
-	const state: {
-    problem: Problem,
-    thread: string
-  } = {
-		problem: null,
-		thread: null,
-	};
-
+export default (slackClients: SlackInterface) => {
+  const {eventClient} = slackClients;
   const jukugo = getDictionary();
 
-  function timeLimit(thread:string){
-    return (async () => {
-      mutex.runExclusive(async () => {
-        if(state.problem !== null && state.thread === thread){
-          slack.chat.postMessage({
-            channel: process.env.CHANNEL_SANDBOX,
-            text: `時間切れ！\n正解は『${state.problem.answers.join('/')}』でした。`,
-            username: botUsername,
-            icon_emoji: botIcon,
-            thread_ts: state.thread,
-            reply_broadcast: true,
-          });
-
-          state.problem = null;
-          state.thread = null;
-        }
-      });
-    });
-  }
-
-	eventClient.on('message', (message) => {
-		if (message.channel !== process.env.CHANNEL_SANDBOX) {
-			return;
-		}
+  const channel = process.env.CHANNEL_SANDBOX;
+  eventClient.on('message', (message) => {
+    if (message.channel !== channel) {
+      return;
+    }
     mutex.runExclusive(async () => {
-      if (message.text && message.text === '和同開珎' && state.problem === null) {
-        const problem = await generateProblem(await jukugo);
-        const {ts} = await slack.chat.postMessage({
-          channel: process.env.CHANNEL_SANDBOX,
-          text: `${problem.repr}`,
-          username: botUsername,
-          icon_emoji: botIcon,
+      if (message.text && message.text === '和同開珎') {
+        const data = await generateProblem(await jukugo);
+        const answerTextGen = (ans:string) => `<@${message.user}> 『${ans}』正解🎉` + (
+          data.answers.length === 1 ? "" : `\n他にも${
+            data.answers.filter((c) => c !== ans).join('/')}などが当てはまります。`
+        );
+        const svf = ((ans:string) => {
+          const res = ({
+          channel,
+          text: answerTextGen(ans),
+          reply_broadcast: true,
+          });
+          return res;
         });
-				state.thread = ts as string;
-        state.problem = problem;
-
-        slack.chat.postMessage({
-          channel: process.env.CHANNEL_SANDBOX,
-          text: ':question:に共通して入る常用漢字は何でしょう？3分以内に答えてね。',
-          username: botUsername,
-          icon_emoji: botIcon,
-          thread_ts: ts as string,
-        });
-
-        setTimeout(timeLimit(state.thread), 3 * 60 * 1000);
-      }
-      else if (state.problem !== null && message.text && !message.text.match(/^[?？]/) && message.thread_ts === state.thread && message.username !== botUsername) {
-        if (state.problem.answers.includes(message.text)) {
-          const text = `<@${message.user}> 『${message.text}』正解🎉` + (
-            state.problem.answers.length === 1 ? "" : `\n他にも${
-              state.problem.answers.filter((c) => c !== message.text).join('/')}などが当てはまります。`
-          );
-					await slack.chat.postMessage({
-						channel: process.env.CHANNEL_SANDBOX,
-						text: text,
-						username: botUsername,
-						icon_emoji: botIcon,
-						thread_ts: state.thread,
-						reply_broadcast: true,
-					});
-
-					state.problem = null;
-					state.thread = null;
-				} else {
-					slack.reactions.add({
-						name: 'no_good',
-						channel: message.channel,
-						timestamp: message.ts,
-					});
-				}
+        const problem : AteQuizProblem = {
+          problemMessage: {
+            channel,
+            text: `${data.repr}`,
+          },
+          hintMessages: [],
+          immediateMessage: {
+            channel,
+            text: ':question:に共通して入る常用漢字は何でしょう？3分以内に答えてね。'
+          },
+          solvedMessage: svf,
+          unsolvedMessage: {
+            channel,
+            text: `時間切れ！\n正解は『${data.answers.join('/')}』でした。`,
+            reply_broadcast: true,
+          },
+          answerMessage: null,
+          correctAnswers: data.answers
+        };
+        const quiz = new WadoQuiz(slackClients,
+          problem,
+          {username: '和同開珎', icon_emoji: ':coin:'},
+        );
+        const result = await quiz.start();
+        if (result.state === 'solved') {
+          // TODO: add achievenemts
+        }
       }
     });
   });

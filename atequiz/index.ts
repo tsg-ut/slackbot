@@ -10,7 +10,7 @@ export interface AteQuizProblem {
   problemMessage: ChatPostMessageArguments;
   hintMessages: ChatPostMessageArguments[];
   immediateMessage: ChatPostMessageArguments | null;
-  solvedMessage: ChatPostMessageArguments;
+  solvedMessage: ChatPostMessageArguments | ((answer:string) => ChatPostMessageArguments);
   unsolvedMessage: ChatPostMessageArguments;
   answerMessage: ChatPostMessageArguments | null;
   correctAnswers: string[];
@@ -76,7 +76,7 @@ export class AteQuiz {
   ) {
     this.eventClient = eventClient;
     this.slack = slack;
-    this.problem = JSON.parse(JSON.stringify(problem));
+    this.problem = problem;
     this.postOption = JSON.parse(JSON.stringify(option));
 
     assert(
@@ -108,15 +108,6 @@ export class AteQuiz {
       return this.slack.chat.postMessage(toSend);
     };
 
-    const { ts: thread_ts } = await postMessage(this.problem.problemMessage);
-    assert(typeof thread_ts === 'string');
-
-    if (this.problem.immediateMessage){
-      await postMessage(
-        Object.assign({}, this.problem.immediateMessage, { thread_ts })
-      );
-    }
-
     const result: AteQuizResult = {
       quiz: this.problem,
       state: 'unsolved',
@@ -124,7 +115,7 @@ export class AteQuiz {
       hintIndex: null,
     };
 
-    let previousHintTime = Date.now();
+    let previousHintTime : number = null;
     let hintIndex = 0;
 
     const deferred = new Deferred<AteQuizResult>();
@@ -134,7 +125,6 @@ export class AteQuiz {
         const now = Date.now();
         const nextHintTime =
           previousHintTime + 1000 * this.waitSecGen(hintIndex);
-
         if (this.state === 'solving' && nextHintTime <= now) {
           previousHintTime = now;
           if (hintIndex < this.problem.hintMessages.length) {
@@ -172,8 +162,11 @@ export class AteQuiz {
               this.state = 'solved';
               clearInterval(tickTimer);
 
+              const solvedMessage : ChatPostMessageArguments =
+                typeof this.problem.solvedMessage === "function" ? // XXX: better type guard
+                this.problem.solvedMessage(answer) : this.problem.solvedMessage;
               await postMessage(
-                Object.assign({}, this.problem.solvedMessage, { thread_ts }),
+                Object.assign({}, solvedMessage, { thread_ts }),
                 [[this.replaceKeys.correctAnswerer, message.user as string]]
               );
               
@@ -198,6 +191,17 @@ export class AteQuiz {
         });
       }
     });
+
+    // Listeners should be added before postMessage is called.
+    const { ts: thread_ts } = await postMessage(this.problem.problemMessage);
+    assert(typeof thread_ts === 'string');
+
+    if (this.problem.immediateMessage){
+      await postMessage(
+        Object.assign({}, this.problem.immediateMessage, { thread_ts })
+      );
+    }
+    previousHintTime = Date.now();
 
     return deferred.promise;
   }

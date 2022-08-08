@@ -12,9 +12,9 @@ const dicts = Array.from({length:2}).fill([
 
 // @ts-ignore
 fs.virtualFiles = {
-	[path.join(__dirname, 'data')]: '',
-	[path.join(__dirname, 'data','2KanjiWords.txt')]: dicts.join('\n'),
-	[path.join(__dirname, 'data','JoyoKanjis.txt')]: kanjis.join('\n'),
+  [path.join(__dirname, 'data')]: '',
+  [path.join(__dirname, 'data','2KanjiWords.txt')]: dicts.join('\n'),
+  [path.join(__dirname, 'data','JoyoKanjis.txt')]: kanjis.join('\n'),
 };
 
 jest.mock('lodash',() => {
@@ -44,10 +44,8 @@ beforeEach(() => {
 
 describe('wadokaichin works', () => {
   it('successfully scores problem', async () => {
-    let ts = null;
     {
-      const {username,thread_ts,text} = await slack.getResponseTo('和同開珎');
-      ts = thread_ts;
+      const {username,text} = await slack.getResponseTo('和同開珎');
       expect(username).toBe('和同開珎');
       expect(text).toContain('arrow_right::question::arrow_right:');
     }
@@ -55,29 +53,27 @@ describe('wadokaichin works', () => {
       const {username,text,thread_ts,reply_broadcast} = await slack.waitForResponse();
       expect(username).toBe('和同開珎');
       expect(text).toBe(':question:に共通して入る常用漢字は何でしょう？3分以内に答えてね。');
-      expect(thread_ts).toBe(ts);
+      expect(thread_ts).toBe(slack.fakeThreadTs);
       expect(reply_broadcast || false).toBe(false);
     }
     {
-      slack.postMessage('山',{thread_ts: ts});
+      slack.postMessage('山',{thread_ts: slack.fakeThreadTs});
       const {name,timestamp} = await slack.waitForReaction();
       expect(name).toBe('no_good');
       expect(timestamp).toBe(slack.fakeTimestamp);
     }
     {
-      const {username,text,thread_ts,reply_broadcast} = await slack.getResponseTo('川',{thread_ts: ts});
+      const {username,text,thread_ts,reply_broadcast} = await slack.getResponseTo('川',{thread_ts: slack.fakeThreadTs});
       expect(username).toBe('和同開珎');
       expect(text).toBe(`<@${slack.fakeUser}> 『川』正解🎉\n他にも海/谷などが当てはまります。`);
-      expect(thread_ts).toBe(ts);
+      expect(thread_ts).toBe(slack.fakeThreadTs);
       expect(reply_broadcast).toBe(true);
     }
   });
 
   it('successfully time-ups', async () => {
-    let ts = null;
     {
-      const {username,thread_ts,text} = await slack.getResponseTo('和同開珎');
-      ts = thread_ts;
+      const {username,text} = await slack.getResponseTo('和同開珎');
       expect(username).toBe('和同開珎');
       expect(text).toContain('arrow_right::question::arrow_right:');
     }
@@ -85,15 +81,21 @@ describe('wadokaichin works', () => {
       const {username,text,thread_ts,reply_broadcast} = await slack.waitForResponse();
       expect(username).toBe('和同開珎');
       expect(text).toBe(':question:に共通して入る常用漢字は何でしょう？3分以内に答えてね。');
-      expect(thread_ts).toBe(ts);
+      expect(thread_ts).toBe(slack.fakeThreadTs);
       expect(reply_broadcast || false).toBe(false);
     }
-    jest.advanceTimersByTime(3*60*1000);
+    const now = Date.now();
+
+    // XXX: context switchを発生させるために無のawaitをしている。もっとよい書き方がありそう。
+    await (new Promise((res) => res(0)));
+
+    Date.now = jest.fn(() => now + 3*60*1000);
+    jest.advanceTimersByTime(1000);
     {
       const {username,text,thread_ts,reply_broadcast} = await slack.waitForResponse();
       expect(username).toBe('和同開珎');
       expect(text).toBe(`時間切れ！\n正解は『川/海/谷』でした。`);
-      expect(thread_ts).toBe(ts);
+      expect(thread_ts).toBe(slack.fakeThreadTs);
       expect(reply_broadcast).toBe(true);
     }
   });
