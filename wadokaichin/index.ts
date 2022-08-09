@@ -11,7 +11,6 @@ import {AteQuiz,AteQuizProblem} from '../atequiz';
 /*
 Future works
 - n文字熟語 / n 段
-- 入力にできる単語も受け付ける
 */
 const mutex = new Mutex();
 
@@ -142,10 +141,21 @@ async function generateProblem(jukugo:jukugoDict){
 //  ${problem[0][1]} :arrow_right::question::arrow_right: ${problem[1][1]}
 //   `;
   const answers = SolveProblem(jukugo, { problem, repr: "",answers: [] });
+  const acceptAnswerMap : Map<string,string> = new Map();
+  for(const c of answers){
+    acceptAnswerMap.set(c,c);
+    for(const d of problem[0]){
+      acceptAnswerMap.set(d + c,c);
+    }
+    for(const d of problem[1]){
+      acceptAnswerMap.set(c + d,c);
+    }
+  }
   return {
     problem,
     repr,
-    answers
+    answers,
+    acceptAnswerMap,
   }
 }
 
@@ -165,20 +175,15 @@ export default (slackClients: SlackInterface) => {
       return;
     }
     mutex.runExclusive(async () => {
-      if (message.text && message.text === '和同開珎') {
+      if (message.text && (
+            message.text === '和同開珎' ||
+            message.text === '和同' ||
+            message.text === 'わどう')) {
         const data = await generateProblem(await jukugo);
         const answerTextGen = (ans:string) => `<@${message.user}> 『${ans}』正解🎉` + (
-          data.answers.length === 1 ? "" : `\n他にも${
-            data.answers.filter((c) => c !== ans).join('/')}などが当てはまります。`
+          data.answers.length === 1 ? "" : `\n他にも『${
+            data.answers.filter((c) => c !== ans).join('/')}』などが当てはまります。`
         );
-        const svf = ((ans:string) => {
-          const res = ({
-          channel,
-          text: answerTextGen(ans),
-          reply_broadcast: true,
-          });
-          return res;
-        });
         const problem : AteQuizProblem = {
           problemMessage: {
             channel,
@@ -187,16 +192,20 @@ export default (slackClients: SlackInterface) => {
           hintMessages: [],
           immediateMessage: {
             channel,
-            text: ':question:に共通して入る常用漢字は何でしょう？3分以内に答えてね。'
+            text: ':question:に入る常用漢字は何でしょう？3分以内に答えてね。'
           },
-          solvedMessage: svf,
+          solvedMessage: ((ans:string) => ({
+            channel,
+            text: answerTextGen(data.acceptAnswerMap.get(ans)),
+            reply_broadcast: true,
+          })),
           unsolvedMessage: {
             channel,
             text: `時間切れ！\n正解は『${data.answers.join('/')}』でした。`,
             reply_broadcast: true,
           },
           answerMessage: null,
-          correctAnswers: data.answers
+          correctAnswers: [...data.acceptAnswerMap.keys()]
         };
         const quiz = new WadoQuiz(slackClients,
           problem,

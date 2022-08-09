@@ -52,7 +52,7 @@ describe('wadokaichin works', () => {
     {
       const {username,text,thread_ts,reply_broadcast} = await slack.waitForResponse();
       expect(username).toBe('和同開珎');
-      expect(text).toBe(':question:に共通して入る常用漢字は何でしょう？3分以内に答えてね。');
+      expect(text).toBe(':question:に入る常用漢字は何でしょう？3分以内に答えてね。');
       expect(thread_ts).toBe(slack.fakeThreadTs);
       expect(reply_broadcast || false).toBe(false);
     }
@@ -65,7 +65,29 @@ describe('wadokaichin works', () => {
     {
       const {username,text,thread_ts,reply_broadcast} = await slack.getResponseTo('川',{thread_ts: slack.fakeThreadTs});
       expect(username).toBe('和同開珎');
-      expect(text).toBe(`<@${slack.fakeUser}> 『川』正解🎉\n他にも海/谷などが当てはまります。`);
+      expect(text).toBe(`<@${slack.fakeUser}> 『川』正解🎉\n他にも『海/谷』などが当てはまります。`);
+      expect(thread_ts).toBe(slack.fakeThreadTs);
+      expect(reply_broadcast).toBe(true);
+    }
+  });
+
+  it('successfully scores with jukugo', async () => {
+    {
+      const {username,text} = await slack.getResponseTo('わどう');
+      expect(username).toBe('和同開珎');
+      expect(text).toContain('arrow_right::question::arrow_right:');
+    }
+    {
+      const {username,text,thread_ts,reply_broadcast} = await slack.waitForResponse();
+      expect(username).toBe('和同開珎');
+      expect(text).toBe(':question:に入る常用漢字は何でしょう？3分以内に答えてね。');
+      expect(thread_ts).toBe(slack.fakeThreadTs);
+      expect(reply_broadcast || false).toBe(false);
+    }
+    {
+      const {username,text,thread_ts,reply_broadcast} = await slack.getResponseTo('谷山',{thread_ts: slack.fakeThreadTs});
+      expect(username).toBe('和同開珎');
+      expect(text).toBe(`<@${slack.fakeUser}> 『谷』正解🎉\n他にも『川/海』などが当てはまります。`);
       expect(thread_ts).toBe(slack.fakeThreadTs);
       expect(reply_broadcast).toBe(true);
     }
@@ -80,7 +102,7 @@ describe('wadokaichin works', () => {
     {
       const {username,text,thread_ts,reply_broadcast} = await slack.waitForResponse();
       expect(username).toBe('和同開珎');
-      expect(text).toBe(':question:に共通して入る常用漢字は何でしょう？3分以内に答えてね。');
+      expect(text).toBe(':question:に入る常用漢字は何でしょう？3分以内に答えてね。');
       expect(thread_ts).toBe(slack.fakeThreadTs);
       expect(reply_broadcast || false).toBe(false);
     }
