@@ -149,8 +149,6 @@ export class AteQuiz {
       });
     };
 
-    const tickTimer = setInterval(onTick, 1000);
-
     this.eventClient.on('message', async message => {
       if (message.thread_ts === thread_ts) {
         if (message.subtype === 'bot_message') return;
@@ -202,6 +200,7 @@ export class AteQuiz {
       );
     }
     previousHintTime = Date.now();
+    const tickTimer = setInterval(onTick, 1000);
 
     return deferred.promise;
   }
