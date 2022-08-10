@@ -14,9 +14,12 @@ Future works
 */
 const mutex = new Mutex();
 
-const kanjis : string[] =
-  fs.readFileSync(path.join(__dirname, 'data','JoyoKanjis.txt'),{encoding: 'utf8'}).split('\n');
-
+const kanjisPromise : Promise<string[]> = new Promise((resolve) => {
+  fs.readFile(path.join(__dirname, 'data','JoyoKanjis.txt'),(err,text) => {
+    if(err)throw err;
+    resolve(text.toString('utf-8').split('\n'))
+  })
+});
 /*
 jukugo[i].get(c)は『i文字目がcのときの残りの文字としてありうるもの』
 */
@@ -65,8 +68,10 @@ async function getDictionary() : Promise<jukugoDict>{
             error('parse failed');
           });
           parser.on('end', () => {
-            fs.writeFileSync(dictionaryPath,res.join('\n'));
-            resolve('finished');
+            fs.writeFile(dictionaryPath,res.join('\n'),(err) => {
+              if(err)throw err;
+              resolve('finished');
+            });
           });
           text.pipe(parser);
         })
@@ -75,7 +80,13 @@ async function getDictionary() : Promise<jukugoDict>{
     return await getDictionary();
   }
 
-  const js = fs.readFileSync(dictionaryPath,{encoding: 'utf8'}).split('\n');
+  const kanjis = await kanjisPromise;
+  const js : string[] = await (new Promise((resolve) => {
+    fs.readFile(dictionaryPath,(err,text) => {
+      if(err)throw err;
+      resolve(text.toString('utf-8').split('\n'))
+    })
+  }));
   const res : jukugoDict = [new Map<string,string[]>(),new Map<string,string[]>()];
   for(const c of kanjis){
     res.forEach((m) => m.set(c,[]));
@@ -98,7 +109,8 @@ interface Problem{
   answers: string[]
 }
 
-function SolveProblem(jukugo: jukugoDict, problem: Problem) : string[] {
+async function SolveProblem(jukugo: jukugoDict, problem: Problem) : Promise<string[]> {
+  const kanjis = await kanjisPromise;
   const dics = problem.problem.map((v,i) => {
     return v.map((c) => jukugo[i].get(c));
   });
@@ -110,6 +122,7 @@ function SolveProblem(jukugo: jukugoDict, problem: Problem) : string[] {
 }
 
 async function generateProblem(jukugo:jukugoDict){
+  const kanjis = await kanjisPromise;
   let lcnt = 0;
   let problem : WadoProblem = null;
   for(;;){
@@ -140,7 +153,7 @@ async function generateProblem(jukugo:jukugoDict){
 //  ${problem[0][0]} :arrow_right::question::arrow_right: ${problem[1][0]}
 //  ${problem[0][1]} :arrow_right::question::arrow_right: ${problem[1][1]}
 //   `;
-  const answers = SolveProblem(jukugo, { problem, repr: "",answers: [] });
+  const answers = await SolveProblem(jukugo, { problem, repr: "",answers: [] });
   const acceptAnswerMap : Map<string,string> = new Map();
   for(const c of answers){
     acceptAnswerMap.set(c,c);
