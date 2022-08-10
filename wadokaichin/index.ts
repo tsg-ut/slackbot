@@ -2,7 +2,7 @@ import {Mutex} from 'async-mutex';
 import fs from 'fs';
 import path from 'path';
 import JSZip from 'jszip';
-import {sample,sampleSize} from 'lodash';
+import {sample,sampleSize,uniq} from 'lodash';
 import type {SlackInterface} from '../lib/slack';
 import {download} from '../lib/download';
 import csv_parse from 'csv-parse';
@@ -29,6 +29,7 @@ type jukugoDict = [
 ];
 
 async function getDictionary() : Promise<jukugoDict>{
+  const kanjis = await kanjisPromise;
   const dictionaryPath = path.resolve(__dirname, 'data','2KanjiWords.txt');
   const dictionaryExists = await new Promise((resolve) => {
     fs.access(dictionaryPath, fs.constants.F_OK, (error) => {
@@ -68,7 +69,7 @@ async function getDictionary() : Promise<jukugoDict>{
             error('parse failed');
           });
           parser.on('end', () => {
-            fs.writeFile(dictionaryPath,res.join('\n'),(err) => {
+            fs.writeFile(dictionaryPath,uniq(res).join('\n'),(err) => {
               if(err)throw err;
               resolve('finished');
             });
@@ -80,7 +81,6 @@ async function getDictionary() : Promise<jukugoDict>{
     return await getDictionary();
   }
 
-  const kanjis = await kanjisPromise;
   const js : string[] = await (new Promise((resolve) => {
     fs.readFile(dictionaryPath,(err,text) => {
       if(err)throw err;
