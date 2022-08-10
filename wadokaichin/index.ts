@@ -191,9 +191,10 @@ export default (slackClients: SlackInterface) => {
       if (message.text && (
             message.text === '和同開珎' ||
             message.text === '和同' ||
+            message.text === '開珎' ||
             message.text === 'わどう')) {
         const data = await generateProblem(await jukugo);
-        const answerTextGen = (ans:string) => `<@${message.user}> 『${ans}』正解🎉` + (
+        const answerTextGen = (ans:string) => `<@[[!user]]> 『${ans}』正解🎉` + (
           data.answers.length === 1 ? "" : `\n他にも『${
             data.answers.filter((c) => c !== ans).join('/')}』などが当てはまります。`
         );
