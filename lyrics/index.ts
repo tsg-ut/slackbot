@@ -22,7 +22,6 @@ interface SongInfo {
 interface MovieInfo {
     embedLink: string,
     id: string,
-    title: string,
 }
 
 interface iTunesInfo {
@@ -97,31 +96,21 @@ export const getSongInfo = async (songInfoUrl: string, keyword: string): Promise
     };
 };
 
-export const getMovieInfo = async (movieInfoUrl: string): Promise<MovieInfo[]> => {
+export const getMovieInfo = async (movieInfoUrl: string): Promise<MovieInfo> => {
     interface fetchedSongData {
-        movies: {embedLink: string, title: string}[];
+        embedLink: string;
     }
-    const {movies} = (await scrapeIt<fetchedSongData>(movieInfoUrl, {
-        movies: {
-            listItem: '#youtube_list .movie_l',
-            data: {
-                embedLink: {
-                    selector: 'a',
-                    attr: 'href',
-                },
-                title: {
-                    selector: 'a',
-                    attr: 'title',
-                },
-            },
+    const movies = (await scrapeIt<fetchedSongData>(movieInfoUrl, {
+        embedLink: {
+            selector: '.col-12.p-0 > iframe',
+            attr: 'src',
         },
     })).data;
 
-    return movies.map(({embedLink, title}) => ({
-        embedLink,
-        title,
-        id: new URL(embedLink).pathname.split('/')[2],
-    }));
+    return {
+        embedLink: movies.embedLink, 
+        id: new URL(movies.embedLink).pathname.split('/')[2],
+    };
 };
 
 const search = async (keyword: string): Promise<SongInfo | null> => {

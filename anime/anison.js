@@ -69,10 +69,10 @@ const getSongInfos = async (title) => {
 			continue;
 		}
 		const songInfo = await getSongInfo(song.link, '');
-		const movieInfos = await getMovieInfo(songInfo.utaNetUrl.replace('song', 'movie'));
+		const movieInfo = await getMovieInfo(songInfo.utaNetUrl.replace('song', 'movie'));
 		songInfo.tokens = await tokenize(songInfo.paragraphs.join('\n'));
 		songInfo.type = song.type;
-		songInfo.movie = `https://youtu.be/${movieInfos[0].id}`;
+		songInfo.movie = `https://youtu.be/${movieInfo.id}`;
 		songInfo.animeTitle = title;
 
 		songInfo.forbiddenWords = uniq([
