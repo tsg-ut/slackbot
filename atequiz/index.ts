@@ -10,7 +10,7 @@ export interface AteQuizProblem {
   problemMessage: ChatPostMessageArguments;
   hintMessages: ChatPostMessageArguments[];
   immediateMessage: ChatPostMessageArguments | null;
-  solvedMessage: ChatPostMessageArguments | ((answer:string) => ChatPostMessageArguments);
+  solvedMessage: ChatPostMessageArguments;
   unsolvedMessage: ChatPostMessageArguments;
   answerMessage: ChatPostMessageArguments | null;
   correctAnswers: string[];
@@ -69,6 +69,10 @@ export class AteQuiz {
     return hintIndex === this.problem.hintMessages.length ? 30 : 15;
   }
 
+  solvedMessageGen(answer: string): ChatPostMessageArguments {
+    return this.problem.solvedMessage;
+  }
+
   constructor(
     { eventClient, webClient: slack }: SlackInterface,
     problem: AteQuizProblem,
@@ -76,7 +80,7 @@ export class AteQuiz {
   ) {
     this.eventClient = eventClient;
     this.slack = slack;
-    this.problem = problem;
+    this.problem = JSON.parse(JSON.stringify(problem));
     this.postOption = JSON.parse(JSON.stringify(option));
 
     assert(
@@ -160,11 +164,8 @@ export class AteQuiz {
               this.state = 'solved';
               clearInterval(tickTimer);
 
-              const solvedMessage : ChatPostMessageArguments =
-                typeof this.problem.solvedMessage === "function" ? // XXX: better type guard
-                this.problem.solvedMessage(answer) : this.problem.solvedMessage;
               await postMessage(
-                Object.assign({}, solvedMessage, { thread_ts }),
+                Object.assign({}, this.solvedMessageGen(answer), { thread_ts }),
                 [[this.replaceKeys.correctAnswerer, message.user as string]]
               );
               

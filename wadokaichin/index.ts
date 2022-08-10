@@ -7,6 +7,7 @@ import type {SlackInterface} from '../lib/slack';
 import {download} from '../lib/download';
 import csv_parse from 'csv-parse';
 import {AteQuiz,AteQuizProblem} from '../atequiz';
+import type { WebAPICallOptions } from '@slack/web-api';
 
 /*
 Future works
@@ -106,7 +107,8 @@ type WadoProblem = [string[],string[]];
 interface Problem{
   problem: WadoProblem,
   repr: string,
-  answers: string[]
+  answers: string[],
+  acceptAnswerMap: Map<string,string>,
 }
 
 async function SolveProblem(jukugo: jukugoDict, problem: Problem) : Promise<string[]> {
@@ -121,7 +123,7 @@ async function SolveProblem(jukugo: jukugoDict, problem: Problem) : Promise<stri
   });
 }
 
-async function generateProblem(jukugo:jukugoDict){
+async function generateProblem(jukugo:jukugoDict) : Promise<Problem> {
   const kanjis = await kanjisPromise;
   let lcnt = 0;
   let problem : WadoProblem = null;
@@ -153,7 +155,7 @@ async function generateProblem(jukugo:jukugoDict){
 //  ${problem[0][0]} :arrow_right::question::arrow_right: ${problem[1][0]}
 //  ${problem[0][1]} :arrow_right::question::arrow_right: ${problem[1][1]}
 //   `;
-  const answers = await SolveProblem(jukugo, { problem, repr: "",answers: [] });
+  const answers = await SolveProblem(jukugo, { problem, repr: "",answers: [], acceptAnswerMap: new Map()});
   const acceptAnswerMap : Map<string,string> = new Map();
   for(const c of answers){
     acceptAnswerMap.set(c,c);
@@ -173,8 +175,32 @@ async function generateProblem(jukugo:jukugoDict){
 }
 
 class WadoQuiz extends AteQuiz {
+  data: Problem;
+  channel: string;
+  constructor(
+    clients: SlackInterface,
+    problem: AteQuizProblem,
+    data: Problem,
+    channel: string,
+    option?: WebAPICallOptions,
+  ){
+    super(clients, problem, option);
+    this.data = data;
+    this.channel = channel;
+  }
   waitSecGen() {
     return 180;
+  }
+  solvedMessageGen(answer: string){
+    const answerChar = this.data.acceptAnswerMap.get(answer);
+    return ({
+      channel: this.channel,
+      text: (`<@[[!user]]> 『${answerChar}』正解🎉` + (
+        this.data.answers.length === 1 ? "" : `\n他にも『${
+          this.data.answers.filter((c) => c !== answerChar).join('/')}』などが当てはまります。`
+      )),
+      reply_broadcast: true,
+    })
   }
 }
 
@@ -194,10 +220,6 @@ export default (slackClients: SlackInterface) => {
             message.text === '開珎' ||
             message.text === 'わどう')) {
         const data = await generateProblem(await jukugo);
-        const answerTextGen = (ans:string) => `<@[[!user]]> 『${ans}』正解🎉` + (
-          data.answers.length === 1 ? "" : `\n他にも『${
-            data.answers.filter((c) => c !== ans).join('/')}』などが当てはまります。`
-        );
         const problem : AteQuizProblem = {
           problemMessage: {
             channel,
@@ -208,11 +230,7 @@ export default (slackClients: SlackInterface) => {
             channel,
             text: ':question:に入る常用漢字は何でしょう？3分以内に答えてね。'
           },
-          solvedMessage: ((ans:string) => ({
-            channel,
-            text: answerTextGen(data.acceptAnswerMap.get(ans)),
-            reply_broadcast: true,
-          })),
+          solvedMessage: null,
           unsolvedMessage: {
             channel,
             text: `時間切れ！\n正解は『${data.answers.join('/')}』でした。`,
@@ -221,8 +239,11 @@ export default (slackClients: SlackInterface) => {
           answerMessage: null,
           correctAnswers: [...data.acceptAnswerMap.keys()]
         };
-        const quiz = new WadoQuiz(slackClients,
+        const quiz = new WadoQuiz(
+          slackClients,
           problem,
+          data,
+          channel,
           {username: '和同開珎', icon_emoji: ':coin:'},
         );
         const result = await quiz.start();
