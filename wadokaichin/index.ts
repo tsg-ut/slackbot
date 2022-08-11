@@ -190,7 +190,7 @@ class WadoQuiz extends AteQuiz {
 }
 
 export default (slackClients: SlackInterface) => {
-  const {eventClient} = slackClients;
+  const {eventClient,webClient} = slackClients;
   const jukugo = getDictionary();
 
   const channel = process.env.CHANNEL_SANDBOX;
@@ -198,12 +198,20 @@ export default (slackClients: SlackInterface) => {
     if (message.channel !== channel) {
       return;
     }
-    mutex.runExclusive(async () => {
-      if (message.text && (
-            message.text === '和同開珎' ||
-            message.text === '和同' ||
-            message.text === '開珎' ||
-            message.text === 'わどう')) {
+    if (message.text && (
+          message.text === '和同開珎' ||
+          message.text === '和同' ||
+          message.text === '開珎' ||
+          message.text === 'わどう')) {
+      if(mutex.isLocked()) {
+        webClient.reactions.add({
+          name: "running",
+          channel: message.channel,
+          timestamp: message.ts,
+        });
+        return;
+      }
+      mutex.runExclusive(async () => {
         const data = await generateProblem(await jukugo);
         const problem : AteQuizProblem = {
           problemMessage: {
@@ -235,7 +243,7 @@ export default (slackClients: SlackInterface) => {
         if (result.state === 'solved') {
           // TODO: add achievenemts
         }
-      }
-    });
+      });
+    }
   });
 };
