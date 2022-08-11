@@ -6,7 +6,7 @@ jest.mock('fs');
 import fs from 'fs';
 
 const kanjis = [ '山', '川', '谷', '海' ];
-const dicts = Array.from({length:2}).fill([
+const dicts = Array.from({length:2}, () => [
   "山谷","山川","山海","川山","谷山","海山"
 ]).flat();
 
@@ -107,9 +107,9 @@ describe('wadokaichin works', () => {
       expect(reply_broadcast || false).toBe(false);
     }
     const now = Date.now();
-
     // XXX: context switchを発生させるために無のawaitをしている。もっとよい書き方がありそう。
     await (new Promise((res) => res(0)));
+    // await new Promise(process.nextTick); // これはデッドロックする模様
 
     Date.now = jest.fn(() => now + 3*60*1000);
     jest.advanceTimersByTime(1000);

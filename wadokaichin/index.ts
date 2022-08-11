@@ -8,6 +8,7 @@ import {download} from '../lib/download';
 import csv_parse from 'csv-parse';
 import {AteQuiz,AteQuizProblem} from '../atequiz';
 import type { WebAPICallOptions } from '@slack/web-api';
+import { stripIndent } from 'common-tags';
 
 /*
 Future works
@@ -31,6 +32,7 @@ type jukugoDict = [
 
 async function getDictionary() : Promise<jukugoDict>{
   const kanjis = await kanjisPromise;
+  const kanjisSet = new Set(kanjis);
   const dictionaryPath = path.resolve(__dirname, 'data','2KanjiWords.txt');
   const dictionaryExists = await new Promise((resolve) => {
     fs.access(dictionaryPath, fs.constants.F_OK, (error) => {
@@ -40,61 +42,48 @@ async function getDictionary() : Promise<jukugoDict>{
   if(!dictionaryExists){
     const corpusPath = path.resolve(__dirname, 'data','corpus.zip');
     await download(corpusPath,"https://repository.ninjal.ac.jp/?action=repository_uri&item_id=3231&file_id=22&file_no=1");
-    await new Promise((resolve,error) => {
-      fs.readFile(corpusPath, function(err, data) {
-        if (err) throw err;
-        JSZip.loadAsync(data).then((zip) => {
-          return zip.files["BCCWJ_frequencylist_luw2_ver1_1.tsv"].nodeStream('nodebuffer');
-        }).then((text) => {
-          const parser = csv_parse({
-            delimiter: '\t',
-            quote: null,
-            skip_lines_with_error: true,
-          });
-          const res : string[] = [];
-          parser.on('readable', () => {
-            for(;;){
-              const v : string[] = parser.read();
-              if(v === null)break;
-              const word = v[2];
-              if(word.length !== 2)continue;
-              if(word.split('').some((c => !kanjis.includes(c))))continue;
-              const type_ = v[3];
-              if(type_.includes("人名"))continue;
-              const freq = Number(v[6]);
-              if(freq < 30)continue;
-              res.push(word);
-            }
-          });
-          parser.on('error', () => {
-            error('parse failed');
-          });
-          parser.on('end', () => {
-            fs.writeFile(dictionaryPath,uniq(res).join('\n'),(err) => {
-              if(err)throw err;
-              resolve('finished');
-            });
-          });
-          text.pipe(parser);
-        })
-      });
+    const data = await fs.promises.readFile(corpusPath);
+    const dict : string = await new Promise((resolve,reject) => {
+      JSZip.loadAsync(data).then((zip) => {
+        return zip.files["BCCWJ_frequencylist_luw2_ver1_1.tsv"].nodeStream('nodebuffer');
+      }).then((text) => {
+        const parser = csv_parse({
+          delimiter: '\t',
+          quote: null,
+          skip_lines_with_error: true,
+        });
+        const res : string[] = [];
+        parser.on('data', (data:string[]) => {
+          const word = data[2];
+          if(word.length !== 2)return;
+          if(word.split('').some((c => !kanjisSet.has(c))))return;
+          const type_ = data[3];
+          if(type_.includes("人名"))return;
+          const freq = Number(data[6]);
+          if(freq < 30)return;
+          res.push(word);
+        });
+        parser.on('error', () => {
+          reject('parse failed');
+        });
+        parser.on('end', () => {
+          resolve(uniq(res).join('\n'));
+        });
+        text.pipe(parser);
+      })
     });
-    return await getDictionary();
+    await fs.promises.writeFile(dictionaryPath,dict);
   }
 
-  const js : string[] = await (new Promise((resolve) => {
-    fs.readFile(dictionaryPath,(err,text) => {
-      if(err)throw err;
-      resolve(text.toString('utf-8').split('\n'))
-    })
-  }));
+  const js : string[] =
+    (await fs.promises.readFile(dictionaryPath)).toString('utf-8').split('\n');
   const res : jukugoDict = [new Map<string,string[]>(),new Map<string,string[]>()];
   for(const c of kanjis){
     res.forEach((m) => m.set(c,[]));
   }
   for(const j of js){
     const cs = j.split('');
-    if(cs.some((c) => !kanjis.includes(c))){
+    if(cs.some((c) => !kanjisSet.has(c))){
       break;
     }
     res[0].get(cs[0]).push(cs[1]);
@@ -113,9 +102,9 @@ interface Problem{
 
 async function SolveProblem(jukugo: jukugoDict, problem: Problem) : Promise<string[]> {
   const kanjis = await kanjisPromise;
-  const dics = problem.problem.map((v,i) => {
-    return v.map((c) => jukugo[i].get(c));
-  });
+  const dics = problem.problem.map((v,i) =>
+    v.map((c) => jukugo[i].get(c))
+  );
   return kanjis.filter((c) => {
     if(dics[0].some(cs => !cs.includes(c)))return false;
     if(dics[1].some(cs => !cs.includes(c)))return false;
@@ -127,7 +116,7 @@ async function generateProblem(jukugo:jukugoDict) : Promise<Problem> {
   const kanjis = await kanjisPromise;
   let lcnt = 0;
   let problem : WadoProblem = null;
-  for(;;){
+  while(true){
     const c = sample(kanjis);
     const j0 = jukugo[0].get(c);
     const j1 = jukugo[1].get(c);
@@ -143,18 +132,14 @@ async function generateProblem(jukugo:jukugoDict) : Promise<Problem> {
   }
 
   // フォントがどうしてもずれる
-  const repr = `
-:_::_: ${problem[0][0]}
-:_::_::arrow_down:
- ${problem[0][1]} :arrow_right::question::arrow_right: ${problem[1][0]}
-:_::_::arrow_down:
-:_::_: ${problem[1][1]}
+  const repr = stripIndent`
+    :_::_::_: ${problem[0][0]}
+    :_::_::_::arrow_down:
+    :_: ${problem[0][1]} :arrow_right::question::arrow_right: ${problem[1][0]}
+    :_::_::_::arrow_down:
+    :_::_::_: ${problem[1][1]}
   `;
 
-//   const repr = `
-//  ${problem[0][0]} :arrow_right::question::arrow_right: ${problem[1][0]}
-//  ${problem[0][1]} :arrow_right::question::arrow_right: ${problem[1][1]}
-//   `;
   const answers = await SolveProblem(jukugo, { problem, repr: "",answers: [], acceptAnswerMap: new Map()});
   const acceptAnswerMap : Map<string,string> = new Map();
   for(const c of answers){
