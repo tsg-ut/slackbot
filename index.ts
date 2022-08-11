@@ -73,7 +73,6 @@ const allBots = [
 	'hayaoshi',
 	'twitter-dm-notifier',
 	'hitandblow',
-	'achievement-quiz',
 	'discord',
 	'octas',
 	'pwnyaa',
