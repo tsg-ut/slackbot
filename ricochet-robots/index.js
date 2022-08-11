@@ -176,7 +176,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 					}[text.match(/^(ベイビー|スーパー|ハイパー)/)[0]];
 					
 					const waittime = 10;
-					if(!state || (depth && state.answer.length < depth) || (isbattle && !state.battles.isbattle)){
+					if(!state){
 						const [bo,ans] = await board.getBoard({depth: (depth || 1000) , ...difficulty});
 						state = {
 							board: bo,

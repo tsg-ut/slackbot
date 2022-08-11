@@ -399,6 +399,11 @@ const postOption = {
   username: 'クレア',
 };
 
+const postOptionEasy = {
+  icon_emoji: ':claire_kirarafantasia:',
+  username: 'クレア（やさしい）',
+};
+
 export default (slackClients: SlackInterface): void => {
   const { eventClient } = slackClients;
 
@@ -432,6 +437,25 @@ export default (slackClients: SlackInterface): void => {
         }
         if (result.hintIndex <= 2) {
           await increment(result.correctAnswerer, 'kirafan-answer-third-hint');
+        }
+      }
+    }
+
+    if (message.text.match(/^きらファン当てクイズ\s?(easy|[☆★]3)$/)) {
+      const randomKirafanCard = sample((await getKirafanCards()).filter(card => card.rare === 2));
+      const problem = await generateProblem(randomKirafanCard);
+      const quiz = new KirafanAteQuiz(slackClients, problem, postOptionEasy);
+      const result = await quiz.start();
+      if (result.state === 'solved') {
+        await increment(result.correctAnswerer, 'kirafan-easy-answer');
+        if (result.hintIndex === 0) {
+          await increment(result.correctAnswerer, 'kirafan-easy-answer-first-hint');
+        }
+        if (result.hintIndex <= 1) {
+          await increment(result.correctAnswerer, 'kirafan-easy-answer-second-hint');
+        }
+        if (result.hintIndex <= 2) {
+          await increment(result.correctAnswerer, 'kirafan-easy-answer-third-hint');
         }
       }
     }
