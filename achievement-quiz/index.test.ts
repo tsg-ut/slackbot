@@ -1,4 +1,3 @@
-import { stripIndent } from 'common-tags';
 import achievementQuiz from './index';
 
 const Slack = require('../lib/slackMock.js');
