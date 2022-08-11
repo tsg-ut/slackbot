@@ -2712,42 +2712,42 @@ const achievements: Achievement[] = [
 	{
 		id: 'achievement-quiz-clear-baby',
 		difficulty: 'medium',
-		title: 'BE MY BABY',
+		title: 'BE MY BABY', // BE MY BABY
 		condition: '実績当てクイズで難易度babyの実績の名前を当てる',
 		category: 'achievement-quiz',
 	},
 	{
 		id: 'achievement-quiz-clear-easy',
 		difficulty: 'medium',
-		title: 'Used to be 諦めるのは easy',
+		title: 'Used to be 諦めるのは easy', // Can We Go Back
 		condition: '実績当てクイズで難易度easyの実績の名前を当てる',
 		category: 'achievement-quiz',
 	},
 	{
 		id: 'achievement-quiz-clear-medium',
 		difficulty: 'medium',
-		title: '',
+		title: 'TORO is Medium toro', // Oh! SUSHI （スシ食いねェ!）
 		condition: '実績当てクイズで難易度mediumの実績の名前を当てる',
 		category: 'achievement-quiz',
 	},
 	{
 		id: 'achievement-quiz-clear-hard',
 		difficulty: 'hard',
-		title: '',
+		title: 'はーどっこい！', // はやくそれになりたい！
 		condition: '実績当てクイズで難易度hardの実績の名前を当てる',
 		category: 'achievement-quiz',
 	},
 	{
 		id: 'achievement-quiz-clear-professional',
 		difficulty: 'hard',
-		title: '',
+		title: '神業を超えたプロの螺旋', // SUSHI食べたい
 		condition: '実績当てクイズで難易度professionalの実績の名前を当てる',
 		category: 'achievement-quiz',
 	},
 	{
 		id: 'achievement-quiz-clear-this-achievement',
 		difficulty: 'professional',
-		title: '',
+		title: 'マッチポンプ',
 		condition: '実績当てクイズでこの実績の名前を当てる',
 		category: 'achievement-quiz',
 	},
