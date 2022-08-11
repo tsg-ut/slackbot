@@ -176,11 +176,11 @@ class WadoQuiz extends AteQuiz {
   waitSecGen() {
     return 180;
   }
-  solvedMessageGen(answer: string){
+  solvedMessageGen(user: string, answer: string){
     const answerChar = this.data.acceptAnswerMap.get(answer);
     return ({
       channel: this.channel,
-      text: (`<@[[!user]]> 『${answerChar}』正解🎉` + (
+      text: (`<@${user}> 『${answerChar}』正解🎉` + (
         this.data.answers.length === 1 ? "" : `\n他にも『${
           this.data.answers.filter((c) => c !== answerChar).join('/')}』などが当てはまります。`
       )),

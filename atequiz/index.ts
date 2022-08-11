@@ -69,8 +69,10 @@ export class AteQuiz {
     return hintIndex === this.problem.hintMessages.length ? 30 : 15;
   }
 
-  solvedMessageGen(answer: string): ChatPostMessageArguments {
-    return this.problem.solvedMessage;
+  solvedMessageGen(user: string, answer: string): ChatPostMessageArguments {
+    const message = Object.assign({}, this.problem.solvedMessage);
+    message.text = message.text.replaceAll(this.replaceKeys.correctAnswerer,user);
+    return message;
   }
 
   constructor(
@@ -101,14 +103,8 @@ export class AteQuiz {
 
     const postMessage = (
       message: ChatPostMessageArguments,
-      replaces?: [string, string][]
     ) => {
       const toSend = Object.assign({}, message, this.postOption);
-      if (replaces) {
-        replaces.forEach(([pre, post]) => {
-          toSend.text = toSend.text.replaceAll(pre, post);
-        });
-      }
       return this.slack.chat.postMessage(toSend);
     };
 
@@ -165,8 +161,7 @@ export class AteQuiz {
               clearInterval(tickTimer);
 
               await postMessage(
-                Object.assign({}, this.solvedMessageGen(answer), { thread_ts }),
-                [[this.replaceKeys.correctAnswerer, message.user as string]]
+                Object.assign({}, this.solvedMessageGen(message.user as string, answer), { thread_ts })
               );
               
               if (this.problem.answerMessage){
