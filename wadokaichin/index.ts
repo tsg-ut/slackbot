@@ -9,6 +9,7 @@ import csv_parse from 'csv-parse';
 import {AteQuiz,AteQuizProblem} from '../atequiz';
 import type { WebAPICallOptions } from '@slack/web-api';
 import { stripIndent } from 'common-tags';
+import {Loader} from '../lib/utils';
 
 /*
 Future works
@@ -16,11 +17,9 @@ Future works
 */
 const mutex = new Mutex();
 
-const kanjisPromise : Promise<string[]> = new Promise((resolve) => {
-  fs.readFile(path.join(__dirname, 'data','JoyoKanjis.txt'),(err,text) => {
-    if(err)throw err;
-    resolve(text.toString('utf-8').split('\n'))
-  })
+const kanjisLoader : Loader<string[]> = new Loader(async () => {
+  const text = await fs.promises.readFile(path.join(__dirname, 'data','JoyoKanjis.txt'));
+  return text.toString('utf-8').split('\n');
 });
 /*
 jukugo[i].get(c)は『i文字目がcのときの残りの文字としてありうるもの』
@@ -30,8 +29,8 @@ type jukugoDict = [
   Map<string,string[]>
 ];
 
-async function getDictionary() : Promise<jukugoDict>{
-  const kanjis = await kanjisPromise;
+const jukugoLoader : Loader<jukugoDict> = new Loader(async () => {
+  const kanjis = await kanjisLoader.load();
   const kanjisSet = new Set(kanjis);
   const dictionaryPath = path.resolve(__dirname, 'data','2KanjiWords.txt');
   const dictionaryExists = await new Promise((resolve) => {
@@ -90,7 +89,7 @@ async function getDictionary() : Promise<jukugoDict>{
     res[1].get(cs[1]).push(cs[0]);
   }
   return res;
-}
+});
 
 type WadoProblem = [string[],string[]];
 interface Problem{
@@ -101,7 +100,7 @@ interface Problem{
 }
 
 async function SolveProblem(jukugo: jukugoDict, problem: Problem) : Promise<string[]> {
-  const kanjis = await kanjisPromise;
+  const kanjis = await kanjisLoader.load();
   const dics = problem.problem.map((v,i) =>
     v.map((c) => jukugo[i].get(c))
   );
@@ -113,7 +112,7 @@ async function SolveProblem(jukugo: jukugoDict, problem: Problem) : Promise<stri
 }
 
 async function generateProblem(jukugo:jukugoDict) : Promise<Problem> {
-  const kanjis = await kanjisPromise;
+  const kanjis = await kanjisLoader.load();
   let lcnt = 0;
   let problem : WadoProblem = null;
   while(true){
@@ -191,7 +190,6 @@ class WadoQuiz extends AteQuiz {
 
 export default (slackClients: SlackInterface) => {
   const {eventClient,webClient} = slackClients;
-  const jukugo = getDictionary();
 
   const channel = process.env.CHANNEL_SANDBOX;
   eventClient.on('message', (message) => {
@@ -212,7 +210,7 @@ export default (slackClients: SlackInterface) => {
         return;
       }
       mutex.runExclusive(async () => {
-        const data = await generateProblem(await jukugo);
+        const data = await generateProblem(await jukugoLoader.load());
         const problem : AteQuizProblem = {
           problemMessage: {
             channel,
