@@ -69,6 +69,17 @@ export class AteQuiz {
     return hintIndex === this.problem.hintMessages.length ? 30 : 15;
   }
 
+  /**
+   * Generate solved message.
+   * @param {any} post the post judged as correct
+   * @returns a object that specifies the parameters of a solved message
+   */
+  solvedMessageGen(post: any): ChatPostMessageArguments {
+    const message = Object.assign({}, this.problem.solvedMessage);
+    message.text = message.text.replaceAll(this.replaceKeys.correctAnswerer, post.user as string);
+    return message;
+  }
+
   constructor(
     { eventClient, webClient: slack }: SlackInterface,
     problem: AteQuizProblem,
@@ -97,25 +108,10 @@ export class AteQuiz {
 
     const postMessage = (
       message: ChatPostMessageArguments,
-      replaces?: [string, string][]
     ) => {
       const toSend = Object.assign({}, message, this.postOption);
-      if (replaces) {
-        replaces.forEach(([pre, post]) => {
-          toSend.text = toSend.text.replaceAll(pre, post);
-        });
-      }
       return this.slack.chat.postMessage(toSend);
     };
-
-    const { ts: thread_ts } = await postMessage(this.problem.problemMessage);
-    assert(typeof thread_ts === 'string');
-
-    if (this.problem.immediateMessage){
-      await postMessage(
-        Object.assign({}, this.problem.immediateMessage, { thread_ts })
-      );
-    }
 
     const result: AteQuizResult = {
       quiz: this.problem,
@@ -124,7 +120,7 @@ export class AteQuiz {
       hintIndex: null,
     };
 
-    let previousHintTime = Date.now();
+    let previousHintTime : number = null;
     let hintIndex = 0;
 
     const deferred = new Deferred<AteQuizResult>();
@@ -134,7 +130,6 @@ export class AteQuiz {
         const now = Date.now();
         const nextHintTime =
           previousHintTime + 1000 * this.waitSecGen(hintIndex);
-
         if (this.state === 'solving' && nextHintTime <= now) {
           previousHintTime = now;
           if (hintIndex < this.problem.hintMessages.length) {
@@ -159,8 +154,6 @@ export class AteQuiz {
       });
     };
 
-    const tickTimer = setInterval(onTick, 1000);
-
     this.eventClient.on('message', async message => {
       if (message.thread_ts === thread_ts) {
         if (message.subtype === 'bot_message') return;
@@ -173,8 +166,7 @@ export class AteQuiz {
               clearInterval(tickTimer);
 
               await postMessage(
-                Object.assign({}, this.problem.solvedMessage, { thread_ts }),
-                [[this.replaceKeys.correctAnswerer, message.user as string]]
+                Object.assign({}, this.solvedMessageGen(message), { thread_ts })
               );
               
               if (this.problem.answerMessage){
@@ -198,6 +190,18 @@ export class AteQuiz {
         });
       }
     });
+
+    // Listeners should be added before postMessage is called.
+    const { ts: thread_ts } = await postMessage(this.problem.problemMessage);
+    assert(typeof thread_ts === 'string');
+
+    if (this.problem.immediateMessage){
+      await postMessage(
+        Object.assign({}, this.problem.immediateMessage, { thread_ts })
+      );
+    }
+    previousHintTime = Date.now();
+    const tickTimer = setInterval(onTick, 1000);
 
     return deferred.promise;
   }

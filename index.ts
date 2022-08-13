@@ -90,6 +90,7 @@ const allBots = [
 	'jantama',
 	'tabi-gatcha',
 	'achievement-quiz',
+	'wadokaichin',
 ];
 
 logger.info('slackbot started');

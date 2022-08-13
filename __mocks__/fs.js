@@ -7,6 +7,8 @@ const {PassThrough} = require('stream');
 
 fs.virtualFiles = {};
 
+fs.promises = {};
+
 fs.readFile = jest.fn((...args) => {
 	const [path, callback] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
@@ -27,6 +29,17 @@ fs.readFileSync = jest.fn((...args) => {
 		return fs.virtualFiles[fullPath];
 	} else {
 		return realFs.readFileSync(...args);
+	}
+});
+
+fs.promises.readFile = jest.fn((...args) => {
+	const [path] = args;
+	const fullPath = Path.resolve(process.cwd(), path);
+
+	if (fs.virtualFiles.hasOwnProperty(fullPath)) {
+		return new Promise((resolve) => resolve(fs.virtualFiles[fullPath]));
+	} else {
+		return realFs.promises.readFile(...args);
 	}
 });
 
