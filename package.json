@@ -62,7 +62,7 @@
     "cloudinary": "^1.27.1",
     "common-tags": "=1.8.0",
     "concat-stream": "^2.0.0",
-    "csv-parse": "^5.3.0",
+    "csv-parse": "^4.16.3",
     "d3": "^7.1.1",
     "d3-cloud": "^1.2.5",
     "deepcopy": "^2.1.0",
