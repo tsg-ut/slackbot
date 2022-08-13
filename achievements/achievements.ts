@@ -2769,6 +2769,8 @@ const achievements: Achievement[] = [
 		title: 'BE MY BABY', // BE MY BABY
 		condition: '実績当てクイズで難易度babyの実績の名前を当てる',
 		category: 'achievement-quiz',
+		counter: 'achievement-quiz-clear-baby',
+		value: 1,
 	},
 	{
 		id: 'achievement-quiz-clear-easy',
@@ -2776,6 +2778,8 @@ const achievements: Achievement[] = [
 		title: 'Used to be 諦めるのは easy', // Can We Go Back
 		condition: '実績当てクイズで難易度easyの実績の名前を当てる',
 		category: 'achievement-quiz',
+		counter: 'achievement-quiz-clear-easy',
+		value: 1,
 	},
 	{
 		id: 'achievement-quiz-clear-medium',
@@ -2783,6 +2787,8 @@ const achievements: Achievement[] = [
 		title: 'TORO is Medium toro', // Oh! SUSHI （スシ食いねェ!）
 		condition: '実績当てクイズで難易度mediumの実績の名前を当てる',
 		category: 'achievement-quiz',
+		counter: 'achievement-quiz-clear-medium',
+		value: 1,
 	},
 	{
 		id: 'achievement-quiz-clear-hard',
@@ -2790,6 +2796,8 @@ const achievements: Achievement[] = [
 		title: 'はーどっこい！', // はやくそれになりたい！
 		condition: '実績当てクイズで難易度hardの実績の名前を当てる',
 		category: 'achievement-quiz',
+		counter: 'achievement-quiz-clear-hard',
+		value: 1,
 	},
 	{
 		id: 'achievement-quiz-clear-professional',
@@ -2797,6 +2805,8 @@ const achievements: Achievement[] = [
 		title: '神業を超えたプロの螺旋', // SUSHI食べたい
 		condition: '実績当てクイズで難易度professionalの実績の名前を当てる',
 		category: 'achievement-quiz',
+		counter: 'achievement-quiz-clear-professional',
+		value: 1,
 	},
 	{
 		id: 'achievement-quiz-clear-this-achievement',

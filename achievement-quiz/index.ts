@@ -131,7 +131,7 @@ export default (slackClients: SlackInterface): void => {
       // 実績解除
       if (result.state === 'solved') {
         increment(result.correctAnswerer, 'achievement-quiz-clear');
-        unlock(
+        increment(
           result.correctAnswerer,
           `achievement-quiz-clear-${problem.correctAchievement.difficulty}`
         );
