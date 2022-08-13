@@ -1,6 +1,6 @@
 export type Difficulty = 'baby' | 'easy' | 'medium' | 'hard' | 'professional';
 
-interface Achievement {
+export interface Achievement {
 	id: string,
 	difficulty: Difficulty,
 	title: string,
@@ -2744,8 +2744,79 @@ const achievements: Achievement[] = [
 		category: 'bcr',
 	},
 
-	// sorting-riddles
+	// achievement-quiz
+	{
+		id: 'achievement-quiz-clear',
+		difficulty: 'easy',
+		title: '実績初心者',
+		condition: '実績当てクイズで正解する',
+		category: 'achievement-quiz',
+		counter: 'achievement-quiz-clear',
+		value: 1,
+	},
+	{
+		id: 'achievement-quiz-clear-20',
+		difficulty: 'hard',
+		title: '実績職人',
+		condition: '実績当てクイズで20回正解する',
+		category: 'achievement-quiz',
+		counter: 'achievement-quiz-clear',
+		value: 20,
+	},
+	{
+		id: 'achievement-quiz-clear-baby',
+		difficulty: 'medium',
+		title: 'BE MY BABY', // BE MY BABY
+		condition: '実績当てクイズで難易度babyの実績の名前を当てる',
+		category: 'achievement-quiz',
+		counter: 'achievement-quiz-clear-baby',
+		value: 1,
+	},
+	{
+		id: 'achievement-quiz-clear-easy',
+		difficulty: 'medium',
+		title: 'Used to be 諦めるのは easy', // Can We Go Back
+		condition: '実績当てクイズで難易度easyの実績の名前を当てる',
+		category: 'achievement-quiz',
+		counter: 'achievement-quiz-clear-easy',
+		value: 1,
+	},
+	{
+		id: 'achievement-quiz-clear-medium',
+		difficulty: 'medium',
+		title: 'TORO is Medium toro', // Oh! SUSHI （スシ食いねェ!）
+		condition: '実績当てクイズで難易度mediumの実績の名前を当てる',
+		category: 'achievement-quiz',
+		counter: 'achievement-quiz-clear-medium',
+		value: 1,
+	},
+	{
+		id: 'achievement-quiz-clear-hard',
+		difficulty: 'hard',
+		title: 'はーどっこい！', // はやくそれになりたい！
+		condition: '実績当てクイズで難易度hardの実績の名前を当てる',
+		category: 'achievement-quiz',
+		counter: 'achievement-quiz-clear-hard',
+		value: 1,
+	},
+	{
+		id: 'achievement-quiz-clear-professional',
+		difficulty: 'hard',
+		title: '神業を超えたプロの螺旋', // SUSHI食べたい
+		condition: '実績当てクイズで難易度professionalの実績の名前を当てる',
+		category: 'achievement-quiz',
+		counter: 'achievement-quiz-clear-professional',
+		value: 1,
+	},
+	{
+		id: 'achievement-quiz-clear-this-achievement',
+		difficulty: 'professional',
+		title: 'マッチポンプ',
+		condition: '実績当てクイズでこの実績の名前を当てる',
+		category: 'achievement-quiz',
+	},
 
+	// sorting-riddles
 	{
 		id: 'sorting-riddles-answer',
 		difficulty: 'easy',
