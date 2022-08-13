@@ -122,7 +122,7 @@ export default (slackClients: SlackInterface): void => {
     }
 
     // クイズ開始処理
-    if (message.text === '実績当てクイズ')) {
+    if (message.text === '実績当てクイズ') {
       const randomAchievement = sample(achievements);
       const problem = generateProblem(randomAchievement);
       const quiz = new AchievementAteQuiz(slackClients, problem, postOption);
