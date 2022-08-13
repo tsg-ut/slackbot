@@ -69,9 +69,14 @@ export class AteQuiz {
     return hintIndex === this.problem.hintMessages.length ? 30 : 15;
   }
 
-  solvedMessageGen(user: string, answer: string): ChatPostMessageArguments {
+  /**
+   * Generate solved message.
+   * @param {any} post the post judged as correct
+   * @returns a object that specifies the parameters of a solved message
+   */
+  solvedMessageGen(post: any): ChatPostMessageArguments {
     const message = Object.assign({}, this.problem.solvedMessage);
-    message.text = message.text.replaceAll(this.replaceKeys.correctAnswerer,user);
+    message.text = message.text.replaceAll(this.replaceKeys.correctAnswerer, post.user as string);
     return message;
   }
 
@@ -161,7 +166,7 @@ export class AteQuiz {
               clearInterval(tickTimer);
 
               await postMessage(
-                Object.assign({}, this.solvedMessageGen(message.user as string, answer), { thread_ts })
+                Object.assign({}, this.solvedMessageGen(message), { thread_ts })
               );
               
               if (this.problem.answerMessage){

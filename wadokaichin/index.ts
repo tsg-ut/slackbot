@@ -175,7 +175,9 @@ class WadoQuiz extends AteQuiz {
   waitSecGen() {
     return 180;
   }
-  solvedMessageGen(user: string, answer: string){
+  solvedMessageGen(post: any){
+    const user : string = post.user;
+    const answer : string = post.text;
     const answerChar = this.data.acceptAnswerMap.get(answer);
     return ({
       channel: this.channel,
