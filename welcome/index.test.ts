@@ -7,9 +7,7 @@ import welcome from './index';
 
 jest.mock('axios');
 
-const apiData = `welcome
-/// これはコメントです
-:tada:TSGへようこそ！:tada:
+const apiData = `:tada:TSGへようこそ！:tada:
 uouofishlife. uouo. uouo.
 
 *Slackについて* :slack:
