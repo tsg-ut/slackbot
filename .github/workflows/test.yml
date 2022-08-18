@@ -5,7 +5,7 @@ on:
   - pull_request
 
 jobs:
-  test:
+  test-js:
     runs-on: ubuntu-latest
 
     steps:
@@ -47,3 +47,21 @@ jobs:
 
       - name: codecov
         run: npx codecov
+
+  test-rust:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly-2022-07-23
+          default: true
+          override: true
+
+      - name: build
+        run: cargo build --all --verbose
+
+      - name: test
+        run: cargo test --all --verbose
