@@ -2,9 +2,8 @@ import axios from 'axios';
 import logger from '../lib/logger';
 
 // https://scrapbox.io/help-jp/API
-const welcomeScrapboxUrl = `https://scrapbox.io/api/pages/tsg/welcome/text`;
-
-const PrefixComment = '///';
+// https://scrapbox.io/scrapboxlab/%E3%82%B3%E3%83%BC%E3%83%89%E3%83%96%E3%83%AD%E3%83%83%E3%82%AF
+const welcomeScrapboxUrl = `https://scrapbox.io/api/code/tsg/welcome/message`;
 
 import { WebClient } from '@slack/web-api';
 import type { Member } from '@slack/web-api/dist/response/UsersListResponse';
@@ -19,13 +18,7 @@ async function extractWelcomeMessage(): Promise<string> {
 		},
 	});
 
-	const body = data
-		.split('\n')
-		.slice(1)
-		.filter((line: string) => !line.startsWith(PrefixComment))
-		.join('\n');
-
-	return body;
+	return data;
 }
 
 export default async ({ eventClient, webClient: slack }: SlackInterface) => {
