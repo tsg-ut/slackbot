@@ -9,8 +9,8 @@ const { default: logger } = require('../lib/logger.ts');
 const { getMemberName } = require('../lib/slackUtils');
 const axios = require('axios');
 
-const BOT_NAME = "hangmannbot";
-const BOT_CALL_KEYWORD = "hangmann";
+const BOT_NAME = "hangmanbot";
+const BOT_CALL_KEYWORD = "hangman";
 
 const state = (() => {
     try {
