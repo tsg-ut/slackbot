@@ -91,6 +91,7 @@ const allBots = [
 	'tabi-gatcha',
 	'achievement-quiz',
 	'wadokaichin',
+	'wordle-battle',
 ];
 
 logger.info('slackbot started');
