@@ -98,19 +98,11 @@ export default async ({eventClient, webClient: slack, eventClient: event}: Slack
         }
         if (Object.values(unfurls).length > 0) {
             try {
-                const {data} = await (axios({
-                    method: 'POST',
-                    url: 'https://slack.com/api/chat.unfurl',
-                    data: qs.stringify({
+                const data = await slack.chat.unfurl({
                         ts: e.message_ts,
                         channel: e.channel,
-                        unfurls: JSON.stringify(unfurls),
-                        token: process.env.HAKATASHI_TOKEN,
-                    }),
-                    headers: {
-                        'content-type': 'application/x-www-form-urlencoded',
-                    },
-                }) as AxiosPromise<ChatUnfurlResponse>);
+                        unfurls: unfurls,
+                });
 
                 if (!data.ok) {
                     throw data;

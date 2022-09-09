@@ -53,7 +53,7 @@ export const scrapbox2slack = (s: string) => (
 		.replace(/(?<!\/|\|)#(?<hashtag>[^\s]+)/g, '<https://scrapbox.io/tsg/$<hashtag>|#$<hashtag>>') // hashtag
 );
 
-export default ({eventClient: event}: SlackInterface) => {
+export default ({webClient: slack, eventClient: event}: SlackInterface) => {
 	event.on('link_shared', async ({links, message_ts, channel}: { links: Link[]; message_ts: string; channel: string; }) => {
 		logger.info('Incoming unfurl request >');
 		for (const link of links) {
@@ -98,19 +98,12 @@ export default ({eventClient: event}: SlackInterface) => {
 		}
 		if (Object.values(unfurls).length > 0) {
 			try {
-				const {data}: AxiosResponse<any> = await axios({
-					method: 'POST',
-					url: 'https://slack.com/api/chat.unfurl',
-					data: qs.stringify({
-						ts: message_ts,
-						channel,
-						unfurls: JSON.stringify(unfurls),
-						token: process.env.HAKATASHI_TOKEN,
-					}),
-					headers: {
-						'content-type': 'application/x-www-form-urlencoded',
-					},
+				const data = await slack.chat.unfurl({
+					ts: message_ts,
+					channel,
+					unfurls: unfurls,
 				});
+
 				if (data.ok) {
 					logger.info('✓ chat.unfurl >', data);
 				} else {

@@ -55,7 +55,6 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		}
 
 		await slack.conversations.setTopic({
-			token: process.env.HAKATASHI_TOKEN,
 			channel: process.env.CHANNEL_SANDBOX,
 			topic: topicText,
 		});
@@ -79,7 +78,6 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		}
 
 		const res = await slack.conversations.history({
-			token: process.env.HAKATASHI_TOKEN,
 			channel: event.item.channel,
 			latest: event.item.ts,
 			limit: 1,
