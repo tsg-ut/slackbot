@@ -128,7 +128,7 @@ export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 			// fetch message detail
 			// eslint-disable-next-line prefer-destructuring
 			const updatedMessage: {ts: string, text: string, blocks: any[], reactions: any[]} = (await tsgSlack.conversations.history({
-				token: updatedTeam === 'TSG' ? process.env.HAKATASHI_TOKEN : kmcToken.access_token,
+				token: updatedTeam === 'TSG' ? process.env.SLACK_TOKEN : kmcToken.bot_access_token,
 				channel: updatedTeam === 'TSG' ? process.env.CHANNEL_SANDBOX : process.env.KMC_CHANNEL_SANDBOX,
 				latest: event.item.ts,
 				limit: 1,
