@@ -7,9 +7,11 @@ const {sample, get} = require("lodash");
 const {hiraganize} = require("japanese");
 const {stripIndents} = require("common-tags");
 const {unlock, increment} = require("../achievements");
-const {default: logger} = require('../lib/logger.ts');
+const {default: _logger} = require('../lib/logger.ts');
 const {getMemberName} = require('../lib/slackUtils');
 const {default: State} = require('../lib/state.ts');
+
+const logger = _logger.child({bot: 'pocky'});
 
 const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，．…・?!：；:;\s]+$/g;
 

@@ -24,7 +24,7 @@ const sqlite3 = require('sqlite3');
 const {unlock, increment} = require('../achievements');
 const getReading = require('../lib/getReading.js');
 
-const {default: logger} = require('../lib/logger.ts');
+const {default: _logger} = require('../lib/logger.ts');
 const bot = require('./bot.js');
 const gist = require('./gist.js');
 const {
@@ -36,6 +36,8 @@ const {
 	getCandidateWords,
 	normalizeMeaning,
 } = require('./lib.js');
+
+const logger = _logger.child({bot: 'tahoiya'});
 
 const timeCollectMeaningNormal = 3 * 60 * 1000;
 const timeCollectMeaningDaily = 90 * 60 * 1000;

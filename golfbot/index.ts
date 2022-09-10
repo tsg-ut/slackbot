@@ -5,7 +5,7 @@ import moment from 'moment';
 import {MessageAttachment} from '@slack/web-api';
 import {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberIcon, getMemberName, mrkdwn} from '../lib/slackUtils';
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
 import State from '../lib/state';
 import * as achievements from '../achievements/index.js';
 import config from './config';
@@ -16,6 +16,7 @@ import * as anagol from './anagol';
 const USERNAME = 'golfbot';
 const ICON_EMOJI = ':golf:';
 
+const logger = _logger.child({bot: 'golfbot'});
 const mutex = new Mutex();
 
 type ParseResult =

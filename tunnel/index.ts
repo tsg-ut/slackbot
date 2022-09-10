@@ -7,11 +7,12 @@ import {flatten, uniq} from 'lodash';
 import sql from 'sql-template-strings';
 import {open} from 'sqlite';
 import sqlite3 from 'sqlite3';
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 
 import {getEmoji, getMemberIcon, getMemberName} from '../lib/slackUtils';
 
+const logger = _logger.child({bot: 'tunnel'});
 const messages = new Map();
 
 let isTsgAllowing = true;

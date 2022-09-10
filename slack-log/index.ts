@@ -1,8 +1,10 @@
 import axios, {AxiosPromise} from 'axios';
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
 import type {LinkUnfurls} from '@slack/web-api';
 import qs from 'querystring';
 import type {ChatUnfurlResponse} from '@slack/web-api';
+
+const logger = _logger.child({bot: 'slack-log'});
 
 const slacklogAPIDomain = 'localhost:9292';
 const slacklogURLRegexp = new RegExp('^https?://slack-log.tsg.ne.jp/([A-Z0-9]+)/([0-9]+\.[0-9]+)');

@@ -9,7 +9,8 @@ const cloudinary = require('cloudinary');
 const {createCanvas, Image, registerFont} = require('canvas');
 const path = require('path');
 
-const {default: logger} = require('../lib/logger.ts');
+const {default: _logger} = require('../lib/logger.ts');
+const logger = _logger.child({bot: 'summary'});
 
 let fontloaded = false;
 

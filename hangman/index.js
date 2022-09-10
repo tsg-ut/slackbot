@@ -5,8 +5,10 @@ const path = require('path');
 const download = require('download');
 const { stripIndents } = require("common-tags");
 const { unlock, increment, set } = require('../achievements');
-const { default: logger } = require('../lib/logger.ts');
+const { default: _logger } = require('../lib/logger.ts');
 const { getMemberName } = require('../lib/slackUtils');
+
+const logger = _logger.child({bot: 'hangman'});
 
 const state = (() => {
     try {

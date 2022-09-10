@@ -5,7 +5,7 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import schedule from 'node-schedule';
 import {unlock} from '../achievements/index.js';
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Contest, User, SolvedInfo} from './lib/BasicTypes';
@@ -14,6 +14,7 @@ import {fetchChallsKSN, fetchUserProfileKSN, findUserByNameKSN} from './lib/KSNM
 import {fetchUserProfileTW, fetchChallsTW, findUserByNameTW} from './lib/TWManager';
 import {fetchChallsXYZ, fetchUserProfileXYZ, findUserByNameXYZ} from './lib/XYZManager';
 
+const logger = _logger.child({bot: 'pwnyaa'});
 const mutex = new Mutex();
 
 const MINUTE = 60 * 1000;

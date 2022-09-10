@@ -1,5 +1,7 @@
 import axios from 'axios';
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
+
+const logger = _logger.child({bot: 'welcome'});
 
 // https://scrapbox.io/help-jp/API
 // https://scrapbox.io/scrapboxlab/%E3%82%B3%E3%83%BC%E3%83%89%E3%83%96%E3%83%AD%E3%83%83%E3%82%AF

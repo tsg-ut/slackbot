@@ -1,11 +1,13 @@
 import {FastifyInstance} from 'fastify';
 import type {SlackInterface, SlackOauthEndpoint} from '../lib/slack';
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
 import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import sql from 'sql-template-strings';
 import {get} from 'lodash';
+
+const logger = _logger.child({bot: 'oauth'});
 
 export const server = ({webClient: slack}: SlackInterface) => async (fastify: FastifyInstance) => {
 	const db = await sqlite.open({

@@ -1,4 +1,6 @@
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
+
+const logger = _logger.child({bot: 'achievements'});
 
 export default async () => {};
 

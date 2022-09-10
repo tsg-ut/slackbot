@@ -2,7 +2,7 @@ import {get} from 'lodash';
 import type {Token} from '../oauth/tokens';
 import {Deferred} from './utils';
 import {TeamEventClient} from './slackEventClient';
-import logger from './logger';
+import _logger from './logger';
 
 import type {SlackEventAdapter} from '@slack/events-api';
 import type {Reaction} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
@@ -15,6 +15,8 @@ import type {
 	EmojiListArguments,
 	EmojiListResponse,
 } from '@slack/web-api';
+
+const logger = _logger.child({bot: 'lib/slackCache'});
 
 interface WebClient {
 	users: {

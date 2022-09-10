@@ -1,6 +1,8 @@
 import Fastify from 'fastify';
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
 import {getAllTSGMembers} from '../lib/slackUtils';
+
+const logger = _logger.child({bot: 'api'});
 
 interface RootRoute {
 	Querystring: {

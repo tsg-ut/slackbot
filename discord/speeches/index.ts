@@ -1,9 +1,11 @@
-import logger from '../../lib/logger';
+import _logger from '../../lib/logger';
 import amazon from './amazon';
 import azure from './azure';
 import google from './google';
 import voicetext, {Emotion, EmoLV} from './voicetext';
 import voicevox from './voicevox';
+
+const logger = _logger.child({bot: 'discord'});
 
 enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q', R = 'R', S = 'S', T = 'T', U = 'U', V = 'V', W = 'W', X = 'X', Y = 'Y', Z = 'Z', AA = 'AA', AB = 'AB', AC = 'AC', AD = 'AD', AE = 'AE'}
 export {Voice};

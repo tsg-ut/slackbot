@@ -1,6 +1,8 @@
 import axios, {AxiosError} from 'axios';
-import logger from '../../lib/logger';
+import _logger from '../../lib/logger';
 import {SynthesizeFunction} from './types.d';
+
+const logger = _logger.child({bot: 'discord'});
 
 const voiceMapping: { [name: string]: { [emo: string]: number } } = {
 	metan: {

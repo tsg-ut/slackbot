@@ -7,9 +7,10 @@ const fs = require('fs');
 const concatStream = require('concat-stream');
 const schedule = require('node-schedule');
 
-const {default: logger} = require('../lib/logger.ts');
+const {default: _logger} = require('../lib/logger.ts');
 const {makeSummary} = require('./summary_writer.js');
 
+const logger = _logger.child({bot: 'summary'});
 
 async function getZipData(drive, month) {
     const filename = `sandbox-messages-${month}.zip`;

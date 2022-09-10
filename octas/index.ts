@@ -1,5 +1,5 @@
 import type {SlackInterface} from '../lib/slack';
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
 import cloudinary from 'cloudinary';
 import sharp from 'sharp';
 import path from 'path';
@@ -11,6 +11,8 @@ import BoardElement from './lib/Render';
 import {JSDOM} from 'jsdom';
 import Queue from 'p-queue';
 import {increment, unlock} from '../achievements/index.js';
+
+const logger = _logger.child({bot: 'octas'});
 
 const applyCSS = (paper: any) => {
     paper.selectAll('.board-edge').attr({

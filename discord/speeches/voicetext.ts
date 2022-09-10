@@ -1,5 +1,5 @@
 import axios from 'axios';
-import logger from '../../lib/logger';
+import _logger from '../../lib/logger';
 import {SynthesizeFunction} from './types.d';
 
 enum Emotion {
@@ -10,6 +10,8 @@ enum Emotion {
 }
 type EmoLV = number;
 export {Emotion, EmoLV};
+
+const logger = _logger.child({bot: 'discord'});
 
 const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emotion, emolv}) => {
 	const postData = new URLSearchParams({

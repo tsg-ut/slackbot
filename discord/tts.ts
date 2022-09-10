@@ -7,11 +7,12 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord from 'discord.js';
 import {minBy, countBy} from 'lodash';
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
 import State from '../lib/state';
 import {Loader, Deferred} from '../lib/utils';
 import {getSpeech, Voice, speechConfig, Emotion, VoiceMeta, getDefaultVoiceMeta} from './speeches';
 
+const logger = _logger.child({bot: 'discord'});
 const mutex = new Mutex();
 
 class Timer {

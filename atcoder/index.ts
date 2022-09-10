@@ -9,7 +9,7 @@ import schedule from 'node-schedule';
 import prime from 'primes-and-factors';
 import scrapeIt from 'scrape-it';
 import {increment, unlock, set, get} from '../achievements/index.js';
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
@@ -17,6 +17,7 @@ import State from '../lib/state';
 import type {Results, Standings} from './types';
 import {crawlSubmissionsByUser} from './utils';
 
+const logger = _logger.child({bot: 'atcoder'});
 const mutex = new Mutex();
 
 const getRatingColor = (rating: number | null) => {

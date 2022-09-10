@@ -1,8 +1,10 @@
 import qs from 'querystring';
 import axios, {AxiosResponse} from 'axios';
 import scrapeIt from 'scrape-it';
-import logger from '../../lib/logger';
+import _logger from '../../lib/logger';
 import {Challenge, SolvedInfo, Profile} from './BasicTypes';
+
+const logger = _logger.child({bot: 'pwnyaa'});
 
 const SAFELIMIT = 100;
 

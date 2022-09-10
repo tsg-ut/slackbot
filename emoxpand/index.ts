@@ -2,10 +2,12 @@ import {promises as fs} from 'fs';
 import path from 'path';
 import plugin from 'fastify-plugin';
 import _ from 'lodash';
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
 /* eslint-disable no-unused-vars */
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils';
+
+const logger = _logger.child({bot: 'emoxpand'});
 
 type EmojiName = string;
 type EmojiContent = EmojiName[][];

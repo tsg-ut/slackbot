@@ -9,10 +9,11 @@ import Discord from 'discord.js';
 import {max, get} from 'lodash';
 import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
 import {extractValidAnswers, judgeAnswer, formatQuizToSsml} from './hayaoshiUtils';
 import {getSpeech, Voice} from './speeches';
 
+const logger = _logger.child({bot: 'discord'});
 const mutex = new Mutex();
 
 interface State {

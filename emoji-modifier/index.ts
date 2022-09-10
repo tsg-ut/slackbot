@@ -8,10 +8,12 @@ import {utils, buildPalette, applyPalette} from 'image-q';
 import _ from 'lodash';
 import sharp from 'sharp';
 import loadFont from '../lib/loadFont';
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
 /* eslint-disable no-unused-vars  */
 import type {SlackInterface} from '../lib/slack';
 import {getEmoji} from '../lib/slackUtils';
+
+const logger = _logger.child({bot: 'emoji-modifier'});
 
 // emoji type definition {{{
 interface EmodiError {
