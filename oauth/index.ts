@@ -23,7 +23,7 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 	`);
 
 	fastify.get<SlackOauthEndpoint>('/oauth', async (req, res) => {
-		const data = await slack.oauth.access({
+		const data = await slack.oauth.v2.access({
 			code: req.query.code,
 			client_id: process.env.CLIENT_ID,
 			client_secret: process.env.CLIENT_SECRET,
