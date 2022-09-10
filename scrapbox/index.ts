@@ -1,8 +1,10 @@
 import qs from 'querystring';
 import type {LinkUnfurls} from '@slack/web-api';
 import axios, {AxiosResponse} from 'axios';
-import logger from '../lib/logger';
+import _logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
+
+const logger = _logger.child({bot: 'scrapbox'});
 
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
 
@@ -55,10 +57,8 @@ export const scrapbox2slack = (s: string) => (
 
 export default ({webClient: slack, eventClient: event}: SlackInterface) => {
 	event.on('link_shared', async ({links, message_ts, channel}: { links: Link[]; message_ts: string; channel: string; }) => {
-		logger.info('Incoming unfurl request >');
-		for (const link of links) {
-			logger.info('-', link);
-		}
+		logger.info('Incoming unfurl request', {links});
+
 		const scrapboxLinks = links.filter(({domain}) => domain === 'scrapbox.io');
 		const unfurls: LinkUnfurls = {};
 		for (const link of scrapboxLinks) {
@@ -101,16 +101,10 @@ export default ({webClient: slack, eventClient: event}: SlackInterface) => {
 				const data = await slack.chat.unfurl({
 					ts: message_ts,
 					channel,
-					unfurls: unfurls,
+					unfurls,
 				});
-
-				if (data.ok) {
-					logger.info('✓ chat.unfurl >', data);
-				} else {
-					logger.info('✗ chat.unfurl >', data);
-				}
 			} catch (error) {
-				logger.error('✗ chat.unfurl >', error);
+				logger.error('chat.unfurl', {error});
 			}
 		} else {
 			logger.info('No valid urls, skip.');
