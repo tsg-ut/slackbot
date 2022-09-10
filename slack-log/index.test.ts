@@ -1,10 +1,10 @@
-jest.mock('axios');
-
+import type {ChatUnfurlArguments} from '@slack/web-api';
+import axios from 'axios';
 import slacklog from './index';
 // @ts-expect-error
 import Slack from '../lib/slackMock.js';
-import axios from 'axios';
-import qs from 'querystring';
+
+jest.mock('axios');
 
 // @ts-expect-error
 axios.response = {data: {messages: [{
@@ -60,18 +60,10 @@ describe('slacklog', () => {
 
 	it('respond to slack hook of slacklog unfurling', async () => {
 		const done = new Promise<void>((resolve) => {
-			// @ts-expect-error
-			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
-				if (url === 'https://slack.com/api/chat.unfurl') {
-					const parsed = qs.parse(data);
-					const unfurls = JSON.parse(Array.isArray(parsed.unfurls) ? parsed.unfurls[0] : parsed.unfurls);
-					expect(unfurls['https://slack-log.tsg.ne.jp/CYYYYYY/1234.5678']).toBeTruthy();
-					expect(unfurls['https://slack-log.tsg.ne.jp/CYYYYYY/1234.5678'].text).toBe('fuga\npiyo');
-					resolve();
-					return Promise.resolve({data: {ok: true}});
-				}
-				// @ts-expect-error
-				return Promise.resolve(axios.response);
+			slack.on('chat.unfurl', ({unfurls}: ChatUnfurlArguments) => {
+				expect(unfurls['https://slack-log.tsg.ne.jp/CYYYYYY/1234.5678']).toBeTruthy();
+				expect(unfurls['https://slack-log.tsg.ne.jp/CYYYYYY/1234.5678'].text).toBe('fuga\npiyo');
+				resolve();
 			});
 		});
 

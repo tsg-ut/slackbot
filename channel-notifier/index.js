@@ -5,11 +5,7 @@ module.exports = (clients) => {
 	const {eventClient, webClient: slack} = clients;
 
 	const notify = async ({type, channel, user}) => {
-		await slack.conversations.invite({
-			channel,
-			users: process.env.USER_TSGBOT, // A comma separated list of user IDs
-			token: process.env.HAKATASHI_TOKEN,
-		});
+		await slack.conversations.join({channel});
 
 		const verb = type === 'create' ? '作成' : 'アーカイブから復元';
 
