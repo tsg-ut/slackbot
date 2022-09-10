@@ -75,9 +75,8 @@ export default class SlackCache {
 					this.emojis.set(event.name, event.value);
 				}
 			});
-			// TODO: should be bot access token after migration to new OAuth Scope.
 			// FIXME: node-slack-sdkの型情報ミスってない？そんなことない？なんでas要るの？
-			(this.config.webClient.emoji.list({token: this.config.token.access_token}) as Promise<{emoji: any}>)
+			(this.config.webClient.emoji.list({token: this.config.token.bot_access_token}) as Promise<{emoji: any}>)
 				.then(({emoji: emojis}: {emoji: any}) => {
 					for (const name in emojis) {
 						this.emojis.set(name, emojis[name]);
@@ -142,7 +141,7 @@ export default class SlackCache {
 		}
 
 		const data = await this.config.webClient.conversations.history({
-			token: this.config.token.access_token,
+			token: this.config.token.bot_access_token,
 			channel: channel,
 			latest: ts,
 			limit: 1,
@@ -201,7 +200,7 @@ export default class SlackCache {
 		}
 
 		const data = await this.config.webClient.conversations.history({
-			token: this.config.token.access_token,
+			token: this.config.token.bot_access_token,
 			channel: channel,
 			latest: ts,
 			limit: 1,
