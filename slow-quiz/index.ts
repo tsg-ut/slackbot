@@ -581,9 +581,6 @@ class SlowQuiz {
 			channel,
 			text: message,
 			user,
-			username: '1日1文字クイズ',
-			as_user: false,
-			icon_emoji: ':face_with_rolling_eyes:',
 		});
 	}
 
