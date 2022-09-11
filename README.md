@@ -23,12 +23,26 @@ TSGのSlackで動くSlackbotたち
 
 ### セットアップ
 
-```sh
-cd /path/to/slackbot
-npm install
-cp .env.example .env
-# .envをいい感じに編集する
-```
+1. 開発環境をセットアップするディレクトリに移動しcloneする。
+    ```sh
+    cd ほげほげ
+    git clone --recursive https://github.com/tsg-ut/slackbot.git
+    cd slackbot
+    ```
+    * [GitHub Desktop](https://desktop.github.com/) など、他の方法でcloneしても構いません。
+2. [node-canvas](https://github.com/Automattic/node-canvas)の依存ライブラリをインストールする。
+    * [node-canvasのインストールガイド](https://github.com/Automattic/node-canvas#compiling)に従ってください。
+    * 特にWindowsを使用している場合は `C:\GTK` 配下にGTKをインストールするのを忘れないでください。
+3. 依存パッケージをインストールする
+    ```sh
+    npm install
+    ```
+4. `.env` をテンプレートから作成し、編集する。
+    ```sh
+    cp .env.example .env
+    vi .env
+    ```
+    * テンプレートに詳しい手順が記載されています。
 
 ## 実行
 
