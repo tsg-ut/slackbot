@@ -3,13 +3,22 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 // @ts-ignore
 import {hiraganize} from 'japanese';
-import {minBy, sample} from 'lodash';
+import {minBy, sortBy} from 'lodash';
 import {scheduleJob} from 'node-schedule';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
 import answerQuestionDialog from './views/answerQuestionDialog';
+import listAnswersDialog from './views/listAnswersDialog';
+import listQuizDialog from './views/listQuizDialog';
 import registerQuizDialog from './views/registerQuizDialog';
+
+export interface AnswerInfo {
+	user: string,
+	progress: number,
+	date: number,
+	answer: string,
+}
 
 export interface Game {
 	id: string,
@@ -26,7 +35,8 @@ export interface Game {
 	finishDate: number | null,
 
 	progress: number,
-	correctAnswers: {user: string, progress: number}[],
+	correctAnswers: AnswerInfo[],
+	wrongAnswers: AnswerInfo[],
 	answeredUsers: string[],
 }
 
@@ -72,7 +82,7 @@ class SlowQuiz {
 		}, (payload: any) => {
 			mutex.runExclusive(() => (
 				this.showRegisterQuizDialog({
-					triggerId: payload.trigger_id,
+					triggerId: payload?.trigger_id,
 				})
 			));
 		});
@@ -87,6 +97,34 @@ class SlowQuiz {
 					answer: state?.answer?.value,
 					ruby: state?.ruby?.value,
 					hint: state?.hint?.value,
+					user: payload?.user?.id,
+				})
+			));
+		});
+
+		this.slackInteractions.action({
+			type: 'button',
+			actionId: 'slowquiz_list_quiz_button',
+		}, (payload: any) => {
+			mutex.runExclusive(() => (
+				this.showListQuizDialog({
+					triggerId: payload?.trigger_id,
+					user: payload?.user?.id,
+				})
+			));
+		});
+
+		this.slackInteractions.action({
+			type: 'button',
+			actionId: 'slowquiz_delete_quiz_button',
+		}, (payload: any) => {
+			const action = (payload?.actions ?? []).find((action: any) => (
+				action.action_id === 'slowquiz_delete_quiz_button'
+			));
+			mutex.runExclusive(() => (
+				this.deleteQuiz({
+					viewId: payload?.view?.id,
+					id: action?.value,
 					user: payload?.user?.id,
 				})
 			));
@@ -128,6 +166,16 @@ class SlowQuiz {
 		});
 	}
 
+	showListQuizDialog({triggerId, user}: {triggerId: string, user: string}) {
+		const games = this.state.games.filter((game) => (
+			game.author === user && game.status === 'waitlisted'
+		));
+		return this.slack.views.open({
+			trigger_id: triggerId,
+			view: listQuizDialog(games),
+		});
+	}
+
 	showAnswerQuestionDialog({
 		triggerId,
 		id,
@@ -147,8 +195,14 @@ class SlowQuiz {
 		}
 
 		if (game.author === user) {
-			this.postEphemeral('出題者は問題に答えることができないよ🙄', user, channel);
-			return null;
+			const answerInfos = sortBy([
+				...game.correctAnswers,
+				...game.wrongAnswers ?? [],
+			], (answer) => answer.date ?? 0);
+			return this.slack.views.open({
+				trigger_id: triggerId,
+				view: listAnswersDialog(game, answerInfos),
+			});
 		}
 
 		if (game.status !== 'inprogress') {
@@ -157,7 +211,7 @@ class SlowQuiz {
 		}
 
 		if (game.answeredUsers.includes(user)) {
-			this.postEphemeral('この問題にすでに回答しているよ🙄', user, channel);
+			this.postEphemeral('今日はこの問題にすでに回答しているよ🙄', user, channel);
 			return null;
 		}
 
@@ -213,6 +267,7 @@ class SlowQuiz {
 			status: 'waitlisted',
 			progress: 0,
 			correctAnswers: [],
+			wrongAnswers: [],
 			answeredUsers: [],
 		});
 
@@ -272,13 +327,22 @@ class SlowQuiz {
 		const normalizedCorrectRuby: string = hiraganize(game.ruby).toLowerCase().trim();
 
 		if (normalizedRuby !== normalizedCorrectRuby) {
+			game.wrongAnswers.push({
+				user,
+				progress: game.progress,
+				date: Date.now(),
+				answer: ruby,
+			});
 			this.postEphemeral('残念！🙄', user);
+			this.updateLatestStatusMessages();
 			return null;
 		}
 
 		game.correctAnswers.push({
 			user,
 			progress: game.progress,
+			date: Date.now(),
+			answer: ruby,
 		});
 
 		this.postEphemeral('正解です🎉🎉🎉', user);
@@ -310,6 +374,32 @@ class SlowQuiz {
 		this.updateLatestStatusMessages();
 
 		return null;
+	}
+
+	deleteQuiz({viewId, id, user}: {viewId: string, id: string, user: string}) {
+		const gameIndex = this.state.games.findIndex((g) => g.id === id);
+
+		if (gameIndex === -1) {
+			this.postEphemeral('Error: 問題が見つかりません', user);
+			return null;
+		}
+
+		const game = this.state.games[gameIndex];
+
+		if (game.status !== 'waitlisted') {
+			this.postEphemeral('Error: 出題待ちの問題ではありません', user);
+			return null;
+		}
+
+		this.state.games.splice(gameIndex, 1);
+
+		const games = this.state.games.filter((game) => (
+			game.author === user && game.status === 'waitlisted'
+		));
+		return this.slack.views.update({
+			view_id: viewId,
+			view: listQuizDialog(games),
+		});
 	}
 
 	async progressGames() {
@@ -362,7 +452,7 @@ class SlowQuiz {
 			.filter((game) => !authorHistorySet.has(game.author) && game.status === 'waitlisted');
 
 		if (unchosenGames.length > 0) {
-			return sample(unchosenGames);
+			return minBy(unchosenGames, (game) => game.registrationDate);
 		}
 
 		// 最近選ばれていないユーザーを優先して選ぶ
@@ -503,7 +593,11 @@ class SlowQuiz {
 				elements: [
 					{
 						type: 'mrkdwn',
-						text: `${await getMemberName(game.author)} さんの問題 / *${game.correctAnswers.length}* 人が正解済み`,
+						text: [
+							`${await getMemberName(game.author)} さんの問題`,
+							`本日${game.answeredUsers.length}人回答`,
+							`${game.correctAnswers.length}人正解済み`,
+						].join(' / '),
 					},
 					...await Promise.all(game.correctAnswers.map(async (correctAnswer) => ({
 						type: 'image',
@@ -549,15 +643,30 @@ class SlowQuiz {
 							type: 'mrkdwn',
 							text: '*1日1文字クイズ ルール*\n\n● 1問につき1日1回のみ回答することができます。\n● 回答するために検索や調査を行うのはOKです。\n● 正解者が3人出たら終了します。',
 						},
-						accessory: {
-							type: 'button',
-							text: {
-								type: 'plain_text',
-								text: '問題を登録する',
-								emoji: true,
+					},
+					{
+						type: 'actions',
+						elements: [
+							{
+								type: 'button',
+								text: {
+									type: 'plain_text',
+									text: '問題を登録する',
+									emoji: true,
+								},
+								style: 'primary',
+								action_id: 'slowquiz_register_quiz_button',
 							},
-							action_id: 'slowquiz_register_quiz_button',
-						},
+							{
+								type: 'button',
+								text: {
+									type: 'plain_text',
+									text: '登録した問題を見る',
+									emoji: true,
+								},
+								action_id: 'slowquiz_list_quiz_button',
+							},
+						],
 					},
 				],
 			});
@@ -581,14 +690,6 @@ class SlowQuiz {
 			channel,
 			text: message,
 			user,
-		});
-	}
-
-	// eslint-disable-next-line camelcase
-	updateMessage(message: {text: string, ts: string, blocks?: KnownBlock[], unfurl_links?: true}) {
-		return this.slack.chat.update({
-			channel: process.env.CHANNEL_SANDBOX,
-			...message,
 		});
 	}
 }
