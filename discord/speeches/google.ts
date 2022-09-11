@@ -1,4 +1,5 @@
 import {v1beta1 as GoogleCloudTextToSpeech} from '@google-cloud/text-to-speech';
+import {google} from '@google-cloud/text-to-speech/build/protos/protos';
 import {SynthesizeFunction} from './types.d';
 
 const {TextToSpeechClient} = GoogleCloudTextToSpeech;
@@ -19,8 +20,9 @@ const speech: SynthesizeFunction = async (text: string, voiceType: string, {spee
 			speakingRate: speed,
 			effectsProfileId: ['headphone-class-device'],
 		},
-		// @ts-expect-error
-		enableTimePointing: ['SSML_MARK'],
+		enableTimePointing: [
+			google.cloud.texttospeech.v1beta1.SynthesizeSpeechRequest.TimepointType.SSML_MARK,
+		],
 	});
 	const data = Buffer.from(response.audioContent as string, 'binary');
 
