@@ -327,6 +327,9 @@ class SlowQuiz {
 		const normalizedCorrectRuby: string = hiraganize(game.ruby).toLowerCase().trim();
 
 		if (normalizedRuby !== normalizedCorrectRuby) {
+			if (game.wrongAnswers === undefined) {
+				game.wrongAnswers = [];
+			}
 			game.wrongAnswers.push({
 				user,
 				progress: game.progress,
