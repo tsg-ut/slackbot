@@ -9,6 +9,7 @@ import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
 import answerQuestionDialog from './views/answerQuestionDialog';
+import footer from './views/footer';
 import listAnswersDialog from './views/listAnswersDialog';
 import listQuizDialog from './views/listQuizDialog';
 import registerQuizDialog from './views/registerQuizDialog';
@@ -534,7 +535,10 @@ class SlowQuiz {
 	}
 
 	async updateLatestStatusMessages() {
-		const blocks = await this.getGameBlocks();
+		const blocks = [
+			...await this.getGameBlocks(),
+			...footer,
+		];
 
 		for (const message of this.state.latestStatusMessages) {
 			await this.slack.chat.update({
@@ -559,15 +563,7 @@ class SlowQuiz {
 			}];
 		}
 
-		const blocks = [
-			{
-				type: 'section',
-				text: {
-					type: 'mrkdwn',
-					text: '＊現在開催中のクイズ＊',
-				},
-			},
-		] as KnownBlock[];
+		const blocks: KnownBlock[] = [];
 
 		for (const game of ongoingGames) {
 			const questionText = this.getQuestionText(game);
@@ -640,37 +636,7 @@ class SlowQuiz {
 				...message,
 				blocks: [
 					...(message.blocks ?? []),
-					{
-						type: 'section',
-						text: {
-							type: 'mrkdwn',
-							text: '*1日1文字クイズ ルール*\n\n● 1問につき1日1回のみ回答することができます。\n● 回答するために検索や調査を行うのはOKです。\n● 正解者が3人出たら終了します。',
-						},
-					},
-					{
-						type: 'actions',
-						elements: [
-							{
-								type: 'button',
-								text: {
-									type: 'plain_text',
-									text: '問題を登録する',
-									emoji: true,
-								},
-								style: 'primary',
-								action_id: 'slowquiz_register_quiz_button',
-							},
-							{
-								type: 'button',
-								text: {
-									type: 'plain_text',
-									text: '登録した問題を見る',
-									emoji: true,
-								},
-								action_id: 'slowquiz_list_quiz_button',
-							},
-						],
-					},
+					...footer,
 				],
 			});
 			messages.push(response);
