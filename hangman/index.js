@@ -167,7 +167,7 @@ const getRandomWord = (diffValue, wordList) => {
 };
 
 // get the word definition from dictionaryapi.dev
-async function getDefinitionsFromWord(word) {
+const getDefinitionsFromWord = async (word) => {
     const apiLink = `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`;
     logger.info("Getting from " + apiLink);
     try {
@@ -240,7 +240,7 @@ const getChallengerById = (slackid) => {
     return null;
 };
 
-module.exports = ({ eventClient, webClient: slack }) => {    
+module.exports = ({ eventClient, webClient: slack }) => {
     const postMessage = (text, slackid, options) => slack.chat.postMessage({
         channel: process.env.CHANNEL_SANDBOX,
         text,
@@ -269,7 +269,7 @@ module.exports = ({ eventClient, webClient: slack }) => {
                 reply_broadcast: true
         });
         if (challenger.definitionText) {
-            return await postMessage(
+            return postMessage(
                 stripIndents`${challenger.definitionText}`, slackid);
         }
     };
