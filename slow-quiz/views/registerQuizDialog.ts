@@ -1,4 +1,5 @@
 import {View} from '@slack/web-api';
+import {stripIndent} from 'common-tags';
 
 export default {
 	type: 'modal',
@@ -61,7 +62,10 @@ export default {
 			},
 			hint: {
 				type: 'plain_text',
-				text: '回答に使用します。ひらがな・カタカナ・英数字のみ使用することができます',
+				text: stripIndent`
+					回答に使用します。ひらがな・カタカナ・英数字のみ使用することができます。
+					「,」(半角カンマ)で区切ることで別解を指定することができます。
+				`,
 			},
 		},
 		{
