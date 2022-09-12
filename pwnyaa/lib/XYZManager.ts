@@ -1,10 +1,10 @@
 import qs from 'querystring';
 import axios, {AxiosResponse} from 'axios';
 import scrapeIt from 'scrape-it';
-import _logger from '../../lib/logger';
+import logger from '../../lib/logger';
 import {Challenge, SolvedInfo, Profile} from './BasicTypes';
 
-const logger = _logger.child({bot: 'pwnyaa'});
+const log = logger.child({bot: 'pwnyaa'});
 
 const SAFELIMIT = 100;
 
@@ -151,7 +151,7 @@ export const fetchUserProfileXYZ = async function(userId: string) {
 	try {
 		await loginXYZ();
 	} catch {
-		logger.error('failed to login to XYZ');
+		log.error('failed to login to XYZ');
 		return null;
 	}
 	try {
@@ -172,7 +172,7 @@ export const fetchChallsXYZ = async function () {
 	try {
 		await loginXYZ();
 	} catch {
-		logger.error('failed to login to XYZ');
+		log.error('failed to login to XYZ');
 		return [];
 	}
 
@@ -228,7 +228,7 @@ export const findUserByNameXYZ = async function (username: string): Promise<{use
 	try {
 		await loginXYZ();
 	} catch {
-		logger.error('failed to login to XYZ');
+		log.error('failed to login to XYZ');
 		return null;
 	}
 	let lastFetchedUser: {userid: string, name: string } = null;

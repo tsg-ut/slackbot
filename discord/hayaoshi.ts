@@ -9,11 +9,11 @@ import Discord from 'discord.js';
 import {max, get} from 'lodash';
 import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
-import _logger from '../lib/logger';
+import logger from '../lib/logger';
 import {extractValidAnswers, judgeAnswer, formatQuizToSsml} from './hayaoshiUtils';
 import {getSpeech, Voice} from './speeches';
 
-const logger = _logger.child({bot: 'discord'});
+const log = logger.child({bot: 'discord'});
 const mutex = new Mutex();
 
 interface State {
@@ -252,11 +252,11 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	async onFinishReadingQuestion() {
-		logger.info('[hayaoshi] onFinishReadingQuestion');
+		log.info('[hayaoshi] onFinishReadingQuestion');
 		await new Promise((resolve) => {
 			this.state.timeupTimeoutId = setTimeout(resolve, 5000);
 		});
-		logger.info('[hayaoshi] onFinishReadingQuestion - timeout');
+		log.info('[hayaoshi] onFinishReadingQuestion - timeout');
 		mutex.runExclusive(async () => {
 			if (this.state.phase !== 'gaming') {
 				return;
@@ -269,7 +269,7 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	readQuestion() {
-		logger.info('[hayaoshi] readQuestion');
+		log.info('[hayaoshi] readQuestion');
 		this.state.audioPlayer.off(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
 
 		this.state.audioResource = createAudioResource(path.join(__dirname, 'questionText.mp3'));
@@ -278,7 +278,7 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.audioResource.playStream.on('start', () => {
 			this.state.playStartTime = Date.now();
 		});
-		logger.info('[hayaoshi] readQuestion - started');
+		log.info('[hayaoshi] readQuestion - started');
 		this.state.audioPlayer.once(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
 	}
 

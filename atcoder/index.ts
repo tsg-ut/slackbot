@@ -9,7 +9,7 @@ import schedule from 'node-schedule';
 import prime from 'primes-and-factors';
 import scrapeIt from 'scrape-it';
 import {increment, unlock, set, get} from '../achievements/index.js';
-import _logger from '../lib/logger';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
@@ -17,7 +17,7 @@ import State from '../lib/state';
 import type {Results, Standings} from './types';
 import {crawlSubmissionsByUser} from './utils';
 
-const logger = _logger.child({bot: 'atcoder'});
+const log = logger.child({bot: 'atcoder'});
 const mutex = new Mutex();
 
 const getRatingColor = (rating: number | null) => {
@@ -118,7 +118,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	});
 
 	const updateContests = async () => {
-		logger.info('Updating AtCoder contests...');
+		log.info('Updating AtCoder contests...');
 		const {data: html} = await axios.get<string>('https://atcoder.jp/contests/', {
 			headers: {
 				'Accept-Language': 'ja-JP',
@@ -153,7 +153,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 				},
 			},
 		});
-		logger.info(`Fetched ${contests.length} contests`);
+		log.info(`Fetched ${contests.length} contests`);
 		if (contests.length > 0) {
 			const oldContests = state.contests;
 			const newContests: ContestEntry[] = [];
@@ -179,7 +179,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 
 	const postNewContest = (id: string) => {
 		const contest = state.contests.find((contest) => contest.id === id);
-		logger.info(`Posting notification of new contest ${id}...`);
+		log.info(`Posting notification of new contest ${id}...`);
 
 		slack.chat.postMessage({
 			username: 'atcoder',
@@ -194,7 +194,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 
 	const postPreroll = (id: string) => {
 		const contest = state.contests.find((contest) => contest.id === id);
-		logger.info(`Posting preroll of contest ${id}...`);
+		log.info(`Posting preroll of contest ${id}...`);
 
 		slack.chat.postMessage({
 			username: 'atcoder',
@@ -209,7 +209,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 
 	const postStart = (id: string) => {
 		const contest = state.contests.find((contest) => contest.id === id);
-		logger.info(`Posting start of contest ${id}...`);
+		log.info(`Posting start of contest ${id}...`);
 
 		slack.chat.postMessage({
 			username: 'atcoder',
@@ -253,7 +253,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
-		logger.info(`Preposting result of contest ${id}...`);
+		log.info(`Preposting result of contest ${id}...`);
 
 		const {userStandings, tasks} = await getStandings(id);
 
@@ -309,7 +309,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
-		logger.info(`Posting result of contest ${id}...`);
+		log.info(`Posting result of contest ${id}...`);
 
 		const resultMap = new Map(state.users.map(({atcoder, slack}) => {
 			const result = results.find(({UserName, UserScreenName}) => UserName === atcoder || UserScreenName === atcoder);
@@ -465,7 +465,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		const oneDayLater = now.clone().add(1, 'day');
 
 		// typical shojin notifications
-		logger.info('[atcoder-daily] Fetching result of typical90');
+		log.info('[atcoder-daily] Fetching result of typical90');
 		const {userStandings} = await getStandings('typical90');
 		const typicalSolves = new Map<string, number>();
 
@@ -481,7 +481,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		let increase = 0;
 
 		for (const user of state.users) {
-			logger.info(`[atcoder-daily] Fetching result of ABS (user = ${user.atcoder})`);
+			log.info(`[atcoder-daily] Fetching result of ABS (user = ${user.atcoder})`);
 
 			await new Promise((resolve) => setTimeout(resolve, 3000));
 			const submissions = await crawlSubmissionsByUser('abs', user.atcoder);
@@ -572,7 +572,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		// contest notifications
 		const contests = state.contests.filter((contest) => now.valueOf() < contest.date && contest.date <= oneDayLater.valueOf());
 
-		logger.info(`[atcoder-daily] Posting daily notifications of ${contests.length} contests...`);
+		log.info(`[atcoder-daily] Posting daily notifications of ${contests.length} contests...`);
 
 		for (const contest of contests) {
 			const date = moment(contest.date).utcOffset(9);

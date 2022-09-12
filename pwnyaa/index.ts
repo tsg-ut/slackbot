@@ -5,7 +5,7 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import schedule from 'node-schedule';
 import {unlock} from '../achievements/index.js';
-import _logger from '../lib/logger';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Contest, User, SolvedInfo} from './lib/BasicTypes';
@@ -14,7 +14,7 @@ import {fetchChallsKSN, fetchUserProfileKSN, findUserByNameKSN} from './lib/KSNM
 import {fetchUserProfileTW, fetchChallsTW, findUserByNameTW} from './lib/TWManager';
 import {fetchChallsXYZ, fetchUserProfileXYZ, findUserByNameXYZ} from './lib/XYZManager';
 
-const logger = _logger.child({bot: 'pwnyaa'});
+const log = logger.child({bot: 'pwnyaa'});
 const mutex = new Mutex();
 
 const MINUTE = 60 * 1000;
@@ -816,7 +816,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	};
 
 	const checkAchievements = async () => {
-		logger.info('[+] pwnyaa: checking achievements...');
+		log.info('[+] pwnyaa: checking achievements...');
 		for (const contest of state.contests) {
 			for (const user of contest.joiningUsers) {
 				const profile = await fetchUserProfile(user.idCtf, contest.id);
@@ -824,11 +824,11 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 					return;
 				}
 				if (profile.solvedChalls.length >= contest.numChalls) {
-					logger.info(`[+] pwnyaa: unlocking: pwnyaa-${contest.achievementStr}-complete`);
+					log.info(`[+] pwnyaa: unlocking: pwnyaa-${contest.achievementStr}-complete`);
 					await unlock(user.slackId, `pwnyaa-${contest.achievementStr}-complete`);
 				}
 				if (profile.solvedChalls.length >= contest.numChalls / 2) {
-					logger.info(`[+] pwnyaa: unlocking: pwnyaa-${contest.achievementStr}-half`);
+					log.info(`[+] pwnyaa: unlocking: pwnyaa-${contest.achievementStr}-half`);
 					await unlock(user.slackId, `pwnyaa-${contest.achievementStr}-half`);
 				}
 			}
@@ -856,7 +856,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	};
 
 	const postProgress = async () => {
-		logger.info('[+] pwnyaa: progress posting...');
+		log.info('[+] pwnyaa: progress posting...');
 		let someoneSolved = false;
 		const recentSolvesAllCtfs = await fetchRecentSolvesAll(UPDATE_INTERVAL, DateGran.HOUR);
 		const attachments: any[] = [];
@@ -878,7 +878,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		}
 
 		if (someoneSolved) {
-			logger.info('[+] someone solved challs...');
+			log.info('[+] someone solved challs...');
 			slack.chat.postMessage({
 				username: 'pwnyaa',
 				icon_emoji: ':pwn:',
@@ -890,7 +890,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	};
 
 	const postWeekly = async () => {
-		logger.info('[+] pwnyaa: posting weekly...');
+		log.info('[+] pwnyaa: posting weekly...');
 
 		// get ranking
 		const recentSolvesAllCtfs = await fetchRecentSolvesAll(7, DateGran.DAY);

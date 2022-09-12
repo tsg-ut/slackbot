@@ -9,8 +9,8 @@ const cloudinary = require('cloudinary');
 const {createCanvas, Image, registerFont} = require('canvas');
 const path = require('path');
 
-const {default: _logger} = require('../lib/logger.ts');
-const logger = _logger.child({bot: 'summary'});
+const {default: logger} = require('../lib/logger.ts');
+const log = logger.child({bot: 'summary'});
 
 let fontloaded = false;
 
@@ -88,7 +88,7 @@ module.exports.makeSummary = async (messages, slack) => {
         const data = 't:' + halfHourMessages.map(
             ([, len]) => (100*len/maxlen).toFixed(2)).join(',');
         const chartLink = `http://chart.apis.google.com/chart?chs=600x250&chd=${data}&cht=lc&chxt=x,y&chxr=1,0,${maxlen}&chxl=${xaxis}`;
-        logger.info('chartLink:' + chartLink);
+        log.info('chartLink:' + chartLink);
         summary.push({
             title: '30分ごとのメッセージ量',
             image_url: chartLink,
@@ -184,13 +184,13 @@ module.exports.makeSummary = async (messages, slack) => {
         const canvas = createCanvas(PNG_W, PNG_H);
         const ctx = canvas.getContext('2d');
         const canPromise = new Promise((resolve, reject) => {
-            logger.info('converting');
+            log.info('converting');
             const image = new Image;
             image.onload = () => {
                 ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, PNG_W, PNG_H);
                 canvas.toBuffer((err, buf) => {
                     if (err) {
-                        logger.error('error toBuffer'); reject(err);
+                        log.error('error toBuffer'); reject(err);
                     } else resolve(buf);
                 });
             };
@@ -199,14 +199,14 @@ module.exports.makeSummary = async (messages, slack) => {
         const cloudPNG = await canPromise;
 
         const cloudinaryData = await new Promise((resolve, reject) => {
-            logger.info('uploading');
+            log.info('uploading');
             cloudinary.v2.uploader
                 .upload_stream({resource_type: 'image'}, (error, response) => {
                     if (error) {
-                        logger.error(error);
+                        log.error(error);
                         reject(error);
                     } else {
-                        logger.info('uploaded!');
+                        log.info('uploaded!');
                         resolve(response);
                     }
                 })

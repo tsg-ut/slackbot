@@ -2,12 +2,12 @@ import {promises as fs} from 'fs';
 import path from 'path';
 import plugin from 'fastify-plugin';
 import _ from 'lodash';
-import _logger from '../lib/logger';
+import logger from '../lib/logger';
 /* eslint-disable no-unused-vars */
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils';
 
-const logger = _logger.child({bot: 'emoxpand'});
+const log = logger.child({bot: 'emoxpand'});
 
 type EmojiName = string;
 type EmojiContent = EmojiName[][];
@@ -32,7 +32,7 @@ const bigemojify = (smallEmoji: EmojiName): BigEmoji =>
   emojiFromContent([[smallEmoji]]);
 
 const logError = (err: Error, mesg: string): void => {
-  logger.error(`emoxpand: ${mesg} : ${err.name} ${err.message}`);
+  log.error(`emoxpand: ${mesg} : ${err.name} ${err.message}`);
 };
 
 // Emoji saving {{{
@@ -45,7 +45,7 @@ const loadEmojis = async () => {
   allEmojis = new Map();
   const data = await fs.readFile(emojiPath, {encoding: 'utf8'});
   const obj: {[key: string]: EmojiContent} = JSON.parse(data);
-  logger.info('emoxpand: loading big emojis...');
+  log.info('emoxpand: loading big emojis...');
   for (const [name, content] of Object.entries(obj)) {
     allEmojis.set(name, emojiFromContent(content));
   }

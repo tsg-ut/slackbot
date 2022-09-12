@@ -2,7 +2,7 @@ import {get} from 'lodash';
 import type {Token} from '../oauth/tokens';
 import {Deferred} from './utils';
 import {TeamEventClient} from './slackEventClient';
-import _logger from './logger';
+import logger from './logger';
 
 import type {SlackEventAdapter} from '@slack/events-api';
 import type {Reaction} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
@@ -16,7 +16,7 @@ import type {
 	EmojiListResponse,
 } from '@slack/web-api';
 
-const logger = _logger.child({bot: 'lib/slackCache'});
+const log = logger.child({bot: 'lib/slackCache'});
 
 interface WebClient {
 	users: {
@@ -67,7 +67,7 @@ export default class SlackCache {
 					}
 				})
 				.then(() => this.loadUsersDeferred.resolve())
-				.catch((err: any) => logger.error(`SlackCache/users.list(${this.config.token.team_id}): ${err}`, err));
+				.catch((err: any) => log.error(`SlackCache/users.list(${this.config.token.team_id}): ${err}`, err));
 		}
 
 		{
@@ -85,7 +85,7 @@ export default class SlackCache {
 					}
 				})
 				.then(() => this.loadEmojisDeferred.resolve())
-				.catch((err: any) => logger.error(`SlackCache/emoji.list(${this.config.token.team_id}): ${err}`, err));
+				.catch((err: any) => log.error(`SlackCache/emoji.list(${this.config.token.team_id}): ${err}`, err));
 		}
 
 		if (this.config.enableReactions) {

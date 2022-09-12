@@ -3,14 +3,14 @@ import type {DiscordGatewayAdapterCreator} from '@discordjs/voice';
 import type {ContextBlock, WebAPICallResult} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import Discord, {Intents, TextChannel, Collection, Snowflake, GuildMember, VoiceChannel} from 'discord.js';
-import _logger from '../lib/logger';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
 import Hayaoshi from './hayaoshi';
 import TTS from './tts';
 
-const logger = _logger.child({bot: 'discord'});
+const log = logger.child({bot: 'discord'});
 
 interface ChatPostMessageResult extends WebAPICallResult {
 	ts: string;
@@ -99,12 +99,12 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 	});
 
 	hayaoshi.on('start-game', () => {
-		logger.info('[hayaoshi] start-game');
+		log.info('[hayaoshi] start-game');
 		tts.pause();
 	});
 
 	hayaoshi.on('end-game', () => {
-		logger.info('[hayaoshi] end-game');
+		log.info('[hayaoshi] end-game');
 		tts.unpause();
 	});
 

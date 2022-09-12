@@ -7,12 +7,12 @@ import {flatten, uniq} from 'lodash';
 import sql from 'sql-template-strings';
 import {open} from 'sqlite';
 import sqlite3 from 'sqlite3';
-import _logger from '../lib/logger';
+import logger from '../lib/logger';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 
 import {getEmoji, getMemberIcon, getMemberName} from '../lib/slackUtils';
 
-const logger = _logger.child({bot: 'tunnel'});
+const log = logger.child({bot: 'tunnel'});
 const messages = new Map();
 
 let isTsgAllowing = true;
@@ -229,7 +229,7 @@ export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 					: null;
 
 				if (!team) {
-					logger.warn(`unknown team: ${body.team_id}`);
+					log.warn(`unknown team: ${body.team_id}`);
 					return;
 				}
 

@@ -1,8 +1,8 @@
 import Fastify from 'fastify';
-import _logger from '../lib/logger';
+import logger from '../lib/logger';
 import {getAllTSGMembers} from '../lib/slackUtils';
 
-const logger = _logger.child({bot: 'api'});
+const log = logger.child({bot: 'api'});
 
 interface RootRoute {
 	Querystring: {
@@ -34,9 +34,9 @@ export default () => {
 
 	fastify.listen(process.env.API_PORT || 20137, (error, address) => {
 		if (error) {
-			logger.error(error);
+			log.error(error);
 		} else {
-			logger.info(`API server launched at ${address}`);
+			log.info(`API server launched at ${address}`);
 		}
 	});
 };

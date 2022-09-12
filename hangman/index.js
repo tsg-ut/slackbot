@@ -5,10 +5,10 @@ const path = require('path');
 const download = require('download');
 const { stripIndents } = require("common-tags");
 const { unlock, increment, set } = require('../achievements');
-const { default: _logger } = require('../lib/logger.ts');
+const { default: logger } = require('../lib/logger.ts');
 const { getMemberName } = require('../lib/slackUtils');
 
-const logger = _logger.child({bot: 'hangman'});
+const log = logger.child({bot: 'hangman'});
 
 const state = (() => {
     try {
@@ -36,7 +36,7 @@ const setState = async (newState) => {
 const openCharacter = async (character, slackid) => {
     const challenger = getChallengerById(slackid);
     if (challenger === null) {
-        logger.error(`Not found the challenger of ID: ${slackid}`);
+        log.error(`Not found the challenger of ID: ${slackid}`);
         return 'invalid';
     }
     if (challenger.usedCharacterList.includes(character)) {
@@ -156,7 +156,7 @@ const getRandomWord = (diffValue, wordList) => {
     for (var i = 0; i < 10; i++) {
         const randomIndex = random(freqLeft, freqRight - 1, false);
         const result = wordList[randomIndex % wordList.length];
-        logger.info(`Word found: ${result}`);
+        log.info(`Word found: ${result}`);
         if (result.length >= minLength && result.match(/^[a-z]+$/)) {
             return result;
         }
@@ -246,7 +246,7 @@ module.exports = ({ eventClient, webClient: slack }) => {
 
         // reset command is available both within threads or not
         if (text === "hangman reset") {
-            logger.info("resetting Sadge");
+            log.info("resetting Sadge");
             const challenger = getChallengerById(user);
             if (challenger === null) {
                 await postMessage(`*${await getMemberName(user)}* はプレイ中じゃないよ!`);
@@ -387,7 +387,7 @@ module.exports = ({ eventClient, webClient: slack }) => {
             if (matches = text.match(/^!([a-z]+)/)) {
                 const {slackid, _challenger} = getChallengerByTs(message.thread_ts);
                 if (_challenger === null) {
-                    logger.error(`Not found the user with ts(${message.thread_ts})`);
+                    log.error(`Not found the user with ts(${message.thread_ts})`);
                     return;
                 }
 

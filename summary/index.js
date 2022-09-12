@@ -7,10 +7,10 @@ const fs = require('fs');
 const concatStream = require('concat-stream');
 const schedule = require('node-schedule');
 
-const {default: _logger} = require('../lib/logger.ts');
+const {default: logger} = require('../lib/logger.ts');
 const {makeSummary} = require('./summary_writer.js');
 
-const logger = _logger.child({bot: 'summary'});
+const log = logger.child({bot: 'summary'});
 
 async function getZipData(drive, month) {
     const filename = `sandbox-messages-${month}.zip`;
@@ -23,15 +23,15 @@ async function getZipData(drive, month) {
                 q: `name='${filename}'`,
             }, (err, res) => {
                 if (err) {
-                    logger.error(err);
+                    log.error(err);
                     return reject(err);
                 }
-                logger.info(JSON.stringify(res.data));
+                log.info(JSON.stringify(res.data));
                 resolve(res.data);
             });
         });
         if (!files) {
-            logger.error(`unable to find ${filename}`);
+            log.error(`unable to find ${filename}`);
             return null;
         }
         const file = files[0];
@@ -55,9 +55,9 @@ async function getZipData(drive, month) {
     // local
     const bufferPromise = new Promise((resolve, reject) => {
         fs.readFile(__dirname + '/' + filename, (err, data) => {
-            if (err) logger.info(`unable to load ${filename}`);
+            if (err) log.info(`unable to load ${filename}`);
             else {
-                logger.info(`successfully loaded ${filename}`); resolve(data);
+                log.info(`successfully loaded ${filename}`); resolve(data);
             }
         });
     });

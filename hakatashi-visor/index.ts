@@ -4,9 +4,9 @@ import {stripIndent} from 'common-tags';
 import axios from 'axios';
 import schedule from 'node-schedule';
 import type {SlackInterface} from '../lib/slack';
-import _logger from '../lib/logger';
+import logger from '../lib/logger';
 
-const logger = _logger.child({bot: 'hakatashi-visor'});
+const log = logger.child({bot: 'hakatashi-visor'});
 const mutex = new Mutex();
 
 const CALLME = '@hakatashi-visor';
@@ -36,7 +36,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 
 	const checkSolidityPost = async () => {
 		if (await checkSolidity()) {
-			logger.warn('HAKATASHI IS SOLID TODAY!!!!!!!!!!!!!!');
+			log.warn('HAKATASHI IS SOLID TODAY!!!!!!!!!!!!!!');
 			await slack.chat.postMessage({
 				username: CALLME,
 				icon_emoji: ':heavy-exclamation-mark:',

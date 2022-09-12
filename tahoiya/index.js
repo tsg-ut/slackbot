@@ -24,7 +24,7 @@ const sqlite3 = require('sqlite3');
 const {unlock, increment} = require('../achievements');
 const getReading = require('../lib/getReading.js');
 
-const {default: _logger} = require('../lib/logger.ts');
+const {default: logger} = require('../lib/logger.ts');
 const bot = require('./bot.js');
 const gist = require('./gist.js');
 const {
@@ -37,7 +37,7 @@ const {
 	normalizeMeaning,
 } = require('./lib.js');
 
-const logger = _logger.child({bot: 'tahoiya'});
+const log = logger.child({bot: 'tahoiya'});
 
 const timeCollectMeaningNormal = 3 * 60 * 1000;
 const timeCollectMeaningDaily = 90 * 60 * 1000;
@@ -60,7 +60,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 				assert(savedState.phase !== 'waiting');
 				const difftime = savedState.endThisPhase - Date.now();
 				if (difftime <= 0) {
-					logger.info('tahoiya ends its phase while deploy, hence add extra time');
+					log.info('tahoiya ends its phase while deploy, hence add extra time');
 					savedState.endThisPhase = Date.now() + timeExtraAddition;
 				}
 				switch (savedState.phase) {
@@ -685,7 +685,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 		assert(state.phase === 'collect_meanings');
 
 		const distance = levenshtein.get(state.theme.meaning, result);
-		logger.info({result, distance});
+		log.info({result, distance});
 		if (distance <= Math.max(state.theme.meaning.length, result.length) / 2) {
 			return;
 		}
@@ -824,7 +824,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 
 					const candidates = sampleSize(candidateWords, 10);
 					await setState({candidates});
-					logger.info(candidates);
+					log.info(candidates);
 					await postMessage(stripIndent`
 						たのしい“たほいや”を始めるよ～:clap::clap::clap:
 						下のリストの中からお題にする単語を選んでタイプしてね:wink:

@@ -1,5 +1,5 @@
 import type {SlackInterface} from '../lib/slack';
-import _logger from '../lib/logger';
+import logger from '../lib/logger';
 import cloudinary from 'cloudinary';
 import sharp from 'sharp';
 import path from 'path';
@@ -12,7 +12,7 @@ import {JSDOM} from 'jsdom';
 import Queue from 'p-queue';
 import {increment, unlock} from '../achievements/index.js';
 
-const logger = _logger.child({bot: 'octas'});
+const log = logger.child({bot: 'octas'});
 
 const applyCSS = (paper: any) => {
     paper.selectAll('.board-edge').attr({
@@ -144,7 +144,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
     };
 
     const Launch = async () => {
-        logger.info('[OCTAS] instance launched.');
+        log.info('[OCTAS] instance launched.');
         state.isHolding = true;
         state.board = new Board({width: 5, height: 5});
         state.paper = dom.window.Snap();
@@ -219,7 +219,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
             });
 
             // begin match!
-            logger.info('[OCTAS] matching accepted.');
+            log.info('[OCTAS] matching accepted.');
         }
     };
 
@@ -332,7 +332,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                     reply_broadcast: true
                 });
             }
-            logger.info(`active: ${state.board.activePlayer}, winner: ${state.board.winner}`);
+            log.info(`active: ${state.board.activePlayer}, winner: ${state.board.winner}`);
             unlock(state.player, 'octas-beginner');
             unlock(state.opponent, 'octas-beginner');
             if (state.player != state.opponent) {
