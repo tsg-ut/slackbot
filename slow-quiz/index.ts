@@ -119,8 +119,8 @@ class SlowQuiz {
 			type: 'button',
 			actionId: 'slowquiz_delete_quiz_button',
 		}, (payload: any) => {
-			const action = (payload?.actions ?? []).find((action: any) => (
-				action.action_id === 'slowquiz_delete_quiz_button'
+			const action = (payload?.actions ?? []).find((a: any) => (
+				a.action_id === 'slowquiz_delete_quiz_button'
 			));
 			mutex.runExclusive(() => (
 				this.deleteQuiz({
@@ -250,7 +250,7 @@ class SlowQuiz {
 			return;
 		}
 
-		if (typeof ruby !== 'string' || !ruby.match(/^[ぁ-ゟァ-ヿa-z0-9]+$/i)) {
+		if (typeof ruby !== 'string' || !ruby.match(/^[ぁ-ゟァ-ヿa-z0-9,]+$/i)) {
 			this.postEphemeral('読みがなに使える文字は「ひらがな・カタカナ・英数字」のみだよ🙄', user);
 			return;
 		}
@@ -325,9 +325,12 @@ class SlowQuiz {
 		game.answeredUsers.push(user);
 
 		const normalizedRuby: string = hiraganize(ruby).toLowerCase().trim();
-		const normalizedCorrectRuby: string = hiraganize(game.ruby).toLowerCase().trim();
+		const isCorrect = game.ruby.split(',').some((correctAnswer) => {
+			const normalizedCorrectRuby: string = hiraganize(correctAnswer).toLowerCase().trim();
+			return normalizedRuby === normalizedCorrectRuby;
+		});
 
-		if (normalizedRuby !== normalizedCorrectRuby) {
+		if (!isCorrect) {
 			if (game.wrongAnswers === undefined) {
 				game.wrongAnswers = [];
 			}
@@ -388,9 +391,8 @@ class SlowQuiz {
 			return null;
 		}
 
-		const game = this.state.games[gameIndex];
-
-		if (game.status !== 'waitlisted') {
+		const removedGame = this.state.games[gameIndex];
+		if (removedGame.status !== 'waitlisted') {
 			this.postEphemeral('Error: 出題待ちの問題ではありません', user);
 			return null;
 		}
