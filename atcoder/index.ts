@@ -241,7 +241,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const prepostResult = async (id: string) => {
 		const contest = state.contests.find((contest) => contest.id === id);
 
-		const {data: {endTime}} = await scrapeIt(`https://atcoder.jp/contests/${id}`, {
+		const {data: {endTime}} = await scrapeIt<{endTime: number}>(`https://atcoder.jp/contests/${id}`, {
 			endTime: {
 				selector: '.contest-duration a:last-child time',
 				convert: (time) => new Date(time).getTime(),

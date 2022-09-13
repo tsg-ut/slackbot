@@ -5,7 +5,7 @@ import JSZip from 'jszip';
 import {sample,sampleSize,uniq} from 'lodash';
 import type {SlackInterface} from '../lib/slack';
 import {download} from '../lib/download';
-import csv_parse from 'csv-parse';
+import {parse as csv_parse} from 'csv-parse';
 import {AteQuiz,AteQuizProblem} from '../atequiz';
 import type { WebAPICallOptions } from '@slack/web-api';
 import { stripIndent } from 'common-tags';
@@ -49,7 +49,7 @@ const jukugoLoader : Loader<jukugoDict> = new Loader(async () => {
         const parser = csv_parse({
           delimiter: '\t',
           quote: null,
-          skip_lines_with_error: true,
+          skip_records_with_error: true,
         });
         const res : string[] = [];
         parser.on('data', (data:string[]) => {

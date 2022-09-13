@@ -2,7 +2,7 @@ import {VoiceConnectionStatus, joinVoiceChannel} from '@discordjs/voice';
 import type {DiscordGatewayAdapterCreator} from '@discordjs/voice';
 import type {ContextBlock, WebAPICallResult} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
-import Discord, {Intents, TextChannel, Collection, Snowflake, GuildMember, VoiceChannel} from 'discord.js';
+import Discord, {TextChannel, Collection, Snowflake, GuildMember, VoiceChannel, GatewayIntentBits} from 'discord.js';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
@@ -23,7 +23,7 @@ interface StateObj {
 
 // eslint-disable-next-line import/no-named-as-default-member
 const discord = new Discord.Client({
-	intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_VOICE_STATES],
+	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates],
 });
 discord.login(process.env.TSGBOT_DISCORD_TOKEN);
 
@@ -41,7 +41,7 @@ const getMembersBlock = (roomName: string, members: Collection<Snowflake, GuildM
 				.map((member) => (
 					{
 						type: 'image',
-						image_url: member.user.displayAvatarURL({format: 'png', size: 64}),
+						image_url: member.user.displayAvatarURL({extension: 'png', size: 64}),
 						alt_text: member.displayName,
 					}
 				)),

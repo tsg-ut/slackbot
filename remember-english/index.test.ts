@@ -44,7 +44,7 @@ beforeEach(async () => {
 	viewsOpen.mockClear();
 
 	jest
-		.useFakeTimers('modern')
+		.useFakeTimers()
 		.setSystemTime(now);
 
 	rememberEnglish = new MockedRememberEnglish(slack);
