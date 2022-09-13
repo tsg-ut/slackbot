@@ -3,6 +3,7 @@ import logger from '../lib/logger';
 import {stripIndents} from 'common-tags';
 import axios from 'axios';
 import { shuffle } from 'lodash';
+import { ChatPostMessageArguments, WebAPICallOptions } from '@slack/web-api';
 
 const BOT_NAME = "Wordle Battle (beta)";
 
@@ -12,30 +13,33 @@ interface Player {
     queries: string[],
 };
 
-interface State {
-    thread_ts: string,
-    status: "Idle" | "Waiting" | "Gaming",
-    length: number,
-    players: Player[],
-    next: 0 | 1, // player to answer next
+class State {
+    thread_ts: string;
+    status: "Idle" | "Waiting" | "Gaming";
+    length: number;
+    players: Player[];
+    next: 0 | 1; // player to answer next
+    lastTurn: Date;
+    constructor() {
+        this.init();
+    }
+    init() {
+        this.thread_ts = null;
+        this.status = "Idle";
+        this.length = null;
+        this.players = [];
+        this.next = null;
+        this.lastTurn = null;
+    }
+    startGame() {
+        this.status = "Gaming";
+        this.players = shuffle(this.players);
+        this.next = 0;
+    }
 };
 
 export default async ({eventClient, webClient: slack}: SlackInterface) => {
-    const state: State = {
-        thread_ts: null,
-        status: "Idle",
-        length: null,
-        players: [],
-        next: null,
-    };
-    
-    const initState = () => {
-        state.thread_ts = null;
-        state.status = "Idle";
-        state.length = null;
-        state.players = [];
-        state.next = null;
-    };
+    const state = new State();
 
     const wordExists = async (word: string): Promise<boolean> => {
         const apiLink = `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`;
@@ -65,12 +69,6 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
         });
     };
 
-    const startGame = () => {
-        state.status = "Gaming";
-        state.players = shuffle(state.players);
-        state.next = 0;
-    };
-
     // query を追加する (answer と一致する場合は true を返す)
     const doTurn = (query: string): boolean => {
         state.players[1 - state.next].queries.push(query);
@@ -87,34 +85,47 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
         }).join("\n");
     };
 
-    const postReply = async (messageText: string) => {
-        await slack.chat.postMessage({
+    const postMessage = async (messageText: string, option: WebAPICallOptions) => {
+        const args = Object.assign({}, {
             channel: process.env.CHANNEL_SANDBOX,
             text: messageText,
-            thread_ts: state.thread_ts,
             username: BOT_NAME,
-            icon_emoji: ":capital_abcd:"
-        });
+            icon_emoji: ":capital_abcd:",
+        }, option);
+        return slack.chat.postMessage(args as ChatPostMessageArguments);
+    }
+
+    const postReply = async (messageText: string) => {
+        // await slack.chat.postMessage({
+        //     channel: process.env.CHANNEL_SANDBOX,
+        //     text: messageText,
+        //     thread_ts: state.thread_ts,
+        //     username: BOT_NAME,
+        //     icon_emoji: ":capital_abcd:"
+        // });
+        return postMessage(messageText, {thread_ts: state.thread_ts});
     };
 
     const postReplyBroadcast = async (messageText: string) => {
-        await slack.chat.postMessage({
-            channel: process.env.CHANNEL_SANDBOX,
-            text: messageText,
-            thread_ts: state.thread_ts,
-            reply_broadcast: true,
-            username: BOT_NAME,
-            icon_emoji: ":capital_abcd:"
-        });
+        // await slack.chat.postMessage({
+        //     channel: process.env.CHANNEL_SANDBOX,
+        //     text: messageText,
+        //     thread_ts: state.thread_ts,
+        //     reply_broadcast: true,
+        //     username: BOT_NAME,
+        //     icon_emoji: ":capital_abcd:"
+        // });
+        return postMessage(messageText, {thread_ts: state.thread_ts, reply_broadcast: true});
     };
 
     const postAnnounce = async (messageText: string) => {
-        await slack.chat.postMessage({
-            channel: process.env.CHANNEL_SANDBOX,
-            text: messageText,
-            username: BOT_NAME,
-            icon_emoji: ":capital_abcd:"
-        });
+        // await slack.chat.postMessage({
+        //     channel: process.env.CHANNEL_SANDBOX,
+        //     text: messageText,
+        //     username: BOT_NAME,
+        //     icon_emoji: ":capital_abcd:"
+        // });
+        return postMessage(messageText, {});
     };
 
     eventClient.on("message", async (message: any) => {
@@ -125,7 +136,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
         if (message.channel === process.env.CHANNEL_SANDBOX) {
             logger.info(ts);
             if (text === "wordle reset") {
-                initState();
+                state.init();
                 await postAnnounce("Wordle Battle をリセットしました。");
             }
             else if (text === "wordle battle") {
@@ -159,7 +170,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                                     await postReplyBroadcast(stripIndents`勝者：<@${state.players[state.next ? 0 : 1].user}>
                                     ${constructMessage(state.next)}
                                     <@${state.players[state.next ? 0 : 1].user}> さんの単語は ${state.players[state.next ? 0 : 1].answer} でした。`);
-                                    initState();
+                                    state.init();
                                 }
                             }
                             else {
@@ -206,7 +217,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                                 残り人数: ${2 - state.players.length} 人`);
                                 if (state.players.length === 2) {
                                     state.status = "Gaming";
-                                    startGame();
+                                    state.startGame();
                                     await postReply(stripIndents`ゲーム開始！ 先手：<@${state.players[0].user}> 後手：<@${state.players[1].user}>
                                     <@${state.players[0].user}> さんは ${state.length} 文字の英単語をリプライしてください`);
                                 }
@@ -217,7 +228,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                         }
                     }
                     else {
-                        postDM(`Wordle Battle へ登録する単語は英小文字で構成された長さ ${state.length} の単語にしてください！`);
+                        postDM(`Wordle Battle へ登録する単語は英小文字で構成された長さ *${state.length}* の単語にしてください！`);
                     }
                 }
             }
