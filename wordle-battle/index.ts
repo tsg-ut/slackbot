@@ -107,35 +107,14 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
     }
 
     const postReply = async (messageText: string) => {
-        // await slack.chat.postMessage({
-        //     channel: process.env.CHANNEL_SANDBOX,
-        //     text: messageText,
-        //     thread_ts: state.thread_ts,
-        //     username: BOT_NAME,
-        //     icon_emoji: ":capital_abcd:"
-        // });
         return postMessage(messageText, {thread_ts: state.thread_ts});
     };
 
     const postReplyBroadcast = async (messageText: string) => {
-        // await slack.chat.postMessage({
-        //     channel: process.env.CHANNEL_SANDBOX,
-        //     text: messageText,
-        //     thread_ts: state.thread_ts,
-        //     reply_broadcast: true,
-        //     username: BOT_NAME,
-        //     icon_emoji: ":capital_abcd:"
-        // });
         return postMessage(messageText, {thread_ts: state.thread_ts, reply_broadcast: true});
     };
 
     const postAnnounce = async (messageText: string) => {
-        // await slack.chat.postMessage({
-        //     channel: process.env.CHANNEL_SANDBOX,
-        //     text: messageText,
-        //     username: BOT_NAME,
-        //     icon_emoji: ":capital_abcd:"
-        // });
         return postMessage(messageText, {});
     };
 
@@ -168,7 +147,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                 if (state.status === "Idle") {
                     // ゲーム開始
                     const lengthArr = /^wordle battle (\d*)$/.exec(text);
-                    const lengthStr = lengthArr.length < 2 ? null : lengthArr[1];
+                    const lengthStr = lengthArr && (lengthArr.length < 2 ? null : lengthArr[1]);
                     const length = lengthStr ? parseInt(lengthStr) : 6;
                     state.length = length;
                     if (length < 2 || length > 15) {
