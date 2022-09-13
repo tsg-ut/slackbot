@@ -3023,6 +3023,83 @@ const achievements: Achievement[] = [
 		category: 'octas',
 	},
 
+	// wordle-battle
+	{
+		id: 'wordle-battle-win-1',
+		difficulty: 'medium',
+		title: 'Wordle勝利',
+		condition: 'Wordle Battle で相手の単語を当て、勝利する',
+		category: 'wordle-battle',
+		counter: 'wordle-battle-win',
+		value: 1
+	},
+	{
+		id: 'wordle-battle-win-5',
+		difficulty: 'hard',
+		title: 'Wordleオタク',
+		condition: 'Wordle Battle で 5 回相手の単語を当て、勝利する',
+		category: 'wordle-battle',
+		counter: 'wordle-battle-win',
+		value: 5
+	},
+	{
+		id: 'wordle-battle-win-25',
+		difficulty: 'professional',
+		title: 'Wordleオタク2',
+		condition: 'Wordle Battle で 25 回相手の単語を当て、勝利する',
+		category: 'wordle-battle',
+		counter: 'wordle-battle-win',
+		value: 25
+	},
+	{
+		id: 'wordle-battle-short',
+		difficulty: 'medium',
+		title: 'Wordle Bat(またはBa)',
+		condition: 'Wordle Battle で相手の 3 文字以下の単語を当て、勝利する',
+		category: 'wordle-battle',
+	},
+	{
+		id: 'wordle-battle-long',
+		difficulty: 'hard',
+		title: 'Wordle Battle with overly prolonged expressions and phrases',
+		condition: 'Wordle Battle で相手の 13 文字以上の単語を当て、勝利する',
+		category: 'wordle-battle',
+	},
+	{
+		id: 'wordle-battle-letters-16',
+		difficulty: 'medium',
+		title: '緑と黄色の正方形',
+		condition: 'Wordle Battle で緑または黄色の四角を16個集める',
+		category: 'wordle-battle',
+		counter: 'wordle-battle-letters',
+		value: 25
+	},
+	{
+		id: 'wordle-battle-letters-64',
+		difficulty: 'hard',
+		title: '緑と黄色の立方体',
+		condition: 'Wordle Battle で緑または黄色の四角を64個集める',
+		category: 'wordle-battle',
+		counter: 'wordle-battle-letters',
+		value: 64
+	},
+	{
+		id: 'wordle-battle-letters-256',
+		difficulty: 'professional',
+		title: '緑と黄色の正八胞体',
+		condition: 'Wordle Battle で緑または黄色の四角を256個集める',
+		category: 'wordle-battle',
+		counter: 'wordle-battle-letters',
+		value: 256
+	},
+	{
+		id: 'wordle-battle-long-rally',
+		difficulty: 'hard',
+		title: 'Wordle粘り勝ち',
+		condition: 'Wordle Battle で 15 個以上のクエリを投げ、勝利をする',
+		category: 'wordle-battle',
+	},
+
 	// discord
 
 	{

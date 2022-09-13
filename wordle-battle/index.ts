@@ -4,6 +4,7 @@ import {stripIndents} from 'common-tags';
 import axios from 'axios';
 import { shuffle } from 'lodash';
 import { ChatPostMessageArguments, WebAPICallOptions } from '@slack/web-api';
+import { unlock, increment } from '../achievements';
 
 const BOT_NAME = "Wordle Battle (beta)";
 const TL_SECONDS = 90;
@@ -133,6 +134,24 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
         });
     };
 
+    const unlockWinAchievements = async (winnerIndex: (0 | 1)) => {
+        const winner = state.players[winnerIndex].user;
+        increment(winner, "wordle-battle-win");
+        if (state.length <= 3) {
+            unlock(winner, "wordle-battle-short");
+        }
+        if (state.length >= 13) {
+            unlock(winner, "wordle-battle-long");
+        }
+        if (state.players[winnerIndex ? 0 : 1].queries.length >= 15) {
+            unlock(winner, "wordle-battle-long-rally");
+        }
+    };
+
+    const unlockWordAchievements = async (user: string, pattern: (0 | 1 | 2)[]) => {
+        increment(user, "wordle-battle-letters", pattern.map(i => (i ? 1 : 0)).reduce((a, c) => a + c, 0));
+    };
+
     eventClient.on("message", async (message: any) => {
         if (!message.text || message.subtype !== undefined) {
             return;
@@ -172,6 +191,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                         if (/^[a-z]*$/.test(text) && text.length === state.length) {
                             if (await wordExists(text)) {
                                 state.clearTimer();
+                                unlockWordAchievements(message.user, getWordlePattern(state.players[state.next ? 1 : 0].answer, text));
                                 const isWin = state.doTurn(text);
                                 await postReply(stripIndents`受理された単語： \`${text}\`
                                 ${constructMessage(state.next)}`
@@ -180,6 +200,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                                     await postReplyBroadcast(stripIndents`勝者：<@${state.players[state.next ? 0 : 1].user}>
                                     ${constructMessage(state.next)}
                                     <@${state.players[state.next ? 0 : 1].user}> さんの単語は ${state.players[state.next ? 0 : 1].answer} でした。`);
+                                    unlockWinAchievements(state.next ? 0 : 1);
                                     state.init();
                                 }
                                 else {
