@@ -75,9 +75,8 @@ export default class SlackCache {
 					this.emojis.set(event.name, event.value);
 				}
 			});
-			// FIXME: node-slack-sdkの型情報ミスってない？そんなことない？なんでas要るの？
-			(this.config.webClient.emoji.list({token: this.config.token.bot_access_token}) as Promise<{emoji: any}>)
-				.then(({emoji: emojis}: {emoji: any}) => {
+			this.config.webClient.emoji.list({token: this.config.token.bot_access_token})
+				.then(({emoji: emojis}) => {
 					for (const name in emojis) {
 						this.emojis.set(name, emojis[name]);
 					}
