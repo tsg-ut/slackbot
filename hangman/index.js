@@ -7,6 +7,10 @@ const { stripIndents } = require("common-tags");
 const { unlock, increment, set } = require('../achievements');
 const { default: logger } = require('../lib/logger.ts');
 const { getMemberName } = require('../lib/slackUtils');
+const axios = require('axios');
+
+const BOT_NAME = "hangmanbot";
+const BOT_CALL_KEYWORD = "hangman";
 
 const log = logger.child({bot: 'hangman'});
 
@@ -164,6 +168,39 @@ const getRandomWord = (diffValue, wordList) => {
     return 'hangman';
 };
 
+// get the word definition from dictionaryapi.dev
+const getDefinitionsFromWord = async (word) => {
+    const apiLink = `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`;
+    logger.info("Getting from " + apiLink);
+    try {
+        const response = await axios.get(apiLink);
+        if (!response.data[0]) {
+            return undefined;
+        }
+        const data = response.data;
+        logger.info(data);
+        return data;
+    }
+    catch (error) {
+        logger.info(error);
+        return undefined;
+    }
+};
+
+const parseDefinitions = (definitions) => {
+    return definitions.map((definition) => 
+        `*${definition["word"]}* ${definition["phonetic"] || ""}\n`.concat(
+            definition["meanings"].map((meaning) => 
+                `(${meaning["partOfSpeech"]})\n`.concat(
+                    meaning["definitions"].map((def, index) => 
+                        `${index+1}. ${def["definition"]}`
+                    ).join('\n')
+                )
+            ).join('\n')
+        ).concat(`\n<${definition["sourceUrls"]}|source>`)
+    ).join('\n');
+};
+
 const resetConsecutiveAchievements = async (slackid) => {
     await set(slackid, 'hangman-consecutive', 0);
     if (state[slackid].openList.every(x => !x)) {
@@ -209,7 +246,7 @@ module.exports = ({ eventClient, webClient: slack }) => {
     const postMessage = (text, slackid, options) => slack.chat.postMessage({
         channel: process.env.CHANNEL_SANDBOX,
         text,
-        username: 'hangmanbot',
+        username: BOT_NAME,
         // eslint-disable-next-line camelcase
         icon_emoji: ':capital_abcd:',
         ...(options ? options : {}),
@@ -225,7 +262,7 @@ module.exports = ({ eventClient, webClient: slack }) => {
 
     const postGameResult = async (header, slackid) => {
         const challenger = getChallengerById(slackid);
-        return await postMessage(
+        await postMessage(
             stripIndents`
                 ${header}
                 答えは \`${challenger.answer}\` でした
@@ -233,10 +270,21 @@ module.exports = ({ eventClient, webClient: slack }) => {
             slackid, {
                 reply_broadcast: true
         });
+        if (challenger.definitionText) {
+            return postMessage(
+                stripIndents`${challenger.definitionText}`, slackid);
+        }
+    };
+
+    const postDefinitionText = async (slackid) => {
+        if (challenger.definitionText) {
+            return await postMessage(
+                stripIndents`${challenger.definitionText}`, slackid);
+        }
     };
 
     eventClient.on('message', async (message) => {
-        if (message.channel !== process.env.CHANNEL_SANDBOX || !!message.subtype || !message.text || message.username === 'hangmanbot' || !message.user) {
+        if (message.channel !== process.env.CHANNEL_SANDBOX || !!message.subtype || !message.text || message.username === BOT_NAME || !message.user) {
             return;
         }
 
@@ -245,7 +293,7 @@ module.exports = ({ eventClient, webClient: slack }) => {
         let matches = null;
 
         // reset command is available both within threads or not
-        if (text === "hangman reset") {
+        if (text === `${BOT_CALL_KEYWORD} reset`) {
             log.info("resetting Sadge");
             const challenger = getChallengerById(user);
             if (challenger === null) {
@@ -257,11 +305,10 @@ module.exports = ({ eventClient, webClient: slack }) => {
             }
             return;
         }
-
-        if (!message.thread_ts && (matches = text.match(/^hangman(|\s\w*)$/i))) {
+        if (!message.thread_ts && (matches = text.match(new RegExp(`^${BOT_CALL_KEYWORD}(|\\s\\w*)$`, "i")))) {
             // check if the challenger is now playing game
             if (getChallengerById(message.user) !== null) {
-                return await postMessage(`${await getMemberName(message.user)}はhangmanをプレイ中だよ!!`);
+                return await postMessage(`*${await getMemberName(message.user)}* は Hangman をプレイ中だよ!!`);
             } else {
                 challenger = {
                     phase: 'waiting',
@@ -299,6 +346,10 @@ module.exports = ({ eventClient, webClient: slack }) => {
 
             const word = getRandomWord(difficultyString, wordList);
             
+            const definition = await getDefinitionsFromWord(word);
+            
+            const definitionText = (!!definition) ? parseDefinitions(definition) : "";
+
             const wordLength = word.length;
             await setState({
                 ...state,
@@ -307,6 +358,7 @@ module.exports = ({ eventClient, webClient: slack }) => {
                     phase: 'playing',
                     diffValue: difficultyString,
                     answer: word,
+                    definitionText: definitionText,
                     openList: Array(wordLength).fill(false),
                     triesLeft: numberOfTries,
                 }
@@ -399,7 +451,7 @@ module.exports = ({ eventClient, webClient: slack }) => {
                 }
                 const response = await guessAnswer(matches[1], state[slackid]);
                 if (response === 'success') {
-                    postGameResult(':tada: 正解！ :astonished:', slackid);
+                    await postGameResult(':tada: 正解！ :astonished:', slackid);
                     await unlockGameAchievements(slackid);
                     delete state[slackid];
                     setState(state, state);
@@ -411,7 +463,7 @@ module.exports = ({ eventClient, webClient: slack }) => {
                         return;
                     }
                     else {
-                        postGameResult(':cry: ゲームオーバー :pensive:', slackid);
+                        await postGameResult(':cry: ゲームオーバー :pensive:', slackid);
                         await resetConsecutiveAchievements(slackid);
                         delete state[slackid];
                         setState(state, state);
