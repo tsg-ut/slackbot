@@ -3,12 +3,16 @@ import type {FastifyPluginCallback} from 'fastify';
 import plugin from 'fastify-plugin';
 import {google} from 'googleapis';
 import {zip} from 'lodash';
-import {Rating, rate} from 'ts-trueskill';
+// eslint-disable-next-line import/no-namespace
+import type * as Trueskill from 'ts-trueskill';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
-import {extractMajsoulId, getMajsoulResult} from './util';
+import {Loader} from '../lib/utils';
 import type {Player} from './util';
+import {extractMajsoulId, getMajsoulResult} from './util';
+
+const trueskillLoader = new Loader<typeof Trueskill>(() => import('ts-trueskill'));
 
 const BATTLE_LOG_ID = '1Ku67kvpt0oP6PZL7F_6AreQLiiuLq8k8P0qEDCcIqXI';
 
@@ -27,7 +31,7 @@ interface StateObj {
 	users: UserEntry[],
 }
 
-const getSlackNameOrNickname = async (accountId: string, nickname: string, users: UserEntry[]) => {
+const getSlackNameOrNickname = (accountId: string, nickname: string, users: UserEntry[]) => {
 	const user = users.find((user) => user.jantama === accountId);
 	if (!user) {
 		return nickname;
@@ -115,10 +119,12 @@ const getSheetsData = async (spreadsheetId: string, range: string) => {
 };
 
 const generateRatingsFromHistory = async () => {
+	const {rate, Rating} = await trueskillLoader.load();
+
 	const sheetsData = await getSheetsData(BATTLE_LOG_ID, 'log!A:N');
 	const sheetsDataSamma = await getSheetsData(BATTLE_LOG_ID, 'samma!A:K');
 
-	const ratings = new Map<string, Rating>();
+	const ratings = new Map<string, Trueskill.Rating>();
 	const nicknameMap = new Map<string, string>();
 
 	const battles = [] as {date: number, users: string[]}[];
@@ -203,6 +209,8 @@ const appendResultToHistory = async (paipuId: string, date: Date, players: Playe
 };
 
 const calculateNewRating = async (players: Player[]) => {
+	const {rate, Rating} = await trueskillLoader.load();
+
 	// 麻雀ログの変更を適用するため、追加のたびに履歴を取得して最初から計算する
 	const {ratings: oldRatings} = await generateRatingsFromHistory();
 
@@ -266,9 +274,9 @@ export const server = async ({webClient: slack}: SlackInterface) => {
 					username: 'jantama',
 					icon_emoji: ':ichihime:',
 					text: 'TSG麻雀ランキングだにゃ！',
-					attachments: await Promise.all(ranking.map(async (rank, i) => ({
-						title: `#${i + 1}: ${await getSlackNameOrNickname(rank.accountId, rank.nickname, state.users)} (${rank.rating.toFixed(2)})`,
-					}))),
+					attachments: ranking.map((rank, i) => ({
+						title: `#${i + 1}: ${getSlackNameOrNickname(rank.accountId, rank.nickname, state.users)} (${rank.rating.toFixed(2)})`,
+					})),
 				});
 				return '';
 			}
