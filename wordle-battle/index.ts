@@ -50,6 +50,9 @@ class State {
         this.next = this.next ? 0 : 1;
         return this.players[this.next].answer === query;
     }
+    passTurn() {
+        this.next = this.next ? 0 : 1;
+    }
     clearTimer() {
         if (!!this.timeoutID) {
             clearTimeout(this.timeoutID);
@@ -86,7 +89,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 
     const constructMessage = (index: 0 | 1) => {
         const player = state.players[index];
-        return player.queries.reverse().map((query) => {
+        return player.queries.slice().reverse().map((query) => {
             const pattern = getWordlePattern(query, state.players[index].answer);
             const patternText = pattern.map((c) => c === 2 ? ":large_green_square:" : c === 1 ? ":large_yellow_square:" : ":white_large_square:").join("");
             return `\`${query}\` ${patternText}`;
@@ -137,12 +140,17 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
     };
 
     const setStateTimer = () => {
+        // state.setTimer(async () => {
+        //     await postReply(stripIndents`:clock3: タイムオーバー :sweat:
+        //     勝者：<@${state.players[state.next ? 0 : 1].user}>
+        //     <@${state.players[state.next ? 1 : 0].user}> さんの単語は ${state.players[state.next ? 1 : 0].answer}、
+        //     <@${state.players[state.next ? 0 : 1].user}> さんの単語は ${state.players[state.next ? 0 : 1].answer} でした。`);
+        //     state.init();
+        // });
         state.setTimer(async () => {
+            state.passTurn();
             await postReply(stripIndents`:clock3: タイムオーバー :sweat:
-            勝者：<@${state.players[state.next ? 1 : 0].user}>
-            <@${state.players[state.next ? 1 : 0].user}> さんの単語は ${state.players[state.next ? 1 : 0].answer}、
-            <@${state.players[state.next ? 0 : 1].user}> さんの単語は ${state.players[state.next ? 0 : 1].answer} でした。`);
-            state.init();
+            次は <@${state.players[state.next].user}> さんの番です。${TL_SECONDS} 秒以内に答えてください。`);
         });
     };
 
@@ -156,11 +164,16 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                 state.init();
                 await postAnnounce("Wordle Battle をリセットしました。");
             }
-            else if (text === "wordle battle") {
+            else if (text.match(/^wordle battle( \d*)?$/)) {
                 if (state.status === "Idle") {
                     // ゲーム開始
-                    const length = 6;
+                    const lengthArr = /^wordle battle (\d*)$/.exec(text);
+                    const lengthStr = lengthArr.length < 2 ? null : lengthArr[1];
+                    const length = lengthStr ? parseInt(lengthStr) : 6;
                     state.length = length;
+                    if (length < 2 || length > 15) {
+                        await postAnnounce("Wordle Battle は 2 文字以上 15 文字以下の単語のみに対応しています。");
+                    }
                     state.thread_ts = ts;
                     await postReplyBroadcast(stripIndents`Wordle Battle を開始します！
                     参加希望者は ${length} 文字の英単語を <@${process.env.USER_TSGBOT}> へ DM で送信してください。
