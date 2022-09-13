@@ -13,6 +13,8 @@ import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getEmoji} from '../lib/slackUtils';
 
+const log = logger.child({bot: 'emoji-modifier'});
+
 // emoji type definition {{{
 interface EmodiError {
   kind: 'error';
@@ -450,7 +452,7 @@ type ParseResult = Transformation | EmodiError | HelpRequest;
 const parse = (message: string): ParseResult => {
   const parseError = errorOfKind('ParseError');
   const parts = message.split('|').map(_.trim);
-  logger.info(parts);
+  log.info(parts);
   if (parts.length < 1) {
     return parseError('Expected emoji; you can also type `@emodi help`');
   }
@@ -613,7 +615,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
     const internalError = errorOfKind('InternalError');
     const result = await buildResponse(operation.groups.command)
       .catch((err) => {
-        logger.error(err.message);
+        log.error(err.message);
         return internalError(err.name + ': ' + err.message + '\n Please inform :coil:.');
       });
     if (result.kind === 'error') {

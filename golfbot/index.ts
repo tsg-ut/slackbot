@@ -16,6 +16,7 @@ import * as anagol from './anagol';
 const USERNAME = 'golfbot';
 const ICON_EMOJI = ':golf:';
 
+const log = logger.child({bot: 'golfbot'});
 const mutex = new Mutex();
 
 type ParseResult =
@@ -254,7 +255,7 @@ export const server = ({eventClient, webClient: slack, messageClient: slackInter
 				return;
 			}
 
-			logger.info(`[golfbot] command ${JSON.stringify(cmd)}`);
+			log.info(`[golfbot] command ${JSON.stringify(cmd)}`);
 
 			switch (cmd.type) {
 				case 'join': {
@@ -532,7 +533,7 @@ export const server = ({eventClient, webClient: slack, messageClient: slackInter
 				const messageTs = payload.view.private_metadata;
 				if (messageTs) {
 					// コンテストを編集
-					logger.info(`[golfbot] edit ${JSON.stringify(values)}`);
+					log.info(`[golfbot] edit ${JSON.stringify(values)}`);
 
 					mutex.runExclusive(async () => {
 						const contest: Contest = {
@@ -577,7 +578,7 @@ export const server = ({eventClient, webClient: slack, messageClient: slackInter
 					});
 				} else {
 					// コンテストを追加
-					logger.info(`[golfbot] post ${JSON.stringify(values)}`);
+					log.info(`[golfbot] post ${JSON.stringify(values)}`);
 
 					mutex.runExclusive(async () => {
 						const contest: Contest = {

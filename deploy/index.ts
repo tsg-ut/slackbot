@@ -13,11 +13,13 @@ import type {SlackInterface} from '../lib/slack';
 // @ts-expect-error
 import Blocker from './block.js';
 
+const log = logger.child({bot: 'deploy'});
+
 const webhooks = process.env.GITHUB_WEBHOOK_SECRET ? new Webhooks({
 	secret: process.env.GITHUB_WEBHOOK_SECRET,
 }) : null;
 if (process.env.NODE_ENV === 'production' && !webhooks) {
-	logger.warn('[INSECURE] GitHub webhook endpoint is not protected');
+	log.warn('[INSECURE] GitHub webhook endpoint is not protected');
 }
 
 const commands = [
@@ -53,7 +55,7 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 			}
 		}
 
-		logger.info(JSON.stringify({body: req.body, headers: req.headers}));
+		log.info(JSON.stringify({body: req.body, headers: req.headers}));
 
 		const name = req.headers['x-github-event'];
 		if (name === 'ping') {
@@ -129,7 +131,7 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 				},
 				30 * 60 * 1000, // 30min
 				(blocks: any) => {
-					logger.info(blocks);
+					log.info(blocks);
 					postMessage('デプロイがブロック中だよ:confounded:');
 				},
 			);

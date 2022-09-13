@@ -11,6 +11,8 @@ enum Emotion {
 type EmoLV = number;
 export {Emotion, EmoLV};
 
+const log = logger.child({bot: 'discord'});
+
 const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emotion, emolv}) => {
 	const postData = new URLSearchParams({
 		text,
@@ -36,7 +38,7 @@ const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emo
 			resolve({data: response.data});
 		}).catch((reason) => {
 			if (axios.isAxiosError(reason)) {
-				logger.error(`The VoiceText API server has returned an error: ${reason.response?.data}`);
+				log.error(`The VoiceText API server has returned an error: ${reason.response?.data}`);
 			}
 			reject(reason);
 		});

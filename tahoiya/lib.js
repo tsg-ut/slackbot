@@ -12,6 +12,8 @@ const shuffle = require('lodash/shuffle');
 const moment = require('moment');
 const {default: logger} = require('../lib/logger.ts');
 
+const log = logger.child({bot: 'tahoiya'});
+
 module.exports.getPageTitle = (url) => {
 	const urlTitle = decodeURI(url.match(/([^/]+)$/)[1]);
 
@@ -177,11 +179,11 @@ module.exports.getMeaning = async ([word, , source, rawMeaning]) => {
 	} while (exsentences < 3 && (wikitext === null || wikitext.endsWith('?')));
 
 	if (!wikitext) {
-		logger.error(`Couldn't find article for ${word}`);
+		log.error(`Couldn't find article for ${word}`);
 		return '';
 	}
 
-	logger.info(wikitext);
+	log.info(wikitext);
 
 	let meaning = null;
 	const lines = wikitext.split('\n').filter((line) => line.trim().length !== 0);

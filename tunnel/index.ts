@@ -12,6 +12,7 @@ import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 
 import {getEmoji, getMemberIcon, getMemberName} from '../lib/slackUtils';
 
+const log = logger.child({bot: 'tunnel'});
 const messages = new Map();
 
 let isTsgAllowing = true;
@@ -228,7 +229,7 @@ export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 					: null;
 
 				if (!team) {
-					logger.warn(`unknown team: ${body.team_id}`);
+					log.warn(`unknown team: ${body.team_id}`);
 					return;
 				}
 

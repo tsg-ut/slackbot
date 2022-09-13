@@ -10,6 +10,8 @@ import State from '../lib/state';
 import Hayaoshi from './hayaoshi';
 import TTS from './tts';
 
+const log = logger.child({bot: 'discord'});
+
 interface ChatPostMessageResult extends WebAPICallResult {
 	ts: string;
 }
@@ -97,12 +99,12 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 	});
 
 	hayaoshi.on('start-game', () => {
-		logger.info('[hayaoshi] start-game');
+		log.info('[hayaoshi] start-game');
 		tts.pause();
 	});
 
 	hayaoshi.on('end-game', () => {
-		logger.info('[hayaoshi] end-game');
+		log.info('[hayaoshi] end-game');
 		tts.unpause();
 	});
 

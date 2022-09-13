@@ -2,10 +2,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-process.on('unhandledRejection', (error: Error) => {
-	logger.error(error.stack);
-});
-
 import os from 'os';
 import {webClient, messageClient, eventClient, tsgEventClient} from './lib/slack';
 import Fastify from 'fastify';
@@ -19,6 +15,13 @@ import fastifyExpress from 'fastify-express';
 import sharp from 'sharp';
 
 import {uniq, throttle} from 'lodash';
+
+const log = logger.child({bot: 'index'});
+
+process.on('unhandledRejection', (error: Error) => {
+	log.error(error.stack);
+});
+
 
 // Disable the cache since it likely hits the swap anyway
 sharp.cache(false);
@@ -94,7 +97,7 @@ const allBots = [
 	'slow-quiz',
 ];
 
-logger.info('slackbot started');
+log.info('slackbot started');
 
 const argv = yargs
 	.array('only')
@@ -106,11 +109,11 @@ const argv = yargs
 const plugins = uniq(argv.only);
 
 if (plugins.length !== argv.only.length) {
-	logger.info(`Some plugins are specified more than once. Duplicated plugins were removed.`)
+	log.info(`Some plugins are specified more than once. Duplicated plugins were removed.`)
 }
 
 eventClient.on('error', (error) => {
-	logger.error(error.stack);
+	log.error(error.stack);
 });
 
 (async () => {
@@ -170,20 +173,20 @@ eventClient.on('error', (error) => {
 			await fastify.register(plugin.server({webClient, eventClient: tsgEventClient, messageClient}));
 		}
 		loadedPlugins.add(name);
-		logger.info(`plugin "${name}" successfully loaded`);
+		log.info(`plugin "${name}" successfully loaded`);
 
 		throttleLoadingMessageUpdate();
 	}));
 
 	fastify.listen(process.env.PORT || 21864, (error, address) => {
 		if (error) {
-			logger.error(error);
+			log.error(error);
 		} else {
-			logger.info(`Server launched at ${address}`);
+			log.info(`Server launched at ${address}`);
 		}
 	});
 
-	logger.info('Launched');
+	log.info('Launched');
 	webClient.chat.postMessage({
 		username: `tsgbot [${os.hostname()}]`,
 		channel: process.env.CHANNEL_SANDBOX,

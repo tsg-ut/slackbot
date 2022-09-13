@@ -12,6 +12,7 @@ import State from '../lib/state';
 import {Loader, Deferred} from '../lib/utils';
 import {getSpeech, Voice, speechConfig, Emotion, VoiceMeta, getDefaultVoiceMeta} from './speeches';
 
+const log = logger.child({bot: 'discord'});
 const mutex = new Mutex();
 
 class Timer {
@@ -134,15 +135,15 @@ export default class TTS extends EventEmitter {
 	}
 
 	pause() {
-		logger.info('[TTS] pause');
+		log.info('[TTS] pause');
 		this.connection = null;
 		this.isPaused = true;
 	}
 
 	unpause() {
-		logger.info('[TTS] unpause');
+		log.info('[TTS] unpause');
 		mutex.runExclusive(async () => {
-			logger.info(`[TTS] unpause - joining channel with lastActiveVoiceChannel ${this.lastActiveVoiceChannel}`);
+			log.info(`[TTS] unpause - joining channel with lastActiveVoiceChannel ${this.lastActiveVoiceChannel}`);
 			await new Promise((resolve) => setTimeout(resolve, 200));
 			if (this.users.size !== 0) {
 				if (this.lastActiveVoiceChannel === null) {
@@ -153,7 +154,7 @@ export default class TTS extends EventEmitter {
 				this.audioPlayer = createAudioPlayer();
 				this.subscription = this.connection.subscribe(this.audioPlayer);
 			}
-			logger.info('[TTS] unpause - connected');
+			log.info('[TTS] unpause - connected');
 			this.isPaused = false;
 		});
 	}
