@@ -191,7 +191,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                         if (/^[a-z]*$/.test(text) && text.length === state.length) {
                             if (await wordExists(text)) {
                                 state.clearTimer();
-                                unlockWordAchievements(message.user, getWordlePattern(state.players[state.next ? 1 : 0].answer, text));
+                                unlockWordAchievements(message.user, getWordlePattern(state.players[state.next ? 0 : 1].answer, text));
                                 const isWin = state.doTurn(text);
                                 await postReply(stripIndents`受理された単語： \`${text}\`
                                 ${constructMessage(state.next)}`
