@@ -18,8 +18,8 @@ import {uniq, throttle} from 'lodash';
 
 const log = logger.child({bot: 'index'});
 
-process.on('unhandledRejection', (error: Error) => {
-	log.error(error.stack);
+process.on('unhandledRejection', (error: Error, promise: Promise<any>) => {
+	log.error(`unhandledRejection at: ${promise} reason: ${error.message}`, {error, promise});
 });
 
 
@@ -113,7 +113,7 @@ if (plugins.length !== argv.only.length) {
 }
 
 eventClient.on('error', (error) => {
-	log.error(error.stack);
+	log.error(`EventsAPI error ${error.message}`, {error});
 });
 
 (async () => {
@@ -180,7 +180,7 @@ eventClient.on('error', (error) => {
 
 	fastify.listen(process.env.PORT || 21864, (error, address) => {
 		if (error) {
-			log.error(error);
+			log.error(`fastify.listen error ${error}`, {error});
 		} else {
 			log.info(`Server launched at ${address}`);
 		}
