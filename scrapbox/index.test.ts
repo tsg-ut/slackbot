@@ -1,4 +1,4 @@
-import qs from 'querystring';
+import type {ChatUnfurlArguments} from '@slack/web-api';
 import axios from 'axios';
 // @ts-expect-error
 import Slack from '../lib/slackMock.js';
@@ -33,18 +33,10 @@ beforeEach(async () => {
 describe('scrapbox', () => {
 	it('respond to slack hook of scrapbox unfurling', () => {
 		const done = new Promise<void>((resolve) => {
-			// @ts-expect-error
-			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
-				if (url === 'https://slack.com/api/chat.unfurl') {
-					const parsed = qs.parse(data);
-					const unfurls = JSON.parse(Array.isArray(parsed.unfurls) ? parsed.unfurls[0] : parsed.unfurls);
-					expect(unfurls['https://scrapbox.io/tsg/hoge']).toBeTruthy();
-					expect(unfurls['https://scrapbox.io/tsg/hoge'].text).toBe('fuga\npiyo');
-					resolve();
-					return Promise.resolve({data: {ok: true}});
-				}
-				// @ts-expect-error
-				return Promise.resolve(axios.response);
+			slack.on('chat.unfurl', ({unfurls}: ChatUnfurlArguments) => {
+				expect(unfurls['https://scrapbox.io/tsg/hoge']).toBeTruthy();
+				expect(unfurls['https://scrapbox.io/tsg/hoge'].text).toBe('fuga\npiyo');
+				resolve();
 			});
 		});
 
@@ -67,18 +59,10 @@ describe('scrapbox', () => {
 
 	it('respond to slack hook of scrapbox unfurling with line specified', () => {
 		const done = new Promise<void>((resolve) => {
-			// @ts-expect-error
-			axios.mockImplementation(({url, data}: {url: string, data: any}) => {
-				if (url === 'https://slack.com/api/chat.unfurl') {
-					const parsed = qs.parse(data);
-					const unfurls = JSON.parse(Array.isArray(parsed.unfurls) ? parsed.unfurls[0] : parsed.unfurls);
-					expect(unfurls['https://scrapbox.io/tsg/hoge#0140']).toBeTruthy();
-					expect(unfurls['https://scrapbox.io/tsg/hoge#0140'].text).toBe('piyo');
-					resolve();
-					return Promise.resolve({data: {ok: true}});
-				}
-				// @ts-expect-error
-				return Promise.resolve(axios.response);
+			slack.on('chat.unfurl', ({unfurls}: ChatUnfurlArguments) => {
+				expect(unfurls['https://scrapbox.io/tsg/hoge#0140']).toBeTruthy();
+				expect(unfurls['https://scrapbox.io/tsg/hoge#0140'].text).toBe('piyo');
+				resolve();
 			});
 		});
 

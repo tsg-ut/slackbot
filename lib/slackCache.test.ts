@@ -2,14 +2,12 @@ import fs from 'fs-extra';
 import path from 'path';
 import type {
 	ConversationsHistoryArguments,
-	UsersListArguments,
-	EmojiListArguments,
-} from '@slack/web-api/dist/methods';
-import type {
 	ConversationsHistoryResponse,
+	UsersListArguments,
 	UsersListResponse,
+	EmojiListArguments,
 	EmojiListResponse,
-} from '@slack/web-api/dist/response';
+} from '@slack/web-api';
 // @ts-expect-error
 import Slack from './slackMock';
 import SlackCache from './slackCache';

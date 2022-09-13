@@ -2,6 +2,8 @@ import axios, {AxiosError} from 'axios';
 import logger from '../../lib/logger';
 import {SynthesizeFunction} from './types.d';
 
+const log = logger.child({bot: 'discord'});
+
 const voiceMapping: { [name: string]: { [emo: string]: number } } = {
 	metan: {
 		normal: 0,
@@ -66,7 +68,7 @@ const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emo
 		}).then((response) => {
 			resolve({data: response.data});
 		}).catch((reason: AxiosError) => {
-			logger.error(`The VoiceVox API server has returned an error: ${reason.response?.data?.toString()}`);
+			log.error(`The VoiceVox API server has returned an error: ${reason.response?.data?.toString()}`);
 			reject(reason);
 		});
 	});

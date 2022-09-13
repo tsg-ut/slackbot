@@ -4,6 +4,8 @@ import axios, {AxiosResponse} from 'axios';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 
+const log = logger.child({bot: 'scrapbox'});
+
 const getScrapboxUrl = (pageName: string) => `https://scrapbox.io/api/pages/tsg/${pageName}`;
 
 interface Link {
@@ -53,12 +55,10 @@ export const scrapbox2slack = (s: string) => (
 		.replace(/(?<!\/|\|)#(?<hashtag>[^\s]+)/g, '<https://scrapbox.io/tsg/$<hashtag>|#$<hashtag>>') // hashtag
 );
 
-export default ({eventClient: event}: SlackInterface) => {
+export default ({webClient: slack, eventClient: event}: SlackInterface) => {
 	event.on('link_shared', async ({links, message_ts, channel}: { links: Link[]; message_ts: string; channel: string; }) => {
-		logger.info('Incoming unfurl request >');
-		for (const link of links) {
-			logger.info('-', link);
-		}
+		log.info('Incoming unfurl request', {links});
+
 		const scrapboxLinks = links.filter(({domain}) => domain === 'scrapbox.io');
 		const unfurls: LinkUnfurls = {};
 		for (const link of scrapboxLinks) {
@@ -98,29 +98,16 @@ export default ({eventClient: event}: SlackInterface) => {
 		}
 		if (Object.values(unfurls).length > 0) {
 			try {
-				const {data}: AxiosResponse<any> = await axios({
-					method: 'POST',
-					url: 'https://slack.com/api/chat.unfurl',
-					data: qs.stringify({
-						ts: message_ts,
-						channel,
-						unfurls: JSON.stringify(unfurls),
-						token: process.env.HAKATASHI_TOKEN,
-					}),
-					headers: {
-						'content-type': 'application/x-www-form-urlencoded',
-					},
+				const data = await slack.chat.unfurl({
+					ts: message_ts,
+					channel,
+					unfurls,
 				});
-				if (data.ok) {
-					logger.info('✓ chat.unfurl >', data);
-				} else {
-					logger.info('✗ chat.unfurl >', data);
-				}
 			} catch (error) {
-				logger.error('✗ chat.unfurl >', error);
+				log.error('chat.unfurl', {error});
 			}
 		} else {
-			logger.info('No valid urls, skip.');
+			log.info('No valid urls, skip.');
 		}
 	});
 };

@@ -7,6 +7,8 @@ import path from 'path';
 import sql from 'sql-template-strings';
 import {get} from 'lodash';
 
+const log = logger.child({bot: 'oauth'});
+
 export const server = ({webClient: slack}: SlackInterface) => async (fastify: FastifyInstance) => {
 	const db = await sqlite.open({
 		filename: path.join(__dirname, '..', 'tokens.sqlite3'),
@@ -23,14 +25,14 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 	`);
 
 	fastify.get<SlackOauthEndpoint>('/oauth', async (req, res) => {
-		const data = await slack.oauth.access({
+		const data = await slack.oauth.v2.access({
 			code: req.query.code,
 			client_id: process.env.CLIENT_ID,
 			client_secret: process.env.CLIENT_SECRET,
 		});
 		if (!data.ok) {
 			res.code(500);
-			logger.error(data);
+			log.error(data);
 			return 'Internal Server Error';
 		}
 		await db.run(sql`

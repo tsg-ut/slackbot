@@ -4,6 +4,8 @@ const get = require('lodash/get');
 const schedule = require('node-schedule');
 const {default: logger} = require('../lib/logger.ts');
 
+const log = logger.child({bot: 'checkin'});
+
 const places = [
 	{id: '4bff8900daf9c9b68c58faef', name: '理学部7号館'},
 	{id: '5b1a2ff17269fe002ce4f8de', name: 'TSG部室'},
@@ -16,7 +18,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 
 	const job = async () => {
 		if (!process.env.SWARM_TOKEN) {
-			logger.info('Skipping checkin job because SWARM_TOKEN is not set');
+			log.info('Skipping checkin job because SWARM_TOKEN is not set');
 			return;
 		}
 

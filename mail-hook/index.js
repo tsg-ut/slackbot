@@ -3,6 +3,8 @@ const isValidUTF8 = require('utf-8-validate');
 const encodingJapanese = require('encoding-japanese');
 const libmime = require('libmime');
 
+const log = logger.child({bot: 'mail-hook'});
+
 const sanitizeCode = (input) => ["`", input.replace(/`/g, "'"), "`"].join('');
 const sanitizePreformatted = (input) => ["```", input.replace(/`/g, "'"), "```"].join("\n");
 
@@ -50,7 +52,7 @@ module.exports.server = ({webClient: slack}) => async (fastify) => {
 
             return res.send('ok');
         } catch (e) {
-            logger.error('mail-hook error:', e);
+            log.error('error', {error: e});
 
             await slack.chat.postMessage({
                 channel: process.env.CHANNEL_PRLOG,

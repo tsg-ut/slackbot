@@ -4,6 +4,8 @@ import type {LinkUnfurls} from '@slack/web-api';
 import qs from 'querystring';
 import type {ChatUnfurlResponse} from '@slack/web-api';
 
+const log = logger.child({bot: 'slack-log'});
+
 const slacklogAPIDomain = 'localhost:9292';
 const slacklogURLRegexp = new RegExp('^https?://slack-log.tsg.ne.jp/([A-Z0-9]+)/([0-9]+\.[0-9]+)');
 const getAroundMessagesUrl = (channel: string) => `http://${slacklogAPIDomain}/around_messages/${channel}.json`;
@@ -62,7 +64,7 @@ export default async ({eventClient, webClient: slack, eventClient: event}: Slack
 
     event.on('link_shared', async (e: any) => {
         const links = e.links.filter(({domain}: {domain: string}) => domain === 'slack-log.tsg.ne.jp');
-        links.map((link: string) => logger.info('-', link));
+        links.map((link: string) => log.info('-', link));
 
         const unfurls: LinkUnfurls = {};
         for (const link of links) {
@@ -98,25 +100,17 @@ export default async ({eventClient, webClient: slack, eventClient: event}: Slack
         }
         if (Object.values(unfurls).length > 0) {
             try {
-                const {data} = await (axios({
-                    method: 'POST',
-                    url: 'https://slack.com/api/chat.unfurl',
-                    data: qs.stringify({
+                const data = await slack.chat.unfurl({
                         ts: e.message_ts,
                         channel: e.channel,
-                        unfurls: JSON.stringify(unfurls),
-                        token: process.env.HAKATASHI_TOKEN,
-                    }),
-                    headers: {
-                        'content-type': 'application/x-www-form-urlencoded',
-                    },
-                }) as AxiosPromise<ChatUnfurlResponse>);
+                        unfurls: unfurls,
+                });
 
                 if (!data.ok) {
                     throw data;
                 }
             } catch (error) {
-                logger.error('✗ chat.unfurl >', error);
+                log.error('✗ chat.unfurl >', error);
             }
         }
     });

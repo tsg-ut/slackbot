@@ -1,6 +1,8 @@
 import axios from 'axios';
 import logger from '../lib/logger';
 
+const log = logger.child({bot: 'welcome'});
+
 // https://scrapbox.io/help-jp/API
 // https://scrapbox.io/scrapboxlab/%E3%82%B3%E3%83%BC%E3%83%89%E3%83%96%E3%83%AD%E3%83%83%E3%82%AF
 const welcomeScrapboxUrl = `https://scrapbox.io/api/code/tsg/welcome/message`;
@@ -50,7 +52,7 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
 				username: 'welcome',
 			});
 		} catch (e) {
-			logger.error('welcome error > ', e);
+			log.error('welcome error > ', e);
 
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,

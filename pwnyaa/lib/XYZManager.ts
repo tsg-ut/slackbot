@@ -4,6 +4,8 @@ import scrapeIt from 'scrape-it';
 import logger from '../../lib/logger';
 import {Challenge, SolvedInfo, Profile} from './BasicTypes';
 
+const log = logger.child({bot: 'pwnyaa'});
+
 const SAFELIMIT = 100;
 
 const getAxiosClientXYZ = () => {
@@ -149,7 +151,7 @@ export const fetchUserProfileXYZ = async function(userId: string) {
 	try {
 		await loginXYZ();
 	} catch {
-		logger.error('failed to login to XYZ');
+		log.error('failed to login to XYZ');
 		return null;
 	}
 	try {
@@ -170,7 +172,7 @@ export const fetchChallsXYZ = async function () {
 	try {
 		await loginXYZ();
 	} catch {
-		logger.error('failed to login to XYZ');
+		log.error('failed to login to XYZ');
 		return [];
 	}
 
@@ -226,7 +228,7 @@ export const findUserByNameXYZ = async function (username: string): Promise<{use
 	try {
 		await loginXYZ();
 	} catch {
-		logger.error('failed to login to XYZ');
+		log.error('failed to login to XYZ');
 		return null;
 	}
 	let lastFetchedUser: {userid: string, name: string } = null;

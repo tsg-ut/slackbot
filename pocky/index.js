@@ -11,6 +11,8 @@ const {default: logger} = require('../lib/logger.ts');
 const {getMemberName} = require('../lib/slackUtils');
 const {default: State} = require('../lib/state.ts');
 
+const log = logger.child({bot: 'pocky'});
+
 const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，．…・?!：；:;\s]+$/g;
 
 const ignoreRe = /( 英語| 韓国語| 中国語|の?意味|meaning|とは)+$/i;
@@ -36,7 +38,7 @@ async function reply(text, index) {
 		const suggestions = await getSuggestions(text);
 		return generateReply(text, suggestions, index);
 	} catch (e) {
-		logger.error(e);
+		log.error(e);
 		return "エラーΩ＼ζ°)ﾁｰﾝ";
 	}
 }
@@ -183,7 +185,7 @@ module.exports = async (clients) => {
 			postMessage("エラーΩ＼ζ°)ﾁｰﾝ", process.env.CHANNEL_SANDBOX);
 			return;
 		}
-		logger.info(theme);
+		log.info(theme);
 
 		const message = await postMessage(stripIndents`
 			ポッキーゲームを始めるよ～
@@ -274,7 +276,7 @@ module.exports = async (clients) => {
 					unlock(message.user, "self-pocky");
 				}
 			}, (error) => {
-				logger.error("error:", error.message);
+				log.error("error:", error.message);
 			});
 			if (Array.from(result).length >= 20) {
 				unlock(message.user, "long-pocky");

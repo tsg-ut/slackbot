@@ -9,14 +9,14 @@ import type {Reaction} from '@slack/web-api/dist/response/ConversationsHistoryRe
 import type {Member} from '@slack/web-api/dist/response/UsersListResponse';
 import type {
 	ConversationsHistoryArguments,
-	UsersListArguments,
-	EmojiListArguments,
-} from '@slack/web-api/dist/methods';
-import type {
 	ConversationsHistoryResponse,
+	UsersListArguments,
 	UsersListResponse,
+	EmojiListArguments,
 	EmojiListResponse,
-} from '@slack/web-api/dist/response';
+} from '@slack/web-api';
+
+const log = logger.child({bot: 'lib/slackCache'});
 
 interface WebClient {
 	users: {
@@ -67,7 +67,7 @@ export default class SlackCache {
 					}
 				})
 				.then(() => this.loadUsersDeferred.resolve())
-				.catch((err: any) => logger.error(`SlackCache/users.list(${this.config.token.team_id}): ${err}`, err));
+				.catch((err: any) => log.error(`SlackCache/users.list(${this.config.token.team_id}): ${err}`, err));
 		}
 
 		{
@@ -77,16 +77,15 @@ export default class SlackCache {
 					this.emojis.set(event.name, event.value);
 				}
 			});
-			// TODO: should be bot access token after migration to new OAuth Scope.
 			// FIXME: node-slack-sdkの型情報ミスってない？そんなことない？なんでas要るの？
-			(this.config.webClient.emoji.list({token: this.config.token.access_token}) as Promise<{emoji: any}>)
+			(this.config.webClient.emoji.list({token: this.config.token.bot_access_token}) as Promise<{emoji: any}>)
 				.then(({emoji: emojis}: {emoji: any}) => {
 					for (const name in emojis) {
 						this.emojis.set(name, emojis[name]);
 					}
 				})
 				.then(() => this.loadEmojisDeferred.resolve())
-				.catch((err: any) => logger.error(`SlackCache/emoji.list(${this.config.token.team_id}): ${err}`, err));
+				.catch((err: any) => log.error(`SlackCache/emoji.list(${this.config.token.team_id}): ${err}`, err));
 		}
 
 		if (this.config.enableReactions) {
@@ -144,7 +143,7 @@ export default class SlackCache {
 		}
 
 		const data = await this.config.webClient.conversations.history({
-			token: this.config.token.access_token,
+			token: this.config.token.bot_access_token,
 			channel: channel,
 			latest: ts,
 			limit: 1,
@@ -203,7 +202,7 @@ export default class SlackCache {
 		}
 
 		const data = await this.config.webClient.conversations.history({
-			token: this.config.token.access_token,
+			token: this.config.token.bot_access_token,
 			channel: channel,
 			latest: ts,
 			limit: 1,
