@@ -178,7 +178,10 @@ eventClient.on('error', (error) => {
 		throttleLoadingMessageUpdate();
 	}));
 
-	fastify.listen(process.env.PORT || 21864, (error, address) => {
+	fastify.listen({
+		port: process.env.PORT ? parseInt(process.env.PORT) : 21864,
+		host: '0.0.0.0',
+	}, (error, address) => {
 		if (error) {
 			log.error(`fastify.listen error ${error}`, {error});
 		} else {
