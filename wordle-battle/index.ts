@@ -6,6 +6,7 @@ import { shuffle } from 'lodash';
 import { ChatPostMessageArguments, WebAPICallOptions } from '@slack/web-api';
 
 const BOT_NAME = "Wordle Battle (beta)";
+const TL_SECONDS = 90;
 
 interface Player {
     user: string,
@@ -19,7 +20,7 @@ class State {
     length: number;
     players: Player[];
     next: 0 | 1; // player to answer next
-    lastTurn: Date;
+    timeoutID: NodeJS.Timeout;
     constructor() {
         this.init();
     }
@@ -29,12 +30,34 @@ class State {
         this.length = null;
         this.players = [];
         this.next = null;
-        this.lastTurn = null;
+        this.timeoutID = null;
     }
     startGame() {
         this.status = "Gaming";
         this.players = shuffle(this.players);
         this.next = 0;
+    }
+    addPlayer(user: string, answer: string) {
+        this.players.push({
+            user: user,
+            answer: answer,
+            queries: []
+        });
+    }
+    // query を追加する (answer と一致する場合は true を返す)
+    doTurn(query: string): boolean {
+        this.players[1 - this.next].queries.push(query);
+        this.next = this.next ? 0 : 1;
+        return this.players[this.next].answer === query;
+    }
+    clearTimer() {
+        if (!!this.timeoutID) {
+            clearTimeout(this.timeoutID);
+        }
+    }
+    setTimer(func: () => void) {
+        this.clearTimer();
+        this.timeoutID = setTimeout(func, TL_SECONDS * 1000);
     }
 };
 
@@ -60,21 +83,6 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
             answer[i] === c ? 2 : answer.includes(c) ? 1 : 0
         );
     }
-
-    const addPlayer = (user: string, answer: string) => {
-        state.players.push({
-            user: user,
-            answer: answer,
-            queries: []
-        });
-    };
-
-    // query を追加する (answer と一致する場合は true を返す)
-    const doTurn = (query: string): boolean => {
-        state.players[1 - state.next].queries.push(query);
-        state.next = state.next ? 0 : 1;
-        return state.players[state.next].answer === query;
-    };
 
     const constructMessage = (index: 0 | 1) => {
         const player = state.players[index];
@@ -128,13 +136,22 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
         return postMessage(messageText, {});
     };
 
+    const setStateTimer = () => {
+        state.setTimer(async () => {
+            await postReply(stripIndents`:clock3: タイムオーバー :sweat:
+            勝者：<@${state.players[state.next ? 1 : 0].user}>
+            <@${state.players[state.next ? 1 : 0].user}> さんの単語は ${state.players[state.next ? 1 : 0].answer}、
+            <@${state.players[state.next ? 0 : 1].user}> さんの単語は ${state.players[state.next ? 0 : 1].answer} でした。`);
+            state.init();
+        });
+    };
+
     eventClient.on("message", async (message: any) => {
         if (!message.text || message.subtype !== undefined) {
             return;
         }
         const {channel, text, ts, thread_ts} = message;
-        if (message.channel === process.env.CHANNEL_SANDBOX) {
-            logger.info(ts);
+        if (channel === process.env.CHANNEL_SANDBOX) {
             if (text === "wordle reset") {
                 state.init();
                 await postAnnounce("Wordle Battle をリセットしました。");
@@ -162,15 +179,19 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                     if (state.players[state.next].user === message.user) {
                         if (/^[a-z]*$/.test(text) && text.length === state.length) {
                             if (await wordExists(text)) {
-                                const isWin = doTurn(text);
+                                state.clearTimer();
+                                const isWin = state.doTurn(text);
                                 await postReply(stripIndents`受理された単語： \`${text}\`
                                 ${constructMessage(state.next)}`
-                                + '\n' + (isWin ? `正解です！！ :tada:` : `次は <@${state.players[state.next].user}> さんの番です。`));
+                                + '\n' + (isWin ? `正解です！！ :tada:` : `次は <@${state.players[state.next].user}> さんの番です。${TL_SECONDS} 秒以内に答えてください。`));
                                 if (isWin) {
                                     await postReplyBroadcast(stripIndents`勝者：<@${state.players[state.next ? 0 : 1].user}>
                                     ${constructMessage(state.next)}
                                     <@${state.players[state.next ? 0 : 1].user}> さんの単語は ${state.players[state.next ? 0 : 1].answer} でした。`);
                                     state.init();
+                                }
+                                else {
+                                    setStateTimer();
                                 }
                             }
                             else {
@@ -207,7 +228,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                         const isValid = await wordExists(tokens[1]);
                         if (isValid) {
                             if (state.players.length < 2) {
-                                addPlayer(message.user, tokens[1]);
+                                state.addPlayer(message.user, tokens[1]);
                                 await slack.reactions.add({
                                     name: "+1",
                                     channel: channel,
@@ -219,7 +240,8 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                                     state.status = "Gaming";
                                     state.startGame();
                                     await postReply(stripIndents`ゲーム開始！ 先手：<@${state.players[0].user}> 後手：<@${state.players[1].user}>
-                                    <@${state.players[0].user}> さんは ${state.length} 文字の英単語をリプライしてください`);
+                                    <@${state.players[0].user}> さんは ${TL_SECONDS} 秒以内に ${state.length} 文字の英単語をリプライしてください`);
+                                    setStateTimer();
                                 }
                             }
                         }
