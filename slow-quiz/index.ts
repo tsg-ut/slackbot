@@ -10,6 +10,7 @@ import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
 import answerQuestionDialog from './views/answerQuestionDialog';
 import footer from './views/footer';
+import gameDetailsDialog from './views/gameDetailsDialog';
 import listAnswersDialog from './views/listAnswersDialog';
 import listQuizDialog from './views/listQuizDialog';
 import registerQuizDialog from './views/registerQuizDialog';
@@ -137,6 +138,20 @@ class SlowQuiz {
 		}, (payload: any) => {
 			mutex.runExclusive(() => (
 				this.showAnswerQuestionDialog({
+					triggerId: payload.trigger_id,
+					id: payload?.actions?.[0]?.value,
+					user: payload?.user?.id,
+					channel: payload?.channel?.id,
+				})
+			));
+		});
+
+		this.slackInteractions.action({
+			type: 'button',
+			actionId: 'slowquiz_show_game_details_button',
+		}, (payload: any) => {
+			mutex.runExclusive(() => (
+				this.showGameDetailsDialog({
 					triggerId: payload.trigger_id,
 					id: payload?.actions?.[0]?.value,
 					user: payload?.user?.id,
@@ -408,6 +423,36 @@ class SlowQuiz {
 		});
 	}
 
+	showGameDetailsDialog({
+		triggerId,
+		id,
+		user,
+		channel,
+	}: {
+		triggerId: string,
+		id: string,
+		user: string,
+		channel: string,
+	}) {
+		const game = this.state.games.find((g) => g.id === id);
+
+		if (!game) {
+			this.postEphemeral('Error: 問題が見つかりません', user, channel);
+			return null;
+		}
+
+		if (game.status !== 'finished') {
+			this.postEphemeral('Error: この問題は終了していません', user, channel);
+			return null;
+		}
+
+		return this.slack.views.open({
+			trigger_id: triggerId,
+			view: gameDetailsDialog(game),
+		});
+	}
+
+
 	async progressGames() {
 		const newGame = this.chooseNewGame();
 
@@ -504,8 +549,18 @@ class SlowQuiz {
 									＊A. ${game.answer} (${game.ruby})＊
 
 									出題者: <@${game.author}>
-									${game.hint ? `ヒント: ${game.hint}` : ''}
 								`,
+							},
+							accessory: {
+								type: 'button',
+								text: {
+									type: 'plain_text',
+									text: '詳細情報',
+									emoji: true,
+								},
+								value: game.id,
+								style: 'primary',
+								action_id: 'slowquiz_show_game_details_button',
 							},
 						},
 						{
