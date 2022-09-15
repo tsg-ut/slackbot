@@ -3072,7 +3072,7 @@ const achievements: Achievement[] = [
 		condition: 'Wordle Battle で緑または黄色の四角を16個集める',
 		category: 'wordle-battle',
 		counter: 'wordle-battle-letters',
-		value: 25
+		value: 16
 	},
 	{
 		id: 'wordle-battle-letters-64',
