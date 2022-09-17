@@ -150,7 +150,6 @@ module.exports = async (clients) => {
 		return slack.chat.postMessage({
 			channel,
 			text: message,
-			as_user: false,
 			username: "pocky",
 			icon_emoji: ":google:",
 			thread_ts: threadPosted ? threadPosted : null,
