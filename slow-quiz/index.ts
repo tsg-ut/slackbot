@@ -1,7 +1,7 @@
 import type {ChatPostMessageArguments, ImageElement, KnownBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-// @ts-ignore
+// @ts-expect-error
 import {hiraganize} from 'japanese';
 import {minBy, sortBy} from 'lodash';
 import {scheduleJob} from 'node-schedule';
@@ -13,9 +13,10 @@ import footer from './views/footer';
 import gameDetailsDialog from './views/gameDetailsDialog';
 import listAnswersDialog from './views/listAnswersDialog';
 import listQuizDialog from './views/listQuizDialog';
+import postCommentDialog from './views/postCommentDialog';
 import registerQuizDialog from './views/registerQuizDialog';
 
-export interface AnswerInfo {
+export interface Submission {
 	user: string,
 	progress: number,
 	date: number,
@@ -37,8 +38,9 @@ export interface Game {
 	finishDate: number | null,
 
 	progress: number,
-	correctAnswers: AnswerInfo[],
-	wrongAnswers: AnswerInfo[],
+	correctAnswers: Submission[],
+	wrongAnswers: Submission[],
+	comments: Submission[],
 	answeredUsers: string[],
 }
 
@@ -173,6 +175,20 @@ class SlowQuiz {
 				})
 			));
 		});
+
+		this.slackInteractions.viewSubmission('slowquiz_post_comment_dialog', (payload: any) => {
+			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
+			const state = Object.assign({}, ...stateObjects);
+			const id = payload?.view?.private_metadata;
+
+			mutex.runExclusive(() => (
+				this.postComment({
+					id,
+					comment: state?.comment?.value,
+					user: payload?.user?.id,
+				})
+			));
+		});
 	}
 
 	showRegisterQuizDialog({triggerId}: {triggerId: string}) {
@@ -210,14 +226,14 @@ class SlowQuiz {
 			return null;
 		}
 
+		if (!Array.isArray(game.comments)) {
+			game.comments = [];
+		}
+
 		if (game.author === user) {
-			const answerInfos = sortBy([
-				...game.correctAnswers,
-				...game.wrongAnswers ?? [],
-			], (answer) => answer.date ?? 0);
 			return this.slack.views.open({
 				trigger_id: triggerId,
-				view: listAnswersDialog(game, answerInfos),
+				view: listAnswersDialog(game),
 			});
 		}
 
@@ -227,18 +243,22 @@ class SlowQuiz {
 		}
 
 		if (game.answeredUsers.includes(user)) {
-			this.postEphemeral('今日はこの問題にすでに回答しているよ🙄', user, channel);
-			return null;
+			return this.slack.views.open({
+				trigger_id: triggerId,
+				view: postCommentDialog(game, user),
+			});
 		}
 
 		if (game.correctAnswers.some((answer) => answer.user === user)) {
-			this.postEphemeral('この問題にすでに正解しているよ🙄', user, channel);
-			return null;
+			return this.slack.views.open({
+				trigger_id: triggerId,
+				view: postCommentDialog(game, user),
+			});
 		}
 
 		return this.slack.views.open({
 			trigger_id: triggerId,
-			view: answerQuestionDialog(game, this.getQuestionText(game)),
+			view: answerQuestionDialog(game, this.getQuestionText(game), user),
 		});
 	}
 
@@ -285,6 +305,7 @@ class SlowQuiz {
 			correctAnswers: [],
 			wrongAnswers: [],
 			answeredUsers: [],
+			comments: [],
 		});
 
 		await this.postShortMessage({
@@ -398,6 +419,41 @@ class SlowQuiz {
 		return null;
 	}
 
+	postComment({
+		id,
+		comment,
+		user,
+	}: {
+		id: string,
+		comment: string,
+		user: string,
+	}): Promise<void> {
+		const game = this.state.games.find((g) => g.id === id);
+
+		if (!game) {
+			this.postEphemeral('Error: 問題が見つかりません', user);
+			return null;
+		}
+
+		if (game.status === 'finished') {
+			this.postEphemeral('Error: この問題の回答受付は終了しています', user);
+			return null;
+		}
+
+		if (!Array.isArray(game.comments)) {
+			game.comments = [];
+		}
+
+		game.comments.push({
+			user,
+			progress: game.progress,
+			date: Date.now(),
+			answer: comment,
+		});
+
+		return null;
+	}
+
 	deleteQuiz({viewId, id, user}: {viewId: string, id: string, user: string}) {
 		const gameIndex = this.state.games.findIndex((g) => g.id === id);
 
@@ -439,6 +495,10 @@ class SlowQuiz {
 		if (!game) {
 			this.postEphemeral('Error: 問題が見つかりません', user, channel);
 			return null;
+		}
+
+		if (!Array.isArray(game.comments)) {
+			game.comments = [];
 		}
 
 		if (game.status !== 'finished') {
@@ -723,6 +783,7 @@ class SlowQuiz {
 export default async ({webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
 	const slowquiz = new SlowQuiz({slack, slackInteractions});
 	await slowquiz.initialize();
+	// slowquiz.progressGames();
 
 	scheduleJob('0 10 * * *', () => {
 		mutex.runExclusive(() => {
