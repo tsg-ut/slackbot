@@ -1,12 +1,25 @@
 import {View} from '@slack/web-api';
 import {sortBy} from 'lodash';
-import type {Game} from '../index';
+import type {Game, Submission} from '../index';
+
+type UserSubmission = Submission & {type: 'wrong_answer' | 'correct_answer' | 'comment'}
+
+const formatSubmission = ({progress, type, user, answer}: UserSubmission) => {
+	if (type === 'wrong_answer') {
+		return `${progress}日目: <@${user}> ＊回答「${answer}」＊ → 不正解`;
+	}
+	if (type === 'correct_answer') {
+		return `${progress}日目: <@${user}> ＊回答「${answer}」＊ → 正解`;
+	}
+	return `${progress}日目: <@${user}> ${answer}`;
+};
 
 export default (game: Game) => {
-	const answerInfos = sortBy([
-		...game.correctAnswers,
-		...game.wrongAnswers ?? [],
-	], (answer) => answer.date ?? 0);
+	const submissions = sortBy([
+		...game.wrongAnswers.map((answer) => ({...answer, type: 'wrong_answer'} as UserSubmission)),
+		...game.correctAnswers.map((answer) => ({...answer, type: 'correct_answer'} as UserSubmission)),
+		...game.comments.map((comment) => ({...comment, type: 'comment'} as UserSubmission)),
+	], (submission) => submission.date ?? 0);
 
 	return {
 		type: 'modal',
@@ -95,7 +108,7 @@ export default (game: Game) => {
 				type: 'header',
 				text: {
 					type: 'plain_text',
-					text: '回答一覧',
+					text: 'ログ',
 					emoji: true,
 				},
 			},
@@ -103,9 +116,7 @@ export default (game: Game) => {
 				type: 'section',
 				text: {
 					type: 'mrkdwn',
-					text: answerInfos.map((info) => (
-						`${info.progress}日目: <@${info.user}> 「${info.answer}」`
-					)).join('\n'),
+					text: submissions.map(formatSubmission).join('\n'),
 				},
 			},
 		],
