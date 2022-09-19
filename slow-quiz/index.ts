@@ -1,9 +1,10 @@
+import {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {ChatPostMessageArguments, ImageElement, KnownBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 // @ts-expect-error
 import {hiraganize} from 'japanese';
-import {minBy, sortBy} from 'lodash';
+import {minBy} from 'lodash';
 import {scheduleJob} from 'node-schedule';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
@@ -54,7 +55,7 @@ const mutex = new Mutex();
 class SlowQuiz {
 	slack: WebClient;
 
-	slackInteractions: any;
+	slackInteractions: SlackMessageAdapter;
 
 	state: StateObj;
 
@@ -176,15 +177,15 @@ class SlowQuiz {
 			));
 		});
 
-		this.slackInteractions.viewSubmission('slowquiz_post_comment_dialog', (payload: any) => {
-			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
-			const state = Object.assign({}, ...stateObjects);
-			const id = payload?.view?.private_metadata;
-
+		this.slackInteractions.action({
+			type: 'plain_text_input',
+			actionId: 'slowquiz_post_comment_input_comment',
+		}, (payload) => {
 			mutex.runExclusive(() => (
 				this.postComment({
-					id,
-					comment: state?.comment?.value,
+					id: payload?.view?.private_metadata,
+					viewId: payload?.view?.id,
+					comment: payload?.actions?.[0]?.value,
 					user: payload?.user?.id,
 				})
 			));
@@ -421,13 +422,15 @@ class SlowQuiz {
 
 	postComment({
 		id,
+		viewId,
 		comment,
 		user,
 	}: {
 		id: string,
+		viewId: string,
 		comment: string,
 		user: string,
-	}): Promise<void> {
+	}) {
 		const game = this.state.games.find((g) => g.id === id);
 
 		if (!game) {
@@ -451,7 +454,10 @@ class SlowQuiz {
 			answer: comment,
 		});
 
-		return null;
+		return this.slack.views.update({
+			view_id: viewId,
+			view: postCommentDialog(game, user),
+		});
 	}
 
 	deleteQuiz({viewId, id, user}: {viewId: string, id: string, user: string}) {
@@ -668,7 +674,9 @@ class SlowQuiz {
 	}
 
 	async getGameBlocks(): Promise<KnownBlock[]> {
-		const ongoingGames = this.state.games.filter((game) => game.status === 'inprogress');
+		const ongoingGames = this.state.games
+			.filter((game) => game.status === 'inprogress')
+			.sort((a, b) => a.startDate - b.startDate);
 
 		if (ongoingGames.length === 0) {
 			return [{
@@ -729,17 +737,20 @@ class SlowQuiz {
 
 	getQuestionText(game: Game) {
 		const characters = Array.from(game.question);
-		return characters.map((char, i) => {
-			if (i === characters.length - 1) {
+		const visibleCharacters = characters.slice(0, game.progress);
+		const invisibleCharacters = characters.slice(game.progress);
+
+		const visibleText = visibleCharacters.join('');
+		const invisibleText = invisibleCharacters.map((char, i) => {
+			if (i === invisibleCharacters.length - 1) {
 				if (['。', '？', '?'].includes(char)) {
 					return char;
 				}
 			}
-			if (i < game.progress) {
-				return char;
-			}
 			return '◯';
 		}).join('\u200B');
+
+		return `${visibleText}\u200B${invisibleText}`;
 	}
 
 	async postMessage(message: Partial<ChatPostMessageArguments>) {
@@ -783,7 +794,6 @@ class SlowQuiz {
 export default async ({webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
 	const slowquiz = new SlowQuiz({slack, slackInteractions});
 	await slowquiz.initialize();
-	// slowquiz.progressGames();
 
 	scheduleJob('0 10 * * *', () => {
 		mutex.runExclusive(() => {

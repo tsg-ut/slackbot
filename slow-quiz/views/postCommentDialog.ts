@@ -1,4 +1,5 @@
 import {View} from '@slack/web-api';
+import {stripIndent} from 'common-tags';
 import type {Game, Submission} from '../index';
 
 type UserSubmission = Submission & {type: 'wrong_answer' | 'correct_answer' | 'comment'}
@@ -32,13 +33,21 @@ export default (game: Game, user: string) => {
 			text: 'コメント送信',
 			type: 'plain_text',
 		},
-		submit: {
-			text: '送信する',
-			type: 'plain_text',
-		},
 		notify_on_close: true,
 		private_metadata: game.id,
 		blocks: [
+			{
+				type: 'context',
+				elements: [
+					{
+						type: 'plain_text',
+						text: stripIndent`
+							この問題には回答済みです。
+							任意で問題に対するコメントを投稿することができます。
+						`,
+					},
+				],
+			},
 			{
 				type: 'header',
 				text: {
@@ -57,18 +66,21 @@ export default (game: Game, user: string) => {
 				},
 			},
 			{
+				dispatch_action: true,
 				type: 'input',
+				element: {
+					type: 'plain_text_input',
+					multiline: true,
+					action_id: 'slowquiz_post_comment_input_comment',
+				},
 				label: {
 					type: 'plain_text',
 					text: 'コメント',
-				},
-				element: {
-					type: 'plain_text_input',
-					action_id: 'comment',
+					emoji: true,
 				},
 				hint: {
 					type: 'plain_text',
-					text: 'この問題に対するコメントを記録することができます (クイズ終了まで公開されません)',
+					text: 'クイズ終了まで公開されません',
 				},
 			},
 		],
