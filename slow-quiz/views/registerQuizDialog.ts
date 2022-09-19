@@ -15,6 +15,21 @@ export default {
 	notify_on_close: true,
 	blocks: [
 		{
+			type: 'section',
+			text: {
+				type: 'mrkdwn',
+				text: stripIndent`
+					問題の投稿にあたっては、一般的な早押しクイズのガイドラインに配慮し、不自然な問題文、不自然な表記、極端に短い・長い問題文などの問題を避けるようにしてください。
+					また、このクイズの性質上なるべく早い段階で答えが確定する問題文が好ましいですが、必ずしも従う必要はありません。
+
+					早押しクイズ 作問ガイドラインの例
+					● <https://cdn.tactosh.com/quiz/guideline/question.html|みんなで早押しクイズ 作問ガイドライン>
+					● <https://www.dropbox.com/s/c3mlanb17yk2ol0/abc_EQIDEN%20%E5%95%8F%E9%A1%8C%E4%BD%9C%E6%88%90%E3%81%AE%E6%89%8B%E5%BC%95%E3%81%8D.pdf?dl=0|abc/EQIDEN 問題作成の手引き>
+					● <https://drive.google.com/file/d/10tUZdWtTU8UF6nUoKSjlbvEU_i779jpa/view|beyond the text>
+				`,
+			},
+		},
+		{
 			type: 'input',
 			label: {
 				type: 'plain_text',
