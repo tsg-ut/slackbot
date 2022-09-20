@@ -3,6 +3,7 @@ import type {Game} from '../index';
 
 export default (game: Game, questionText: string, user: string) => {
 	const userAnswers = game.wrongAnswers.filter((answer) => answer.user === user);
+
 	return {
 		type: 'modal',
 		callback_id: 'slowquiz_answer_question_dialog',
