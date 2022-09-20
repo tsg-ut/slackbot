@@ -777,13 +777,33 @@ module.exports = async ({eventClient, webClient: slack}) => {
 
 		setTimeout(onFinishMeanings, timeCollectMeaningDaily);
 
+		// 公式custom responseをトリガするために、botからのものでなくuserからの投稿である必要がある。
+		// Classic Slack Appのtokenでは User Tokenと `as_user: true` が必要。
 		axios.post('https://slack.com/api/chat.postMessage', {
 			channel: process.env.CHANNEL_SANDBOX,
 			text: '@tahoist',
+			as_user: true,
 		}, {
 			headers: {
 				Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
 			},
+		}).catch(() => {
+			// ただし、New Slack Appで得られるtokenでは、`as_user`は不正なパラメータとなり、User Tokenで呼ぶことがuserからの投稿になる必要十分条件になった。
+			// New Slack Appのtokenに移行するためには、もう一度(v2) OAuth flowをやり直して、新規tokenを得て、差し替える必要がある。
+			// catchで両方の試行をおこなっている。
+			// TODO: OAuth v2のtokenに差し替えの後、try側の処理の削除
+			//
+			// cf. https://github.com/tsg-ut/slackbot/pull/733
+			// cf. https://github.com/tsg-ut/slackbot/issues/737
+			// cf. https://api.slack.com/authentication/quickstart#calling
+			axios.post('https://slack.com/api/chat.postMessage', {
+				channel: process.env.CHANNEL_SANDBOX,
+				text: '@tahoist',
+			}, {
+				headers: {
+					Authorization: `Bearer ${process.env.HAKATASHI_TOKEN}`,
+				},
+			});
 		});
 
 		await postMessage(stripIndent`
