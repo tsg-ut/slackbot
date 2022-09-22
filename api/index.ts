@@ -24,7 +24,7 @@ export default () => {
 		}
 
 		reply.type('text/html');
-		reply.send(`<h1>You successfully authorized an access to the API endpoint of <a href="https://github.com/tsg-ut/slackbot">slackbot</a>!</h1>`);
+		reply.send('<h1>You successfully authorized an access to the API endpoint of <a href="https://github.com/tsg-ut/slackbot">slackbot</a>!</h1>');
 	});
 
 	fastify.get('/slack/users', async (request, reply) => {
@@ -32,7 +32,10 @@ export default () => {
 		reply.send(members);
 	});
 
-	fastify.listen(process.env.API_PORT || 20137, (error, address) => {
+	fastify.listen({
+		port: process.env.API_PORT ? parseInt(process.env.API_PORT) : 20137,
+		host: '0.0.0.0',
+	}, (error, address) => {
 		if (error) {
 			log.error(error);
 		} else {
