@@ -419,10 +419,10 @@ class SlowQuiz {
 
 		increment(user, 'slowquiz-correct-answer');
 		if (game.progress === 1) {
-			increment(user, 'slowquiz-correct-answer-progress-1');
+			increment(user, 'slowquiz-correct-answer-first-letter');
 		}
 		if (game.progress <= 3) {
-			increment(user, 'slowquiz-correct-answer-progress-le-3');
+			increment(user, 'slowquiz-correct-answer-le-third-letter');
 		}
 		if (game.correctAnswers.length === 1) {
 			increment(user, 'slowquiz-first-correct-answer');
