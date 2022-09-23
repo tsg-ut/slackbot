@@ -6,6 +6,7 @@ import {stripIndent} from 'common-tags';
 import {hiraganize} from 'japanese';
 import {minBy} from 'lodash';
 import {scheduleJob} from 'node-schedule';
+import {increment} from '../achievements';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
@@ -309,6 +310,8 @@ class SlowQuiz {
 			comments: [],
 		});
 
+		increment(user, 'slowquiz-register-quiz');
+
 		await this.postShortMessage({
 			text: `<@${user}>が1日1文字クイズの問題を登録したよ💪`,
 			blocks: [
@@ -378,6 +381,7 @@ class SlowQuiz {
 				answer: ruby,
 			});
 			this.postEphemeral('残念！🙄', user);
+			increment(user, 'slowquiz-wrong-answer');
 			this.updateLatestStatusMessages();
 			return null;
 		}
@@ -412,6 +416,17 @@ class SlowQuiz {
 				},
 			],
 		});
+
+		increment(user, 'slowquiz-correct-answer');
+		if (game.progress === 1) {
+			increment(user, 'slowquiz-correct-answer-first-letter');
+		}
+		if (game.progress <= 3) {
+			increment(user, 'slowquiz-correct-answer-le-third-letter');
+		}
+		if (game.correctAnswers.length === 1) {
+			increment(user, 'slowquiz-first-correct-answer');
+		}
 
 		this.checkGameEnd();
 
