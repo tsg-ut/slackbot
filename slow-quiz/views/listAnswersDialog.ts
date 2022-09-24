@@ -51,6 +51,13 @@ export default (game: Game) => {
 				type: 'section',
 				text: {
 					type: 'mrkdwn',
+					text: `＊A. ${game.answer} (${game.ruby})＊`,
+				},
+			},
+			{
+				type: 'section',
+				text: {
+					type: 'mrkdwn',
 					text: submissions.length === 0
 						? 'まだ回答がありません'
 						: submissions.map(formatSubmission).join('\n'),
