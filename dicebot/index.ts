@@ -60,7 +60,7 @@ class DiceBot {
 
   async handleMessage(text: string) {
     const result = this.gameSystem.eval(text);
-    if (result?.text) this.sendMessage(result.text);
+    if (result?.text) await this.sendMessage(result.text);
   }
 
   async handleCommand(args: string[]) {
@@ -70,34 +70,35 @@ class DiceBot {
         if (args.length >= 2) {
           try {
             await this.setGameSystem(args[1]);
-            this.sendMessage(
+            await this.sendMessage(
               `ゲームシステムを ${this.gameSystem.NAME} にセットしたよ`
             );
           } catch (e) {
-            this.sendMessage(
+            await this.sendMessage(
               `${args[1]} は知らないゲームシステムだよ\nIDで指定してね\nシステムの一覧は @dicebot list で確認できるよ`
             );
           }
         } else {
-          this.sendMessage(`今のゲームシステムは ${this.gameSystem.NAME} だよ`);
+          await this.sendMessage(`今のゲームシステムは ${this.gameSystem.NAME} だよ`);
         }
         break;
       case "systemhelp":
-        this.sendMessage(this.gameSystem.HELP_MESSAGE);
+        await this.sendMessage(this.gameSystem.HELP_MESSAGE);
         break;
       case "list":
-        this.sendMessage(`以下のシステムが指定できるよ\nNAME: ID`);
-        this.sendMessage(DiceBot.getLoadedSystemsName(this.loader));
+        await this.sendMessage(`以下のシステムが指定できるよ\nNAME: ID`);
+        await this.sendMessage(DiceBot.getLoadedSystemsName(this.loader));
         break;
       case "help":
-        this.sendMessage(DiceBot.helpMessage);
+        await this.sendMessage(DiceBot.helpMessage);
         break;
       default:
-        this.sendMessage(`知らないコマンドだよ`);
-        this.sendMessage(DiceBot.helpMessage);
+        await this.sendMessage(`知らないコマンドだよ`);
+        await this.sendMessage(DiceBot.helpMessage);
         break;
     }
   }
+
 
   static helpMessage: string = `\
 @dicebot help: このヘルプを表示
