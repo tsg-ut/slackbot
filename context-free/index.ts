@@ -14,6 +14,7 @@ import {tags} from './cfp-tags';
 const normalizeMeaning = (input: string) => {
   let meaning = input;
   meaning = meaning.replace(/&nbsp;/g, ' ');
+  meaning = meaning.replace(/<(?:".*?"|'.*?'|[^'"])*?>/g, '');
   meaning = meaning.replace(/\s*\[.+?\]\s*/g, '');
   meaning = meaning.replace(/（/g, '(');
   meaning = meaning.replace(/）/g, ')');
