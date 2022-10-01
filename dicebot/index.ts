@@ -87,26 +87,28 @@ class DiceBot {
         break;
       case "list":
         await this.sendMessage(`以下のシステムが指定できるよ\nNAME: ID`);
-        await this.sendMessage(DiceBot.getLoadedSystemsName(this.loader));
+        await this.sendMessage(DiceBot.getAvailableSystemsString(this.loader));
         break;
       case "help":
-        await this.sendMessage(DiceBot.helpMessage);
+        await this.sendMessage(DiceBot.helpMessage());
         break;
       default:
         await this.sendMessage(`知らないコマンドだよ`);
-        await this.sendMessage(DiceBot.helpMessage);
+        await this.sendMessage(DiceBot.helpMessage());
         break;
     }
   }
 
 
-  static helpMessage: string = `\
+  static helpMessage() {
+    return `\
 @dicebot help: このヘルプを表示
 @dicebot system: 現在のゲームシステムを確認
 @dicebot system [system id]: ゲームシステムを設定
 @dicebot list: ゲームシステムの一覧を表示
 @dicebot systemhelp: 現在のゲームシステムで使えるコマンド一覧
 `;
+  }
 
   static parseCommand(text: string) {
     return text.split(" ").slice(1);
@@ -119,7 +121,7 @@ class DiceBot {
     return true;
   }
 
-  static getLoadedSystemsName(loader: DynamicLoader) {
+  static getAvailableSystemsString(loader: DynamicLoader) {
     return loader
       .listAvailableGameSystems()
       .sort((a, b) => a.name.localeCompare(b.name))
