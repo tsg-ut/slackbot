@@ -94,6 +94,7 @@ const allBots = [
 	'tabi-gatcha',
 	'achievement-quiz',
 	'wadokaichin',
+	'wordle-battle',
 	'slow-quiz',
 ];
 
