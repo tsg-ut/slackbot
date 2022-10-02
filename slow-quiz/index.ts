@@ -1,10 +1,12 @@
+import {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {ChatPostMessageArguments, ImageElement, KnownBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-// @ts-ignore
+// @ts-expect-error
 import {hiraganize} from 'japanese';
-import {minBy, sortBy} from 'lodash';
+import {minBy} from 'lodash';
 import {scheduleJob} from 'node-schedule';
+import {increment} from '../achievements';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
@@ -13,9 +15,10 @@ import footer from './views/footer';
 import gameDetailsDialog from './views/gameDetailsDialog';
 import listAnswersDialog from './views/listAnswersDialog';
 import listQuizDialog from './views/listQuizDialog';
+import postCommentDialog from './views/postCommentDialog';
 import registerQuizDialog from './views/registerQuizDialog';
 
-export interface AnswerInfo {
+export interface Submission {
 	user: string,
 	progress: number,
 	date: number,
@@ -37,8 +40,9 @@ export interface Game {
 	finishDate: number | null,
 
 	progress: number,
-	correctAnswers: AnswerInfo[],
-	wrongAnswers: AnswerInfo[],
+	correctAnswers: Submission[],
+	wrongAnswers: Submission[],
+	comments: Submission[],
 	answeredUsers: string[],
 }
 
@@ -52,7 +56,7 @@ const mutex = new Mutex();
 class SlowQuiz {
 	slack: WebClient;
 
-	slackInteractions: any;
+	slackInteractions: SlackMessageAdapter;
 
 	state: StateObj;
 
@@ -173,6 +177,20 @@ class SlowQuiz {
 				})
 			));
 		});
+
+		this.slackInteractions.action({
+			type: 'plain_text_input',
+			actionId: 'slowquiz_post_comment_input_comment',
+		}, (payload) => {
+			mutex.runExclusive(() => (
+				this.postComment({
+					id: payload?.view?.private_metadata,
+					viewId: payload?.view?.id,
+					comment: payload?.actions?.[0]?.value,
+					user: payload?.user?.id,
+				})
+			));
+		});
 	}
 
 	showRegisterQuizDialog({triggerId}: {triggerId: string}) {
@@ -210,14 +228,14 @@ class SlowQuiz {
 			return null;
 		}
 
+		if (!Array.isArray(game.comments)) {
+			game.comments = [];
+		}
+
 		if (game.author === user) {
-			const answerInfos = sortBy([
-				...game.correctAnswers,
-				...game.wrongAnswers ?? [],
-			], (answer) => answer.date ?? 0);
 			return this.slack.views.open({
 				trigger_id: triggerId,
-				view: listAnswersDialog(game, answerInfos),
+				view: listAnswersDialog(game),
 			});
 		}
 
@@ -227,18 +245,22 @@ class SlowQuiz {
 		}
 
 		if (game.answeredUsers.includes(user)) {
-			this.postEphemeral('今日はこの問題にすでに回答しているよ🙄', user, channel);
-			return null;
+			return this.slack.views.open({
+				trigger_id: triggerId,
+				view: postCommentDialog(game, user),
+			});
 		}
 
 		if (game.correctAnswers.some((answer) => answer.user === user)) {
-			this.postEphemeral('この問題にすでに正解しているよ🙄', user, channel);
-			return null;
+			return this.slack.views.open({
+				trigger_id: triggerId,
+				view: postCommentDialog(game, user),
+			});
 		}
 
 		return this.slack.views.open({
 			trigger_id: triggerId,
-			view: answerQuestionDialog(game, this.getQuestionText(game)),
+			view: answerQuestionDialog(game, this.getQuestionText(game), user),
 		});
 	}
 
@@ -285,7 +307,10 @@ class SlowQuiz {
 			correctAnswers: [],
 			wrongAnswers: [],
 			answeredUsers: [],
+			comments: [],
 		});
+
+		increment(user, 'slowquiz-register-quiz');
 
 		await this.postShortMessage({
 			text: `<@${user}>が1日1文字クイズの問題を登録したよ💪`,
@@ -356,6 +381,7 @@ class SlowQuiz {
 				answer: ruby,
 			});
 			this.postEphemeral('残念！🙄', user);
+			increment(user, 'slowquiz-wrong-answer');
 			this.updateLatestStatusMessages();
 			return null;
 		}
@@ -391,11 +417,62 @@ class SlowQuiz {
 			],
 		});
 
+		increment(user, 'slowquiz-correct-answer');
+		if (game.progress === 1) {
+			increment(user, 'slowquiz-correct-answer-first-letter');
+		}
+		if (game.progress <= 3) {
+			increment(user, 'slowquiz-correct-answer-le-third-letter');
+		}
+		if (game.correctAnswers.length === 1) {
+			increment(user, 'slowquiz-first-correct-answer');
+		}
+
 		this.checkGameEnd();
 
 		this.updateLatestStatusMessages();
 
 		return null;
+	}
+
+	postComment({
+		id,
+		viewId,
+		comment,
+		user,
+	}: {
+		id: string,
+		viewId: string,
+		comment: string,
+		user: string,
+	}) {
+		const game = this.state.games.find((g) => g.id === id);
+
+		if (!game) {
+			this.postEphemeral('Error: 問題が見つかりません', user);
+			return null;
+		}
+
+		if (game.status === 'finished') {
+			this.postEphemeral('Error: この問題の回答受付は終了しています', user);
+			return null;
+		}
+
+		if (!Array.isArray(game.comments)) {
+			game.comments = [];
+		}
+
+		game.comments.push({
+			user,
+			progress: game.progress,
+			date: Date.now(),
+			answer: comment,
+		});
+
+		return this.slack.views.update({
+			view_id: viewId,
+			view: postCommentDialog(game, user),
+		});
 	}
 
 	deleteQuiz({viewId, id, user}: {viewId: string, id: string, user: string}) {
@@ -439,6 +516,10 @@ class SlowQuiz {
 		if (!game) {
 			this.postEphemeral('Error: 問題が見つかりません', user, channel);
 			return null;
+		}
+
+		if (!Array.isArray(game.comments)) {
+			game.comments = [];
 		}
 
 		if (game.status !== 'finished') {
@@ -608,7 +689,9 @@ class SlowQuiz {
 	}
 
 	async getGameBlocks(): Promise<KnownBlock[]> {
-		const ongoingGames = this.state.games.filter((game) => game.status === 'inprogress');
+		const ongoingGames = this.state.games
+			.filter((game) => game.status === 'inprogress')
+			.sort((a, b) => a.startDate - b.startDate);
 
 		if (ongoingGames.length === 0) {
 			return [{
@@ -669,17 +752,20 @@ class SlowQuiz {
 
 	getQuestionText(game: Game) {
 		const characters = Array.from(game.question);
-		return characters.map((char, i) => {
-			if (i === characters.length - 1) {
+		const visibleCharacters = characters.slice(0, game.progress);
+		const invisibleCharacters = characters.slice(game.progress);
+
+		const visibleText = visibleCharacters.join('');
+		const invisibleText = invisibleCharacters.map((char, i) => {
+			if (i === invisibleCharacters.length - 1) {
 				if (['。', '？', '?'].includes(char)) {
 					return char;
 				}
 			}
-			if (i < game.progress) {
-				return char;
-			}
 			return '◯';
 		}).join('\u200B');
+
+		return `${visibleText}\u200B${invisibleText}`;
 	}
 
 	async postMessage(message: Partial<ChatPostMessageArguments>) {

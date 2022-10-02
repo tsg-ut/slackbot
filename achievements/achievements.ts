@@ -3023,6 +3023,83 @@ const achievements: Achievement[] = [
 		category: 'octas',
 	},
 
+	// wordle-battle
+	{
+		id: 'wordle-battle-win-1',
+		difficulty: 'medium',
+		title: 'Wordle勝利',
+		condition: 'Wordle Battle で相手の単語を当て、勝利する',
+		category: 'wordle-battle',
+		counter: 'wordle-battle-win',
+		value: 1
+	},
+	{
+		id: 'wordle-battle-win-5',
+		difficulty: 'hard',
+		title: 'Wordleオタク',
+		condition: 'Wordle Battle で 5 回相手の単語を当て、勝利する',
+		category: 'wordle-battle',
+		counter: 'wordle-battle-win',
+		value: 5
+	},
+	{
+		id: 'wordle-battle-win-25',
+		difficulty: 'professional',
+		title: 'Wordleオタク2',
+		condition: 'Wordle Battle で 25 回相手の単語を当て、勝利する',
+		category: 'wordle-battle',
+		counter: 'wordle-battle-win',
+		value: 25
+	},
+	{
+		id: 'wordle-battle-short',
+		difficulty: 'medium',
+		title: 'Wordle Bat(またはBa)',
+		condition: 'Wordle Battle で相手の 3 文字以下の単語を当て、勝利する',
+		category: 'wordle-battle',
+	},
+	{
+		id: 'wordle-battle-long',
+		difficulty: 'hard',
+		title: 'Wordle Battle with overly prolonged expressions and phrases',
+		condition: 'Wordle Battle で相手の 13 文字以上の単語を当て、勝利する',
+		category: 'wordle-battle',
+	},
+	{
+		id: 'wordle-battle-letters-16',
+		difficulty: 'medium',
+		title: '緑と黄色の正方形',
+		condition: 'Wordle Battle で緑または黄色の四角を16個集める',
+		category: 'wordle-battle',
+		counter: 'wordle-battle-letters',
+		value: 16
+	},
+	{
+		id: 'wordle-battle-letters-64',
+		difficulty: 'hard',
+		title: '緑と黄色の立方体',
+		condition: 'Wordle Battle で緑または黄色の四角を64個集める',
+		category: 'wordle-battle',
+		counter: 'wordle-battle-letters',
+		value: 64
+	},
+	{
+		id: 'wordle-battle-letters-256',
+		difficulty: 'professional',
+		title: '緑と黄色の正八胞体',
+		condition: 'Wordle Battle で緑または黄色の四角を256個集める',
+		category: 'wordle-battle',
+		counter: 'wordle-battle-letters',
+		value: 256
+	},
+	{
+		id: 'wordle-battle-long-rally',
+		difficulty: 'hard',
+		title: 'Wordle粘り勝ち',
+		condition: 'Wordle Battle で 15 個以上のクエリを投げ、勝利をする',
+		category: 'wordle-battle',
+	},
+
 	// discord
 
 	{
@@ -3292,6 +3369,108 @@ const achievements: Achievement[] = [
 		category: 'topic',
 		counter: 'topic-adopted',
 		value: 500,
+	},
+
+	// slowquiz
+
+	{
+		id: 'slowquiz-correct-answer-1',
+		difficulty: 'medium',
+		title: '雌伏雄飛',
+		condition: '1日1文字クイズに正解する',
+		category: 'slowquiz',
+		counter: 'slowquiz-correct-answer',
+		value: 1,
+	},
+	{
+		id: 'slowquiz-correct-answer-10',
+		difficulty: 'hard',
+		title: '面壁九年',
+		condition: '1日1文字クイズに10回正解する',
+		category: 'slowquiz',
+		counter: 'slowquiz-correct-answer',
+		value: 10,
+	},
+	{
+		id: 'slowquiz-correct-answer-100',
+		difficulty: 'professional',
+		title: '按兵不動',
+		condition: '1日1文字クイズに100回正解する',
+		category: 'slowquiz',
+		counter: 'slowquiz-correct-answer',
+		value: 100,
+	},
+	{
+		id: 'slowquiz-first-correct-answer-1',
+		difficulty: 'hard',
+		title: '機を見るに敏',
+		condition: '1日1文字クイズに誰よりも早く正解する',
+		category: 'slowquiz',
+		counter: 'slowquiz-first-correct-answer',
+		value: 1,
+	},
+	{
+		id: 'slowquiz-first-correct-answer-30',
+		difficulty: 'professional',
+		title: '神速',
+		condition: '1日1文字クイズに誰よりも早く30回正解する',
+		category: 'slowquiz',
+		counter: 'slowquiz-first-correct-answer',
+		value: 30,
+	},
+	{
+		id: 'slowquiz-correct-answer-first-letter-1',
+		difficulty: 'hard',
+		title: '巧遅は拙速に如かず',
+		condition: '1日1文字クイズに1文字目で正解する',
+		category: 'slowquiz',
+		counter: 'slowquiz-correct-answer-first-letter',
+		value: 1,
+	},
+	{
+		id: 'slowquiz-correct-answer-first-letter-10',
+		difficulty: 'professional',
+		title: '疾風迅雷',
+		condition: '1日1文字クイズに1文字目で10回正解する',
+		category: 'slowquiz',
+		counter: 'slowquiz-correct-answer-first-letter',
+		value: 10,
+	},
+	{
+		id: 'slowquiz-correct-answer-le-third-letter-1',
+		difficulty: 'medium',
+		title: '巧遅',
+		condition: '1日1文字クイズに3文字以内で正解する',
+		category: 'slowquiz',
+		counter: 'slowquiz-correct-answer-le-third-letter',
+		value: 1,
+	},
+	{
+		id: 'slowquiz-wrong-answer-100',
+		difficulty: 'hard',
+		title: '失敗は成功のもと',
+		condition: '1日1文字クイズに100回誤答する',
+		category: 'slowquiz',
+		counter: 'slowquiz-wrong-answer',
+		value: 100,
+	},
+	{
+		id: 'slowquiz-wrong-answer-1000',
+		difficulty: 'professional',
+		title: '牛の歩みも千里',
+		condition: '1日1文字クイズに1000回誤答する',
+		category: 'slowquiz',
+		counter: 'slowquiz-wrong-answer',
+		value: 1000,
+	},
+	{
+		id: 'slowquiz-register-quiz-1',
+		difficulty: 'easy',
+		title: 'スーパー作問者',
+		condition: '1日1文字クイズに問題を登録する',
+		category: 'slowquiz',
+		counter: 'slowquiz-register-quiz',
+		value: 1,
 	},
 
 	// achievements
