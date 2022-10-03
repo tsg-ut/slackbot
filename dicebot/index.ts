@@ -10,7 +10,7 @@ interface Message {
   text: string;
   ts: string;
   username: string;
-  icons: { emoji: ":game_die:" };
+  icons: any;
   bot_id: string;
   app_id: string;
   channel: string;
