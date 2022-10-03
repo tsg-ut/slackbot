@@ -3480,7 +3480,7 @@ const achievements: Achievement[] = [
 		difficulty: 'easy',
 		title: '太郎さんはウミガメにひき肉のバジル炒めをかけようとした。なぜ?',
 		condition: 'タイマイで正解する',
-		category: 'easy',
+		category: 'taimai',
 		counter: 'taimai-correct-answer',
 		value: 1,
 	},
