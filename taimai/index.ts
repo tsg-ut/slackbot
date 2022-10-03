@@ -224,8 +224,8 @@ class Taimai {
 			this.showErrorModal(triggerID, 'このタイマイセッションは終了したか削除されました。');
 			return;
 		} else if (game.outlineAuthor == payload.user.id || game.pieceAuthors.includes(payload.user.id)) {
-			// this.showErrorModal(triggerID, 'あなたは既にこの問題の空欄を埋めています。');
-			// return;
+			this.showErrorModal(triggerID, 'あなたは既にこの問題の空欄を埋めています。');
+			return;
 		} else if (focus < 0 || game.outline.length - 1 < focus || game.pieces[focus]) {
 			this.showErrorModal(triggerID, 'この空欄は既に誰かによって埋められてしまいました。');
 			return;
@@ -252,8 +252,8 @@ class Taimai {
 			this.showErrorModal(triggerID, 'このタイマイセッションは終了したか削除されました。');
 			return;
 		} else if (game.outlineAuthor == payload.user.id || game.pieceAuthors.includes(payload.user.id)) {
-			// this.showErrorModal(triggerID, 'あなたは既にこの問題の空欄を埋めています。');
-			// return;
+			this.showErrorModal(triggerID, 'あなたは既にこの問題の空欄を埋めています。');
+			return;
 		} else if (focus < 0 || game.outline.length - 1 < focus || game.pieces[focus]) {
 			this.showErrorModal(triggerID, 'この空欄は既に誰かによって埋められてしまいました。');
 			return;
