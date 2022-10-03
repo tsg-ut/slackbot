@@ -3031,7 +3031,7 @@ const achievements: Achievement[] = [
 		condition: 'Wordle Battle で相手の単語を当て、勝利する',
 		category: 'wordle-battle',
 		counter: 'wordle-battle-win',
-		value: 1
+		value: 1,
 	},
 	{
 		id: 'wordle-battle-win-5',
@@ -3040,7 +3040,7 @@ const achievements: Achievement[] = [
 		condition: 'Wordle Battle で 5 回相手の単語を当て、勝利する',
 		category: 'wordle-battle',
 		counter: 'wordle-battle-win',
-		value: 5
+		value: 5,
 	},
 	{
 		id: 'wordle-battle-win-25',
@@ -3049,7 +3049,7 @@ const achievements: Achievement[] = [
 		condition: 'Wordle Battle で 25 回相手の単語を当て、勝利する',
 		category: 'wordle-battle',
 		counter: 'wordle-battle-win',
-		value: 25
+		value: 25,
 	},
 	{
 		id: 'wordle-battle-short',
@@ -3072,7 +3072,7 @@ const achievements: Achievement[] = [
 		condition: 'Wordle Battle で緑または黄色の四角を16個集める',
 		category: 'wordle-battle',
 		counter: 'wordle-battle-letters',
-		value: 16
+		value: 16,
 	},
 	{
 		id: 'wordle-battle-letters-64',
@@ -3081,7 +3081,7 @@ const achievements: Achievement[] = [
 		condition: 'Wordle Battle で緑または黄色の四角を64個集める',
 		category: 'wordle-battle',
 		counter: 'wordle-battle-letters',
-		value: 64
+		value: 64,
 	},
 	{
 		id: 'wordle-battle-letters-256',
@@ -3090,7 +3090,7 @@ const achievements: Achievement[] = [
 		condition: 'Wordle Battle で緑または黄色の四角を256個集める',
 		category: 'wordle-battle',
 		counter: 'wordle-battle-letters',
-		value: 256
+		value: 256,
 	},
 	{
 		id: 'wordle-battle-long-rally',
@@ -3470,6 +3470,117 @@ const achievements: Achievement[] = [
 		condition: '1日1文字クイズに問題を登録する',
 		category: 'slowquiz',
 		counter: 'slowquiz-register-quiz',
+		value: 1,
+	},
+
+	// taimai
+
+	{
+		id: 'taimai-correct-answer-1',
+		difficulty: 'easy',
+		title: '雌伏雄飛',
+		condition: 'タイマイで正解する',
+		category: 'easy',
+		counter: 'taimai-correct-answer',
+		value: 1,
+	},
+	{
+		id: 'taimai-correct-answer-10',
+		difficulty: 'medium',
+		title: '雌伏雄飛',
+		condition: 'タイマイで10回正解する',
+		category: 'taimai',
+		counter: 'taimai-correct-answer',
+		value: 10,
+	},
+	{
+		id: 'taimai-correct-answer-100',
+		difficulty: 'hard',
+		title: '雌伏雄飛',
+		condition: 'タイマイで100回正解する',
+		category: 'taimai',
+		counter: 'taimai-correct-answer',
+		value: 100,
+	},
+	{
+		id: 'taimai-contribute-quiz-1',
+		difficulty: 'easy',
+		title: '雌伏雄飛',
+		condition: 'タイマイで問題文に寄稿する',
+		category: 'taimai',
+		counter: 'taimai-contribute-quiz',
+		value: 1,
+	},
+	{
+		id: 'taimai-contribute-quiz-10',
+		difficulty: 'medium',
+		title: '雌伏雄飛',
+		condition: 'タイマイで10回問題文に寄稿する',
+		category: 'taimai',
+		counter: 'taimai-contribute-quiz',
+		value: 10,
+	},
+	{
+		id: 'taimai-contribute-quiz-100',
+		difficulty: 'hard',
+		title: '雌伏雄飛',
+		condition: 'タイマイで100回問題文に寄稿する',
+		category: 'taimai',
+		counter: 'taimai-contribute-quiz',
+		value: 100,
+	},
+	{
+		id: 'taimai-ask-30',
+		difficulty: 'easy',
+		title: '雌伏雄飛',
+		condition: 'タイマイで30回質問をする',
+		category: 'taimai',
+		counter: 'taimai-ask',
+		value: 30,
+	},
+	{
+		id: 'taimai-ask-100',
+		difficulty: 'medium',
+		title: '雌伏雄飛',
+		condition: 'タイマイで100回質問をする',
+		category: 'taimai',
+		counter: 'taimai-ask',
+		value: 100,
+	},
+	{
+		id: 'taimai-ask-300',
+		difficulty: 'hard',
+		title: '雌伏雄飛',
+		condition: 'タイマイで300回質問をする',
+		category: 'taimai',
+		counter: 'taimai-ask',
+		value: 300,
+	},
+	{
+		id: 'taimai-0q-1',
+		difficulty: 'professional',
+		title: '雌伏雄飛',
+		condition: 'タイマイで誰も質問をしないうちに正解する',
+		category: 'taimai',
+		counter: 'taimai-0q',
+		value: 1,
+	},
+	{
+		id: 'taimai-lt3q-1',
+		difficulty: 'hard',
+		title: '雌伏雄飛',
+		condition: 'タイマイで質問3回以内で正解する',
+		category: 'taimai',
+		counter: 'taimai-lt3q',
+		value: 1,
+	},
+	{
+		id: 'taimai-gt25q-1',
+		difficulty: 'medium',
+		title: '雌伏雄飛',
+		condition: 'タイマイで25回質問があった問題に正解する',
+		category: 'taimai',
+		counter: 'taimai-gt25q',
 		value: 1,
 	},
 

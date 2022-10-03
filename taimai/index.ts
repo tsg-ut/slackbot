@@ -1,6 +1,7 @@
 import { createMessageAdapter } from '@slack/interactive-messages';
-import type { ChatPostMessageArguments, ChatUpdateArguments, View, WebClient } from '@slack/web-api';
+import type { ChatPostMessageArguments, ChatUpdateArguments, WebClient } from '@slack/web-api';
 import { Mutex } from 'async-mutex';
+import { increment } from '../achievements';
 import type { SlackInterface } from '../lib/slack';
 import { TeamEventClient } from '../lib/slackEventClient';
 import State from '../lib/state';
@@ -147,7 +148,7 @@ class Taimai {
 		}
 		// in-thread commands
 		const game = this.getGame(message.thread_ts);
-		if (message.thread_ts === undefined || game === null || game.pieces.some(piece => !piece)) {
+		if (!message.thread_ts || !game || game.pieces.some(piece => !piece)) {
 			return;
 		}
 		if (message.text.match(config.askTrigger)) {
@@ -180,6 +181,7 @@ class Taimai {
 			await this.postMessage({text: '空欄の個数が多すぎるよ :blob-cry:', thread_ts: trigger.ts});
 			return;
 		}
+		increment(trigger.user, 'taimai-contribute-quiz');
 		const pieces = Array(outline.length - 1);
 		const game: TaimaiGame = {
 			triggerTs: trigger.ts,
@@ -192,10 +194,12 @@ class Taimai {
 			num_questions: 0,
 		};
 
-		let view: View = null;
-
+		const message = await this.postMessage({
+			thread_ts: trigger.ts, 
+			reply_broadcast: true, 
+			...(pieces.length === 0 ? statusOngoing : statusCreation)(game)
+		});
 		if (pieces.length === 0) {
-			view = statusOngoing(game);
 			await this.postMessage({
 				thread_ts: trigger.ts, 
 				...announceGameStart(game)
@@ -204,14 +208,7 @@ class Taimai {
 				thread_ts: trigger.ts, 
 				...instructionGame()
 			});
-		} else {
-			view = statusCreation(game);
 		}
-		const message = await this.postMessage({
-			thread_ts: trigger.ts, 
-			reply_broadcast: true, 
-			...view
-		});
 		game.statusTs = message.ts;
 		const permalinkResp = await this.webClient.chat.getPermalink({channel: trigger.channel, message_ts: message.ts});
 		game.permalink = permalinkResp.permalink || '';
@@ -276,6 +273,7 @@ class Taimai {
 			thread_ts: triggerTs,
 			reply_broadcast: true
 		});
+		increment(payload.user.id, 'taimai-contribute-quiz');
 		if (game.pieces.every(p => p)) {
 			await this.editMessage(game.statusTs, {
 				...statusOngoing(game)
@@ -310,6 +308,7 @@ class Taimai {
 				timestamp: payload.ts,
 			});
 		}
+		increment(payload.user, 'taimai-ask');
 		game.num_questions++;
 	}
 
@@ -341,6 +340,17 @@ class Taimai {
 			channel: payload.channel,
 			timestamp: payload.ts,
 		});
+
+		increment(payload.user, 'taimai-correct-answer');
+		if (game.num_questions === 0) {
+			increment(payload.user, 'taimai-0q');
+		}
+		if (game.num_questions <= 3) {
+			increment(payload.user, 'taimai-lt3q');
+		}
+		if (game.num_questions >= 25) {
+			increment(payload.user, 'taimai-gt25q');
+		}
 	}
 
 	async onSurrender(game: TaimaiGame, payload: any) {
