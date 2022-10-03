@@ -2,19 +2,19 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-import os from 'os';
-import {webClient, messageClient, eventClient, tsgEventClient} from './lib/slack';
 import Fastify from 'fastify';
+import os from 'os';
+import { eventClient, messageClient, tsgEventClient, webClient } from './lib/slack';
 
-import logger from './lib/logger';
 import yargs from 'yargs';
+import logger from './lib/logger';
 
-import fastifyFormbody from '@fastify/formbody';
 import fastifyExpress from '@fastify/express';
+import fastifyFormbody from '@fastify/formbody';
 
 import sharp from 'sharp';
 
-import {uniq, throttle} from 'lodash';
+import { throttle, uniq } from 'lodash';
 
 const log = logger.child({bot: 'index'});
 
@@ -96,6 +96,7 @@ const allBots = [
 	'wadokaichin',
 	'wordle-battle',
 	'slow-quiz',
+	'dicebot',
 	'taimai',
 ];
 
