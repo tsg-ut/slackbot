@@ -96,6 +96,7 @@ const allBots = [
 	'wadokaichin',
 	'wordle-battle',
 	'slow-quiz',
+	'dicebot',
 ];
 
 log.info('slackbot started');
