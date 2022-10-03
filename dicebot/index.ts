@@ -48,13 +48,14 @@ class DiceBot {
     this.gameSystem = await this.loader.dynamicLoad(systemName);
   }
 
-  async sendMessage(text: string) {
-    await this.slack.chat.postMessage({
-      channel: process.env.CHANNEL_SANDBOX,
+  async sendMessage(text: string, thread: string = undefined, channel = process.env.CHANNEL_SANDBOX) {
+    return await this.slack.chat.postMessage({
+      channel: channel,
       username: "dicebot",
       icon_emoji: ":game_die:",
       icon_url: "",
       text: text,
+      thread_ts: thread
     });
   }
 
@@ -86,8 +87,8 @@ class DiceBot {
         await this.sendMessage(this.gameSystem.HELP_MESSAGE);
         break;
       case "list":
-        await this.sendMessage(`以下のシステムが指定できるよ\nNAME: ID`);
-        await this.sendMessage(DiceBot.getAvailableSystemsString(this.loader));
+        const {ts} = await this.sendMessage(`以下のシステムが指定できるよ\nNAME: ID`);
+        await this.sendMessage(DiceBot.getAvailableSystemsString(this.loader), ts);
         break;
       case "help":
         await this.sendMessage(DiceBot.helpMessage());
@@ -104,7 +105,7 @@ class DiceBot {
     return `\
 @dicebot help: このヘルプを表示
 @dicebot system: 現在のゲームシステムを確認
-@dicebot system [system id]: ゲームシステムを設定
+@dicebot system [system id]: 現在のゲームシステムを変更
 @dicebot list: ゲームシステムの一覧を表示
 @dicebot systemhelp: 現在のゲームシステムで使えるコマンド一覧
 `;
