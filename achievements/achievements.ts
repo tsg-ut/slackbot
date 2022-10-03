@@ -3478,7 +3478,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'taimai-correct-answer-1',
 		difficulty: 'easy',
-		title: '雌伏雄飛',
+		title: '太郎さんはウミガメにひき肉のバジル炒めをかけようとした。なぜ?',
 		condition: 'タイマイで正解する',
 		category: 'easy',
 		counter: 'taimai-correct-answer',
@@ -3487,7 +3487,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'taimai-correct-answer-10',
 		difficulty: 'medium',
-		title: '雌伏雄飛',
+		title: '花子さんは贅沢な買い物の自慢をしたら怒られた。なぜ?',
 		condition: 'タイマイで10回正解する',
 		category: 'taimai',
 		counter: 'taimai-correct-answer',
@@ -3496,7 +3496,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'taimai-correct-answer-100',
 		difficulty: 'hard',
-		title: '雌伏雄飛',
+		title: '医療用麻薬が解禁された結果、カメは怯えた。なぜ?',
 		condition: 'タイマイで100回正解する',
 		category: 'taimai',
 		counter: 'taimai-correct-answer',
@@ -3505,8 +3505,8 @@ const achievements: Achievement[] = [
 	{
 		id: 'taimai-contribute-quiz-1',
 		difficulty: 'easy',
-		title: '雌伏雄飛',
-		condition: 'タイマイで問題文に寄稿する',
+		title: '女は意味不明な文章を見て喜んだ。なぜ?',
+		condition: 'タイマイで寄稿する',
 		category: 'taimai',
 		counter: 'taimai-contribute-quiz',
 		value: 1,
@@ -3514,8 +3514,8 @@ const achievements: Achievement[] = [
 	{
 		id: 'taimai-contribute-quiz-10',
 		difficulty: 'medium',
-		title: '雌伏雄飛',
-		condition: 'タイマイで10回問題文に寄稿する',
+		title: '女は誰よりもその分野の識者であるにも関わらず、少ししか理解できないと語る。なぜ?',
+		condition: 'タイマイで10回寄稿する',
 		category: 'taimai',
 		counter: 'taimai-contribute-quiz',
 		value: 10,
@@ -3523,8 +3523,8 @@ const achievements: Achievement[] = [
 	{
 		id: 'taimai-contribute-quiz-100',
 		difficulty: 'hard',
-		title: '雌伏雄飛',
-		condition: 'タイマイで100回問題文に寄稿する',
+		title: '男は、研究をしなければならないのにゲームに明け暮れていた。なぜ?',
+		condition: 'タイマイで100回寄稿する',
 		category: 'taimai',
 		counter: 'taimai-contribute-quiz',
 		value: 100,
@@ -3532,7 +3532,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'taimai-ask-30',
 		difficulty: 'easy',
-		title: '雌伏雄飛',
+		title: '男は一度進み始めると壁に当たるまで止まれないという。なぜ?',
 		condition: 'タイマイで30回質問をする',
 		category: 'taimai',
 		counter: 'taimai-ask',
@@ -3541,7 +3541,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'taimai-ask-100',
 		difficulty: 'medium',
-		title: '雌伏雄飛',
+		title: '自分の心の中に思っていたことがある日突然街中に大々的に掲示された。なぜ?',
 		condition: 'タイマイで100回質問をする',
 		category: 'taimai',
 		counter: 'taimai-ask',
@@ -3550,7 +3550,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'taimai-ask-300',
 		difficulty: 'hard',
-		title: '雌伏雄飛',
+		title: 'ある男は脅威となる人に積極的に会いに行くという。なぜ?',
 		condition: 'タイマイで300回質問をする',
 		category: 'taimai',
 		counter: 'taimai-ask',
@@ -3559,7 +3559,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'taimai-0q-1',
 		difficulty: 'professional',
-		title: '雌伏雄飛',
+		title: 'あるサークルではあまりにも自明な問題で水平思考クイズをしている。なぜ?',
 		condition: 'タイマイで誰も質問をしないうちに正解する',
 		category: 'taimai',
 		counter: 'taimai-0q',
@@ -3568,7 +3568,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'taimai-lt3q-1',
 		difficulty: 'hard',
-		title: '雌伏雄飛',
+		title: 'ある女は市外局番をひたすら覚えているという。なぜ?',
 		condition: 'タイマイで質問3回以内で正解する',
 		category: 'taimai',
 		counter: 'taimai-lt3q',
@@ -3577,7 +3577,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'taimai-gt25q-1',
 		difficulty: 'medium',
-		title: '雌伏雄飛',
+		title: 'あるオタクは些細な言葉遣いの違いをひたすら指摘している。なぜ?',
 		condition: 'タイマイで25回質問があった問題に正解する',
 		category: 'taimai',
 		counter: 'taimai-gt25q',
