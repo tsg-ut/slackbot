@@ -1,9 +1,9 @@
-import { View } from '@slack/web-api';
 import { TaimaiGame } from '..';
 import config from '../config';
 import { formatOutlineUnfilled } from '../util';
 
 export default (game: TaimaiGame) => ({
+	text: `タイマイの新しい問題: ${formatOutlineUnfilled(game.outline, game.pieces)}`,
 	blocks: [
 		{
 			"type": "section",
@@ -57,4 +57,4 @@ export default (game: TaimaiGame) => ({
 			]
 		}
 	]
-} as View);
+});

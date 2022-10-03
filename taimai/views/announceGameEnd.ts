@@ -1,7 +1,7 @@
-import { View } from '@slack/web-api';
 import { TaimaiGame } from '..';
 
 export default (game: TaimaiGame) => ({
+	text: `正解: ${game.answer}`,
 	blocks: [
 		{
 			"type": "context",
@@ -20,4 +20,4 @@ export default (game: TaimaiGame) => ({
 			}
 		}
 	]
-} as View);
+});

@@ -133,7 +133,7 @@ class Taimai {
 	async onMessage(message: any) {
     if (message.channel !== process.env.CHANNEL_SANDBOX || !message.text) {
       return;
-    } else if (message.subtype === 'bot_message' || message.subtype === 'slackbot_response') {
+    } else if (message.subtype === 'bot_message' || message.subtype === 'slackbot_response' || message.bot_id) {
       return;
     }
 		const newQuestionMatch = message.text.match(config.newQuestionTrigger);

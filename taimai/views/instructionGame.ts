@@ -1,6 +1,6 @@
-import { View } from '@slack/web-api';
 
 export default () => ({
+	text: "タイマイの回答方法",
 	"blocks": [
 		{
 			"type": "header",
@@ -18,4 +18,4 @@ export default () => ({
 			}
 		}
 	]
-} as View);
+});

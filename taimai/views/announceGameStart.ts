@@ -1,8 +1,8 @@
-import { View } from '@slack/web-api';
 import { TaimaiGame } from '..';
 import { formatOutlineFilled } from '../util';
 
 export default (game: TaimaiGame) => ({
+	text: `問題: ${formatOutlineFilled(game.outline, game.pieces)}`,
 	blocks: [
 		{
 			"type": "context",
@@ -30,4 +30,4 @@ export default (game: TaimaiGame) => ({
 			]
 		}
 	]
-} as View);
+});

@@ -33,7 +33,7 @@ export function formatOutlineFilled(outline: string[], pieces: string[]): string
 }
 
 export function formatOutlineDynamic(outline: string[], pieces: string[]): string {
-  if (pieces.every(piece => piece !== null)) {
+  if (pieces.every(piece => piece)) {
     return formatOutlineFilled(outline, pieces);
   } else {
     return formatOutlineUnfilled(outline, pieces);

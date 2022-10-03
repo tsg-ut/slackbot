@@ -1,10 +1,10 @@
-import { View } from '@slack/web-api';
 import { stripIndent } from 'common-tags';
 import { TaimaiGame } from '..';
 import config from '../config';
 import { formatOutlineDynamic } from '../util';
 
 export default (games: TaimaiGame[]) => ({
+	text: "タイマイの遊び方",
   blocks: [
 		{
 			"type": "header",
@@ -55,4 +55,4 @@ export default (games: TaimaiGame[]) => ({
 			}
 		}))
 	],
-} as View);
+});

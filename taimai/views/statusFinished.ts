@@ -1,9 +1,9 @@
-import { View } from '@slack/web-api';
 import { TaimaiGame } from '..';
 import config from '../config';
 import { formatOutlineFilled } from '../util';
 
 export default (game: TaimaiGame) => ({
+	text: `タイマイの問題が終了: ${game.answer || '投了'}`,
 	blocks: [
 		{
 			"type": "section",
@@ -34,4 +34,4 @@ export default (game: TaimaiGame) => ({
 			]
 		}
 	]
-} as View);
+});
