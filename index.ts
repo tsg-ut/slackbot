@@ -1,3 +1,7 @@
+import 'canvas';
+// https://github.com/Automattic/node-canvas/issues/930
+
+
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -96,6 +100,7 @@ const allBots = [
 	'wadokaichin',
 	'wordle-battle',
 	'slow-quiz',
+	'map-guessr'
 ];
 
 log.info('slackbot started');
