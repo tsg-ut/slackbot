@@ -14,10 +14,12 @@ const {AteQuiz} = require('../atequiz/index.ts');
 const cloudinary = require('cloudinary');
 
 
-const API_KEY = "AIzaSyCMCEQdxYeU8yVPbhu4u58Ugk8BOogv1Bg"
+const API_KEY = "AIzaSyCOZhs7unM1rAup82uEjzTd-BLApvqwcQE"
 
 // hakatashiのやつ
 // const API_KEY = "AIzaSyCOZhs7unM1rAup82uEjzTd-BLApvqwcQE"
+// ぽーりゃのやつ
+// const API_KEY = "AIzaSyCMCEQdxYeU8yVPbhu4u58Ugk8BOogv1Bg"
 
 const mutex = new Mutex();
 
