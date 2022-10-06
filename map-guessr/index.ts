@@ -11,6 +11,7 @@ import { Deferred } from "../lib/utils";
 import { TeamEventClient } from "../lib/slackEventClient";
 const {Mutex} = require('async-mutex');
 const {AteQuiz} = require('../atequiz/index.ts');
+const cloudinary = require('cloudinary');
 
 
 const API_KEY = "AIzaSyCMCEQdxYeU8yVPbhu4u58Ugk8BOogv1Bg"
@@ -29,7 +30,6 @@ interface CoordAteQuizProblem {
 	unsolvedMessage: ChatPostMessageArguments;
 	answerMessage?: ChatPostMessageArguments | null;
 	correctAnswers: string[];
-	problemImage: Buffer;
 }
 
 
@@ -185,13 +185,6 @@ class CoordAteQuiz extends AteQuiz {
 		// Listeners should be added before postMessage is called.
 		const { ts: thread_ts } = await postMessage(this.problem.problemMessage);
 		assert(typeof thread_ts === 'string');
-		const imgToSend = {
-			channels: this.problem.problemMessage.channel,
-			file:  Buffer.from(this.problem.problemImage),
-			filetype: "image/png",
-			thread_ts: thread_ts,
-		}
-		await this.slack.files.upload(imgToSend)
 	
 		if (this.problem.immediateMessage){
 		  await postMessage(
@@ -211,8 +204,8 @@ async function puppeteerWindow(latitude: number, longitude: number, zoom: number
 	const browser = await puppeteer.launch();
 	const page = await browser.newPage();
 	await page.setViewport({
-		width: 500,
-		height: 500,
+		width: 1000,
+		height: 1000,
 		deviceScaleFactor: 1,
 	});     
 	await page.setContent(
@@ -220,12 +213,13 @@ async function puppeteerWindow(latitude: number, longitude: number, zoom: number
 		<head>
 			<style>
 				body {
-					width: 500px;
-					height: 500px;
+					margin: 0px;
+					width: 1000px;
+					height: 1000px;
 				}
 				#map_canvas {
-					width: 500px;
-					height: 500px;
+					width: 1000px;
+					height: 1000px;
 				}
 			</style>
 			<script async src='https://maps.googleapis.com/maps/api/js?key=${API_KEY}&v=beta&callback=initMap'></script>
@@ -254,11 +248,11 @@ async function puppeteerWindow(latitude: number, longitude: number, zoom: number
 				}
 			</script>
 		</head>	
-		<body><div id='map_canvas' style='height: 500px;width: 500px;'></div></body>
-		`,{waitUntil: "load"}
+		<body><div id='map_canvas'></div></body>
+		`,{waitUntil: "networkidle0"}
 	);
 	const maxZoom = await page.evaluate("result") as number;
-	const image = await page.screenshot({encoding: 'binary', type: 'png'}) as Buffer;
+	const image = await page.screenshot({fromSurface: true, encoding: 'binary', type: 'png'}) as Buffer;
 	await browser.close();
 	return {zoom: Math.min(maxZoom,zoom), image: image}
 }
@@ -390,7 +384,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 						"type": "section",
 						"text": {
 							"type": "mrkdwn",
-							"text": "*範囲の1辺の長さ*\n出題される問題では正方形(500px×500px)の衛星画像が表示されます。その正方形の1辺に対応する地球上の距離を指定できます。単位はkmです。正でない数や10000を超える数が指定された場合と指定がない場合は1000kmに設定されます。"
+							"text": "*範囲の1辺の長さ*\n出題される問題では正方形(1000px×1000px)の衛星画像が表示されます。その正方形の1辺に対応する地球上の距離を指定できます。単位はkmです。正でない数や10000を超える数が指定された場合と指定がない場合は1000kmに設定されます。"
 						}
 					},
 					{
@@ -569,18 +563,28 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			return;
 		} 
 
-		let zoom: number, imgbuffer: Buffer, window: Record<string,any>, latitude: number, longitude: number, country: any;
+		let zoom: number, imgbuffer: Buffer, img_url: string, window: Record<string,any>, latitude: number, longitude: number, country: any;
 		while (true) {
 			[latitude, longitude] = randomPoint(size);
 			const points = Turf.points([[longitude, latitude]]);
 			const resArr = worldFilter.features.filter((country: any) => Turf.pointsWithinPolygon(points, country).features.length > 0 );
 			if (resArr.length > 0) {
 				country = resArr[0];
-				zoom = Math.log2(156543.03392 * 500 * Math.cos(latitude * Math.PI / 180)/size/1000);
+				zoom = Math.log2(156543.03392 * 1000 * Math.cos(latitude * Math.PI / 180)/size/1000);
 				window = await puppeteerWindow(latitude,longitude,zoom)
 				zoom = window.zoom;
+				const result: any = await new Promise((resolve, reject) => {
+					cloudinary.v2.uploader.upload_stream({ resource_type: 'image' }, (error: any, data: any) => {
+						if (error) {
+							reject(error);
+						} else {
+							resolve(data);
+						}
+					}).end(window.image);
+				});
+				img_url = result.secure_url;
 				imgbuffer = window.image;
-				size = 156543.03392 * 500 * Math.cos(latitude * Math.PI / 180)/(2**zoom)/1000;
+				size = 156543.03392 * 1000 * Math.cos(latitude * Math.PI / 180)/(2**zoom)/1000;
 				break;
 			}
 		}
@@ -594,6 +598,20 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			problemMessage: {
 				channel: channel,
 				text: `緯度と経度を当ててね。サイズは${distFormat(size)}四方だよ。`,
+				blocks: [
+					{
+						"type": "section",
+						"text": {
+							"type": "plain_text",
+							"text": `緯度と経度を当ててね。サイズは${distFormat(size)}四方だよ。`
+						}
+					},
+					{
+						"type": "image",
+						"image_url": img_url,
+						"alt_text": "Map cannot be displayed."
+					}
+				]
 			},
 			hintMessages: [{
 				channel: channel,
@@ -615,7 +633,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 				reply_broadcast: true,
 			},
 			correctAnswers: [answer,zoom.toString()],
-			problemImage: window.image,
+			
 		};
 
 		const ateQuiz = new CoordAteQuiz(
