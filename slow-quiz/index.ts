@@ -18,9 +18,12 @@ import listQuizDialog from './views/listQuizDialog';
 import postCommentDialog from './views/postCommentDialog';
 import registerQuizDialog from './views/registerQuizDialog';
 
+type Genre = 'normal' | 'strange' | 'anything';
+
 export interface Submission {
 	user: string,
 	progress: number,
+	days: number,
 	date: number,
 	answer: string,
 }
@@ -40,10 +43,13 @@ export interface Game {
 	finishDate: number | null,
 
 	progress: number,
+	days: number,
 	correctAnswers: Submission[],
 	wrongAnswers: Submission[],
 	comments: Submission[],
 	answeredUsers: string[],
+
+	genre: Genre,
 }
 
 interface StateObj {
@@ -104,6 +110,7 @@ class SlowQuiz {
 					ruby: state?.ruby?.value,
 					hint: state?.hint?.value,
 					user: payload?.user?.id,
+					genre: state?.genre?.value,
 				})
 			));
 		});
@@ -270,12 +277,14 @@ class SlowQuiz {
 		ruby,
 		hint,
 		user,
+		genre,
 	}: {
 		question: string,
 		answer: string,
 		ruby: string,
 		hint: string,
 		user: string,
+		genre: Genre,
 	}): Promise<void> {
 		if (typeof question !== 'string' || question.length === 0) {
 			this.postEphemeral('問題を入力してね🙄', user);
@@ -304,10 +313,12 @@ class SlowQuiz {
 			finishDate: null,
 			status: 'waitlisted',
 			progress: 0,
+			days: 0,
 			correctAnswers: [],
 			wrongAnswers: [],
 			answeredUsers: [],
 			comments: [],
+			genre,
 		});
 
 		increment(user, 'slowquiz-register-quiz');
@@ -377,6 +388,7 @@ class SlowQuiz {
 			game.wrongAnswers.push({
 				user,
 				progress: game.progress,
+				days: game.days,
 				date: Date.now(),
 				answer: ruby,
 			});
@@ -389,6 +401,7 @@ class SlowQuiz {
 		game.correctAnswers.push({
 			user,
 			progress: game.progress,
+			days: game.days,
 			date: Date.now(),
 			answer: ruby,
 		});
@@ -465,6 +478,7 @@ class SlowQuiz {
 		game.comments.push({
 			user,
 			progress: game.progress,
+			days: game.days,
 			date: Date.now(),
 			answer: comment,
 		});
@@ -545,6 +559,7 @@ class SlowQuiz {
 		for (const game of this.state.games) {
 			if (game.status === 'inprogress') {
 				game.progress++;
+				game.days++;
 			}
 			game.answeredUsers = [];
 		}
