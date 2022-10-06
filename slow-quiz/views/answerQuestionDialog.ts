@@ -33,7 +33,7 @@ export default (game: Game, questionText: string, user: string) => {
 					text: userAnswers.length === 0
 						? 'まだ回答がありません'
 						: userAnswers.map((answer) => (
-							`${answer.progress}日目: 「${answer.answer}」`
+							`${answer.days}日目: 「${answer.answer}」`
 						)).join('\n'),
 				},
 			},

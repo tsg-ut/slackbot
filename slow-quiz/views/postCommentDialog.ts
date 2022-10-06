@@ -6,12 +6,12 @@ type UserSubmission = Submission & {type: 'wrong_answer' | 'correct_answer' | 'c
 
 const formatSubmission = (submission: UserSubmission) => {
 	if (submission.type === 'wrong_answer') {
-		return `${submission.progress}日目: ＊回答「${submission.answer}」＊ → 不正解`;
+		return `${submission.days}日目: ＊回答「${submission.answer}」＊ → 不正解`;
 	}
 	if (submission.type === 'correct_answer') {
-		return `${submission.progress}日目: ＊回答「${submission.answer}」＊ → 正解`;
+		return `${submission.days}日目: ＊回答「${submission.answer}」＊ → 正解`;
 	}
-	return `${submission.progress}日目: ${submission.answer}`;
+	return `${submission.days}日目: ${submission.answer}`;
 };
 
 export default (game: Game, user: string) => {

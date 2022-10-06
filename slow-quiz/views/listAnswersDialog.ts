@@ -4,14 +4,14 @@ import type {Game, Submission} from '../index';
 
 type UserSubmission = Submission & {type: 'wrong_answer' | 'correct_answer' | 'comment'}
 
-const formatSubmission = ({progress, type, user, answer}: UserSubmission) => {
+const formatSubmission = ({days, type, user, answer}: UserSubmission) => {
 	if (type === 'wrong_answer') {
-		return `${progress}日目: <@${user}> ＊回答「${answer}」＊ → 不正解`;
+		return `${days}日目: <@${user}> ＊回答「${answer}」＊ → 不正解`;
 	}
 	if (type === 'correct_answer') {
-		return `${progress}日目: <@${user}> ＊回答「${answer}」＊ → 正解`;
+		return `${days}日目: <@${user}> ＊回答「${answer}」＊ → 正解`;
 	}
-	return `${progress}日目: <@${user}> ${answer}`;
+	return `${days}日目: <@${user}> ${answer}`;
 };
 
 export default (game: Game) => {

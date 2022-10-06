@@ -55,6 +55,5 @@ interface StateObj {
 		}
 
 		console.log(`Migrated ${game.id}`);
-		console.log(game);
 	}
 })();
