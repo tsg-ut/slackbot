@@ -1,4 +1,3 @@
-import {inspect} from 'util';
 import {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {ChatPostMessageArguments, ImageElement, KnownBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
@@ -208,14 +207,31 @@ class SlowQuiz {
 		});
 
 		this.slackInteractions.action({
-			type: 'plain_text_input',
-			actionId: 'slowquiz_post_comment_input_comment',
+			type: 'button',
+			actionId: 'slowquiz_post_comment_submit_comment',
 		}, (payload) => {
+			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
+			const state = Object.assign({}, ...stateObjects);
+
 			mutex.runExclusive(() => (
 				this.postComment({
 					id: payload?.view?.private_metadata,
 					viewId: payload?.view?.id,
-					comment: payload?.actions?.[0]?.value,
+					comment: state?.slowquiz_post_comment_input_comment?.value,
+					user: payload?.user?.id,
+				})
+			));
+		});
+
+		this.slackInteractions.viewSubmission('slowquiz_post_comment_dialog', (payload: any) => {
+			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
+			const state = Object.assign({}, ...stateObjects);
+
+			mutex.runExclusive(() => (
+				this.postComment({
+					id: payload?.view?.private_metadata,
+					viewId: payload?.view?.id,
+					comment: state?.slowquiz_post_comment_input_comment?.value,
 					user: payload?.user?.id,
 				})
 			));
@@ -574,7 +590,6 @@ class SlowQuiz {
 		});
 	}
 
-
 	async progressGames() {
 		const newGame = this.chooseNewGame();
 
@@ -908,7 +923,6 @@ class SlowQuiz {
 export default async ({webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
 	const slowquiz = new SlowQuiz({slack, slackInteractions});
 	await slowquiz.initialize();
-	slowquiz.progressGames();
 
 	scheduleJob('0 10 * * *', () => {
 		mutex.runExclusive(() => {
