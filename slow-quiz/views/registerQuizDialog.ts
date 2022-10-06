@@ -1,5 +1,5 @@
 import {View} from '@slack/web-api';
-import {stripIndent} from 'common-tags';
+import {oneLineTrim, stripIndent} from 'common-tags';
 
 export default {
 	type: 'modal',
@@ -18,15 +18,60 @@ export default {
 			type: 'section',
 			text: {
 				type: 'mrkdwn',
-				text: stripIndent`
-					問題の投稿にあたっては、一般的な早押しクイズのガイドラインに配慮し、不自然な問題文、不自然な表記、極端に短い・長い問題文などの問題を避けるようにしてください。
-					また、このクイズの性質上なるべく早い段階で答えが確定する問題文が好ましいですが、必ずしも従う必要はありません。
-
-					早押しクイズ 作問ガイドラインの例
-					● <https://cdn.tactosh.com/quiz/guideline/question.html|みんなで早押しクイズ 作問ガイドライン>
-					● <https://www.dropbox.com/s/c3mlanb17yk2ol0/abc_EQIDEN%20%E5%95%8F%E9%A1%8C%E4%BD%9C%E6%88%90%E3%81%AE%E6%89%8B%E5%BC%95%E3%81%8D.pdf?dl=0|abc/EQIDEN 問題作成の手引き>
-					● <https://drive.google.com/file/d/10tUZdWtTU8UF6nUoKSjlbvEU_i779jpa/view|beyond the text>
+				text: oneLineTrim`
+					出題の際には、<https://scrapbox.io/tsg/1日1文字クイズ|Scrapbox「1日1文字クイズ」>を参照し、
+					それぞれのジャンルのレギュレーションに従った問題を出題してください。
 				`,
+			},
+		},
+		{
+			type: 'input',
+			label: {
+				type: 'plain_text',
+				text: '確認',
+				emoji: true,
+			},
+			element: {
+				type: 'checkboxes',
+				options: [
+					{
+						text: {
+							type: 'plain_text',
+							text: '1日1文字クイズのレギュレーションを読み、確認しました',
+							emoji: true,
+						},
+						value: 'ok',
+					},
+				],
+				action_id: 'confirm',
+			},
+		},
+		{
+			type: 'input',
+			label: {
+				type: 'plain_text',
+				text: 'ジャンル',
+			},
+			element: {
+				type: 'static_select',
+				action_id: 'genre',
+				placeholder: {
+					type: 'plain_text',
+					text: 'ジャンルを選んでください',
+					emoji: true,
+				},
+				options: Object.entries({
+					normal: '正統派',
+					strange: '変化球',
+					anything: 'なんでも',
+				}).map(([id, label]) => ({
+					text: {
+						type: 'plain_text',
+						text: label,
+						emoji: true,
+					},
+					value: id,
+				})),
 			},
 		},
 		{
@@ -43,7 +88,15 @@ export default {
 					text: '日本一高い山は何でしょう？',
 				},
 				multiline: true,
-				max_length: 90,
+				max_length: 250,
+			},
+			hint: {
+				type: 'plain_text',
+				text: stripIndent`
+					基本的に90文字以内で入力してください。
+					90文字以上の問題を出題したい場合は「/」で1日ごとに出題する量を指定してください。
+					また、【】で囲った内容はスキップされます。
+				`,
 			},
 		},
 		{

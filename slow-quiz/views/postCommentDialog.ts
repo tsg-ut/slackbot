@@ -6,12 +6,12 @@ type UserSubmission = Submission & {type: 'wrong_answer' | 'correct_answer' | 'c
 
 const formatSubmission = (submission: UserSubmission) => {
 	if (submission.type === 'wrong_answer') {
-		return `${submission.progress}日目: ＊回答「${submission.answer}」＊ → 不正解`;
+		return `${submission.days}日目: ＊回答「${submission.answer}」＊ → 不正解`;
 	}
 	if (submission.type === 'correct_answer') {
-		return `${submission.progress}日目: ＊回答「${submission.answer}」＊ → 正解`;
+		return `${submission.days}日目: ＊回答「${submission.answer}」＊ → 正解`;
 	}
-	return `${submission.progress}日目: ${submission.answer}`;
+	return `${submission.days}日目: ${submission.answer}`;
 };
 
 export default (game: Game, user: string) => {
@@ -31,6 +31,10 @@ export default (game: Game, user: string) => {
 		callback_id: 'slowquiz_post_comment_dialog',
 		title: {
 			text: 'コメント送信',
+			type: 'plain_text',
+		},
+		submit: {
+			text: '投稿する',
 			type: 'plain_text',
 		},
 		notify_on_close: true,
@@ -66,7 +70,6 @@ export default (game: Game, user: string) => {
 				},
 			},
 			{
-				dispatch_action: true,
 				type: 'input',
 				element: {
 					type: 'plain_text_input',
@@ -82,6 +85,21 @@ export default (game: Game, user: string) => {
 					type: 'plain_text',
 					text: 'クイズ終了まで公開されません',
 				},
+			},
+			{
+				type: 'actions',
+				elements: [
+					{
+						type: 'button',
+						text: {
+							type: 'plain_text',
+							text: '投稿する',
+							emoji: true,
+						},
+						action_id: 'slowquiz_post_comment_submit_comment',
+						style: 'primary',
+					},
+				],
 			},
 		],
 	} as View;
