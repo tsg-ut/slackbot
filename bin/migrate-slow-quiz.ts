@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import fs from 'fs/promises';
 import State from "../lib/state";
 import {Game} from "../slow-quiz";
 
@@ -14,6 +15,9 @@ interface StateObj {
 		latestStatusMessages: [],
 	});
 
+	const games: Game[] = JSON.parse(JSON.stringify(state.games));
+	await fs.writeFile('savedState.json', JSON.stringify(state));
+
 	for (const game of state.games) {
 		if (typeof game.days !== 'number') {
 			game.days = game.progress;
@@ -23,6 +27,9 @@ interface StateObj {
 			game.correctAnswers = [];
 		}
 		for (const answer of game.correctAnswers) {
+			if (typeof answer.days !== 'number') {
+				answer.days = answer.progress;
+			}
 			if (typeof answer.days !== 'number') {
 				answer.days = answer.progress;
 			}
@@ -56,4 +63,6 @@ interface StateObj {
 
 		console.log(`Migrated ${game.id}`);
 	}
+
+	state.games = games;
 })();

@@ -604,8 +604,8 @@ class SlowQuiz {
 				game.days++;
 
 				const {text} = this.getVisibleQuestionText(game);
-				// 記号で終わるならもう1文字
-				if ((last(Array.from(text)) ?? '').match(/^[^\p{L}\p{N}]$/u)) {
+				// 括弧で終わるならもう1文字
+				if ((last(Array.from(text)) ?? '').match(/^[\p{Ps}\p{Pe}]$/u)) {
 					game.progress++;
 				}
 			}
@@ -817,21 +817,23 @@ class SlowQuiz {
 	getQuestionText(game: Game) {
 		if (game.question.split('/').length >= 5) {
 			const tokens = game.question.split('/');
-			return tokens.map((token, i) => {
-				if (i < game.progress) {
-					return token;
-				}
-				return Array.from(token).map((char, j, tokenChars) => {
+
+			const visibleTokens = tokens.slice(0, game.progress);
+			const invisibleTokens = tokens.slice(game.progress);
+
+			const visibleText = visibleTokens.join('');
+			const invisibleText = invisibleTokens.map((token, i) => (
+				Array.from(token).map((char, j, tokenChars) => {
 					if (
-						i === tokens.length - 1 &&
+						i === invisibleTokens.length - 1 &&
 						j === tokenChars.length - 1 &&
 						['。', '？', '?'].includes(char)
 					) {
 						return char;
 					}
 					return '◯';
-				}).join('\u200B');
-			}).join('/');
+				}).join('\u200B')
+			)).join('/');
 		}
 
 		const lastCharacter = last(Array.from(game.question));
