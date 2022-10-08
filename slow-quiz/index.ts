@@ -834,6 +834,8 @@ class SlowQuiz {
 					return '◯';
 				}).join('\u200B')
 			)).join('/');
+
+			return `${visibleText}\u200B${invisibleText}`;
 		}
 
 		const lastCharacter = last(Array.from(game.question));
