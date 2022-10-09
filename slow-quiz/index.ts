@@ -13,7 +13,6 @@ import State from '../lib/state';
 import answerQuestionDialog from './views/answerQuestionDialog';
 import footer from './views/footer';
 import gameDetailsDialog from './views/gameDetailsDialog';
-import listAnswersDialog from './views/listAnswersDialog';
 import listQuizDialog from './views/listQuizDialog';
 import postCommentDialog from './views/postCommentDialog';
 import registerQuizDialog from './views/registerQuizDialog';
@@ -280,7 +279,7 @@ class SlowQuiz {
 		if (game.author === user) {
 			return this.slack.views.open({
 				trigger_id: triggerId,
-				view: listAnswersDialog(game),
+				view: gameDetailsDialog(game),
 			});
 		}
 
