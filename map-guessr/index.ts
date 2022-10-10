@@ -28,77 +28,83 @@ const img_size = 1000;
 const radius_of_earth = 6378.137;
 
 const postOptions = {
-    username: "coord-quiz",
-    icon_emoji: ":globe_with_meridians:",
-  };
+  username: "coord-quiz",
+  icon_emoji: ":globe_with_meridians:",
+};
 
 const reNum = /[+-]?(\d+\.?\d*|\.\d+)/;
 
 interface CoordAteQuizProblem extends AteQuizProblem {
-  answer: [number,number];
+  answer: [number, number];
   zoom: number;
   size: number;
 }
 
 class CoordAteQuiz extends AteQuiz {
   static option?: WebAPICallOptions = postOptions;
-  ngReaction: string | null = null
-  constructor(eventClient: TeamEventClient,slack: WebClient,
-  problem: CoordAteQuizProblem) {
-    super({ eventClient: eventClient, webClient: slack }, problem, CoordAteQuiz.option);
+  ngReaction: string | null = null;
+  constructor(
+    eventClient: TeamEventClient,
+    slack: WebClient,
+    problem: CoordAteQuizProblem
+  ) {
+    super(
+      { eventClient: eventClient, webClient: slack },
+      problem,
+      CoordAteQuiz.option
+    );
     this.answeredUsers = new Set();
   }
   judge(answer: string, _user: string) {
     if (latLngDeformat(answer) === null) {
       return false;
     }
-      const [lat, lng] = latLngDeformat(answer);
-      const [latans, lngans] = this.problem.answer;
-      const [xm, ym] = latLngToMercator(lat, lng);
-      const [xmans, ymans] = latLngToMercator(latans, lngans);
-      const zoom = this.problem.zoom;
-      const dist = ((Math.PI / 128) * img_size) / 2 / 2 ** zoom;
-      if (
-        Math.cos(xm - xmans) >= Math.cos(dist) &&
-        Math.abs(ym - ymans) <= dist
-      ) {
-        return true;
-      } else {
-        return false;
-      }
+    const [lat, lng] = latLngDeformat(answer);
+    const [latans, lngans] = this.problem.answer;
+    const [xm, ym] = latLngToMercator(lat, lng);
+    const [xmans, ymans] = latLngToMercator(latans, lngans);
+    const zoom = this.problem.zoom;
+    const dist = ((Math.PI / 128) * img_size) / 2 / 2 ** zoom;
+    if (
+      Math.cos(xm - xmans) >= Math.cos(dist) &&
+      Math.abs(ym - ymans) <= dist
+    ) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
-  
-
-  solvedMessageGen(post: any) :ChatPostMessageArguments {
-    const message = {...this.problem.solvedMessage};
+  solvedMessageGen(post: any): ChatPostMessageArguments {
+    const message = { ...this.problem.solvedMessage };
     const userAnswer = post.text;
     const [lat, lng] = latLngDeformat(userAnswer);
     const [latans, lngans] = this.problem.answer;
-    const distance = measureDistance(lat,lng,latans,lngans);
-    message.text= `<@[[!user]]> 正解:tada:\n中心点の座標は ${
-      latLngFormat(this.problem.answer[0],this.problem.answer[1])
-    } 、中心点までの距離は${distFormat(
+    const distance = measureDistance(lat, lng, latans, lngans);
+    message.text = `<@[[!user]]> 正解:tada:\n中心点の座標は ${latLngFormat(
+      this.problem.answer[0],
+      this.problem.answer[1]
+    )} 、中心点までの距離は${distFormat(
       distance
     )}だよ:muscle:\nhttps://maps.google.co.jp/maps?ll=${latans},${lngans}&q=${latans},${lngans}&t=k
 			`;
-      message.text = message.text.replaceAll(
-        this.replaceKeys.correctAnswerer,
-        post.user as string
-      );
-      return message;
+    message.text = message.text.replaceAll(
+      this.replaceKeys.correctAnswerer,
+      post.user as string
+    );
+    return message;
   }
 
   incorrectMessageGen(post: any): ChatPostMessageArguments {
-    const message = {...this.problem.incorrectMessage};
-    const userAnswer=post.text;
+    const message = { ...this.problem.incorrectMessage };
+    const userAnswer = post.text;
     if (latLngDeformat(userAnswer) === null) {
-     message.text= `<@[[!user]]> 解答形式が間違っているよ:cry:`;
+      message.text = `<@[[!user]]> 解答形式が間違っているよ:cry:`;
     } else {
       const [lat, lng] = latLngDeformat(userAnswer);
       const [latans, lngans] = this.problem.answer;
-      const distance = measureDistance(lat,lng,latans,lngans);
-      message.text= `<@[[!user]]> 不正解:x:\n中心点までの距離は${distFormat(
+      const distance = measureDistance(lat, lng, latans, lngans);
+      message.text = `<@[[!user]]> 不正解:x:\n中心点までの距離は${distFormat(
         distance
       )}だよ:cry:`;
     }
@@ -112,8 +118,6 @@ class CoordAteQuiz extends AteQuiz {
   waitSecGen(hintIndex: number): number {
     return hintIndex === this.problem.hintMessages.length ? 180 : 120;
   }
-
-  
 }
 
 const mesHelp = {
@@ -179,45 +183,44 @@ const mesHelp = {
   channel: CHANNEL,
 };
 
-
-function countriesListMessageGen(aliases: Record<string,string[]>): any{
+function countriesListMessageGen(aliases: Record<string, string[]>): any {
   const countriesList = countriesExpand(["世界"], aliases)
     .filter((country) => country !== "-")
     .sort();
 
-const aliasesStringArray = countriesListGen(aliases);
+  const aliasesStringArray = countriesListGen(aliases);
 
-const mesCountries = {
-  text: "国・地域一覧",
-  blocks: [
-    {
-      type: "header",
-      text: {
-        type: "plain_text",
-        text: "国・地域一覧",
+  const mesCountries = {
+    text: "国・地域一覧",
+    blocks: [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: "国・地域一覧",
+        },
       },
-    },
-    {
-      type: "section",
-      text: {
-        type: "plain_text",
-        text: countriesList.join("\n"),
+      {
+        type: "section",
+        text: {
+          type: "plain_text",
+          text: countriesList.join("\n"),
+        },
       },
-    },
-    {
-      type: "header",
-      text: {
-        type: "plain_text",
-        text: "使用可能な別名",
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: "使用可能な別名",
+        },
       },
-    },
-    ...Array.from(aliasesStringArray, (text: string) => {
-      return { type: "section", text: { type: "mrkdwn", text: text } };
-    }),
-  ],
-  channel: CHANNEL,
-};
-return mesCountries
+      ...Array.from(aliasesStringArray, (text: string) => {
+        return { type: "section", text: { type: "mrkdwn", text: text } };
+      }),
+    ],
+    channel: CHANNEL,
+  };
+  return mesCountries;
 }
 
 function countriesExpand(
@@ -269,8 +272,6 @@ function countriesListGen(aliases: Record<string, string[]>): string[] {
   arr.push(aliasesString.join("\n"));
   return arr;
 }
-
-
 
 async function puppeteerWindow(
   latitude: number,
@@ -393,21 +394,22 @@ function latLngToMercator(lat: number, lng: number): number[] {
 }
 
 function latLngToCartesian(lat: number, lng: number): number[] {
-  const phi = lat /180*Math.PI;
-  const theta = lng/180*Math.PI;
+  const phi = (lat / 180) * Math.PI;
+  const theta = (lng / 180) * Math.PI;
   const x = Math.cos(phi) * Math.cos(theta);
   const y = Math.cos(phi) * Math.sin(theta);
   const z = Math.sin(phi);
   return [x, y, z];
 }
 
-function measureDistance(lat:number,lng:number,latans:number,lngans:number):number{
-  const [x, y, z] = latLngToCartesian(
-    lat,lng
-  );
-  const [xans, yans, zans] = latLngToCartesian(
-    latans,lngans
-  );
+function measureDistance(
+  lat: number,
+  lng: number,
+  latans: number,
+  lngans: number
+): number {
+  const [x, y, z] = latLngToCartesian(lat, lng);
+  const [xans, yans, zans] = latLngToCartesian(latans, lngans);
   const distance = Math.acos(x * xans + y * yans + z * zans) * radius_of_earth;
   return distance;
 }
@@ -438,82 +440,91 @@ function distFormat(num: number): string {
   }
 }
 
-function sizeExtract(text:string):number{
+function sizeExtract(text: string): number {
   const size =
-      text.match(reNum) === null
-        ? 1000
-        : parseFloat(text.match(reNum)[0]) > 10000 ||
-          parseFloat(text.match(reNum)[0]) <= 0
-        ? 1000
-        : parseFloat(text.match(reNum)[0]);
-  return size
+    text.match(reNum) === null
+      ? 1000
+      : parseFloat(text.match(reNum)[0]) > 10000 ||
+        parseFloat(text.match(reNum)[0]) <= 0
+      ? 1000
+      : parseFloat(text.match(reNum)[0]);
+  return size;
 }
 
-function countriesExtract(text:string,aliases:Record<string,string[]>):[string[],string]{
+function countriesExtract(
+  text: string,
+  aliases: Record<string, string[]>
+): [string[], string] {
   const countriesList = countriesExpand(["世界"], aliases)
     .filter((country) => country !== "-")
     .sort();
   let countriesOriginal: string[] = text
-      .slice(4)
-      .replaceAll(new RegExp(reNum, "g"), "")
-      .trim()
-      .split(/\s+/)
-      .filter((str: string) => str !== "");
+    .slice(4)
+    .replaceAll(new RegExp(reNum, "g"), "")
+    .trim()
+    .split(/\s+/)
+    .filter((str: string) => str !== "");
 
+  if (
+    countriesOriginal.filter((country) => !country.startsWith("-")).length === 0
+  ) {
+    countriesOriginal.push("世界");
+  }
+
+  countriesOriginal.forEach((country, index) => {
+    if (countriesOriginal.includes("-" + country)) {
+      countriesOriginal[index] = "-";
+    }
+  });
+
+  const countries = countriesExpand(countriesOriginal, aliases);
+
+  countries.forEach((country, index) => {
+    if (countries.includes("-" + country)) {
+      countries[index] = "-";
+    }
+  });
+
+  countries.forEach((country, index) => {
+    if (country.startsWith("-")) {
+      countries[index] = "-";
+    }
+  });
+
+  let validCounter = 0;
+
+  let errorTextArray = [];
+
+  for (let i = 0; i < countries.length; i++) {
     if (
-      countriesOriginal.filter((country) => !country.startsWith("-")).length ===
-      0
+      countries[i] !== "-" &&
+      !countriesList.includes(countries[i].replace("-", ""))
     ) {
-      countriesOriginal.push("世界");
+      errorTextArray.push(
+        `「${
+          countriesOriginal[i] === undefined
+            ? countries[i]
+            : countriesOriginal[i]
+        }」という国・地域はないよ:anger:`
+      );
+    } else if (countries[i] !== "-") {
+      validCounter += 1;
     }
-
-    countriesOriginal.forEach((country, index) => {
-      if (countriesOriginal.includes("-" + country)) {
-        countriesOriginal[index] = "-";
-      }
-    });
-
-    const countries = countriesExpand(countriesOriginal, aliases);
-
-    countries.forEach((country, index) => {
-      if (countries.includes("-" + country)) {
-        countries[index] = "-";
-      }
-    });
-
-    countries.forEach((country, index) => {
-      if (country.startsWith("-")) {
-        countries[index] = "-";
-      }
-    });
-
-    let validCounter = 0;
-
-    let errorTextArray = [];
-
-    for (let i = 0; i < countries.length; i++) {
-      if (
-        countries[i] !== "-" &&
-        !countriesList.includes(countries[i].replace("-",""))
-      ) {
-        errorTextArray.push(
-          `「${
-            countriesOriginal[i] === undefined
-              ? countries[i]
-              : countriesOriginal[i]
-          }」という国・地域はないよ:anger:`
-        );
-      } else if (countries[i] !== "-") {
-        validCounter += 1;
-      }
-    }
-    if (validCounter === 0) {
-      errorTextArray.push(`当てはまる場所がないよ:anger:`);
-    }
-    return [countries,errorTextArray.join("\n")]
+  }
+  if (validCounter === 0) {
+    errorTextArray.push(`当てはまる場所がないよ:anger:`);
+  }
+  return [countries, errorTextArray.join("\n")];
 }
-async function problemGen(size: number,worldFilter:any):Promise<[any,number,number,string,number,number]>{
-  let country: any, zoom:number,img_url:string,latitude:number,longitude:number;
+async function problemGen(
+  size: number,
+  worldFilter: any
+): Promise<[any, number, number, string, number, number]> {
+  let country: any,
+    zoom: number,
+    img_url: string,
+    latitude: number,
+    longitude: number;
   while (true) {
     [latitude, longitude] = randomPoint(size);
     const points = Turf.points([[longitude, latitude]]);
@@ -524,7 +535,9 @@ async function problemGen(size: number,worldFilter:any):Promise<[any,number,numb
     if (resArr.length > 0) {
       country = resArr[0];
       zoom = Math.log2(
-        (radius_of_earth*1000*2*Math.PI/256 * img_size * Math.cos((latitude * Math.PI) / 180)) /
+        (((radius_of_earth * 1000 * 2 * Math.PI) / 256) *
+          img_size *
+          Math.cos((latitude * Math.PI) / 180)) /
           size /
           1000
       );
@@ -546,19 +559,28 @@ async function problemGen(size: number,worldFilter:any):Promise<[any,number,numb
       });
       img_url = result.secure_url;
       size =
-        (radius_of_earth*1000*2*Math.PI/256 * img_size * Math.cos((latitude * Math.PI) / 180)) /
+        (((radius_of_earth * 1000 * 2 * Math.PI) / 256) *
+          img_size *
+          Math.cos((latitude * Math.PI) / 180)) /
         2 ** zoom /
         1000;
       break;
     }
   }
-  return [country,zoom,size,img_url,latitude,longitude]
+  return [country, zoom, size, img_url, latitude, longitude];
 }
 
-function problemFormat(country:any,zoom:number,size:number,img_url:string,latitude:number,longitude:number){
+function problemFormat(
+  country: any,
+  zoom: number,
+  size: number,
+  img_url: string,
+  latitude: number,
+  longitude: number
+) {
   const answer = latLngFormat(latitude, longitude);
-    
-  const problem:CoordAteQuizProblem= {
+
+  const problem: CoordAteQuizProblem = {
     problemMessage: {
       channel: CHANNEL,
       text: `緯度と経度を当ててね。サイズは${distFormat(size)}四方だよ。`,
@@ -567,9 +589,7 @@ function problemFormat(country:any,zoom:number,size:number,img_url:string,latitu
           type: "section",
           text: {
             type: "plain_text",
-            text: `緯度と経度を当ててね。サイズは${distFormat(
-              size
-            )}四方だよ。`,
+            text: `緯度と経度を当ててね。サイズは${distFormat(size)}四方だよ。`,
           },
         },
         {
@@ -600,30 +620,40 @@ function problemFormat(country:any,zoom:number,size:number,img_url:string,latitu
       text: `もう、しっかりして！\n中心点の座標は ${answer} だよ:anger:\nhttps://maps.google.co.jp/maps?ll=${latitude},${longitude}&q=${latitude},${longitude}&&t=k`,
       reply_broadcast: true,
     },
-    answer:[latitude,longitude], 
-    zoom:zoom,
-    size:size,
+    answer: [latitude, longitude],
+    zoom: zoom,
+    size: size,
     answerMessage: null,
     correctAnswers: [] as string[],
   };
   return problem;
 }
 
-async function prepareProblem(slack:any,message:any,aliases:Record<string,string[]>,world:any){
-  await slack.chat.postEphemeral(
-    { channel: CHANNEL, text: "問題を生成中...",user:message.user,...postOptions}
-  );
+async function prepareProblem(
+  slack: any,
+  message: any,
+  aliases: Record<string, string[]>,
+  world: any
+) {
+  await slack.chat.postEphemeral({
+    channel: CHANNEL,
+    text: "問題を生成中...",
+    user: message.user,
+    ...postOptions,
+  });
 
-  const sizeOrig = sizeExtract(message.text)
-    
-  const [countries,errorText] =countriesExtract(message.text,aliases);
+  const sizeOrig = sizeExtract(message.text);
 
-  if (errorText.length>0) {
-    await slack.chat.postMessage({ text: errorText,
-      channel: CHANNEL,...postOptions});
+  const [countries, errorText] = countriesExtract(message.text, aliases);
+
+  if (errorText.length > 0) {
+    await slack.chat.postMessage({
+      text: errorText,
+      channel: CHANNEL,
+      ...postOptions,
+    });
     return;
-  } 
-  
+  }
 
   const worldFilter = Object.create(world);
 
@@ -631,19 +661,26 @@ async function prepareProblem(slack:any,message:any,aliases:Record<string,string
     countries.includes(feature.properties.NAME_JA)
   );
 
-  const [country,zoom,sizeActual,img_url,latitude,longitude] = await problemGen(sizeOrig,worldFilter);
-  
-  
-  const problem: CoordAteQuizProblem = problemFormat(country,zoom,sizeActual,img_url,latitude,longitude);
+  const [country, zoom, sizeActual, img_url, latitude, longitude] =
+    await problemGen(sizeOrig, worldFilter);
+
+  const problem: CoordAteQuizProblem = problemFormat(
+    country,
+    zoom,
+    sizeActual,
+    img_url,
+    latitude,
+    longitude
+  );
   return problem;
-} 
+}
 
 export default async ({ eventClient, webClient: slack }: SlackInterface) => {
   const aliases = (await fs.readJson(
     __dirname + "/country_names.json"
   )) as Record<string, string[]>;
 
-    const world = await fs.readJson(__dirname + "/countries.geojson");
+  const world = await fs.readJson(__dirname + "/countries.geojson");
   eventClient.on("message", async (message) => {
     if (
       message.channel !== CHANNEL ||
@@ -657,43 +694,46 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
     }
     const messageTs = { thread_ts: message.ts };
 
-
     if (message.text.includes("help")) {
-      await slack.chat.postMessage(
-        {...mesHelp, ...postOptions, ...messageTs}
-      );
+      await slack.chat.postMessage({
+        ...mesHelp,
+        ...postOptions,
+        ...messageTs,
+      });
       return;
     }
 
     if (message.text.includes("countries")) {
-      await slack.chat.postMessage({...countriesListMessageGen(aliases), ...postOptions,...messageTs});
+      await slack.chat.postMessage({
+        ...countriesListMessageGen(aliases),
+        ...postOptions,
+        ...messageTs,
+      });
       return;
     }
 
     if (mutex.isLocked()) {
-      slack.chat.postMessage(
-          {
-            channel: CHANNEL,
-            text: "今クイズ中だよ:angry:",
-          ...messageTs,
-          ...postOptions
-          },
-      );
+      slack.chat.postMessage({
+        channel: CHANNEL,
+        text: "今クイズ中だよ:angry:",
+        ...messageTs,
+        ...postOptions,
+      });
       return;
     }
-    
-    const [result,startTime,size] = await mutex.runExclusive(async () => {     
-      
-      const problem: CoordAteQuizProblem = await prepareProblem(slack,message,aliases,world);
-  
-      const ateQuiz = new CoordAteQuiz(
-        eventClient,
+
+    const [result, startTime, size] = await mutex.runExclusive(async () => {
+      const problem: CoordAteQuizProblem = await prepareProblem(
         slack,
-        problem
+        message,
+        aliases,
+        world
       );
+
+      const ateQuiz = new CoordAteQuiz(eventClient, slack, problem);
       const st = Date.now();
 
-      return [ateQuiz.start(),st,problem.size];
+      return [ateQuiz.start(), st, problem.size];
     });
 
     const endTime = Date.now();
@@ -718,4 +758,3 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
     }
   });
 };
-
