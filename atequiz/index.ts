@@ -55,7 +55,7 @@ export class AteQuiz {
   eventClient: TeamEventClient;
   slack: WebClient;
   problem: AteQuizProblem;
-  ngReaction = 'no_good';
+  ngReaction: string | null = 'no_good';
   state: AteQuizState = 'waiting';
   replaceKeys: { correctAnswerer: string } = { correctAnswerer: '[[!user]]' };
   mutex: Mutex;
@@ -195,13 +195,14 @@ export class AteQuiz {
               deferred.resolve(result);
             } else {
               const generatedMessage = this.incorrectMessageGen(message);
-              if (!generatedMessage) {
+              if (this.ngReaction) {
                 this.slack.reactions.add({
                   name: this.ngReaction,
                   channel: message.channel,
                   timestamp: message.ts,
                 });
-              } else {
+              }
+              if (generatedMessage) {
                 await postMessage(
                   Object.assign({}, generatedMessage, { thread_ts })
                 );

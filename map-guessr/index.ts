@@ -42,6 +42,7 @@ interface CoordAteQuizProblem extends AteQuizProblem {
 
 class CoordAteQuiz extends AteQuiz {
   static option?: WebAPICallOptions = postOptions;
+  ngReaction: string | null = null
   constructor(eventClient: TeamEventClient,slack: WebClient,
   problem: CoordAteQuizProblem) {
     super({ eventClient: eventClient, webClient: slack }, problem, CoordAteQuiz.option);
