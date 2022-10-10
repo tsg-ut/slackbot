@@ -1,11 +1,19 @@
 import type {KnownBlock} from '@slack/web-api';
+import {stripIndent} from 'common-tags';
 
 export default [
 	{
 		type: 'section',
 		text: {
 			type: 'mrkdwn',
-			text: '*1日1文字クイズ ルール*\n\n● 1問につき1日1回のみ回答することができます。\n● 回答するために検索や調査を行うのはOKです。\n● 正解者が3人出たら終了します。',
+			text: stripIndent`
+				*1日1文字クイズ ルール*
+
+				● 1日に1文字表示されます。ただし括弧が表示された場合追加で1文字表示されます。
+				● 1問につき1日1回のみ回答することができます。
+				● 回答するために検索や調査を行うのはOKです。
+				● 正解者が3人出たら終了します。
+			`,
 		},
 	},
 	{

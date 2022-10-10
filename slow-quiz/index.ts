@@ -1,10 +1,10 @@
 import {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {ChatPostMessageArguments, ImageElement, KnownBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
-import {stripIndent} from 'common-tags';
+import {oneLine, stripIndent} from 'common-tags';
 // @ts-expect-error
 import {hiraganize} from 'japanese';
-import {minBy} from 'lodash';
+import {last, minBy} from 'lodash';
 import {scheduleJob} from 'node-schedule';
 import {increment} from '../achievements';
 import type {SlackInterface} from '../lib/slack';
@@ -13,14 +13,16 @@ import State from '../lib/state';
 import answerQuestionDialog from './views/answerQuestionDialog';
 import footer from './views/footer';
 import gameDetailsDialog from './views/gameDetailsDialog';
-import listAnswersDialog from './views/listAnswersDialog';
 import listQuizDialog from './views/listQuizDialog';
 import postCommentDialog from './views/postCommentDialog';
 import registerQuizDialog from './views/registerQuizDialog';
 
+type Genre = 'normal' | 'strange' | 'anything';
+
 export interface Submission {
 	user: string,
 	progress: number,
+	days: number,
 	date: number,
 	answer: string,
 }
@@ -40,10 +42,13 @@ export interface Game {
 	finishDate: number | null,
 
 	progress: number,
+	days: number,
 	correctAnswers: Submission[],
 	wrongAnswers: Submission[],
 	comments: Submission[],
 	answeredUsers: string[],
+
+	genre: Genre,
 }
 
 interface StateObj {
@@ -52,6 +57,27 @@ interface StateObj {
 }
 
 const mutex = new Mutex();
+
+const getGenreText = (genre: Genre) => {
+	if (genre === 'strange') {
+		return '変化球';
+	}
+	if (genre === 'normal') {
+		return '正統派';
+	}
+	return 'なんでも';
+};
+
+const validateQuestion = (question: string) => {
+	if (question.split('/').length >= 5) {
+		return question.split('/').length <= 90;
+	}
+
+	const normalizedQuestion = question.replaceAll(/【.*?】/g, '');
+	console.log({normalizedQuestion});
+
+	return Array.from(normalizedQuestion).length <= 90;
+};
 
 class SlowQuiz {
 	slack: WebClient;
@@ -104,6 +130,7 @@ class SlowQuiz {
 					ruby: state?.ruby?.value,
 					hint: state?.hint?.value,
 					user: payload?.user?.id,
+					genre: state?.genre?.selected_option?.value,
 				})
 			));
 		});
@@ -179,14 +206,31 @@ class SlowQuiz {
 		});
 
 		this.slackInteractions.action({
-			type: 'plain_text_input',
-			actionId: 'slowquiz_post_comment_input_comment',
+			type: 'button',
+			actionId: 'slowquiz_post_comment_submit_comment',
 		}, (payload) => {
+			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
+			const state = Object.assign({}, ...stateObjects);
+
 			mutex.runExclusive(() => (
 				this.postComment({
 					id: payload?.view?.private_metadata,
 					viewId: payload?.view?.id,
-					comment: payload?.actions?.[0]?.value,
+					comment: state?.slowquiz_post_comment_input_comment?.value,
+					user: payload?.user?.id,
+				})
+			));
+		});
+
+		this.slackInteractions.viewSubmission('slowquiz_post_comment_dialog', (payload: any) => {
+			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
+			const state = Object.assign({}, ...stateObjects);
+
+			mutex.runExclusive(() => (
+				this.postComment({
+					id: payload?.view?.private_metadata,
+					viewId: payload?.view?.id,
+					comment: state?.slowquiz_post_comment_input_comment?.value,
 					user: payload?.user?.id,
 				})
 			));
@@ -235,7 +279,7 @@ class SlowQuiz {
 		if (game.author === user) {
 			return this.slack.views.open({
 				trigger_id: triggerId,
-				view: listAnswersDialog(game),
+				view: gameDetailsDialog(game),
 			});
 		}
 
@@ -270,12 +314,14 @@ class SlowQuiz {
 		ruby,
 		hint,
 		user,
+		genre,
 	}: {
 		question: string,
 		answer: string,
 		ruby: string,
 		hint: string,
 		user: string,
+		genre: Genre,
 	}): Promise<void> {
 		if (typeof question !== 'string' || question.length === 0) {
 			this.postEphemeral('問題を入力してね🙄', user);
@@ -292,6 +338,11 @@ class SlowQuiz {
 			return;
 		}
 
+		if (!validateQuestion(question)) {
+			this.postEphemeral('問題文の長さは原則90文字以下だよ🙄', user);
+			return;
+		}
+
 		this.state.games.push({
 			id: Math.floor(Math.random() * 10000000000).toString(),
 			question,
@@ -304,10 +355,12 @@ class SlowQuiz {
 			finishDate: null,
 			status: 'waitlisted',
 			progress: 0,
+			days: 0,
 			correctAnswers: [],
 			wrongAnswers: [],
 			answeredUsers: [],
 			comments: [],
+			genre,
 		});
 
 		increment(user, 'slowquiz-register-quiz');
@@ -377,6 +430,7 @@ class SlowQuiz {
 			game.wrongAnswers.push({
 				user,
 				progress: game.progress,
+				days: game.days,
 				date: Date.now(),
 				answer: ruby,
 			});
@@ -389,6 +443,7 @@ class SlowQuiz {
 		game.correctAnswers.push({
 			user,
 			progress: game.progress,
+			days: game.days,
 			date: Date.now(),
 			answer: ruby,
 		});
@@ -465,6 +520,7 @@ class SlowQuiz {
 		game.comments.push({
 			user,
 			progress: game.progress,
+			days: game.days,
 			date: Date.now(),
 			answer: comment,
 		});
@@ -533,7 +589,6 @@ class SlowQuiz {
 		});
 	}
 
-
 	async progressGames() {
 		const newGame = this.chooseNewGame();
 
@@ -545,6 +600,13 @@ class SlowQuiz {
 		for (const game of this.state.games) {
 			if (game.status === 'inprogress') {
 				game.progress++;
+				game.days++;
+
+				const {text} = this.getVisibleQuestionText(game);
+				// 括弧で終わるならもう1文字
+				if ((last(Array.from(text)) ?? '').match(/^[\p{Ps}\p{Pe}]$/u)) {
+					game.progress++;
+				}
 			}
 			game.answeredUsers = [];
 		}
@@ -732,11 +794,12 @@ class SlowQuiz {
 				elements: [
 					{
 						type: 'mrkdwn',
-						text: [
-							`${await getMemberName(game.author)} さんの問題`,
-							`本日${game.answeredUsers.length}人回答`,
-							`${game.correctAnswers.length}人正解済み`,
-						].join(' / '),
+						text: oneLine`
+							${await getMemberName(game.author)} さんの問題 /
+							【${getGenreText(game.genre)}】 /
+							本日${game.answeredUsers.length}人回答 /
+							${game.correctAnswers.length}人正解済み
+						`,
 					},
 					...await Promise.all(game.correctAnswers.map(async (correctAnswer) => ({
 						type: 'image',
@@ -751,21 +814,75 @@ class SlowQuiz {
 	}
 
 	getQuestionText(game: Game) {
-		const characters = Array.from(game.question);
-		const visibleCharacters = characters.slice(0, game.progress);
-		const invisibleCharacters = characters.slice(game.progress);
+		if (game.question.split('/').length >= 5) {
+			const tokens = game.question.split('/');
 
-		const visibleText = visibleCharacters.join('');
-		const invisibleText = invisibleCharacters.map((char, i) => {
-			if (i === invisibleCharacters.length - 1) {
-				if (['。', '？', '?'].includes(char)) {
-					return char;
-				}
+			const visibleTokens = tokens.slice(0, game.progress);
+			const invisibleTokens = tokens.slice(game.progress);
+
+			const visibleText = visibleTokens.join('');
+			const invisibleText = invisibleTokens.map((token, i) => (
+				Array.from(token).map((char, j, tokenChars) => {
+					if (
+						i === invisibleTokens.length - 1 &&
+						j === tokenChars.length - 1 &&
+						['。', '？', '?'].includes(char)
+					) {
+						return char;
+					}
+					return '◯';
+				}).join('\u200B')
+			)).join('/');
+
+			return `${visibleText}\u200B${invisibleText}`;
+		}
+
+		const lastCharacter = last(Array.from(game.question));
+		const {text, invisibleCharacters} = this.getVisibleQuestionText(game);
+		const invisibleText = Array(invisibleCharacters).fill('').map((char, i) => {
+			if (
+				i === invisibleCharacters - 1 &&
+				['。', '？', '?'].includes(lastCharacter)
+			) {
+				return lastCharacter;
 			}
 			return '◯';
 		}).join('\u200B');
 
-		return `${visibleText}\u200B${invisibleText}`;
+		return `${text}\u200B${invisibleText}`;
+	}
+
+	getVisibleQuestionText(game: Game) {
+		if (game.question.split('/').length >= 5) {
+			return {text: '', invisibleCharacters: 0};
+		}
+
+		const characters = Array.from(game.question);
+		let text = '';
+		let progress = 0;
+		let isInParenthesis = false;
+		let invisibleCharacters = 0;
+		for (const character of characters) {
+			if (progress >= game.progress) {
+				progress++;
+				invisibleCharacters++;
+			} else {
+				text += character;
+				if (isInParenthesis) {
+					if (character === '】') {
+						isInParenthesis = false;
+					}
+				} else {
+					if (character === '【') {
+						isInParenthesis = true;
+					} else {
+						progress++;
+					}
+				}
+			}
+		}
+
+		return {text, invisibleCharacters};
 	}
 
 	async postMessage(message: Partial<ChatPostMessageArguments>) {

@@ -1,17 +1,49 @@
 import {View} from '@slack/web-api';
+import type {KnownBlock} from '@slack/web-api';
 import {sortBy} from 'lodash';
 import type {Game, Submission} from '../index';
 
-type UserSubmission = Submission & {type: 'wrong_answer' | 'correct_answer' | 'comment'}
+type UserSubmission = Submission & { type: 'wrong_answer' | 'correct_answer' | 'comment' }
 
-const formatSubmission = ({progress, type, user, answer}: UserSubmission) => {
+const formatSubmission = ({days, type, user, answer}: UserSubmission) => {
 	if (type === 'wrong_answer') {
-		return `${progress}日目: <@${user}> ＊回答「${answer}」＊ → 不正解`;
+		return `${days}日目: <@${user}> ＊回答「${answer}」＊ → 不正解`;
 	}
 	if (type === 'correct_answer') {
-		return `${progress}日目: <@${user}> ＊回答「${answer}」＊ → 正解`;
+		return `${days}日目: <@${user}> ＊回答「${answer}」＊ → 正解`;
 	}
-	return `${progress}日目: <@${user}> ${answer}`;
+	return `${days}日目: <@${user}> ${answer}`;
+};
+
+const getSubmissionsBlocks = (submissions: UserSubmission[]) => {
+	const blocks: KnownBlock[] = [];
+	let text = '';
+	for (const submission of submissions) {
+		if (Array.from(text).length >= 2000) {
+			blocks.push({
+				type: 'section',
+				text: {
+					type: 'mrkdwn',
+					text,
+				},
+			});
+			text = '';
+		}
+		text += formatSubmission(submission);
+		text += '\n';
+	}
+
+	if (text !== '') {
+		blocks.push({
+			type: 'section',
+			text: {
+				type: 'mrkdwn',
+				text,
+			},
+		});
+	}
+
+	return blocks;
 };
 
 export default (game: Game) => {
@@ -112,13 +144,7 @@ export default (game: Game) => {
 					emoji: true,
 				},
 			},
-			{
-				type: 'section',
-				text: {
-					type: 'mrkdwn',
-					text: submissions.map(formatSubmission).join('\n'),
-				},
-			},
+			...getSubmissionsBlocks(submissions),
 		],
 	} as View;
 };
