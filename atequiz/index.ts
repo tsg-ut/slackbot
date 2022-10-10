@@ -14,6 +14,7 @@ export interface AteQuizProblem {
   unsolvedMessage: ChatPostMessageArguments;
   answerMessage: ChatPostMessageArguments | null;
   correctAnswers: string[];
+  incorrectMessage?: ChatPostMessageArguments;
 }
 
 type AteQuizState = 'waiting' | 'solving' | 'solved' | 'unsolved';
@@ -61,7 +62,7 @@ export class AteQuiz {
   postOption: WebAPICallOptions;
   judge(answer: string, _user: string): boolean {
     return this.problem.correctAnswers.some(
-      correctAnswer => answer === correctAnswer
+      (correctAnswer) => answer === correctAnswer
     );
   }
 
@@ -76,7 +77,22 @@ export class AteQuiz {
    */
   solvedMessageGen(post: any): ChatPostMessageArguments {
     const message = Object.assign({}, this.problem.solvedMessage);
-    message.text = message.text.replaceAll(this.replaceKeys.correctAnswerer, post.user as string);
+    message.text = message.text.replaceAll(
+      this.replaceKeys.correctAnswerer,
+      post.user as string
+    );
+    return message;
+  }
+
+  incorrectMessageGen(post: any): ChatPostMessageArguments | null {
+    if (!this.problem.incorrectMessage) {
+      return null;
+    }
+    const message = Object.assign({}, this.problem.incorrectMessage);
+    message.text = message.text.replaceAll(
+      this.replaceKeys.correctAnswerer,
+      post.user as string
+    );
     return message;
   }
 
@@ -92,7 +108,7 @@ export class AteQuiz {
 
     assert(
       this.problem.hintMessages.every(
-        hint => hint.channel === this.problem.problemMessage.channel
+        (hint) => hint.channel === this.problem.problemMessage.channel
       )
     );
 
@@ -106,9 +122,7 @@ export class AteQuiz {
   async start(): Promise<AteQuizResult> {
     this.state = 'solving';
 
-    const postMessage = (
-      message: ChatPostMessageArguments,
-    ) => {
+    const postMessage = (message: ChatPostMessageArguments) => {
       const toSend = Object.assign({}, message, this.postOption);
       return this.slack.chat.postMessage(toSend);
     };
@@ -120,7 +134,7 @@ export class AteQuiz {
       hintIndex: null,
     };
 
-    let previousHintTime : number = null;
+    let previousHintTime: number = null;
     let hintIndex = 0;
 
     const deferred = new Deferred<AteQuizResult>();
@@ -142,7 +156,7 @@ export class AteQuiz {
               Object.assign({}, this.problem.unsolvedMessage, { thread_ts })
             );
 
-            if (this.problem.answerMessage){
+            if (this.problem.answerMessage) {
               await postMessage(
                 Object.assign({}, this.problem.answerMessage, { thread_ts })
               );
@@ -154,7 +168,7 @@ export class AteQuiz {
       });
     };
 
-    this.eventClient.on('message', async message => {
+    this.eventClient.on('message', async (message) => {
       if (message.thread_ts === thread_ts) {
         if (message.subtype === 'bot_message') return;
         this.mutex.runExclusive(async () => {
@@ -168,8 +182,8 @@ export class AteQuiz {
               await postMessage(
                 Object.assign({}, this.solvedMessageGen(message), { thread_ts })
               );
-              
-              if (this.problem.answerMessage){
+
+              if (this.problem.answerMessage) {
                 await postMessage(
                   Object.assign({}, this.problem.answerMessage, { thread_ts })
                 );
@@ -180,11 +194,18 @@ export class AteQuiz {
               result.state = 'solved';
               deferred.resolve(result);
             } else {
-              this.slack.reactions.add({
-                name: this.ngReaction,
-                channel: message.channel,
-                timestamp: message.ts,
-              });
+              const generatedMessage = this.incorrectMessageGen(message);
+              if (!generatedMessage) {
+                this.slack.reactions.add({
+                  name: this.ngReaction,
+                  channel: message.channel,
+                  timestamp: message.ts,
+                });
+              } else {
+                await postMessage(
+                  Object.assign({}, generatedMessage, { thread_ts })
+                );
+              }
             }
           }
         });
@@ -195,7 +216,7 @@ export class AteQuiz {
     const { ts: thread_ts } = await postMessage(this.problem.problemMessage);
     assert(typeof thread_ts === 'string');
 
-    if (this.problem.immediateMessage){
+    if (this.problem.immediateMessage) {
       await postMessage(
         Object.assign({}, this.problem.immediateMessage, { thread_ts })
       );
