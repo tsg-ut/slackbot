@@ -55,7 +55,7 @@ export class AteQuiz {
   eventClient: TeamEventClient;
   slack: WebClient;
   problem: AteQuizProblem;
-  ngReaction = 'no_good';
+  ngReaction: string | null = 'no_good';
   state: AteQuizState = 'waiting';
   replaceKeys: { correctAnswerer: string } = { correctAnswerer: '[[!user]]' };
   mutex: Mutex;
