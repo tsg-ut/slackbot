@@ -732,8 +732,9 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
 
       const ateQuiz = new CoordAteQuiz(eventClient, slack, problem);
       const st = Date.now();
+      const res = await ateQuiz.start();
 
-      return [ateQuiz.start(), st, problem.size];
+      return [res, st, problem.size];
     });
 
     const endTime = Date.now();
