@@ -414,20 +414,23 @@ function measureDistance(
   return distance;
 }
 
-function randomPoint(size: number): number[] {
-  while (true) {
-    const x = Math.random() * 2 - 1;
-    const y = Math.random() * 2 - 1;
-    const z = Math.random() * 2 - 1;
-    const r = (x ** 2 + y ** 2 + z ** 2) ** 0.5;
-    if (0 < r && r < 1) {
-      const lat = (Math.asin(z / r) / Math.PI) * 180;
-      const lng = (Math.atan2(x / r, y / r) / Math.PI) * 180;
-      if (Math.abs(lat) < 80 - size / 2 / ((radius_of_earth * Math.PI) / 180)) {
-        return [lat, lng];
-      }
-    }
-  }
+function deg2Rad(deg: number): number {
+  return (deg * Math.PI) / 180;
+}
+function rad2Deg(rad: number): number {
+  return (rad * 180) / Math.PI;
+}
+
+function randomPoint(extent: number[]): number[] {
+  const lng = Math.random() * (extent[2] - extent[0]) + extent[0];
+  const lat = rad2Deg(
+    Math.asin(
+      Math.random() *
+        (Math.sin(deg2Rad(extent[3])) - Math.sin(deg2Rad(extent[1]))) +
+        Math.sin(deg2Rad(extent[1]))
+    )
+  );
+  return [lat, lng];
 }
 
 function distFormat(num: number): string {
@@ -525,8 +528,9 @@ async function problemGen(
     img_url: string,
     latitude: number,
     longitude: number;
+  const extent = Turf.bbox(worldFilter);
   while (true) {
-    [latitude, longitude] = randomPoint(size);
+    [latitude, longitude] = randomPoint(extent);
     const points = Turf.points([[longitude, latitude]]);
     const resArr = worldFilter.features.filter(
       (country: any) =>
