@@ -3438,8 +3438,8 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'slowquiz-normal-correct-answer-first-letter-1',
-		difficulty: 'hard',
-		title: '巧遅は拙速に如かず',
+		difficulty: 'professional',
+		title: '究極の早押し',
 		condition: '1日1文字クイズのジャンル【正統派】の問題で1日目に正解する',
 		category: 'slowquiz',
 		counter: 'slowquiz-normal-correct-answer-first-letter',
@@ -3447,8 +3447,8 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'slowquiz-normal-correct-answer-first-letter-10',
-		difficulty: 'hard',
-		title: '巧遅は拙速に如かず',
+		difficulty: 'professional',
+		title: '韋駄天',
 		condition: '1日1文字クイズのジャンル【正統派】の問題で1日目に10回正解する',
 		category: 'slowquiz',
 		counter: 'slowquiz-normal-correct-answer-first-letter',
@@ -3757,7 +3757,7 @@ const achievements: Achievement[] = [
 		counter: 'coord-quiz-30sec-answer',
 		value: 1,
 	},
-	
+
 	// achievements
 
 	{
