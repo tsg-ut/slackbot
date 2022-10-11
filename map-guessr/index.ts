@@ -422,12 +422,14 @@ function rad2Deg(rad: number): number {
 }
 
 function randomPoint(extent: number[]): number[] {
-  const lng = Math.random() * (extent[2] - extent[0]) + extent[0];
+  let [minx, miny, maxx, maxy] = [...extent];
+  maxy = Math.min(80, maxy);
+  miny = Math.max(-80, miny);
+  const lng = Math.random() * (maxx - minx) + minx;
   const lat = rad2Deg(
     Math.asin(
-      Math.random() *
-        (Math.sin(deg2Rad(extent[3])) - Math.sin(deg2Rad(extent[1]))) +
-        Math.sin(deg2Rad(extent[1]))
+      Math.random() * (Math.sin(deg2Rad(maxy)) - Math.sin(deg2Rad(miny))) +
+        Math.sin(deg2Rad(miny))
     )
   );
   return [lat, lng];
