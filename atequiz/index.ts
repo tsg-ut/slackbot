@@ -9,10 +9,10 @@ import { Deferred } from '../lib/utils';
 export interface AteQuizProblem {
   problemMessage: ChatPostMessageArguments;
   hintMessages: ChatPostMessageArguments[];
-  immediateMessage: ChatPostMessageArguments | null;
+  immediateMessage?: ChatPostMessageArguments;
   solvedMessage: ChatPostMessageArguments;
   unsolvedMessage: ChatPostMessageArguments;
-  answerMessage: ChatPostMessageArguments | null;
+  answerMessage?: ChatPostMessageArguments;
   correctAnswers: string[];
   incorrectMessage?: ChatPostMessageArguments;
 }
