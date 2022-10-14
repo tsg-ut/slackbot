@@ -1,7 +1,6 @@
 import {spawn} from 'child_process';
 import os from 'os';
 import {PassThrough} from 'stream';
-// @ts-expect-error
 import concat from 'concat-stream';
 import {FastifyInstance} from 'fastify';
 import {get} from 'lodash';
