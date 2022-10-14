@@ -2,7 +2,6 @@ import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import {spawn} from 'child_process';
-// @ts-expect-error
 import concat from 'concat-stream';
 import {sortBy} from 'lodash';
 import boardConfigs from './boards.json';
