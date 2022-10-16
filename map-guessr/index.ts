@@ -356,7 +356,8 @@ function latLngDeformat(str: string): [number, number] | null {
     ? str.match(lat_regex).groups
     : str.match(regex)
     ? str.match(regex).groups
-    : (undefined as { sign: string; number: string } | undefined);
+    : undefined;
+  if (!lat_result) return null;
   str = str.replace(
     new RegExp(lat_result.sign + "\\s*" + lat_result.number, "i"),
     ""
@@ -365,8 +366,7 @@ function latLngDeformat(str: string): [number, number] | null {
     ? str.match(lng_regex).groups
     : str.match(regex)
     ? str.match(regex).groups
-    : (undefined as { sign: string; number: string } | undefined);
-  if (!lat_result) return null;
+    : undefined;
   if (!lng_result) return null;
   let lat = parseFloat(lat_result.number);
   let lng = parseFloat(lng_result.number);
@@ -740,7 +740,9 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
           return [res, st, problem.size];
         })(),
         (async () => {
-          await setTimeout(() => {}, 600 * 1000);
+          await new Promise(() => {
+            return setTimeout(() => {}, 600 * 1000);
+          });
           return [null, null, null] as any[];
         })(),
       ]);
