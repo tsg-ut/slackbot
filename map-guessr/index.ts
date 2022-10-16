@@ -752,7 +752,7 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
 
     const endTime = Date.now();
 
-    if (!result) return;
+    if (result === undefined) return;
 
     if (result.state === "solved") {
       await increment(result.correctAnswerer, "coord-quiz-easy-answer");
