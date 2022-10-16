@@ -723,8 +723,9 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
       return;
     }
 
-    const [result, startTime, size] = await mutex.runExclusive(async () => {
-      let arr: any[];
+    let result: any, startTime: number, size: number;
+
+    await mutex.runExclusive(async () => {
       await Promise.any([
         (async () => {
           const problem: CoordAteQuizProblem = await prepareProblem(
@@ -738,30 +739,21 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
           const st = Date.now();
           const res = await ateQuiz.start();
 
-          return [res, st, problem.size];
+          result = res;
+          startTime = st;
+          size = problem.size;
         })(),
-         (async () => {
-           await new Promise((resolve) => {
-             return setTimeout(resolve, 600 * 1000);
-           });
-           return [null,null,null] as any[];
-         })(),
-      ])
-      .then((returned) => {arr=returned});
-      return arr;
+        (async () => {
+          await new Promise((resolve) => {
+            return setTimeout(resolve, 600 * 1000);
+          });
+        })(),
+      ]);
     });
 
     const endTime = Date.now();
 
-    if (!result) {
-      slack.chat.postEphemeral({
-        channel: CHANNEL,
-        text: "result返ってきてない",
-        user: message.user,
-        ...postOptions,
-      });
-      return;
-    }
+    if (!result) return;
 
     if (result.state === "solved") {
       await increment(result.correctAnswerer, "coord-quiz-easy-answer");
