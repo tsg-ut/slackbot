@@ -741,23 +741,11 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
           result = res;
           startTime = st;
           size = problem.size;
-          await slack.chat.postEphemeral({
-            channel: CHANNEL,
-            text: String(st),
-            user: message.user,
-            ...postOptions,
-          });
           return;
         })(),
         (async () => {
           await new Promise((resolve) => {
             setTimeout(resolve, 600 * 1000);
-          });
-          await slack.chat.postEphemeral({
-            channel: CHANNEL,
-            text: "result返ってない",
-            user: message.user,
-            ...postOptions,
           });
           return;
         })(),
