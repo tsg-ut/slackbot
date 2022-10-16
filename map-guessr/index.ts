@@ -723,7 +723,7 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
       return;
     }
 
-    let result: any, startTime: number, size: number;
+    let result: AteQuizResult, startTime: number, size: number;
 
     await mutex.runExclusive(async () => {
       await Promise.any([
