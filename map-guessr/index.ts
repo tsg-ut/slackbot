@@ -624,7 +624,6 @@ function problemFormat(
     answer: [latitude, longitude],
     zoom: zoom,
     size: size,
-    answerMessage: null,
     correctAnswers: [] as string[],
   };
   return problem;
