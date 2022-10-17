@@ -2,7 +2,10 @@ import {firestore} from 'firebase-admin';
 import {initializeApp} from 'firebase-admin/app';
 import {firestore as functions_firestore} from 'firebase-functions';
 import {isEqual} from 'lodash';
-import type {Game} from '../../slow-quiz';
+
+interface SlowQuizGame {
+	id: string,
+}
 
 initializeApp();
 const db = firestore();
@@ -53,14 +56,14 @@ export const updateSlowQuizCollection = functions_firestore.document('states/slo
 	const gamesRef = db.collection('slow_quiz_games');
 
 	db.runTransaction((transaction) => {
-		const oldGames = change.before.get('games') as Game[];
-		const oldGamesMap = new Map<string, Game>();
+		const oldGames = change.before.get('games') as SlowQuizGame[];
+		const oldGamesMap = new Map<string, SlowQuizGame>();
 
 		for (const game of oldGames) {
 			oldGamesMap.set(game.id, game);
 		}
 
-		const newGames = change.after.get('games') as Game[];
+		const newGames = change.after.get('games') as SlowQuizGame[];
 		for (const newGame of newGames) {
 			const oldGame = oldGamesMap.get(newGame.id);
 			if (oldGame === undefined || !isEqual(oldGame, newGame)) {
