@@ -16,5 +16,8 @@ service cloud.firestore {
     match /achievements/{document=**} {
       allow read;
     }
+    match /slow_quiz_games/{game} {
+      allow read: if resource.data.status == 'finished';
+    }
   }
 }
