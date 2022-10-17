@@ -3642,7 +3642,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'coord-quiz-medium-answer-1',
-		difficulty: 'medium',
+		difficulty: 'easy',
 		title: '地図オタク',
 		condition: '500km以下座標当てクイズで1回正解する',
 		category: 'map-guessr',
@@ -3651,7 +3651,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'coord-quiz-medium-answer-10',
-		difficulty: 'hard',
+		difficulty: 'medium',
 		title: '国土地理院',
 		condition: '500km以下座標当てクイズで10回正解する',
 		category: 'map-guessr',
@@ -3660,7 +3660,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'coord-quiz-medium-answer-100',
-		difficulty: 'professional',
+		difficulty: 'hard',
 		title: '伊能忠敬',
 		condition: '500km以下座標当てクイズで100回正解する',
 		category: 'map-guessr',
@@ -3678,7 +3678,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'coord-quiz-hard-answer-1',
-		difficulty: 'hard',
+		difficulty: 'medium',
 		title: '100kmを行く者は90kmを半ばとす',
 		condition: '100km以下座標当てクイズで1回正解する',
 		category: 'map-guessr',
@@ -3687,7 +3687,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'coord-quiz-hard-answer-10',
-		difficulty: 'professional',
+		difficulty: 'hard',
 		title: '可愛い子には旅をさせよ',
 		condition: '100km以下座標当てクイズで10回正解する',
 		category: 'map-guessr',
@@ -3696,7 +3696,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'coord-quiz-hard-answer-100',
-		difficulty: 'professional',
+		difficulty: 'hard',
 		title: '旅することは生きること',
 		condition: '100km以下座標当てクイズで100回正解する',
 		category: 'map-guessr',
@@ -3713,8 +3713,8 @@ const achievements: Achievement[] = [
 		value: 1000,
 	},
 	{
-		id: 'coord-quiz-proessional-answer-1',
-		difficulty: 'professional',
+		id: 'coord-quiz-professional-answer-1',
+		difficulty: 'medium',
 		title: '空飛ぶ絨毯',
 		condition: '20km以下座標当てクイズで1回正解する',
 		category: 'map-guessr',
@@ -3722,8 +3722,8 @@ const achievements: Achievement[] = [
 		value: 1,
 	},
 	{
-		id: 'coord-quiz-proessional-answer-10',
-		difficulty: 'professional',
+		id: 'coord-quiz-professional-answer-10',
+		difficulty: 'hard',
 		title: 'TSGerの不思議な冒険',
 		condition: '20km以下座標当てクイズで10回正解する',
 		category: 'map-guessr',
@@ -3731,8 +3731,8 @@ const achievements: Achievement[] = [
 		value: 10,
 	},
 	{
-		id: 'coord-quiz-proessional-answer-100',
-		difficulty: 'professional',
+		id: 'coord-quiz-professional-answer-100',
+		difficulty: 'hard',
 		title: '上空二万フィート',
 		condition: '20km以下座標当てクイズで100回正解する',
 		category: 'map-guessr',
@@ -3740,7 +3740,7 @@ const achievements: Achievement[] = [
 		value: 100,
 	},
 	{
-		id: 'coord-quiz-proessional-answer-1000',
+		id: 'coord-quiz-professional-answer-1000',
 		difficulty: 'professional',
 		title: '地球は青かった',
 		condition: '20km以下座標当てクイズで1000回正解する',
@@ -3750,7 +3750,7 @@ const achievements: Achievement[] = [
 	},
 	{
 		id: 'coord-quiz-30sec-answer-1',
-		difficulty: 'medium',
+		difficulty: 'easy',
 		title: '飛ぶ鳥を落とす勢い',
 		condition: '座標当てクイズで30秒以内に正解する',
 		category: 'map-guessr',
