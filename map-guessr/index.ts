@@ -723,7 +723,7 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
     }
 
     const release = await mutex.acquire();
-    setTimeout(release, 600 * 1000);
+    // setTimeout(release, 600 * 1000);
     let result: AteQuizResult;
     const problem: CoordAteQuizProblem = await prepareProblem(
       slack,
