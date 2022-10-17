@@ -750,13 +750,13 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
           return;
         })(),
       ]);
-      await slack.chat.postEphemeral({
-        channel: CHANNEL,
-        text: String(result),
-        user: message.user,
-        ...postOptions,
-      });
-      return;
+    });
+
+    await slack.chat.postEphemeral({
+      channel: CHANNEL,
+      text: String(result),
+      user: message.user,
+      ...postOptions,
     });
 
     const endTime = Date.now();
