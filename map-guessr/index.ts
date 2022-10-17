@@ -5,16 +5,11 @@ import puppeteer from "puppeteer";
 import { AteQuizProblem, AteQuizResult } from "../atequiz";
 import {
   ChatPostMessageArguments,
-  ChatPostMessageResponse,
   WebAPICallOptions,
   WebClient,
 } from "@slack/web-api";
-import assert from "assert";
 import { increment } from "../achievements";
-import { Deferred } from "../lib/utils";
 import { TeamEventClient } from "../lib/slackEventClient";
-import { messageLink } from "discord.js";
-import { userInfo } from "os";
 const { Mutex } = require("async-mutex");
 const { AteQuiz } = require("../atequiz/index.ts");
 const cloudinary = require("cloudinary");
@@ -361,7 +356,8 @@ function latLngDeformat(str: string): [number, number] | null {
     ? str.match(lat_regex).groups
     : str.match(regex)
     ? str.match(regex).groups
-    : (undefined as { sign: string; number: string } | undefined);
+    : undefined;
+  if (!lat_result) return null;
   str = str.replace(
     new RegExp(lat_result.sign + "\\s*" + lat_result.number, "i"),
     ""
@@ -370,8 +366,7 @@ function latLngDeformat(str: string): [number, number] | null {
     ? str.match(lng_regex).groups
     : str.match(regex)
     ? str.match(regex).groups
-    : (undefined as { sign: string; number: string } | undefined);
-  if (!lat_result) return null;
+    : undefined;
   if (!lng_result) return null;
   let lat = parseFloat(lat_result.number);
   let lng = parseFloat(lng_result.number);
@@ -629,7 +624,6 @@ function problemFormat(
     answer: [latitude, longitude],
     zoom: zoom,
     size: size,
-    answerMessage: null,
     correctAnswers: [] as string[],
   };
   return problem;
@@ -729,21 +723,34 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
     }
 
     const [result, startTime, size] = await mutex.runExclusive(async () => {
-      const problem: CoordAteQuizProblem = await prepareProblem(
-        slack,
-        message,
-        aliases,
-        world
-      );
+      const arr = await Promise.race([
+        (async () => {
+          const problem: CoordAteQuizProblem = await prepareProblem(
+            slack,
+            message,
+            aliases,
+            world
+          );
 
-      const ateQuiz = new CoordAteQuiz(eventClient, slack, problem);
-      const st = Date.now();
-      const res = await ateQuiz.start();
+          const ateQuiz = new CoordAteQuiz(eventClient, slack, problem);
+          const st = Date.now();
+          const res = await ateQuiz.start();
 
-      return [res, st, problem.size];
+          return [res, st, problem.size];
+        })(),
+        (async () => {
+          await new Promise((resolve) => {
+            return setTimeout(resolve, 600 * 1000);
+          });
+          return [null, null, null] as any[];
+        })(),
+      ]);
+      return arr;
     });
 
     const endTime = Date.now();
+
+    if (!result) return;
 
     if (result.state === "solved") {
       await increment(result.correctAnswerer, "coord-quiz-easy-answer");
