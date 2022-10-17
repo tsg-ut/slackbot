@@ -745,7 +745,7 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
         })(),
         (async () => {
           await new Promise((resolve) => {
-            setTimeout(resolve, 600 * 1000);
+            return setTimeout(resolve, 600 * 1000);
           });
           return;
         })(),
