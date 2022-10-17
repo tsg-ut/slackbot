@@ -1,6 +1,8 @@
 import {firestore} from 'firebase-admin';
 import {initializeApp} from 'firebase-admin/app';
 import {firestore as functions_firestore} from 'firebase-functions';
+import {isEqual} from 'lodash';
+import type {Game} from '../../slow-quiz';
 
 initializeApp();
 const db = firestore();
@@ -44,5 +46,28 @@ export const updateCounts = functions_firestore.document('achievements/{id}').on
 				[category]: (oldCounts[category] || 0) + 1,
 			},
 		});
+	});
+});
+
+export const updateSlowQuizCollection = functions_firestore.document('states/slow-quiz').onUpdate((change) => {
+	const gamesRef = db.collection('slow_quiz_games');
+
+	db.runTransaction((transaction) => {
+		const oldGames = change.before.get('games') as Game[];
+		const oldGamesMap = new Map<string, Game>();
+
+		for (const game of oldGames) {
+			oldGamesMap.set(game.id, game);
+		}
+
+		const newGames = change.after.get('games') as Game[];
+		for (const newGame of newGames) {
+			const oldGame = oldGamesMap.get(newGame.id);
+			if (oldGame === undefined || !isEqual(oldGame, newGame)) {
+				transaction.set(gamesRef.doc(newGame.id), newGame);
+			}
+		}
+
+		return Promise.resolve();
 	});
 });
