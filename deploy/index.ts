@@ -1,11 +1,11 @@
 import {spawn} from 'child_process';
 import os from 'os';
 import {PassThrough} from 'stream';
+import {Webhooks} from '@octokit/webhooks';
 import concat from 'concat-stream';
 import {FastifyInstance} from 'fastify';
 import {get} from 'lodash';
 import pm2 from 'pm2';
-import {Webhooks} from '@octokit/webhooks';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 
@@ -22,7 +22,7 @@ if (process.env.NODE_ENV === 'production' && !webhooks) {
 }
 
 const commands = [
-	['git', 'checkout', '--', 'package.json', 'package-lock.json'],
+	['git', 'checkout', '--', 'package.json', 'package-lock.json', 'functions/package.json', 'functions/package-lock.json'],
 	['git', 'pull'],
 	['git', 'submodule', 'update', '--init', '--recursive'],
 	['npm', 'install', '--production', '--build-from-source'],
