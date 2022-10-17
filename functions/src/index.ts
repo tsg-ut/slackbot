@@ -10,8 +10,8 @@ interface SlowQuizGame {
 initializeApp();
 const db = firestore();
 
-export const updateCounts = functions_firestore.document('achievements/{id}').onCreate((achievement) => {
-	db.runTransaction(async (transaction) => {
+export const updateCounts = functions_firestore.document('achievements/{id}').onCreate(async (achievement) => {
+	await db.runTransaction(async (transaction) => {
 		const name = achievement.get('name');
 		const user = achievement.get('user');
 		const date = new Date(achievement.get('date').seconds * 1000);
@@ -52,10 +52,13 @@ export const updateCounts = functions_firestore.document('achievements/{id}').on
 	});
 });
 
-export const updateSlowQuizCollection = functions_firestore.document('states/slow-quiz').onUpdate((change) => {
+export const updateSlowQuizCollection = functions_firestore.document('states/slow-quiz').onUpdate(async (change) => {
 	const gamesRef = db.collection('slow_quiz_games');
 
-	db.runTransaction((transaction) => {
+	console.log(`Old games: ${change.before.get('games').length}`);
+	console.log(`New games: ${change.after.get('games').length}`);
+
+	await db.runTransaction((transaction) => {
 		const oldGames = change.before.get('games') as SlowQuizGame[];
 		const oldGamesMap = new Map<string, SlowQuizGame>();
 
@@ -67,6 +70,7 @@ export const updateSlowQuizCollection = functions_firestore.document('states/slo
 		for (const newGame of newGames) {
 			const oldGame = oldGamesMap.get(newGame.id);
 			if (oldGame === undefined || !isEqual(oldGame, newGame)) {
+				console.log(`Detected changes in game id ${newGame.id}. Applying change...`);
 				transaction.set(gamesRef.doc(newGame.id), newGame);
 			}
 		}
