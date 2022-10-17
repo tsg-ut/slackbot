@@ -723,19 +723,32 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
       return;
     }
 
-    const [result, startTime, size] = await mutex.runExclusive(async () => {
-      const problem: CoordAteQuizProblem = await prepareProblem(
-        slack,
-        message,
-        aliases,
-        world
-      );
+    let result: AteQuizResult, startTime: number, size: number;
 
-      const ateQuiz = new CoordAteQuiz(eventClient, slack, problem);
-      const st = Date.now();
-      const res = await ateQuiz.start();
+    await mutex.runExclusive(async () => {
+      await Promise.any([
+        (async () => {
+          const problem: CoordAteQuizProblem = await prepareProblem(
+            slack,
+            message,
+            aliases,
+            world
+          );
 
-      return [res, st, problem.size];
+          const ateQuiz = new CoordAteQuiz(eventClient, slack, problem);
+          const st = Date.now();
+          const res = await ateQuiz.start();
+
+          result = res;
+          startTime = st;
+          size = problem.size;
+        })(),
+        (async () => {
+          await new Promise((resolve) => {
+            return setTimeout(resolve, 600 * 1000);
+          });
+        })(),
+      ]);
     });
 
     const endTime = Date.now();
