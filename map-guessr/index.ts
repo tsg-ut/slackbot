@@ -2,7 +2,7 @@ import * as Turf from "@turf/turf";
 import fs from "fs-extra";
 import type { SlackInterface } from "../lib/slack";
 import puppeteer from "puppeteer";
-import { AteQuizProblem, AteQuizResult } from "../atequiz";
+import { AteQuizProblem } from "../atequiz";
 import {
   ChatPostMessageArguments,
   WebAPICallOptions,
