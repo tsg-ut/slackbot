@@ -2,14 +2,19 @@ import * as Turf from "@turf/turf";
 import fs from "fs-extra";
 import type { SlackInterface } from "../lib/slack";
 import puppeteer from "puppeteer";
-import { AteQuizProblem } from "../atequiz";
+import { AteQuizProblem, AteQuizResult } from "../atequiz";
 import {
   ChatPostMessageArguments,
+  ChatPostMessageResponse,
   WebAPICallOptions,
   WebClient,
 } from "@slack/web-api";
+import assert from "assert";
 import { increment } from "../achievements";
+import { Deferred } from "../lib/utils";
 import { TeamEventClient } from "../lib/slackEventClient";
+import { messageLink } from "discord.js";
+import { userInfo } from "os";
 const { Mutex } = require("async-mutex");
 const { AteQuiz } = require("../atequiz/index.ts");
 const cloudinary = require("cloudinary");
@@ -724,32 +729,21 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
     }
 
     const [result, startTime, size] = await mutex.runExclusive(async () => {
-      const arr = await Promise.any([
-        (async () => {
-          const problem: CoordAteQuizProblem = await prepareProblem(
-            slack,
-            message,
-            aliases,
-            world
-          );
+      const problem: CoordAteQuizProblem = await prepareProblem(
+        slack,
+        message,
+        aliases,
+        world
+      );
 
-          const ateQuiz = new CoordAteQuiz(eventClient, slack, problem);
-          const st = Date.now();
-          const res = await ateQuiz.start();
+      const ateQuiz = new CoordAteQuiz(eventClient, slack, problem);
+      const st = Date.now();
+      const res = await ateQuiz.start();
 
-          return [res, st, problem.size];
-        })(),
-        (async () => {
-          await setTimeout(() => {}, 600 * 1000);
-          return [null, null, null] as any[];
-        })(),
-      ]);
-      return arr;
+      return [res, st, problem.size];
     });
 
     const endTime = Date.now();
-
-    if (!result) return;
 
     if (result.state === "solved") {
       await increment(result.correctAnswerer, "coord-quiz-easy-answer");
