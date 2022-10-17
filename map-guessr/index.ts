@@ -750,8 +750,6 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
       ]);
     });
 
-    console.log(result,startTime,size)
-
     const endTime = Date.now();
 
     if (result === undefined) return;
