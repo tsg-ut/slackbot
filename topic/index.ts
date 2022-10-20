@@ -1,7 +1,7 @@
-import type {Message} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
-import {increment} from '../achievements';
-import type {SlackInterface} from '../lib/slack';
-import {getReactions} from '../lib/slackUtils';
+import type { Message } from '@slack/web-api/dist/response/ConversationsHistoryResponse';
+import { increment } from '../achievements';
+import type { SlackInterface } from '../lib/slack';
+import { getReactions } from '../lib/slackUtils';
 import State from '../lib/state';
 
 const isQualifiableMessage = (message: Message) => {
@@ -11,7 +11,7 @@ const isQualifiableMessage = (message: Message) => {
 	if (message?.files?.length > 0) {
 		return false;
 	}
-	if (message?.subtype === 'bot_message' && message?.blocks?.length > 0) {
+	if (message?.subtype === 'bot_message' && message?.blocks?.length > 1) {
 		return false;
 	}
 
