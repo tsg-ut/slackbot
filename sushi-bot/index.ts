@@ -1,47 +1,36 @@
-const fs = require('fs');
-const path = require('path');
-const {promisify} = require('util');
-const schedule = require('node-schedule');
-const {sortBy} = require('lodash');
-const moment = require('moment');
-const {unlock, increment} = require('../achievements');
+import schedule from 'node-schedule';
+import {sortBy} from 'lodash';
+import moment from 'moment';
+import {unlock, increment} from '../achievements';
+import type {SlackInterface} from '../lib/slack';
 
-const State = require('../lib/state.ts').default;
+import State from '../lib/state';
+
+interface CounterStateObj {
+	data: {[index: string]: number};
+}
 
 class Counter {
-	static async init(name) {
+	name: string;
+	state: CounterStateObj;
+	_state: Promise<CounterStateObj>; // FIXME! DELETEME!
+
+	static async init(name: string) {
 		const instance = new Counter(name);
-		await instance.#setup()
+		instance.state = await instance._state;
 		return instance;
 	}
 
-	// DO NOT USE DIRECTLY. Use `init()` instead.
-	constructor(name) {
+	private constructor(name: string) {
 		this.name = name;
-		this.state = State.init(`sushi-bot-counter-${name}`, {data: {}});
-		this.isSetup = false;
+		this._state = State.init(`sushi-bot-counter-${name}`, {data: {}});
 	}
 
-	async #setup() {
-		this.state = await this.state;
-		this.isSetup = true;
-	}
-
-	#check() {
-		if(!this.isSetup) {
-			throw new Error('DO NOT USE DIRECTLYって言ったが??');
-		}
-	}
-
-	add(key, cnt = 1) {
-		this.#check();
-
+	add(key: string, cnt: number = 1) {
 		this.state.data[key] = (this.state.data[key] || 0) + cnt;
 	}
 
-	max(key, value) {
-		this.#check();
-
+	max(key: string, value: number) {
 		if (this.state.data[key]) {
 			this.state.data[key] = Math.max(value, this.state.data[key]);
 		} else {
@@ -50,25 +39,21 @@ class Counter {
 	}
 
 	clear() {
-		this.#check();
-
 		this.state.data = {};
 	}
 
-	entries() {
-		this.#check();
-
+	entries() : Array<[string, number]> {
 		const keys = Array.from(Object.keys(this.state.data));
-		const sortedKeys = sortBy(keys, (key) => this.state.data[key]).reverse();
-		return sortedKeys.map((key) => [key, this.state.data[key]]);
+		const sortedKeys = sortBy(keys, (key: string) => this.state.data[key]).reverse();
+		return sortedKeys.map((key: string) => [key, this.state.data[key]]);
 	}
 }
 
-function count(haystack, needle) {
+function count(haystack: string, needle: string) {
 	return haystack.split(needle).length - 1;
 }
 
-function numToEmoji(num) {
+function numToEmoji(num: number) {
 	switch(num) {
 		case 0:
 			return 'zero';
@@ -97,7 +82,7 @@ function numToEmoji(num) {
 	}
 }
 
-module.exports = async ({eventClient, webClient: slack}) => {
+export default async function ({eventClient, webClient: slack}: SlackInterface) {
 	const [
 		sushiCounter,
 		suspendCounter,
@@ -123,7 +108,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 		}
 
 		if (message.channel.startsWith('D')) {
-			const postDM = (text) => (
+			const postDM = (text: string) => (
 				slack.chat.postMessage({
 					channel: message.channel,
 					text,
@@ -299,9 +284,9 @@ module.exports = async ({eventClient, webClient: slack}) => {
 				const now = moment().utcOffset('+0900');
 				const decimal_hour = now.hour() + now.minutes() / 60 + now.seconds() / 3600;
 				// 6時から9時の間で100点以上をとるサインカーブ
-				const score_curve = (t) => Math.cos((t - (6 + 9) / 2) / 24 * 2 * Math.PI);
+				const score_curve = (t: number) => Math.cos((t - (6 + 9) / 2) / 24 * 2 * Math.PI);
 				const decimal_score = score_curve(decimal_hour) / score_curve(9) * 100 ;
-				const score_names = {
+				const score_names: {[index: string]: number} = {
 					'0ten':  0,
 					'5ten':  5,
 					'20':   20,
