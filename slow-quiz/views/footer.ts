@@ -38,6 +38,15 @@ export default [
 				},
 				action_id: 'slowquiz_list_quiz_button',
 			},
+			{
+				type: 'button',
+				text: {
+					type: 'plain_text',
+					text: '過去ログを見る',
+					emoji: true,
+				},
+				url: 'https://achievements.tsg.ne.jp/records/slow-quiz/',
+			},
 		],
 	},
 ] as KnownBlock[];
