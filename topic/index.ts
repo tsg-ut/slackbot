@@ -11,7 +11,7 @@ const isQualifiableMessage = (message: Message) => {
 	if (message?.files?.length > 0) {
 		return false;
 	}
-	if (message?.blocks?.length > 0) {
+	if (message?.subtype === 'bot_message' && message?.blocks?.length > 0) {
 		return false;
 	}
 
@@ -100,10 +100,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
-		
-		if (message?.subtype !== 'bot_message') {
-			increment(message.user, 'topic-adopted');
-		}
+		increment(message.user, 'topic-adopted');
 		updateTopic(message.text.trim());
 	});
 };
