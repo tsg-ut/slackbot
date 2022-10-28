@@ -473,13 +473,13 @@ class SlowQuiz {
 		});
 
 		increment(user, 'slowquiz-correct-answer');
-		if (game.progress === 1) {
+		if (game.days === 1) {
 			increment(user, 'slowquiz-correct-answer-first-letter');
 			if (game.genre === 'normal' && game.question.split('/').length < 5) {
 				increment(user, 'slowquiz-normal-correct-answer-first-letter');
 			}
 		}
-		if (game.progress <= 3) {
+		if (game.days <= 3) {
 			increment(user, 'slowquiz-correct-answer-le-third-letter');
 		}
 		if (game.correctAnswers.length === 1) {
