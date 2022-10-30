@@ -1,0 +1,9 @@
+{
+  "slack": {
+    "token": "xoxb-xxxxxxxxxx-xxxxxxxxxx-xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  },
+  "aws": {
+    "access_key_id": "XXXXXXXXXXXXXXXXXXXX",
+    "secret_access_key": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+  }
+}

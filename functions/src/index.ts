@@ -1,7 +1,9 @@
 import {firestore} from 'firebase-admin';
 import {initializeApp} from 'firebase-admin/app';
-import {firestore as functions_firestore} from 'firebase-functions';
+import {firestore as functions_firestore, logger} from 'firebase-functions';
 import {isEqual} from 'lodash';
+
+export {slackFileArchiveCronJob} from './jobs/slackFileArchiveCronJob';
 
 interface SlowQuizGame {
 	id: string,
@@ -55,8 +57,8 @@ export const updateCounts = functions_firestore.document('achievements/{id}').on
 export const updateSlowQuizCollection = functions_firestore.document('states/slow-quiz').onUpdate(async (change) => {
 	const gamesRef = db.collection('slow_quiz_games');
 
-	console.log(`Old games: ${change.before.get('games').length}`);
-	console.log(`New games: ${change.after.get('games').length}`);
+	logger.info(`Old games: ${change.before.get('games').length}`);
+	logger.info(`New games: ${change.after.get('games').length}`);
 
 	await db.runTransaction((transaction) => {
 		const oldGames = change.before.get('games') as SlowQuizGame[];
@@ -70,7 +72,7 @@ export const updateSlowQuizCollection = functions_firestore.document('states/slo
 		for (const newGame of newGames) {
 			const oldGame = oldGamesMap.get(newGame.id);
 			if (oldGame === undefined || !isEqual(oldGame, newGame)) {
-				console.log(`Detected changes in game id ${newGame.id}. Applying change...`);
+				logger.info(`Detected changes in game id ${newGame.id}. Applying change...`);
 				transaction.set(gamesRef.doc(newGame.id), newGame);
 			}
 		}
