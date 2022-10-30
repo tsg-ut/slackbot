@@ -2,7 +2,7 @@ import {WebClient} from '@slack/web-api';
 import {DynamoDB, S3} from 'aws-sdk';
 import axios from 'axios';
 import {chunk} from 'lodash';
-import {runWith, config as getConfig, logger} from 'firebase-functions';
+import {runWith, config as getConfig, logger} from 'firebase-functions/v1';
 
 const config = getConfig();
 

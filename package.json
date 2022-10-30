@@ -140,6 +140,7 @@
     "eslint-config-prettier": "^8.5.0",
     "eslint-formatter-rdjson": "^1.0.5",
     "eslint-plugin-react": "^7.31.8",
+    "firebase-functions-test": "^3.0.0",
     "jest": "^29.0.3",
     "lolex": "^5.1.2",
     "mock-cloud-firestore": "^0.12.0",
