@@ -7,7 +7,7 @@ import voicevox from './voicevox';
 
 const log = logger.child({bot: 'discord'});
 
-enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q', R = 'R', S = 'S', T = 'T', U = 'U', V = 'V', W = 'W', X = 'X', Y = 'Y', Z = 'Z', AA = 'AA', AB = 'AB', AC = 'AC', AD = 'AD', AE = 'AE'}
+enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q', R = 'R', S = 'S', T = 'T', U = 'U', V = 'V', W = 'W', X = 'X', Y = 'Y', Z = 'Z', AA = 'AA', AB = 'AB', AC = 'AC', AD = 'AD', AE = 'AE', AF = 'AF'}
 export {Voice};
 
 export {Emotion, EmoLV};
@@ -61,6 +61,7 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.AC, {provider: 'voicevox', name: 'sora', emotional: true}],
 	[Voice.AD, {provider: 'voicevox', name: 'sora_whisper'}],
 	[Voice.AE, {provider: 'voicevox', name: 'mochiko'}],
+	[Voice.AF, {provider: 'amazon', name: 'Takumi'}],
 ]);
 
 export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta) => {
@@ -77,7 +78,10 @@ export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta) => {
 		return azure(text, config.name, meta);
 	}
 	if (config.provider === 'amazon') {
-		return amazon(text, config.name, meta);
+		return amazon(text, config.name, {
+			...meta,
+			engine: voiceType === Voice.AF ? 'neural' : 'standard',
+		});
 	}
 	if (config.provider === 'voicevox') {
 		return voicevox(text, config.name, meta);

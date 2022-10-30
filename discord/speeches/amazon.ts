@@ -11,7 +11,7 @@ const polly = new AWS.Polly({
 	region: 'ap-northeast-1',
 });
 
-const speech: SynthesizeFunction = async (text: string, voiceType: string, {speed}: {speed: number}) => {
+const speech: SynthesizeFunction = async (text: string, voiceType: string, {speed, engine}: {speed: number, engine: string}) => {
 	const result = await polly.synthesizeSpeech({
 		OutputFormat: 'mp3',
 		Text: `
@@ -24,6 +24,7 @@ const speech: SynthesizeFunction = async (text: string, voiceType: string, {spee
 		LanguageCode: 'ja-JP',
 		TextType: 'ssml',
 		VoiceId: voiceType,
+		Engine: engine,
 	}).promise();
 	return {data: result.AudioStream as Buffer};
 };
