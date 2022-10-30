@@ -334,7 +334,7 @@ export default class TTS extends EventEmitter {
 					]);
 				});
 			} catch (error) {
-				this.emit('message', `エラー😢: ${error.stack ? error.stack : inspect(error, {depth: null, colors: false})}`);
+				this.emit('message', `エラー😢: ${error.message ? error.message : inspect(error, {depth: null, colors: false})}`);
 			}
 		}
 	}
