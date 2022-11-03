@@ -214,7 +214,8 @@ export class AteQuiz {
     });
 
     // Listeners should be added before postMessage is called.
-    const { ts: thread_ts } = await postMessage(this.problem.problemMessage);
+    const response = await postMessage(this.problem.problemMessage);
+    const thread_ts = response?.message?.thread_ts ?? response.ts;
     assert(typeof thread_ts === 'string');
 
     if (this.problem.immediateMessage) {
