@@ -581,6 +581,7 @@ function problemFormat(
   thread_ts: string
 ) {
   const answer = latLngFormat(latitude, longitude);
+  console.log({answer});
 
   const problem: CoordAteQuizProblem = {
     problemMessage: {
@@ -624,8 +625,10 @@ function problemFormat(
     },
     unsolvedMessage: {
       channel: CHANNEL,
-      text: `もう、しっかりして！\n中心点の座標は ${answer} だよ:anger:\nhttps://maps.google.co.jp/maps?ll=${latitude},${longitude}&q=${latitude},${longitude}&&t=k`,
+      text: `もう、しっかりして！\n中心点の座標は <https://maps.google.co.jp/maps?ll=${latitude},${longitude}&q=${latitude},${longitude}&&t=k|${answer}> だよ:anger:`,
       reply_broadcast: true,
+      unfurl_links: false,
+      unfurl_media: false,
     },
     answer: [latitude, longitude],
     zoom: zoom,
