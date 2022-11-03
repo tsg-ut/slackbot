@@ -581,7 +581,6 @@ function problemFormat(
   thread_ts: string
 ) {
   const answer = latLngFormat(latitude, longitude);
-  console.log({answer});
 
   const problem: CoordAteQuizProblem = {
     problemMessage: {
