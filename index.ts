@@ -102,7 +102,7 @@ const allBots = [
 	'dicebot',
 	'taimai',
 	'map-guessr',
-	'illust-quiz',
+	'character-quiz',
 ];
 
 log.info('slackbot started');
