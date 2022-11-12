@@ -360,13 +360,13 @@ export default async (slackClients: SlackInterface) => {
       ) {
         const characters = await (async () => {
           const namori =
-            message.text === 'キャラ当てクイズs' ||
-            message.text === 'なもり当てクイズs'
+            message.text === 'キャラ当てクイズ' ||
+            message.text === 'なもり当てクイズ'
               ? await loaderNamori.load()
               : [];
           const ixy =
-            message.text === 'キャラ当てクイズs' ||
-            message.text === 'Ixy当てクイズs'
+            message.text === 'キャラ当てクイズ' ||
+            message.text === 'Ixy当てクイズ'
               ? await loaderIxy.load()
               : [];
 
@@ -395,19 +395,7 @@ export default async (slackClients: SlackInterface) => {
         const result = await quiz.start();
 
         if (result.state === 'solved') {
-          if (problem.correctCharacter.author === 'namori') {
-            await increment(message.user, 'namori-answer');
-            if (result.hintIndex === 0) {
-              await increment(message.user, 'namori-answer-first-hint');
-            }
-            if (result.hintIndex <= 1) {
-              await increment(message.user, 'namori-answer-second-hint');
-            }
-            if (result.hintIndex <= 2) {
-              await increment(message.user, 'namori-answer-third-hint');
-            }
-          }
-
+          // Achievements for all quizzes
           await increment(message.user, 'chara-ate-answer');
           if (result.hintIndex === 0) {
             await increment(message.user, 'chara-ate-answer-first-hint');
@@ -417,6 +405,30 @@ export default async (slackClients: SlackInterface) => {
           }
           if (result.hintIndex <= 2) {
             await increment(message.user, 'chara-ate-answer-third-hint');
+          }
+
+          // for author-specific quizzes
+          await increment(
+            message.user,
+            `${problem.correctCharacter.author}-answer`
+          );
+          if (result.hintIndex === 0) {
+            await increment(
+              message.user,
+              `${problem.correctCharacter.author}-answer-first-hint`
+            );
+          }
+          if (result.hintIndex <= 1) {
+            await increment(
+              message.user,
+              `${problem.correctCharacter.author}-answer-second-hint`
+            );
+          }
+          if (result.hintIndex <= 2) {
+            await increment(
+              message.user,
+              `${problem.correctCharacter.author}-answer-third-hint`
+            );
           }
         }
       }
