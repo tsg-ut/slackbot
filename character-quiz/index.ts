@@ -338,15 +338,15 @@ const generateProblem = async (
 export default async (slackClients: SlackInterface) => {
   const { eventClient } = slackClients;
 
-  /* const persistentState = await State.init<PersistentState>('anime-namori', {
+  const persistentState = await State.init<PersistentState>('anime-namori', {
     recentMediaIds: [],
     recentCharacterIds: [],
-  }); */
+  });
 
-  const persistentState = {
+  /* const persistentState = {
     recentMediaIds: new Array<string>(0),
     recentCharacterIds: new Array<string>(0),
-  };
+  }; */
 
   eventClient.on('message', async (message) => {
     if (message.channel !== process.env.CHANNEL_SANDBOX) {
