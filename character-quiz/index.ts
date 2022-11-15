@@ -1,4 +1,4 @@
-import type { ImageBlock, MrkdwnElement } from '@slack/web-api';
+import type { ImageBlock, MrkdwnElement, ChatPostMessageArguments } from '@slack/web-api';
 import { Mutex } from 'async-mutex';
 import axios from 'axios';
 import cloudinary from 'cloudinary';
@@ -16,7 +16,6 @@ import {
   typicalMessageTextsGenerator,
   typicalAteQuizHintTexts,
 } from '../atequiz';
-import { ChatPostMessageArguments } from '@slack/web-api';
 
 const mutex = new Mutex();
 
