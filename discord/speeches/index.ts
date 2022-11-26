@@ -7,7 +7,7 @@ import voicevox from './voicevox';
 
 const log = logger.child({bot: 'discord'});
 
-enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q', R = 'R', S = 'S', T = 'T', U = 'U', V = 'V', W = 'W', X = 'X', Y = 'Y', Z = 'Z', AA = 'AA', AB = 'AB', AC = 'AC', AD = 'AD', AE = 'AE', AF = 'AF'}
+enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q', R = 'R', S = 'S', T = 'T', U = 'U', V = 'V', W = 'W', X = 'X', Y = 'Y', Z = 'Z', AA = 'AA', AB = 'AB', AC = 'AC', AD = 'AD', AE = 'AE', AF = 'AF', AG = 'AG', AH = 'AH'}
 export {Voice};
 
 export {Emotion, EmoLV};
@@ -62,6 +62,12 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.AD, {provider: 'voicevox', name: 'sora_whisper'}],
 	[Voice.AE, {provider: 'voicevox', name: 'mochiko'}],
 	[Voice.AF, {provider: 'amazon', name: 'Takumi'}],
+	[Voice.AG, {provider: 'voicevox', name: 'kenzaki'}],
+	[Voice.AH, {provider: 'voicevox', name: 'zunda_whisper'}],
+	// coming soon
+	//[Voice., {provider: 'voicevox', name: 'whitecul', emotional: true}],
+	//[Voice., {provider: 'voicevox', name: 'goki', emotional: true}],
+	//[Voice., {provider: 'voicevox', name: 'number7', emotional: true}],
 ]);
 
 export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta) => {

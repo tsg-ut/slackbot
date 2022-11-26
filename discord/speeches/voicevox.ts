@@ -50,6 +50,27 @@ const voiceMapping: { [name: string]: { [emo: string]: number } } = {
 	mochiko: {
 		normal: 20,
 	},
+	kenzaki: {
+		normal: 21,
+	},
+	zunda_whisper: {
+		normal: 22,
+	},
+	whitecul: {
+		normal: 23,
+		hapiness: 24,
+		anger: 25,
+		sadness: 26,
+	},
+	goki: {
+		normal: 27,
+		hapiness: 28,
+	},
+	number7: {
+		normal: 29,
+		hapiness: 30,
+		anger: 31,
+	},
 };
 
 const speech: SynthesizeFunction = (text: string, voiceType: string, {speed, emotion}) => {
