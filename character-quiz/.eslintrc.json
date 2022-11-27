@@ -1,0 +1,16 @@
+{
+    "extends": "@hakatashi/eslint-config/typescript",
+    "parserOptions": {
+        "ecmaVersion": 2018,
+        "ecmaFeatures": {
+            "experimentalObjectRestSpread": true,
+            "jsx": true
+        },
+        "sourceType": "module"
+    },
+    "rules": {
+        "no-console": "off",
+        "camelcase": "off",
+        "require-atomic-updates": "off"
+    }
+}

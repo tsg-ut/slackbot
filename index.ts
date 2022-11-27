@@ -69,7 +69,6 @@ const allBots = [
 	'ponpe',
 	'anime',
 	'anime/anison',
-	'anime/namori',
 	'oogiri',
 	'sorting-riddles',
 	'tsglive',
@@ -103,6 +102,7 @@ const allBots = [
 	'dicebot',
 	'taimai',
 	'map-guessr',
+	'character-quiz',
 ];
 
 log.info('slackbot started');
