@@ -383,37 +383,37 @@ export default async (slackClients: SlackInterface) => {
 
 				if (result.state === 'solved') {
 					// Achievements for all quizzes
-					await increment(message.user, 'chara-ate-answer');
+					await increment(result.correctAnswerer, 'chara-ate-answer');
 					if (result.hintIndex === 0) {
-						await increment(message.user, 'chara-ate-answer-first-hint');
+						await increment(result.correctAnswerer, 'chara-ate-answer-first-hint');
 					}
 					if (result.hintIndex <= 1) {
-						await increment(message.user, 'chara-ate-answer-second-hint');
+						await increment(result.correctAnswerer, 'chara-ate-answer-second-hint');
 					}
 					if (result.hintIndex <= 2) {
-						await increment(message.user, 'chara-ate-answer-third-hint');
+						await increment(result.correctAnswerer, 'chara-ate-answer-third-hint');
 					}
 
 					// for author-specific quizzes
 					await increment(
-						message.user,
+						result.correctAnswerer,
 						`${problem.correctCharacter.author}-answer`,
 					);
 					if (result.hintIndex === 0) {
 						await increment(
-							message.user,
+							result.correctAnswerer,
 							`${problem.correctCharacter.author}-answer-first-hint`,
 						);
 					}
 					if (result.hintIndex <= 1) {
 						await increment(
-							message.user,
+							result.correctAnswerer,
 							`${problem.correctCharacter.author}-answer-second-hint`,
 						);
 					}
 					if (result.hintIndex <= 2) {
 						await increment(
-							message.user,
+							result.correctAnswerer,
 							`${problem.correctCharacter.author}-answer-third-hint`,
 						);
 					}
