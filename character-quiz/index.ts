@@ -379,6 +379,12 @@ export default async (slackClients: SlackInterface) => {
 
 				const problem = await generateProblem(answer);
 				const quiz = new CharacterQuiz(slackClients, problem, postOption);
+
+				persistentState.recentCharacterIds.push(answer.characterId);
+				while (persistentState.recentCharacterIds.length > 200) {
+					persistentState.recentCharacterIds.shift();
+				}
+
 				const result = await quiz.start();
 
 				if (result.state === 'solved') {
