@@ -1,9 +1,9 @@
-import {throttle, groupBy, uniq} from 'lodash';
+import {throttle, groupBy} from 'lodash';
 import db from './firestore';
 import {Deferred} from './utils';
 import path from 'path';
 import {inspect} from 'util';
-import fs from 'fs-extra'
+import fs from 'fs-extra';
 import schedule from 'node-schedule';
 import {Mutex} from 'async-mutex';
 import {observable, toJS} from 'mobx';
