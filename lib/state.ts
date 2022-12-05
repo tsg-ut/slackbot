@@ -1,13 +1,15 @@
-import {throttle, groupBy, uniq} from 'lodash';
+import {throttle, groupBy} from 'lodash';
 import db from './firestore';
 import {Deferred} from './utils';
 import path from 'path';
 import {inspect} from 'util';
 import fs from 'fs-extra';
+import schedule from 'node-schedule';
 import {Mutex} from 'async-mutex';
 import {observable, toJS} from 'mobx';
 import type {IObjectDidChange, IArrayDidChange, IMapDidChange} from 'mobx';
 import {deepObserve} from 'mobx-utils';
+import logger from './logger';
 
 declare type IChange = IObjectDidChange | IArrayDidChange | IMapDidChange;
 
@@ -17,6 +19,21 @@ const statesDeferred = new Deferred<FirebaseFirestore.QuerySnapshot<FirebaseFire
 		statesDeferred.resolve(await db.collection('states').get());
 	}
 })();
+
+const usageCount = new Map<string, number>();
+
+export const updateUsageCount = (key: string) => {
+	usageCount.set(key, (usageCount.get(key) ?? 0) + 1);
+};
+
+const recordUsage = (name: string, operation: string) => {
+	updateUsageCount(`state_${name}_${operation}`);
+};
+
+schedule.scheduleJob('0 * * * *', (date) => {
+	logger.info(`Firestore usage at ${date}: ${inspect(usageCount)}`);
+	usageCount.clear();
+});
 
 const updatedProperties: {name: string, property: string, value: any}[] = [];
 
@@ -32,6 +49,7 @@ const triggerUpdateDb = throttle(async () => {
 		await Promise.all(Object.keys(states).map(async (state) => {
 			const stateRef = db.collection('states').doc(state);
 			const stateTransaction = await transaction.get(stateRef);
+			recordUsage(state, 'get');
 			stateData.set(state, stateTransaction.exists);
 		}));
 		for (const [stateName, stateUpdates] of Object.entries(states)) {
@@ -43,8 +61,10 @@ const triggerUpdateDb = throttle(async () => {
 			}
 			if (exists) {
 				transaction.update(stateRef, Object.fromEntries(newValues));
+				recordUsage(stateName, 'update');
 			} else {
 				transaction.set(stateRef, Object.fromEntries(newValues));
+				recordUsage(stateName, 'set');
 			}
 		}
 	});
