@@ -8,6 +8,7 @@ import db from '../lib/firestore';
 // eslint-disable-next-line no-unused-vars
 import type {SlackInterface} from '../lib/slack';
 import {getReactions} from '../lib/slackUtils';
+import {updateUsageCount} from '../lib/state';
 import {Deferred} from '../lib/utils';
 import achievements, {Difficulty} from './achievements';
 
@@ -223,6 +224,7 @@ const triggerUpdateDb = throttle(async () => {
 		await Promise.all(Object.keys(users).map(async (user) => {
 			const userRef = db.collection('users').doc(user);
 			const userTransaction = await transaction.get(userRef);
+			updateUsageCount(`achievements_${user}_get`);
 			const data = userTransaction.data() || {};
 			userData.set(user, {data, exists: userTransaction.exists});
 		}));
@@ -243,8 +245,10 @@ const triggerUpdateDb = throttle(async () => {
 			}
 			if (exists) {
 				transaction.update(userRef, data);
+				updateUsageCount(`achievements_${user}_update`);
 			} else {
 				transaction.set(userRef, data);
+				updateUsageCount(`achievements_${user}_set`);
 			}
 		}
 	});
@@ -390,7 +394,7 @@ export const isUnlocked = async (user: string, name: string) => {
 	return state.achievements.get(user).has(name);
 };
 
-export const increment = async (user: string, name: string, value: number = 1, additionalInfo: string = undefined) => {
+export const increment = async (user: string, name: string, value = 1, additionalInfo: string = undefined) => {
 	await initializeDeferred.promise;
 
 	if (!user || !user.startsWith('U') || user === 'USLACKBOT') {
