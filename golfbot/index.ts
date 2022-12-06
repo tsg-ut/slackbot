@@ -825,7 +825,10 @@ export const server = ({eventClient, webClient: slack, messageClient: slackInter
 					}
 
 					// 終了したコンテストを削除
-					state.contests = state.contests.filter(contest => !(contest.endAt <= newTime));
+					// stateへの書き込みを抑制するため、終了したコンテストが存在する場合のみ実行する
+					if (state.contests.some(contest => contest.endAt <= newTime)) {
+						state.contests = state.contests.filter(contest => !(contest.endAt <= newTime));
+					}
 				});
 			}, 30 * 1000);
 		}
