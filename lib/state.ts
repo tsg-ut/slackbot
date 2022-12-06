@@ -43,7 +43,8 @@ const updateDb = (name: string, property: string, value: any) => {
 };
 
 const triggerUpdateDb = throttle(async () => {
-	const states = groupBy(updatedProperties, (prop) => prop.name);
+	const propertyChanges = updatedProperties.splice(0);
+	const states = groupBy(propertyChanges, (prop) => prop.name);
 	await db.runTransaction(async (transaction) => {
 		const stateData = new Map<string, boolean>();
 		await Promise.all(Object.keys(states).map(async (state) => {
