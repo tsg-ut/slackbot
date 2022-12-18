@@ -3040,7 +3040,7 @@ const achievements: Achievement[] = [
 		category: 'hangman',
 	},
 	{
-		id: 'hangman-de-hangman',
+		id: 'hangman-cleared-with-hangman',
 		difficulty: 'hard',
 		title: 'Dream Luck Activated',
 		condition: 'Hangmanを単語"hangman"でゲームクリアする',
@@ -3164,7 +3164,6 @@ const achievements: Achievement[] = [
 		condition: 'Wordle Battle で 15 個以上のクエリを投げ、勝利をする',
 		category: 'wordle-battle',
 	},
-	
 
 	// discord
 

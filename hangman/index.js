@@ -226,7 +226,7 @@ const unlockGameAchievements = async (slackid) => {
         await unlock(slackid, 'hangman-extreme-clear');
     }
     if (state[slackid].answer === 'hangman') {
-        await unlock(slackid, 'hangman-de-hangman');
+        await unlock(slackid, 'hangman-cleared-with-hangman');
     }
 };
 
