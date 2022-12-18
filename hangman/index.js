@@ -225,6 +225,9 @@ const unlockGameAchievements = async (slackid) => {
     if (state[slackid].diffValue === 'extreme') {
         await unlock(slackid, 'hangman-extreme-clear');
     }
+    if (state[slackid].answer === 'hangman') {
+        await unlock(slackid, 'hangman-de-hangman');
+    }
 };
 
 const getChallengerByTs = (ts) => {
