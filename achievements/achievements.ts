@@ -3039,6 +3039,13 @@ const achievements: Achievement[] = [
 		condition: 'Hangmanで3種類以上の文字を同時に言い当てる',
 		category: 'hangman',
 	},
+	{
+		id: 'hangman-cleared-with-hangman',
+		difficulty: 'hard',
+		title: 'Dream Luck Activated',
+		condition: 'Hangmanを単語"hangman"でゲームクリアする',
+		category: 'hangman',
+	},
 
 	// octas
 	{
