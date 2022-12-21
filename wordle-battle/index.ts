@@ -171,6 +171,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                     state.length = length;
                     if (length < 2 || length > 15) {
                         await postAnnounce("Wordle Battle は 2 文字以上 15 文字以下の単語のみに対応しています。");
+                        return;
                     }
                     state.thread_ts = ts;
                     await postReplyBroadcast(stripIndents`Wordle Battle を開始します！
