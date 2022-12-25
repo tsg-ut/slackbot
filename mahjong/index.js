@@ -339,7 +339,7 @@ module.exports = (clients) => {
 
 		const text = message.text.trim();
 
-		if (text === '配牌a') {
+		if (text === '配牌') {
 			if (state.phase !== 'waiting') {
 				perdonBroadcast();
 				return;
