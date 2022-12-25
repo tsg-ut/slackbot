@@ -339,7 +339,7 @@ module.exports = (clients) => {
 
 		const text = message.text.trim();
 
-		if (text === '配牌') {
+		if (text === '配牌a') {
 			if (state.phase !== 'waiting') {
 				perdonBroadcast();
 				return;
@@ -482,6 +482,18 @@ module.exports = (clients) => {
 					筒子: ${chunk(残り牌List.slice(25, 34), 3).map((numbers) => numbers.join('')).join(' ')}
 					索子: ${chunk(残り牌List.slice(16, 25), 3).map((numbers) => numbers.join('')).join(' ')}
 					${牌Names.slice(0, 7).map((name, index) => `${name}${残り牌List[index]}`).join(' ')}
+				`);
+				return;
+			}
+
+			if(text === 'ドラ牌') {
+				if (state.phase !== 'gaming') {
+					perdon();
+					return;
+				}
+				
+				postMessage(source`
+					${state.ドラ表示牌s.map((牌) => 牌ToName(牌)).join(' ')}
 				`);
 				return;
 			}
