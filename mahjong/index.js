@@ -486,15 +486,13 @@ module.exports = (clients) => {
 				return;
 			}
 
-			if(text === 'ドラ牌') {
+			if (text === 'ドラ表示牌') {
 				if (state.phase !== 'gaming') {
 					perdon();
 					return;
 				}
-				
-				postMessage(source`
-					${state.ドラ表示牌s.map((牌) => 牌ToName(牌)).join(' ')}
-				`);
+
+				postMessage(state.ドラ表示牌s.map((牌) => 牌ToName(牌)).join(' '));
 				return;
 			}
 
