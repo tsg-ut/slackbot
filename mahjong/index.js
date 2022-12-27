@@ -496,6 +496,16 @@ module.exports = (clients) => {
 				return;
 			}
 
+			if (text === '手牌表示') {
+				if (state.phase !== 'gaming') {
+					perdon();
+					return;
+				}
+
+				postMessage(state.手牌.join(''));
+				return;
+			}
+
 			if (text.startsWith('打') || text.startsWith('d') || text === 'ツモ切り') {
 				const instruction = normalize打牌Command(text);
 
