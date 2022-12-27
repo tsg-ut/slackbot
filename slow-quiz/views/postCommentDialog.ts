@@ -6,10 +6,10 @@ type UserSubmission = Submission & {type: 'wrong_answer' | 'correct_answer' | 'c
 
 const formatSubmission = (submission: UserSubmission) => {
 	if (submission.type === 'wrong_answer') {
-		return `${submission.days}日目: ＊回答「${submission.answer}」＊ → 不正解`;
+		return `${submission.days}日目: ＊解答「${submission.answer}」＊ → 不正解`;
 	}
 	if (submission.type === 'correct_answer') {
-		return `${submission.days}日目: ＊回答「${submission.answer}」＊ → 正解`;
+		return `${submission.days}日目: ＊解答「${submission.answer}」＊ → 正解`;
 	}
 	return `${submission.days}日目: ${submission.answer}`;
 };
@@ -46,7 +46,7 @@ export default (game: Game, user: string) => {
 					{
 						type: 'plain_text',
 						text: stripIndent`
-							この問題には回答済みです。
+							この問題には解答済みです。
 							任意で問題に対するコメントを投稿することができます。
 						`,
 					},
@@ -65,7 +65,7 @@ export default (game: Game, user: string) => {
 				text: {
 					type: 'mrkdwn',
 					text: userSubmissions.length === 0
-						? 'まだ回答がありません'
+						? 'まだ解答がありません'
 						: userSubmissions.map(formatSubmission).join('\n'),
 				},
 			},

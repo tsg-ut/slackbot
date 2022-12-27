@@ -131,7 +131,7 @@ export default {
 			hint: {
 				type: 'plain_text',
 				text: stripIndent`
-					回答に使用します。ひらがな・カタカナ・英数字のみ使用することができます。
+					解答に使用します。ひらがな・カタカナ・英数字のみ使用することができます。
 					「,」(半角カンマ)で区切ることで別解を指定することができます。
 				`,
 			},
@@ -147,12 +147,12 @@ export default {
 				action_id: 'hint',
 				placeholder: {
 					type: 'plain_text',
-					text: 'かな4文字・最も一般的な名称で回答',
+					text: 'かな4文字・最も一般的な名称で解答',
 				},
 			},
 			hint: {
 				type: 'plain_text',
-				text: '回答が一意に定まるようなヒントを入力してください',
+				text: '解答が一意に定まるようなヒントを入力してください',
 			},
 			optional: true,
 		},

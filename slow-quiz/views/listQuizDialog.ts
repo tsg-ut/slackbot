@@ -17,7 +17,7 @@ export default (games: Game[]) => ({
 				type: 'mrkdwn',
 				text: stripIndent`
 					問題: ${game.question}
-					回答: ${game.answer}
+					解答: ${game.answer}
 					読み: ${game.ruby}
 					ヒント: ${game.hint ?? ''}
 				`,
