@@ -8,11 +8,11 @@ export default (game: Game, questionText: string, user: string) => {
 		type: 'modal',
 		callback_id: 'slowquiz_answer_question_dialog',
 		title: {
-			text: 'クイズ回答',
+			text: 'クイズ解答',
 			type: 'plain_text',
 		},
 		submit: {
-			text: '回答する',
+			text: '解答する',
 			type: 'plain_text',
 		},
 		notify_on_close: true,
@@ -22,7 +22,7 @@ export default (game: Game, questionText: string, user: string) => {
 				type: 'header',
 				text: {
 					type: 'plain_text',
-					text: 'あなたのこれまでの回答',
+					text: 'あなたのこれまでの解答',
 					emoji: true,
 				},
 			},
@@ -31,7 +31,7 @@ export default (game: Game, questionText: string, user: string) => {
 				text: {
 					type: 'mrkdwn',
 					text: userAnswers.length === 0
-						? 'まだ回答がありません'
+						? 'まだ解答がありません'
 						: userAnswers.map((answer) => (
 							`${answer.days}日目: 「${answer.answer}」`
 						)).join('\n'),
@@ -48,7 +48,7 @@ export default (game: Game, questionText: string, user: string) => {
 				type: 'input',
 				label: {
 					type: 'plain_text',
-					text: '回答 (読みがなで入力)',
+					text: '解答 (読みがなで入力)',
 				},
 				element: {
 					type: 'plain_text_input',

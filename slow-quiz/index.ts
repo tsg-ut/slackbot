@@ -284,7 +284,7 @@ class SlowQuiz {
 		}
 
 		if (game.status !== 'inprogress') {
-			this.postEphemeral('この問題の回答受付は終了しているよ🙄', user, channel);
+			this.postEphemeral('この問題の解答受付は終了しているよ🙄', user, channel);
 			return null;
 		}
 
@@ -401,12 +401,12 @@ class SlowQuiz {
 		}
 
 		if (game.status !== 'inprogress' || game.correctAnswers.length >= this.MAX_CORRECT_ANSWERS) {
-			this.postEphemeral('Error: この問題の回答受付は終了しています', user);
+			this.postEphemeral('Error: この問題の解答受付は終了しています', user);
 			return null;
 		}
 
 		if (game.answeredUsers.includes(user)) {
-			this.postEphemeral('Error: この問題にすでに回答しています', user);
+			this.postEphemeral('Error: この問題にすでに解答しています', user);
 			return null;
 		}
 
@@ -512,7 +512,7 @@ class SlowQuiz {
 		}
 
 		if (game.status === 'finished') {
-			this.postEphemeral('Error: この問題の回答受付は終了しています', user);
+			this.postEphemeral('Error: この問題の解答受付は終了しています', user);
 			return null;
 		}
 
@@ -681,7 +681,7 @@ class SlowQuiz {
 							type: 'header',
 							text: {
 								type: 'plain_text',
-								text: '～回答受付終了～',
+								text: '～解答受付終了～',
 								emoji: true,
 							},
 						},
@@ -783,7 +783,7 @@ class SlowQuiz {
 					type: 'button',
 					text: {
 						type: 'plain_text',
-						text: '回答する',
+						text: '解答する',
 						emoji: true,
 					},
 					value: game.id,
@@ -800,7 +800,7 @@ class SlowQuiz {
 						text: oneLine`
 							${await getMemberName(game.author)} さんの問題 /
 							【${getGenreText(game.genre)}】 /
-							本日${game.answeredUsers.length}人回答 /
+							本日${game.answeredUsers.length}人解答 /
 							${game.correctAnswers.length}人正解済み
 						`,
 					},
