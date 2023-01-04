@@ -186,7 +186,7 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 				const roomName = oldState.channel.name;
 				const roomId = oldState.channel.id;
 				const count = oldState.channel.members.size;
-				const actionName = 'leave';
+				const actionName = `leave-${roomId}`;
 				const update = roomNotifyCache.lastUnixTime + notifyCacheLimit > eventTime && roomNotifyCache.action === actionName;
 
 				if (update) {
@@ -215,7 +215,7 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 				const roomName = newState.channel.name;
 				const roomId = newState.channel.id;
 				const count = newState.channel.members.size;
-				const actionName = 'join';
+				const actionName = `join-${roomId}`;
 				const update = roomNotifyCache.lastUnixTime + notifyCacheLimit > eventTime && roomNotifyCache.action === actionName;
 
 				if (update) {
