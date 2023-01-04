@@ -503,16 +503,6 @@ module.exports = (clients) => {
 				return;
 			}
 
-			if (text === 'ドラ表示牌') {
-				if (state.phase !== 'gaming') {
-					perdon();
-					return;
-				}
-
-				postMessage(state.ドラ表示牌s.map((牌) => 牌ToName(牌)).join(' '));
-				return;
-			}
-
 			if (text === '手牌表示') {
 				if (state.phase !== 'gaming') {
 					perdon();
@@ -523,6 +513,7 @@ module.exports = (clients) => {
 				const 採譜表示ed手牌 = state.手牌.map((牌) => 牌To採譜表示(牌)).join('');
 				postMessage(source`
 				${採譜表示ed手牌.slice(0, 採譜表示ed手牌.lastIndexOf('m') + 1).replace(/m/g, '')}m${採譜表示ed手牌.slice(採譜表示ed手牌.lastIndexOf('m') + 1, 採譜表示ed手牌.lastIndexOf('p') + 1).replace(/p/g, '')}p${採譜表示ed手牌.slice(採譜表示ed手牌.lastIndexOf('p') + 1, 採譜表示ed手牌.lastIndexOf('s') + 1).replace(/s/g, '')}s${採譜表示ed手牌.slice(採譜表示ed手牌.lastIndexOf('s') + 1)}
+				ドラ表示牌:${state.ドラ表示牌s.map((牌) => 牌ToName(牌)).join(' ')}
 				`);
 				return;
 			}
