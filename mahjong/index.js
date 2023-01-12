@@ -61,7 +61,7 @@ const get牌Type = (牌) => {
 };
 
 const 牌Orders = ['萬子', '筒子', '索子', '字牌'];
-const Romaji牌Orders = ['m', 'p', 's', ''];
+const romaji牌Orders = ['m', 'p', 's', ''];
 
 const 漢数字s = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
 
