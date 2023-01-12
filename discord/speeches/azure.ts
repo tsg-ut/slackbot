@@ -2,7 +2,7 @@ import {SpeechConfig, SpeechSynthesizer} from 'microsoft-cognitiveservices-speec
 import {SynthesizeFunction} from './types.d';
 import {textToSsml} from './util';
 
-const speech: SynthesizeFunction = (text: string, voiceType: string, {speed}: {speed: number}) => {
+const speech: SynthesizeFunction = (text: string, voiceType: string, {speed}: {speed: number}, audioTags) => {
 	const speechConfig = SpeechConfig.fromSubscription(process.env.AZURE_SUBSCRIPTION_KEY, 'japaneast');
 	const synthesizer = new SpeechSynthesizer(speechConfig);
 
@@ -12,7 +12,7 @@ const speech: SynthesizeFunction = (text: string, voiceType: string, {speed}: {s
 				<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="ja-JP">
 					<voice name="${voiceType}">
 						<prosody rate="${speed}">
-							${textToSsml(text)}
+							${textToSsml(text, audioTags)}
 						</prosody>
 					</voice>
 				</speak>

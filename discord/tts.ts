@@ -63,6 +63,7 @@ class Timer {
 interface StateObj {
 	userVoices: {[id: string]: Voice},
 	userMetas: {[id: string]: VoiceMeta},
+	audioTags: {[id: string]: string},
 }
 
 
@@ -100,6 +101,7 @@ export default class TTS extends EventEmitter {
 			State.init<StateObj>('discord-tts', {
 				userVoices: Object.create(null),
 				userMetas: Object.create(null),
+				audioTags: Object.create(null),
 			})
 		));
 	}
@@ -281,6 +283,38 @@ export default class TTS extends EventEmitter {
 						await message.react('🤔');
 					}
 				});
+			} else if (tokens.length === 5 && tokens[1] === 'audio' && tokens[2] === 'set') {
+				mutex.runExclusive(async () => {
+					let [, , , tag, url] = tokens;
+					if (tag.startsWith('[') && tag.endsWith(']')) {
+						tag = tag.slice(1, -1);
+					}
+
+					const state = await this.state.load();
+					state.audioTags[tag] = url;
+
+					await message.react('🆗');
+				});
+			} else if (tokens.length === 4 && tokens[1] === 'audio' && tokens[2] === 'delete') {
+				mutex.runExclusive(async () => {
+					let [, , , tag] = tokens;
+					if (tag.startsWith('[') && tag.endsWith(']')) {
+						tag = tag.slice(1, -1);
+					}
+
+					const state = await this.state.load();
+					delete state.audioTags[tag];
+
+					await message.react('🆗');
+				});
+			} else if (tokens.length === 3 && tokens[1] === 'audio' && tokens[2] === 'list') {
+				mutex.runExclusive(async () => {
+					const state = await this.state.load();
+					const lines = Object.entries(state.audioTags).map(([tag, url]) => (
+						`* \`[${tag}]\`: ${url}`
+					));
+					this.emit('message', lines.join('\n'), message.channel.id);
+				});
 			} else {
 				const voices: Voice[] = Object.values(Voice);
 				const emotionalVoices: Voice[] = voices.filter((v: Voice) => (speechConfig.get(v).emotional));
@@ -292,11 +326,14 @@ export default class TTS extends EventEmitter {
 					* TTS status - ステータスを表示
 					* TTS emotion <normal | happiness | anger | sadness> - 感情を付与 (ボイス${emotionalVoices.join('/')}のみ可能)
 					* TTS emolv <1 | 2 | 3 | 4> - 感情の強度を設定 (ボイス${emotionalVoices.join('/')}のみ可能)
+					* TTS audio set <tag> <url> - []で囲って使用できるオーディオタグを設定 (GoogleとAzureのみ対応)
+					* TTS audio delete <tag> - オーディオタグを削除
+					* TTS audio list - オーディオタグの一覧を表示
 					* TTS help - ヘルプを表示
 				`, message.channel.id);
 			}
 		} else if (this.users.has(user) && !message.content.startsWith('-') && !this.isPaused) {
-			const {content, id, meta} = await mutex.runExclusive(async () => {
+			const {content, id, meta, audioTags} = await mutex.runExclusive(async () => {
 				const state = await this.state.load();
 				const id = state.userVoices[user] || Voice.A;
 				const meta = state.userMetas[user] || getDefaultVoiceMeta();
@@ -305,10 +342,10 @@ export default class TTS extends EventEmitter {
 				for (const {key, value} of this.ttsDictionary) {
 					content = content.replace(new RegExp(key, 'g'), value);
 				}
-				return {content, id, meta};
+				return {content, id, meta, audioTags: state.audioTags};
 			});
 			try {
-				const speech = await getSpeech(content, id, meta);
+				const speech = await getSpeech(content, id, meta, audioTags);
 				await mutex.runExclusive(async () => {
 					if (!this.connection) {
 						return; // 再生時にTTSBotがログアウトしていたら諦める

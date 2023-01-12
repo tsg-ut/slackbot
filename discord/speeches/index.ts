@@ -111,18 +111,18 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	//[Voice., {provider: 'voicevox', name: 'number7', emotional: true}],
 ]);
 
-export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta) => {
+export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta, audioTags?: {[id: string]: string}) => {
 	const config = speechConfig.get(voiceType);
 	if (!config) {
 		log.error(`AssertionError: Voice config not found for ${voiceType}`);
-		return google(text, 'ja-JP-Wavenet-A', meta);
+		return google(text, 'ja-JP-Wavenet-A', meta, audioTags);
 	}
 
 	if (config.provider === 'google') {
-		return google(text, config.name, {...meta, lang: config.lang});
+		return google(text, config.name, {...meta, lang: config.lang}, audioTags);
 	}
 	if (config.provider === 'azure') {
-		return azure(text, config.name, meta);
+		return azure(text, config.name, meta, audioTags);
 	}
 	if (config.provider === 'amazon') {
 		return amazon(text, config.name, {
