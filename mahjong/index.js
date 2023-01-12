@@ -61,6 +61,7 @@ const get牌Type = (牌) => {
 };
 
 const 牌Orders = ['萬子', '筒子', '索子', '字牌'];
+const Romaji牌Orders = ['m', 'p', 's', ''];
 
 const 漢数字s = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
 
@@ -72,12 +73,11 @@ const 牌Names = [
 	'赤五萬', '赤五索', '赤五筒',
 ];
 
-const 採譜表示s = [
+const 牌Numerals = [
 	'東', '南', '西', '北', '中', '發', '白',
-	...(漢数字s.map((漢数字) => `${漢数字s.indexOf(漢数字) + 1}m`)),
-	...(漢数字s.map((漢数字) => `${漢数字s.indexOf(漢数字) + 1}s`)),
-	...(漢数字s.map((漢数字) => `${漢数字s.indexOf(漢数字) + 1}p`)),
-	'r5m', 'r5s', 'r5p',
+	...[...Array(9)].map((_, i) => `${i + 1}`),
+	...[...Array(9)].map((_, i) => `${i + 1}`),
+	...[...Array(9)].map((_, i) => `${i + 1}`),
 ];
 
 const nameTo牌 = (name) => {
@@ -98,13 +98,13 @@ const 牌ToName = (牌) => {
 	return name;
 };
 
-const 牌To採譜表示 = (牌) => {
+const 数牌ToNumerals = (牌) => {
 	const normalized牌 = 牌.replace(/\uFE00$/, '');
-	const 採譜表示 = 採譜表示s[normalized牌.codePointAt(0) - 0x1F000];
+	const numeral = 牌Numerals[normalized牌.codePointAt(0) - 0x1F000];
 	if (牌.endsWith('\uFE00')) {
-		return `r${採譜表示}`;
+		return `r${numeral}`;
 	}
-	return 採譜表示;
+	return numeral;
 };
 
 const normalize打牌Command = (text) => {
@@ -503,17 +503,21 @@ module.exports = (clients) => {
 				return;
 			}
 
-			if (text === '手牌表示') {
+			if (text === '手牌') {
 				if (state.phase !== 'gaming') {
 					perdon();
 					return;
 				}
 
 				// 12r588m239p467s東白白 のように表記
-				const 採譜表示ed手牌 = state.手牌.map((牌) => 牌To採譜表示(牌)).join('');
+				const categorized手牌Array = Array.from(牌Orders, (_, index) => sort(state.手牌).filter((牌) => get牌Type(牌) === 牌Orders[index]));
+
+				const convertedIntoNumerals手牌Array = categorized手牌Array.map((val) => val.map((牌) => 数牌ToNumerals(牌)));
+				convertedIntoNumerals手牌Array.forEach((牌Array, index) => 牌Array.push(Romaji牌Orders[index]));
+
 				postMessage(source`
-				${採譜表示ed手牌.slice(0, 採譜表示ed手牌.lastIndexOf('m') + 1).replace(/m/g, '')}m${採譜表示ed手牌.slice(採譜表示ed手牌.lastIndexOf('m') + 1, 採譜表示ed手牌.lastIndexOf('p') + 1).replace(/p/g, '')}p${採譜表示ed手牌.slice(採譜表示ed手牌.lastIndexOf('p') + 1, 採譜表示ed手牌.lastIndexOf('s') + 1).replace(/s/g, '')}s${採譜表示ed手牌.slice(採譜表示ed手牌.lastIndexOf('s') + 1)}
-				ドラ表示牌:${state.ドラ表示牌s.map((牌) => 牌ToName(牌)).join(' ')}
+					${convertedIntoNumerals手牌Array.join('').replace(/,/g, '')}
+					ドラ表示牌: ${state.ドラ表示牌s.map((牌) => 牌ToName(牌)).join(' ')}
 				`);
 				return;
 			}
