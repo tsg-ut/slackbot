@@ -513,7 +513,9 @@ module.exports = (clients) => {
 				const categorized手牌Array = Array.from(牌Orders, (_, index) => sort(state.手牌).filter((牌) => get牌Type(牌) === 牌Orders[index]));
 
 				const convertedIntoNumerals手牌Array = categorized手牌Array.map((val) => val.map((牌) => 数牌ToNumerals(牌)));
-				convertedIntoNumerals手牌Array.forEach((牌Array, index) => 牌Array.push(Romaji牌Orders[index]));
+				for (const [index, 牌Array] of convertedIntoNumerals手牌Array.entries()) {
+					牌Array.push(romaji牌Orders[index]);
+				}
 
 				postMessage(source`
 					${convertedIntoNumerals手牌Array.join('').replace(/,/g, '')}
