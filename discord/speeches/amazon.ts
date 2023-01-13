@@ -1,5 +1,6 @@
 import AWS from 'aws-sdk';
 import {SynthesizeFunction} from './types.d';
+import {textToSsml} from './util';
 
 new AWS.Config({
 	accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -17,7 +18,7 @@ const speech: SynthesizeFunction = async (text: string, voiceType: string, {spee
 		Text: `
 			<speak>
 				<prosody rate="${Math.floor(speed * 100)}%">
-					${text}
+					${textToSsml(text)}
 				</prosody>
 			</speak>
 		`,
