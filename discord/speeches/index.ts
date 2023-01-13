@@ -7,7 +7,45 @@ import voicevox from './voicevox';
 
 const log = logger.child({bot: 'discord'});
 
-enum Voice {A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I', J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q', R = 'R', S = 'S', T = 'T', U = 'U', V = 'V', W = 'W', X = 'X', Y = 'Y', Z = 'Z', AA = 'AA', AB = 'AB', AC = 'AC', AD = 'AD', AE = 'AE', AF = 'AF', AG = 'AG', AH = 'AH'}
+enum Voice {
+	A = 'A',
+	B = 'B',
+	C = 'C',
+	D = 'D',
+	E = 'E',
+	F = 'F',
+	G = 'G',
+	H = 'H',
+	I = 'I',
+	J = 'J',
+	K = 'K',
+	L = 'L',
+	M = 'M',
+	N = 'N',
+	O = 'O',
+	P = 'P',
+	Q = 'Q',
+	R = 'R',
+	S = 'S',
+	T = 'T',
+	U = 'U',
+	V = 'V',
+	W = 'W',
+	X = 'X',
+	Y = 'Y',
+	Z = 'Z',
+	AA = 'AA',
+	AB = 'AB',
+	AC = 'AC',
+	AD = 'AD',
+	AE = 'AE',
+	AF = 'AF',
+	AG = 'AG',
+	AH = 'AH',
+	AI = 'AI',
+	AJ = 'AJ',
+	AK = 'AK',
+}
 export {Voice};
 
 export {Emotion, EmoLV};
@@ -64,6 +102,9 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.AF, {provider: 'amazon', name: 'Takumi'}],
 	[Voice.AG, {provider: 'voicevox', name: 'kenzaki'}],
 	[Voice.AH, {provider: 'voicevox', name: 'zunda_whisper'}],
+	[Voice.AI, {provider: 'google', name: 'ja-JP-Neural2-B', lang: 'ja-JP'}],
+	[Voice.AJ, {provider: 'google', name: 'ja-JP-Neural2-C', lang: 'ja-JP'}],
+	[Voice.AK, {provider: 'google', name: 'ja-JP-Neural2-D', lang: 'ja-JP'}],
 	// coming soon
 	//[Voice., {provider: 'voicevox', name: 'whitecul', emotional: true}],
 	//[Voice., {provider: 'voicevox', name: 'goki', emotional: true}],

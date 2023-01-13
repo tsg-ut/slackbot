@@ -283,7 +283,7 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	getTTS(text: string) {
-		return getSpeech(text, Voice.C, {speed: 0.9});
+		return getSpeech(text, Voice.AJ, {speed: 0.9});
 	}
 
 	async speak(text: string) {
