@@ -1,10 +1,12 @@
-const escapeXml = (text: string) => {
-	return text.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&apos;');
-};
+/* eslint-disable prefer-named-capture-group */
+
+import {has} from 'lodash';
+
+const escapeXml = (text: string) => text.replace(/&/g, '&amp;')
+	.replace(/</g, '&lt;')
+	.replace(/>/g, '&gt;')
+	.replace(/"/g, '&quot;')
+	.replace(/'/g, '&apos;');
 
 const emphasisTemplate = '<emphasis level="strong"><prosody pitch="+3st">$1</prosody></emphasis>';
 
@@ -18,7 +20,7 @@ export const textToSsml = (text: string, audioTags?: {[id: string]: string}) => 
 		.replace(/_(.+?)_/g, emphasisTemplate);
 
 	escapedText = escapedText.replaceAll(/\[(.+?)\]/g, (_match, tag) => {
-		if (audioTags && audioTags.hasOwnProperty(tag)) {
+		if (audioTags && has(audioTags, tag)) {
 			return `<audio src="${escapeXml(audioTags[tag])}">${tag}</audio>`;
 		}
 		return tag;

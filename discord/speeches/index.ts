@@ -106,9 +106,9 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.AJ, {provider: 'google', name: 'ja-JP-Neural2-C', lang: 'ja-JP'}],
 	[Voice.AK, {provider: 'google', name: 'ja-JP-Neural2-D', lang: 'ja-JP'}],
 	// coming soon
-	//[Voice., {provider: 'voicevox', name: 'whitecul', emotional: true}],
-	//[Voice., {provider: 'voicevox', name: 'goki', emotional: true}],
-	//[Voice., {provider: 'voicevox', name: 'number7', emotional: true}],
+	// [Voice., {provider: 'voicevox', name: 'whitecul', emotional: true}],
+	// [Voice., {provider: 'voicevox', name: 'goki', emotional: true}],
+	// [Voice., {provider: 'voicevox', name: 'number7', emotional: true}],
 ]);
 
 export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta, audioTags?: {[id: string]: string}) => {

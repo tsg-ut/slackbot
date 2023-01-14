@@ -1,9 +1,9 @@
-// @ts-expect-error
+// @ts-expect-error not typed
 import {katakanaRegex} from 'japanese';
 import {tokenize, KuromojiToken} from 'kuromojin';
 import {last, uniq} from 'lodash';
 import {isCorrectAnswer, normalize} from '../hayaoshi';
-// @ts-expect-error
+// @ts-expect-error not typed
 import getReading from '../lib/getReading.js';
 
 const katakanaMatchRegex = new RegExp(`^(?:${katakanaRegex.source}|ー|・|･)+$`);
@@ -118,7 +118,7 @@ const parseDescriptiveComponent = (text: string) => {
 	return answers;
 };
 
-export const extractValidAnswers = (question: string, answerText: string, note: string = '') => {
+export const extractValidAnswers = (question: string, answerText: string, note = '') => {
 	let baseText = answerText;
 
 	// basic normalization
