@@ -5,7 +5,7 @@ const qs = require('querystring');
 const {promisify} = require('util');
 const {v2: cloudinary} = require('cloudinary');
 const {source} = require('common-tags');
-const {chunk, shuffle, sampleSize, sample, random} = require('lodash');
+const {chunk, shuffle, sampleSize, sample, random, range} = require('lodash');
 const {unlock, increment} = require('../achievements');
 const {AteQuiz} = require('../atequiz/index.ts');
 const {blockDeploy} = require('../deploy/index.ts');
@@ -75,9 +75,9 @@ const 牌Names = [
 
 const 牌Numerals = [
 	'東', '南', '西', '北', '中', '發', '白',
-	...[...Array(9)].map((_, i) => `${i + 1}`),
-	...[...Array(9)].map((_, i) => `${i + 1}`),
-	...[...Array(9)].map((_, i) => `${i + 1}`),
+	...range(1,10),
+	...range(1,10),
+	...range(1,10),
 ];
 
 const nameTo牌 = (name) => {
