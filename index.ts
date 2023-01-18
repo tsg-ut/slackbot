@@ -103,6 +103,7 @@ const allBots = [
 	'taimai',
 	'map-guessr',
 	'character-quiz',
+	'shmug',
 ];
 
 log.info('slackbot started');
