@@ -285,6 +285,7 @@ export default class TTS extends EventEmitter {
 				});
 			} else if (tokens.length === 5 && tokens[1] === 'audio' && tokens[2] === 'set') {
 				mutex.runExclusive(async () => {
+					// eslint-disable-next-line prefer-const
 					let [, , , tag, url] = tokens;
 					if (tag.startsWith('[') && tag.endsWith(']')) {
 						tag = tag.slice(1, -1);

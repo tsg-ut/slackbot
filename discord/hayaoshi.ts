@@ -91,7 +91,7 @@ export default class Hayaoshi extends EventEmitter {
 		}).join('');
 	}
 
-	incrementPoint(user: string, value: number = 1) {
+	incrementPoint(user: string, value = 1) {
 		if (!this.state.participants.has(user)) {
 			this.state.participants.set(user, {points: 0, penalties: 0});
 		}
