@@ -5,7 +5,7 @@ const qs = require('querystring');
 const {promisify} = require('util');
 const {v2: cloudinary} = require('cloudinary');
 const {source} = require('common-tags');
-const {chunk, shuffle, sampleSize, sample, random, range, groupBy, zip} = require('lodash');
+const {chunk, shuffle, sampleSize, sample, random, range, zip} = require('lodash');
 const {unlock, increment} = require('../achievements');
 const {AteQuiz} = require('../atequiz/index.ts');
 const {blockDeploy} = require('../deploy/index.ts');
@@ -75,9 +75,9 @@ const 牌Names = [
 
 const 牌Numerals = [
 	'東', '南', '西', '北', '中', '發', '白',
-	...range(1,10),
-	...range(1,10),
-	...range(1,10),
+	...range(1, 10),
+	...range(1, 10),
+	...range(1, 10),
 ];
 
 const nameTo牌 = (name) => {
@@ -510,7 +510,7 @@ module.exports = (clients) => {
 				}
 
 				// 12r588m239p467s東白白 のように表記
-				const categorized手牌Array = 牌Orders.map((牌Type) => (state.手牌).filter((牌) => get牌Type(牌) === 牌Type));
+				const categorized手牌Array = 牌Orders.map((牌Type) => state.手牌.filter((牌) => get牌Type(牌) === 牌Type));
 				const convertedIntoNumerals手牌Array = categorized手牌Array.map((val) => val.map((牌) => 牌ToShortString(牌)).join(''));
 
 				const convertedIntoNumerals手牌 =
