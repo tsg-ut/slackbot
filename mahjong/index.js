@@ -511,14 +511,13 @@ module.exports = (clients) => {
 
 				// 12r588m239p467s東白白 のように表記
 				const categorized手牌Array = Array.from(牌Orders, (_, index) => sort(state.手牌).filter((牌) => get牌Type(牌) === 牌Orders[index]));
-
-				const convertedIntoNumerals手牌Array = categorized手牌Array.map((val) => val.map((牌) => 数牌ToNumerals(牌)));
-				for (const [index, 牌Array] of convertedIntoNumerals手牌Array.entries()) {
-					牌Array.push(romaji牌Orders[index]);
-				}
+				const convertedIntoNumerals手牌Array = categorized手牌Array.map((val) => val.map((牌) => String(数牌ToNumerals(牌))).join(''));
+				const convertedIntoNumerals手牌 = convertedIntoNumerals手牌Array.reduce(
+					(手牌String, categorized手牌String, index) => 手牌String.concat(categorized手牌String, romaji牌Orders[index]), '',
+				);
 
 				postMessage(source`
-					${convertedIntoNumerals手牌Array.join('').replace(/,/g, '')}
+					${convertedIntoNumerals手牌}
 					ドラ表示牌: ${state.ドラ表示牌s.map((牌) => 牌ToName(牌)).join(' ')}
 				`);
 				return;
