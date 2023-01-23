@@ -1,5 +1,5 @@
 {
-    "extends": "@hakatashi",
+    "extends": "@hakatashi/eslint-config/typescript",
     "parser": "@typescript-eslint/parser",
     "rules": {
         "no-console": "off",
