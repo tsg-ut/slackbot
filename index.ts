@@ -104,6 +104,7 @@ const allBots = [
 	'map-guessr',
 	'character-quiz',
 	'shmug',
+	'mackerel',
 ];
 
 log.info('slackbot started');

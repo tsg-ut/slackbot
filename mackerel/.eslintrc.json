@@ -1,0 +1,13 @@
+{
+    "extends": "@hakatashi",
+    "parser": "@typescript-eslint/parser",
+    "rules": {
+        "no-console": "off",
+        "camelcase": "off",
+        "import/extensions": "off",
+        "import/no-unresolved": "off"
+    },
+    "env": {
+        "jest": true
+    }
+}
