@@ -95,6 +95,7 @@
     "libmime": "^5.1.0",
     "libsodium-wrappers": "^0.7.10",
     "lodash": "^4.17.21",
+    "mackerel": "^0.1.1",
     "microsoft-cognitiveservices-speech-sdk": "^1.23.0",
     "miller-rabin": "^4.0.1",
     "mobx": "^6.6.2",
