@@ -5,7 +5,7 @@ const qs = require('querystring');
 const {promisify} = require('util');
 const {v2: cloudinary} = require('cloudinary');
 const {source} = require('common-tags');
-const {chunk, shuffle, sampleSize, sample, random, range, groupBy} = require('lodash');
+const {chunk, shuffle, sampleSize, sample, random, range, groupBy, zip} = require('lodash');
 const {unlock, increment} = require('../achievements');
 const {AteQuiz} = require('../atequiz/index.ts');
 const {blockDeploy} = require('../deploy/index.ts');
@@ -512,9 +512,16 @@ module.exports = (clients) => {
 				// 12r588m239p467s東白白 のように表記
 				const categorized手牌Array = 牌Orders.map((牌Type) => (state.手牌).filter((牌) => get牌Type(牌) === 牌Type));
 				const convertedIntoNumerals手牌Array = categorized手牌Array.map((val) => val.map((牌) => 牌ToShortString(牌)).join(''));
-				const convertedIntoNumerals手牌 = convertedIntoNumerals手牌Array.reduce(
-					(手牌String, categorized手牌String, index) => 手牌String.concat(categorized手牌String, romaji牌Orders[index]), '',
-				);
+
+				const convertedIntoNumerals手牌 =
+					zip(convertedIntoNumerals手牌Array, romaji牌Orders)
+						.map(([牌String, romaji牌Type]) => {
+							if (牌String !== '') {
+								return 牌String + romaji牌Type;
+							}
+							return 牌String;
+						})
+						.join('');
 
 				postMessage(source`
 					${convertedIntoNumerals手牌}
