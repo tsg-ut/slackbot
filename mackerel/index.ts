@@ -1,3 +1,6 @@
+// @ts-expect-error mackerelはどうやらflowという流儀で書かれているらしいです
+import Mackerel from 'mackerel';
+
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {
@@ -9,9 +12,6 @@ import {
 	botIconEmoji,
 } from './const';
 import {InviteStartMessageView, Dialog} from './views/view';
-
-// @ts-expect-error
-import Mackerel from 'mackerel';
 
 const log = logger.child({bot: 'mackerel'});
 
@@ -52,7 +52,7 @@ export default ({eventClient, webClient: slack, messageClient}: SlackInterface) 
 	messageClient.action({
 		type: 'button',
 		blockId: kMackerelInviteStartBlockId,
-	}, async (payload, _respond) => {
+	}, async (payload) => {
 		const {trigger_id, channel: {id: channel}} = payload;
 
 		if (payload.actions[0].value === 'go') {
