@@ -5,7 +5,7 @@ const qs = require('querystring');
 const {promisify} = require('util');
 const {v2: cloudinary} = require('cloudinary');
 const {source} = require('common-tags');
-const {chunk, shuffle, sampleSize, sample, random} = require('lodash');
+const {chunk, shuffle, sampleSize, sample, random, range, zip} = require('lodash');
 const {unlock, increment} = require('../achievements');
 const {AteQuiz} = require('../atequiz/index.ts');
 const {blockDeploy} = require('../deploy/index.ts');
@@ -61,6 +61,7 @@ const get牌Type = (牌) => {
 };
 
 const 牌Orders = ['萬子', '筒子', '索子', '字牌'];
+const romaji牌Orders = ['m', 'p', 's', ''];
 
 const 漢数字s = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
 
@@ -70,6 +71,13 @@ const 牌Names = [
 	...(漢数字s.map((漢数字) => `${漢数字}索`)),
 	...(漢数字s.map((漢数字) => `${漢数字}筒`)),
 	'赤五萬', '赤五索', '赤五筒',
+];
+
+const 牌Numerals = [
+	'東', '南', '西', '北', '中', '發', '白',
+	...range(1, 10),
+	...range(1, 10),
+	...range(1, 10),
 ];
 
 const nameTo牌 = (name) => {
@@ -88,6 +96,15 @@ const 牌ToName = (牌) => {
 		return `赤${name}`;
 	}
 	return name;
+};
+
+const 牌ToShortString = (牌) => {
+	const normalized牌 = 牌.replace(/\uFE00$/, '');
+	const shortString = String(牌Numerals[normalized牌.codePointAt(0) - 0x1F000]);
+	if (牌.endsWith('\uFE00')) {
+		return `r${shortString}`;
+	}
+	return shortString;
 };
 
 const normalize打牌Command = (text) => {
@@ -486,13 +503,31 @@ module.exports = (clients) => {
 				return;
 			}
 
-			if (text === 'ドラ表示牌') {
+			if (text === '手牌') {
 				if (state.phase !== 'gaming') {
 					perdon();
 					return;
 				}
 
-				postMessage(state.ドラ表示牌s.map((牌) => 牌ToName(牌)).join(' '));
+				// 12r588m239p467s東白白 のように表記
+				const sorted手牌 = sort(state.手牌);
+				const categorized手牌Array = 牌Orders.map((牌Type) => sorted手牌.filter((牌) => get牌Type(牌) === 牌Type));
+				const convertedIntoNumerals手牌Array = categorized手牌Array.map((val) => val.map((牌) => 牌ToShortString(牌)).join(''));
+
+				const convertedIntoNumerals手牌 =
+					zip(convertedIntoNumerals手牌Array, romaji牌Orders)
+						.map(([牌String, romaji牌Type]) => {
+							if (牌String === '') {
+								return 牌String;
+							}
+							return 牌String + romaji牌Type;
+						})
+						.join('');
+
+				postMessage(source`
+					${convertedIntoNumerals手牌}
+					ドラ表示牌: ${state.ドラ表示牌s.map((牌) => 牌ToName(牌)).join(' ')}
+				`);
 				return;
 			}
 
