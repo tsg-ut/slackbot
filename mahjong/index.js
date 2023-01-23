@@ -509,6 +509,7 @@ module.exports = (clients) => {
 					return;
 				}
 
+				state.手牌 = sort(state.手牌)
 				// 12r588m239p467s東白白 のように表記
 				const categorized手牌Array = 牌Orders.map((牌Type) => state.手牌.filter((牌) => get牌Type(牌) === 牌Type));
 				const convertedIntoNumerals手牌Array = categorized手牌Array.map((val) => val.map((牌) => 牌ToShortString(牌)).join(''));
