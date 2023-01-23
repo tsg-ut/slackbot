@@ -98,13 +98,13 @@ const 牌ToName = (牌) => {
 	return name;
 };
 
-const 数牌ToNumerals = (牌) => {
+const 牌ToShortString = (牌) => {
 	const normalized牌 = 牌.replace(/\uFE00$/, '');
-	const numeral = 牌Numerals[normalized牌.codePointAt(0) - 0x1F000];
+	const shortString = String(牌Numerals[normalized牌.codePointAt(0) - 0x1F000]);
 	if (牌.endsWith('\uFE00')) {
-		return `r${numeral}`;
+		return `r${shortString}`;
 	}
-	return numeral;
+	return shortString;
 };
 
 const normalize打牌Command = (text) => {
@@ -511,7 +511,7 @@ module.exports = (clients) => {
 
 				// 12r588m239p467s東白白 のように表記
 				const categorized手牌Array = 牌Orders.map((牌Type) => (state.手牌).filter((牌) => get牌Type(牌) === 牌Type));
-				const convertedIntoNumerals手牌Array = categorized手牌Array.map((val) => val.map((牌) => String(数牌ToNumerals(牌))).join(''));
+				const convertedIntoNumerals手牌Array = categorized手牌Array.map((val) => val.map((牌) => 牌ToShortString(牌)).join(''));
 				const convertedIntoNumerals手牌 = convertedIntoNumerals手牌Array.reduce(
 					(手牌String, categorized手牌String, index) => 手牌String.concat(categorized手牌String, romaji牌Orders[index]), '',
 				);
