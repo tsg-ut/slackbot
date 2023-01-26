@@ -614,6 +614,40 @@ class SlowQuiz {
 			game.answeredUsers = [];
 		}
 
+		// 完走実績の判定
+		for (const game of this.state.games) {
+			if (game.status === 'inprogress') {
+				if (game.question.split('/').length >= 5) {
+					const invisibleTokens = game.question.split('/').slice(game.progress);
+					const isCompleted = invisibleTokens.every((token, i) => (
+						Array.from(token).every((char, j, tokenChars) => {
+							if (
+								i === invisibleTokens.length - 1 &&
+								j === tokenChars.length - 1 &&
+								['。', '？', '?'].includes(char)
+							) {
+								return true;
+							}
+							return false;
+						})
+					));
+
+					if (isCompleted && game.correctAnswers.length > 0) {
+						increment(game.author, 'slowquiz-complete-quiz');
+					}
+				} else {
+					const lastCharacter = last(Array.from(game.question));
+					const {invisibleCharacters} = this.getVisibleQuestionText(game);
+					const isCompleted = (
+						    invisibleCharacters === 1 && ['。', '？', '?'].includes(lastCharacter)
+						  ) || invisibleCharacters === 0;
+					if (isCompleted && game.correctAnswers.length > 0) {
+						increment(game.author, 'slowquiz-complete-quiz');
+					}
+				}
+			}
+		}
+
 		if (this.state.games.some((game) => game.status === 'inprogress')) {
 			const blocks = await this.getGameBlocks();
 			const messages = await this.postMessage({
