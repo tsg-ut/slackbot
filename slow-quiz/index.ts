@@ -634,12 +634,13 @@ class SlowQuiz {
 					}
 				}
 				if (game.completed === undefined) {
-					if (game.status === 'finished') {
-						if (game.progress >= game.progressOfComplete) {
-							game.completed = true;
-						} else {
-							game.completed = false;
+					if (game.progress >= game.progressOfComplete) {
+						game.completed = true;
+						if (game.correctAnswers.some((submission) => submission.progress < game.progressOfComplete)) {
+							increment(game.author, 'slowquiz-complete-quiz');
 						}
+					} else {
+						game.completed = false;
 					}
 				}
 			}
