@@ -3555,6 +3555,15 @@ const achievements: Achievement[] = [
 		counter: 'slowquiz-register-quiz',
 		value: 1,
 	},
+	{
+		id: 'slowquiz-complete-quiz-1',
+		difficulty: 'professional',
+		title: '完走した感想ですが',
+		condition: '1日1文字クイズで作問した問題が、1人以上に正解された状態で完走する',
+		category: 'slowquiz',
+		counter: 'slowquiz-complete-quiz',
+		value: 1,
+	},
 
 	// taimai
 

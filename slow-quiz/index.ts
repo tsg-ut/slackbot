@@ -42,6 +42,8 @@ export interface Game {
 	finishDate: number | null,
 
 	progress: number,
+	progressOfComplete?: number, // 一度 progressGames が実行された後に optional を外す
+	completed?: boolean, // 同上
 	days: number,
 	correctAnswers: Submission[],
 	wrongAnswers: Submission[],
@@ -343,6 +345,20 @@ class SlowQuiz {
 			return;
 		}
 
+		// progressOfComplete の決定
+		let progressOfComplete = 0;
+		if (question.split('/').length >= 5) {
+			progressOfComplete = question.split('/').length;
+		} else {
+			progressOfComplete = question.length;
+			const lastCharacter = last(Array.from(question));
+			if (
+				['。', '？', '?'].includes(lastCharacter)
+			) {
+				progressOfComplete--;
+			}
+		}
+
 		this.state.games.push({
 			id: Math.floor(Math.random() * 10000000000).toString(),
 			question,
@@ -355,6 +371,8 @@ class SlowQuiz {
 			finishDate: null,
 			status: 'waitlisted',
 			progress: 0,
+			progressOfComplete,
+			completed: false,
 			days: 0,
 			correctAnswers: [],
 			wrongAnswers: [],
@@ -601,6 +619,33 @@ class SlowQuiz {
 		}
 
 		for (const game of this.state.games) {
+			// ##### 以下，一度実行された後に削除 #####
+			if (game.progressOfComplete === undefined) {
+				// progressOfComplete の決定
+				if (game.question.split('/').length >= 5) {
+					game.progressOfComplete = game.question.split('/').length;
+				} else {
+					game.progressOfComplete = game.question.length;
+					const lastCharacter = last(Array.from(game.question));
+					if (
+						['。', '？', '?'].includes(lastCharacter)
+					) {
+						game.progressOfComplete--;
+					}
+				}
+				if (game.completed === undefined) {
+					if (game.progress >= game.progressOfComplete) {
+						game.completed = true;
+						if (game.correctAnswers.some((submission) => submission.progress < game.progressOfComplete)) {
+							increment(game.author, 'slowquiz-complete-quiz');
+						}
+					} else {
+						game.completed = false;
+					}
+				}
+			}
+			// ##### ここまで #####
+
 			if (game.status === 'inprogress') {
 				game.progress++;
 				game.days++;
@@ -609,6 +654,12 @@ class SlowQuiz {
 				// 括弧で終わるならもう1文字
 				if ((last(Array.from(text)) ?? '').match(/^[\p{Ps}\p{Pe}]$/u)) {
 					game.progress++;
+				}
+				if (game.progress >= game.progressOfComplete && !game.completed) {
+					game.completed = true;
+					if (game.correctAnswers.length > 0) {
+						increment(game.author, 'slowquiz-complete-quiz');
+					}
 				}
 			}
 			game.answeredUsers = [];
