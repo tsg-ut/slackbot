@@ -422,7 +422,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 			return;
 		}
 
-		if (message.text === '不成立') {
+		if (message.text === '不成立' || message.text === 'f') {
 			if (state.board === null) {
 				await postMessage(':ha:');
 				return;
