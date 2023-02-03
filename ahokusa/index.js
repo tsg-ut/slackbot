@@ -288,13 +288,15 @@ module.exports = ({eventClient, webClient: slack}) => {
 
 		const {user} = message;
 
+		const thread = message.thread_ts || message.ts;
+
 		const postMessage = async (text, opt = {}) => {
 			await slack.chat.postMessage({
 				channel: message.channel,
 				text,
 				username: state.boardName === 'ahokusa' ? 'ahokusa' : state.boardName === 'chiya' ? 'chiya' : 'sushi-puzzle',
 				icon_emoji: state.lackedPiece,
-				thread_ts: message.thread_ts || message.ts,
+				thread_ts: thread,
 				...opt,
 			});
 		};
@@ -304,34 +306,57 @@ module.exports = ({eventClient, webClient: slack}) => {
 			await postMessage(boardText, opt);
 		};
 
+		if (message.text === 'スライドパズル爆破' || message.text === 'あ　ほ　く　さ') {
+			await setState({ board: null, thread: null });
+			await slack.reactions.add({
+				name: 'boom',
+				channel: message.channel,
+				timestamp: message.ts,
+			});
+			return;
+		}
+
+		const checkPlaying = async () => {
+			if(state.board !== null && state.thread !== thread){
+				const url = `<https://tsg-ut.slack.com/archives/${process.env.CHANNEL_SANDBOX}/p${state.thread.replace('.', '')}|ここ>`;
+				await postMessage(`既に${url}で起動中だよ`);
+				return true;
+			}
+			return false;
+		}
+
 		if (message.text === 'あほくさスライドパズル') {
-			await setState({thread: message.thread_ts || message.ts});
+			if(await checkPlaying())return;
+			await setState({thread});
 			await shuffleBoard('ahokusa');
-			await postBoard({reply_broadcast: true});
+			await postBoard();
 			await unlock(user, 'ahokusa-play')
 			return;
 		}
 
 		if (message.text === '寿司スライドパズル') {
-			await setState({thread: message.thread_ts || message.ts});
+			if(await checkPlaying())return;
+			await setState({thread});
 			await shuffleBoard(sample(['sushi3', 'sushi4', 'sushi5', 'sushi6']));
-			await postBoard({reply_broadcast: true});
+			await postBoard();
 			return;
 		}
 
 		const match = message.text.match(/^寿司スライドパズル (?<size>[3456])$/);
 		if (match) {
+			if(await checkPlaying())return;
 			const {size} = match.groups;
-			await setState({thread: message.thread_ts || message.ts});
+			await setState({thread});
 			await shuffleBoard(`sushi${size}`);
-			await postBoard({reply_broadcast: true});
+			await postBoard();
 			return;
 		}
 
 		if (message.text === '千矢スライドパズル') {
-			await setState({thread: message.thread_ts || message.ts});
+			if(await checkPlaying())return;
+			await setState({thread});
 			await shuffleBoard('chiya');
-			await postBoard({reply_broadcast: true});
+			await postBoard();
 			return;
 		}
 
@@ -373,9 +398,9 @@ module.exports = ({eventClient, webClient: slack}) => {
 					await postAsAhokusa(':ha:');
 					return;
 				}
-				await setState({thread: message.thread_ts || message.ts});
+				await setState({thread});
 				await setNewBoard(board, 'ahokusa', true);
-				await postBoard({reply_broadcast: true});
+				await postBoard();
 				return;
 			}
 
@@ -394,9 +419,9 @@ module.exports = ({eventClient, webClient: slack}) => {
 					await postAsAhokusa(':ha:');
 					return;
 				}
-				await setState({thread: message.thread_ts || message.ts});
+				await setState({thread});
 				await setNewBoard(board, 'ahokusa', true);
-				await postBoard({reply_broadcast: true});
+				await postBoard();
 				return;
 			}
 			await postAsAhokusa(':ha:');
@@ -443,7 +468,6 @@ module.exports = ({eventClient, webClient: slack}) => {
 				await postMessage(
 					`:tada: ${round(time, 2).toFixed(2)}秒` +
 					`${state.seen === 0 ? '、一発' : ''}`,
-					{reply_broadcast: true}
 				);
 				await setState({
 					board: null,
@@ -486,7 +510,6 @@ module.exports = ({eventClient, webClient: slack}) => {
 					`:tada: ${round(time, 2).toFixed(2)}秒、` +
 					`${state.hand}手${minHandInfo}` +
 					`${state.seen === 1 ? '、一発' : ''}`,
-					{reply_broadcast: true}
 				);
 				if (!state.usedHelp){
 					if (state.boardName === 'ahokusa') {
