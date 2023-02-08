@@ -35,8 +35,13 @@ export default () => {
 	});
 
 	fastify.get('/topic/topics', async (request, reply) => {
+		const user = request.headers['x-user'];
 		const topics = await db.collection('topic_messages').get();
-		reply.send(topics.docs.map((doc) => doc.data()));
+		reply.send(topics.docs.map((doc) => {
+			const topic = doc.data();
+			const isLiked = topic.likes.includes(user);
+			return {...topic, isLiked};
+		}));
 	});
 
 	fastify.put('/topic/topics/:ts/like', async (request, reply) => {
