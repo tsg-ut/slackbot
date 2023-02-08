@@ -39,9 +39,9 @@ export default () => {
 		reply.send(topics.docs.map((doc) => doc.data()));
 	});
 
-	fastify.put('/topic/like', async (request, reply) => {
+	fastify.put('/topic/topics/:ts/like', async (request, reply) => {
 		const user = request.headers['x-user'];
-		const {ts} = request.body as {ts: string};
+		const {ts} = request.params as {ts: string};
 		if (typeof user !== 'string' || typeof ts !== 'string') {
 			reply.statusCode = 400;
 			reply.send('Bad Request');
@@ -52,9 +52,9 @@ export default () => {
 		reply.send('ok');
 	});
 
-	fastify.delete('/topic/like', async (request, reply) => {
+	fastify.delete('/topic/topics/:ts/like', async (request, reply) => {
 		const user = request.headers['x-user'];
-		const {ts} = request.body as {ts: string};
+		const {ts} = request.params as {ts: string};
 		if (typeof user !== 'string' || typeof ts !== 'string') {
 			reply.statusCode = 400;
 			reply.send('Bad Request');
