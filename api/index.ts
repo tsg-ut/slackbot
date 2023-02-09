@@ -14,7 +14,7 @@ interface RootRoute {
 
 export default () => {
 	const fastify = Fastify({
-		logger: true,
+		logger: logger.child({bot: 'http/api'}),
 		pluginTimeout: 50000,
 	});
 

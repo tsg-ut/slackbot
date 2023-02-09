@@ -2,9 +2,24 @@ import winston from 'winston';
 // @ts-expect-error
 import {Syslog as WinstonSyslog} from 'winston-syslog';
 import {inspect} from 'util';
+import type {FastifyLogFn} from 'fastify';
+// @ts-expect-error
+import {serializers} from 'fastify/lib/logger';
 
 const logger = winston.createLogger({
 	level: 'info',
+	levels: {
+		fatal: 0,
+		error: 1,
+		warn: 2,
+		info: 3,
+		http: 4,
+		verbose: 5,
+		debug: 6,
+		silly: 7,
+		trace: 8,
+		silent: 9,
+	},
 	format: winston.format.combine(
 		winston.format.timestamp(),
 		winston.format.json(),
@@ -20,13 +35,21 @@ const logger = winston.createLogger({
 						return info;
 					})(),
 					winston.format.colorize(),
-					winston.format.printf(({level, message, timestamp}) => {
+					winston.format.printf(({level, message, timestamp, bot}) => {
+						if (typeof message?.res === 'object') {
+							message.res = serializers.res(message.res);
+						}
+						if (typeof message?.req === 'object') {
+							message.req = serializers.req(message.req);
+						}
+						
 						const time = new Date(timestamp);
 						const hh = time.getHours().toString().padStart(2, '0');
 						const mm = time.getMinutes().toString().padStart(2, '0');
 						const ss = time.getSeconds().toString().padStart(2, '0');
 						const prettyMessage = typeof message === 'string' ? message : inspect(message, {colors: true});
-						return `[${level}] \x1b[90m${hh}:${mm}:${ss}\x1b[0m ${prettyMessage}`;
+						const botString = bot ? ` \x1b[35m(${bot})\x1b[0m` : '';
+						return `[${level}] \x1b[90m${hh}:${mm}:${ss}\x1b[0m${botString} ${prettyMessage}`;
 					}),
 				),
 			}),
@@ -43,4 +66,11 @@ const logger = winston.createLogger({
 	],
 });
 
-export default logger;
+export type SlackbotLogger = winston.Logger & {
+	fatal: FastifyLogFn,
+	trace: FastifyLogFn,
+	silent: FastifyLogFn,
+	child(options: {bot: string}): SlackbotLogger,
+};
+
+export default logger as SlackbotLogger;

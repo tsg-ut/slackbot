@@ -31,6 +31,7 @@ process.on('unhandledRejection', (error: Error, promise: Promise<any>) => {
 sharp.cache(false);
 
 const fastify = Fastify({
+	logger: logger.child({bot: 'http/index'}),
 	pluginTimeout: 50000,
 });
 
