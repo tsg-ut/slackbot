@@ -1,7 +1,8 @@
-import type { Message } from '@slack/web-api/dist/response/ConversationsHistoryResponse';
-import { increment } from '../achievements';
-import type { SlackInterface } from '../lib/slack';
-import { getReactions } from '../lib/slackUtils';
+import type {Message} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
+import {increment} from '../achievements';
+import db from '../lib/firestore';
+import type {SlackInterface} from '../lib/slack';
+import {getReactions} from '../lib/slackUtils';
 import State from '../lib/state';
 
 const isQualifiableMessage = (message: Message) => {
@@ -29,6 +30,40 @@ const isQualifiableMessage = (message: Message) => {
 interface StateObj {
 	processedMessages: string[],
 }
+
+const TopicMessages = db.collection('topic_messages');
+
+export const addLike = async (user: string, ts: string) => {
+	await db.runTransaction(async (transaction) => {
+		const message = await transaction.get(TopicMessages.doc(ts));
+		if (!message.exists) {
+			return;
+		}
+
+		const likes = message.get('likes') ?? [];
+		if (!likes.includes(user)) {
+			likes.push(user);
+		}
+
+		transaction.update(TopicMessages.doc(ts), {likes});
+	});
+};
+
+export const removeLike = async (user: string, ts: string) => {
+	await db.runTransaction(async (transaction) => {
+		const message = await transaction.get(TopicMessages.doc(ts));
+		if (!message.exists) {
+			return;
+		}
+
+		const likes = message.get('likes') ?? [];
+		if (likes.includes(user)) {
+			likes.splice(likes.indexOf(user), 1);
+		}
+
+		transaction.update(TopicMessages.doc(ts), {likes});
+	});
+};
 
 export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const state = await State.init<StateObj>('topic', {processedMessages: []});
@@ -99,6 +134,8 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		if (!isQualifiableMessage(message)) {
 			return;
 		}
+
+		await TopicMessages.doc(message.ts).set({message, likes: []});
 
 		increment(message.user, 'topic-adopted');
 		updateTopic(message.text.trim());
