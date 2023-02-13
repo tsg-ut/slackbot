@@ -128,6 +128,11 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		if (message === undefined) {
 			return;
 		}
+		
+		// スレッド内の発言はconversations.historyで取得できないため正しいメッセージが取得できない場合がある
+		if (event.item.ts !== message?.ts) {
+			return;
+		}
 
 		processedMessages.add(event.item.ts);
 		state.processedMessages.push(event.item.ts);
