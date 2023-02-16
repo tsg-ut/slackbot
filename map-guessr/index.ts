@@ -76,12 +76,12 @@ class CoordAteQuiz extends AteQuiz {
     const [lat, lng] = latLngDeformat(userAnswer);
     const [latans, lngans] = this.problem.answer;
     const distance = measureDistance(lat, lng, latans, lngans);
-    message.text = `<@[[!user]]> 正解:tada:\n中心点の座標は <https://maps.google.co.jp/maps?ll=${latans},${lngans}&q=${latans},${lngans}&t=k|${latLngFormat(
+    message.text = `<@[[!user]]> 正解:tada:\n中心点の座標は ${latLngFormat(
       this.problem.answer[0],
       this.problem.answer[1]
-    )}> 、中心点までの距離は${distFormat(
+    )} 、中心点までの距離は${distFormat(
       distance
-    )}だよ:muscle:
+    )}だよ:muscle:\nhttps://maps.google.co.jp/maps?ll=${latans},${lngans}&q=${latans},${lngans}&t=k
 			`;
     message.text = message.text.replaceAll(
       this.replaceKeys.correctAnswerer,
@@ -273,7 +273,12 @@ async function puppeteerWindow(
   longitude: number,
   zoom: number
 ): Promise<Record<string, any>> {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+    ]
+  });
   const page = await browser.newPage();
   await page.setViewport({
     width: img_size,
@@ -577,15 +582,13 @@ function problemFormat(
   size: number,
   img_url: string,
   latitude: number,
-  longitude: number,
-  thread_ts: string
+  longitude: number
 ) {
   const answer = latLngFormat(latitude, longitude);
 
   const problem: CoordAteQuizProblem = {
     problemMessage: {
       channel: CHANNEL,
-      thread_ts,
       text: `緯度と経度を当ててね。サイズは${distFormat(size)}四方だよ。`,
       blocks: [
         {
@@ -613,21 +616,15 @@ function problemFormat(
       channel: CHANNEL,
       text: ``,
       reply_broadcast: true,
-      unfurl_links: false,
-      unfurl_media: false,
     },
     incorrectMessage: {
       channel: CHANNEL,
       text: ``,
-      unfurl_links: false,
-      unfurl_media: false,
     },
     unsolvedMessage: {
       channel: CHANNEL,
-      text: `もう、しっかりして！\n中心点の座標は <https://maps.google.co.jp/maps?ll=${latitude},${longitude}&q=${latitude},${longitude}&&t=k|${answer}> だよ:anger:`,
+      text: `もう、しっかりして！\n中心点の座標は ${answer} だよ:anger:\nhttps://maps.google.co.jp/maps?ll=${latitude},${longitude}&q=${latitude},${longitude}&&t=k`,
       reply_broadcast: true,
-      unfurl_links: false,
-      unfurl_media: false,
     },
     answer: [latitude, longitude],
     zoom: zoom,
@@ -641,8 +638,7 @@ async function prepareProblem(
   slack: any,
   message: any,
   aliases: Record<string, string[]>,
-  world: any,
-  thread_ts: string
+  world: any
 ) {
   await slack.chat.postEphemeral({
     channel: CHANNEL,
@@ -679,8 +675,7 @@ async function prepareProblem(
     sizeActual,
     img_url,
     latitude,
-    longitude,
-    thread_ts
+    longitude
   );
   return problem;
 }
@@ -739,8 +734,7 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
             slack,
             message,
             aliases,
-            world,
-            message.ts
+            world
           );
 
           const ateQuiz = new CoordAteQuiz(eventClient, slack, problem);
