@@ -2709,7 +2709,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'kirafan-easy-answer-first-hint-100',
 		difficulty: 'professional',
-		title: '七賢者',
+		title: 'スクライブギルド長',
 		condition: 'きらファン当てクイズeasyでヒント1回以内で100回正解する',
 		category: 'kirafan',
 		counter: 'kirafan-easy-answer-first-hint',
