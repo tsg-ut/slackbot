@@ -2637,7 +2637,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'kirafan-answer-first-hint-100',
 		difficulty: 'professional',
-		title: '筆頭神官',
+		title: 'きららさんといっしょ',
 		condition: 'きらファン当てクイズでヒント1回以内で100回正解する',
 		category: 'kirafan',
 		counter: 'kirafan-answer-first-hint',
@@ -2646,7 +2646,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'kirafan-answer-first-hint-1000',
 		difficulty: 'professional',
-		title: '女神ソラ',
+		title: '新たなる聖典の紡ぎ手',
 		condition: 'きらファン当てクイズでヒント1回以内で1000回正解する',
 		category: 'kirafan',
 		counter: 'kirafan-answer-first-hint',
