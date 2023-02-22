@@ -3443,7 +3443,7 @@ const achievements: Achievement[] = [
 		title: '作問中毒',
 		condition: 'Discordの早押しクイズで自分が作問した問題が2000問出題される',
 		counter: 'discord-hayaoshi-my-quiz-is-used',
-		value: 3000,
+		value: 2000,
 		category: 'discord',
 	},
 	{
