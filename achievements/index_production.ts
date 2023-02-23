@@ -136,18 +136,6 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 		}
 	});
 
-	eventClient.on('user_change', (event) => {
-		db.collection('users').doc(event.user.id).update({
-			info: event.user,
-		});
-	});
-
-	eventClient.on('team_join', (event) => {
-		db.collection('users').doc(event.user.id).set({
-			info: event.user,
-		});
-	});
-
 	slackInteractions.action({type: 'button', callbackId: 'achievements'}, (payload: any, respond: any) => {
 		unlock(payload.user.id, payload.actions[0].value);
 		respond({text: 'おめでとう!:tada:'});
