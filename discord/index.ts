@@ -94,7 +94,7 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 	let hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users);
 	let tts = new TTS(joinVoiceChannelFn, state.ttsDictionary);
 
-	const attachDiscordHandlers = () => {
+	const attachDiscordHandlers = (hayaoshi: Hayaoshi, tts: TTS) => {
 		hayaoshi.on('message', (message: string, channelId: string = process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) => {
 			const discordTextSandbox = discord.channels.cache.get(channelId) as TextChannel;
 			return discordTextSandbox.send(message);
@@ -116,7 +116,7 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 		});
 	};
 
-	attachDiscordHandlers();
+	attachDiscordHandlers(hayaoshi, tts);
 	discord.on('messageCreate', async (message: Discord.Message) => {
 		if (message.content === 'tsgbot reload') {
 			tts.destroy();
@@ -124,6 +124,7 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 			hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users);
 			tts = new TTS(joinVoiceChannelFn, state.ttsDictionary);
+			attachDiscordHandlers(hayaoshi, tts);
 			return;
 		}
 		hayaoshi.onMessage(message);
