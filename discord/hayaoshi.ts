@@ -234,6 +234,15 @@ export default class Hayaoshi extends EventEmitter {
 		}
 	}
 
+	destroy() {
+		if (this.state.subscription) {
+			this.state.subscription.unsubscribe();
+		}
+		if (this.state.connection) {
+			this.state.connection.destroy();
+		}
+	}
+
 	async readAnswer() {
 		await this.playSound('../answerText');
 

@@ -91,30 +91,41 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 		return '';
 	};
 
-	const hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users);
-	const tts = new TTS(joinVoiceChannelFn, state.ttsDictionary);
+	let hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users);
+	let tts = new TTS(joinVoiceChannelFn, state.ttsDictionary);
 
-	hayaoshi.on('message', (message: string, channelId: string = process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) => {
-		const discordTextSandbox = discord.channels.cache.get(channelId) as TextChannel;
-		return discordTextSandbox.send(message);
-	});
+	const attachDiscordHandlers = () => {
+		hayaoshi.on('message', (message: string, channelId: string = process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) => {
+			const discordTextSandbox = discord.channels.cache.get(channelId) as TextChannel;
+			return discordTextSandbox.send(message);
+		});
 
-	tts.on('message', (message: string, channelId: string = process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) => {
-		const discordTextSandbox = discord.channels.cache.get(channelId) as TextChannel;
-		return discordTextSandbox.send(message);
-	});
+		tts.on('message', (message: string, channelId: string = process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) => {
+			const discordTextSandbox = discord.channels.cache.get(channelId) as TextChannel;
+			return discordTextSandbox.send(message);
+		});
 
-	hayaoshi.on('start-game', () => {
-		log.info('[hayaoshi] start-game');
-		tts.pause();
-	});
+		hayaoshi.on('start-game', () => {
+			log.info('[hayaoshi] start-game');
+			tts.pause();
+		});
 
-	hayaoshi.on('end-game', () => {
-		log.info('[hayaoshi] end-game');
-		tts.unpause();
-	});
+		hayaoshi.on('end-game', () => {
+			log.info('[hayaoshi] end-game');
+			tts.unpause();
+		});
+	};
 
-	discord.on('messageCreate', (message) => {
+	attachDiscordHandlers();
+	discord.on('messageCreate', async (message: Discord.Message) => {
+		if (message.content === 'tsgbot reload') {
+			tts.destroy();
+			hayaoshi.destroy();
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+			hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users);
+			tts = new TTS(joinVoiceChannelFn, state.ttsDictionary);
+			return;
+		}
 		hayaoshi.onMessage(message);
 		tts.onMessage(message);
 	});

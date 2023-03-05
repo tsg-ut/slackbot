@@ -127,6 +127,15 @@ export default class TTS extends EventEmitter {
 		}
 	}
 
+	destroy() {
+		if (this.subscription) {
+			this.subscription.unsubscribe();
+		}
+		if (this.connection) {
+			this.connection.destroy();
+		}
+	}
+
 	async assignNewVoice() {
 		const state = await this.state.load();
 		const voices: Voice[] = Object.values(Voice);
