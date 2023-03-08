@@ -619,33 +619,6 @@ class SlowQuiz {
 		}
 
 		for (const game of this.state.games) {
-			// ##### 以下，一度実行された後に削除 #####
-			if (game.progressOfComplete === undefined) {
-				// progressOfComplete の決定
-				if (game.question.split('/').length >= 5) {
-					game.progressOfComplete = game.question.split('/').length;
-				} else {
-					game.progressOfComplete = game.question.length;
-					const lastCharacter = last(Array.from(game.question));
-					if (
-						['。', '？', '?'].includes(lastCharacter)
-					) {
-						game.progressOfComplete--;
-					}
-				}
-				if (game.completed === undefined) {
-					if (game.progress >= game.progressOfComplete) {
-						game.completed = true;
-						if (game.correctAnswers.some((submission) => submission.progress < game.progressOfComplete)) {
-							increment(game.author, 'slowquiz-complete-quiz');
-						}
-					} else {
-						game.completed = false;
-					}
-				}
-			}
-			// ##### ここまで #####
-
 			if (game.status === 'inprogress') {
 				game.progress++;
 				game.days++;
@@ -664,6 +637,8 @@ class SlowQuiz {
 			}
 			game.answeredUsers = [];
 		}
+
+		await this.checkGameEnd();
 
 		if (this.state.games.some((game) => game.status === 'inprogress')) {
 			const blocks = await this.getGameBlocks();
@@ -722,7 +697,10 @@ class SlowQuiz {
 				continue;
 			}
 
-			if (game.correctAnswers.length >= this.MAX_CORRECT_ANSWERS) {
+			if (
+				game.correctAnswers.length >= this.MAX_CORRECT_ANSWERS ||
+				(game.progress > game.progressOfComplete && game.completed)
+			) {
 				game.status = 'finished';
 				game.finishDate = Date.now();
 
