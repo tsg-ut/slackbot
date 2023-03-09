@@ -628,7 +628,7 @@ class SlowQuiz {
 				if ((last(Array.from(text)) ?? '').match(/^[\p{Ps}\p{Pe}]$/u)) {
 					game.progress++;
 				}
-				if (game.progress >= game.progressOfComplete && !game.completed) {
+				if (game.progress === game.progressOfComplete && !game.completed) {
 					game.completed = true;
 					if (game.correctAnswers.length > 0) {
 						increment(game.author, 'slowquiz-complete-quiz');
