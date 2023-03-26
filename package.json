@@ -32,7 +32,7 @@
   "homepage": "https://github.com/tsg-ut/slackbot#readme",
   "dependencies": {
     "@discordjs/opus": "^0.8.0",
-    "@discordjs/voice": "^0.11.0",
+    "@discordjs/voice": "^0.15.0",
     "@fastify/express": "^2.0.2",
     "@fastify/formbody": "^7.2.0",
     "@google-cloud/text-to-speech": "^4.0.2",
