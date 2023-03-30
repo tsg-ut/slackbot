@@ -137,14 +137,14 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 			.map((match) => {
 				const matchChannel = channels.find(({name}) => match.channel === name);
 				if (!matchChannel) {
-					return `* #${match.channel}: ${match.description}`;
+					return `● #${match.channel}: ${match.description}`;
 				}
 				matchedChannels.push({
 					id: matchChannel.id,
 					name: match.channel,
 					description: match.description,
 				});
-				return `* <#${matchChannel.id}|${match.channel}>: ${match.description}`;
+				return `● <#${matchChannel.id}|${match.channel}>: ${match.description}`;
 			})
 			.join('\n');
 
