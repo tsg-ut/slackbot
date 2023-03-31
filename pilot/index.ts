@@ -264,7 +264,9 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 			!user ||
 			channel !== process.env.CHANNEL_SELF_INTRODUCTION ||
 			thread_ts !== undefined ||
-			bot_id !== undefined
+			bot_id !== undefined ||
+			subtype === 'channel_join' ||
+			subtype === 'channel_leave'
 		) {
 			return;
 		}
@@ -339,7 +341,6 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 		type: 'button',
 		actionId: 'pilot_join_channel',
 	}, (payload: any) => {
-		console.log(payload);
 		const data: {channelIds: string[], userId: string, originalTs: string} = JSON.parse(payload?.actions?.[0]?.value ?? '{}');
 		processInvitation({
 			...data,
