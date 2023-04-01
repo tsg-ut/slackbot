@@ -853,6 +853,15 @@ const achievements: Achievement[] = [
 		reaction: 'understand-',
 		value: 5,
 	},
+	{
+		id: 'reaction-んー-5',
+		difficulty: 'hard',
+		title: '今言うなは考えるにゃしである',
+		condition: '1つのメッセージに対し5人以上から:んー:リアクションをもらう',
+		category: 'reactions',
+		reaction: 'んー',
+		value: 5,
+	},
 
 	{
 		id: 'reaction-koresuki-5-first-reaction-1',
