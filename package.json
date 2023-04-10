@@ -56,7 +56,7 @@
     "@types/twitter": "^1.7.1",
     "amae-koromo": "github:SAPikachu/amae-koromo-scripts",
     "async-mutex": "^0.4.0",
-    "aws-sdk": "^2.1213.0",
+    "aws-sdk": "^2.1354.0",
     "axios": "^0.27.2",
     "bcdice": "^3.6.0",
     "bn.js": "^5.2.1",
