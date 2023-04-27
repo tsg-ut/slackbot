@@ -481,3 +481,5 @@ module.exports = ({ eventClient, webClient: slack }) => {
         }
     });
 };
+
+module.exports.getDictionary = getDictionary;
