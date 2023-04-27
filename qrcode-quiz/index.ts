@@ -30,6 +30,7 @@ const uploadImage = async (image: Buffer): Promise<string> => {
 };
 
 const SIZE = 20;
+const MARGIN = 3;
 
 const generateQuizQrcode = async ({data, mode, isUnmasked}: { data: string, mode: QRCodeSegmentMode, isUnmasked: boolean}) => {
 	const qrcode = QRCode.create([{data, mode}], {
@@ -40,12 +41,25 @@ const generateQuizQrcode = async ({data, mode, isUnmasked}: { data: string, mode
 	});
 
 	const modules = qrcode.modules.data;
+	const imageCells = qrcode.modules.size + MARGIN * 2;
 
 	const image = await sharp(Buffer.from(Array.from(
-		{length: modules.length * SIZE * SIZE},
+		{length: (imageCells * SIZE) ** 2},
 		(_d, i) => {
-			const x = Math.floor((i % (qrcode.modules.size * SIZE)) / SIZE);
-			const y = Math.floor(i / (qrcode.modules.size * SIZE * SIZE));
+			const rx = Math.floor((i % (imageCells * SIZE)) / SIZE);
+			const ry = Math.floor(i / (imageCells * SIZE * SIZE));
+
+			if (
+				rx < MARGIN ||
+				ry < MARGIN ||
+				rx >= imageCells - MARGIN ||
+				ry >= imageCells - MARGIN
+			) {
+				return 255;
+			}
+
+			const x = rx - MARGIN;
+			const y = ry - MARGIN;
 
 			if (
 				(x < 7 && y < 7) ||
@@ -66,8 +80,8 @@ const generateQuizQrcode = async ({data, mode, isUnmasked}: { data: string, mode
 		},
 	)), {
 		raw: {
-			width: qrcode.modules.size * SIZE,
-			height: qrcode.modules.size * SIZE,
+			width: imageCells * SIZE,
+			height: imageCells * SIZE,
 			channels: 1,
 		},
 	}).png().toBuffer();
@@ -84,18 +98,32 @@ const generateOriginalQrcode = async ({data, mode, isUnmasked}: { data: string, 
 	});
 
 	const modules = qrcode.modules.data;
+	const imageCells = qrcode.modules.size + MARGIN * 2;
 
 	const image = await sharp(Buffer.from(Array.from(
-		{length: modules.length * SIZE * SIZE},
+		{length: (imageCells * SIZE) ** 2},
 		(_d, i) => {
-			const x = Math.floor((i % (qrcode.modules.size * SIZE)) / SIZE);
-			const y = Math.floor(i / (qrcode.modules.size * SIZE * SIZE));
+			const rx = Math.floor((i % (imageCells * SIZE)) / SIZE);
+			const ry = Math.floor(i / (imageCells * SIZE * SIZE));
+
+			if (
+				rx < MARGIN ||
+				ry < MARGIN ||
+				rx >= imageCells - MARGIN ||
+				ry >= imageCells - MARGIN
+			) {
+				return 255;
+			}
+
+			const x = rx - MARGIN;
+			const y = ry - MARGIN;
+
 			return modules[y * qrcode.modules.size + x] === 0 ? 255 : 0;
 		},
 	)), {
 		raw: {
-			width: qrcode.modules.size * SIZE,
-			height: qrcode.modules.size * SIZE,
+			width: imageCells * SIZE,
+			height: imageCells * SIZE,
 			channels: 1,
 		},
 	}).png().toBuffer();
