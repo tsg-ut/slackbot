@@ -368,7 +368,7 @@ export default (slackClients: SlackInterface) => {
 							},
 						],
 					},
-					correctAnswers: [],
+					correctAnswers: [quiz.data, quiz.data.toLowerCase()],
 				}, {});
 
 				const startTime = Date.now();
