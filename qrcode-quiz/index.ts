@@ -1,3 +1,4 @@
+import {writeFileSync} from 'fs';
 import {Message} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
 import {Mutex} from 'async-mutex';
 import {v2 as cloudinary} from 'cloudinary';
@@ -10,6 +11,7 @@ import {increment} from '../achievements';
 import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
 // @ts-expect-error: untyped
 import {getDictionary} from '../hangman';
+import logger from '../lib/logger';
 import {SlackInterface} from '../lib/slack';
 import {Loader} from '../lib/utils';
 // @ts-expect-error: untyped
@@ -263,6 +265,8 @@ const getKanjiText = async (difficulty: Difficulty) => {
 	if (difficulty === 'easy') {
 		const candidateWords = tahoiyaDictionary
 			.filter((word) => word.length === 1);
+		logger.info(new Set(candidateWords).size);
+		logger.info(writeFileSync(`${__dirname}/temp.txt`, Array.from(new Set(candidateWords)).sort().join('')));
 		return sample(candidateWords);
 	}
 
@@ -361,7 +365,7 @@ class QrAteQuiz extends AteQuiz {
 }
 
 export default (slackClients: SlackInterface) => {
-	const {eventClient} = slackClients;
+	const {eventClient, webClient: slack} = slackClients;
 
 	eventClient.on('message', (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
@@ -369,6 +373,15 @@ export default (slackClients: SlackInterface) => {
 		}
 
 		const {text, channel} = message;
+
+		if (mutex.isLocked()) {
+			slack.chat.postEphemeral({
+				channel,
+				text: '今クイズ中だよ',
+				user: message.user,
+			});
+			return;
+		}
 
 		mutex.runExclusive(async () => {
 			if (
