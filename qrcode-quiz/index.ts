@@ -1,5 +1,7 @@
+import {Message} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
 import {Mutex} from 'async-mutex';
 import {v2 as cloudinary} from 'cloudinary';
+import {stripIndent} from 'common-tags';
 import {random, sample} from 'lodash';
 import QRCode, {QRCodeSegmentMode} from 'qrcode';
 import toSJIS from 'qrcode/helper/to-sjis';
@@ -197,6 +199,7 @@ const hiraganaDictionaryLoader = new Loader<string[]>(async () => (
 const kanjiDictionaryLoader = new Loader<string[]>(async () => (
 	(await getCandidateWords({min: 0, max: Infinity}) as TahoiyaWord[])
 		.map(([word]) => word)
+		.filter((word) => word.match(/^[一-龠]+$/))
 ));
 
 const getAlphabetText = async (difficulty: Difficulty) => {
@@ -233,12 +236,12 @@ const getHiraganaText = async (difficulty: Difficulty) => {
 
 	if (difficulty === 'normal') {
 		const candidateWords = tahoiyaDictionary
-			.filter((word) => word.length === 3 || word.length === 4);
+			.filter((word) => word.length >= 3 && word.length <= 6);
 		return sample(candidateWords);
 	}
 
 	const candidateWords = tahoiyaDictionary
-		.filter((word) => word.length >= 5 || word.length <= 10);
+		.filter((word) => word.length >= 7 && word.length <= 10);
 	return sample(candidateWords);
 };
 
@@ -270,7 +273,7 @@ const getKanjiText = async (difficulty: Difficulty) => {
 	}
 
 	const candidateWords = tahoiyaDictionary
-		.filter((word) => word.length >= 3 || word.length <= 10);
+		.filter((word) => word.length >= 3 && word.length <= 10);
 	return sample(candidateWords);
 };
 
@@ -324,8 +327,36 @@ const generateQuiz = async (difficulty: Difficulty, modeOption: Mode): Promise<{
 };
 
 class QrAteQuiz extends AteQuiz {
+	startTime: number;
+
+	endTime: number;
+
 	waitSecGen() {
 		return 300;
+	}
+
+	start() {
+		this.startTime = Date.now();
+		return super.start();
+	}
+
+	solvedMessageGen(message: Message) {
+		this.endTime = Date.now();
+
+		const duration = (this.endTime - this.startTime) / 1000;
+		const durationSeconds = duration % 60;
+		const durationMinutes = Math.floor(duration / 60);
+		const durationText = durationMinutes > 0
+			? `${durationMinutes}分${durationSeconds.toFixed(1)}秒`
+			: `${durationSeconds.toFixed(1)}秒`;
+
+		return {
+			...this.problem.solvedMessage,
+			text: stripIndent`
+				<@${message.user}> 正解:tada: 答えは ＊${this.problem.correctAnswers[0]}＊ だよ:muscle:
+				回答時間: ${durationText}
+			`,
+		};
 	}
 }
 
@@ -352,7 +383,7 @@ export default (slackClients: SlackInterface) => {
 					isUnmasked: quizOptions.isUnmasked,
 				});
 
-				const quizText = `このQRコード、なんと書いてあるでしょう? (difficulty = ${quizOptions.difficulty}, mode = ${quizOptions.mode}, isUnmasked = ${quizOptions.isUnmasked})`;
+				const quizText = `このQRコード、なんと書いてあるでしょう? (difficulty = ${quizOptions.difficulty}, mode = ${quizOptions.mode}, masked = ${!quizOptions.isUnmasked})`;
 
 				const ateQuiz = new QrAteQuiz(slackClients, {
 					problemMessage: {
@@ -365,6 +396,25 @@ export default (slackClients: SlackInterface) => {
 									type: 'plain_text',
 									text: quizText,
 								},
+								accessory: {
+									type: 'image',
+									image_url: imageUrl.quiz,
+									alt_text: 'QRコード',
+								},
+							},
+						],
+					},
+					hintMessages: [],
+					immediateMessage: {
+						channel,
+						text: '300秒以内に回答してね！',
+						blocks: [
+							{
+								type: 'section',
+								text: {
+									type: 'plain_text',
+									text: '300秒以内に回答してね！',
+								},
 							},
 							{
 								type: 'image',
@@ -373,16 +423,14 @@ export default (slackClients: SlackInterface) => {
 							},
 						],
 					},
-					hintMessages: [],
-					immediateMessage: {channel, text: '300秒以内に回答してね！'},
 					solvedMessage: {
 						channel,
-						text: typicalMessageTextsGenerator.solved(`＊${quiz.data}＊`),
+						text: '',
 						reply_broadcast: true,
 					},
 					unsolvedMessage: {
 						channel,
-						text: typicalMessageTextsGenerator.unsolved(`＊${quiz.data}＊`),
+						text: typicalMessageTextsGenerator.unsolved(` ＊${quiz.data}＊ `),
 						reply_broadcast: true,
 					},
 					answerMessage: {
@@ -399,12 +447,14 @@ export default (slackClients: SlackInterface) => {
 					correctAnswers: [quiz.data, quiz.data.toLowerCase()],
 				}, {});
 
-				const startTime = Date.now();
 				const result = await ateQuiz.start();
-				const endTime = Date.now();
-				const duration = endTime - startTime;
+				const duration = ateQuiz.endTime - ateQuiz.startTime;
 
-				if (result.state === 'solved') {
+				if (result.state === 'solved' && quizOptions.isUnmasked === true) {
+					await increment(message.user, 'qrcode-quiz-answer-unmasked');
+				}
+
+				if (result.state === 'solved' && quizOptions.isUnmasked === false) {
 					await increment(message.user, 'qrcode-quiz-answer');
 					if (quiz.gameMode === 'alphabet') {
 						await increment(message.user, 'qrcode-quiz-answer-alphabet');
@@ -435,6 +485,9 @@ export default (slackClients: SlackInterface) => {
 					}
 					if (duration < 30000) {
 						await increment(message.user, 'qrcode-quiz-answer-less-than-30s');
+					}
+					if (duration < 45000) {
+						await increment(message.user, 'qrcode-quiz-answer-less-than-45s');
 					}
 					if (duration < 150000) {
 						await increment(message.user, 'qrcode-quiz-answer-less-than-150s');
