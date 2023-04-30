@@ -451,46 +451,46 @@ export default (slackClients: SlackInterface) => {
 				const duration = ateQuiz.endTime - ateQuiz.startTime;
 
 				if (result.state === 'solved' && quizOptions.isUnmasked === true) {
-					await increment(message.user, 'qrcode-quiz-answer-unmasked');
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-unmasked');
 				}
 
 				if (result.state === 'solved' && quizOptions.isUnmasked === false) {
-					await increment(message.user, 'qrcode-quiz-answer');
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer');
 					if (quiz.gameMode === 'alphabet') {
-						await increment(message.user, 'qrcode-quiz-answer-alphabet');
+						await increment(result.correctAnswerer, 'qrcode-quiz-answer-alphabet');
 					}
 					if (quiz.gameMode === 'hiragana') {
-						await increment(message.user, 'qrcode-quiz-answer-hiragana');
+						await increment(result.correctAnswerer, 'qrcode-quiz-answer-hiragana');
 					}
 					if (quiz.gameMode === 'kanji') {
-						await increment(message.user, 'qrcode-quiz-answer-kanji');
+						await increment(result.correctAnswerer, 'qrcode-quiz-answer-kanji');
 					}
 					if (quiz.gameMode === 'numeric') {
-						await increment(message.user, 'qrcode-quiz-answer-numeric');
+						await increment(result.correctAnswerer, 'qrcode-quiz-answer-numeric');
 					}
 					if (quizOptions.difficulty === 'easy') {
-						await increment(message.user, 'qrcode-quiz-answer-easy-or-above');
+						await increment(result.correctAnswerer, 'qrcode-quiz-answer-easy-or-above');
 					}
 					if (quizOptions.difficulty === 'normal') {
-						await increment(message.user, 'qrcode-quiz-answer-easy-or-above');
-						await increment(message.user, 'qrcode-quiz-answer-normal-or-above');
+						await increment(result.correctAnswerer, 'qrcode-quiz-answer-easy-or-above');
+						await increment(result.correctAnswerer, 'qrcode-quiz-answer-normal-or-above');
 					}
 					if (quizOptions.difficulty === 'hard') {
-						await increment(message.user, 'qrcode-quiz-answer-easy-or-above');
-						await increment(message.user, 'qrcode-quiz-answer-normal-or-above');
-						await increment(message.user, 'qrcode-quiz-answer-hard-or-above');
+						await increment(result.correctAnswerer, 'qrcode-quiz-answer-easy-or-above');
+						await increment(result.correctAnswerer, 'qrcode-quiz-answer-normal-or-above');
+						await increment(result.correctAnswerer, 'qrcode-quiz-answer-hard-or-above');
 					}
 					if (duration < 10000) {
-						await increment(message.user, 'qrcode-quiz-answer-less-than-10s');
+						await increment(result.correctAnswerer, 'qrcode-quiz-answer-less-than-10s');
 					}
 					if (duration < 30000) {
-						await increment(message.user, 'qrcode-quiz-answer-less-than-30s');
+						await increment(result.correctAnswerer, 'qrcode-quiz-answer-less-than-30s');
 					}
 					if (duration < 45000) {
-						await increment(message.user, 'qrcode-quiz-answer-less-than-45s');
+						await increment(result.correctAnswerer, 'qrcode-quiz-answer-less-than-45s');
 					}
 					if (duration < 150000) {
-						await increment(message.user, 'qrcode-quiz-answer-less-than-150s');
+						await increment(result.correctAnswerer, 'qrcode-quiz-answer-less-than-150s');
 					}
 				}
 			}
