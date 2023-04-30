@@ -4075,6 +4075,72 @@ const achievements: Achievement[] = [
 		value: 1,
 	},
 
+	// qrcode-quiz
+
+	{
+		id: 'qrcode-quiz-answer-1',
+		difficulty: 'easy',
+		title: 'ようこそQRコードの世界へ',
+		condition: 'QR当てクイズのmaskedモードで正解する',
+		category: 'qrcode-quiz',
+		counter: 'qrcode-quiz-answer',
+		value: 1,
+	},
+	{
+		id: 'qrcode-quiz-answer-10',
+		difficulty: 'medium',
+		title: 'バーじゃないコード',
+		condition: 'QR当てクイズのmaskedモードで10回正解する',
+		category: 'qrcode-quiz',
+		counter: 'qrcode-quiz-answer',
+		value: 10,
+	},
+	{
+		id: 'qrcode-quiz-answer-100',
+		difficulty: 'hard',
+		title: 'もうスマホはいらない',
+		condition: 'QR当てクイズのmaskedモードで100回正解する',
+		category: 'qrcode-quiz',
+		counter: 'qrcode-quiz-answer',
+		value: 100,
+	},
+	{
+		id: 'qrcode-quiz-answer-1000',
+		difficulty: 'professional',
+		title: 'デンソー',
+		condition: 'QR当てクイズのmaskedモードで1000回正解する',
+		category: 'qrcode-quiz',
+		counter: 'qrcode-quiz-answer',
+		value: 1000,
+	},
+	{
+		id: 'qrcode-quiz-answer-less-than-10s-1',
+		difficulty: 'professional',
+		title: 'クイックレスポンス',
+		condition: 'QR当てクイズのmaskedモードで10秒以内に正解する',
+		category: 'qrcode-quiz',
+		counter: 'qrcode-quiz-answer-less-than-10s',
+		value: 1,
+	},
+	{
+		id: 'qrcode-quiz-answer-less-than-45s-1',
+		difficulty: 'hard',
+		title: '算数ドリルは終わりません！',
+		condition: 'QR当てクイズのmaskedモードで45秒以内に正解する',
+		category: 'qrcode-quiz',
+		counter: 'qrcode-quiz-answer-less-than-45s',
+		value: 1,
+	},
+	{
+		id: 'qrcode-quiz-answer-less-than-150s-1',
+		difficulty: 'medium',
+		title: 'QRの早見え',
+		condition: 'QR当てクイズのmaskedモードで150秒以内に正解する',
+		category: 'qrcode-quiz',
+		counter: 'qrcode-quiz-answer-less-than-150s',
+		value: 1,
+	},
+
 	// achievements
 
 	{
