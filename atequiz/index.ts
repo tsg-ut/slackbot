@@ -26,12 +26,16 @@ export interface AteQuizResult {
   hintIndex: number | null;
 }
 
-type AteQuizMode = 'normal' | 'solo';
-
-export interface AteQuizStartOption {
-  mode: AteQuizMode;
-  player?: string;
+export interface NormalAteQuizStartOption {
+  mode: 'normal';
 }
+
+export interface SoloAteQuizStartOption {
+  mode: 'solo';
+  player: string;
+}
+
+export type AteQuizStartOption = NormalAteQuizStartOption | SoloAteQuizStartOption;
 
 export const typicalAteQuizHintTexts = [
   'しょうがないにゃあ、ヒントだよ',
