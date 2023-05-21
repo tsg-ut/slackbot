@@ -44,7 +44,6 @@ export default async (slackClients: SlackInterface) => {
 		}
 
 		log.info(`reaction_added: ${event.item.channel} ${event.item.ts}`);
-		const messageUrl = `https://tsg-ut.slack.com/archives/${event.item.channel}/p${event.item.ts.replace('.', '')}`;
 
 		mutex.runExclusive(async () => {
 			if (state.postedMessages[event.item.ts] !== undefined) {
@@ -60,12 +59,10 @@ export default async (slackClients: SlackInterface) => {
 				return;
 			}
 
-			log.info(`reaction_added: ${messageUrl}`);
-			const res = await slack.conversations.history({
+			log.info('Requesting to Slack API...');
+			const res = await slack.conversations.replies({
 				channel: event.item.channel,
-				latest: event.item.ts,
-				limit: 1,
-				inclusive: true,
+				ts: event.item.ts,
 			});
 
 			const message = res?.messages?.[0];
@@ -84,6 +81,10 @@ export default async (slackClients: SlackInterface) => {
 				return;
 			}
 
+			let messageUrl = `https://tsg-ut.slack.com/archives/${event.item.channel}/p${event.item.ts.replace('.', '')}`;
+			if (message.thread_ts !== undefined) {
+				messageUrl += `?thread_ts=${message.thread_ts}`;
+			}
 			const inputMessage = message.text.replaceAll(/[【】]/g, '');
 			const prompt = await promptLoader.load();
 
