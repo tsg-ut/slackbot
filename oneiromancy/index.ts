@@ -43,23 +43,23 @@ export default async (slackClients: SlackInterface) => {
 			return;
 		}
 
-		if (state.postedMessages[event.item.ts] !== undefined) {
-			const oneiromancyMessage = state.postedMessages[event.item.ts];
-			const url = `https://tsg-ut.slack.com/archives/${process.env.CHANNEL_SANDBOX}/p${oneiromancyMessage.replace('.', '')}`;
-			slack.chat.postEphemeral({
-				channel: event.item.channel,
-				text: `その夢は既に占っています ${url}`,
-				user: event.user,
-				username: '夢占いBOT',
-				icon_emoji: 'crystal_ball',
-			});
-			return;
-		}
-
 		log.info(`reaction_added: ${event.item.channel} ${event.item.ts}`);
 		const messageUrl = `https://tsg-ut.slack.com/archives/${event.item.channel}/p${event.item.ts.replace('.', '')}`;
 
 		mutex.runExclusive(async () => {
+			if (state.postedMessages[event.item.ts] !== undefined) {
+				const oneiromancyMessage = state.postedMessages[event.item.ts];
+				const url = `https://tsg-ut.slack.com/archives/${process.env.CHANNEL_SANDBOX}/p${oneiromancyMessage.replace('.', '')}`;
+				await slack.chat.postEphemeral({
+					channel: event.item.channel,
+					text: `その夢は既に占っています ${url}`,
+					user: event.user,
+					username: '夢占いBOT',
+					icon_emoji: 'crystal_ball',
+				});
+				return;
+			}
+
 			log.info(`reaction_added: ${messageUrl}`);
 			const res = await slack.conversations.history({
 				channel: event.item.channel,
