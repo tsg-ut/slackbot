@@ -9,7 +9,7 @@ import State from '../lib/state';
 import {Loader} from '../lib/utils';
 
 const mutex = new Mutex();
-const log = logger.child('oneiromancy');
+const log = logger.child({bot: 'oneiromancy'});
 
 const promptLoader = new Loader<ChatCompletionRequestMessage[]>(async () => {
 	const promptYaml = await readFile(path.join(__dirname, 'prompt.yml'));
