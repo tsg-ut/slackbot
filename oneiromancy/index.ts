@@ -73,6 +73,17 @@ export default async (slackClients: SlackInterface) => {
 				return;
 			}
 
+			if (message.ts !== event.item.ts) {
+				await slack.chat.postEphemeral({
+					channel: event.item.channel,
+					text: 'スレッド内のメッセージの占いには対応していません',
+					user: event.user,
+					username: '夢占いBOT',
+					icon_emoji: 'crystal_ball',
+				});
+				return;
+			}
+
 			const inputMessage = message.text.replaceAll(/[【】]/g, '');
 			const prompt = await promptLoader.load();
 
