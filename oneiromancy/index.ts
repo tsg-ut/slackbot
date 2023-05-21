@@ -94,7 +94,7 @@ export default async (slackClients: SlackInterface) => {
 						content: `ありがとうございます。以下の夢についても占ってください。\n【${inputMessage}】`,
 					},
 				],
-				max_tokens: 512,
+				max_tokens: 1024,
 			});
 
 			const result = completion.data.choices?.[0]?.message?.content ?? 'すみません。この夢に関しては占えませんでした。';
