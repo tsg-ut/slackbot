@@ -3,6 +3,7 @@ import path from 'path';
 import {Mutex} from 'async-mutex';
 import yaml from 'js-yaml';
 import {ChatCompletionRequestMessage, Configuration, OpenAIApi} from 'openai';
+import {increment} from '../achievements';
 import logger from '../lib/logger';
 import {SlackInterface} from '../lib/slack';
 import State from '../lib/state';
@@ -63,6 +64,7 @@ export default async (slackClients: SlackInterface) => {
 			const res = await slack.conversations.replies({
 				channel: event.item.channel,
 				ts: event.item.ts,
+				token: process.env.HAKATASHI_TOKEN,
 			});
 
 			const message = res?.messages?.[0];
@@ -103,7 +105,7 @@ export default async (slackClients: SlackInterface) => {
 					...prompt,
 					{
 						role: 'user',
-						content: `ありがとうございます。以下の夢についても占ってください。\n【${inputMessage}】`,
+						content: `ありがとうございます。以下の夢についても同じように、夢の内容を診断して、今日の運勢を100点満点で占ってください。また、今後の生活にどのように活かすべきかのアドバイスを含んだ夢占いをしてください。\n【${inputMessage}】`,
 					},
 				],
 				max_tokens: 1024,
@@ -135,6 +137,45 @@ export default async (slackClients: SlackInterface) => {
 			});
 
 			state.postedMessages[event.item.ts] = postedMessage.ts;
+
+			if (event.item.channel === process.env.CHANNEL_SIG_DREAM) {
+				await increment(event.item_user, 'oneiromancy-analyzed');
+				await increment(event.user, 'oneiromancy-analyze');
+
+				const scoreText = result.match(/【\s*今日の運勢\s*】\s*(?<score>[-\d]+)\s*点/)?.groups?.score;
+				const score = scoreText === undefined ? null : parseInt(scoreText);
+
+				log.info(`score: ${score}`);
+
+				if (score === null) {
+					await increment(event.item_user, 'oneiromancy-no-score');
+				} else {
+					await increment(event.item_user, 'oneiromancy-scored');
+					await increment(event.item_user, 'oneiromancy-scores', score);
+
+					if (score > 100) {
+						await increment(event.item_user, 'oneiromancy-score-over-100');
+					}
+					if (score === 100) {
+						await increment(event.item_user, 'oneiromancy-score-100');
+					}
+					if (score >= 80) {
+						await increment(event.item_user, 'oneiromancy-score-above-80');
+					}
+					if (score <= 50) {
+						await increment(event.item_user, 'oneiromancy-score-below-50');
+					}
+					if (score <= 20) {
+						await increment(event.item_user, 'oneiromancy-score-below-20');
+					}
+					if (score === 0) {
+						await increment(event.item_user, 'oneiromancy-score-0');
+					}
+					if (score < 0) {
+						await increment(event.item_user, 'oneiromancy-score-under-0');
+					}
+				}
+			}
 		});
 	});
 };
