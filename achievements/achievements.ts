@@ -4221,7 +4221,7 @@ const achievements: Achievement[] = [
 		title: 'ウサギの穴の冒険',
 		condition: '夢占いBOTで今日の運勢が80点以上になる',
 		category: 'oneiromancy',
-		counter: 'oneiromancy-score-below-80',
+		counter: 'oneiromancy-score-above-80',
 		value: 1,
 	},
 	{
