@@ -4,4 +4,4 @@ const render = jest.fn(() => (
 	Promise.resolve(Buffer.alloc(0x100))
 ));
 
-module.exports = render;
+export default render;
