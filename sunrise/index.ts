@@ -9,6 +9,7 @@ import nodePersist from 'node-persist';
 import Queue from 'p-queue';
 import suncalc from 'suncalc';
 import type {SlackInterface} from '../lib/slack';
+import State from '../lib/state';
 import {getWeather, getHaiku, getEntries} from './fetch';
 import render from './render';
 import weathers from './weathers';
@@ -17,6 +18,24 @@ import type {WeatherCondition} from './weathers';
 interface Weather {
 	name: string,
 	conditions: WeatherCondition[],
+}
+
+interface StateObj {
+	lastWeather?: {
+		weatherId: number,
+		temperature: number,
+	},
+	lastSunrise: number,
+	lastSunset: number,
+	weatherHistories: {
+		date: number,
+		weather: Weather,
+	}[],
+	lastEntryUrl: {
+		tayori: string,
+		saijiki: string,
+		tenkijp: string,
+	}
 }
 
 const queue = new Queue({concurrency: 1});
@@ -94,32 +113,32 @@ const miphToMps = (miph: number) => miph * 0.447;
 const inchToMm = (inch: number) => inch * 25.4;
 
 export default async ({eventClient, webClient: slack}: SlackInterface) => {
+	// TODO: Remove these codes after migration to State library
 	const storage = nodePersist.create({
 		dir: path.resolve(__dirname, '__state__'),
 	});
 	await storage.init();
 
-	if (await storage.getItem('lastSunrise') === undefined) {
-		await storage.setItem('lastSunrise', Date.now());
-	}
-
-	if (await storage.getItem('lastSunset') === undefined) {
-		await storage.setItem('lastSunset', Date.now());
-	}
+	const state = await State.init<StateObj>('sunrise', {
+		lastWeather: await storage.getItem('lastWeather'),
+		lastSunrise: (await storage.getItem('lastSunrise')) ?? Date.now(),
+		lastSunset: (await storage.getItem('lastSunset')) ?? Date.now(),
+		weatherHistories: (await storage.getItem('weatherHistories')) ?? [],
+		lastEntryUrl: await storage.getItem('lastEntryUrl'),
+	});
 
 	const tick = async () => {
 		const now = new Date();
 
 		const times = range(-5, 5).map((days) => suncalc.getTimes(moment().add(days, 'day').toDate(), ...location));
 		const sunrises = map(times, 'sunrise');
-		const lastSunrise = await storage.getItem('lastSunrise');
-		const nextSunrise = sunrises.find((sunrise) => sunrise > lastSunrise);
+		const nextSunrise = sunrises.find((sunrise) => sunrise.getTime() > state.lastSunrise);
 
 		if (now >= nextSunrise) {
 			const noon = moment(now).utcOffset(9).startOf('day').add(12, 'hour').toDate();
 			const {sunrise, sunset} = suncalc.getTimes(noon, ...location);
 
-			await storage.setItem('lastSunrise', now.getTime());
+			state.lastSunrise = now.getTime();
 			const {rise: moonrise, set: moonset} = suncalc.getMoonTimes(noon, ...location);
 			const {phase: moonphase} = suncalc.getMoonIllumination(noon);
 			const moonEmoji = moonEmojis[Math.round(moonphase * 8) % 8];
@@ -128,8 +147,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			const today = moment().utcOffset(9).startOf('day').toDate();
 			const forecast = weatherData.DailyForecasts.find((cast) => new Date(cast.Date) >= today);
 
-			const lastWeather = await storage.getItem('lastWeather') || null;
-			const weatherHistories: {date: Date, weather: Weather}[] = await storage.getItem('weatherHistories') || [];
+			const lastWeather = state.lastWeather ?? null;
 
 			const month = moment().utcOffset(9).month() + 1;
 			const date = moment().utcOffset(9).date();
@@ -300,7 +318,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 					score += 30;
 				}
 
-				const latestAnnounce = weatherHistories.findIndex(({weather}) => weather.name === name);
+				const latestAnnounce = state.weatherHistories.findIndex(({weather}) => weather.name === name);
 				if (latestAnnounce !== -1) {
 					score -= 30 / (latestAnnounce + 1);
 				}
@@ -308,11 +326,11 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 				return score;
 			});
 
-			await storage.setItem('lastWeather', {weatherId, temperature});
-			await storage.setItem('weatherHistories', [
-				{date: Date.now(), weather: matchingWeather},
-				...weatherHistories,
-			]);
+			state.lastWeather = {weatherId, temperature};
+			state.weatherHistories.unshift({
+				date: Date.now(),
+				weather: matchingWeather,
+			});
 
 			const imageData = await render(matchingWeather.name);
 			const cloudinaryData: UploadApiResponse = await new Promise((resolve, reject) => {
@@ -327,7 +345,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 					.end(imageData);
 			});
 
-			const lastEntryUrl = await storage.getItem('lastEntryUrl') || {};
+			const {lastEntryUrl} = state;
 			const [tayori, saijiki, tenkijp] = await getEntries();
 
 			let entry = null;
@@ -391,19 +409,18 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 				}],
 			});
 
-			await storage.setItem('lastEntryUrl', {
+			state.lastEntryUrl = {
 				tayori: tayori?.[0]?.link ?? '',
 				saijiki: saijiki?.[0]?.link ?? '',
 				tenkijp: tenkijp?.[0]?.link ?? '',
-			});
+			};
 		}
 
 		const sunsets = map(times, 'sunset');
-		const lastSunset = await storage.getItem('lastSunset');
-		const nextSunset = sunsets.find((sunset) => sunset > lastSunset);
+		const nextSunset = sunsets.find((sunset) => sunset.getTime() > state.lastSunset);
 
 		if (now >= nextSunset) {
-			await storage.setItem('lastSunset', now.getTime());
+			state.lastSunset = now.getTime();
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: ':wave:',
