@@ -250,4 +250,4 @@ const getWeather = () => {
 	});
 };
 
-module.exports = {getEntries, getHaiku, getWeather};
+export {getEntries, getHaiku, getWeather};

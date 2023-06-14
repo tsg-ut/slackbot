@@ -8,12 +8,11 @@ import moment from 'moment';
 import nodePersist from 'node-persist';
 import Queue from 'p-queue';
 import suncalc from 'suncalc';
-
-import type {SlackInterface} from '../lib/slack.js';
-import {getWeather, getHaiku, getEntries} from './fetch.js';
-import render from './render.js';
-import weathers from './weathers.js';
-import type {WeatherCondition} from './weathers.js';
+import type {SlackInterface} from '../lib/slack';
+import {getWeather, getHaiku, getEntries} from './fetch';
+import render from './render';
+import weathers from './weathers';
+import type {WeatherCondition} from './weathers';
 
 interface Weather {
 	name: string,
@@ -94,7 +93,7 @@ const FtoC = (F: number) => (F - 32) * 5 / 9;
 const miphToMps = (miph: number) => miph * 0.447;
 const inchToMm = (inch: number) => inch * 25.4;
 
-module.exports = async ({eventClient, webClient: slack}: SlackInterface) => {
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const storage = nodePersist.create({
 		dir: path.resolve(__dirname, '__state__'),
 	});
