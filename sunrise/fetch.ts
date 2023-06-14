@@ -1,11 +1,22 @@
-const qs = require('querystring');
-const axios = require('axios');
-const cheerio = require('cheerio');
-const {flatten, sortBy} = require('lodash');
-const scrapeIt = require('scrape-it');
+import qs from 'querystring';
+import axios from 'axios';
+import cheerio from 'cheerio';
+import {flatten, sortBy} from 'lodash';
+import scrapeIt from 'scrape-it';
+
+interface Article {
+	date?: string,
+	title: string,
+	link: string,
+}
+
+interface Archive {
+	category: string,
+	articles: Article[],
+}
 
 const getTayoriEntries = async () => {
-	const {data} = await scrapeIt('http://www.i-nekko.jp/hibinotayori/', {
+	const {data} = await scrapeIt<{articles: Article[]}>('http://www.i-nekko.jp/hibinotayori/', {
 		articles: {
 			listItem: 'section.blog-panel',
 			data: {
@@ -27,7 +38,7 @@ const getTayoriEntries = async () => {
 };
 
 const getSaijikiEntries = async () => {
-	const {data} = await scrapeIt('http://www.i-nekko.jp/category.html', {
+	const {data} = await scrapeIt<{archives: Archive[]}>('http://www.i-nekko.jp/category.html', {
 		archives: {
 			listItem: '.archive-list',
 			data: {
@@ -65,7 +76,7 @@ const getSaijikiEntries = async () => {
 };
 
 const getTenkijpEntries = async () => {
-	const {data} = await scrapeIt('https://tenki.jp/suppl/entries/1/', {
+	const {data} = await scrapeIt<{articles: Article[]}>('https://tenki.jp/suppl/entries/1/', {
 		articles: {
 			listItem: '.recent-entries > ul > li',
 			data: {
@@ -86,7 +97,7 @@ const getTenkijpEntries = async () => {
 	}));
 };
 
-const getEntries = () => (
+export const getEntries = () => (
 	Promise.all([
 		getTayoriEntries(),
 		getSaijikiEntries(),
@@ -94,7 +105,7 @@ const getEntries = () => (
 	])
 );
 
-const getHaiku = async () => {
+export const getHaiku = async () => {
 	const {data} = await axios.get('https://www.haijinkyokai.jp/');
 	const $ = cheerio.load(data);
 	$('rt').each((i, element) => {
@@ -107,16 +118,42 @@ const getHaiku = async () => {
 	return {text, author, note};
 };
 
-const getWeather = async (location) => {
+const getWeather = async (location: [number, number]) => {
+	interface GeopositionResponse {
+		Key: string,
+	}
+
 	// Fetch location id of target location
-	const {data: locationData} = await axios.get(`http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?${qs.encode({
+	const {data: locationData} = await axios.get<GeopositionResponse>(`http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?${qs.encode({
 		apikey: process.env.ACCUWEATHER_KEY,
 		q: location.join(','),
 		details: 'true',
 	})}`);
 	const locationId = locationData.Key;
 
-	const {data} = await axios.get(`http://dataservice.accuweather.com/forecasts/v1/daily/5day/${locationId}?${qs.encode({
+	interface DailyForecastResponse {
+		DailyForecasts: {
+			Date: string,
+			Temperature: {
+				Minimum: {
+					Value: number,
+				},
+				Maximum: {
+					Value: number,
+				},
+			},
+			Day: {
+				Icon: number,
+				IconPhrase: string,
+			},
+			Night: {
+				Icon: number,
+				IconPhrase: string,
+			},
+		}[],
+	}
+
+	const {data} = await axios.get<DailyForecastResponse>(`http://dataservice.accuweather.com/forecasts/v1/daily/5day/${locationId}?${qs.encode({
 		apikey: process.env.ACCUWEATHER_KEY,
 		details: 'true',
 	})}`);
@@ -124,4 +161,4 @@ const getWeather = async (location) => {
 	return {data, locationId};
 };
 
-module.exports = {getEntries, getHaiku, getWeather};
+export {getWeather};

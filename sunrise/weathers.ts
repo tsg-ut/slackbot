@@ -1,3 +1,16 @@
+export interface WeatherCondition {
+	temperature?: number,
+	humidity?: number,
+	condition?: string,
+	continuingCondition?: string,
+	rain?: number,
+	wind?: number,
+	winddeg?: number,
+	temperatureChange?: number,
+	month?: number[],
+	date?: [number, number][],
+}
+
 const とても暑い = {temperature: 5};
 const 暑い = {temperature: 4};
 const 暖かい = {temperature: 3};
@@ -52,7 +65,7 @@ const 秋 = {month: [9, 10, 11]};
 const 冬 = {month: [12, 1, 2]};
 const 梅雨 = {month: [6, 7]};
 
-module.exports = {
+const weathers: {[key: string]: WeatherCondition[]} = {
 	日本晴れ: [快晴],
 	好天: [快晴],
 	高天: [快晴],
@@ -374,3 +387,5 @@ module.exports = {
 	解霜雨: [十二月, 雨],
 	鰤起し: [十二月, 雷雨],
 };
+
+export default weathers;

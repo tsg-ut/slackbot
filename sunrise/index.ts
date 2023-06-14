@@ -1,16 +1,24 @@
-const assert = require('assert');
-const path = require('path');
-const cloudinary = require('cloudinary');
-const {stripIndent} = require('common-tags');
-const {get, maxBy, range, map} = require('lodash');
-const moment = require('moment');
-const nodePersist = require('node-persist');
-const {default: Queue} = require('p-queue');
-const suncalc = require('suncalc');
+import assert from 'assert';
+import path from 'path';
+import cloudinary from 'cloudinary';
+import type {UploadApiResponse} from 'cloudinary';
+import {stripIndent} from 'common-tags';
+import {maxBy, range, map} from 'lodash';
+import moment from 'moment';
+import nodePersist from 'node-persist';
+import Queue from 'p-queue';
+import suncalc from 'suncalc';
 
-const {getWeather, getHaiku, getEntries} = require('./fetch.js');
-const render = require('./render.js');
-const weathers = require('./weathers.js');
+import type {SlackInterface} from '../lib/slack.js';
+import {getWeather, getHaiku, getEntries} from './fetch.js';
+import render from './render.js';
+import weathers from './weathers.js';
+import type {WeatherCondition} from './weathers.js';
+
+interface Weather {
+	name: string,
+	conditions: WeatherCondition[],
+}
 
 const queue = new Queue({concurrency: 1});
 
@@ -18,7 +26,7 @@ const queue = new Queue({concurrency: 1});
 suncalc.addTime(-(7 + 21 / 60 + 40 / 3600), '夜明', '日暮');
 
 // eslint-disable-next-line array-plural/array-plural
-const location = [35.659, 139.685]; // 駒場東大前駅
+const location: [number, number] = [35.659, 139.685]; // 駒場東大前駅
 
 const moonEmojis = [
 	':new_moon:',
@@ -32,7 +40,7 @@ const moonEmojis = [
 ];
 
 // https://developer.accuweather.com/weather-icons
-const conditionIds = {
+const conditionIds: {[weather: string]: number[]} = {
 	clear: [1, 2],
 	sunny: [1, 2, 3, 4, 30, 31, 32],
 	haze: [5],
@@ -48,7 +56,8 @@ const conditionIds = {
 	drizzle: [],
 	dust: [],
 };
-const weatherEmojis = {
+
+const weatherEmojis: {[iconId: number]: string} = {
 	1: ':sunny:',
 	2: ':sunny:',
 	3: ':mostly_sunny:',
@@ -81,11 +90,11 @@ const weatherEmojis = {
 
 const 漢数字s = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
 
-const FtoC = (F) => (F - 32) * 5 / 9;
-const miphToMps = (miph) => miph * 0.447;
-const inchToMm = (inch) => inch * 25.4;
+const FtoC = (F: number) => (F - 32) * 5 / 9;
+const miphToMps = (miph: number) => miph * 0.447;
+const inchToMm = (inch: number) => inch * 25.4;
 
-module.exports = async ({eventClient, webClient: slack}) => {
+module.exports = async ({eventClient, webClient: slack}: SlackInterface) => {
 	const storage = nodePersist.create({
 		dir: path.resolve(__dirname, '__state__'),
 	});
@@ -113,7 +122,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 
 			await storage.setItem('lastSunrise', now.getTime());
 			const {rise: moonrise, set: moonset} = suncalc.getMoonTimes(noon, ...location);
-			const {phase: moonphase} = suncalc.getMoonIllumination(noon, ...location);
+			const {phase: moonphase} = suncalc.getMoonIllumination(noon);
 			const moonEmoji = moonEmojis[Math.round(moonphase * 8) % 8];
 
 			const {data: weatherData, locationId} = await getWeather(location);
@@ -121,15 +130,15 @@ module.exports = async ({eventClient, webClient: slack}) => {
 			const forecast = weatherData.DailyForecasts.find((cast) => new Date(cast.Date) >= today);
 
 			const lastWeather = await storage.getItem('lastWeather') || null;
-			const weatherHistories = await storage.getItem('weatherHistories') || [];
+			const weatherHistories: {date: Date, weather: Weather}[] = await storage.getItem('weatherHistories') || [];
 
 			const month = moment().utcOffset(9).month() + 1;
 			const date = moment().utcOffset(9).date();
 
-			const weatherId = get(forecast, ['Day', 'Icon']);
+			const weatherId = forecast?.Day?.Icon;
 
-			const temperature = FtoC(get(forecast, ['Temperature', 'Maximum', 'Value']));
-			let temperatureLevel = null;
+			const temperature = FtoC(forecast?.Temperature?.Maximum?.Value);
+			let temperatureLevel: number = null;
 			if (temperature < 5) {
 				temperatureLevel = 0;
 			} else if (temperature < 12) {
@@ -144,8 +153,8 @@ module.exports = async ({eventClient, webClient: slack}) => {
 				temperatureLevel = 5;
 			}
 
-			const totalLiquid = inchToMm(get(forecast, ['Day', 'TotalLiquid', 'Value']));
-			let rainLevel = null;
+			const totalLiquid = inchToMm(forecast?.Day?.TotalLiquid?.Value);
+			let rainLevel: number = null;
 			if (totalLiquid < 0.01) {
 				rainLevel = 0;
 			} else if (totalLiquid < 3) {
@@ -158,9 +167,9 @@ module.exports = async ({eventClient, webClient: slack}) => {
 				rainLevel = 4;
 			}
 
-			const wind = miphToMps(get(forecast, ['Day', 'Wind', 'Speed', 'Value']));
-			const winddeg = get(forecast, ['Day', 'Wind', 'Direction', 'Degrees']);
-			let windLevel = null;
+			const wind = miphToMps(forecast?.Day?.Wind?.Speed?.Value);
+			const winddeg = forecast?.Day?.Wind?.Direction?.Degrees;
+			let windLevel: number = null;
 			if (wind < 3) {
 				windLevel = 0;
 			} else if (wind < 8) {
@@ -176,7 +185,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 			const normalizedWeathers = Object.entries(weathers).map(([name, conditions]) => ({name, conditions}));
 
 			const matchingWeathers = normalizedWeathers.filter(({conditions}) => {
-				const condition = Object.assign({}, ...conditions);
+				const condition: WeatherCondition = Object.assign({}, ...conditions);
 
 				if (condition.temperature !== undefined && condition.temperature !== temperatureLevel) {
 					return false;
@@ -307,7 +316,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 			]);
 
 			const imageData = await render(matchingWeather.name);
-			const cloudinaryData = await new Promise((resolve, reject) => {
+			const cloudinaryData: UploadApiResponse = await new Promise((resolve, reject) => {
 				cloudinary.v2.uploader
 					.upload_stream({resource_type: 'image'}, (error, response) => {
 						if (error) {
@@ -384,9 +393,9 @@ module.exports = async ({eventClient, webClient: slack}) => {
 			});
 
 			await storage.setItem('lastEntryUrl', {
-				tayori: get(tayori, [0, 'link'], ''),
-				saijiki: get(saijiki, [0, 'link'], ''),
-				tenkijp: get(tenkijp, [0, 'link'], ''),
+				tayori: tayori?.[0]?.link ?? '',
+				saijiki: saijiki?.[0]?.link ?? '',
+				tenkijp: tenkijp?.[0]?.link ?? '',
 			});
 		}
 
@@ -416,7 +425,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 			return;
 		}
 
-		if (message.text && message.text.match(/(いま|今)(なんじ|なんどき|何時)/)) {
+		if (message.text && message.text.match(/(?:いま|今)(?:なんじ|なんどき|何時)/)) {
 			const now = Date.now();
 			const times = range(-5, 5).map((days) => suncalc.getTimes(moment().add(days, 'day').toDate(), ...location));
 			const 夜明s = map(times, '夜明');

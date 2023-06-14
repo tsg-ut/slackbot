@@ -7,7 +7,7 @@ jest.mock('./fetch.js');
 
 const lolex = require('lolex');
 const Slack = require('../lib/slackMock.js');
-const sunrise = require('./index.js');
+const sunrise = require('./index.ts');
 
 let slack = null;
 let clock = null;
