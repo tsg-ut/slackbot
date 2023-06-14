@@ -145,10 +145,32 @@ const getWeather = async (location: [number, number]) => {
 			Day: {
 				Icon: number,
 				IconPhrase: string,
+				TotalLiquid: {
+					Value: number,
+				},
+				Wind: {
+					Speed: {
+						Value: number,
+					},
+					Direction: {
+						Degrees: number,
+					},
+				},
 			},
 			Night: {
 				Icon: number,
 				IconPhrase: string,
+				TotalLiquid: {
+					Value: number,
+				},
+				Wind: {
+					Speed: {
+						Value: number,
+					},
+					Direction: {
+						Degrees: number,
+					},
+				},
 			},
 		}[],
 	}
