@@ -460,6 +460,25 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 		queue.add(tick);
 	}, 10 * 1000);
 
+	const postWeatherMessage = (text: string) => (
+
+		slack.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			username: 'sunrise',
+			icon_emoji: ':sunrise:',
+			text,
+			blocks: [
+				{
+					type: 'section',
+					text: {
+						type: 'mrkdwn',
+						text,
+					},
+				},
+				...footer,
+			],
+		}));
+
 	eventClient.on('message', async (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
@@ -532,20 +551,45 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 										text: `${text} ${link}`,
 									},
 								},
-								...footer,
 							],
 							unfurl_links: false,
 							unfurl_media: false,
 						});
 					} catch (error) {
+						const headline = `${weatherPoint.name}の天気を取得できませんでした😢`;
+						const errorMessage = error?.response?.data?.Message;
+
 						await slack.chat.postMessage({
 							channel: process.env.CHANNEL_SANDBOX,
 							username: 'sunrise',
 							icon_emoji: ':sunrise:',
-							text: `${weatherPoint.name}の天気を取得できませんでした😢`,
+							text: headline,
+							blocks: [
+								{
+									type: 'section',
+									text: {
+										type: 'mrkdwn',
+										text: headline,
+									},
+								},
+								...(
+									errorMessage ? [{
+										type: 'section' as const,
+										text: {
+											type: 'mrkdwn' as const,
+											text: `*エラーメッセージ*:\n\`\`\`\n${errorMessage}\n\`\`\`\n`,
+										},
+									}] : []
+								),
+								...footer,
+							],
 						});
 					}
 				}
+			}
+
+			if (message.text === '地点登録') {
+				await postWeatherMessage('地点登録ボタンを押してください');
 			}
 		}
 	});
@@ -601,12 +645,7 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 			state.weatherPoints.push({name, latitude, longitude});
 		}
 
-		await slack.chat.postMessage({
-			channel: process.env.CHANNEL_SANDBOX,
-			username: 'sunrise',
-			icon_emoji: ':sunrise:',
-			text: `<@${payload?.user?.id}>が地点「${name} (${latitude}, ${longitude})」を登録しました`,
-		});
+		await postWeatherMessage(`<@${payload?.user?.id}>が地点「${name} (${latitude}, ${longitude})」を登録しました`);
 	});
 
 	messageClient.action({
@@ -646,11 +685,6 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 			view: listPointsDialog(state.weatherPoints),
 		});
 
-		await slack.chat.postMessage({
-			channel: process.env.CHANNEL_SANDBOX,
-			username: 'sunrise',
-			icon_emoji: ':sunrise:',
-			text: `<@${payload?.user?.id}>が地点「${deletedPoint.name} (${deletedPoint.latitude}, ${deletedPoint.longitude})」を削除しました`,
-		});
+		await postWeatherMessage(`<@${payload?.user?.id}>が地点「${deletedPoint.name} (${deletedPoint.latitude}, ${deletedPoint.longitude})」を削除しました`);
 	});
 };
