@@ -508,6 +508,8 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 
 					await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
+						username: 'sunrise',
+						icon_emoji: ':sunrise:',
 						text,
 						...(message.thread_ts ? {thread_ts: message.thread_ts} : {}),
 						blocks: [
