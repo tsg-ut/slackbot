@@ -10,14 +10,25 @@ import Queue from 'p-queue';
 import suncalc from 'suncalc';
 import type {SlackInterface} from '../lib/slack';
 import State from '../lib/state';
-import {getWeather, getHaiku, getEntries} from './fetch';
+import {getWeather, getHaiku, getEntries, getMinuteCast} from './fetch';
 import render from './render';
+import footer from './views/footer';
+import listPointsDialog from './views/listPointsDialog';
+import registerPointDialog from './views/registerPointDialog';
 import weathers from './weathers';
 import type {WeatherCondition} from './weathers';
+
+const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 interface Weather {
 	name: string,
 	conditions: WeatherCondition[],
+}
+
+export interface Point {
+	name: string,
+	latitude: number,
+	longitude: number,
 }
 
 interface StateObj {
@@ -35,7 +46,8 @@ interface StateObj {
 		tayori: string,
 		saijiki: string,
 		tenkijp: string,
-	}
+	},
+	weatherPoints: Point[],
 }
 
 const queue = new Queue({concurrency: 1});
@@ -112,7 +124,7 @@ const FtoC = (F: number) => (F - 32) * 5 / 9;
 const miphToMps = (miph: number) => miph * 0.447;
 const inchToMm = (inch: number) => inch * 25.4;
 
-export default async ({eventClient, webClient: slack}: SlackInterface) => {
+export default async ({eventClient, webClient: slack, messageClient}: SlackInterface) => {
 	// TODO: Remove these codes after migration to State library
 	const storage = nodePersist.create({
 		dir: path.resolve(__dirname, '__state__'),
@@ -125,6 +137,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		lastSunset: (await storage.getItem('lastSunset')) ?? Date.now(),
 		weatherHistories: (await storage.getItem('weatherHistories')) ?? [],
 		lastEntryUrl: await storage.getItem('lastEntryUrl'),
+		weatherPoints: [],
 	});
 
 	const tick = async () => {
@@ -441,7 +454,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
-		if (message.text && message.text.match(/(?:いま|今)(?:なんじ|なんどき|何時)/)) {
+		if (message.text?.match(/(?:いま|今)(?:なんじ|なんどき|何時)/)) {
 			const now = Date.now();
 			const times = range(-5, 5).map((days) => suncalc.getTimes(moment().add(days, 'day').toDate(), ...location));
 			const 夜明s = map(times, '夜明');
@@ -483,5 +496,137 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 				icon_emoji: ':sunrise:',
 			});
 		}
+
+		if (message.bot_id === undefined) {
+			for (const weatherPoint of state.weatherPoints) {
+				const regex = new RegExp(`(?:${escapeRegExp(weatherPoint.name)})(?:の|\\s*)(?:天気|あめ|雨)`);
+				if (message.text?.match(regex)) {
+					const weatherData = await getMinuteCast([weatherPoint.latitude, weatherPoint.longitude]);
+
+					const text = `${weatherPoint.name}では、${weatherData.Summary.Phrase}。`;
+					const link = `<${weatherData.Link}|[詳細]>`;
+
+					await slack.chat.postMessage({
+						channel: process.env.CHANNEL_SANDBOX,
+						text,
+						...(message.thread_ts ? {thread_ts: message.thread_ts} : {}),
+						blocks: [
+							{
+								type: 'section',
+								text: {
+									type: 'mrkdwn',
+									text: `${text} ${link}`,
+								},
+							},
+							...footer,
+						],
+					});
+				}
+			}
+		}
+	});
+
+	const postEphemeral = (message: string, user: string) => {
+		slack.chat.postEphemeral({
+			channel: process.env.CHANNEL_SANDBOX,
+			username: 'sunrise',
+			icon_emoji: ':sunrise:',
+			text: message,
+			user,
+		});
+	};
+
+	messageClient.action({
+		type: 'button',
+		actionId: 'sunrise_register_point_button',
+	}, async (payload: any) => {
+		await slack.views.open({
+			trigger_id: payload?.trigger_id,
+			view: registerPointDialog,
+		});
+	});
+
+	messageClient.viewSubmission('sunrise_register_point_dialog', async (payload: any) => {
+		const stateObjects = Object.values(payload?.view?.state?.values ?? {});
+		const dialogState = Object.assign({}, ...stateObjects);
+
+		const latitude = parseFloat(dialogState?.latitude?.value);
+		const longitude = parseFloat(dialogState?.longitude?.value);
+		const name = dialogState?.name?.value;
+
+		if (Number.isNaN(latitude)) {
+			return postEphemeral('緯度が不正です', payload?.user?.id);
+		}
+
+		if (Number.isNaN(longitude)) {
+			return postEphemeral('経度が不正です', payload?.user?.id);
+		}
+
+		if (name === '') {
+			return postEphemeral('名前を入力してください', payload?.user?.id);
+		}
+
+		if (state.weatherPoints.some((point) => point.name === name)) {
+			state.weatherPoints = state.weatherPoints.map((point) => {
+				if (point.name === name) {
+					return {name, latitude, longitude};
+				}
+				return point;
+			});
+		} else {
+			state.weatherPoints.push({name, latitude, longitude});
+		}
+
+		await slack.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			username: 'sunrise',
+			icon_emoji: ':sunrise:',
+			text: `地点「${name} (${latitude}, ${longitude})」を登録しました`,
+		});
+	});
+
+	messageClient.action({
+		type: 'button',
+		actionId: 'sunrise_list_points_button',
+	}, async (payload: any) => {
+		await slack.views.open({
+			trigger_id: payload?.trigger_id,
+			view: listPointsDialog(state.weatherPoints),
+		});
+	});
+
+	messageClient.action({
+		type: 'button',
+		actionId: 'sunrise_delete_point_button',
+	}, async (payload: any) => {
+		const action = (payload?.actions ?? []).find((a: any) => (
+			a.action_id === 'sunrise_delete_point_button'
+		));
+
+		const name = action?.value;
+
+		if (name === undefined) {
+			return postEphemeral('地点名が不正です', payload?.user?.id);
+		}
+
+		if (!state.weatherPoints.some((point) => point.name === name)) {
+			return postEphemeral('地点が見つかりません', payload?.user?.id);
+		}
+
+		const deletedPoint = state.weatherPoints.find((point) => point.name === name);
+
+		state.weatherPoints = state.weatherPoints.filter((point) => point.name !== name);
+
+		await slack.views.update({
+			view_id: payload?.view?.id,
+			view: listPointsDialog(state.weatherPoints),
+		});
+
+		await slack.chat.postMessage({
+			channel: process.env.CHANNEL_SANDBOX,
+			username: 'sunrise',
+			icon_emoji: ':sunrise:',
+			text: `地点「${deletedPoint.name} (${deletedPoint.latitude}, ${deletedPoint.longitude})」を削除しました`,
+		});
 	});
 };

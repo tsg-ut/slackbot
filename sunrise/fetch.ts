@@ -118,7 +118,7 @@ export const getHaiku = async () => {
 	return {text, author, note};
 };
 
-const getWeather = async (location: [number, number]) => {
+export const getWeather = async (location: [number, number]) => {
 	interface GeopositionResponse {
 		Key: string,
 	}
@@ -183,4 +183,30 @@ const getWeather = async (location: [number, number]) => {
 	return {data, locationId};
 };
 
-export {getWeather};
+export const getMinuteCast = async (location: [number, number]) => {
+	interface MinuteCastResponse {
+		Summary: {
+			Phrase: string,
+			Type: string | null,
+			TypeId: number,
+		},
+		Summaries: {
+			StartMinute: number,
+			EndMinute: number,
+			CountMinute: number,
+			MinuteText: string,
+			Type: string | null,
+			TypeId: number,
+		}[],
+		Link: string,
+		MobileLink: string,
+	}
+
+	const {data} = await axios.get<MinuteCastResponse>(`http://dataservice.accuweather.com/forecasts/v1/minute?${qs.encode({
+		q: `${location[0]},${location[1]}`,
+		apikey: process.env.ACCUWEATHER_MINUTECAST_KEY,
+		language: 'ja-JP',
+	})}`);
+
+	return data;
+};
