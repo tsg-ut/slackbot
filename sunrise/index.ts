@@ -605,7 +605,7 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 			channel: process.env.CHANNEL_SANDBOX,
 			username: 'sunrise',
 			icon_emoji: ':sunrise:',
-			text: `地点「${name} (${latitude}, ${longitude})」を登録しました`,
+			text: `<@${payload?.user?.id}>が地点「${name} (${latitude}, ${longitude})」を登録しました`,
 		});
 	});
 
@@ -650,7 +650,7 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 			channel: process.env.CHANNEL_SANDBOX,
 			username: 'sunrise',
 			icon_emoji: ':sunrise:',
-			text: `地点「${deletedPoint.name} (${deletedPoint.latitude}, ${deletedPoint.longitude})」を削除しました`,
+			text: `<@${payload?.user?.id}>が地点「${deletedPoint.name} (${deletedPoint.latitude}, ${deletedPoint.longitude})」を削除しました`,
 		});
 	});
 };
