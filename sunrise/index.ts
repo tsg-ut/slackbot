@@ -137,7 +137,18 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 		lastSunset: (await storage.getItem('lastSunset')) ?? Date.now(),
 		weatherHistories: (await storage.getItem('weatherHistories')) ?? [],
 		lastEntryUrl: await storage.getItem('lastEntryUrl'),
-		weatherPoints: [],
+		weatherPoints: [
+			{
+				name: '駒場',
+				latitude: 35.659,
+				longitude: 139.685,
+			},
+			{
+				name: '本郷',
+				latitude: 35.713,
+				longitude: 139.762,
+			},
+		],
 	});
 
 	const tick = async () => {
