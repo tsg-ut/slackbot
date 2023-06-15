@@ -512,28 +512,39 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 			for (const weatherPoint of state.weatherPoints) {
 				const regex = new RegExp(`(?:${escapeRegExp(weatherPoint.name)})(?:の|\\s*)(?:天気|あめ|雨)`);
 				if (message.text?.match(regex)) {
-					const weatherData = await getMinuteCast([weatherPoint.latitude, weatherPoint.longitude]);
+					try {
+						const weatherData = await getMinuteCast([weatherPoint.latitude, weatherPoint.longitude]);
 
-					const text = `${weatherPoint.name}では、${weatherData.Summary.Phrase}。`;
-					const link = `<${weatherData.Link}|[詳細]>`;
+						const text = `${weatherPoint.name}では、${weatherData.Summary.Phrase}。`;
+						const link = `<${weatherData.Link}|[詳細]>`;
 
-					await slack.chat.postMessage({
-						channel: process.env.CHANNEL_SANDBOX,
-						username: 'sunrise',
-						icon_emoji: ':sunrise:',
-						text,
-						...(message.thread_ts ? {thread_ts: message.thread_ts} : {}),
-						blocks: [
-							{
-								type: 'section',
-								text: {
-									type: 'mrkdwn',
-									text: `${text} ${link}`,
+						await slack.chat.postMessage({
+							channel: process.env.CHANNEL_SANDBOX,
+							username: 'sunrise',
+							icon_emoji: ':sunrise:',
+							text,
+							...(message.thread_ts ? {thread_ts: message.thread_ts} : {}),
+							blocks: [
+								{
+									type: 'section',
+									text: {
+										type: 'mrkdwn',
+										text: `${text} ${link}`,
+									},
 								},
-							},
-							...footer,
-						],
-					});
+								...footer,
+							],
+							unfurl_links: false,
+							unfurl_media: false,
+						});
+					} catch (error) {
+						await slack.chat.postMessage({
+							channel: process.env.CHANNEL_SANDBOX,
+							username: 'sunrise',
+							icon_emoji: ':sunrise:',
+							text: `${weatherPoint.name}の天気を取得できませんでした😢`,
+						});
+					}
 				}
 			}
 		}
