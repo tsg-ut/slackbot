@@ -7,6 +7,7 @@
         "no-console": "off",
         "max-len": "off",
         "max-depth": "off",
+        "consistent-return": "off",
         "array-plural/array-plural": "off",
         "import/no-named-as-default-member": "off",
         "import/no-named-as-default": "off",
