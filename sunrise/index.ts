@@ -1,6 +1,7 @@
 import assert from 'assert';
 import path from 'path';
-import type {ViewStateValue, ViewSubmitAction, BlockButtonAction, MessageEvent, GenericMessageEvent, BotMessageEvent, ThreadBroadcastMessageEvent} from '@slack/bolt';
+import type {ViewStateValue, ViewSubmitAction, BlockButtonAction, MessageEvent} from '@slack/bolt';
+// eslint-disable-next-line import/default
 import cloudinary from 'cloudinary';
 import type {UploadApiResponse} from 'cloudinary';
 import {stripIndent} from 'common-tags';
@@ -545,7 +546,7 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 		if (message.bot_id === undefined) {
 			const weatherMatchResult = message.text?.match?.(weatherRegex);
 			if (weatherMatchResult) {
-				const {groups: {pointName, weatherType}} = weatherMatchResult;
+				const {groups: {pointName}} = weatherMatchResult;
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				const weatherPoint = state.weatherPoints.find(({name}) => name === pointName)!;
 
