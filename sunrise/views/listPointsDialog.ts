@@ -1,5 +1,6 @@
 import {View} from '@slack/web-api';
-import {getGoogleMapsLink, type Point} from '../index';
+import type {Point} from '../index';
+import {getGoogleMapsLink} from '../util';
 
 export default (points: Point[]) => ({
 	type: 'modal',

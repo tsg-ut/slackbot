@@ -17,6 +17,7 @@ import State from '../lib/state';
 import {getWeather, getHaiku, getEntries} from './fetch';
 import {postRainMinuteCast, postTemperatureReport, postWeatherCast} from './forecast';
 import render from './render';
+import {getGoogleMapsLink} from './util';
 import footer from './views/footer';
 import listPointsDialog from './views/listPointsDialog';
 import registerPointDialog from './views/registerPointDialog';
@@ -135,31 +136,6 @@ const getWeatherRegex = (pointNames: string[]) => {
 	const pointNamesRegex = pointNames.map(escapeRegExp).join('|');
 	return new RegExp(`(?<pointName>${pointNamesRegex})(?:の|\\s*)(?<weatherType>天気|雨|気温)`);
 };
-
-const pointToString = (latitude: number, longitude: number) => {
-	const pad = (n: number) => n.toString().padStart(2, '0');
-	const fixedPad = (n: number) => n.toFixed(2).padStart(5, '0');
-
-	const latitudeValue = Math.abs(latitude);
-	const latitudeInt = Math.floor(latitudeValue);
-	const latitudeMinutes = Math.floor((latitudeValue - latitudeInt) * 60);
-	const latitudeSeconds = ((latitudeValue - latitudeInt) * 60 - latitudeMinutes) * 60;
-	const longitudeValue = Math.abs(longitude);
-	const longitudeInt = Math.floor(longitudeValue);
-	const longitudeMinutes = Math.floor((longitudeValue - longitudeInt) * 60);
-	const longitudeSeconds = ((longitudeValue - longitudeInt) * 60 - longitudeMinutes) * 60;
-	const latitudeDirection = latitude >= 0 ? 'N' : 'S';
-	const longitudeDirection = longitude >= 0 ? 'E' : 'W';
-
-	const latitudeText = `${latitudeInt}°${pad(latitudeMinutes)}′${fixedPad(latitudeSeconds)}″${latitudeDirection}`;
-	const longitudeText = `${longitudeInt}°${pad(longitudeMinutes)}′${fixedPad(longitudeSeconds)}″${longitudeDirection}`;
-
-	return `${latitudeText} ${longitudeText}`;
-};
-
-export const getGoogleMapsLink = (latitude: number, longitude: number) => (
-	`<https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}|${pointToString(latitude, longitude)}>`
-);
 
 export default async ({eventClient, webClient: slack, messageClient}: SlackInterface) => {
 	// TODO: Remove these codes after migration to State library
