@@ -17,6 +17,13 @@ interface Archive {
 }
 
 const accuweatherDailyForecastResponseSchema = z.object({
+	Headline: z.object({
+		Text: z.string(),
+		EffectiveDate: z.string(),
+		EffectiveEpochDate: z.number(),
+		Severity: z.number(),
+		Category: z.string(),
+	}),
 	DailyForecasts: z.array(
 		z.object({
 			Date: z.string(),
@@ -26,6 +33,16 @@ const accuweatherDailyForecastResponseSchema = z.object({
 				}),
 				Maximum: z.object({
 					Value: z.number(),
+				}),
+			}),
+			RealFeelTemperature: z.object({
+				Minimum: z.object({
+					Value: z.number(),
+					Phrase: z.string(),
+				}),
+				Maximum: z.object({
+					Value: z.number(),
+					Phrase: z.string(),
 				}),
 			}),
 			Day: z.object({
@@ -86,6 +103,72 @@ const accuweatherMinuteCastResponseSchema = z.object({
 
 export type AccuweatherMinuteCastResponse = z.infer<typeof accuweatherMinuteCastResponseSchema>;
 
+const accuweatherUnitSchema = z.object({
+	Value: z.number(),
+	Unit: z.string(),
+	UnitType: z.number(),
+});
+
+const accuweatherMultiUnitSchema = z.object({
+	Metric: accuweatherUnitSchema,
+	Imperial: accuweatherUnitSchema,
+});
+
+const accuweatherMultiUnitSchemaWithPhrase = z.object({
+	Metric: accuweatherUnitSchema.extend({
+		Phrase: z.string(),
+	}),
+	Imperial: accuweatherUnitSchema.extend({
+		Phrase: z.string(),
+	}),
+});
+
+export type AccuweatherMultiUnit = z.infer<typeof accuweatherMultiUnitSchema>;
+
+const accuweatherWindSchema = z.object({
+	Direction: z.object({
+		Degrees: z.number(),
+		Localized: z.string(),
+		English: z.string(),
+	}),
+	Speed: accuweatherMultiUnitSchema,
+});
+
+export type AccuweatherWind = z.infer<typeof accuweatherWindSchema>;
+
+const accuweatherCurrentConditionsResponseSchema = z.array(
+	z.object({
+		LocalObservationDateTime: z.string(),
+		EpochTime: z.number(),
+		WeatherText: z.string(),
+		WeatherIcon: z.number(),
+		HasPrecipitation: z.boolean(),
+		PrecipitationType: z.string().nullable(),
+		Temperature: accuweatherMultiUnitSchema,
+		RealFeelTemperature: accuweatherMultiUnitSchemaWithPhrase,
+		RealFeelTemperatureShade: accuweatherMultiUnitSchemaWithPhrase,
+		PrecipitationSummary: z.object({
+			Precipitation: accuweatherMultiUnitSchema,
+			PastHour: accuweatherMultiUnitSchema,
+			Past3Hours: accuweatherMultiUnitSchema,
+			Past6Hours: accuweatherMultiUnitSchema,
+			Past9Hours: accuweatherMultiUnitSchema,
+			Past12Hours: accuweatherMultiUnitSchema,
+			Past18Hours: accuweatherMultiUnitSchema,
+			Past24Hours: accuweatherMultiUnitSchema,
+		}),
+		Past24HourTemperatureDeparture: accuweatherMultiUnitSchema,
+		RelativeHumidity: z.number(),
+		DewPoint: accuweatherMultiUnitSchema,
+		Wind: accuweatherWindSchema,
+		UVIndex: z.number(),
+		UVIndexText: z.string(),
+		MobileLink: z.string(),
+		Link: z.string(),
+	}),
+);
+
+export type AccuweatherCurrentConditionsResponse = z.infer<typeof accuweatherCurrentConditionsResponseSchema>;
 
 const getTayoriEntries = async () => {
 	const {data} = await scrapeIt<{articles: Article[]}>('http://www.i-nekko.jp/hibinotayori/', {
@@ -190,7 +273,7 @@ export const getHaiku = async () => {
 	return {text, author, note};
 };
 
-export const getWeather = async (location: [number, number]) => {
+const getLocationId = async (location: [number, number]) => {
 	interface GeopositionResponse {
 		Key: string,
 	}
@@ -203,12 +286,32 @@ export const getWeather = async (location: [number, number]) => {
 	})}`);
 	const locationId = locationData.Key;
 
+	return locationId;
+};
+
+export const getWeather = async (location: [number, number]) => {
+	const locationId = await getLocationId(location);
+
 	const {data} = await axios.get(`http://dataservice.accuweather.com/forecasts/v1/daily/5day/${locationId}?${qs.encode({
 		apikey: process.env.ACCUWEATHER_KEY,
+		language: 'ja-JP',
 		details: 'true',
+		metric: 'true',
 	})}`);
 
 	return {data: accuweatherDailyForecastResponseSchema.parse(data), locationId};
+};
+
+export const getCurrentWeather = async (location: [number, number]) => {
+	const locationId = await getLocationId(location);
+
+	const {data} = await axios.get(`http://dataservice.accuweather.com/currentconditions/v1/${locationId}?${qs.encode({
+		apikey: process.env.ACCUWEATHER_KEY,
+		language: 'ja-JP',
+		details: 'true',
+	})}`);
+
+	return {data: accuweatherCurrentConditionsResponseSchema.parse(data), locationId};
 };
 
 export const getMinuteCast = async (location: [number, number]) => {

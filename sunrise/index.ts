@@ -10,16 +10,20 @@ import moment from 'moment';
 import nodePersist from 'node-persist';
 import Queue from 'p-queue';
 import suncalc from 'suncalc';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {extractMessage} from '../lib/slackUtils';
 import State from '../lib/state';
-import {getWeather, getHaiku, getEntries, getMinuteCast} from './fetch';
+import {getWeather, getHaiku, getEntries} from './fetch';
+import {postRainMinuteCast, postTemperatureReport, postWeatherCast} from './forecast';
 import render from './render';
 import footer from './views/footer';
 import listPointsDialog from './views/listPointsDialog';
 import registerPointDialog from './views/registerPointDialog';
 import weathers from './weathers';
 import type {WeatherCondition} from './weathers';
+
+const log = logger.child({bot: 'sunrise'});
 
 const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -546,35 +550,23 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 		if (message.bot_id === undefined) {
 			const weatherMatchResult = message.text?.match?.(weatherRegex);
 			if (weatherMatchResult) {
-				const {groups: {pointName}} = weatherMatchResult;
+				const {groups: {pointName, weatherType}} = weatherMatchResult;
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				const weatherPoint = state.weatherPoints.find(({name}) => name === pointName)!;
 
 				try {
-					const weatherData = await getMinuteCast([weatherPoint.latitude, weatherPoint.longitude]);
-
-					const text = `${weatherPoint.name}では、${weatherData.Summary.Phrase}。`;
-					const link = `<${weatherData.Link}|[詳細]>`;
-
-					await slack.chat.postMessage({
-						channel: process.env.CHANNEL_SANDBOX,
-						username: 'sunrise',
-						icon_emoji: ':sunrise:',
-						text,
-						...(message.thread_ts ? {thread_ts: message.thread_ts} : {}),
-						blocks: [
-							{
-								type: 'section',
-								text: {
-									type: 'mrkdwn',
-									text: `${text} ${link}`,
-								},
-							},
-						],
-						unfurl_links: false,
-						unfurl_media: false,
-					});
+					if (weatherType === '雨') {
+						await postRainMinuteCast(weatherPoint, slack, message.thread_ts);
+					}
+					if (weatherType === '天気') {
+						await postWeatherCast(weatherPoint, slack, message.thread_ts);
+					}
+					if (weatherType === '気温') {
+						await postTemperatureReport(weatherPoint, slack, message.thread_ts);
+					}
 				} catch (error) {
+					log.error(error);
+
 					const headline = `${weatherPoint.name}の天気を取得できませんでした😢`;
 					const errorMessage = error?.response?.data?.Message;
 

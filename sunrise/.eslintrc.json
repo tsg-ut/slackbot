@@ -11,6 +11,7 @@
         "array-plural/array-plural": "off",
         "import/no-named-as-default-member": "off",
         "import/no-named-as-default": "off",
-        "require-atomic-updates": "off"
+        "require-atomic-updates": "off",
+        "prefer-destructuring": "off"
     }
 }
