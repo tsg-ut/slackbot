@@ -3,6 +3,7 @@ import axios from 'axios';
 import cheerio from 'cheerio';
 import {flatten, sortBy} from 'lodash';
 import scrapeIt from 'scrape-it';
+import {z} from 'zod';
 
 interface Article {
 	date?: string,
@@ -14,6 +15,160 @@ interface Archive {
 	category: string,
 	articles: Article[],
 }
+
+const accuweatherDailyForecastResponseSchema = z.object({
+	Headline: z.object({
+		Text: z.string(),
+		EffectiveDate: z.string(),
+		EffectiveEpochDate: z.number(),
+		Severity: z.number(),
+		Category: z.string(),
+	}),
+	DailyForecasts: z.array(
+		z.object({
+			Date: z.string(),
+			Temperature: z.object({
+				Minimum: z.object({
+					Value: z.number(),
+				}),
+				Maximum: z.object({
+					Value: z.number(),
+				}),
+			}),
+			RealFeelTemperature: z.object({
+				Minimum: z.object({
+					Value: z.number(),
+					Phrase: z.string(),
+				}),
+				Maximum: z.object({
+					Value: z.number(),
+					Phrase: z.string(),
+				}),
+			}),
+			Day: z.object({
+				Icon: z.number(),
+				IconPhrase: z.string(),
+				TotalLiquid: z.object({
+					Value: z.number(),
+				}),
+				Wind: z.object({
+					Speed: z.object({
+						Value: z.number(),
+					}),
+					Direction: z.object({
+						Degrees: z.number(),
+					}),
+				}),
+			}),
+			Night: z.object({
+				Icon: z.number(),
+				IconPhrase: z.string(),
+				TotalLiquid: z.object({
+					Value: z.number(),
+				}),
+				Wind: z.object({
+					Speed: z.object({
+						Value: z.number(),
+					}),
+					Direction: z.object({
+						Degrees: z.number(),
+					}),
+				}),
+			}),
+		}),
+	),
+});
+
+export type AccuweatherDailyForecastResponse = z.infer<typeof accuweatherDailyForecastResponseSchema>;
+
+const accuweatherMinuteCastResponseSchema = z.object({
+	Summary: z.object({
+		Phrase: z.string(),
+		Type: z.string().nullable(),
+		TypeId: z.number(),
+	}),
+	Summaries: z.array(
+		z.object({
+			StartMinute: z.number(),
+			EndMinute: z.number(),
+			CountMinute: z.number(),
+			MinuteText: z.string(),
+			Type: z.string().nullable(),
+			TypeId: z.number(),
+		}),
+	),
+	Link: z.string(),
+	MobileLink: z.string(),
+});
+
+export type AccuweatherMinuteCastResponse = z.infer<typeof accuweatherMinuteCastResponseSchema>;
+
+const accuweatherUnitSchema = z.object({
+	Value: z.number(),
+	Unit: z.string(),
+	UnitType: z.number(),
+});
+
+const accuweatherMultiUnitSchema = z.object({
+	Metric: accuweatherUnitSchema,
+	Imperial: accuweatherUnitSchema,
+});
+
+const accuweatherMultiUnitSchemaWithPhrase = z.object({
+	Metric: accuweatherUnitSchema.extend({
+		Phrase: z.string(),
+	}),
+	Imperial: accuweatherUnitSchema.extend({
+		Phrase: z.string(),
+	}),
+});
+
+export type AccuweatherMultiUnit = z.infer<typeof accuweatherMultiUnitSchema>;
+
+const accuweatherWindSchema = z.object({
+	Direction: z.object({
+		Degrees: z.number(),
+		Localized: z.string(),
+		English: z.string(),
+	}),
+	Speed: accuweatherMultiUnitSchema,
+});
+
+export type AccuweatherWind = z.infer<typeof accuweatherWindSchema>;
+
+const accuweatherCurrentConditionsResponseSchema = z.array(
+	z.object({
+		LocalObservationDateTime: z.string(),
+		EpochTime: z.number(),
+		WeatherText: z.string(),
+		WeatherIcon: z.number(),
+		HasPrecipitation: z.boolean(),
+		PrecipitationType: z.string().nullable(),
+		Temperature: accuweatherMultiUnitSchema,
+		RealFeelTemperature: accuweatherMultiUnitSchemaWithPhrase,
+		RealFeelTemperatureShade: accuweatherMultiUnitSchemaWithPhrase,
+		PrecipitationSummary: z.object({
+			Precipitation: accuweatherMultiUnitSchema,
+			PastHour: accuweatherMultiUnitSchema,
+			Past3Hours: accuweatherMultiUnitSchema,
+			Past6Hours: accuweatherMultiUnitSchema,
+			Past9Hours: accuweatherMultiUnitSchema,
+			Past12Hours: accuweatherMultiUnitSchema,
+			Past18Hours: accuweatherMultiUnitSchema,
+			Past24Hours: accuweatherMultiUnitSchema,
+		}),
+		Past24HourTemperatureDeparture: accuweatherMultiUnitSchema,
+		RelativeHumidity: z.number(),
+		DewPoint: accuweatherMultiUnitSchema,
+		Wind: accuweatherWindSchema,
+		UVIndex: z.number(),
+		UVIndexText: z.string(),
+		MobileLink: z.string(),
+		Link: z.string(),
+	}),
+);
+
+export type AccuweatherCurrentConditionsResponse = z.infer<typeof accuweatherCurrentConditionsResponseSchema>;
 
 const getTayoriEntries = async () => {
 	const {data} = await scrapeIt<{articles: Article[]}>('http://www.i-nekko.jp/hibinotayori/', {
@@ -118,7 +273,7 @@ export const getHaiku = async () => {
 	return {text, author, note};
 };
 
-export const getWeather = async (location: [number, number]) => {
+const getLocationId = async (location: [number, number]) => {
 	interface GeopositionResponse {
 		Key: string,
 	}
@@ -131,82 +286,40 @@ export const getWeather = async (location: [number, number]) => {
 	})}`);
 	const locationId = locationData.Key;
 
-	interface DailyForecastResponse {
-		DailyForecasts: {
-			Date: string,
-			Temperature: {
-				Minimum: {
-					Value: number,
-				},
-				Maximum: {
-					Value: number,
-				},
-			},
-			Day: {
-				Icon: number,
-				IconPhrase: string,
-				TotalLiquid: {
-					Value: number,
-				},
-				Wind: {
-					Speed: {
-						Value: number,
-					},
-					Direction: {
-						Degrees: number,
-					},
-				},
-			},
-			Night: {
-				Icon: number,
-				IconPhrase: string,
-				TotalLiquid: {
-					Value: number,
-				},
-				Wind: {
-					Speed: {
-						Value: number,
-					},
-					Direction: {
-						Degrees: number,
-					},
-				},
-			},
-		}[],
-	}
+	return locationId;
+};
 
-	const {data} = await axios.get<DailyForecastResponse>(`http://dataservice.accuweather.com/forecasts/v1/daily/5day/${locationId}?${qs.encode({
+export const getWeather = async (location: [number, number]) => {
+	const locationId = await getLocationId(location);
+
+	const {data} = await axios.get(`http://dataservice.accuweather.com/forecasts/v1/daily/5day/${locationId}?${qs.encode({
 		apikey: process.env.ACCUWEATHER_KEY,
+		language: 'ja-JP',
+		details: 'true',
+		metric: 'true',
+	})}`);
+
+	return {data: accuweatherDailyForecastResponseSchema.parse(data), locationId};
+};
+
+export const getCurrentWeather = async (location: [number, number]) => {
+	const locationId = await getLocationId(location);
+
+	const {data} = await axios.get(`http://dataservice.accuweather.com/currentconditions/v1/${locationId}?${qs.encode({
+		apikey: process.env.ACCUWEATHER_KEY,
+		language: 'ja-JP',
 		details: 'true',
 	})}`);
 
-	return {data, locationId};
+	return {data: accuweatherCurrentConditionsResponseSchema.parse(data), locationId};
 };
 
 export const getMinuteCast = async (location: [number, number]) => {
-	interface MinuteCastResponse {
-		Summary: {
-			Phrase: string,
-			Type: string | null,
-			TypeId: number,
-		},
-		Summaries: {
-			StartMinute: number,
-			EndMinute: number,
-			CountMinute: number,
-			MinuteText: string,
-			Type: string | null,
-			TypeId: number,
-		}[],
-		Link: string,
-		MobileLink: string,
-	}
-
-	const {data} = await axios.get<MinuteCastResponse>(`http://dataservice.accuweather.com/forecasts/v1/minute?${qs.encode({
+	const {data} = await axios.get(`http://dataservice.accuweather.com/forecasts/v1/minute?${qs.encode({
 		q: `${location[0]},${location[1]}`,
 		apikey: process.env.ACCUWEATHER_MINUTECAST_KEY,
 		language: 'ja-JP',
 	})}`);
 
-	return data;
+	return accuweatherMinuteCastResponseSchema.parse(data);
 };

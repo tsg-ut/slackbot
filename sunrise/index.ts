@@ -1,5 +1,7 @@
 import assert from 'assert';
 import path from 'path';
+import type {ViewStateValue, ViewSubmitAction, BlockButtonAction, MessageEvent} from '@slack/bolt';
+// eslint-disable-next-line import/default
 import cloudinary from 'cloudinary';
 import type {UploadApiResponse} from 'cloudinary';
 import {stripIndent} from 'common-tags';
@@ -8,15 +10,21 @@ import moment from 'moment';
 import nodePersist from 'node-persist';
 import Queue from 'p-queue';
 import suncalc from 'suncalc';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
+import {extractMessage} from '../lib/slackUtils';
 import State from '../lib/state';
-import {getWeather, getHaiku, getEntries, getMinuteCast} from './fetch';
+import {getWeather, getHaiku, getEntries} from './fetch';
+import {postRainMinuteCast, postTemperatureReport, postWeatherCast} from './forecast';
 import render from './render';
+import {getGoogleMapsLink} from './util';
 import footer from './views/footer';
 import listPointsDialog from './views/listPointsDialog';
 import registerPointDialog from './views/registerPointDialog';
 import weathers from './weathers';
 import type {WeatherCondition} from './weathers';
+
+const log = logger.child({bot: 'sunrise'});
 
 const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -124,6 +132,11 @@ const FtoC = (F: number) => (F - 32) * 5 / 9;
 const miphToMps = (miph: number) => miph * 0.447;
 const inchToMm = (inch: number) => inch * 25.4;
 
+const getWeatherRegex = (pointNames: string[]) => {
+	const pointNamesRegex = pointNames.map(escapeRegExp).join('|');
+	return new RegExp(`(?<pointName>${pointNamesRegex})(?:の|\\s*)(?<weatherType>天気|雨|気温)`);
+};
+
 export default async ({eventClient, webClient: slack, messageClient}: SlackInterface) => {
 	// TODO: Remove these codes after migration to State library
 	const storage = nodePersist.create({
@@ -150,6 +163,8 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 			},
 		],
 	});
+
+	let weatherRegex = getWeatherRegex(state.weatherPoints.map((point) => point.name));
 
 	const tick = async () => {
 		const now = new Date();
@@ -461,7 +476,6 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 	}, 10 * 1000);
 
 	const postWeatherMessage = (text: string) => (
-
 		slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			username: 'sunrise',
@@ -477,14 +491,21 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 				},
 				...footer,
 			],
-		}));
+		})
+	);
 
-	eventClient.on('message', async (message) => {
+	eventClient.on('message', async (originalMessage: MessageEvent) => {
+		const message = extractMessage(originalMessage);
+
+		if (!message) {
+			return;
+		}
+
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
 
-		if (message.text?.match(/(?:いま|今)(?:なんじ|なんどき|何時)/)) {
+		if (message.text && message.text.match(/(?:いま|今)(?:なんじ|なんどき|何時)/)) {
 			const now = Date.now();
 			const times = range(-5, 5).map((days) => suncalc.getTimes(moment().add(days, 'day').toDate(), ...location));
 			const 夜明s = map(times, '夜明');
@@ -528,63 +549,53 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 		}
 
 		if (message.bot_id === undefined) {
-			for (const weatherPoint of state.weatherPoints) {
-				const regex = new RegExp(`(?:${escapeRegExp(weatherPoint.name)})(?:の|\\s*)(?:天気|あめ|雨)`);
-				if (message.text?.match(regex)) {
-					try {
-						const weatherData = await getMinuteCast([weatherPoint.latitude, weatherPoint.longitude]);
+			const weatherMatchResult = message.text?.match?.(weatherRegex);
+			if (weatherMatchResult) {
+				const {groups: {pointName, weatherType}} = weatherMatchResult;
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				const weatherPoint = state.weatherPoints.find(({name}) => name === pointName)!;
 
-						const text = `${weatherPoint.name}では、${weatherData.Summary.Phrase}。`;
-						const link = `<${weatherData.Link}|[詳細]>`;
-
-						await slack.chat.postMessage({
-							channel: process.env.CHANNEL_SANDBOX,
-							username: 'sunrise',
-							icon_emoji: ':sunrise:',
-							text,
-							...(message.thread_ts ? {thread_ts: message.thread_ts} : {}),
-							blocks: [
-								{
-									type: 'section',
-									text: {
-										type: 'mrkdwn',
-										text: `${text} ${link}`,
-									},
-								},
-							],
-							unfurl_links: false,
-							unfurl_media: false,
-						});
-					} catch (error) {
-						const headline = `${weatherPoint.name}の天気を取得できませんでした😢`;
-						const errorMessage = error?.response?.data?.Message;
-
-						await slack.chat.postMessage({
-							channel: process.env.CHANNEL_SANDBOX,
-							username: 'sunrise',
-							icon_emoji: ':sunrise:',
-							text: headline,
-							blocks: [
-								{
-									type: 'section',
-									text: {
-										type: 'mrkdwn',
-										text: headline,
-									},
-								},
-								...(
-									errorMessage ? [{
-										type: 'section' as const,
-										text: {
-											type: 'mrkdwn' as const,
-											text: `*エラーメッセージ*:\n\`\`\`\n${errorMessage}\n\`\`\`\n`,
-										},
-									}] : []
-								),
-								...footer,
-							],
-						});
+				try {
+					if (weatherType === '雨') {
+						await postRainMinuteCast(weatherPoint, slack, message.thread_ts);
 					}
+					if (weatherType === '天気') {
+						await postWeatherCast(weatherPoint, slack, message.thread_ts);
+					}
+					if (weatherType === '気温') {
+						await postTemperatureReport(weatherPoint, slack, message.thread_ts);
+					}
+				} catch (error) {
+					log.error(error);
+
+					const headline = `${weatherPoint.name}の天気を取得できませんでした😢`;
+					const errorMessage = error?.response?.data?.Message;
+
+					await slack.chat.postMessage({
+						channel: process.env.CHANNEL_SANDBOX,
+						username: 'sunrise',
+						icon_emoji: ':sunrise:',
+						text: headline,
+						blocks: [
+							{
+								type: 'section',
+								text: {
+									type: 'mrkdwn',
+									text: headline,
+								},
+							},
+							...(
+								errorMessage ? [{
+									type: 'section' as const,
+									text: {
+										type: 'mrkdwn' as const,
+										text: `*エラーメッセージ*:\n\`\`\`\n${errorMessage}\n\`\`\``,
+									},
+								}] : []
+							),
+							...footer,
+						],
+					});
 				}
 			}
 
@@ -607,31 +618,31 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 	messageClient.action({
 		type: 'button',
 		actionId: 'sunrise_register_point_button',
-	}, async (payload: any) => {
+	}, async (payload: BlockButtonAction) => {
 		await slack.views.open({
-			trigger_id: payload?.trigger_id,
+			trigger_id: payload.trigger_id,
 			view: registerPointDialog,
 		});
 	});
 
-	messageClient.viewSubmission('sunrise_register_point_dialog', async (payload: any) => {
-		const stateObjects = Object.values(payload?.view?.state?.values ?? {});
-		const dialogState = Object.assign({}, ...stateObjects);
+	messageClient.viewSubmission('sunrise_register_point_dialog', async (payload: ViewSubmitAction) => {
+		const stateObjects = Object.values(payload.view.state.values ?? {});
+		const dialogState: {[actionId: string]: ViewStateValue} = Object.assign({}, ...stateObjects);
 
-		const latitude = parseFloat(dialogState?.latitude?.value);
-		const longitude = parseFloat(dialogState?.longitude?.value);
+		const latitude = parseFloat(dialogState.latitude?.value);
+		const longitude = parseFloat(dialogState.longitude?.value);
 		const name = dialogState?.name?.value;
 
 		if (Number.isNaN(latitude)) {
-			return postEphemeral('緯度が不正です', payload?.user?.id);
+			return postEphemeral('緯度が不正です', payload.user.id);
 		}
 
 		if (Number.isNaN(longitude)) {
-			return postEphemeral('経度が不正です', payload?.user?.id);
+			return postEphemeral('経度が不正です', payload.user.id);
 		}
 
 		if (name === '') {
-			return postEphemeral('名前を入力してください', payload?.user?.id);
+			return postEphemeral('名前を入力してください', payload.user.id);
 		}
 
 		if (state.weatherPoints.some((point) => point.name === name)) {
@@ -645,15 +656,17 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 			state.weatherPoints.push({name, latitude, longitude});
 		}
 
-		await postWeatherMessage(`<@${payload?.user?.id}>が地点「${name} (${latitude}, ${longitude})」を登録しました`);
+		weatherRegex = getWeatherRegex(state.weatherPoints.map((point) => point.name));
+
+		await postWeatherMessage(`<@${payload.user.id}>が地点「${name} (${getGoogleMapsLink(latitude, longitude)})」を登録しました`);
 	});
 
 	messageClient.action({
 		type: 'button',
 		actionId: 'sunrise_list_points_button',
-	}, async (payload: any) => {
+	}, async (payload: BlockButtonAction) => {
 		await slack.views.open({
-			trigger_id: payload?.trigger_id,
+			trigger_id: payload.trigger_id,
 			view: listPointsDialog(state.weatherPoints),
 		});
 	});
@@ -661,30 +674,32 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 	messageClient.action({
 		type: 'button',
 		actionId: 'sunrise_delete_point_button',
-	}, async (payload: any) => {
-		const action = (payload?.actions ?? []).find((a: any) => (
+	}, async (payload: BlockButtonAction) => {
+		const action = (payload.actions ?? []).find((a) => (
 			a.action_id === 'sunrise_delete_point_button'
 		));
 
-		const name = action?.value;
+		const name = action.value;
 
 		if (name === undefined) {
-			return postEphemeral('地点名が不正です', payload?.user?.id);
+			return postEphemeral('地点名が不正です', payload.user.id);
 		}
 
 		if (!state.weatherPoints.some((point) => point.name === name)) {
-			return postEphemeral('地点が見つかりません', payload?.user?.id);
+			return postEphemeral('地点が見つかりません', payload.user.id);
 		}
 
 		const deletedPoint = state.weatherPoints.find((point) => point.name === name);
 
 		state.weatherPoints = state.weatherPoints.filter((point) => point.name !== name);
 
+		weatherRegex = getWeatherRegex(state.weatherPoints.map((point) => point.name));
+
 		await slack.views.update({
-			view_id: payload?.view?.id,
+			view_id: payload.view.id,
 			view: listPointsDialog(state.weatherPoints),
 		});
 
-		await postWeatherMessage(`<@${payload?.user?.id}>が地点「${deletedPoint.name} (${deletedPoint.latitude}, ${deletedPoint.longitude})」を削除しました`);
+		await postWeatherMessage(`<@${payload.user.id}>が地点「${deletedPoint.name} (${getGoogleMapsLink(deletedPoint.latitude, deletedPoint.longitude)})」を削除しました`);
 	});
 };

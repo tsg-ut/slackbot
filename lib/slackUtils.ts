@@ -4,6 +4,7 @@ import {WebClient} from '@slack/web-api';
 import {eventClient, getTokens} from './slack';
 import {Deferred} from './utils';
 import SlackCache from './slackCache';
+import type {GenericMessageEvent, MessageEvent} from '@slack/bolt';
 
 const slackCaches = new Map<string, SlackCache>();
 const initializedSlackCachesDeferred = new Deferred<void>();
@@ -96,3 +97,20 @@ export const mrkdwn = (text: string): MrkdwnElement => ({
 	type: 'mrkdwn' as 'mrkdwn',
 	text,
 });
+
+const isGenericMessage = (message: MessageEvent): message is GenericMessageEvent => (
+	message.subtype === undefined
+)
+
+export const extractMessage = (message: MessageEvent) => {
+	if (isGenericMessage(message)) {
+		return message;
+	}
+	if (message.subtype === 'bot_message') {
+		return message;
+	}
+	if (message.subtype === 'thread_broadcast') {
+		return message.root;
+	}
+	return null;
+};

@@ -1,5 +1,6 @@
 import {View} from '@slack/web-api';
 import type {Point} from '../index';
+import {getGoogleMapsLink} from '../util';
 
 export default (points: Point[]) => ({
 	type: 'modal',
@@ -13,7 +14,7 @@ export default (points: Point[]) => ({
 		type: 'section',
 		text: {
 			type: 'mrkdwn',
-			text: `＊${point.name}＊ (${point.latitude}, ${point.longitude})`,
+			text: `＊${point.name}＊ (${getGoogleMapsLink(point.latitude, point.longitude)})`,
 		},
 		accessory: {
 			type: 'button',
