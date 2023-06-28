@@ -6,6 +6,8 @@ jest.mock('cloudinary');
 jest.mock('node-persist');
 jest.mock('./render');
 jest.mock('./fetch');
+jest.mock('../lib/slackUtils');
+jest.mock('../lib/state');
 
 import FakeTimers from '@sinonjs/fake-timers';
 import type {InstalledClock} from '@sinonjs/fake-timers';
