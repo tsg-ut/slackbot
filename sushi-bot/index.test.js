@@ -1,6 +1,7 @@
 /* eslint-env node, jest */
 jest.mock('../achievements');
 jest.mock('moment');
+jest.mock('../lib/state');
 jest.mock('fs-extra', () => ({
 	mkdirp: jest.fn(),
 	readFile: jest.fn(() => Promise.resolve(Buffer.from(''))),

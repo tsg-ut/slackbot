@@ -11,6 +11,8 @@ let slack: Slack = null;
 
 jest.mock('../lib/slackUtils');
 
+jest.mock('../lib/state');
+
 jest.mock('../lib/firestore', () => {
 	const firebase = new MockFirebase({});
 	const db = firebase.firestore();

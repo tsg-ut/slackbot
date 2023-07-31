@@ -3,6 +3,7 @@
 jest.mock('axios');
 jest.mock('../achievements');
 jest.mock('../lib/slackUtils');
+jest.mock('../lib/state.ts');
 
 const axios = require('axios');
 const pocky = require('./index.js');
