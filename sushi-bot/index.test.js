@@ -306,3 +306,49 @@ it('reacts to "エクササイズランキング 確認"', () => new Promise((re
 	})();
 }));
 
+it('reacts to "twitter" with :x-logo:', () => new Promise((resolve) => {
+	slack.on('reactions.add', ({name, channel, timestamp}) => {
+		expect(name).toBe('x-logo');
+		expect(channel).toBe(slack.fakeChannel);
+		expect(timestamp).toBe(slack.fakeTimestamp);
+		resolve();
+	});
+
+	slack.eventClient.emit('message', {
+		channel: slack.fakeChannel,
+		text: '私のtwitterアカウントは@hakatashiです',
+		user: slack.fakeUser,
+		ts: slack.fakeTimestamp,
+	});
+}));
+
+it('reacts to "twitter" with :x-logo: case-insensitively', () => new Promise((resolve) => {
+	slack.on('reactions.add', ({name, channel, timestamp}) => {
+		expect(name).toBe('x-logo');
+		expect(channel).toBe(slack.fakeChannel);
+		expect(timestamp).toBe(slack.fakeTimestamp);
+		resolve();
+	});
+
+	slack.eventClient.emit('message', {
+		channel: slack.fakeChannel,
+		text: '私のTwIttERアカウントは@hakatashiです',
+		user: slack.fakeUser,
+		ts: slack.fakeTimestamp,
+	});
+}));
+
+it('does not react to "twitter.com"', async () => {
+	slack.webClient.reactions.add.mockReturnValue(null);
+
+	slack.eventClient.emit('message', {
+		channel: slack.fakeChannel,
+		text: '<https://twitter.com/hakatashi/status/1539187440476246017>',
+		user: slack.fakeUser,
+		ts: slack.fakeTimestamp,
+	});
+
+	await new Promise((resolve) => process.nextTick(resolve));
+
+	expect(slack.webClient.reactions.add).not.toHaveBeenCalled();
+});
