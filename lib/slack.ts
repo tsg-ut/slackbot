@@ -5,13 +5,13 @@ import sql from 'sql-template-strings';
 import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
-import {TeamEventClient} from './slackEventClient';
+import {TeamEventClient, TeamEventClientInterface} from './slackEventClient';
 import {Deferred} from './utils';
 import {Token} from '../oauth/tokens';
 
 export interface SlackInterface {
 	webClient: WebClient;
-	eventClient: TeamEventClient;
+	eventClient: TeamEventClientInterface;
 	messageClient: ReturnType<typeof createMessageAdapter>;
 };
 

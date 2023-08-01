@@ -1,8 +1,7 @@
 /* eslint-disable no-undef */
 import {constants, promises as fs} from 'fs';
 import path from 'path';
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
+import Slack from '../lib/slackMock';
 import {getMemberName} from '../lib/slackUtils';
 import {Challenge, SolvedInfo, Profile} from './lib/BasicTypes';
 import {fetchChallsCH, fetchUserProfileCH} from './lib/CHManager';
@@ -231,7 +230,7 @@ beforeEach(async () => {
 
 
 it('respond to usage', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa usage');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa usage');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('list');
@@ -240,7 +239,7 @@ it('respond to usage', async () => {
 });
 
 it('respond to help', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa help');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa help');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('list');
@@ -249,13 +248,13 @@ it('respond to help', async () => {
 });
 
 it('respond to list', async () => {
-	const {channel}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa list');
+	const {channel} = await slack.getResponseTo('@pwnyaa list');
 
 	expect(channel).toBe(slack.fakeChannel);
 });
 
 it('respond to check tw', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa check tw');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa check tw');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('azaika');
@@ -264,27 +263,27 @@ it('respond to check tw', async () => {
 });
 
 it('respond to check xyz without joining', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa check xyz');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa check xyz');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('参加してないよ');
 });
 
 it('respond to check ch without joining', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa check ch');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa check ch');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('参加してないよ');
 });
 it('respond to check ksn without joining', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa check ksn');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa check ksn');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('参加してないよ');
 });
 
 it('respond to check', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa check');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa check');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('check');
@@ -292,14 +291,14 @@ it('respond to check', async () => {
 });
 
 it('respond to join hoge fuga', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa join hoge fuga');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa join hoge fuga');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('は見つからなかったよ');
 });
 
 it('respond to join tw', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa join tw');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa join tw');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('join');
@@ -307,7 +306,7 @@ it('respond to join tw', async () => {
 });
 
 it('respond to join xyz', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa join xyz');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa join xyz');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('join');
@@ -315,7 +314,7 @@ it('respond to join xyz', async () => {
 });
 
 it('respond to join ch', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa join ch');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa join ch');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('join');
@@ -323,7 +322,7 @@ it('respond to join ch', async () => {
 });
 
 it('respond to join ksn', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa join ksn');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa join ksn');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('join');
@@ -331,7 +330,7 @@ it('respond to join ksn', async () => {
 });
 
 it('respond to stat', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa stat');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa stat');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('状況だよ');

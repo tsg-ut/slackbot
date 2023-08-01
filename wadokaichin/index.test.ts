@@ -1,5 +1,4 @@
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
+import Slack from '../lib/slackMock';
 import path from 'path';
 
 jest.mock('fs');

@@ -7,7 +7,7 @@ jest.mock('../lib/state.ts');
 
 const axios = require('axios');
 const pocky = require('./index.js');
-const Slack = require('../lib/slackMock.js');
+const {default: Slack} = require('../lib/slackMock.ts');
 
 let slack = null;
 

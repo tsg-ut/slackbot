@@ -3,6 +3,11 @@
 import {inspect} from 'util';
 import {extractValidAnswers} from './hayaoshiUtils';
 
+jest.mock('../hayaoshi', () => ({
+	isCorrectAnswer: jest.fn(),
+	normalize: jest.fn(),
+}));
+
 const testCases: [string, string, string[]][] = [
 	['', 'リトグラフ[lithograph]【「石版画」「石版印刷」「リトグラフィー[lithographie]」も○】',
 		['リトグラフ', 'lithograph', '石版画', '石版印刷', 'リトグラフィー', 'lithographie'],

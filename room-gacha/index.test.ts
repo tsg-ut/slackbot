@@ -1,12 +1,13 @@
 jest.mock('tinyreq');
 
 import roomGacha from './index';
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
+import Slack from '../lib/slackMock';
 // @ts-expect-error
 import tinyreq from 'tinyreq';
 import { promises as fs } from 'fs';
 import { stripIndents } from 'common-tags';
+import assert from 'assert';
+import type { Block, KnownBlock } from '@slack/web-api';
 
 let slack: Slack = null;
 
@@ -27,7 +28,11 @@ describe('room-gacha', () => {
         expect(response.username).toBe('物件ガチャ');
         expect(response.icon_emoji).toBe(':house:');
         expect(response.text).toBe('物件ガチャの結果だよ〜:full_moon_with_face:');
-        expect(response.blocks[0].text.text).toBe('*東京都文京区の賃貸住宅[賃貸マンション・アパート]情報* (12,345件) から選んだよ〜 :full_moon_with_face:');
+
+        const block0 = response.blocks[0] as KnownBlock;
+        expect(block0.type).toBe('section');
+        assert(block0.type === 'section');
+        expect(block0.text.text).toBe('*東京都文京区の賃貸住宅[賃貸マンション・アパート]情報* (12,345件) から選んだよ〜 :full_moon_with_face:');
         expect(response.blocks[3].text.text).toBe(stripIndents`*<https://suumo.jp/chintai/bc_000000000000/|ザ・シェアハウス地下>*
             *住所*: 東京都文京区本郷７丁目３−１
             *アクセス*: 本郷三丁目駅（地下鉄丸の内線）より徒歩8分

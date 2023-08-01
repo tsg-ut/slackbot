@@ -7,7 +7,7 @@ jest.mock('word2vec');
 jest.mock('./state.json', () => ({}), {virtual: true});
 
 const vocabwar = require('./index.js');
-const Slack = require('../lib/slackMock.js');
+const {default: Slack} = require('../lib/slackMock.ts');
 const {promisify} = require('util');
 const path = require('path');
 const fs = require('fs');

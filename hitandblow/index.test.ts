@@ -1,7 +1,6 @@
 import { stripIndent } from 'common-tags';
 import hitandblow from './';
-
-const Slack = require('../lib/slackMock.js');
+import Slack from '../lib/slackMock';
 
 let slack: typeof Slack;
 

@@ -2,8 +2,7 @@
 import noop from 'lodash/noop';
 // @ts-expect-error
 import MockFirebase from 'mock-cloud-firestore';
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
+import Slack from '../lib/slackMock';
 
 import achievements from './index_production';
 

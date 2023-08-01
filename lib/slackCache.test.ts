@@ -8,7 +8,6 @@ import type {
 	EmojiListArguments,
 	EmojiListResponse,
 } from '@slack/web-api';
-// @ts-expect-error
 import Slack from './slackMock';
 import SlackCache from './slackCache';
 
