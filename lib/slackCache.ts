@@ -1,7 +1,8 @@
 import {get} from 'lodash';
+import type {EventEmitter} from 'events';
 import type {Token} from '../oauth/tokens';
 import {Deferred} from './utils';
-import {TeamEventClient, TeamEventClientInterface} from './slackEventClient';
+import {TeamEventClient} from './slackEventClient';
 import logger from './logger';
 
 import type {Reaction} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
@@ -31,7 +32,7 @@ interface WebClient {
 
 interface Config {
 	token: Token;
-	eventClient: TeamEventClientInterface;
+	eventClient: EventEmitter;
 	webClient: WebClient;
 	enableReactions?: boolean;
 }

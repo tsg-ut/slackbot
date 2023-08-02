@@ -1,11 +1,11 @@
-import type {SlackEventAdapter} from '@slack/events-api';
+import type {EventEmitter} from 'events';
 
 export class TeamEventClient {
-	#eventAdapter: SlackEventAdapter;
+	#eventAdapter: EventEmitter;
 	#team: string;
 
 	// contract: 渡されるeventAdapterは、EventAdapterOptions.includeBodyがtrueでなければならない。
-	constructor(eventAdapter: SlackEventAdapter, team: string) {
+	constructor(eventAdapter: EventEmitter, team: string) {
 		this.#eventAdapter = eventAdapter;
 		this.#team = team;
 	}

@@ -7,7 +7,7 @@ import tinyreq from 'tinyreq';
 import { promises as fs } from 'fs';
 import { stripIndents } from 'common-tags';
 import assert from 'assert';
-import type { Block, KnownBlock } from '@slack/web-api';
+import type { KnownBlock } from '@slack/web-api';
 
 let slack: Slack = null;
 
@@ -30,17 +30,22 @@ describe('room-gacha', () => {
         expect(response.text).toBe('物件ガチャの結果だよ〜:full_moon_with_face:');
 
         const block0 = response.blocks[0] as KnownBlock;
-        expect(block0.type).toBe('section');
         assert(block0.type === 'section');
         expect(block0.text.text).toBe('*東京都文京区の賃貸住宅[賃貸マンション・アパート]情報* (12,345件) から選んだよ〜 :full_moon_with_face:');
-        expect(response.blocks[3].text.text).toBe(stripIndents`*<https://suumo.jp/chintai/bc_000000000000/|ザ・シェアハウス地下>*
+
+        const block3 = response.blocks[3] as KnownBlock;
+        assert(block3.type === 'section');
+        expect(block3.text.text).toBe(stripIndents`*<https://suumo.jp/chintai/bc_000000000000/|ザ・シェアハウス地下>*
             *住所*: 東京都文京区本郷７丁目３−１
             *アクセス*: 本郷三丁目駅（地下鉄丸の内線）より徒歩8分
             本郷三丁目駅（地下鉄大江戸線）より徒歩6分
             湯島駅又は根津駅（地下鉄千代田線）より徒歩8分
             東大前駅（地下鉄南北線）より徒歩1分
             春日駅（地下鉄三田線）より徒歩10分`);
-        expect(response.blocks[4].fields.map(
+
+        const block4 = response.blocks[4] as KnownBlock;
+        assert(block4.type === 'section');
+        expect(block4.fields.map(
             (field: {type: string; text: string; }) => field.text
         )).toMatchObject([
             '*家賃*\n123.4万円',
@@ -49,6 +54,9 @@ describe('room-gacha', () => {
             '*向き*\n南東',
             '*築年数*\n築100年',
         ]);
-        expect(response.blocks[5].image_url).toBe('https://img01.suumo.com/front/gazo/fr/bukken/000/000000000000/000000000000_ef.jpg');
+
+        const block5 = response.blocks[5] as KnownBlock;
+        assert(block5.type === 'image');
+        expect(block5.image_url).toBe('https://img01.suumo.com/front/gazo/fr/bukken/000/000000000000/000000000000_ef.jpg');
     });
 });

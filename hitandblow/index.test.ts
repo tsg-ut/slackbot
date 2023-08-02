@@ -2,7 +2,7 @@ import { stripIndent } from 'common-tags';
 import hitandblow from './';
 import Slack from '../lib/slackMock';
 
-let slack: typeof Slack;
+let slack: Slack;
 
 beforeEach(() => {
   slack = new Slack();
