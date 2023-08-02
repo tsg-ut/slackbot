@@ -2,6 +2,7 @@
 /* eslint-disable no-restricted-imports */
 /* eslint-disable react/no-access-state-in-setstate */
 // eslint-disable-next-line no-unused-vars
+import type {EventEmitter} from 'events';
 import {constants, promises as fs} from 'fs';
 import path from 'path';
 import type {KnownBlock, WebClient} from '@slack/web-api';
@@ -11,7 +12,6 @@ import type {FastifyPluginCallback} from 'fastify';
 import plugin from 'fastify-plugin';
 import {flatten, isEmpty, range, shuffle, times, uniq} from 'lodash';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
-import type {TeamEventClientInterface} from '../lib/slackEventClient';
 import {getMemberName} from '../lib/slackUtils';
 import {Deferred} from '../lib/utils';
 
@@ -47,7 +47,7 @@ interface State {
 const mutex = new Mutex();
 
 class Oogiri {
-	eventClient: TeamEventClientInterface;
+	eventClient: EventEmitter;
 
 	slack: WebClient;
 
@@ -64,7 +64,7 @@ class Oogiri {
 		slack,
 		slackInteractions,
 	}: {
-		eventClient: TeamEventClientInterface,
+		eventClient: EventEmitter,
 		slack: WebClient,
 		slackInteractions: any,
 	}) {

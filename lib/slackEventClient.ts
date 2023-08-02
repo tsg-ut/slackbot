@@ -1,8 +1,8 @@
 import type {EventEmitter} from 'events';
 
 export class TeamEventClient {
-	#eventAdapter: EventEmitter;
-	#team: string;
+	readonly #eventAdapter: EventEmitter;
+	readonly #team: string;
 
 	// contract: 渡されるeventAdapterは、EventAdapterOptions.includeBodyがtrueでなければならない。
 	constructor(eventAdapter: EventEmitter, team: string) {
@@ -29,6 +29,3 @@ export class TeamEventClient {
 
 	// feel free to add any other [Events](https://nodejs.org/api/events.html) methods you want!
 }
-
-// https://stackoverflow.com/a/48953930
-export type TeamEventClientInterface = Pick<TeamEventClient, keyof TeamEventClient>;

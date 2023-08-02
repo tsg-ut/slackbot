@@ -3,7 +3,7 @@ import { range, shuffle, round } from 'lodash';
 import { stripIndent } from 'common-tags';
 import { unlock } from '../achievements';
 import assert from 'assert';
-import type { TeamEventClientInterface } from '../lib/slackEventClient';
+import type { EventEmitter } from 'events';
 
 interface HitAndBlowHistory {
   call: number[];
@@ -90,7 +90,7 @@ export default ({
   eventClient,
   webClient: slack,
 }: {
-  eventClient: TeamEventClientInterface;
+  eventClient: EventEmitter;
   webClient: WebClient;
 }) => {
   const state = new HitAndBlowState();

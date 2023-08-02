@@ -1,10 +1,9 @@
 /* eslint-env node, jest */
 
-import type {ChatPostMessageArguments, ChatPostMessageResponse, ReactionsAddArguments, ReactionsAddResponse, WebClient} from '@slack/web-api';
+import type {ChatPostMessageArguments, ReactionsAddArguments, WebClient} from '@slack/web-api';
 import {EventEmitter} from 'events';
 import {noop, last} from 'lodash';
 import type {SlackInterface} from './slack';
-import { TeamEventClient, TeamEventClientInterface } from './slackEventClient';
 
 // https://jestjs.io/docs/mock-function-api
 const mockMethodCalls = [
@@ -46,8 +45,10 @@ const createWebClient = (
 				if (isMockMethodCall(methodName)) {
 					const mock = jest.fn();
 					registeredMocks.set(stack.slice(0, -1).join('.'), mock);
-					const mockArgs = args as Parameters<typeof mock['mockImplementation']>;
-					return mock[methodName](...mockArgs);
+					return mock[methodName](
+						// @ts-expect-error: Spread operator is not supported.
+						...args,
+					);
 				}
 				return fallbackFn(stack, ...args)
 			},
@@ -81,7 +82,7 @@ export default class SlackMock extends EventEmitter implements SlackInterface {
 	fakeTeam = 'T00000000';
 	fakeTimestamp = '1234567890.123456';
 
-	readonly eventClient: TeamEventClientInterface & EventEmitter;
+	readonly eventClient: EventEmitter;
 	readonly registeredMocks: Map<string, jest.Mock>;
 	readonly webClient: WebClient;
 	readonly messageClient: any;
