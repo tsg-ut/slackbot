@@ -82,7 +82,7 @@ export default class SlackMock extends EventEmitter implements SlackInterface {
 	fakeTeam = 'T00000000';
 	fakeTimestamp = '1234567890.123456';
 
-	readonly eventClient: EventEmitter;
+	readonly eventClient: MockTeamEventClient;
 	readonly registeredMocks: Map<string, jest.Mock>;
 	readonly webClient: WebClient;
 	readonly messageClient: any;

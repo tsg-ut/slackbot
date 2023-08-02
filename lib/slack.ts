@@ -12,7 +12,7 @@ import {Token} from '../oauth/tokens';
 
 export interface SlackInterface {
 	webClient: WebClient;
-	eventClient: EventEmitter;
+	eventClient: EventEmitter & Pick<TeamEventClient, keyof TeamEventClient>;
 	messageClient: ReturnType<typeof createMessageAdapter>;
 };
 
