@@ -66,7 +66,9 @@ const loadCharacters = async (author: string) => {
 		.split('\n')
 		.slice(1)
 		.filter((line) => line.length > 0);
-	return lines
+	const lines2 = ['1639631274615922693,1639631180734828551,https://pbs.twimg.com/media/FsEj3ypakAcC-C5.jpg,宝鐘 マリン,ほうしょう まりん,ホロライブ,0',
+	'1639940025914888193,1639939822130462721,https://pbs.twimg.com/media/FsI8lFcagAEw1wR.jpg,,,オリジナル,0']
+	return lines2
 		.map((line) => {
 			const [
 				tweetId,
@@ -78,8 +80,8 @@ const loadCharacters = async (author: string) => {
 				rating,
 			] = line.split(',');
 
-			const characterNames = characterName.split(/[、&]/);
-			const characterRubys = characterRuby.split(/[、&]/);
+			const characterNames = characterName.split(/[、&]/).filter((name) => name !== '');
+			const characterRubys = characterRuby.split(/[、&]/).filter((name) => name !== '');
 
 			const names = [...characterNames, ...characterRubys];
 			const namePartsList = names.map((name) => name.split(' '));
@@ -92,7 +94,7 @@ const loadCharacters = async (author: string) => {
 				tweetId,
 				mediaId,
 				imageUrl,
-				characterName: characterNames[0].replace(/ /g, ''),
+				characterName: characterNames[0]?.replace(/ /g, '') ?? '',
 				workName: normalizedWorkName,
 				validAnswers: [
 					...namePartsList.map((parts) => parts.join('')),
@@ -100,10 +102,12 @@ const loadCharacters = async (author: string) => {
 				],
 				author,
 				rating: rating ?? '0',
-				characterId: `${namePartsList[0].join('')}\0${normalizedWorkName}`,
+				characterId: `${namePartsList[0]?.join('') ?? ''}\0${normalizedWorkName}`,
 			} as CharacterData;
 		})
-		.filter(({rating}) => rating === '0');
+		.filter(({characterName, validAnswers, rating}) => {
+			return characterName !== '' && validAnswers.length > 0 && rating === '0';
+		});
 };
 
 const loaderNamori = new Loader<CharacterData[]>(() => loadCharacters('namori'));
@@ -348,7 +352,7 @@ export default async (slackClients: SlackInterface) => {
 		mutex.runExclusive(async () => {
 			if (
 				message.text &&
-        message.text.match(/^(?:キャラ|なもり|Ixy)当てクイズ$/)
+        message.text.match(/^(?:キャラ|なもり|Ixy)当てクイズs$/)
 			) {
 				const characters = await (async () => {
 					const namori =
@@ -356,10 +360,11 @@ export default async (slackClients: SlackInterface) => {
             message.text === 'なもり当てクイズ' ? await loaderNamori.load() : [];
 					const ixy =
             message.text === 'キャラ当てクイズ' ||
-            message.text === 'Ixy当てクイズ' ? await loaderIxy.load() : [];
+            message.text === 'Ixy当てクイズs' ? await loaderIxy.load() : [];
 
 					return [...namori, ...ixy];
 				})();
+				console.log(characters)
 				const candidateCharacterIds = characters
 					.filter(
 						(character) => !persistentState.recentCharacterIds.includes(
@@ -376,6 +381,8 @@ export default async (slackClients: SlackInterface) => {
 						(character) => character.characterId === answerCharacterId,
 					),
 				);
+
+				console.log(candidateCharacterIds)
 
 				const problem = await generateProblem(answer);
 				const quiz = new CharacterQuiz(slackClients, problem, postOption);
