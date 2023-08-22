@@ -78,8 +78,8 @@ const loadCharacters = async (author: string) => {
 				rating,
 			] = line.split(',');
 
-			const characterNames = characterName.split(/[、&]/);
-			const characterRubys = characterRuby.split(/[、&]/);
+			const characterNames = characterName.split(/[、&]/).filter((name) => name !== '');
+			const characterRubys = characterRuby.split(/[、&]/).filter((name) => name !== '');
 
 			const names = [...characterNames, ...characterRubys];
 			const namePartsList = names.map((name) => name.split(' '));
@@ -92,7 +92,7 @@ const loadCharacters = async (author: string) => {
 				tweetId,
 				mediaId,
 				imageUrl,
-				characterName: characterNames[0].replace(/ /g, ''),
+				characterName: characterNames[0]?.replace(/ /g, '') ?? '',
 				workName: normalizedWorkName,
 				validAnswers: [
 					...namePartsList.map((parts) => parts.join('')),
@@ -100,10 +100,12 @@ const loadCharacters = async (author: string) => {
 				],
 				author,
 				rating: rating ?? '0',
-				characterId: `${namePartsList[0].join('')}\0${normalizedWorkName}`,
+				characterId: `${namePartsList[0]?.join('') ?? ''}\0${normalizedWorkName}`,
 			} as CharacterData;
 		})
-		.filter(({rating}) => rating === '0');
+		.filter(({characterName, validAnswers, rating}) => {
+			return characterName !== '' && validAnswers.length > 0 && rating === '0';
+		});
 };
 
 const loaderNamori = new Loader<CharacterData[]>(() => loadCharacters('namori'));
