@@ -178,7 +178,7 @@ export default class TTS extends EventEmitter {
 		const tokens = message.content.split(/\s+/);
 		const user = message.member.user.id;
 
-		if (tokens[0]?.toUpperCase() === 'TTS') {
+		if (tokens[0]?.toUpperCase() === 'TTSDEV') {
 			if (tokens.length === 1 || tokens[1] === 'start') {
 				mutex.runExclusive(async () => {
 					if (!this.users.has(user)) {
@@ -246,6 +246,8 @@ export default class TTS extends EventEmitter {
 						providerName = 'VoiceText Web API';
 					} else if (config.provider === 'voicevox') {
 						providerName = 'VoiceVox Web API';
+					} else if (config.provider === 'coefont') {
+						providerName = 'CoeFont';
 					} else {
 						providerName = 'Unknown';
 					}

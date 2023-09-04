@@ -4,6 +4,7 @@ import azure from './azure';
 import google from './google';
 import voicetext, {Emotion, EmoLV} from './voicetext';
 import voicevox from './voicevox';
+import coefont from './coefont';
 
 const log = logger.child({bot: 'discord'});
 
@@ -45,6 +46,7 @@ enum Voice {
 	AI = 'AI',
 	AJ = 'AJ',
 	AK = 'AK',
+	AL = 'AL',
 }
 export {Voice};
 
@@ -61,7 +63,7 @@ export const getDefaultVoiceMeta: () => VoiceMeta = () => ({
 });
 
 interface Config {
-	provider: 'google' | 'amazon' | 'azure' | 'voicetext' | 'voicevox',
+	provider: 'google' | 'amazon' | 'azure' | 'voicetext' | 'voicevox' | 'coefont',
 	name: string,
 	emotional?: boolean,
 	lang?: string,
@@ -105,6 +107,7 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.AI, {provider: 'google', name: 'ja-JP-Neural2-B', lang: 'ja-JP'}],
 	[Voice.AJ, {provider: 'google', name: 'ja-JP-Neural2-C', lang: 'ja-JP'}],
 	[Voice.AK, {provider: 'google', name: 'ja-JP-Neural2-D', lang: 'ja-JP'}],
+	[Voice.AL, {provider: 'coefont', name: 'Hiroyuki', lang: 'ja-JP'}],
 	// coming soon
 	// [Voice., {provider: 'voicevox', name: 'whitecul', emotional: true}],
 	// [Voice., {provider: 'voicevox', name: 'goki', emotional: true}],
@@ -132,6 +135,9 @@ export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta, audio
 	}
 	if (config.provider === 'voicevox') {
 		return voicevox(text, config.name, meta);
+	}
+	if (config.provider === 'coefont') {
+		return coefont(text, config.name, meta);
 	}
 	return voicetext(text, config.name, meta);
 };
