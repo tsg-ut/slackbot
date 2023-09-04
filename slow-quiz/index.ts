@@ -1,15 +1,21 @@
+import {readFile} from 'fs/promises';
+import path from 'path';
 import {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {ChatPostMessageArguments, ImageElement, KnownBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {oneLine, stripIndent} from 'common-tags';
-// @ts-expect-error
+// @ts-expect-error: Not typed
 import {hiraganize} from 'japanese';
+import yaml from 'js-yaml';
 import {last, minBy} from 'lodash';
 import {scheduleJob} from 'node-schedule';
+import {ChatCompletionRequestMessage, Configuration, OpenAIApi} from 'openai';
 import {increment} from '../achievements';
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
+import {Loader} from '../lib/utils';
 import answerQuestionDialog from './views/answerQuestionDialog';
 import footer from './views/footer';
 import gameDetailsDialog from './views/gameDetailsDialog';
@@ -42,8 +48,8 @@ export interface Game {
 	finishDate: number | null,
 
 	progress: number,
-	progressOfComplete?: number, // 一度 progressGames が実行された後に optional を外す
-	completed?: boolean, // 同上
+	progressOfComplete: number,
+	completed: boolean,
 	days: number,
 	correctAnswers: Submission[],
 	wrongAnswers: Submission[],
@@ -80,6 +86,19 @@ const validateQuestion = (question: string) => {
 
 	return Array.from(normalizedQuestion).length <= 90;
 };
+
+const promptLoader = new Loader<ChatCompletionRequestMessage[]>(async () => {
+	const promptYaml = await readFile(path.join(__dirname, 'prompt.yml'));
+	const prompt = yaml.load(promptYaml.toString()) as ChatCompletionRequestMessage[];
+	return prompt;
+});
+
+const configuration = new Configuration({
+	apiKey: process.env.OPENAI_API_KEY,
+});
+const openai = new OpenAIApi(configuration);
+
+const log = logger.child({bot: 'slow-quiz'});
 
 class SlowQuiz {
 	slack: WebClient;
@@ -199,7 +218,7 @@ class SlowQuiz {
 			const id = payload?.view?.private_metadata;
 
 			mutex.runExclusive(() => (
-				this.answerQuestion({
+				this.answerUserQuestion({
 					id,
 					ruby: state?.ruby?.value,
 					user: payload.user.id,
@@ -397,7 +416,54 @@ class SlowQuiz {
 		});
 	}
 
-	answerQuestion({
+	async getChatGptAnswer(game: Game) {
+		const prompt = await promptLoader.load();
+		const questionText = this.getQuestionText(game);
+		const [visibleText] = questionText.split('\u200B');
+
+		log.info('Requesting to OpenAI API...');
+		const completion = await openai.createChatCompletion({
+			model: 'gpt-3.5-turbo',
+			messages: [
+				...prompt,
+				{
+					role: 'user',
+					content: [
+						'ありがとうございます。以下の文章も、クイズの問題文の途中までを表示したものです。この文章の続きを推測し、問題の答えと読みを教えてください。',
+						'',
+						`問題: ${visibleText}`,
+					].join('\n'),
+				},
+			],
+			max_tokens: 1024,
+		});
+
+		const result = completion.data.choices?.[0]?.message?.content;
+		if (typeof result !== 'string') {
+			return {
+				answer: null,
+				result: null,
+			};
+		}
+
+		let answer = null;
+		const answerMatches = result.match(/【(?<answer>.+?)】/);
+		if (answerMatches?.groups?.answer) {
+			answer = answerMatches.groups.answer;
+		}
+
+		const rubyMatches = answer.match(/[（(](?<ruby>.+?)[）)]/);
+		if (rubyMatches?.groups?.ruby) {
+			answer = rubyMatches.groups.ruby;
+		}
+
+		return {
+			answer,
+			result,
+		};
+	}
+
+	answerUserQuestion({
 		id,
 		ruby,
 		user,
@@ -405,35 +471,64 @@ class SlowQuiz {
 		id: string,
 		ruby: string,
 		user: string,
-	}): Promise<void> {
+	}) {
 		const game = this.state.games.find((g) => g.id === id);
 
 		if (!game) {
 			this.postEphemeral('Error: 問題が見つかりません', user);
-			return null;
+			return;
 		}
 
 		if (game.author === user) {
 			this.postEphemeral('出題者は問題に答えることができないよ🙄', user);
-			return null;
+			return;
 		}
 
 		if (game.status !== 'inprogress' || game.correctAnswers.length >= this.MAX_CORRECT_ANSWERS) {
 			this.postEphemeral('Error: この問題の解答受付は終了しています', user);
-			return null;
+			return;
 		}
 
 		if (game.answeredUsers.includes(user)) {
 			this.postEphemeral('Error: この問題にすでに解答しています', user);
-			return null;
+			return;
 		}
 
 		if (!ruby.match(/^[ぁ-ゟァ-ヿa-z0-9]+$/i)) {
 			this.postEphemeral('答えに使える文字は「ひらがな・カタカナ・英数字」のみだよ🙄', user);
-			return null;
+			return;
 		}
 
-		game.answeredUsers.push(user);
+		this.answerQuestion({
+			type: 'user',
+			game,
+			ruby,
+			user,
+		});
+	}
+
+	getUserMention({user, type}: {user: string, type: 'user' | 'bot'}) {
+		if (type === 'user') {
+			return `<@${user}>`;
+		}
+		return `＊${user}＊`;
+	}
+
+	answerQuestion({
+		type,
+		game,
+		ruby,
+		user,
+	}: {
+		type: 'user' | 'bot',
+		game: Game,
+		ruby: string,
+		user: string,
+	}) {
+		const userId = type === 'user' ? user : `bot:${user}`;
+		const userMention = this.getUserMention({user, type});
+
+		game.answeredUsers.push(userId);
 
 		const normalizedRuby: string = hiraganize(ruby).toLowerCase().trim();
 		const isCorrect = game.ruby.split(',').some((correctAnswer) => {
@@ -452,10 +547,12 @@ class SlowQuiz {
 				date: Date.now(),
 				answer: ruby,
 			});
-			this.postEphemeral('残念！🙄', user);
-			increment(user, 'slowquiz-wrong-answer');
+			if (type === 'user') {
+				this.postEphemeral('残念！🙄', user);
+				increment(user, 'slowquiz-wrong-answer');
+			}
 			this.updateLatestStatusMessages();
-			return null;
+			return;
 		}
 
 		game.correctAnswers.push({
@@ -466,16 +563,18 @@ class SlowQuiz {
 			answer: ruby,
 		});
 
-		this.postEphemeral('正解です🎉🎉🎉', user);
+		if (type === 'user') {
+			this.postEphemeral('正解です🎉🎉🎉', user);
+		}
 
 		this.postShortMessage({
-			text: `<@${user}>が1日1文字クイズに正解しました🎉🎉🎉`,
+			text: `${userMention}が1日1文字クイズに正解しました🎉🎉🎉`,
 			blocks: [
 				{
 					type: 'section',
 					text: {
 						type: 'mrkdwn',
-						text: `<@${user}>が1日1文字クイズに正解しました🎉🎉🎉`,
+						text: `${userMention}が1日1文字クイズに正解しました🎉🎉🎉`,
 					},
 				},
 				{
@@ -490,25 +589,32 @@ class SlowQuiz {
 			],
 		});
 
-		increment(user, 'slowquiz-correct-answer');
-		if (game.days === 1) {
-			increment(user, 'slowquiz-correct-answer-first-letter');
-			if (game.genre === 'normal' && game.question.split('/').length < 5) {
-				increment(user, 'slowquiz-normal-correct-answer-first-letter');
+		if (type === 'user') {
+			increment(user, 'slowquiz-correct-answer');
+			if (game.days === 1) {
+				increment(user, 'slowquiz-correct-answer-first-letter');
+				if (game.genre === 'normal' && game.question.split('/').length < 5) {
+					increment(user, 'slowquiz-normal-correct-answer-first-letter');
+				}
+			}
+			if (game.days <= 3) {
+				increment(user, 'slowquiz-correct-answer-le-third-letter');
+			}
+			if (game.correctAnswers.length === 1) {
+				increment(user, 'slowquiz-first-correct-answer');
 			}
 		}
-		if (game.days <= 3) {
-			increment(user, 'slowquiz-correct-answer-le-third-letter');
-		}
-		if (game.correctAnswers.length === 1) {
-			increment(user, 'slowquiz-first-correct-answer');
+
+		if (type === 'bot') {
+			increment(game.author, 'slowquiz-correct-answer-by-bot');
+			if (game.correctAnswers.length === 1) {
+				increment(game.author, 'slowquiz-first-correct-answer-by-bot');
+			}
 		}
 
 		this.checkGameEnd();
 
 		this.updateLatestStatusMessages();
-
-		return null;
 	}
 
 	postComment({
