@@ -128,6 +128,16 @@ export const postWeatherCast = async (point: Point, slack: WebClient, threadTime
 	});
 };
 
+const getForecastPhraseText = (forecastPhrase: string) => {
+	if (forecastPhrase.endsWith('い')) {
+		return `${forecastPhrase}一日になる見込みです。`;
+	}
+	if (forecastPhrase.endsWith('寒さ') || forecastPhrase.endsWith('暑さ')) {
+		return `${forecastPhrase}になる見込みです。`;
+	}
+	return `${forecastPhrase}でしょう。`;
+};
+
 export const postTemperatureReport = async (point: Point, slack: WebClient, threadTimestamp?: string) => {
 	const weatherResponse = await getCurrentWeather([point.latitude, point.longitude]);
 
@@ -140,16 +150,13 @@ export const postTemperatureReport = async (point: Point, slack: WebClient, thre
 	const {data: forecastData} = await getWeather([point.latitude, point.longitude]);
 	const dailyForecast = forecastData.DailyForecasts[0];
 
-	const headlineText = `${point.name}の現在の気温は、 ＊${weatherData.Temperature.Metric.Value}°C＊ です。`;
+	const headlineText = `${point.name}の現在の気温は ＊${weatherData.Temperature.Metric.Value}°C＊ で、`;
 	const temperatureDeparture = weatherData.Past24HourTemperatureDeparture.Metric.Value;
 	const temperatureDepartureText = `昨日より${Math.abs(temperatureDeparture)}°C${temperatureDeparture > 0 ? '高い' : '低い'}です。`;
 	const realFeelShadeText = `日陰での体感温度は ＊${weatherData.RealFeelTemperatureShade.Metric.Value}°C＊ で、`;
 	const realFeelShadePhraseText = `${weatherData.RealFeelTemperatureShade.Metric.Phrase}でしょう。`;
 	const minMaxForecastText = `本日の最高気温は ＊${dailyForecast.Temperature.Maximum.Value}°C＊ 、最低気温は ＊${dailyForecast.Temperature.Minimum.Value}°C＊ で、`;
-	const forecastPhrase = dailyForecast.RealFeelTemperature.Maximum.Phrase;
-	const forecastPhraseText = forecastPhrase.endsWith('い')
-		? `${dailyForecast.RealFeelTemperature.Maximum.Phrase}一日になる見込みです。`
-		: `${dailyForecast.RealFeelTemperature.Maximum.Phrase}でしょう。`;
+	const forecastPhraseText = getForecastPhraseText(dailyForecast.RealFeelTemperature.Maximum.Phrase);
 	const link = `<${weatherData.Link}|[詳細]>`;
 
 	const text = [
