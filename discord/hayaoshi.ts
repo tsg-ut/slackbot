@@ -1,28 +1,56 @@
 import EventEmitter from 'events';
-import {promises as fs} from 'fs';
+import {promises as fs, createReadStream} from 'fs';
 import path from 'path';
 import type {AudioPlayer, AudioResource, PlayerSubscription, VoiceConnection} from '@discordjs/voice';
 import {createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discordjs/voice';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
+import concat from 'concat-stream';
 import Discord from 'discord.js';
-import {max, get} from 'lodash';
+import {last, max, random, sample, sum, zip} from 'lodash';
+import {opus} from 'prism-media';
+import {WaveFile} from 'wavefile';
 import {increment, unlock} from '../achievements';
-import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
+import type {Quiz} from '../hayaoshi';
 import logger from '../lib/logger';
-import {extractValidAnswers, judgeAnswer, formatQuizToSsml} from './hayaoshiUtils';
 import {getSpeech, Voice} from './speeches';
 
 const log = logger.child({bot: 'discord'});
 const mutex = new Mutex();
 
+const easyChords = [
+	['', [0, 4, 7], ''],
+	['m', [0, 3, 7], 'マイナー'],
+	['dim', [0, 3, 6], 'ディミニッシュド'],
+	['aug', [0, 4, 8], 'オーギュメント'],
+] as [string, number[], string][];
+
+const normalChords = [
+	['7', [0, 4, 7, 10], 'セブンス'],
+	['m7', [0, 3, 7, 10], 'マイナーセブンス'],
+	['maj7', [0, 4, 7, 11], 'メジャーセブンス'],
+	['dim7', [0, 3, 6, 9], 'ディミニッシュドセブンス'],
+	['m7-5', [0, 3, 6, 10], 'マイナーセブンスフラットファイブ'],
+	['sus2', [0, 2, 7], 'サスツー'],
+	['sus4', [0, 5, 7], 'サスフォー'],
+	['6', [0, 4, 7, 9], 'シックス'],
+	['m6', [0, 3, 7, 9], 'マイナーシックス'],
+	['9', [0, 4, 7, 10, 14], 'ナインス'],
+	['m9', [0, 3, 7, 10, 14], 'マイナーナインス'],
+	['maj9', [0, 4, 7, 11, 14], 'メジャーナインス'],
+	['add9', [0, 4, 7, 14], 'アドナインス'],
+] as [string, number[], string][];
+
+const allChords = [...easyChords, ...normalChords];
+
 interface State {
+	count: number,
 	phase: 'waiting' | 'gaming' | 'answering' | 'timeup',
 	connection: VoiceConnection,
 	audioResource: AudioResource,
 	audioPlayer: AudioPlayer,
 	subscription: PlayerSubscription,
-	quiz: Quiz,
+	quiz: Quiz & {pitches: number[], reading: string},
 	pusher: string,
 	penaltyUsers: Set<string>,
 	timeupTimeoutId: NodeJS.Timeout,
@@ -37,6 +65,8 @@ interface State {
 	questionCount: number,
 	validAnswers: string[],
 	isOneChance: boolean,
+	isSingleNoteMode: boolean,
+	difficulty: 'easy' | 'normal' | 'hard',
 }
 
 export default class Hayaoshi extends EventEmitter {
@@ -44,13 +74,14 @@ export default class Hayaoshi extends EventEmitter {
 
 	users: {discord: string, slack: string}[];
 
-	joinVoiceChannelFn: () => VoiceConnection;
+	joinVoiceChannelFn: (channelId?: string) => VoiceConnection;
 
-	constructor(joinVoiceChannelFn: () => VoiceConnection, users: {discord: string, slack: string}[]) {
+	constructor(joinVoiceChannelFn: (channelId?: string) => VoiceConnection, users: {discord: string, slack: string}[]) {
 		super();
 		this.joinVoiceChannelFn = joinVoiceChannelFn;
 		this.users = users;
 		this.state = {
+			count: 0,
 			phase: 'waiting',
 			connection: null,
 			audioResource: null,
@@ -71,24 +102,14 @@ export default class Hayaoshi extends EventEmitter {
 			questionCount: 0,
 			validAnswers: [],
 			isOneChance: false,
+			isSingleNoteMode: false,
+			difficulty: 'normal',
 		};
 		this.onFinishReadingQuestion = this.onFinishReadingQuestion.bind(this);
 	}
 
 	getSlashedText() {
-		return this.state.clauses.map((token, index) => {
-			const beforeTime = index === 0 ? 0 : this.state.timePoints[index - 1];
-			const afterTime = this.state.timePoints[index];
-
-			if (beforeTime <= this.state.maximumPushTime && this.state.maximumPushTime < afterTime) {
-				const chars = Array.from(token);
-				const tokenDuration = afterTime - beforeTime;
-				const slashIndex = Math.floor((this.state.maximumPushTime - beforeTime) / tokenDuration * chars.length + 0.5);
-				return `${chars.slice(0, slashIndex).join('')}/${chars.slice(slashIndex).join('')}`;
-			}
-
-			return token;
-		}).join('');
+		return this.state.quiz.question;
 	}
 
 	incrementPoint(user: string, value = 1) {
@@ -262,6 +283,11 @@ export default class Hayaoshi extends EventEmitter {
 
 	async onFinishReadingQuestion() {
 		log.info('[hayaoshi] onFinishReadingQuestion');
+		if (this.state.count < 2) {
+			this.state.count++;
+			this.readQuestion();
+			return;
+		}
 		await new Promise((resolve) => {
 			this.state.timeupTimeoutId = setTimeout(resolve, 5000);
 		});
@@ -281,7 +307,7 @@ export default class Hayaoshi extends EventEmitter {
 		log.info('[hayaoshi] readQuestion');
 		this.state.audioPlayer.off(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
 
-		this.state.audioResource = createAudioResource(path.join(__dirname, 'questionText.mp3'));
+		this.state.audioResource = createAudioResource(path.join(__dirname, 'questionText.wav'));
 		this.state.audioPlayer.play(this.state.audioResource);
 		this.state.playStartTime = Date.now();
 		this.state.audioResource.playStream.on('start', () => {
@@ -327,18 +353,140 @@ export default class Hayaoshi extends EventEmitter {
 		}, this.state.isContestMode ? 20000 : 10000);
 	}
 
+	pitchToNoteAndOctave(pitch: number) {
+		const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+		const note = notes[pitch % 12];
+		const octave = Math.floor(pitch / 12);
+		return [note, octave] as [string, number];
+	}
+
+	pitchToJapaneseName(pitch: number) {
+		const notes = ['ド', 'ド#', 'レ', 'レ#', 'ミ', 'ファ', 'ファ#', 'ソ', 'ソ#', 'ラ', 'ラ#', 'シ'];
+		return notes[pitch % 12];
+	}
+
+	setEquals<T>(a: Set<T>, b: Set<T>) {
+		return a.size === b.size && [...a].every((value) => b.has(value));
+	}
+
+	pitchesToChords(pitches: number[]) {
+		const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+		const baseNote = pitches[0] % 12;
+		const noteSet = new Set(pitches.map((pitch) => pitch % 12));
+		const chords = [];
+
+		for (const rotation of Array(12).keys()) {
+			for (const chordCandidate of allChords) {
+				const [chordName, chordPitches, chordReading] = chordCandidate;
+				const rotatedChordPitches = chordPitches.map((chordPitch) => (chordPitch + rotation) % 12);
+				const chordNoteSet = new Set(rotatedChordPitches);
+
+				if (this.setEquals(noteSet, chordNoteSet)) {
+					if (rotation === baseNote) {
+						chords.push([`${noteNames[rotation]}${chordName}`, `${noteNames[rotation]}${chordReading}`]);
+					} else {
+						chords.push([`${noteNames[rotation]}${chordName}/${noteNames[baseNote]}`, `${noteNames[rotation]}${chordReading}オン${noteNames[baseNote]}`]);
+					}
+				}
+			}
+		}
+
+		return chords;
+	}
+
+	pitchToOldJapaneseNames(pitch: number) {
+		const notes = [
+			['嬰ロ', 'ハ', '重変ニ'],
+			['重嬰ロ', '嬰ハ', '変ニ'],
+			['重嬰ハ', 'ニ', '重変ホ'],
+			['嬰ニ', '変ホ', '重変ヘ'],
+			['重嬰ニ', 'ホ', '変ヘ'],
+			['嬰ホ', 'ヘ', '重変ト'],
+			['重嬰ホ', '嬰ヘ', '変ト'],
+			['重嬰ヘ', 'ト', '重変イ'],
+			['嬰ヘ', '変イ'],
+			['重嬰ト', 'イ', '重変ロ'],
+			['嬰イ', '変ロ', '重変ハ'],
+			['重嬰イ', 'ロ', '変ハ'],
+		];
+		return notes[pitch % 12];
+	}
+
 	getQuiz() {
-		const seed = Math.random();
-		if (seed < 0.1) {
-			return getItQuiz();
+		if (this.state.isSingleNoteMode) {
+			const basePitch = random(12, 72);
+			const [baseNote, baseOctave] = this.pitchToNoteAndOctave(basePitch);
+			const answer = `${baseNote}${baseOctave}`;
+			const japaneseName = this.pitchToJapaneseName(basePitch);
+			const oldJapaneseNames = this.pitchToOldJapaneseNames(basePitch);
+
+			return {
+				id: 1,
+				question: answer,
+				answer: [baseNote, japaneseName, ...oldJapaneseNames].join(' / '),
+				pitches: [basePitch],
+				reading: baseNote.toString(),
+			};
 		}
-		if (seed < 0.2) {
-			return getAbc2019Quiz();
+
+		const chordCandidates = [] as [string, number[], string][];
+
+		if (this.state.difficulty === 'easy') {
+			chordCandidates.push(...easyChords);
+		} else {
+			chordCandidates.push(...easyChords, ...normalChords);
 		}
-		if (seed < 0.3) {
-			return getUserQuiz();
+
+		const basePitch = random(28, 58);
+		const [baseNote, baseChord, reading] = sample(chordCandidates);
+		const [baseNoteName] = this.pitchToNoteAndOctave(basePitch);
+
+		const pitches = baseChord.map((interval) => basePitch + interval);
+
+		if (this.state.difficulty !== 'easy' && Math.random() < 0.3) {
+			const targetPitchIndex = random(1, pitches.length - 1);
+			const targetPitch = pitches[targetPitchIndex];
+
+			if (targetPitch + 12 <= 72) {
+				pitches[targetPitchIndex] += 12;
+			}
 		}
-		return getHardQuiz();
+
+		// Rotate pitches randomly
+
+		let rootNote: string | null = null;
+
+		if (this.state.difficulty === 'hard' && last(baseChord) < 12) {
+			const rotateCount = random(0, pitches.length - 1);
+			const originalRootNote = this.pitchToNoteAndOctave(pitches[0])[0];
+			for (const _ of Array(rotateCount).keys()) {
+				if (pitches[0] + 12 <= 72) {
+					pitches.push(pitches.shift() + 12);
+				}
+			}
+
+			const newRootNote = this.pitchToNoteAndOctave(pitches[0])[0];
+			if (originalRootNote !== newRootNote) {
+				rootNote = newRootNote;
+			}
+
+			console.log({rotateCount});
+		}
+
+		const chordReading = rootNote === null ? `${baseNoteName}${reading}` : `${baseNoteName}${reading}オン${rootNote}`;
+		const answer = rootNote === null ? baseNoteName + baseNote : `${baseNoteName}${baseNote}/${rootNote}`;
+
+		console.log({pitches, basePitch, baseNote, baseChord, answer, reading, chordReading});
+
+		pitches.sort((a, b) => a - b);
+
+		return {
+			id: 1,
+			question: pitches.map((pitch) => this.pitchToNoteAndOctave(pitch).join('')).join(' / '),
+			answer,
+			reading: chordReading,
+			pitches,
+		};
 	}
 
 	playSound(name: string) {
@@ -353,24 +501,60 @@ export default class Hayaoshi extends EventEmitter {
 		});
 	}
 
-	async startQuiz() {
+	async startQuiz(channelId?: string) {
 		this.state.maximumPushTime = 0;
+		this.state.count = 0;
 		this.state.questionCount++;
 		this.state.quiz = await this.getQuiz();
-		this.state.validAnswers = extractValidAnswers(this.state.quiz.question, this.state.quiz.answer, this.state.quiz.note);
 
-		const {ssml, clauses} = await formatQuizToSsml(this.state.quiz.question);
+		if (this.state.isSingleNoteMode) {
+			this.state.validAnswers = this.state.quiz.answer.split(' / ');
+		} else {
+			const validChords = this.pitchesToChords(this.state.quiz.pitches);
+			console.log({validChords});
 
-		const questionAudio = await this.getTTS(ssml);
-		const answerAudio = await this.getTTS(`<speak>答えは、${get(this.state.validAnswers, 0, '')}、でした。</speak>`);
+			this.state.validAnswers = validChords.map(([chordName]) => chordName);
+		}
 
-		this.state.clauses = clauses;
-		this.state.timePoints = questionAudio.timepoints.map((point) => point.timeSeconds * 1000);
+		const pitches = this.state.quiz.question.split(' / ');
 
-		await fs.writeFile(path.join(__dirname, 'questionText.mp3'), questionAudio.data);
+		const noteFiles = await Promise.all(pitches.map((pitchName) => (
+			new Promise<Buffer>((resolve) => {
+				createReadStream(path.join(__dirname, `sounds/notes/${pitchName}.ogg`))
+					.pipe(new opus.OggDemuxer())
+					.pipe(new opus.Decoder({rate: 48000, channels: 1, frameSize: 960}))
+					.pipe(concat(resolve));
+			})
+		)));
+
+		const noteData = noteFiles.map((noteFile) => new Int16Array(noteFile.buffer));
+
+		const isArpeggioMode = this.state.difficulty === 'easy';
+
+		if (isArpeggioMode) {
+			for (const i of noteData.keys()) {
+				noteData[i] = new Int16Array([...Array(8000 * i).fill(0), ...noteData[i]]);
+			}
+		}
+
+		const outputData = zip(...noteData).map((samples) => (
+			sum(samples) * 3
+		));
+
+		const outputWave = new WaveFile();
+		outputWave.fromScratch(1, 44100, '16', outputData);
+
+		await fs.writeFile(path.join(__dirname, 'questionText.wav'), outputWave.toBuffer());
+
+		const answerAudio = await this.getTTS(`<speak>答えは、${this.state.quiz.reading}、でした。</speak>`);
+
+		this.state.clauses = [];
+		this.state.timePoints = [];
+
+		// await fs.writeFile(path.join(__dirname, 'questionText.mp3'), questionAudio.data);
 		await fs.writeFile(path.join(__dirname, 'answerText.mp3'), answerAudio.data);
 
-		this.state.connection = this.joinVoiceChannelFn();
+		this.state.connection = channelId ? this.joinVoiceChannelFn(channelId) : this.joinVoiceChannelFn();
 		this.state.audioPlayer = createAudioPlayer();
 		this.state.subscription = this.state.connection.subscribe(this.state.audioPlayer);
 
@@ -380,8 +564,12 @@ export default class Hayaoshi extends EventEmitter {
 		} else {
 			await this.playSound('mondai');
 		}
-		await this.playSound('question');
+		await new Promise((resolve) => setTimeout(resolve, 1000));
 		this.readQuestion();
+	}
+
+	judgeAnswer(answer: string) {
+		return this.state.validAnswers.includes(answer) ? 'correct' : 'wrong';
 	}
 
 	onMessage(message: Discord.Message) {
@@ -392,7 +580,7 @@ export default class Hayaoshi extends EventEmitter {
 		mutex.runExclusive(async () => {
 			if (this.state.phase === 'answering' && this.state.pusher === message.member.user.id && message.content !== 'p') {
 				clearTimeout(this.state.answerTimeoutId);
-				const judgement = await judgeAnswer(this.state.validAnswers, message.content);
+				const judgement = this.judgeAnswer(message.content.trim());
 				if (judgement === 'correct') {
 					this.playSound('correct');
 					this.incrementPoint(message.member.user.id);
@@ -418,12 +606,6 @@ export default class Hayaoshi extends EventEmitter {
 
 					this.state.quizThroughCount = 0;
 					this.endQuiz({correct: true});
-				} else if (!this.state.isOneChance && judgement === 'onechance') {
-					clearTimeout(this.state.answerTimeoutId);
-					this.state.isOneChance = true;
-					await this.playSound('timeup');
-					await this.speak('もう一度お願いします。');
-					this.state.answerTimeoutId = this.setAnswerTimeout();
 				} else {
 					await this.playSound('wrong');
 					this.state.penaltyUsers.add(this.state.pusher);
@@ -468,21 +650,29 @@ export default class Hayaoshi extends EventEmitter {
 				this.state.answerTimeoutId = this.setAnswerTimeout();
 			}
 
-			if ((message.content === '早押しクイズ' || message.content === '早押しクイズ大会') && this.state.phase === 'waiting') {
+			const contentMatchRegex = /^(?<isChord>コード|単音)当てクイズ(?<isContest>大会)?(?<difficulty>easy|normal|hard)?$/u;
+			let matches: RegExpMatchArray | null = null;
+
+			if (
+				(matches = contentMatchRegex.exec(message.content)) &&
+				this.state.phase === 'waiting'
+			) {
 				try {
 					this.state.phase = 'gaming';
 					this.state.playStartTime = 0;
 					this.state.maximumPushTime = 0;
 					this.state.quizThroughCount = 0;
 					this.state.participants = new Map();
-					this.state.isContestMode = message.content === '早押しクイズ大会';
+					this.state.isContestMode = matches?.groups?.isContest === '大会';
+					this.state.isSingleNoteMode = matches?.groups?.isChord === '単音';
+					this.state.difficulty = matches?.groups?.difficulty as 'easy' | 'normal' | 'hard' ?? 'normal';
 					this.state.questionCount = 0;
 
 					this.emit('start-game');
 
 					if (this.state.isContestMode) {
 						this.emit('message', stripIndent`
-							【早押しクイズ大会】
+							【${message.content}】
 
 							ルール
 							* 一番最初に5問正解した人が優勝。ただし3問誤答したら失格。(5○3×)
@@ -497,8 +687,11 @@ export default class Hayaoshi extends EventEmitter {
 						`);
 					}
 
-					await this.startQuiz();
+					await this.startQuiz(message?.member?.voice?.channelId);
 				} catch (error) {
+					console.log(error);
+					console.log(error.stack);
+
 					this.emit('message', `エラー😢\n${error.toString()}`);
 					this.emit('message', `Q. ${this.state.quiz.question}\nA. **${this.state.quiz.answer}**`);
 					this.endQuiz({correct: true});
