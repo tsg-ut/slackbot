@@ -2,17 +2,18 @@ import {View} from '@slack/web-api';
 import type {KnownBlock} from '@slack/web-api';
 import {sortBy} from 'lodash';
 import type {Game, Submission} from '../index';
+import {getUserMention} from '../util';
 
 type UserSubmission = Submission & { type: 'wrong_answer' | 'correct_answer' | 'comment' }
 
 const formatSubmission = ({days, type, user, answer}: UserSubmission) => {
 	if (type === 'wrong_answer') {
-		return `${days}日目: <@${user}> ＊解答「${answer}」＊ → 不正解`;
+		return `${days}日目: ${getUserMention(user)} ＊解答「${answer}」＊ → 不正解`;
 	}
 	if (type === 'correct_answer') {
-		return `${days}日目: <@${user}> ＊解答「${answer}」＊ → 正解`;
+		return `${days}日目: ${getUserMention(user)} ＊解答「${answer}」＊ → 正解`;
 	}
-	return `${days}日目: <@${user}> ${answer}`;
+	return `${days}日目: ${getUserMention(user)} ${answer}`;
 };
 
 const getSubmissionsBlocks = (submissions: UserSubmission[]) => {
@@ -73,7 +74,7 @@ export default (game: Game) => {
 				type: 'section',
 				text: {
 					type: 'mrkdwn',
-					text: `<@${game.author}>`,
+					text: getUserMention(game.author),
 				},
 			},
 			{

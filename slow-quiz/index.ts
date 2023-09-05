@@ -13,9 +13,9 @@ import {ChatCompletionRequestMessage, Configuration, OpenAIApi} from 'openai';
 import {increment} from '../achievements';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
-import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';
+import {getUserIcon, getUserMention, getUserName} from './util';
 import answerQuestionDialog from './views/answerQuestionDialog';
 import footer from './views/footer';
 import gameDetailsDialog from './views/gameDetailsDialog';
@@ -238,6 +238,7 @@ class SlowQuiz {
 					id: payload?.view?.private_metadata,
 					viewId: payload?.view?.id,
 					comment: state?.slowquiz_post_comment_input_comment?.value,
+					type: 'user',
 					user: payload?.user?.id,
 				})
 			));
@@ -252,6 +253,7 @@ class SlowQuiz {
 					id: payload?.view?.private_metadata,
 					viewId: payload?.view?.id,
 					comment: state?.slowquiz_post_comment_input_comment?.value,
+					type: 'user',
 					user: payload?.user?.id,
 				})
 			));
@@ -452,9 +454,15 @@ class SlowQuiz {
 			answer = answerMatches.groups.answer;
 		}
 
-		const rubyMatches = answer.match(/[（(](?<ruby>.+?)[）)]/);
+		const rubyMatches = answer?.match(/[（(](?<ruby>.+?)[）)]/);
 		if (rubyMatches?.groups?.ruby) {
 			answer = rubyMatches.groups.ruby;
+		}
+
+		answer = answer?.replaceAll(/[^ぁ-ゟァ-ヿa-z0-9]/ig, '');
+
+		if (answer === '') {
+			answer = null;
 		}
 
 		return {
@@ -507,11 +515,39 @@ class SlowQuiz {
 		});
 	}
 
-	getUserMention({user, type}: {user: string, type: 'user' | 'bot'}) {
-		if (type === 'user') {
-			return `<@${user}>`;
+	async createBotAnswers() {
+		for (const game of this.state.games) {
+			const botId = 'chatgpt-3.5-turbo:ver1';
+			const userId = `bot:${botId}`;
+
+			if (game.status !== 'inprogress') {
+				continue;
+			}
+
+			if (game.correctAnswers.some((answer) => answer.user === userId)) {
+				continue;
+			}
+
+			const {answer, result} = await this.getChatGptAnswer(game);
+			if (answer !== null) {
+				this.answerQuestion({
+					type: 'bot',
+					game,
+					ruby: answer,
+					user: botId,
+				});
+			}
+
+			if (result !== null) {
+				await this.postComment({
+					id: game.id,
+					viewId: '',
+					comment: result,
+					type: 'bot',
+					user: botId,
+				});
+			}
 		}
-		return `＊${user}＊`;
 	}
 
 	answerQuestion({
@@ -526,7 +562,7 @@ class SlowQuiz {
 		user: string,
 	}) {
 		const userId = type === 'user' ? user : `bot:${user}`;
-		const userMention = this.getUserMention({user, type});
+		const userMention = getUserMention(userId);
 
 		game.answeredUsers.push(userId);
 
@@ -541,7 +577,7 @@ class SlowQuiz {
 				game.wrongAnswers = [];
 			}
 			game.wrongAnswers.push({
-				user,
+				user: userId,
 				progress: game.progress,
 				days: game.days,
 				date: Date.now(),
@@ -556,7 +592,7 @@ class SlowQuiz {
 		}
 
 		game.correctAnswers.push({
-			user,
+			user: userId,
 			progress: game.progress,
 			days: game.days,
 			date: Date.now(),
@@ -617,27 +653,34 @@ class SlowQuiz {
 		this.updateLatestStatusMessages();
 	}
 
-	postComment({
+	async postComment({
 		id,
 		viewId,
 		comment,
+		type,
 		user,
 	}: {
 		id: string,
 		viewId: string,
 		comment: string,
+		type: 'user' | 'bot',
 		user: string,
 	}) {
 		const game = this.state.games.find((g) => g.id === id);
+		const userId = type === 'user' ? user : `bot:${user}`;
 
 		if (!game) {
-			this.postEphemeral('Error: 問題が見つかりません', user);
-			return null;
+			if (type === 'user') {
+				this.postEphemeral('Error: 問題が見つかりません', user);
+			}
+			return;
 		}
 
 		if (game.status === 'finished') {
-			this.postEphemeral('Error: この問題の解答受付は終了しています', user);
-			return null;
+			if (type === 'user') {
+				this.postEphemeral('Error: この問題の解答受付は終了しています', user);
+			}
+			return;
 		}
 
 		if (!Array.isArray(game.comments)) {
@@ -645,17 +688,19 @@ class SlowQuiz {
 		}
 
 		game.comments.push({
-			user,
+			user: userId,
 			progress: game.progress,
 			days: game.days,
 			date: Date.now(),
 			answer: comment,
 		});
 
-		return this.slack.views.update({
-			view_id: viewId,
-			view: postCommentDialog(game, user),
-		});
+		if (type === 'user') {
+			await this.slack.views.update({
+				view_id: viewId,
+				view: postCommentDialog(game, user),
+			});
+		}
 	}
 
 	deleteQuiz({viewId, id, user}: {viewId: string, id: string, user: string}) {
@@ -758,6 +803,8 @@ class SlowQuiz {
 				channel: message.channel,
 			}));
 		}
+
+		await this.createBotAnswers();
 	}
 
 	chooseNewGame() {
@@ -861,8 +908,8 @@ class SlowQuiz {
 								},
 								{
 									type: 'image',
-									image_url: await getMemberIcon(answer.user),
-									alt_text: await getMemberName(answer.user),
+									image_url: await getUserIcon(answer.user),
+									alt_text: await getUserName(answer.user),
 								},
 							],
 						}))),
@@ -933,7 +980,7 @@ class SlowQuiz {
 					{
 						type: 'mrkdwn',
 						text: oneLine`
-							${await getMemberName(game.author)} さんの問題 /
+							${await getUserName(game.author)} さんの問題 /
 							【${getGenreText(game.genre)}】 /
 							本日${game.answeredUsers.length}人解答 /
 							${game.correctAnswers.length}人正解済み
@@ -941,8 +988,8 @@ class SlowQuiz {
 					},
 					...await Promise.all(game.correctAnswers.map(async (correctAnswer) => ({
 						type: 'image',
-						image_url: await getMemberIcon(correctAnswer.user),
-						alt_text: await getMemberName(correctAnswer.user),
+						image_url: await getUserIcon(correctAnswer.user),
+						alt_text: await getUserName(correctAnswer.user),
 					} as ImageElement))),
 				],
 			});
