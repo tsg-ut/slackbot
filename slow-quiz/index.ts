@@ -405,13 +405,13 @@ class SlowQuiz {
 		increment(user, 'slowquiz-register-quiz');
 
 		await this.postShortMessage({
-			text: `<@${user}>が1日1文字クイズの問題を登録したよ💪`,
+			text: `${getUserMention(user)}が1日1文字クイズの問題を登録したよ💪`,
 			blocks: [
 				{
 					type: 'section',
 					text: {
 						type: 'mrkdwn',
-						text: `<@${user}>が1日1文字クイズの問題を登録したよ💪`,
+						text: `${getUserMention(user)}が1日1文字クイズの問題を登録したよ💪`,
 					},
 				},
 			],
@@ -876,7 +876,7 @@ class SlowQuiz {
 
 									＊A. ${game.answer} (${game.ruby})＊
 
-									出題者: <@${game.author}>
+									出題者: ${getUserMention(game.author)}
 								`,
 							},
 							accessory: {
@@ -904,7 +904,7 @@ class SlowQuiz {
 							elements: [
 								{
 									type: 'mrkdwn',
-									text: `*${i + 1}位* <@${answer.user}> (${answer.progress}文字)`,
+									text: `*${i + 1}位* ${getUserMention(answer.user)} (${answer.progress}文字)`,
 								},
 								{
 									type: 'image',
