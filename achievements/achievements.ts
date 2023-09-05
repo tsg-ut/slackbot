@@ -3807,6 +3807,24 @@ const achievements: Achievement[] = [
 		counter: 'slowquiz-complete-quiz',
 		value: 1,
 	},
+	{
+		id: 'slowquiz-correct-answer-by-bot-1',
+		difficulty: 'hard',
+		title: 'フランケンシュタイン症候群',
+		condition: '1日1文字クイズがBOTに正解される',
+		category: 'slowquiz',
+		counter: 'slowquiz-correct-answer-by-bot',
+		value: 1,
+	},
+	{
+		id: 'slowquiz-first-correct-answer-by-bot-1',
+		difficulty: 'professional',
+		title: 'R.U.R.',
+		condition: '1日1文字クイズがBOTに最初に正解される',
+		category: 'slowquiz',
+		counter: 'slowquiz-first-correct-answer-by-bot',
+		value: 1,
+	},
 
 	// taimai
 
