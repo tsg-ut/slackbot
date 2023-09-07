@@ -4414,6 +4414,14 @@ const achievements: Achievement[] = [
 		category: 'manual',
 		manual: true,
 	},
+	{
+		id: 'a-tour-of-go-completion',
+		difficulty: 'medium',
+		title: 'satosを巡る冒険',
+		condition: 'A Tour of Go のすべてのチャプターを修了する',
+		category: 'manual',
+		manual: true,
+	},
 ];
 
 const achievementMap = new Map(achievements.map((achievement) => [achievement.id, achievement]));
