@@ -5,6 +5,7 @@ import {unlock, increment} from '../achievements';
 import type {SlackInterface} from '../lib/slack';
 
 import State from '../lib/state';
+import { Block } from '@slack/web-api';
 
 interface CounterStateObj {
 	data: {[index: string]: number};
@@ -102,15 +103,21 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 	]);
 
 	eventClient.on('message', async (message) => {
-		const { channel, text, user, ts: timestamp } = message;
+		// when a message is changed (eg. link preview is loaded),
+		// this event is fired with message = {
+		// 	type: 'message', subtype: 'message_changed', channel: ..,
+		// 	message: .., ..
+		// }
+		const isChanged = message.subtype && message.subtype === 'message_changed';
+		const { channel, text, user, ts: timestamp, attachments } =
+			isChanged ? { ...message, ...message.message } as any : message;
 		if (!text) {
 			return;
 		}
-
-		if (message.channel.startsWith('D')) {
+		if (channel.startsWith('D')) {
 			const postDM = (text: string) => (
 				slack.chat.postMessage({
-					channel: message.channel,
+					channel,
 					text,
 					username: 'sushi-bot',
 					// eslint-disable-next-line camelcase
@@ -178,8 +185,8 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 		}
 
 		const texts = [text];
-		if (message.attachments) {
-			for (const attachment of message.attachments) {
+		if (attachments) {
+			for (const attachment of attachments) {
 				if (attachment.pretext) texts.push(attachment.pretext);
 				if (attachment.text) texts.push(attachment.text);
 				if (attachment.title) texts.push(attachment.title);
