@@ -353,3 +353,51 @@ it('does not react to "twitter.com"', async () => {
 
 	expect(slack.webClient.reactions.add).not.toHaveBeenCalled();
 });
+
+it('reacts to sushi in an attachment', async () => {
+	slack.on('reactions.add', ({ name, channel, timestamp }) => {
+		expect(name).toBe('sushi');
+		expect(channel).toBe(slack.fakeChannel);
+		expect(timestamp).toBe(slack.fakeTimestamp);
+		resolve();
+	});
+
+	slack.eventClient.emit('message', {
+		channel: slack.fakeChannel,
+		text: '',
+		user: slack.fakeUser,
+		ts: slack.fakeTimestamp,
+		attachments: [{
+			text: 'sushi',
+		}],
+	});
+});
+
+it('reacts to sushi in an attachment (dynamically added)', async () => {
+	slack.on('reactions.add', ({ name, channel, timestamp }) => {
+		expect(name).toBe('sushi');
+		expect(channel).toBe(slack.fakeChannel);
+		expect(timestamp).toBe(slack.fakeTimestamp);
+		resolve();
+	});
+
+	slack.eventClient.emit('message', {
+		channel: slack.fakeChannel,
+		text: '',
+		user: slack.fakeUser,
+		ts: slack.fakeTimestamp,
+		attachments: [],
+	});
+	slack.eventClient.emit('message', {
+		subtype: 'message_changed',
+		message: {
+			text: '',
+			user: slack.fakeUser,
+			attachments: [{
+				text: 'sushi'
+			}],
+			ts: slack.fakeTimestamp,
+		},
+		channel: slack.fakeChannel,
+	});
+});
