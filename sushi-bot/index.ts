@@ -5,7 +5,6 @@ import {unlock, increment} from '../achievements';
 import type {SlackInterface} from '../lib/slack';
 
 import State from '../lib/state';
-import { Block } from '@slack/web-api';
 
 interface CounterStateObj {
 	data: {[index: string]: number};
