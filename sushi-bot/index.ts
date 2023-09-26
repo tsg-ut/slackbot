@@ -107,7 +107,7 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 		// 	type: 'message', subtype: 'message_changed', channel: ..,
 		// 	message: .., ..
 		// }
-		const isChanged = message.subtype && message.subtype === 'message_changed';
+		const isChanged = message.subtype === 'message_changed';
 		const { channel, text, user, ts: timestamp, attachments } =
 			isChanged ? { ...message, ...message.message } as any : message;
 		if (!text) {
