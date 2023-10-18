@@ -100,7 +100,7 @@ export const mrkdwn = (text: string): MrkdwnElement => ({
 
 const isGenericMessage = (message: MessageEvent): message is GenericMessageEvent => (
 	message.subtype === undefined
-)
+);
 
 export const extractMessage = (message: MessageEvent) => {
 	if (isGenericMessage(message)) {

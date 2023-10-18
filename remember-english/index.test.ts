@@ -5,8 +5,7 @@ jest.mock('../lib/slackUtils');
 jest.mock('../lib/state');
 
 import type {KnownBlock, WebAPICallResult, ViewsOpenArguments} from '@slack/web-api';
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
+import Slack from '../lib/slackMock';
 import {RememberEnglish} from '.';
 
 let slack: Slack = null;
@@ -47,7 +46,7 @@ beforeEach(async () => {
 		.useFakeTimers()
 		.setSystemTime(now);
 
-	rememberEnglish = new MockedRememberEnglish(slack);
+	rememberEnglish = new MockedRememberEnglish({slack: slack.webClient});
 	await rememberEnglish.initialize();
 });
 

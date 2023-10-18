@@ -3,7 +3,7 @@
 jest.mock('axios');
 
 const axios = require('axios');
-const Slack = require('../lib/slackMock.js');
+const {default: Slack} = require('../lib/slackMock.ts');
 const checkin = require('./index.js');
 
 let slack = null;

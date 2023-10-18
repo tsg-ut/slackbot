@@ -1,9 +1,9 @@
-import { SlackEventAdapter } from '@slack/events-api';
 import { WebClient } from '@slack/web-api';
 import { range, shuffle, round } from 'lodash';
 import { stripIndent } from 'common-tags';
 import { unlock } from '../achievements';
 import assert from 'assert';
+import type { EventEmitter } from 'events';
 
 interface HitAndBlowHistory {
   call: number[];
@@ -17,7 +17,7 @@ class HitAndBlowState {
   thread: string | null = null;
   startDate: number | null = null;
   timer: NodeJS.Timeout | null = null;
-  inGame: boolean = false;
+  inGame = false;
   clear() {
     this.answer = [];
     this.history = [];
@@ -90,7 +90,7 @@ export default ({
   eventClient,
   webClient: slack,
 }: {
-  eventClient: SlackEventAdapter;
+  eventClient: EventEmitter;
   webClient: WebClient;
 }) => {
   const state = new HitAndBlowState();

@@ -1,8 +1,7 @@
 import achievementQuiz from './index';
+import Slack from '../lib/slackMock';
 
-const Slack = require('../lib/slackMock.js');
-
-let slack: typeof Slack;
+let slack: Slack;
 
 beforeEach(() => {
   slack = new Slack();

@@ -1,7 +1,6 @@
 import type {ChatUnfurlArguments} from '@slack/web-api';
 import axios from 'axios';
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
+import Slack from '../lib/slackMock';
 import scrapbox, {scrapbox2slack} from './index';
 
 jest.mock('axios');

@@ -1,8 +1,7 @@
 jest.mock('../achievements');
 
 import voiperrobot from './index';
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
+import Slack from '../lib/slackMock';
 
 let slack: Slack = null;
 

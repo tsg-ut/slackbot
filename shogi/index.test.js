@@ -5,7 +5,7 @@ jest.mock('sqlite');
 
 const cloudinary = require('cloudinary');
 const sqlite = require('sqlite');
-const Slack = require('../lib/slackMock.js');
+const {default: Slack} = require('../lib/slackMock.ts');
 const shogi = require('./index.js');
 
 let slack = null;

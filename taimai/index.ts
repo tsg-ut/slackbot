@@ -3,7 +3,7 @@ import type { ChatPostMessageArguments, ChatUpdateArguments, WebClient } from '@
 import { Mutex } from 'async-mutex';
 import { increment } from '../achievements';
 import type { SlackInterface } from '../lib/slack';
-import { TeamEventClient } from '../lib/slackEventClient';
+import type { EventEmitter } from 'events';
 import State from '../lib/state';
 import config from './config';
 import announceGameEnd from './views/announceGameEnd';
@@ -45,7 +45,7 @@ const mutex = new Mutex();
 
 class Taimai {
 	webClient: WebClient;
-	eventClient: TeamEventClient;
+	eventClient: EventEmitter;
 	messageClient: ReturnType<typeof createMessageAdapter>;
 
 	state: TaimaiState;
@@ -56,7 +56,7 @@ class Taimai {
 		messageClient,
 	}: {
 		webClient: WebClient,
-		eventClient: TeamEventClient,
+		eventClient: EventEmitter,
 		messageClient: ReturnType<typeof createMessageAdapter>,
 	}) {
 		this.webClient = webClient;

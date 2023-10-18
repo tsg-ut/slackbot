@@ -1,5 +1,5 @@
 import { WebAPICallOptions, WebClient } from '@slack/web-api';
-import type { TeamEventClient } from '../lib/slackEventClient';
+import type { EventEmitter } from 'events';
 import { SlackInterface } from '../lib/slack';
 import { ChatPostMessageArguments } from '@slack/web-api/dist/methods';
 import assert from 'assert';
@@ -52,7 +52,7 @@ export const typicalMessageTextsGenerator = {
  * To use other judge/watSecGen/ngReaction, please extend this class.
  */
 export class AteQuiz {
-  eventClient: TeamEventClient;
+  eventClient: EventEmitter;
   slack: WebClient;
   problem: AteQuizProblem;
   ngReaction: string | null = 'no_good';

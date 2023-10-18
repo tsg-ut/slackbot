@@ -2,7 +2,7 @@
 
 jest.mock('../achievements');
 
-const Slack = require('../lib/slackMock.js');
+const {default: Slack} = require('../lib/slackMock.ts');
 const mahjong = require('./index.js');
 
 let slack = null;

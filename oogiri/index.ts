@@ -2,9 +2,9 @@
 /* eslint-disable no-restricted-imports */
 /* eslint-disable react/no-access-state-in-setstate */
 // eslint-disable-next-line no-unused-vars
+import type {EventEmitter} from 'events';
 import {constants, promises as fs} from 'fs';
 import path from 'path';
-import type {TeamEventClient} from '../lib/slackEventClient';
 import type {KnownBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
@@ -47,7 +47,7 @@ interface State {
 const mutex = new Mutex();
 
 class Oogiri {
-	eventClient: TeamEventClient;
+	eventClient: EventEmitter;
 
 	slack: WebClient;
 
@@ -64,7 +64,7 @@ class Oogiri {
 		slack,
 		slackInteractions,
 	}: {
-		eventClient: TeamEventClient,
+		eventClient: EventEmitter,
 		slack: WebClient,
 		slackInteractions: any,
 	}) {
@@ -203,7 +203,7 @@ class Oogiri {
 		return this.loadDeferred.promise;
 	}
 
-	showStartDialog(triggerId: string, text: string = '') {
+	showStartDialog(triggerId: string, text = '') {
 		if (this.state.games.length >= 3) {
 			return '大喜利を同時に3つ以上開催することはできないよ:imp:';
 		}
@@ -285,7 +285,7 @@ class Oogiri {
 		await this.setState({games: this.state.games});
 	}
 
-	async getMeaningBlocks(game: Game, compact: boolean = false): Promise<KnownBlock[]> {
+	async getMeaningBlocks(game: Game, compact = false): Promise<KnownBlock[]> {
 		const registrants = await Promise.all(uniq(game.meanings.map((meaning) => meaning.user)).map((user) => getMemberName(user)));
 
 		return [
@@ -386,7 +386,7 @@ class Oogiri {
 						hint: '後から変更できます',
 					},
 					...(range(game.maxMeanings - 1).map((i) => ({
-						type: 'text' as ('text'),
+						type: 'text' as const,
 						label: `${i + 2}個目`,
 						name: `meaning${i + 2}`,
 						min_length: 3,
@@ -481,7 +481,7 @@ class Oogiri {
 		await this.setState({games: this.state.games});
 	}
 
-	async getBettingBlocks(game: Game, compact: boolean = false): Promise<KnownBlock[]> {
+	async getBettingBlocks(game: Game, compact = false): Promise<KnownBlock[]> {
 		const mentions = uniq(game.meanings.map((meaning) => `<@${meaning.user}>`));
 		const betters = await Promise.all(Object.keys(game.bettings).map((user) => getMemberName(user)));
 

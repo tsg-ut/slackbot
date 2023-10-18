@@ -2,8 +2,7 @@ jest.mock('tinyreq');
 jest.mock('axios');
 
 import lyrics from './index';
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
+import Slack from '../lib/slackMock';
 // @ts-expect-error
 import tinyreq from 'tinyreq';
 import axios from 'axios';

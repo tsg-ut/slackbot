@@ -11,7 +11,7 @@ jest.mock('fs-extra', () => ({
 
 const moment = require('moment');
 const {default: sushi} = require('./index.ts');
-const Slack = require('../lib/slackMock.js');
+const {default: Slack} = require('../lib/slackMock.ts');
 
 let slack = null;
 

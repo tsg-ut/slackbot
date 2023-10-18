@@ -8,7 +8,7 @@ const cloudinary = require('cloudinary');
 const rust_proxy = require('./rust-proxy.js');
 
 const hyperrobot = require('./index.js');
-const Slack = require('../lib/slackMock.js');
+const {default: Slack} = require('../lib/slackMock.ts');
 
 const fs = require('fs');
 const path = require('path');
