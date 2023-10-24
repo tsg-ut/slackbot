@@ -374,20 +374,20 @@ export default (slackClients: SlackInterface) => {
 
 		const {text, channel} = message;
 
-		if (mutex.isLocked()) {
-			slack.chat.postEphemeral({
-				channel,
-				text: '今クイズ中だよ',
-				user: message.user,
-			});
-			return;
-		}
-
-		mutex.runExclusive(async () => {
-			if (
-				text &&
+		if (
+			text &&
 				text.startsWith('QR当てクイズ')
-			) {
+		) {
+			if (mutex.isLocked()) {
+				slack.chat.postEphemeral({
+					channel,
+					text: '今クイズ中だよ',
+					user: message.user,
+				});
+				return;
+			}
+
+			mutex.runExclusive(async () => {
 				const quizOptions = parseQuizOptions(text.slice('QR当てクイズ'.length));
 				const quiz = await generateQuiz(quizOptions.difficulty, quizOptions.mode);
 				const imageUrl = await generateQrcode({
@@ -506,7 +506,7 @@ export default (slackClients: SlackInterface) => {
 						await increment(result.correctAnswerer, 'qrcode-quiz-answer-less-than-150s');
 					}
 				}
-			}
-		});
+			});
+		}
 	});
 };
