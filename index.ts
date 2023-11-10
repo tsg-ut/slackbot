@@ -105,7 +105,6 @@ const allBots = [
 	'map-guessr',
 	'character-quiz',
 	'shmug',
-	'mackerel',
 	'pilot',
 	'qrcode-quiz',
 	'oneiromancy',
