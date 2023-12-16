@@ -37,7 +37,7 @@
     "@fastify/formbody": "^7.2.0",
     "@google-cloud/text-to-speech": "^4.0.2",
     "@hakatashi/riichi-core": "^1.0.4",
-    "@octokit/webhooks": "^10.1.5",
+    "@octokit/webhooks": "^10.9.2",
     "@sinonjs/fake-timers": "^11.0.0",
     "@slack/bolt": "^3.13.1",
     "@slack/events-api": "^3.0.1",
