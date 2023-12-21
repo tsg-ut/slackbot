@@ -1,3 +1,4 @@
+import {spawn} from 'child_process';
 import EventEmitter from 'events';
 import {promises as fs, createReadStream} from 'fs';
 import path from 'path';
@@ -8,7 +9,7 @@ import {stripIndent} from 'common-tags';
 import concat from 'concat-stream';
 import Discord from 'discord.js';
 import {last, max, random, sample, sum, zip} from 'lodash';
-import {opus} from 'prism-media';
+import {FFmpeg, opus} from 'prism-media';
 import {WaveFile} from 'wavefile';
 import {increment, unlock} from '../achievements';
 import type {Quiz} from '../hayaoshi';
@@ -266,14 +267,18 @@ export default class Hayaoshi extends EventEmitter {
 
 	async readAnswer() {
 		await this.playSound('../answerText');
+		const answerFileName = path.join(__dirname, `${this.state.quiz.answer.replaceAll('/', '_')}.ogg`);
 
-		this.emit('message', stripIndent`
-			正解者: なし
-			${this.state.quiz.author ? `作問者: <@${this.state.quiz.author}>` : ''}
-			Q. ${this.state.quiz.question}
-			A. **${this.state.quiz.answer}**
-			有効回答一覧: ${this.state.validAnswers.join(' / ')}
-		`);
+		this.emit('message', {
+			text: stripIndent`
+				正解者: なし
+				${this.state.quiz.author ? `作問者: <@${this.state.quiz.author}>` : ''}
+				Q. ${this.state.quiz.question}
+				A. **${this.state.quiz.answer}**
+				有効回答一覧: ${this.state.validAnswers.join(' / ')}
+			`,
+			files: [answerFileName],
+		});
 		if (this.state.penaltyUsers.size === 0) {
 			this.state.quizThroughCount++;
 		} else {
@@ -542,9 +547,23 @@ export default class Hayaoshi extends EventEmitter {
 		));
 
 		const outputWave = new WaveFile();
-		outputWave.fromScratch(1, 44100, '16', outputData);
+		outputWave.fromScratch(1, 48000, '16', outputData);
 
 		await fs.writeFile(path.join(__dirname, 'questionText.wav'), outputWave.toBuffer());
+
+		const answerFileName = path.join(__dirname, `${this.state.quiz.answer.replaceAll('/', '_')}.ogg`);
+
+		const ffmpeg = spawn('ffmpeg', [
+			'-i', path.join(__dirname, 'questionText.wav'),
+			'-codec:a', 'libopus',
+			'-ab', '64k',
+			answerFileName,
+			'-y',
+		]);
+
+		await new Promise((resolve) => {
+			ffmpeg.on('exit', resolve);
+		});
 
 		const answerAudio = await this.getTTS(`<speak>答えは、${this.state.quiz.reading}、でした。</speak>`);
 
@@ -593,14 +612,19 @@ export default class Hayaoshi extends EventEmitter {
 						}
 					}
 
-					this.emit('message', stripIndent`
-						正解者: <@${message.member.user.id}>
-						解答時間: ${(this.state.maximumPushTime / 1000).toFixed(2)}秒 / ${(max(this.state.timePoints) / 1000).toFixed(2)}秒
-						${this.state.quiz.author ? `作問者: <@${this.state.quiz.author}>` : ''}
-						Q. ${this.getSlashedText()}
-						A. **${this.state.quiz.answer}**
-						有効回答一覧: ${this.state.validAnswers.join(' / ')}
-					`);
+					const answerFileName = path.join(__dirname, `${this.state.quiz.answer.replaceAll('/', '_')}.ogg`);
+
+					this.emit('message', {
+						text: stripIndent`
+							正解者: <@${message.member.user.id}>
+							解答時間: ${(this.state.maximumPushTime / 1000).toFixed(2)}秒 / ${(max(this.state.timePoints) / 1000).toFixed(2)}秒
+							${this.state.quiz.author ? `作問者: <@${this.state.quiz.author}>` : ''}
+							Q. ${this.getSlashedText()}
+							A. **${this.state.quiz.answer}**
+							有効回答一覧: ${this.state.validAnswers.join(' / ')}
+						`,
+						files: [answerFileName],
+					});
 
 					await new Promise((resolve) => setTimeout(resolve, 3000));
 
