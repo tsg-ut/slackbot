@@ -45,7 +45,8 @@ const getPercipitationText = (percipitationType: string, precipitation: Accuweat
 	return '';
 };
 
-const getBeaufortWindScale = (speedKnot: number) => {
+const getBeaufortWindScale = (speedMph: number) => {
+	const speedKnot = speedMph * 0.868976;
 	if (speedKnot < 1) {
 		return 0;
 	}
