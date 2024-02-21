@@ -195,7 +195,7 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 
 		{
 			const rtext = allText.
-				replace(/鮨/g, 'すし').
+				replace(/[鮨鮓]/g, 'すし').
 				replace(/(su|zu|[スズず寿壽])/gi, 'す').
 				replace(/(sh?i|ci|[しシ司\u{0328}])/giu, 'し');
 			const cnt = count(rtext, 'すし');
