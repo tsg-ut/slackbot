@@ -2,6 +2,7 @@ import logger from '../../lib/logger';
 import amazon from './amazon';
 import azure from './azure';
 import google from './google';
+import openai from './openai';
 import voicetext, {Emotion, EmoLV} from './voicetext';
 import voicevox from './voicevox';
 
@@ -45,6 +46,12 @@ enum Voice {
 	AI = 'AI',
 	AJ = 'AJ',
 	AK = 'AK',
+	AL = 'AL',
+	AM = 'AM',
+	AN = 'AN',
+	AO = 'AO',
+	AP = 'AP',
+	AQ = 'AQ',
 }
 export {Voice};
 
@@ -61,7 +68,7 @@ export const getDefaultVoiceMeta: () => VoiceMeta = () => ({
 });
 
 interface Config {
-	provider: 'google' | 'amazon' | 'azure' | 'voicetext' | 'voicevox',
+	provider: 'google' | 'amazon' | 'azure' | 'voicetext' | 'voicevox' | 'openai',
 	name: string,
 	emotional?: boolean,
 	lang?: string,
@@ -105,6 +112,12 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.AI, {provider: 'google', name: 'ja-JP-Neural2-B', lang: 'ja-JP'}],
 	[Voice.AJ, {provider: 'google', name: 'ja-JP-Neural2-C', lang: 'ja-JP'}],
 	[Voice.AK, {provider: 'google', name: 'ja-JP-Neural2-D', lang: 'ja-JP'}],
+	[Voice.AL, {provider: 'openai', name: 'alloy'}],
+	[Voice.AM, {provider: 'openai', name: 'echo'}],
+	[Voice.AN, {provider: 'openai', name: 'fable'}],
+	[Voice.AO, {provider: 'openai', name: 'onyx'}],
+	[Voice.AP, {provider: 'openai', name: 'nova'}],
+	[Voice.AQ, {provider: 'openai', name: 'shimmer'}],
 	// coming soon
 	// [Voice., {provider: 'voicevox', name: 'whitecul', emotional: true}],
 	// [Voice., {provider: 'voicevox', name: 'goki', emotional: true}],
@@ -132,6 +145,9 @@ export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta, audio
 	}
 	if (config.provider === 'voicevox') {
 		return voicevox(text, config.name, meta);
+	}
+	if (config.provider === 'openai') {
+		return openai(text, config.name, meta);
 	}
 	return voicetext(text, config.name, meta);
 };

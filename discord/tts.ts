@@ -246,6 +246,8 @@ export default class TTS extends EventEmitter {
 						providerName = 'VoiceText Web API';
 					} else if (config.provider === 'voicevox') {
 						providerName = 'VoiceVox Web API';
+					} else if (config.provider === 'openai') {
+						providerName = 'OpenAI Text-to-Speech';
 					} else {
 						providerName = 'Unknown';
 					}
