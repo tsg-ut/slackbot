@@ -2,9 +2,10 @@ import {readFile} from 'fs/promises';
 import path from 'path';
 import {Mutex} from 'async-mutex';
 import yaml from 'js-yaml';
-import {ChatCompletionRequestMessage, Configuration, OpenAIApi} from 'openai';
+import OpenAI from 'openai';
 import {increment} from '../achievements';
 import logger from '../lib/logger';
+import openai from '../lib/openai';
 import {SlackInterface} from '../lib/slack';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';
@@ -12,16 +13,11 @@ import {Loader} from '../lib/utils';
 const mutex = new Mutex();
 const log = logger.child({bot: 'oneiromancy'});
 
-const promptLoader = new Loader<ChatCompletionRequestMessage[]>(async () => {
+const promptLoader = new Loader<OpenAI.Chat.ChatCompletionMessageParam[]>(async () => {
 	const promptYaml = await readFile(path.join(__dirname, 'prompt.yml'));
-	const prompt = yaml.load(promptYaml.toString()) as ChatCompletionRequestMessage[];
+	const prompt = yaml.load(promptYaml.toString()) as OpenAI.Chat.ChatCompletionMessageParam[];
 	return prompt;
 });
-
-const configuration = new Configuration({
-	apiKey: process.env.OPENAI_API_KEY,
-});
-const openai = new OpenAIApi(configuration);
 
 interface StateObj {
 	threadId: string | null,
@@ -99,7 +95,7 @@ export default async (slackClients: SlackInterface) => {
 			});
 
 			log.info('Requesting to OpenAI API...');
-			const completion = await openai.createChatCompletion({
+			const completion = await openai.chat.completions.create({
 				model: 'gpt-3.5-turbo',
 				messages: [
 					...prompt,
@@ -111,7 +107,7 @@ export default async (slackClients: SlackInterface) => {
 				max_tokens: 1024,
 			});
 
-			const result = completion.data.choices?.[0]?.message?.content ?? 'すみません。この夢に関しては占えませんでした。';
+			const result = completion.choices?.[0]?.message?.content ?? 'すみません。この夢に関しては占えませんでした。';
 
 			let {threadId} = state;
 			if (threadId === null) {
