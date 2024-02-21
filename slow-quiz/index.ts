@@ -9,9 +9,10 @@ import {hiraganize} from 'japanese';
 import yaml from 'js-yaml';
 import {last, minBy} from 'lodash';
 import {scheduleJob} from 'node-schedule';
-import {ChatCompletionRequestMessage, Configuration, OpenAIApi} from 'openai';
+import type OpenAI from 'openai';
 import {increment} from '../achievements';
 import logger from '../lib/logger';
+import openai from '../lib/openai';
 import type {SlackInterface} from '../lib/slack';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';
@@ -87,16 +88,11 @@ const validateQuestion = (question: string) => {
 	return Array.from(normalizedQuestion).length <= 90;
 };
 
-const promptLoader = new Loader<ChatCompletionRequestMessage[]>(async () => {
+const promptLoader = new Loader<OpenAI.Chat.ChatCompletionMessageParam[]>(async () => {
 	const promptYaml = await readFile(path.join(__dirname, 'prompt.yml'));
-	const prompt = yaml.load(promptYaml.toString()) as ChatCompletionRequestMessage[];
+	const prompt = yaml.load(promptYaml.toString()) as OpenAI.Chat.ChatCompletionMessageParam[];
 	return prompt;
 });
-
-const configuration = new Configuration({
-	apiKey: process.env.OPENAI_API_KEY,
-});
-const openai = new OpenAIApi(configuration);
 
 const log = logger.child({bot: 'slow-quiz'});
 
@@ -424,7 +420,7 @@ class SlowQuiz {
 		const [visibleText] = questionText.split('\u200B');
 
 		log.info('Requesting to OpenAI API...');
-		const completion = await openai.createChatCompletion({
+		const completion = await openai.chat.completions.create({
 			model: 'gpt-3.5-turbo',
 			messages: [
 				...prompt,
@@ -440,7 +436,7 @@ class SlowQuiz {
 			max_tokens: 1024,
 		});
 
-		const result = completion.data.choices?.[0]?.message?.content;
+		const result = completion.choices?.[0]?.message?.content;
 		if (typeof result !== 'string') {
 			return {
 				answer: null,
