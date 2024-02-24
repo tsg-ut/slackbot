@@ -146,7 +146,10 @@
   },
   "devDependencies": {
     "@hakatashi/eslint-config": "^1.19.0",
+    "@types/encoding-japanese": "^2.0.5",
+    "@types/libmime": "^5.0.3",
     "@types/qrcode": "^1.5.0",
+    "@types/utf-8-validate": "^5.0.2",
     "@typescript-eslint/eslint-plugin": "^5.36.2",
     "@typescript-eslint/parser": "^5.36.2",
     "byline": "^5.0.0",
