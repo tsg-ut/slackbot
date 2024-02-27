@@ -458,7 +458,7 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 					user: payload.user.id,
 					text: 'このメールは既に返信が送信されています',
 				});
-				return;
+				// return;
 			}
 
 			const replyCandidate = mail.replyCandidates.find(({id}) => id === replyId);
@@ -477,9 +477,6 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 	// 「メール送信」ダイアログ送信
 	slackInteractions.viewSubmission('mail_hook_edit_and_send_mail_dialog', (payload) => {
 		mutex.runExclusive(async () => {
-			log.info(payload);
-			log.info(payload.view.state.values);
-
 			const user = await slack.users.info({
 				user: payload.user.id,
 			});
@@ -519,11 +516,16 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 			}
 
 			const replyContent = generateReplyMailBody(mail, body.value);
+			// eslint-disable-next-line array-plural/array-plural
+			const cc = [process.env.MAIL_HOOK_REPLY_FROM];
+			if (mail.addresses.cc) {
+				cc.push(mail.addresses.cc);
+			}
 
 			const res = await mg.messages.create(process.env.MAILGUN_DOMAIN, {
 				from: process.env.MAIL_HOOK_REPLY_FROM,
 				to: mail.addresses.from,
-				cc: mail.addresses.cc,
+				cc,
 				'h:Reply-To': process.env.MAIL_HOOK_REPLY_FROM,
 				subject: `Re: ${mail.subject}`,
 				text: replyContent,
