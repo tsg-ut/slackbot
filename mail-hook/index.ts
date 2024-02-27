@@ -159,8 +159,8 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 
 				const message = await slack.chat.postMessage({
 					channel: process.env.CHANNEL_PRLOG,
-					username: 'ChatGPT',
-					icon_emoji: ':chatgpt:',
+					username: 'Email Notifier',
+					icon_emoji: ':email:',
 					text: messageBody,
 					blocks: [
 						{
