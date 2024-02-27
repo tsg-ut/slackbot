@@ -11,11 +11,11 @@ import plugin from 'fastify-plugin';
 import yaml from 'js-yaml';
 import libmime from 'libmime';
 import {mapValues} from 'lodash';
-import Mailgun from 'mailgun.js';
 import type OpenAI from 'openai';
 import isValidUTF8 from 'utf-8-validate';
 import dayjs from '../lib/dayjs';
 import logger from '../lib/logger';
+import mailgun from '../lib/mailgun';
 import openai from '../lib/openai';
 import type {SlackInterface} from '../lib/slack.js';
 import State from '../lib/state';
@@ -25,12 +25,6 @@ import replyConfigDialog from './views/replyConfigDialog';
 const mutex = new Mutex();
 
 const log = logger.child({bot: 'mail-hook'});
-
-const mailgun = new Mailgun(FormData);
-const mg = mailgun.client({
-	username: process.env.MAILGUN_USERNAME,
-	key: process.env.MAILGUN_API_KEY,
-});
 
 interface PromptConfig {
 	id: string,
@@ -522,7 +516,7 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 				cc.push(mail.addresses.cc);
 			}
 
-			const res = await mg.messages.create(process.env.MAILGUN_DOMAIN, {
+			const res = await mailgun.messages.create(process.env.MAILGUN_DOMAIN, {
 				from: process.env.MAIL_HOOK_REPLY_FROM,
 				to: mail.addresses.from,
 				cc,
