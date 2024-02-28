@@ -452,7 +452,7 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 					user: payload.user.id,
 					text: 'このメールは既に返信が送信されています',
 				});
-				// return;
+				return;
 			}
 
 			const replyCandidate = mail.replyCandidates.find(({id}) => id === replyId);
