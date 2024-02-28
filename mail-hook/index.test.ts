@@ -1,4 +1,21 @@
+/* eslint-disable import/imports-first, import/first */
 /* eslint-env node, jest */
+
+jest.mock('../lib/openai', () => ({
+	__esModule: true,
+	default: {
+		chat: {
+			create: jest.fn(),
+		},
+	},
+}));
+
+jest.mock('../lib/mailgun', () => ({
+	__esModule: true,
+	default: {
+		client: jest.fn(),
+	},
+}));
 
 import {decodeMailBody, decodeMailSubject} from './index';
 
@@ -23,10 +40,10 @@ describe('mail-hook', () => {
 			// Another real-world example
 			const encodedBody = '\x1B$BL5M}$M\x1B(B\r\n';
 			const decodedBody = '無理ね\r\n';
-			
+
 			expect(decodeMailBody(encodedBody)).toBe(decodedBody);
 		});
-		
+
 		it('decodes body in UTF-8 + base64', () => {
 			// Another real-world example
 			const encodedBody = '44KP44GE44Gv44Gd44Gu5pmC6ZaT44G+44Gg5o6I5qWt5Lit44Gq44KT44KE44GMDQo=\r\n';
