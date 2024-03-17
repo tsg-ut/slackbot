@@ -23,10 +23,6 @@ describe('auto-archiver', () => {
 	const FAKE_TIMESTAMP = '12345678.123456';
 	const FAKE_USER = 'U12345678';
 
-	// https://stackoverflow.com/a/77694958
-	Object.defineProperty(global, 'performance', {
-		writable: true,
-	});
 	jest.useFakeTimers();
 
 	const registerScheduleCallback = () => {
