@@ -2,8 +2,9 @@
 
 import type {ChatPostMessageArguments, ReactionsAddArguments, WebClient} from '@slack/web-api';
 import {EventEmitter} from 'events';
-import {noop, last} from 'lodash';
+import {last} from 'lodash';
 import type {SlackInterface} from './slack';
+import {createMessageAdapter} from '@slack/interactive-messages';
 
 // https://jestjs.io/docs/mock-function-api
 const mockMethodCalls = [
@@ -55,8 +56,14 @@ const createWebClient = (
 			{
 				get: (name, property, receiver) => {
 					const path = [...stack, property].join('.');
+					const parentPath = stack.join('.');
 					if (registeredMocks.has(path)) {
 						return registeredMocks.get(path);
+					}
+					if (typeof property === 'string' && isMockMethodCall(property)) {
+						const mock = jest.fn();
+						registeredMocks.set(parentPath, mock);
+						return mock[property];
 					}
 					if (typeof property === 'string' && property !== 'then') {
 						return handler([...stack, property])
@@ -85,7 +92,7 @@ export default class SlackMock extends EventEmitter implements SlackInterface {
 	readonly eventClient: MockTeamEventClient;
 	readonly registeredMocks: Map<string, jest.Mock>;
 	readonly webClient: WebClient;
-	readonly messageClient: any;
+	readonly messageClient: ReturnType<typeof createMessageAdapter>;
 
 	constructor() {
 		super();
@@ -96,9 +103,9 @@ export default class SlackMock extends EventEmitter implements SlackInterface {
 			this.registeredMocks,
 		) as unknown as WebClient;
 		this.messageClient = {
-			action: noop,
-			viewSubmission: noop,
-		};
+			action: jest.fn(),
+			viewSubmission: jest.fn(),
+		} as any;
 	}
 
 	handleWebcall(stack: string[], ...args: any[]) {

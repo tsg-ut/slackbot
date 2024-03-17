@@ -29,11 +29,11 @@ const ARCHIVE_BOT_LOCK_TIME = new Date('2024-06-20T00:00:00Z').getTime();
 
 const log = logger.child({bot: 'auto-archiver'});
 
-interface ChannelsStateObj {
+export interface ChannelsStateObj {
 	[channelId: string]: string,
 }
 
-interface StateObj {
+export interface StateObj {
 	snoozes: {
 		channelId: string,
 		expire: number,
@@ -174,7 +174,7 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 		await slack.chat.update({
 			channel: channelId,
 			ts: payload.message.ts,
-			text: ARCHIVE_NOTE_MESSAGE,
+			text: ARCHIVE_PROPOSAL_MESSAGE,
 			blocks: [
 				{
 					type: 'section',
