@@ -1,6 +1,6 @@
 // XXX: sharpをcanvasより先に読み込むとエラーになるため、ここで読み込んでおく
 // https://github.com/Automattic/node-canvas/issues/930
-import 'canvas';
+// import 'canvas';
 
 import dotenv from 'dotenv';
 
@@ -108,6 +108,7 @@ const allBots = [
 	'pilot',
 	'qrcode-quiz',
 	'oneiromancy',
+	'auto-archiver',
 ];
 
 log.info('slackbot started');
