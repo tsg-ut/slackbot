@@ -23,6 +23,12 @@ describe('auto-archiver', () => {
 	const FAKE_TIMESTAMP = '12345678.123456';
 	const FAKE_USER = 'U12345678';
 
+	// https://stackoverflow.com/a/77694958
+	Object.defineProperty(global, 'performance', {
+		writable: true,
+	});
+	jest.useFakeTimers();
+
 	const registerScheduleCallback = () => {
 		const scheduleMock = schedule as jest.Mocked<typeof schedule>;
 		const deferred = new Deferred<JobCallback>();
@@ -37,6 +43,23 @@ describe('auto-archiver', () => {
 
 		return deferred.promise;
 	};
+
+	it('should record latest message timestamp of each channel', async () => {
+		const slack = new Slack();
+
+		await autoArchiver(slack);
+
+		slack.eventClient.emit('message', {
+			channel: FAKE_CHANNEL,
+			text: 'test',
+			user: FAKE_USER,
+			ts: FAKE_TIMESTAMP,
+		});
+
+		const MockedState = State as MockedStateInterface<ChannelsStateObj>;
+		const state = MockedState.mocks.get('auto-archiver_channels');
+		expect(state[FAKE_CHANNEL]).toBe(FAKE_TIMESTAMP);
+	});
 
 	it('should schedule job', async () => {
 		const slack = new Slack();
@@ -138,7 +161,7 @@ describe('auto-archiver', () => {
 		});
 	});
 
-	it('should archive channel if user responded with "continue"', async () => {
+	it('should archive channel if user responded with "stop"', async () => {
 		const slack = new Slack();
 
 		const mockedAction = slack.messageClient.action as jest.MockedFunction<typeof slack.messageClient.action>;
@@ -161,6 +184,7 @@ describe('auto-archiver', () => {
 					},
 					actions: [
 						{
+							value: 'stop',
 							text: {
 								text: '使用しない',
 							},
@@ -202,6 +226,78 @@ describe('auto-archiver', () => {
 		expect((mockedUpdateMessage.mock.calls[0][0].blocks[1] as SectionBlock).text.text).toBe('<@U12345678>の回答: ＊使用しない＊');
 		expect(slack.webClient.conversations.archive).toBeCalledWith({
 			channel: FAKE_CHANNEL,
+		});
+	});
+
+	it('should snooze channel if user responded with "continue"', async () => {
+		const FAKE_NOW = new Date('2024-01-01T00:00:00Z');
+		jest.setSystemTime(FAKE_NOW);
+
+		const slack = new Slack();
+
+		const mockedAction = slack.messageClient.action as jest.MockedFunction<typeof slack.messageClient.action>;
+		const actionDeferred = new Deferred();
+		mockedAction.mockImplementation((options, callbackFn) => {
+			if (typeof options !== 'object' || options instanceof RegExp) {
+				throw new Error('Invalid argument');
+			}
+
+			if (options.type === 'button' && options.blockId === 'archive_proposal_actions') {
+				callbackFn({
+					channel: {
+						id: FAKE_CHANNEL,
+					},
+					message: {
+						ts: FAKE_TIMESTAMP,
+					},
+					user: {
+						id: FAKE_USER,
+					},
+					actions: [
+						{
+							value: 'continue',
+							text: {
+								text: '使用する',
+							},
+						},
+					],
+				}, noop as any).then(() => {
+					actionDeferred.resolve(null);
+				});
+				return slack.messageClient;
+			}
+
+			throw new Error('Invalid argument');
+		});
+
+		const updateMessage = slack.webClient.chat.update as jest.MockedFunction<typeof slack.webClient.chat.update>;
+		updateMessage.mockResolvedValueOnce({
+			ok: true,
+			ts: FAKE_TIMESTAMP,
+		});
+
+		await autoArchiver(slack);
+
+		await actionDeferred.promise;
+
+		const mockedUpdateMessage = slack.webClient.chat.update as jest.MockedFunction<typeof slack.webClient.chat.update>;
+		expect(mockedUpdateMessage).toBeCalled();
+		expect(mockedUpdateMessage.mock.calls[0][0].text).toBe([
+			'<!channel> このチャンネルには90日以上BOT以外のメッセージが投稿されていません。',
+			'引き続きこのチャンネルを使用しますか?',
+		].join('\n'));
+		expect(mockedUpdateMessage.mock.calls[0][0].channel).toBe(FAKE_CHANNEL);
+		expect(mockedUpdateMessage.mock.calls[0][0].ts).toBe(FAKE_TIMESTAMP);
+		expect(mockedUpdateMessage.mock.calls[0][0].blocks).toHaveLength(3);
+		expect((mockedUpdateMessage.mock.calls[0][0].blocks[1] as SectionBlock).text.text).toBe('<@U12345678>の回答: ＊使用する＊');
+
+		const MockedState = State as MockedStateInterface<StateObj>;
+		const state = MockedState.mocks.get('auto-archiver_state');
+		expect(state).not.toBeUndefined();
+		expect(state?.snoozes).toHaveLength(1);
+		expect(state?.snoozes[0]).toStrictEqual({
+			channelId: FAKE_CHANNEL,
+			expire: FAKE_NOW.getTime() + 30 * 24 * 60 * 60 * 1000,
 		});
 	});
 });
