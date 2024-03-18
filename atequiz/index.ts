@@ -26,6 +26,17 @@ export interface AteQuizResult {
   hintIndex: number | null;
 }
 
+export interface NormalAteQuizStartOption {
+  mode: 'normal';
+}
+
+export interface SoloAteQuizStartOption {
+  mode: 'solo';
+  player: string;
+}
+
+export type AteQuizStartOption = NormalAteQuizStartOption | SoloAteQuizStartOption;
+
 export const typicalAteQuizHintTexts = [
   'しょうがないにゃあ、ヒントだよ',
   'もう一つヒントだよ、早く答えてね',
@@ -119,7 +130,11 @@ export class AteQuiz {
    * Start AteQuiz.
    * @returns A promise of AteQuizResult that becomes resolved when the quiz ends.
    */
-  async start(): Promise<AteQuizResult> {
+  async start(startOption?: AteQuizStartOption): Promise<AteQuizResult> {
+    const _option = Object.assign(
+      { mode: 'normal' } as AteQuizStartOption,
+      startOption
+    );
     this.state = 'solving';
 
     const postMessage = (message: ChatPostMessageArguments) => {
@@ -171,6 +186,7 @@ export class AteQuiz {
     this.eventClient.on('message', async (message) => {
       if (message.thread_ts === thread_ts) {
         if (message.subtype === 'bot_message') return;
+        if (_option.mode === 'solo' && message.user !== _option.player) return;
         this.mutex.runExclusive(async () => {
           if (this.state === 'solving') {
             const answer = message.text as string;
