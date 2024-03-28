@@ -1,0 +1,14 @@
+{
+    "extends": "@hakatashi/eslint-config/typescript",
+    "rules": {
+        "no-shadow": "off",
+        "no-use-before-define": "off",
+        "require-atomic-updates": "off",
+        "no-restricted-imports": "off",
+        "import/extensions": "off",
+        "import/no-unresolved": "off"
+    },
+    "settings": {
+        "import/resolver": null
+    }
+}
