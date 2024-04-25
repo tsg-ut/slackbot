@@ -67,7 +67,7 @@ const loadCharacters = async (author: string) => {
 		.slice(1)
 		.filter((line) => line.length > 0);
 	return lines
-		.map((line) => {
+		.flatMap((line) => {
 			const [
 				tweetId,
 				mediaId,
@@ -81,6 +81,10 @@ const loadCharacters = async (author: string) => {
 			const characterNames = characterName.split(/[、&]/).filter((name) => name !== '');
 			const characterRubys = characterRuby.split(/[、&]/).filter((name) => name !== '');
 
+			if (characterNames.length === 0 || characterRubys.length === 0) {  
+				return [] as CharacterData[];  
+			}  
+
 			const names = [...characterNames, ...characterRubys];
 			const namePartsList = names.map((name) => name.split(' '));
 
@@ -88,24 +92,24 @@ const loadCharacters = async (author: string) => {
 				? workName.slice(1, -1)
 				: workName;
 
-			return {
-				tweetId,
-				mediaId,
-				imageUrl,
-				characterName: characterNames[0]?.replace(/ /g, '') ?? '',
-				workName: normalizedWorkName,
-				validAnswers: [
-					...namePartsList.map((parts) => parts.join('')),
-					...namePartsList.flat(),
-				],
-				author,
-				rating: rating ?? '0',
-				characterId: `${namePartsList[0]?.join('') ?? ''}\0${normalizedWorkName}`,
-			} as CharacterData;
+			return [
+				{
+					tweetId,
+					mediaId,
+					imageUrl,
+					characterName: characterNames[0].replace(/ /g, ''),
+					workName: normalizedWorkName,
+					validAnswers: [
+						...namePartsList.map((parts) => parts.join('')),
+						...namePartsList.flat(),
+					],
+					author,
+					rating: rating ?? '0',
+					characterId: `${namePartsList[0].join('')}\0${normalizedWorkName}`,
+				} as CharacterData
+			];
 		})
-		.filter(({characterName, validAnswers, rating}) => {
-			return characterName !== '' && validAnswers.length > 0 && rating === '0';
-		});
+		.filter(({rating}) => rating === '0');
 };
 
 const loaderNamori = new Loader<CharacterData[]>(() => loadCharacters('namori'));
