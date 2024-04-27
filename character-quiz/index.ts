@@ -86,7 +86,7 @@ const loadCharacters = async (author: string) => {
 			}  
 
 			const names = [...characterNames, ...characterRubys];
-			const namePartsList = names.map((name) => name.split(/[&\s]/));
+			const namePartsList = names.map((name) => name.split('&').map((nameOne) => nameOne.split(' ')));
 
 			const normalizedWorkName = workName.startsWith('"')
 				? workName.slice(1, -1)
@@ -100,12 +100,13 @@ const loadCharacters = async (author: string) => {
 					characterName: characterNames[0].replace(/ /g, ''),
 					workName: normalizedWorkName,
 					validAnswers: [
-						...namePartsList.map((parts) => parts.join('')),
-						...namePartsList.flat(),
+						...namePartsList.map((name) => name.flat().join('')),
+						...namePartsList.map((name) => name.map((nameOne) => nameOne.join(''))).flat(),
+						...namePartsList.flat().flat(),
 					],
 					author,
 					rating: rating ?? '0',
-					characterId: `${namePartsList[0].join('')}\0${normalizedWorkName}`,
+					characterId: `${namePartsList[0].flat().join('')}\0${normalizedWorkName}`,
 				} as CharacterData
 			];
 		})
