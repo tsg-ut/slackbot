@@ -78,15 +78,15 @@ const loadCharacters = async (author: string) => {
 				rating,
 			] = line.split(',');
 
-			const characterNames = characterName.split(/[、&]/).filter((name) => name !== '');
-			const characterRubys = characterRuby.split(/[、&]/).filter((name) => name !== '');
+			const characterNames = characterName.split('、').filter((name) => name !== '');
+			const characterRubys = characterRuby.split('、').filter((name) => name !== '');
 
 			if (characterNames.length === 0 || characterRubys.length === 0) {  
 				return [] as CharacterData[];  
 			}  
 
 			const names = [...characterNames, ...characterRubys];
-			const namePartsList = names.map((name) => name.split(' '));
+			const namePartsList = names.map((name) => name.split(/[&\s]/));
 
 			const normalizedWorkName = workName.startsWith('"')
 				? workName.slice(1, -1)
