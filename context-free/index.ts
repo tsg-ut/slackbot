@@ -146,7 +146,7 @@ const composePost = async (message: string): Promise<string> => {
 };
 
 const randomInterval = () =>
-  1000 * 60 * (60 * 15 + (Math.random() - 0.5) * 2 * 60);
+  1000 * 60 * (90 + (Math.random() - 0.5) * 2 * 60);
 
 export const server = ({eventClient, webClient: slack}: SlackInterface) => plugin(async (fastify) => {
   const postWord = async () => {
