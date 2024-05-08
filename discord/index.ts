@@ -34,7 +34,7 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 		ttsDictionary: [{key: 'https?:\\S*', value: 'URL省略'}],
 	});
 
-	const notifier = new Notifier(slack);
+	const slackNotifier = new Notifier(slack);
 
 	const joinVoiceChannelFn = (channelId: string = process.env.DISCORD_SANDBOX_VOICE_CHANNEL_ID) => {
 		const channel = discord.channels.cache.get(channelId) as VoiceChannel;
@@ -88,7 +88,7 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 	});
 
 	discord.on('voiceStateUpdate', (oldState, newState) => {
-		notifier.voiceStateUpdate(oldState, newState);
+		slackNotifier.voiceStateUpdate(oldState, newState);
 	});
 
 	eventClient.on('message', async (message) => {
