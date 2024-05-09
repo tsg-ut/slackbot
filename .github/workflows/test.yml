@@ -47,8 +47,11 @@ jobs:
         run: |
           git ls-files | grep eslintrc | xargs -L 1 dirname | paste -sd ' ' | xargs -I {} sh -c "npx eslint --ext js,ts -f rdjson {} | reviewdog -f=rdjson -name=ESLint -reporter=github-pr-review"
 
-      - name: codecov
-        run: npx codecov
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   test-rust:
     runs-on: ubuntu-latest
