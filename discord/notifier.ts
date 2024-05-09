@@ -5,15 +5,15 @@ import type {Collection, GuildMember, Snowflake, VoiceState} from 'discord.js';
 const mutex = new Mutex();
 
 export class Notifier {
-	slack: WebClient;
+	private slack: WebClient;
 
-	channelNotificationTimestamps: Map<string, string> = new Map();
+	private channelNotificationTimestamps: Map<string, string> = new Map();
 
 	constructor(slack: WebClient) {
 		this.slack = slack;
 	}
 
-	getMembersBlock(roomName: string, members: Collection<Snowflake, GuildMember>) {
+	private getMembersBlock(roomName: string, members: Collection<Snowflake, GuildMember>) {
 		return (
 			{
 				type: 'context',
@@ -40,7 +40,7 @@ export class Notifier {
 		);
 	}
 
-	async postMessage(
+	private async postMessage(
 		{type, username, memberSize, roomId, roomName, roomMembers}: {
 			type: 'join' | 'leave',
 			username: string,
