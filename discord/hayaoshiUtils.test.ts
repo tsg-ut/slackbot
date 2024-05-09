@@ -81,12 +81,14 @@ const testCases: [string, string, string[]][] = [
 	],
 ];
 
-describe('extractValidAnswers', () => {
-	for (const [question, answer, expected] of testCases) {
-		it(`converts ${inspect(answer)} to ${inspect(expected)}`, () => {
-			const sortedResult = extractValidAnswers(question, answer).slice().sort();
-			const sortedExpected = expected.slice().sort();
-			expect(sortedResult).toStrictEqual(sortedExpected);
-		});
-	}
+describe('discord', () => {
+	describe('extractValidAnswers', () => {
+		for (const [question, answer, expected] of testCases) {
+			it(`converts ${inspect(answer)} to ${inspect(expected)}`, () => {
+				const sortedResult = extractValidAnswers(question, answer).slice().sort();
+				const sortedExpected = expected.slice().sort();
+				expect(sortedResult).toStrictEqual(sortedExpected);
+			});
+		}
+	});
 });
