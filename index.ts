@@ -108,6 +108,7 @@ const allBots = [
 	'pilot',
 	'qrcode-quiz',
 	'oneiromancy',
+	'auto-archiver',
 ];
 
 log.info('slackbot started');
