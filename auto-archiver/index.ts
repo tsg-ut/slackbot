@@ -9,7 +9,7 @@ import State from '../lib/state';
 
 const mutex = new Mutex();
 
-const ARCHIVE_SNOOZE_DAYS = 30;
+const ARCHIVE_SNOOZE_DAYS = 90;
 const ARCHIVE_SNOOZE_DURATION = 1000 * 60 * 60 * 24 * ARCHIVE_SNOOZE_DAYS;
 const ARCHIVE_LIMIT_DAYS = 90;
 const ARCHIVE_LIMIT_DURATION = 1000 * 60 * 60 * 24 * ARCHIVE_LIMIT_DAYS;
@@ -21,11 +21,11 @@ const ARCHIVE_PROPOSAL_MESSAGE = stripIndent`
 `;
 const ARCHIVE_NOTE_MESSAGE = stripIndent`
 	* 「使用する」を押した場合、${ARCHIVE_SNOOZE_DAYS}日間は再度このメッセージが表示されません。
-	* 「使用しない」を押す、もしくは24時間以内に応答がない場合、チャンネルはアーカイブされます。
+	* 「使用しない」を押す、もしくは${ARCHIVE_WAIT_HOURS}時間以内に応答がない場合、チャンネルはアーカイブされます。
 	* アーカイブされたチャンネルは、必要に応じて復元できます。
 	* BOTの投稿がメインのチャンネルの場合、チャンネル名の先頭に「_」をつけることでアーカイブを回避できます。
 `;
-const ARCHIVE_BOT_LOCK_TIME = new Date('2024-06-20T00:00:00Z').getTime();
+const ARCHIVE_BOT_LOCK_TIME = new Date('2024-08-11T00:00:00Z').getTime();
 
 const log = logger.child({bot: 'auto-archiver'});
 
@@ -81,7 +81,7 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 			if (now.getTime() >= expire) {
 				await slack.chat.postMessage({
 					channel: notice.channelId,
-					text: '24時間以内に応答がなかったため、チャンネルをアーカイブしました。',
+					text: `${ARCHIVE_WAIT_HOURS}時間以内に応答がなかったため、チャンネルをアーカイブしました。`,
 				});
 				await slack.conversations.archive({
 					channel: notice.channelId,

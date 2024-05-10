@@ -65,7 +65,7 @@ describe('auto-archiver', () => {
 		expect(schedule.scheduleJob).toBeCalled();
 	});
 
-	it('should stop working until 2024-06-20T00:00:00Z', async () => {
+	it('should stop working until 2024-08-11T00:00:00Z', async () => {
 		const slack = new Slack();
 		const listConversations = slack.webClient.conversations.list as jest.MockedFunction<typeof slack.webClient.conversations.list>;
 		listConversations.mockResolvedValueOnce({
@@ -78,7 +78,7 @@ describe('auto-archiver', () => {
 		await autoArchiver(slack);
 
 		const callbackFn = await callbackFnPromise;
-		await callbackFn(new Date('2024-06-19T23:59:59Z'));
+		await callbackFn(new Date('2024-08-10T23:59:59Z'));
 
 		expect(slack.webClient.conversations.list).not.toBeCalled();
 	});
@@ -103,10 +103,10 @@ describe('auto-archiver', () => {
 
 		const MockedState = State as MockedStateInterface<ChannelsStateObj>;
 		const state = MockedState.mocks.get('auto-archiver_channels');
-		state[FAKE_CHANNEL] = (new Date('2024-06-19T00:00:00Z').getTime() / 1000).toString();
+		state[FAKE_CHANNEL] = (new Date('2024-08-11T00:00:00Z').getTime() / 1000).toString();
 
 		const callbackFn = await callbackFnPromise;
-		await callbackFn(new Date('2024-06-20T00:01:01Z'));
+		await callbackFn(new Date('2024-08-11T00:00:01Z'));
 
 		expect(slack.webClient.conversations.list).toBeCalled();
 		expect(slack.webClient.chat.postMessage).not.toBeCalled();
@@ -132,7 +132,7 @@ describe('auto-archiver', () => {
 		await autoArchiver(slack);
 
 		const callbackFn = await callbackFnPromise;
-		await callbackFn(new Date('2024-06-20T00:01:01Z'));
+		await callbackFn(new Date('2024-08-11T00:00:01Z'));
 
 		expect(slack.webClient.conversations.list).toBeCalledWith({
 			types: 'public_channel',
