@@ -293,7 +293,7 @@ describe('auto-archiver', () => {
 		expect(state?.snoozes).toHaveLength(1);
 		expect(state?.snoozes[0]).toStrictEqual({
 			channelId: FAKE_CHANNEL,
-			expire: FAKE_NOW.getTime() + 30 * 24 * 60 * 60 * 1000,
+			expire: FAKE_NOW.getTime() + 90 * 24 * 60 * 60 * 1000,
 		});
 	});
 });
