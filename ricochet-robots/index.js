@@ -117,7 +117,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 			playerBoard.movecommand(cmd.moves);
 			const url = await image.upload(playerBoard);
 			if(playerBoard.iscleared()){
-				let comment = "正解です!:tada:";
+				let comment = `<@${message.user}> 正解です!:tada:`;
 				if(cmd.moves.length === state.answer.length){
 					comment += "さらに最短勝利です!:waiwai:";					
 				}
