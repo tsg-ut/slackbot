@@ -1,16 +1,62 @@
+import assert from 'assert';
 import type {ChatPostMessageArguments, ContextBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import type {Collection, GuildMember, Snowflake, VoiceState} from 'discord.js';
 
 const mutex = new Mutex();
 
+interface RoomEvent {
+	readonly type: 'join' | 'leave',
+	readonly username: string,
+	readonly timestamp: number,
+}
+
 export class Notifier {
 	private slack: WebClient;
 
 	private channelNotificationTimestamps: Map<string, string> = new Map();
 
+	private roomEventPools: Map<string, RoomEvent[]> = new Map();
+
 	constructor(slack: WebClient) {
 		this.slack = slack;
+	}
+
+	private generateSummarizationText(events: RoomEvent[], roomName: string) {
+		assert(events.length > 0);
+
+		const users = new Set(events.map((event) => event.username));
+		const eventTypeGroups = new Map<string, string[]>();
+
+		for (const user of users) {
+			const userEvents: ('join' | 'leave')[] = [];
+
+			for (const event of events) {
+				if (event.username === user) {
+					userEvents.push(event.type);
+				}
+			}
+
+			const eventText = userEvents
+				.map((event) => event === 'join' ? 'ログイン' : 'ログアウト')
+				.join('して');
+
+			if (!eventTypeGroups.has(eventText)) {
+				eventTypeGroups.set(eventText, []);
+			}
+
+			eventTypeGroups.get(eventText)!.push(user);
+		}
+
+		return Array.from(eventTypeGroups.entries())
+			.map(([eventType, users]) => {
+				const usersText = users.map((user) => `＊${user}＊`).join(', ');
+				if (eventType.startsWith('ログイン')) {
+					return `${usersText}が${roomName}に${eventType}しました`;
+				}
+				return `${usersText}が${roomName}から${eventType}しました`;
+			})
+			.join('\n');
 	}
 
 	private getMembersBlock(roomName: string, members: Collection<Snowflake, GuildMember>) {
@@ -50,11 +96,22 @@ export class Notifier {
 			roomMembers: Collection<string, GuildMember>,
 		},
 	) {
+		const now = Date.now();
+
+		const roomEventPool = this.roomEventPools.get(roomId) ?? [];
+
+		const newRoomEventPool = roomEventPool
+			.concat([{type, username, timestamp: now}])
+			.filter((event) => event.timestamp >= now - 3 * 60 * 1000);
+
+		this.roomEventPools.set(roomId, newRoomEventPool);
+
 		const text = `＊${username}＊が${roomName}${type === 'join' ? 'にログイン' : 'からログアウト'}しました`;
+		const summarizationText = this.generateSummarizationText(newRoomEventPool, roomName);
 		const countText = `現在のアクティブ人数 ${memberSize}人`;
 
-		const postArguments: ChatPostMessageArguments = {
-			channel: process.env.CHANNEL_SANDBOX,
+		const getPostArguments = (channel: string, text: string) => ({
+			channel,
 			username: 'Discord',
 			icon_emoji: ':discord:',
 			text: `${text}\n${countText}`,
@@ -68,14 +125,11 @@ export class Notifier {
 				},
 				this.getMembersBlock(roomName, roomMembers),
 			],
-		};
+		});
 
 		const [sandboxPostResponse] = await Promise.all([
-			this.slack.chat.postMessage(postArguments),
-			this.slack.chat.postMessage({
-				...postArguments,
-				channel: process.env.CHANNEL_DISCORD,
-			}),
+			this.slack.chat.postMessage(getPostArguments(process.env.CHANNEL_SANDBOX, summarizationText)),
+			this.slack.chat.postMessage(getPostArguments(process.env.CHANNEL_DISCORD, text)),
 		]);
 
 		const timestamp = this.channelNotificationTimestamps.get(roomId);
