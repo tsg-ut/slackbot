@@ -52,6 +52,8 @@ enum Voice {
 	AO = 'AO',
 	AP = 'AP',
 	AQ = 'AQ',
+	AR = 'AR',
+	AS = 'AS',
 }
 export {Voice};
 
@@ -118,6 +120,8 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.AO, {provider: 'openai', name: 'onyx'}],
 	[Voice.AP, {provider: 'openai', name: 'nova'}],
 	[Voice.AQ, {provider: 'openai', name: 'shimmer'}],
+	[Voice.AR, {provider: 'amazon', name: 'Kazuha'}],
+	[Voice.AS, {provider: 'amazon', name: 'Tomoko'}],
 	// coming soon
 	// [Voice., {provider: 'voicevox', name: 'whitecul', emotional: true}],
 	// [Voice., {provider: 'voicevox', name: 'goki', emotional: true}],
@@ -140,7 +144,7 @@ export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta, audio
 	if (config.provider === 'amazon') {
 		return amazon(text, config.name, {
 			...meta,
-			engine: voiceType === Voice.AF ? 'neural' : 'standard',
+			engine: voiceType === Voice.E || voiceType === Voice.F ? 'standard' : 'neural',
 		});
 	}
 	if (config.provider === 'voicevox') {
