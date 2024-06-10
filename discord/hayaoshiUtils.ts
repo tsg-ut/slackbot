@@ -1,7 +1,9 @@
+import assert from 'assert';
+import {google, sheets_v4} from 'googleapis';
 // @ts-expect-error not typed
 import {katakanaRegex} from 'japanese';
 import {tokenize, KuromojiToken} from 'kuromojin';
-import {last, uniq} from 'lodash';
+import {last, uniq, uniqBy} from 'lodash';
 import {isCorrectAnswer, normalize} from '../hayaoshi';
 // @ts-expect-error not typed
 import getReading from '../lib/getReading.js';
@@ -243,3 +245,162 @@ export const formatQuizToSsml = async (text: string) => {
 
 	return {clauses, ssml};
 };
+
+const getSheetRows = (rangeText: string, sheets: sheets_v4.Sheets) => new Promise<string[][]>((resolve, reject) => {
+	sheets.spreadsheets.values.get({
+		spreadsheetId: '14zFQH_a8qqPIE2JnxUVMMfkS5YjJ1ltpnYaN7Z3mnjs',
+		range: rangeText,
+	}, (error, response) => {
+		if (error) {
+			reject(error);
+		} else if (response.data.values) {
+			resolve(response.data.values as string[][]);
+		} else {
+			reject(new Error('values not found'));
+		}
+	});
+});
+
+interface Song {
+	title: string,
+	titleRuby: string,
+	artist: string,
+	url: string,
+	introSeconds: number,
+	chorusSeconds: number,
+}
+
+interface SongPool {
+	name: string,
+	songs: Song[],
+}
+
+interface SongPoolEntry {
+	name: string,
+	count: number,
+}
+
+interface Playlist {
+	name: string,
+	songPools: SongPoolEntry[],
+}
+
+interface NormalizedPlaylist {
+	name: string,
+	songs: Song[],
+}
+
+export const fetchIntroQuizData = async () => {
+	const auth = await new google.auth.GoogleAuth({
+		scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+	}).getClient();
+
+	const sheets = google.sheets({version: 'v4', auth});
+
+	const data = await getSheetRows('playlists!A:ZZ', sheets);
+	const maxColumnSize = Math.max(...data.map((row) => row.length));
+
+	assert(maxColumnSize % 2 === 0, 'maxColumnSize must be even');
+
+	const playlists: Playlist[] = [];
+	const songPoolNames: Set<string> = new Set();
+
+	for (const i of Array(maxColumnSize / 2).keys()) {
+		const songPools = [];
+
+		const playlistName = data[0][i * 2];
+		assert(playlistName?.startsWith('$'), 'playlistName must start with $');
+
+		const numberCell = data[0][i * 2 + 1];
+		assert(numberCell === '#', 'numberCell must be #');
+
+		for (const j of Array(data.length - 1).keys()) {
+			const poolName = data[j + 1][i * 2];
+			if (!poolName) {
+				continue;
+			}
+
+			const poolCountCell = data[j + 1][i * 2 + 1];
+			if (poolCountCell === '') {
+				assert(poolName?.startsWith('$'), 'If poolCount is empty, poolName must start with $');
+				songPools.push({name: poolName, count: 0});
+			} else {
+				assert(!poolName?.startsWith('$'), 'If poolCount is not empty, poolName must not start with $');
+
+				const poolCount = parseInt(poolCountCell);
+				assert(Number.isInteger(poolCount), 'poolCount must be an integer');
+
+				songPoolNames.add(poolName);
+
+				songPools.push({name: poolName, count: poolCount});
+			}
+		}
+
+		playlists.push({name: playlistName, songPools});
+	}
+
+	const songPools: SongPool[] = [];
+
+	for (const songPoolName of songPoolNames) {
+		const songPoolData = await getSheetRows(`${songPoolName}!A:ZZ`, sheets);
+		const maxSongColumnSize = Math.max(...songPoolData.map((row) => row.length));
+
+		assert(maxSongColumnSize === 6, 'maxSongColumnSize must be 6');
+
+		const songs: Song[] = [];
+
+		for (const songRow of songPoolData.slice(2)) {
+			const [title, titleRuby, artist, url, introSeconds, chorusSeconds] = songRow;
+
+			assert(title !== '', 'title must not be empty');
+			assert(titleRuby.match(/^[ぁ-んァ-ンー]+$/), 'titleRuby must be hiragana or katakana');
+			assert(url?.startsWith('https://www.youtube.com/watch?v='), 'url must be a YouTube URL');
+
+			const introSecondsNumber = parseInt(introSeconds);
+			assert(Number.isInteger(introSecondsNumber), 'introSeconds must be an integer');
+
+			const chorusSecondsNumber = parseInt(chorusSeconds);
+			assert(Number.isInteger(chorusSecondsNumber), 'chorusSeconds must be an integer');
+
+			songs.push({title, titleRuby, artist, url, introSeconds: introSecondsNumber, chorusSeconds: chorusSecondsNumber});
+		}
+
+		songPools.push({name: songPoolName, songs});
+	}
+
+	const normalizePlaylist = (playlist: Playlist, stack: string[] = []): NormalizedPlaylist => {
+		if (stack.includes(playlist.name)) {
+			throw new Error(`Circular reference detected: ${[...stack, playlist.name].join(' -> ')}`);
+		}
+
+		const songs: Song[] = [];
+
+		for (const {name: songPoolName, count} of playlist.songPools) {
+			if (songPoolName?.startsWith('$')) {
+				const subPlaylist = playlists.find(({name}) => name === songPoolName);
+				assert(subPlaylist, `subPlaylist ${songPoolName} not found`);
+
+				const subPlaylistSongs = normalizePlaylist(subPlaylist, [...stack, playlist.name]).songs;
+				for (const song of subPlaylistSongs) {
+					songs.push(song);
+				}
+			} else {
+				const songPool = songPools.find(({name}) => name === songPoolName);
+				assert(songPool, `songPool ${songPoolName} not found`);
+
+				for (const song of songPool.songs.slice(0, count)) {
+					songs.push(song);
+				}
+			}
+		}
+
+		return {name: playlist.name, songs: uniqBy(songs, 'url')};
+	};
+
+	const normalizedPlaylists = playlists.map((playlist) => normalizePlaylist(playlist));
+
+	return normalizedPlaylists;
+};
+
+
+export {NormalizedPlaylist as IntroQuizPlaylist, Song as IntroQuizSong};

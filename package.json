@@ -148,6 +148,7 @@
     "xml-js": "^1.6.11",
     "yaml": "^2.2.2",
     "yargs": "^17.5.1",
+    "ytdl-core": "^4.11.5",
     "zod": "^3.22.3"
   },
   "devDependencies": {

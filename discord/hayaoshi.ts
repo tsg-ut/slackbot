@@ -1,20 +1,24 @@
 import EventEmitter from 'events';
-import {promises as fs} from 'fs';
+import {createWriteStream, promises as fs} from 'fs';
 import path from 'path';
 import type {AudioPlayer, AudioResource, PlayerSubscription, VoiceConnection} from '@discordjs/voice';
 import {createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discordjs/voice';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord from 'discord.js';
-import {max, get} from 'lodash';
+import {max, get, sample} from 'lodash';
+import ytdl from 'ytdl-core';
 import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
 import logger from '../lib/logger';
-import {extractValidAnswers, judgeAnswer, formatQuizToSsml} from './hayaoshiUtils';
+import {Loader} from '../lib/utils';
+import {extractValidAnswers, judgeAnswer, formatQuizToSsml, fetchIntroQuizData, IntroQuizPlaylist, IntroQuizSong} from './hayaoshiUtils';
 import {getSpeech, Voice} from './speeches';
 
 const log = logger.child({bot: 'discord'});
 const mutex = new Mutex();
+
+type QuizMode = 'quiz' | 'intro-quiz';
 
 interface State {
 	phase: 'waiting' | 'gaming' | 'answering' | 'timeup',
@@ -22,7 +26,7 @@ interface State {
 	audioResource: AudioResource,
 	audioPlayer: AudioPlayer,
 	subscription: PlayerSubscription,
-	quiz: Quiz,
+	quiz: Quiz & {song?: IntroQuizSong} | null,
 	pusher: string,
 	penaltyUsers: Set<string>,
 	timeupTimeoutId: NodeJS.Timeout,
@@ -31,6 +35,8 @@ interface State {
 	maximumPushTime: number,
 	clauses: string[],
 	timePoints: number[],
+	quizMode: QuizMode,
+	playlist: string | null,
 	isContestMode: boolean,
 	quizThroughCount: number,
 	participants: Map<string, {points: number, penalties: number}>,
@@ -43,6 +49,8 @@ export default class Hayaoshi extends EventEmitter {
 	state: State;
 
 	users: {discord: string, slack: string}[];
+
+	introQuizPlaylistsLoader: Loader<IntroQuizPlaylist[]> = new Loader(() => fetchIntroQuizData());
 
 	joinVoiceChannelFn: () => VoiceConnection;
 
@@ -65,6 +73,8 @@ export default class Hayaoshi extends EventEmitter {
 			maximumPushTime: 0,
 			clauses: [],
 			timePoints: [],
+			quizMode: 'quiz',
+			playlist: null,
 			isContestMode: false,
 			quizThroughCount: 0,
 			participants: new Map(),
@@ -76,6 +86,10 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	getSlashedText() {
+		if (this.state.quizMode === 'intro-quiz') {
+			return this.state.quiz.question;
+		}
+
 		return this.state.clauses.map((token, index) => {
 			const beforeTime = index === 0 ? 0 : this.state.timePoints[index - 1];
 			const afterTime = this.state.timePoints[index];
@@ -260,6 +274,46 @@ export default class Hayaoshi extends EventEmitter {
 		}
 	}
 
+
+	downloadYoutubeAudio(url: string, begin: string, file: string) {
+		log.info('[hayaoshi] downloadYoutubeAudio');
+
+		return new Promise<void>((resolve, reject) => {
+			const audioStream = ytdl(url, {
+				quality: 'highestaudio',
+				filter(format) {
+					return format.container === 'webm';
+				},
+				begin,
+			});
+
+			const fileStream = createWriteStream(file);
+
+			audioStream.pipe(fileStream);
+
+			let videoInfo: ytdl.videoInfo | null = null;
+
+			audioStream.on('info', (info) => {
+				videoInfo = info;
+			});
+
+			audioStream.on('progress', (chunkLength, downloaded, total) => {
+				if (videoInfo?.videoDetails?.lengthSeconds) {
+					const seconds = parseInt(videoInfo.videoDetails.lengthSeconds);
+					if (downloaded / total > 90 / seconds) {
+						audioStream.destroy();
+						log.info('[hayaoshi] downloadYoutubeAudio - finished');
+						resolve();
+					}
+				}
+			});
+
+			audioStream.on('error', (error) => {
+				reject(error);
+			});
+		});
+	}
+
 	async onFinishReadingQuestion() {
 		log.info('[hayaoshi] onFinishReadingQuestion');
 		await new Promise((resolve) => {
@@ -281,7 +335,14 @@ export default class Hayaoshi extends EventEmitter {
 		log.info('[hayaoshi] readQuestion');
 		this.state.audioPlayer.off(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
 
-		this.state.audioResource = createAudioResource(path.join(__dirname, 'questionText.mp3'));
+		this.state.audioResource = createAudioResource(
+			path.join(
+				__dirname,
+				this.state.quizMode === 'quiz' ? 'questionText.mp3' : 'questionText.webm',
+			),
+			{inlineVolume: this.state.quizMode === 'intro-quiz'},
+		);
+		this.state.audioResource.volume.setVolume(0.2);
 		this.state.audioPlayer.play(this.state.audioResource);
 		this.state.playStartTime = Date.now();
 		this.state.audioResource.playStream.on('start', () => {
@@ -327,18 +388,45 @@ export default class Hayaoshi extends EventEmitter {
 		}, this.state.isContestMode ? 20000 : 10000);
 	}
 
-	getQuiz() {
-		const seed = Math.random();
-		if (seed < 0.1) {
-			return getItQuiz();
+	async getQuiz(): Promise<Quiz & {song?: IntroQuizSong}> {
+		if (this.state.quizMode === 'quiz') {
+			const seed = Math.random();
+			if (seed < 0.1) {
+				return getItQuiz();
+			}
+			if (seed < 0.2) {
+				return getAbc2019Quiz();
+			}
+			if (seed < 0.3) {
+				return getUserQuiz();
+			}
+			return getHardQuiz();
 		}
-		if (seed < 0.2) {
-			return getAbc2019Quiz();
+
+		if (this.state.quizMode === 'intro-quiz') {
+			const playlists = await this.introQuizPlaylistsLoader.load();
+			const playlistName = `$${this.state.playlist ?? 'default'}`;
+
+			const playlist = playlists.find((playlist) => playlist.name === playlistName);
+
+			if (!playlist) {
+				throw new Error(`Playlist ${playlistName} not found`);
+			}
+
+			const song = sample(playlist.songs);
+			if (!song) {
+				throw new Error('No songs found in the playlist');
+			}
+
+			return {
+				id: 0, // dummy
+				question: song.url,
+				answer: song.title,
+				song,
+			};
 		}
-		if (seed < 0.3) {
-			return getUserQuiz();
-		}
-		return getHardQuiz();
+
+		throw new Error('Invalid quiz mode');
 	}
 
 	playSound(name: string) {
@@ -357,17 +445,28 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.maximumPushTime = 0;
 		this.state.questionCount++;
 		this.state.quiz = await this.getQuiz();
-		this.state.validAnswers = extractValidAnswers(this.state.quiz.question, this.state.quiz.answer, this.state.quiz.note);
+		this.state.validAnswers = this.state.quizMode === 'intro-quiz'
+			? [this.state.quiz.answer, this.state.quiz.song?.titleRuby]
+			: extractValidAnswers(this.state.quiz.question, this.state.quiz.answer, this.state.quiz.note);
 
-		const {ssml, clauses} = await formatQuizToSsml(this.state.quiz.question);
+		if (this.state.quizMode === 'intro-quiz') {
+			await this.downloadYoutubeAudio(
+				this.state.quiz.question,
+				`${this.state.quiz.song?.introSeconds ?? 0}s`,
+				path.join(__dirname, 'questionText.webm'),
+			);
+		} else {
+			const {ssml, clauses} = await formatQuizToSsml(this.state.quiz.question);
 
-		const questionAudio = await this.getTTS(ssml);
+			const questionAudio = await this.getTTS(ssml);
+
+			this.state.clauses = clauses;
+			this.state.timePoints = questionAudio.timepoints.map((point) => point.timeSeconds * 1000);
+
+			await fs.writeFile(path.join(__dirname, 'questionText.mp3'), questionAudio.data);
+		}
+
 		const answerAudio = await this.getTTS(`<speak>答えは、${get(this.state.validAnswers, 0, '')}、でした。</speak>`);
-
-		this.state.clauses = clauses;
-		this.state.timePoints = questionAudio.timepoints.map((point) => point.timeSeconds * 1000);
-
-		await fs.writeFile(path.join(__dirname, 'questionText.mp3'), questionAudio.data);
 		await fs.writeFile(path.join(__dirname, 'answerText.mp3'), answerAudio.data);
 
 		this.state.connection = this.joinVoiceChannelFn();
@@ -382,6 +481,32 @@ export default class Hayaoshi extends EventEmitter {
 		}
 		await this.playSound('question');
 		this.readQuestion();
+	}
+
+	private parseQuizStartMessage(text: string): {quizMode: QuizMode, isContestMode: boolean, playlist?: string} | null {
+		const components = text.split(/\s+/);
+		if (components.length > 2 || components.length === 0) {
+			return null;
+		}
+
+		const [command, parameter] = components;
+
+		const isContestMode = command.endsWith('大会');
+		const messageText = isContestMode ? command.slice(0, -2) : command;
+		if (messageText === '早押しクイズ') {
+			return {
+				quizMode: 'quiz',
+				isContestMode,
+			};
+		}
+		if (messageText === 'イントロクイズ') {
+			return {
+				quizMode: 'intro-quiz',
+				isContestMode,
+				...(parameter ? {playlist: parameter} : {}),
+			};
+		}
+		return null;
 	}
 
 	onMessage(message: Discord.Message) {
@@ -405,9 +530,11 @@ export default class Hayaoshi extends EventEmitter {
 						}
 					}
 
+					const denominatorText = this.state.quizMode === 'intro-quiz' ? '' : ` / ${(max(this.state.timePoints) / 1000).toFixed(2)}秒`;
+
 					this.emit('message', stripIndent`
 						正解者: <@${message.member.user.id}>
-						解答時間: ${(this.state.maximumPushTime / 1000).toFixed(2)}秒 / ${(max(this.state.timePoints) / 1000).toFixed(2)}秒
+						解答時間: ${(this.state.maximumPushTime / 1000).toFixed(2)}秒${denominatorText}
 						${this.state.quiz.author ? `作問者: <@${this.state.quiz.author}>` : ''}
 						Q. ${this.getSlashedText()}
 						A. **${this.state.quiz.answer}**
@@ -468,20 +595,26 @@ export default class Hayaoshi extends EventEmitter {
 				this.state.answerTimeoutId = this.setAnswerTimeout();
 			}
 
-			if ((message.content === '早押しクイズ' || message.content === '早押しクイズ大会') && this.state.phase === 'waiting') {
-				try {
-					this.state.phase = 'gaming';
-					this.state.playStartTime = 0;
-					this.state.maximumPushTime = 0;
-					this.state.quizThroughCount = 0;
-					this.state.participants = new Map();
-					this.state.isContestMode = message.content === '早押しクイズ大会';
-					this.state.questionCount = 0;
+			if (this.state.phase === 'waiting') {
+				const parsed = this.parseQuizStartMessage(message.content);
 
-					this.emit('start-game');
+				if (parsed !== null) {
+					try {
+						this.state.phase = 'gaming';
+						this.state.playStartTime = 0;
+						this.state.maximumPushTime = 0;
+						this.state.quizThroughCount = 0;
+						this.state.participants = new Map();
+						this.state.quizMode = parsed.quizMode;
+						this.state.playlist = parsed.playlist ?? null;
+						this.state.isContestMode = parsed.isContestMode;
+						this.state.questionCount = 0;
 
-					if (this.state.isContestMode) {
-						this.emit('message', stripIndent`
+
+						this.emit('start-game');
+
+						if (this.state.isContestMode) {
+							this.emit('message', stripIndent`
 							【早押しクイズ大会】
 
 							ルール
@@ -495,13 +628,15 @@ export default class Hayaoshi extends EventEmitter {
 							* Slackで \`@discord [discordのユーザーID]\` と送信するとSlackアカウントを連携できます。
 							* https://tsg-quiz.hkt.sh を編集すると自分で作問した問題を追加できます。
 						`);
-					}
+						}
 
-					await this.startQuiz();
-				} catch (error) {
-					this.emit('message', `エラー😢\n${error.toString()}`);
-					this.emit('message', `Q. ${this.state.quiz.question}\nA. **${this.state.quiz.answer}**`);
-					this.endQuiz({correct: true});
+						await this.startQuiz();
+					} catch (error) {
+						log.error(`[hayaoshi] startQuiz error: ${error.toString()}`);
+						this.emit('message', `エラー😢\n${error.toString()}`);
+						this.emit('message', `Q. ${this.state.quiz.question}\nA. **${this.state.quiz.answer}**`);
+						this.endQuiz({correct: true});
+					}
 				}
 			}
 		});
