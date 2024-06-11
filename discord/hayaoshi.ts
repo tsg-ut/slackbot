@@ -12,7 +12,7 @@ import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
 import logger from '../lib/logger';
 import {Loader} from '../lib/utils';
-import {extractValidAnswers, judgeAnswer, formatQuizToSsml, fetchIntroQuizData, IntroQuizPlaylist, IntroQuizSong} from './hayaoshiUtils';
+import {extractValidAnswers, judgeAnswer, formatQuizToSsml, fetchIntroQuizData, IntroQuizPlaylist, IntroQuizSong, IntroQuizSongPool} from './hayaoshiUtils';
 import {getSpeech, Voice} from './speeches';
 
 const log = logger.child({bot: 'discord'});
@@ -50,7 +50,10 @@ export default class Hayaoshi extends EventEmitter {
 
 	users: {discord: string, slack: string}[];
 
-	introQuizPlaylistsLoader: Loader<IntroQuizPlaylist[]> = new Loader(() => fetchIntroQuizData());
+	introQuizPlaylistsLoader: Loader<{
+		playlists: IntroQuizPlaylist[],
+		songPools: IntroQuizSongPool[],
+	}> = new Loader(() => fetchIntroQuizData());
 
 	joinVoiceChannelFn: () => VoiceConnection;
 
@@ -274,7 +277,6 @@ export default class Hayaoshi extends EventEmitter {
 		}
 	}
 
-
 	downloadYoutubeAudio(url: string, begin: string, file: string) {
 		log.info('[hayaoshi] downloadYoutubeAudio');
 
@@ -312,6 +314,18 @@ export default class Hayaoshi extends EventEmitter {
 				reject(error);
 			});
 		});
+	}
+
+	async downloadYoutubeAudioWithRetries(url: string, begin: string, file: string, retries = 5) {
+		try {
+			await this.downloadYoutubeAudio(url, begin, file);
+		} catch (error) {
+			if (retries > 0) {
+				await this.downloadYoutubeAudioWithRetries(url, begin, file, retries - 1);
+			} else {
+				throw error;
+			}
+		}
 	}
 
 	async onFinishReadingQuestion() {
@@ -368,6 +382,16 @@ export default class Hayaoshi extends EventEmitter {
 		await this.playSound('../tempAudio');
 	}
 
+	getAnswerTimeout() {
+		if (this.state.isContestMode) {
+			return 20000;
+		}
+		if (this.state.quizMode === 'intro-quiz') {
+			return 15000;
+		}
+		return 10000;
+	}
+
 	setAnswerTimeout() {
 		return setTimeout(() => {
 			mutex.runExclusive(async () => {
@@ -385,7 +409,7 @@ export default class Hayaoshi extends EventEmitter {
 					this.readQuestion();
 				}
 			});
-		}, this.state.isContestMode ? 20000 : 10000);
+		}, this.getAnswerTimeout());
 	}
 
 	async getQuiz(): Promise<Quiz & {song?: IntroQuizSong}> {
@@ -404,16 +428,27 @@ export default class Hayaoshi extends EventEmitter {
 		}
 
 		if (this.state.quizMode === 'intro-quiz') {
-			const playlists = await this.introQuizPlaylistsLoader.load();
+			let song: IntroQuizSong | null = null;
+
+			const {playlists, songPools} = await this.introQuizPlaylistsLoader.load();
 			const playlistName = `$${this.state.playlist ?? 'default'}`;
 
 			const playlist = playlists.find((playlist) => playlist.name === playlistName);
 
-			if (!playlist) {
-				throw new Error(`Playlist ${playlistName} not found`);
+			if (playlist) {
+				song = sample(playlist.songs);
+			} else {
+				console.log({songPools});
+
+				const songPool = songPools.find((pool) => pool.name === this.state.playlist);
+
+				if (songPool) {
+					song = sample(songPool.songs);
+				} else {
+					throw new Error(`Playlist not found: ${playlistName}`);
+				}
 			}
 
-			const song = sample(playlist.songs);
 			if (!song) {
 				throw new Error('No songs found in the playlist');
 			}
@@ -450,7 +485,7 @@ export default class Hayaoshi extends EventEmitter {
 			: extractValidAnswers(this.state.quiz.question, this.state.quiz.answer, this.state.quiz.note);
 
 		if (this.state.quizMode === 'intro-quiz') {
-			await this.downloadYoutubeAudio(
+			await this.downloadYoutubeAudioWithRetries(
 				this.state.quiz.question,
 				`${this.state.quiz.song?.introSeconds ?? 0}s`,
 				path.join(__dirname, 'questionText.webm'),
@@ -609,7 +644,6 @@ export default class Hayaoshi extends EventEmitter {
 						this.state.playlist = parsed.playlist ?? null;
 						this.state.isContestMode = parsed.isContestMode;
 						this.state.questionCount = 0;
-
 
 						this.emit('start-game');
 

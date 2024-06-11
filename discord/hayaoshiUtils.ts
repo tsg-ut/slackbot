@@ -343,24 +343,25 @@ export const fetchIntroQuizData = async () => {
 
 	for (const songPoolName of songPoolNames) {
 		const songPoolData = await getSheetRows(`${songPoolName}!A:ZZ`, sheets);
-		const maxSongColumnSize = Math.max(...songPoolData.map((row) => row.length));
-
-		assert(maxSongColumnSize === 6, 'maxSongColumnSize must be 6');
 
 		const songs: Song[] = [];
 
 		for (const songRow of songPoolData.slice(2)) {
-			const [title, titleRuby, artist, url, introSeconds, chorusSeconds] = songRow;
+			const [banned, title, titleRuby, artist, url, introSeconds, chorusSeconds] = songRow;
+
+			if (typeof banned === 'string' && banned.length > 0) {
+				continue;
+			}
 
 			assert(title !== '', 'title must not be empty');
-			assert(titleRuby.match(/^[ぁ-んァ-ンー]+$/), 'titleRuby must be hiragana or katakana');
-			assert(url?.startsWith('https://www.youtube.com/watch?v='), 'url must be a YouTube URL');
+			assert(titleRuby.match(/^[ぁ-んァ-ンゔヴー]+$/), `[${title}] titleRuby must be hiragana or katakana`);
+			assert(url?.startsWith('https://www.youtube.com/watch?v='), `[${title}] url must be a youtube url`);
 
 			const introSecondsNumber = parseInt(introSeconds);
-			assert(Number.isInteger(introSecondsNumber), 'introSeconds must be an integer');
+			assert(Number.isInteger(introSecondsNumber), `[${title}] introSeconds must be an integer`);
 
 			const chorusSecondsNumber = parseInt(chorusSeconds);
-			assert(Number.isInteger(chorusSecondsNumber), 'chorusSeconds must be an integer');
+			assert(Number.isInteger(chorusSecondsNumber), `[${title}] chorusSeconds must be an integer`);
 
 			songs.push({title, titleRuby, artist, url, introSeconds: introSecondsNumber, chorusSeconds: chorusSecondsNumber});
 		}
@@ -399,8 +400,8 @@ export const fetchIntroQuizData = async () => {
 
 	const normalizedPlaylists = playlists.map((playlist) => normalizePlaylist(playlist));
 
-	return normalizedPlaylists;
+	return {playlists: normalizedPlaylists, songPools};
 };
 
 
-export {NormalizedPlaylist as IntroQuizPlaylist, Song as IntroQuizSong};
+export {NormalizedPlaylist as IntroQuizPlaylist, Song as IntroQuizSong, SongPool as IntroQuizSongPool};
