@@ -31,6 +31,8 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
 			link_names: true,
 			icon_emoji: ':tsg:',
 			username: 'TSG',
+			unfurl_links: false,
+			unfurl_media: false,
 		});
 	};
 
