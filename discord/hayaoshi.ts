@@ -1,5 +1,5 @@
 import EventEmitter from 'events';
-import {createWriteStream, promises as fs} from 'fs';
+import {WriteStream, createWriteStream, promises as fs} from 'fs';
 import path from 'path';
 import type {AudioPlayer, AudioResource, PlayerSubscription, VoiceConnection} from '@discordjs/voice';
 import {createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discordjs/voice';
@@ -124,7 +124,11 @@ export default class Hayaoshi extends EventEmitter {
 		if (penalties === 3) {
 			const userData = this.users.find(({discord}) => discord === user);
 			if (userData) {
-				increment(userData.slack, 'discord-hayaoshi-disqualification');
+				if (this.state.quizMode === 'quiz') {
+					increment(userData.slack, 'discord-hayaoshi-disqualification');
+				} else if (this.state.quizMode === 'intro-quiz') {
+					increment(userData.slack, 'discord-intro-quiz-disqualification');
+				}
 			}
 		}
 	}
@@ -241,11 +245,21 @@ export default class Hayaoshi extends EventEmitter {
 
 		const userData = this.users.find(({discord}) => discord === user);
 		if (userData) {
-			increment(userData.slack, 'discord-hayaoshi-win');
-			if (this.state.participants.get(user)?.points >= 5) {
-				increment(userData.slack, 'discord-hayaoshi-complete-win');
-				if (this.state.participants.get(user)?.penalties === 0) {
-					increment(userData.slack, 'discord-hayaoshi-perfect-win');
+			if (this.state.quizMode === 'quiz') {
+				increment(userData.slack, 'discord-hayaoshi-win');
+				if (this.state.participants.get(user)?.points >= 5) {
+					increment(userData.slack, 'discord-hayaoshi-complete-win');
+					if (this.state.participants.get(user)?.penalties === 0) {
+						increment(userData.slack, 'discord-hayaoshi-perfect-win');
+					}
+				}
+			} else if (this.state.quizMode === 'intro-quiz') {
+				increment(userData.slack, 'discord-intro-quiz-win');
+				if (this.state.participants.get(user)?.points >= 5) {
+					increment(userData.slack, 'discord-intro-quiz-complete-win');
+					if (this.state.participants.get(user)?.penalties === 0) {
+						increment(userData.slack, 'discord-intro-quiz-perfect-win');
+					}
 				}
 			}
 		}
@@ -277,7 +291,7 @@ export default class Hayaoshi extends EventEmitter {
 		}
 	}
 
-	downloadYoutubeAudio(url: string, begin: string, file: string) {
+	downloadYoutubeAudio(url: string, begin: string, fileStream: WriteStream) {
 		log.info('[hayaoshi] downloadYoutubeAudio');
 
 		return new Promise<void>((resolve, reject) => {
@@ -288,8 +302,6 @@ export default class Hayaoshi extends EventEmitter {
 				},
 				begin,
 			});
-
-			const fileStream = createWriteStream(file);
 
 			audioStream.pipe(fileStream);
 
@@ -311,14 +323,32 @@ export default class Hayaoshi extends EventEmitter {
 			});
 
 			audioStream.on('error', (error) => {
+				fileStream.destroy();
 				reject(error);
 			});
 		});
 	}
 
+	downloadYoutubeAudioWithTimeout(url: string, begin: string, file: string) {
+		const timeout = 5000;
+		const fileStream = createWriteStream(file);
+
+		return new Promise<void>((resolve, reject) => {
+			const timeoutId = setTimeout(() => {
+				fileStream.destroy();
+				reject(new Error('Timeout'));
+			}, timeout);
+
+			this.downloadYoutubeAudio(url, begin, fileStream).then(() => {
+				clearTimeout(timeoutId);
+				resolve();
+			}).catch(reject);
+		});
+	}
+
 	async downloadYoutubeAudioWithRetries(url: string, begin: string, file: string, retries = 5) {
 		try {
-			await this.downloadYoutubeAudio(url, begin, file);
+			await this.downloadYoutubeAudioWithTimeout(url, begin, file);
 		} catch (error) {
 			if (retries > 0) {
 				await this.downloadYoutubeAudioWithRetries(url, begin, file, retries - 1);
@@ -438,8 +468,6 @@ export default class Hayaoshi extends EventEmitter {
 			if (playlist) {
 				song = sample(playlist.songs);
 			} else {
-				console.log({songPools});
-
 				const songPool = songPools.find((pool) => pool.name === this.state.playlist);
 
 				if (songPool) {
@@ -485,11 +513,19 @@ export default class Hayaoshi extends EventEmitter {
 			: extractValidAnswers(this.state.quiz.question, this.state.quiz.answer, this.state.quiz.note);
 
 		if (this.state.quizMode === 'intro-quiz') {
-			await this.downloadYoutubeAudioWithRetries(
-				this.state.quiz.question,
-				`${this.state.quiz.song?.introSeconds ?? 0}s`,
-				path.join(__dirname, 'questionText.webm'),
-			);
+			try {
+				await this.downloadYoutubeAudioWithRetries(
+					this.state.quiz.question,
+					`${this.state.quiz.song?.introSeconds ?? 0}s`,
+					path.join(__dirname, 'questionText.webm'),
+				);
+			} catch (error) {
+				log.error(`[hayaoshi] downloadYoutubeAudio error: ${error.toString()}`);
+				this.emit('message', `エラー😢\n${error.toString()}`);
+				this.emit('message', `Q. ${this.state?.quiz?.question}\nA. **${this.state?.quiz?.answer}**`);
+				this.endQuiz({correct: true});
+				return;
+			}
 		} else {
 			const {ssml, clauses} = await formatQuizToSsml(this.state.quiz.question);
 
@@ -514,7 +550,9 @@ export default class Hayaoshi extends EventEmitter {
 		} else {
 			await this.playSound('mondai');
 		}
-		await this.playSound('question');
+		if (this.state.quizMode === 'quiz') {
+			await this.playSound('question');
+		}
 		this.readQuestion();
 	}
 
@@ -559,9 +597,34 @@ export default class Hayaoshi extends EventEmitter {
 
 					const user = this.users.find(({discord}) => discord === message.member.user.id);
 					if (user) {
-						increment(user.slack, 'discord-hayaoshi-correct');
-						if (this.state.maximumPushTime <= 2000) {
-							unlock(user.slack, 'discord-hayaoshi-time-lt2');
+						if (this.state.quizMode === 'quiz') {
+							increment(user.slack, 'discord-hayaoshi-correct');
+							if (this.state.maximumPushTime <= 500) {
+								increment(user.slack, 'discord-hayaoshi-time-lt-500ms');
+							}
+							if (this.state.maximumPushTime <= 1000) {
+								increment(user.slack, 'discord-hayaoshi-time-lt1');
+							}
+							if (this.state.maximumPushTime <= 2000) {
+								unlock(user.slack, 'discord-hayaoshi-time-lt2');
+							}
+						} else if (this.state.quizMode === 'intro-quiz') {
+							increment(user.slack, 'discord-intro-quiz-correct');
+							if (this.state.maximumPushTime <= 150) {
+								increment(user.slack, 'discord-intro-quiz-time-lt-150ms');
+							}
+							if (this.state.maximumPushTime <= 300) {
+								increment(user.slack, 'discord-intro-quiz-time-lt-300ms');
+							}
+							if (this.state.maximumPushTime <= 500) {
+								increment(user.slack, 'discord-intro-quiz-time-lt-500ms');
+							}
+							if (this.state.maximumPushTime <= 1000) {
+								increment(user.slack, 'discord-intro-quiz-time-lt1');
+							}
+							if (this.state.maximumPushTime <= 2000) {
+								increment(user.slack, 'discord-intro-quiz-time-lt2');
+							}
 						}
 					}
 
@@ -634,42 +697,50 @@ export default class Hayaoshi extends EventEmitter {
 				const parsed = this.parseQuizStartMessage(message.content);
 
 				if (parsed !== null) {
-					try {
-						this.state.phase = 'gaming';
-						this.state.playStartTime = 0;
-						this.state.maximumPushTime = 0;
-						this.state.quizThroughCount = 0;
-						this.state.participants = new Map();
-						this.state.quizMode = parsed.quizMode;
-						this.state.playlist = parsed.playlist ?? null;
-						this.state.isContestMode = parsed.isContestMode;
-						this.state.questionCount = 0;
+					if (parsed.quizMode === 'intro-quiz' && parsed.playlist === 'clear-cache') {
+						this.introQuizPlaylistsLoader.clear();
+						this.emit('message', 'キャッシュをクリアしました');
+					} else {
+						try {
+							this.state.phase = 'gaming';
+							this.state.playStartTime = 0;
+							this.state.maximumPushTime = 0;
+							this.state.quizThroughCount = 0;
+							this.state.participants = new Map();
+							this.state.quizMode = parsed.quizMode;
+							this.state.playlist = parsed.playlist ?? null;
+							this.state.isContestMode = parsed.isContestMode;
+							this.state.questionCount = 0;
 
-						this.emit('start-game');
+							this.emit('start-game');
 
-						if (this.state.isContestMode) {
-							this.emit('message', stripIndent`
-							【早押しクイズ大会】
+							if (this.state.isContestMode) {
+								const contestName = this.state.quizMode === 'quiz' ? '早押しクイズ' : 'イントロクイズ';
+								const sourceUrl = this.state.quizMode === 'quiz' ? 'https://tsg-quiz.hkt.sh' : 'https://intro-quiz.hkt.sh';
 
-							ルール
-							* 一番最初に5問正解した人が優勝。ただし3問誤答したら失格。(5○3×)
-							* 誰かが誤答した場合、その問題は終了。(シングルチャンス)
-							* TSGerが作問した問題が出題された場合、作問者は解答権を持たない。
-							* 作問者の得点が4点未満、かつその問題が正答またはスルーの場合、作問者は問題終了後に0.5点を得る。
-							* 失格者が出たとき、失格していない参加者がいない場合、引き分けで終了。
-							* 失格者が出たとき、失格していない参加者が1人の場合、その人が優勝。
-							* 正解者も誤答者も出ない問題が5問連続で出題された場合、引き分けで終了。
-							* Slackで \`@discord [discordのユーザーID]\` と送信するとSlackアカウントを連携できます。
-							* https://tsg-quiz.hkt.sh を編集すると自分で作問した問題を追加できます。
-						`);
+								this.emit('message', stripIndent`
+								【${contestName}大会】
+
+								ルール
+								* 一番最初に5問正解した人が優勝。ただし3問誤答したら失格。(5○3×)
+								* 誰かが誤答した場合、その問題は終了。(シングルチャンス)
+								* TSGerが作問した問題が出題された場合、作問者は解答権を持たない。
+								* 作問者の得点が4点未満、かつその問題が正答またはスルーの場合、作問者は問題終了後に0.5点を得る。
+								* 失格者が出たとき、失格していない参加者がいない場合、引き分けで終了。
+								* 失格者が出たとき、失格していない参加者が1人の場合、その人が優勝。
+								* 正解者も誤答者も出ない問題が5問連続で出題された場合、引き分けで終了。
+								* Slackで \`@discord [discordのユーザーID]\` と送信するとSlackアカウントを連携できます。
+								* ${sourceUrl} を編集すると自分で作問した問題を追加できます。
+							`);
+							}
+
+							await this.startQuiz();
+						} catch (error) {
+							log.error(`[hayaoshi] startQuiz error: ${error.toString()}`);
+							this.emit('message', `エラー😢\n${error.toString()}`);
+							this.emit('message', `Q. ${this.state?.quiz?.question}\nA. **${this.state?.quiz?.answer}**`);
+							this.endQuiz({correct: true});
 						}
-
-						await this.startQuiz();
-					} catch (error) {
-						log.error(`[hayaoshi] startQuiz error: ${error.toString()}`);
-						this.emit('message', `エラー😢\n${error.toString()}`);
-						this.emit('message', `Q. ${this.state.quiz.question}\nA. **${this.state.quiz.answer}**`);
-						this.endQuiz({correct: true});
 					}
 				}
 			}

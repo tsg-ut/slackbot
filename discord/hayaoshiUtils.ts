@@ -347,14 +347,26 @@ export const fetchIntroQuizData = async () => {
 		const songs: Song[] = [];
 
 		for (const songRow of songPoolData.slice(2)) {
-			const [banned, title, titleRuby, artist, url, introSeconds, chorusSeconds] = songRow;
+			const [
+				banned = '',
+				title = '',
+				titleRuby = '',
+				artist = '',
+				url = '',
+				introSeconds = '',
+				chorusSeconds = '',
+			] = songRow;
 
 			if (typeof banned === 'string' && banned.length > 0) {
 				continue;
 			}
 
+			if (url === '') {
+				continue;
+			}
+
 			assert(title !== '', 'title must not be empty');
-			assert(titleRuby.match(/^[ぁ-んァ-ンゔヴー]+$/), `[${title}] titleRuby must be hiragana or katakana`);
+			assert(titleRuby.match(/^[ぁ-んァ-ンゔヴー]*$/), `[${title}] titleRuby must be hiragana or katakana`);
 			assert(url?.startsWith('https://www.youtube.com/watch?v='), `[${title}] url must be a youtube url`);
 
 			const introSecondsNumber = parseInt(introSeconds);

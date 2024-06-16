@@ -1,8 +1,10 @@
 import scrapeIt from 'scrape-it';
-import {google, sheets_v4} from 'googleapis';
+import {google, sheets_v4, youtube_v3} from 'googleapis';
 import 'dotenv/config';
 import axios from 'axios';
 import zip from 'lodash/zip.js';
+import range from 'lodash/range.js';
+import assert from 'assert';
 
 const getSheetRows = (rangeText: string, sheets: sheets_v4.Sheets) => new Promise<string[][]>((resolve, reject) => {
 	sheets.spreadsheets.values.get({
@@ -245,7 +247,7 @@ const getChorusStartSeconds = async (url: string) => {
 	return chorusStartSeconds / 1000;
 };
 
-const getYoutubeTitle = async (url: string) => {
+const getYoutubeTitleAndChannel = async (url: string) => {
 	console.log(`[Youtube] Getting title for ${url}`);
 
 	await wait(1000);
@@ -255,14 +257,27 @@ const getYoutubeTitle = async (url: string) => {
 	});
 
 	if (youtubeBody.status !== 200) {
-		return '';
+		return {
+			title: '',
+			channel: '',
+		};
 	}
 
-	return youtubeBody?.data?.title;
+	return {
+		title: youtubeBody?.data?.title,
+		channel: youtubeBody?.data?.author_name,
+	};
 }
 
 if (mode === 'fill-info') {
 	const playlist = args[1];
+	const page = parseInt(args[2]) ?? 1;
+
+	assert(page >= 1, 'Page must be greater than or equal to 1');
+	assert(page <= 10, 'Page must be less than or equal to 10');
+
+	const startCell = (page - 1) * 100 + 3;
+	const endCell = page * 100 + 2;
 
 	const auth = await new google.auth.GoogleAuth({
 		scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -270,18 +285,20 @@ if (mode === 'fill-info') {
 
 	const sheets = google.sheets({version: 'v4', auth});
 
-	const titles = await getSheetRows(`${playlist}!B3:B1000`, sheets);
+	const titles = await getSheetRows(`${playlist}!B${startCell}:B${endCell}`, sheets);
 
 	const rubies: string[] = [];
 	const urls: string[] = [];
 	const chorusStartSeconds: number[] = [];
 	const youtubeTitles: string[] = [];
+	const youtubeChannels: string[] = [];
 	
 	for (const [title] of titles) {
 		let ruby = '';
 		let url = '';
 		let startSeconds = 0;
 		let youtubeTitle = '';
+		let youtubeChannel = '';
 
 		try {
 			if (title !== '') {
@@ -292,8 +309,12 @@ if (mode === 'fill-info') {
 				console.log(`[Result] ${title} (${ruby}) <${url}>`);
 
 				if (url) {
-					youtubeTitle = await getYoutubeTitle(url);
+					const youtubeInfo = await getYoutubeTitleAndChannel(url);
+					youtubeTitle = youtubeInfo.title;
 					console.log(`[Youtube] Title: ${youtubeTitle}`);
+
+					youtubeChannel = youtubeInfo.channel;
+					console.log(`[Youtube] Channel: ${youtubeChannel}`);
 
 					startSeconds = await getChorusStartSeconds(url);
 					console.log(`[Songle] Chorus start seconds: ${startSeconds}`);
@@ -306,18 +327,20 @@ if (mode === 'fill-info') {
 			urls.push(url);
 			chorusStartSeconds.push(startSeconds);
 			youtubeTitles.push(youtubeTitle);
+			youtubeChannels.push(youtubeChannel);
 		}
 	}
 
-	await setSheetRows(`${playlist}!C3:C1000`, rubies.map((ruby) => [ruby]), sheets);
+	await setSheetRows(`${playlist}!C${startCell}:C${endCell}`, rubies.map((ruby) => [ruby]), sheets);
 	await setSheetRows(
-		`${playlist}!E3:H1000`,
-		zip(urls, chorusStartSeconds, youtubeTitles)
-			.map(([url, chorusStartSecond, youtubeTitle]) => [
+		`${playlist}!E${startCell}:I${endCell}`,
+		zip(urls, chorusStartSeconds, youtubeTitles, youtubeChannels)
+			.map(([url, chorusStartSecond, youtubeTitle, youtubeChannel]) => [
 				url,
 				'0',
 				chorusStartSecond.toFixed(2),
 				youtubeTitle,
+				youtubeChannel,
 			]),
 		sheets,
 	);
@@ -332,6 +355,26 @@ if (mode === 'billboard') {
 	}).getClient();
 
 	const sheets = google.sheets({version: 'v4', auth});
+
+	const pastYears = range(parseInt(year) + 1, 2024).map((year) => `billboard${year}`);
+	assert(pastYears.length < 20, 'Too many past years');
+
+	const pastSongs = new Map<string, string[]>();
+
+	for (const pastYear of pastYears) {
+		console.log(`[Past] Fetching ${pastYear}`);
+		const sheetData = await getSheetRows(`${pastYear}!B3:I102`, sheets);
+
+		for (const [title, ruby, artist, url, , chorusStartSecond, youtubeTitle] of sheetData) {
+			if (title === '') {
+				continue;
+			}
+
+			if (url) {
+				pastSongs.set(title, [ruby, artist, url, chorusStartSecond, youtubeTitle]);
+			}
+		}
+	}
 
 	interface BillboardData {
 		songs: {
@@ -355,6 +398,7 @@ if (mode === 'billboard') {
 	const urls: string[] = [];
 	const chorusStartSeconds: number[] = [];
 	const youtubeTitles: string[] = [];
+	const youtubeChannels: string[] = [];
 	
 	for (const {title, artist} of result.data.songs) {
 		if (title === '') {
@@ -365,9 +409,18 @@ if (mode === 'billboard') {
 		let url = '';
 		let startSeconds = 0;
 		let youtubeTitle = '';
+		let youtubeChannel = '';
 
 		try {
-			if (title !== '') {
+			if (pastSongs.has(title)) {
+				const [pastRuby, _pastArtist, pastUrl, pastChorusStartSecond, pastYoutubeTitle, pastYoutubeChannel] = pastSongs.get(title) ?? [];
+				ruby = pastRuby;
+				url = pastUrl;
+				startSeconds = parseFloat(pastChorusStartSecond);
+				youtubeTitle = pastYoutubeTitle;
+				youtubeChannel = pastYoutubeChannel;
+				console.log(`[Past] ${title} (${ruby}) <${url}>`);
+			} else {
 				const songData = await searchRubyAndUrl(title);
 				ruby = songData.ruby;
 				url = songData.url;
@@ -375,8 +428,12 @@ if (mode === 'billboard') {
 				console.log(`[Result] ${title} (${ruby}) <${url}>`);
 
 				if (url) {
-					youtubeTitle = await getYoutubeTitle(url);
+					const youtubeInfo = await getYoutubeTitleAndChannel(url);
+					youtubeTitle = youtubeInfo.title;
 					console.log(`[Youtube] Title: ${youtubeTitle}`);
+
+					youtubeChannel = youtubeInfo.channel;
+					console.log(`[Youtube] Channel: ${youtubeChannel}`);
 
 					startSeconds = await getChorusStartSeconds(url);
 					console.log(`[Songle] Chorus start seconds: ${startSeconds}`);
@@ -390,12 +447,96 @@ if (mode === 'billboard') {
 			urls.push(url);
 			chorusStartSeconds.push(startSeconds);
 			youtubeTitles.push(youtubeTitle);
+			youtubeChannels.push(youtubeChannel);
 		}
 	}
 
-	await setSheetRows(`${playlist}!C3:C1000`, rubies.map((ruby) => [ruby]), sheets);
 	await setSheetRows(
-		`${playlist}!B3:H1000`,
+		`${playlist}!B3:H102`,
+		zip(songs, rubies, urls, chorusStartSeconds, youtubeTitles, youtubeChannels)
+			.map(([{title, artist}, ruby, url, chorusStartSecond, youtubeTitle, youtubeChannel]) => [
+				title,
+				ruby,
+				artist,
+				url,
+				'0',
+				chorusStartSecond.toFixed(2),
+				youtubeTitle,
+				youtubeChannel,
+			]),
+		sheets,
+	);
+}
+
+if (mode === 'youtube-playlist') {
+	const playlistId = args[1];
+	const sheetName = args[2]
+
+	const auth = await new google.auth.GoogleAuth({
+		scopes: [
+			'https://www.googleapis.com/auth/spreadsheets',
+			'https://www.googleapis.com/auth/youtube.readonly',
+		],
+	}).getClient();
+
+	const sheets = google.sheets({version: 'v4', auth});
+
+	const youtube = google.youtube({version: 'v3', auth});
+
+	const items: youtube_v3.Schema$PlaylistItem[] = [];
+
+	let pageToken: string | undefined = undefined;
+
+	do {
+		const playlistItems = await youtube.playlistItems.list({
+			part: ['snippet'],
+			playlistId,
+			maxResults: 50,
+			...(pageToken && {pageToken}),
+		});
+
+		items.push(...playlistItems.data.items ?? []);
+
+		pageToken = playlistItems.data.nextPageToken;
+	} while (pageToken);
+
+	const songs: {title: string, artist: string}[] = [];
+	const rubies: string[] = [];
+	const urls: string[] = [];
+	const chorusStartSeconds: number[] = [];
+	const youtubeTitles: string[] = [];
+
+	for (const {snippet} of playlistItems.data.items ?? []) {
+		const title = snippet.title;
+		const artist = snippet.videoOwnerChannelTitle;
+		const url = `https://www.youtube.com/watch?v=${snippet.resourceId.videoId}`;
+
+		let ruby = '';
+		let startSeconds = 0;
+		let youtubeTitle = '';
+
+		try {
+			if (url) {
+				youtubeTitle = await getYoutubeTitleAndChannel(url);
+				console.log(`[Youtube] Title: ${youtubeTitle}`);
+
+				startSeconds = await getChorusStartSeconds(url);
+				console.log(`[Songle] Chorus start seconds: ${startSeconds}`);
+			}
+		} catch (error) {
+			console.error(error);
+		} finally {
+			songs.push({title, artist});
+			rubies.push(ruby);
+			urls.push(url);
+			chorusStartSeconds.push(startSeconds);
+			youtubeTitles.push(youtubeTitle);
+		}
+	}
+
+	await setSheetRows(`${sheetName}!C3:C1000`, rubies.map((ruby) => [ruby]), sheets);
+	await setSheetRows(
+		`${sheetName}!B3:H1000`,
 		zip(songs, rubies, urls, chorusStartSeconds, youtubeTitles)
 			.map(([{title, artist}, ruby, url, chorusStartSecond, youtubeTitle]) => [
 				title,

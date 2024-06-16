@@ -54,4 +54,9 @@ export class Loader<T> {
 		});
 		return this.deferred.promise;
 	}
+
+	clear() {
+		this.isTriggered = false;
+		this.deferred = new Deferred<T>();
+	}
 }
