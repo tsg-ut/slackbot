@@ -14,6 +14,9 @@ const log = logger.child({bot: 'discord'});
 interface StateObj {
 	users: {discord: string, slack: string}[],
 	ttsDictionary: {key: string, value: string}[],
+	introQuizSongHistory: {
+		urls: string[],
+	},
 }
 
 // eslint-disable-next-line import/no-named-as-default-member
@@ -32,6 +35,7 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 	const state = await State.init<StateObj>('discord', {
 		users: [],
 		ttsDictionary: [{key: 'https?:\\S*', value: 'URL省略'}],
+		introQuizSongHistory: {urls: []},
 	});
 
 	const slackNotifier = new Notifier(slack);
@@ -47,7 +51,7 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 		return connection;
 	};
 
-	let hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users);
+	let hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users, state.introQuizSongHistory);
 	let tts = new TTS(joinVoiceChannelFn, state.ttsDictionary);
 
 	const attachDiscordHandlers = (hayaoshi: Hayaoshi, tts: TTS) => {
@@ -78,7 +82,7 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 			tts.destroy();
 			hayaoshi.destroy();
 			await new Promise((resolve) => setTimeout(resolve, 1000));
-			hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users);
+			hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users, state.introQuizSongHistory);
 			tts = new TTS(joinVoiceChannelFn, state.ttsDictionary);
 			attachDiscordHandlers(hayaoshi, tts);
 			return;

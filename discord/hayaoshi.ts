@@ -50,6 +50,8 @@ export default class Hayaoshi extends EventEmitter {
 
 	users: {discord: string, slack: string}[];
 
+	songHistory: {urls: string[]};
+
 	introQuizPlaylistsLoader: Loader<{
 		playlists: IntroQuizPlaylist[],
 		songPools: IntroQuizSongPool[],
@@ -57,10 +59,15 @@ export default class Hayaoshi extends EventEmitter {
 
 	joinVoiceChannelFn: () => VoiceConnection;
 
-	constructor(joinVoiceChannelFn: () => VoiceConnection, users: {discord: string, slack: string}[]) {
+	constructor(
+		joinVoiceChannelFn: () => VoiceConnection,
+		users: {discord: string, slack: string}[],
+		songHistory: {urls: string[]},
+	) {
 		super();
 		this.joinVoiceChannelFn = joinVoiceChannelFn;
 		this.users = users;
+		this.songHistory = songHistory;
 		this.state = {
 			phase: 'waiting',
 			connection: null,
@@ -442,6 +449,22 @@ export default class Hayaoshi extends EventEmitter {
 		}, this.getAnswerTimeout());
 	}
 
+	selectSong(songs: IntroQuizSong[]) {
+		const recentUrls = new Set(this.songHistory.urls);
+		const availableSongs = songs.filter((song) => !recentUrls.has(song.url));
+		let selectedSong: IntroQuizSong | null = null;
+		if (availableSongs.length === 0) {
+			selectedSong = sample(songs);
+		} else {
+			selectedSong = sample(availableSongs);
+		}
+		if (!selectedSong) {
+			throw new Error('No songs found');
+		}
+		this.songHistory.urls = this.songHistory.urls.concat(selectedSong.url).slice(-50);
+		return selectedSong;
+	}
+
 	async getQuiz(): Promise<Quiz & {song?: IntroQuizSong}> {
 		if (this.state.quizMode === 'quiz') {
 			const seed = Math.random();
@@ -466,12 +489,12 @@ export default class Hayaoshi extends EventEmitter {
 			const playlist = playlists.find((playlist) => playlist.name === playlistName);
 
 			if (playlist) {
-				song = sample(playlist.songs);
+				song = this.selectSong(playlist.songs);
 			} else {
 				const songPool = songPools.find((pool) => pool.name === this.state.playlist);
 
 				if (songPool) {
-					song = sample(songPool.songs);
+					song = this.selectSong(songPool.songs);
 				} else {
 					throw new Error(`Playlist not found: ${playlistName}`);
 				}
