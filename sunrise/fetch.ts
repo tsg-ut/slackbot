@@ -170,6 +170,23 @@ const accuweatherCurrentConditionsResponseSchema = z.array(
 
 export type AccuweatherCurrentConditionsResponse = z.infer<typeof accuweatherCurrentConditionsResponseSchema>;
 
+const jmaForecastSchema = z.object({
+	publicTime: z.string(),
+	publicTimeFormatted: z.string(),
+	publishingOffice: z.string(),
+	title: z.string(),
+	link: z.string(),
+	description: z.object({
+		publicTime: z.string(),
+		publicTimeFormatted: z.string(),
+		headlineText: z.string(),
+		bodyText: z.string(),
+		text: z.string(),
+	}),
+});
+
+export type JmaForecast = z.infer<typeof jmaForecastSchema>;
+
 const getTayoriEntries = async () => {
 	const {data} = await scrapeIt<{articles: Article[]}>('http://www.i-nekko.jp/hibinotayori/', {
 		articles: {
@@ -322,4 +339,14 @@ export const getMinuteCast = async (location: [number, number]) => {
 	})}`);
 
 	return accuweatherMinuteCastResponseSchema.parse(data);
+};
+
+export const getJmaForecast = async (firstAreaCode: string) => {
+	const {data: forecastData} = await axios.get('https://weather.tsukumijima.net/api/forecast', {
+		params: {
+			city: firstAreaCode,
+		},
+	});
+
+	return {data: jmaForecastSchema.parse(forecastData)};
 };

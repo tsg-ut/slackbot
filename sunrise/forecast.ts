@@ -1,6 +1,14 @@
-import type {WebClient} from '@slack/web-api';
-import {AccuweatherMultiUnit, getCurrentWeather, getMinuteCast, getWeather} from './fetch';
+import type {MessageAttachment, WebClient} from '@slack/web-api';
+import {Attachment} from '@slack/web-api/dist/response/ChatPostMessageResponse';
+import {FeatureCollection, MultiPolygon, points as Points, pointsWithinPolygon} from '@turf/turf';
+import {Loader} from '../lib/utils';
+import {AccuweatherMultiUnit, getCurrentWeather, getJmaForecast, getMinuteCast, getWeather} from './fetch';
 import type {Point} from './index';
+
+const firstAreaGeojsonLoader = new Loader<FeatureCollection<MultiPolygon>>(() => {
+	const url = 'https://raw.githubusercontent.com/tmiyachi/jma-gis/master/geojson/firstarea.geojson';
+	return fetch(url).then((res) => res.json());
+});
 
 export const postRainMinuteCast = async (point: Point, slack: WebClient, threadTimestamp?: string) => {
 	const weatherData = await getMinuteCast([point.latitude, point.longitude]);
@@ -109,11 +117,31 @@ export const postWeatherCast = async (point: Point, slack: WebClient, threadTime
 
 	const text = [headlineText, percipitationText, windText, '\n', forecastText].join('');
 
+	const firstAreaGeojson = await firstAreaGeojsonLoader.load();
+	const points = Points([[point.longitude, point.latitude]]);
+	const featureContainingPoints = firstAreaGeojson.features.find((feature) => (
+		pointsWithinPolygon(points, feature)?.features?.length > 0
+	));
+
+	const attachments: MessageAttachment[] = [];
+	if (featureContainingPoints !== undefined) {
+		const firstAreaCode = featureContainingPoints.properties.firstareacode;
+		const jmaForecast = await getJmaForecast(firstAreaCode);
+		const text = jmaForecast.data.description.text.split('【')[0]?.replace(/\s+/g, '');
+		attachments.push({
+			title: `${jmaForecast.data.publishingOffice}発表: ${jmaForecast.data.title}`,
+			title_link: jmaForecast.data.link,
+			text,
+			color: '#36a64f',
+		});
+	}
+
 	await slack.chat.postMessage({
 		channel: process.env.CHANNEL_SANDBOX,
 		username: 'sunrise',
 		icon_emoji: ':sunrise:',
 		text,
+		attachments,
 		...(threadTimestamp ? {thread_ts: threadTimestamp} : {}),
 		blocks: [
 			{
