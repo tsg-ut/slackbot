@@ -138,7 +138,7 @@ export default async (slackClients: SlackInterface) => {
 				await increment(event.item_user, 'oneiromancy-analyzed');
 				await increment(event.user, 'oneiromancy-analyze');
 
-				const scoreText = result.match(/【\s*今日の運勢\s*】\s*(?<score>[-\d]+)\s*点/)?.groups?.score;
+				const scoreText = result.match(/今日の運勢は【\s*(?<score>[-\d]+)\s*点\s*】/)?.groups?.score;
 				const score = scoreText === undefined ? null : parseInt(scoreText);
 
 				log.info(`score: ${score}`);
