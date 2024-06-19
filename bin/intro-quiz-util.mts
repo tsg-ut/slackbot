@@ -43,46 +43,25 @@ const args = process.argv.slice(2);
 
 const mode = args[0];
 
-if (mode === 'parse-kiite') {
-	interface KiiteData {
-		songs: {
-			title: string,
-			artist: string,
-		}[],
-	}
-	const url = args[1];
-	const data = await scrapeIt<KiiteData>(url, {
-		songs: {
-			listItem: '.col-playlist > li',
-			data: {
-				title: 'h3',
-				artist: 'p.playlist-creator',
-			},
-		},
-	});
-	for (const song of data.data.songs) {
-		console.log(`${song.title}\t\t${song.artist}`);
-	}
-}
-
 const wait = (ms: number) => new Promise((resolve) => {setTimeout(resolve, ms)});
 
-const searchRubyAndUrl = async (title: string) => {
+interface SearchData {
+	songs: {
+		url: string,
+		title: string,
+	}[],
+}
+
+interface SongData {
+	ruby: string,
+	urls: {
+		url: string,
+	}[],
+	tags: string[],
+}
+
+const searchUtaten = async (title: string) => {
 	let ruby: string | null = null;
-
-	interface SearchData {
-		songs: {
-			url: string,
-			title: string,
-		}[],
-	}
-
-	interface SongData {
-		ruby: string,
-		urls: {
-			url: string,
-		}[],
-	}
 
 	console.log(`[Utaten] Searching ${title}`);
 	await wait(1000);
@@ -136,24 +115,33 @@ const searchRubyAndUrl = async (title: string) => {
 		}
 	}
 
-	if (args[1].startsWith('vocaloid')) {
-		return {
-			ruby: '',
-			url: '',
-		};
+	return {
+		ruby,
+		url: '',
 	}
+};
 
-	console.log(`[Hwiki] Searching ${title}`);
-	const hwikiUrl = `https://w.atwiki.jp/hmiku/?cmd=wikisearch&andor=and&cmp=cmp&keyword=${encodeURIComponent(title)}`;
+const searchHmiku = async (keyword: string, searchField: string | null) => {
+	let ruby: string | null = null;
+	let title: string | null = null;
+
+	console.log(`[Hmiku] Searching ${keyword}`);
 
 	await wait(1000);
-	const hwikiBody = await axios.get(hwikiUrl, {
+	const hmikuBody = await axios.get('https://w.atwiki.jp/hmiku/', {
+		params: {
+			cmd: 'wikisearch',
+			andor: 'and',
+			cmp: 'cmp',
+			keyword: keyword,
+			...(searchField && {search_field: searchField}),
+		},
 		headers: {
 			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
 		},
 	});
 	
-	const hwikiSearchResult = await scrapeIt.scrapeHTML<SearchData>(hwikiBody.data, {
+	const hmikuSearchResult = await scrapeIt.scrapeHTML<SearchData>(hmikuBody.data, {
 		songs: {
 			listItem: '.wikisearch + ul > li',
 			data: {
@@ -169,23 +157,25 @@ const searchRubyAndUrl = async (title: string) => {
 		},
 	});
 
-	for (const song of hwikiSearchResult.songs) {
+	for (const song of hmikuSearchResult.songs) {
 		if (song.title) {
+			title = song.title.split('/')[0];
+
 			const pageid = JSON.parse(song.url)?.query?.pageid;
 
 			if (!pageid) {
 				continue;
 			}
 
-			console.log(`[Hwiki] Found ${song.title} (pageid: ${pageid})`);
+			console.log(`[Hmiku] Found ${title} (pageid: ${pageid})`);
 			await wait(1000);
-			const hwikiSongBody = await axios.get(`https://w.atwiki.jp/hmiku/pages/${pageid}.html`, {
+			const hmikuSongBody = await axios.get(`https://w.atwiki.jp/hmiku/pages/${pageid}.html`, {
 				headers: {
 					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
 				},
 			});
 			
-			const hwikiSongResult = await scrapeIt.scrapeHTML<SongData>(hwikiSongBody.data, {
+			const hmikuSongResult = await scrapeIt.scrapeHTML<SongData>(hmikuSongBody.data, {
 				ruby: '#wikibody',
 				urls: {
 					listItem: '.plugin_youtube',
@@ -196,14 +186,27 @@ const searchRubyAndUrl = async (title: string) => {
 						},
 					},
 				},
+				tags: {
+					listItem: '#wikibody h2 + div a',
+				},
 			});
 
-			if (!ruby) {
-				ruby = hwikiSongResult.ruby.match(/^曲名.+[(（](.+?)[)）]/m)?.[1] ?? '';
+			if (
+				hmikuSongResult.tags.includes('作り手') ||
+				hmikuSongResult.tags.includes('作曲家') ||
+				hmikuSongResult.tags.includes('作詞家') ||
+				hmikuSongResult.tags.includes('合成音声')
+			) {
+				console.log(`[Hmiku] Skip because of tag (${hmikuSongResult.tags.join(', ')})`);
+				continue;
 			}
 
-			if (hwikiSongResult.urls.length > 0) {
-				const url = hwikiSongResult.urls[0].url;
+			if (!ruby) {
+				ruby = hmikuSongResult.ruby.match(/^曲名.+[(（](.+?)[)）]/m)?.[1] ?? '';
+			}
+
+			if (hmikuSongResult.urls.length > 0) {
+				const url = hmikuSongResult.urls[0].url;
 				if (url.startsWith('https://www.youtube.com/embed/')) {
 					const videoId = url
 						.replace(/^https:\/\/www\.youtube\.com\/embed\//, '')
@@ -211,6 +214,7 @@ const searchRubyAndUrl = async (title: string) => {
 					if (videoId) {
 						return {
 							ruby,
+							title,
 							url: `https://www.youtube.com/watch?v=${videoId}`,
 						};
 					}
@@ -222,6 +226,7 @@ const searchRubyAndUrl = async (title: string) => {
 
 	return {
 		ruby,
+		title,
 		url: '',
 	}
 };
@@ -269,6 +274,99 @@ const getYoutubeTitleAndChannel = async (url: string) => {
 	};
 }
 
+if (mode === 'generate-vocaloid') {
+	interface KiiteData {
+		songs: {
+			title: string,
+			artist: string,
+			nicovideoId: string,
+		}[],
+	}
+
+	const auth = await new google.auth.GoogleAuth({
+		scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+	}).getClient();
+
+	const sheets = google.sheets({version: 'v4', auth});
+
+	const url = args[1];
+	const year = parseInt(args[2]);
+
+	assert(url, 'URL must be specified');
+	assert(year >= 2000, 'Year must be greater than or equal to 2000');
+
+	const playlist = `vocaloid${year}`;
+
+	const data = await scrapeIt<KiiteData>(url, {
+		songs: {
+			listItem: '.col-playlist > li',
+			data: {
+				title: 'h3',
+				artist: 'p.playlist-creator',
+				nicovideoId: {
+					attr: 'data-thumbnail',
+					convert: (thumbnail) => (
+						`sm${thumbnail.split('/')[4] ?? ''}`
+					),
+				},
+			},
+		},
+	});
+
+	for (const [i, song] of data.data.songs.entries()) {
+		let title = '';
+		let ruby = '';
+		let url = '';
+		let startSeconds = 0;
+		let youtubeTitle = '';
+		let youtubeChannel = '';
+
+		const hmikuInfo = await searchHmiku(song.nicovideoId, 'source');
+
+		if (hmikuInfo.title) {
+			title = hmikuInfo.title;
+		}
+
+		if (hmikuInfo.ruby) {
+			ruby = hmikuInfo.ruby;
+		}
+
+		if (hmikuInfo.url) {
+			url = hmikuInfo.url;
+		}
+
+		const utatenInfo = await searchUtaten(title);
+
+		if (!ruby && utatenInfo.ruby) {
+			ruby = utatenInfo.ruby;
+		}
+
+		if (!url && utatenInfo.url) {
+			url = utatenInfo.url;
+		}
+
+		if (url) {
+			const youtubeInfo = await getYoutubeTitleAndChannel(url);
+			youtubeTitle = youtubeInfo.title;
+			console.log(`[Youtube] Title: ${youtubeTitle}`);
+
+			youtubeChannel = youtubeInfo.channel;
+			console.log(`[Youtube] Channel: ${youtubeChannel}`);
+
+			startSeconds = await getChorusStartSeconds(url);
+			console.log(`[Songle] Chorus start seconds: ${startSeconds}`);
+		}
+
+		const rowNumber = i + 3;
+
+		await setSheetRows(
+			`${playlist}!B${rowNumber}:I${rowNumber}`,
+			[[title, ruby, song.artist, url, '0', startSeconds.toFixed(2), youtubeTitle, youtubeChannel]],
+			sheets,
+		);
+	}
+}
+
 if (mode === 'fill-info') {
 	const playlist = args[1];
 	const page = parseInt(args[2]) ?? 1;
@@ -302,7 +400,7 @@ if (mode === 'fill-info') {
 
 		try {
 			if (title !== '') {
-				const songData = await searchRubyAndUrl(title);
+				const songData = await searchUtaten(title);
 				ruby = songData.ruby;
 				url = songData.url;
 
@@ -393,12 +491,7 @@ if (mode === 'billboard') {
 		},
 	});
 
-	const songs: {title: string, artist: string}[] = [];
-	const rubies: string[] = [];
-	const urls: string[] = [];
-	const chorusStartSeconds: number[] = [];
-	const youtubeTitles: string[] = [];
-	const youtubeChannels: string[] = [];
+	const songInfos: string[][] = [];
 	
 	for (const {title, artist} of result.data.songs) {
 		if (title === '') {
@@ -421,7 +514,7 @@ if (mode === 'billboard') {
 				youtubeChannel = pastYoutubeChannel;
 				console.log(`[Past] ${title} (${ruby}) <${url}>`);
 			} else {
-				const songData = await searchRubyAndUrl(title);
+				const songData = await searchUtaten(title);
 				ruby = songData.ruby;
 				url = songData.url;
 
@@ -442,25 +535,20 @@ if (mode === 'billboard') {
 		} catch (error) {
 			console.error(error);
 		} finally {
-			songs.push({title, artist});
-			rubies.push(ruby);
-			urls.push(url);
-			chorusStartSeconds.push(startSeconds);
-			youtubeTitles.push(youtubeTitle);
-			youtubeChannels.push(youtubeChannel);
+			songInfos.push([title, artist, ruby, url, startSeconds.toFixed(2), youtubeTitle, youtubeChannel, ruby, url]);
 		}
 	}
 
 	await setSheetRows(
 		`${playlist}!B3:H102`,
-		zip(songs, rubies, urls, chorusStartSeconds, youtubeTitles, youtubeChannels)
-			.map(([{title, artist}, ruby, url, chorusStartSecond, youtubeTitle, youtubeChannel]) => [
+		songInfos
+			.map(([title, artist, ruby, url, chorusStartSecond, youtubeTitle, youtubeChannel]) => [
 				title,
 				ruby,
 				artist,
 				url,
 				'0',
-				chorusStartSecond.toFixed(2),
+				chorusStartSecond,
 				youtubeTitle,
 				youtubeChannel,
 			]),
@@ -506,7 +594,7 @@ if (mode === 'youtube-playlist') {
 	const chorusStartSeconds: number[] = [];
 	const youtubeTitles: string[] = [];
 
-	for (const {snippet} of playlistItems.data.items ?? []) {
+	for (const {snippet} of items) {
 		const title = snippet.title;
 		const artist = snippet.videoOwnerChannelTitle;
 		const url = `https://www.youtube.com/watch?v=${snippet.resourceId.videoId}`;
