@@ -126,6 +126,7 @@
     "pluscodes": "^2.6.0",
     "pm2": "^5.2.0",
     "primes-and-factors": "^1.3.3",
+    "prism-media": "^1.3.5",
     "puppeteer": "^18.0.5",
     "qrcode": "^1.5.3",
     "rouge": "github:kenlimmj/rouge",

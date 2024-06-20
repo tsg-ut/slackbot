@@ -7,7 +7,7 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord from 'discord.js';
 import {max, get, sample} from 'lodash';
-import prism from 'prism-media';
+import {FFmpeg, opus} from 'prism-media';
 import ytdl from 'ytdl-core';
 import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
@@ -47,15 +47,15 @@ interface State {
 	resumeSeekms: number | null,
 }
 
-const createFFmpegStream = (path:string, seekms?:number) => {
+const createFFmpegStream = (path: string, seekms?: number) => {
 	let seekPosition = '0';
 	if (seekms) {
 		seekPosition = String(seekms);
 	}
-	const s16le = new prism.FFmpeg({
+	const s16le = new FFmpeg({
 		args: ['-i', path, '-analyzeduration', '0', '-loglevel', '0', '-f', 's16le', '-ar', '48000', '-ac', '2', '-ss', `${seekPosition}ms`],
 	});
-	const ret = s16le.pipe(new prism.opus.Encoder({rate: 48000, channels: 2, frameSize: 960}));
+	const ret = s16le.pipe(new opus.Encoder({rate: 48000, channels: 2, frameSize: 960}));
 	return ret;
 };
 
@@ -770,20 +770,22 @@ export default class Hayaoshi extends EventEmitter {
 								const contestName = this.state.quizMode === 'quiz' ? '早押しクイズ' : 'イントロクイズ';
 								const sourceUrl = this.state.quizMode === 'quiz' ? 'https://tsg-quiz.hkt.sh' : 'https://intro-quiz.hkt.sh';
 
-								this.emit('message', stripIndent`
-								【${contestName}大会】
-
-								ルール
-								* 一番最初に5問正解した人が優勝。ただし3問誤答したら失格。(5○3×)
-								* 誰かが誤答した場合、その問題は終了。(シングルチャンス)
-								* TSGerが作問した問題が出題された場合、作問者は解答権を持たない。
-								* 作問者の得点が4点未満、かつその問題が正答またはスルーの場合、作問者は問題終了後に0.5点を得る。
-								* 失格者が出たとき、失格していない参加者がいない場合、引き分けで終了。
-								* 失格者が出たとき、失格していない参加者が1人の場合、その人が優勝。
-								* 正解者も誤答者も出ない問題が5問連続で出題された場合、引き分けで終了。
-								* Slackで \`@discord [discordのユーザーID]\` と送信するとSlackアカウントを連携できます。
-								* ${sourceUrl} を編集すると自分で作問した問題を追加できます。
-							`);
+								this.emit('message', [
+									`【${contestName}大会】`,
+									'',
+									'ルール',
+									'* 一番最初に5問正解した人が優勝。ただし3問誤答したら失格。(5○3×)',
+									'* 誰かが誤答した場合、その問題は終了。(シングルチャンス)',
+									...(this.state.quizMode === 'quiz' ? [
+										'* TSGerが作問した問題が出題された場合、作問者は解答権を持たない。',
+										'* 作問者の得点が4点未満、かつその問題が正答またはスルーの場合、作問者は問題終了後に0.5点を得る。',
+									] : []),
+									'* 失格者が出たとき、失格していない参加者がいない場合、引き分けで終了。',
+									'* 失格者が出たとき、失格していない参加者が1人の場合、その人が優勝。',
+									'* 正解者も誤答者も出ない問題が5問連続で出題された場合、引き分けで終了。',
+									'* Slackで `@discord [discordのユーザーID]` と送信するとSlackアカウントを連携できます。',
+									`* ${sourceUrl} を編集すると自分で作問した問題を追加できます。`,
+								].join('\n'));
 							}
 
 							await this.startQuiz();
