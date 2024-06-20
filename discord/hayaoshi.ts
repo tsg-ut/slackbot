@@ -8,6 +8,7 @@ import {stripIndent} from 'common-tags';
 import Discord from 'discord.js';
 import {max, get, sample} from 'lodash';
 import ytdl from 'ytdl-core';
+import 'prism-media' as prism;
 import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
 import logger from '../lib/logger';
@@ -43,6 +44,7 @@ interface State {
 	questionCount: number,
 	validAnswers: string[],
 	isOneChance: boolean,
+    resumeSeekms: number | null,
 }
 
 export default class Hayaoshi extends EventEmitter {
@@ -91,6 +93,7 @@ export default class Hayaoshi extends EventEmitter {
 			questionCount: 0,
 			validAnswers: [],
 			isOneChance: false,
+            resumeSeekms: null,
 		};
 		this.onFinishReadingQuestion = this.onFinishReadingQuestion.bind(this);
 	}
@@ -161,6 +164,7 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.pusher = null;
 		this.state.penaltyUsers = new Set();
 		this.state.phase = 'gaming';
+        this.state.resumeSeekms = null;
 
 		if (quiz && quiz.author) {
 			const user = this.users.find(({discord}) => discord === quiz.author);
@@ -386,11 +390,16 @@ export default class Hayaoshi extends EventEmitter {
 		log.info('[hayaoshi] readQuestion');
 		this.state.audioPlayer.off(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
 
+        const audiopath = path.join(
+            __dirname,
+            this.state.quizMode === 'quiz' ? 'questionText.mp3' : 'questionText.webm',
+        );
+
 		this.state.audioResource = createAudioResource(
-			path.join(
-				__dirname,
-				this.state.quizMode === 'quiz' ? 'questionText.mp3' : 'questionText.webm',
-			),
+            this.state.resumeSeekms ? 
+                createFFmpegStream(audiopath,this.state.resumeSeekms):
+                audiopath
+            ,
 			{inlineVolume: this.state.quizMode === 'intro-quiz'},
 		);
 		this.state.audioResource.volume.setVolume(0.2);
@@ -711,6 +720,7 @@ export default class Hayaoshi extends EventEmitter {
 				this.state.maximumPushTime = Math.max(pushTime, this.state.maximumPushTime);
 				clearTimeout(this.state.timeupTimeoutId);
 				this.state.audioResource.playStream.pause();
+                this.state.resumeSeekms = this.state.audioResource.playbackDuration;
 				this.playSound('buzzer');
 				this.state.pusher = message.member.user.id;
 				this.state.phase = 'answering';
@@ -776,4 +786,13 @@ export default class Hayaoshi extends EventEmitter {
 			}
 		});
 	}
+}
+
+function createFFmpegStream(path:string,seekms?:number){
+    let seekPosition = '0';
+    if (seekms) seekPosition = String(seekms);
+    const ret = new prism.FFmpeg({
+        args: ['-i', path, '-analyzeduration', '0', '-loglevel', '0', '-f', 's16le', '-ar', '48000', '-ac', '2', '-ss', seekPosition+"ms",],
+    });
+    return ret;
 }
