@@ -320,9 +320,6 @@ export default class Hayaoshi extends EventEmitter {
 		return new Promise<void>((resolve, reject) => {
 			const audioStream = ytdl(url, {
 				quality: 'highestaudio',
-				filter(format) {
-					return format.container === 'webm';
-				},
 				begin,
 			});
 
@@ -348,6 +345,11 @@ export default class Hayaoshi extends EventEmitter {
 			audioStream.on('error', (error) => {
 				fileStream.destroy();
 				reject(error);
+			});
+
+			audioStream.on('end', () => {
+				log.info('[hayaoshi] downloadYoutubeAudio - end');
+				resolve();
 			});
 		});
 	}
