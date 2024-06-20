@@ -605,7 +605,8 @@ if (mode === 'youtube-playlist') {
 
 		try {
 			if (url) {
-				youtubeTitle = await getYoutubeTitleAndChannel(url);
+				const {title} = await getYoutubeTitleAndChannel(url);
+				youtubeTitle = title;
 				console.log(`[Youtube] Title: ${youtubeTitle}`);
 
 				startSeconds = await getChorusStartSeconds(url);
