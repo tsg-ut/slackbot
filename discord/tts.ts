@@ -66,7 +66,6 @@ interface StateObj {
 	audioTags: {[id: string]: string},
 }
 
-
 export default class TTS extends EventEmitter {
 	users: Set<string>;
 

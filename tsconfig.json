@@ -8,6 +8,10 @@
   "include": [
     "**/*"
   ],
+  "exclude": [
+    "./bin",
+    "./node_modules"
+  ],
   "compilerOptions": {
     "target": "es2015",
     "module": "CommonJS",
