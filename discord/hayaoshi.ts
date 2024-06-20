@@ -52,9 +52,10 @@ const createFFmpegStream = (path:string, seekms?:number) => {
 	if (seekms) {
 		seekPosition = String(seekms);
 	}
-	const ret = new prism.FFmpeg({
+	const s16le = new prism.FFmpeg({
 		args: ['-i', path, '-analyzeduration', '0', '-loglevel', '0', '-f', 's16le', '-ar', '48000', '-ac', '2', '-ss', `${seekPosition}ms`],
 	});
+	const ret = s16le.pipe(new prism.opus.Encoder({rate: 48000, channels: 2, frameSize: 960}));
 	return ret;
 };
 
