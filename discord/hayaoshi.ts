@@ -610,8 +610,10 @@ export default class Hayaoshi extends EventEmitter {
 			return;
 		}
 
+		log.info(`[hayaoshi] onMessage: ${message.content}`);
 		mutex.runExclusive(async () => {
 			if (this.state.phase === 'answering' && this.state.pusher === message.member.user.id && message.content !== 'p') {
+				log.info(`[hayaoshi] onMessage - answering: ${message.content}`);
 				clearTimeout(this.state.answerTimeoutId);
 				const judgement = await judgeAnswer(this.state.validAnswers, message.content);
 				if (judgement === 'correct') {
@@ -703,6 +705,7 @@ export default class Hayaoshi extends EventEmitter {
 					this.state.quiz.author === message.member.user.id
 				)
 			) {
+				log.info('[hayaoshi] onMessage - p');
 				const now = Date.now();
 				const pushTime = now - this.state.playStartTime;
 				this.state.maximumPushTime = Math.max(pushTime, this.state.maximumPushTime);
@@ -717,9 +720,13 @@ export default class Hayaoshi extends EventEmitter {
 			}
 
 			if (this.state.phase === 'waiting') {
+				log.info('[hayaoshi] onMessage - waiting');
+
 				const parsed = this.parseQuizStartMessage(message.content);
 
 				if (parsed !== null) {
+					log.info(`[hayaoshi] onMessage - start-game: ${JSON.stringify(parsed)}`);
+
 					if (parsed.quizMode === 'intro-quiz' && parsed.playlist === 'clear-cache') {
 						this.introQuizPlaylistsLoader.clear();
 						this.emit('message', 'キャッシュをクリアしました');

@@ -79,12 +79,18 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 	attachDiscordHandlers(hayaoshi, tts);
 	discord.on('messageCreate', async (message: Discord.Message) => {
 		if (message.content === 'tsgbot reload') {
+			log.info('reloading hayaoshi and tts');
 			tts.destroy();
 			hayaoshi.destroy();
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 			hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users, state.introQuizSongHistory);
 			tts = new TTS(joinVoiceChannelFn, state.ttsDictionary);
 			attachDiscordHandlers(hayaoshi, tts);
+
+			log.info('reloaded hayaoshi and tts');
+			const discordTextSandbox = discord.channels.cache.get(process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) as TextChannel;
+			await discordTextSandbox.send('リロードしました');
+
 			return;
 		}
 		hayaoshi.onMessage(message);

@@ -7,8 +7,11 @@ import {last, uniq, uniqBy} from 'lodash';
 import {isCorrectAnswer, normalize} from '../hayaoshi';
 // @ts-expect-error not typed
 import getReading from '../lib/getReading.js';
+import logger from '../lib/logger';
 
 const katakanaMatchRegex = new RegExp(`^(?:${katakanaRegex.source}|ー|・|･)+$`);
+
+const log = logger.child({bot: 'hayaoshiUtils'});
 
 const getCompornents = (text: string) => {
 	let mainComponent = text;
@@ -297,6 +300,7 @@ export const fetchIntroQuizData = async () => {
 
 	const sheets = google.sheets({version: 'v4', auth});
 
+	log.info('fetchIntroQuizData - fetching playlists');
 	const data = await getSheetRows('playlists!A:ZZ', sheets);
 	const maxColumnSize = Math.max(...data.map((row) => row.length));
 
@@ -342,6 +346,8 @@ export const fetchIntroQuizData = async () => {
 	const songPools: SongPool[] = [];
 
 	for (const songPoolName of songPoolNames) {
+		log.info(`fetchIntroQuizData - fetching ${songPoolName}`);
+
 		const songPoolData = await getSheetRows(`${songPoolName}!A:ZZ`, sheets);
 
 		const songs: Song[] = [];
