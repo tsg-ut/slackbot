@@ -417,7 +417,9 @@ export default class Hayaoshi extends EventEmitter {
 			,
 			{inlineVolume: this.state.quizMode === 'intro-quiz'},
 		);
-		this.state.audioResource.volume.setVolume(0.2);
+		if (this.state.quizMode === 'intro-quiz') {
+			this.state.audioResource.volume.setVolume(0.15);
+		}
 		this.state.audioPlayer.play(this.state.audioResource);
 		this.state.playStartTime = Date.now();
 		this.state.audioResource.playStream.on('start', () => {
