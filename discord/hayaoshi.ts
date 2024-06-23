@@ -17,7 +17,6 @@ import {extractValidAnswers, judgeAnswer, formatQuizToSsml, fetchIntroQuizData, 
 import {getSpeech, Voice} from './speeches';
 
 const log = logger.child({bot: 'discord'});
-const mutex = new Mutex();
 
 type QuizMode = 'quiz' | 'intro-quiz';
 
@@ -72,6 +71,8 @@ export default class Hayaoshi extends EventEmitter {
 	}> = new Loader(() => fetchIntroQuizData());
 
 	joinVoiceChannelFn: () => VoiceConnection;
+
+	mutex = new Mutex();
 
 	constructor(
 		joinVoiceChannelFn: () => VoiceConnection,
@@ -389,7 +390,7 @@ export default class Hayaoshi extends EventEmitter {
 			this.state.timeupTimeoutId = setTimeout(resolve, 5000);
 		});
 		log.info('[hayaoshi] onFinishReadingQuestion - timeout');
-		mutex.runExclusive(async () => {
+		this.mutex.runExclusive(async () => {
 			if (this.state.phase !== 'gaming') {
 				return;
 			}
@@ -454,7 +455,7 @@ export default class Hayaoshi extends EventEmitter {
 
 	setAnswerTimeout() {
 		return setTimeout(() => {
-			mutex.runExclusive(async () => {
+			this.mutex.runExclusive(async () => {
 				await this.playSound('timeup');
 				this.state.penaltyUsers.add(this.state.pusher);
 				this.incrementPenalty(this.state.pusher);
@@ -634,7 +635,7 @@ export default class Hayaoshi extends EventEmitter {
 		}
 
 		log.info(`[hayaoshi] onMessage: ${message.content}`);
-		mutex.runExclusive(async () => {
+		this.mutex.runExclusive(async () => {
 			if (this.state.phase === 'answering' && this.state.pusher === message.member.user.id && message.content !== 'p') {
 				log.info(`[hayaoshi] onMessage - answering: ${message.content}`);
 				clearTimeout(this.state.answerTimeoutId);
