@@ -396,7 +396,8 @@ export default (slackClients: SlackInterface) => {
 					isUnmasked: quizOptions.isUnmasked,
 				});
 
-				const quizText = `このQRコード、なんと書いてあるでしょう? (difficulty = ${quizOptions.difficulty}, mode = ${quizOptions.mode}, masked = ${!quizOptions.isUnmasked})`;
+				const standardRuleUrl = 'https://scrapbox.io/tsg/QR%E5%BD%93%E3%81%A6%E3%82%AF%E3%82%A4%E3%82%BA%2F%E6%A8%99%E6%BA%96%E3%83%AB%E3%83%BC%E3%83%AB';
+				const quizText = `このQRコード、なんと書いてあるでしょう? (difficulty = ${quizOptions.difficulty}, mode = ${quizOptions.mode}, masked = ${!quizOptions.isUnmasked}) <${standardRuleUrl}|標準ルール>`;
 
 				const ateQuiz = new QrAteQuiz(slackClients, {
 					problemMessage: {
