@@ -1,14 +1,15 @@
 'use strict';
 
 jest.mock('cloudinary');
-jest.mock('./rust-proxy.js');
+jest.mock('./rust-proxy');
 jest.mock('../achievements');
+jest.mock('../lib/slackUtils');
 
 import cloudinary from 'cloudinary';
-import * as rust_proxy from './rust-proxy.js';
+import * as rust_proxy from './rust-proxy';
 
-import hyperrobot from './index.js';
-import Slack from '../lib/slackMock.js';
+import hyperrobot from './index';
+import Slack from '../lib/slackMock';
 
 import fs from 'fs';
 import path from 'path';

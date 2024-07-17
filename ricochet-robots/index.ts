@@ -8,7 +8,7 @@ import { Mutex } from 'async-mutex';
 import { unlock } from '../achievements';
 import { round } from 'lodash';
 import type { SlackInterface } from '../lib/slack.js';
-import type {MessageEvent} from '@slack/bolt';
+import type { MessageEvent } from '@slack/bolt';
 import { extractMessage } from '../lib/slackUtils';
 
 interface State {
