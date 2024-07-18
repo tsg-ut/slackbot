@@ -41,24 +41,24 @@ describe('hyperrobot', () => {
 	describe('base', () => {
 		it('responds to ハイパーロボット', async () => {
 			cloudinaryMock.url = 'https://hoge.com/hoge.png';
-			const {username, attachments, text,} = await slack.getResponseTo('ハイパーロボット');
+			const {username, attachments, blocks, text,} = await slack.getResponseTo('ハイパーロボット');
 
 			expect(username).toBe('hyperrobot');
 			expect(text).toContain('10手詰めです');
 			expect(attachments).toBe(undefined);
+			expect(blocks).toHaveLength(1);
+			expect(blocks[0].type).toBe('section');
+			expect((blocks[0] as SectionBlock).accessory?.type).toBe('image');
 		}, 60000);
 	});
 	describe('battle', () => {
 		it('responds to ハイパーロボットバトル & responds to first bidding', async () => {
 			cloudinaryMock.url = 'https://hoge.com/hoge.png';
 			{
-				const {username, attachments, blocks, text,} = await slack.getResponseTo('ハイパーロボットバトル');
+				const {username, attachments, text,} = await slack.getResponseTo('ハイパーロボットバトル');
 				expect(username).toBe('hyperrobot');
 				expect(text).toContain(':question:手詰めです');
 				expect(attachments).toHaveLength(1);
-				expect(blocks).toHaveLength(1);
-				expect(blocks[0].type).toBe('section');
-				expect((blocks[0] as SectionBlock).accessory?.type).toBe('image');
 			}
 			{
 				const {username, text,} = await slack.getResponseTo('3');
