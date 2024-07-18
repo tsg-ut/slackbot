@@ -105,9 +105,10 @@ export default (slackClients: SlackInterface) => {
 			else{
 				const answerBoard = state.board.clone();
 				answerBoard.movecommand(state.answer);
+				const imageData = await image.upload(answerBoard);
 				await postmessage(
 					`だれも正解できなかったよ:cry:\n正解は ${board.logstringfy(state.answer)} の${state.answer.length}手だよ。`,
-					await image.upload(answerBoard)
+					imageData.secure_url
 				);
 				state = undefined;
 			}
@@ -139,7 +140,7 @@ export default (slackClients: SlackInterface) => {
 			}
 			const playerBoard = state.board.clone(); 
 			playerBoard.movecommand(cmd.moves);
-			const url = await image.upload(playerBoard);
+			const imageData = await image.upload(playerBoard);
 			if(playerBoard.iscleared()){
 				let comment = "正解です!:tada:";
 				if(cmd.moves.length === state.answer.length){
@@ -149,7 +150,7 @@ export default (slackClients: SlackInterface) => {
 					comment += "というか:bug:ってますね...?????  :satos:に連絡してください。";
 					await unlock(message.user, 'ricochet-robots-debugger');
 				}
-				await postmessage(comment,url);
+				await postmessage(comment,imageData.secure_url);
 				
 				const botcomment = (cmd.moves.length > state.answer.length) ?
 				                     `実は${state.answer.length}手でたどり着けるんです。\n${board.logstringfy(state.answer)}`:
@@ -157,7 +158,8 @@ export default (slackClients: SlackInterface) => {
 				
 				const botBoard = state.board.clone();
 				botBoard.movecommand(state.answer);
-				await postmessage(botcomment, await image.upload(botBoard));
+				const botBoardImageData = await image.upload(botBoard);
+				await postmessage(botcomment, botBoardImageData.secure_url);
 				
 				if(cmd.moves.length <= state.answer.length){
 					await unlock(message.user, 'ricochet-robots-clear-shortest');
@@ -174,7 +176,7 @@ export default (slackClients: SlackInterface) => {
 				return true;
 			}
 			else{
-				await postmessage("解けてませんね:thinking_face:",url);
+				await postmessage("解けてませんね:thinking_face:",imageData.secure_url);
 				return false;
 			}
 		}
@@ -258,7 +260,8 @@ export default (slackClients: SlackInterface) => {
 							},
 						};
 					}
-					await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,await image.upload(state.board));
+					const imageData = await image.upload(state.board);
+					await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,imageData.secure_url);
 					if(isbattle){
 						await unlock(message.user, 'ricochet-robots-buttle-play');
 					}

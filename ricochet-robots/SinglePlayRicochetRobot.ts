@@ -1,5 +1,6 @@
 import { AteQuiz, AteQuizProblem } from '../atequiz';
 import { round } from 'lodash';
+import cloudinary from 'cloudinary';
 import type { Message } from '@slack/web-api/dist/response/ConversationsHistoryResponse';
 import { SlackInterface } from '../lib/slack';
 import * as image from './image';
@@ -43,8 +44,18 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 
 	static async init({slackClients, channel, depth, size, numOfWalls, threadTs, originalUser}: SingleRicochetRobotConstructor) {
 		const [boardData, answer] = await board.getBoard({depth: (depth || 1000) , size, numOfWalls});
-		const imageUrl = await image.upload(boardData);
+		const imageData = await image.upload(boardData);
 		const quizText = `${answer.length}手詰めです`;
+
+		const thumbnailUrl = cloudinary.v2.url(`${imageData.public_id}.jpg`, {
+			private_cdn: false,
+			secure: true,
+			secure_distribution: 'res.cloudinary.com',
+			background: 'white',
+			width: 400,
+			height: 400,
+			crop: 'pad',
+		});
 
 		const singleRicochetRobot = new SinglePlayRicochetRobot(slackClients, {
 			problemMessage: {
@@ -59,7 +70,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 						},
 						accessory: {
 							type: 'image',
-							image_url: imageUrl,
+							image_url: thumbnailUrl,
 							alt_text: '',
 						},
 					},
@@ -81,7 +92,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 					},
 					{
 						type: 'image',
-						image_url: imageUrl,
+						image_url: imageData.secure_url,
 						alt_text: '',
 					},
 				],
@@ -123,7 +134,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 
 	async postNotSolvedMessage(board: board.Board) {
 		const message = '解けてませんね:thinking_face:';
-		const imageUrl = await image.upload(board);
+		const imageData = await image.upload(board);
 		await this.postMessage({
 			text: message,
 			blocks: [
@@ -136,7 +147,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 				},
 				{
 					type: 'image',
-					image_url: imageUrl,
+					image_url: imageData.secure_url,
 					alt_text: '',
 				},
 			],
@@ -209,7 +220,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 			await unlock(message.user, 'ricochet-robots-debugger');
 		}
 
-		const playerBoardUrl = await image.upload(playerBoard);
+		const playerBoardImageData = await image.upload(playerBoard);
 
 		if (comment.length > 0) {
 			blocks.push({
@@ -223,7 +234,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 
 		blocks.push( {
 			type: 'image',
-			image_url: playerBoardUrl,
+			image_url: playerBoardImageData.secure_url,
 			alt_text: '',
 		});
 		
@@ -233,7 +244,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 		
 		const botBoard = this.boardData.clone();
 		botBoard.movecommand(this.answer);
-		const botBoardUrl = await image.upload(botBoard);
+		const botBoardImageData = await image.upload(botBoard);
 
 		blocks.push(
 			{
@@ -245,7 +256,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 			},
 			{
 				type: 'image',
-				image_url: botBoardUrl,
+				image_url: botBoardImageData.url,
 				alt_text: '',
 			},
 			{

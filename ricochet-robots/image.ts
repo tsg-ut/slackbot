@@ -223,7 +223,7 @@ async function uploadbuffer(image: Buffer) {
 			}
 		}).end(image);
 	});
-	return result.secure_url;
+	return result;
 }
 
 export const upload = async (data: Board) => {
