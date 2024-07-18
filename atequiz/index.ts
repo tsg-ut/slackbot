@@ -71,6 +71,8 @@ export class AteQuiz {
   replaceKeys: { correctAnswerer: string } = { correctAnswerer: '[[!user]]' };
   mutex: Mutex;
   postOption: WebAPICallOptions;
+  threadTsDeferred: Deferred<string> = new Deferred();
+
   judge(answer: string, _user: string): boolean {
     return this.problem.correctAnswers.some(
       (correctAnswer) => answer === correctAnswer
@@ -86,13 +88,20 @@ export class AteQuiz {
    * @param {any} post the post judged as correct
    * @returns a object that specifies the parameters of a solved message
    */
-  solvedMessageGen(post: any): ChatPostMessageArguments {
+  solvedMessageGen(post: any): ChatPostMessageArguments | Promise<ChatPostMessageArguments> {
     const message = Object.assign({}, this.problem.solvedMessage);
     message.text = message.text.replaceAll(
       this.replaceKeys.correctAnswerer,
       post.user as string
     );
     return message;
+  }
+
+  answerMessageGen(_post?: any): ChatPostMessageArguments | null | Promise<ChatPostMessageArguments | null> {
+    if (!this.problem.answerMessage) {
+      return null;
+    }
+    return this.problem.answerMessage;
   }
 
   incorrectMessageGen(post: any): ChatPostMessageArguments | null {
@@ -124,6 +133,16 @@ export class AteQuiz {
     );
 
     this.mutex = new Mutex();
+  }
+
+  async repostProblemMessage() {
+    const threadTs = await this.threadTsDeferred.promise;
+    return this.slack.chat.postMessage({
+      ...this.problem.problemMessage,
+      ...this.postOption,
+      thread_ts: threadTs,
+      reply_broadcast: true,
+    });
   }
 
   /**
@@ -171,6 +190,7 @@ export class AteQuiz {
               Object.assign({}, this.problem.unsolvedMessage, { thread_ts })
             );
 
+            const answerMessage = await this.answerMessageGen();
             if (this.problem.answerMessage) {
               await postMessage(
                 Object.assign({}, this.problem.answerMessage, { thread_ts })
@@ -196,12 +216,13 @@ export class AteQuiz {
               clearInterval(tickTimer);
 
               await postMessage(
-                Object.assign({}, this.solvedMessageGen(message), { thread_ts })
+                Object.assign({}, await this.solvedMessageGen(message), { thread_ts })
               );
 
-              if (this.problem.answerMessage) {
+              const answerMessage = await this.answerMessageGen(message);
+              if (answerMessage) {
                 await postMessage(
-                  Object.assign({}, this.problem.answerMessage, { thread_ts })
+                  Object.assign({}, answerMessage, { thread_ts })
                 );
               }
 
@@ -232,6 +253,7 @@ export class AteQuiz {
     // Listeners should be added before postMessage is called.
     const response = await postMessage(this.problem.problemMessage);
     const thread_ts = response?.message?.thread_ts ?? response.ts;
+    this.threadTsDeferred.resolve(thread_ts);
     assert(typeof thread_ts === 'string');
 
     if (this.problem.immediateMessage) {

@@ -10,6 +10,10 @@ import { round } from 'lodash';
 import type { SlackInterface } from '../lib/slack.js';
 import type { MessageEvent } from '@slack/bolt';
 import { extractMessage } from '../lib/slackUtils';
+import logger from '../lib/logger';
+import SinglePlayRicochetRobot from './SinglePlayRicochetRobot';
+
+const log = logger.child({ bot: 'ricochet-robots' });
 
 interface State {
 	board: board.Board,
@@ -37,8 +41,10 @@ function getTimeLink(time: number){
 	return `<${url}|${text}>`;
 };
 
-export default ({eventClient, webClient: slack}: SlackInterface) => {
+export default (slackClients: SlackInterface) => {
+	const { eventClient, webClient: slack } = slackClients;
 	let state: State | undefined = undefined;
+	let singlePlayRicochetRobot: SinglePlayRicochetRobot | undefined = undefined;
 	const mutex = new Mutex();
 	
 	eventClient.on('message', async (messageEvent: MessageEvent) => {
@@ -52,8 +58,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			return;
 		}
 		if (!message.text)return;
-		const {text} = message;
-
+		const {text, channel} = message;
 
 		async function postmessage(comment: string,url?: string){
 			if(!url){
@@ -175,8 +180,53 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 		}
 		
 		mutex.runExclusive(async () => {
+			try {
+				let matches: RegExpMatchArray | null = null;
+				if((matches = text.match(/^(ベイビー|スーパー|ハイパー)ロボット( (\d+)手)?$/))){
+					if (singlePlayRicochetRobot) {
+						await singlePlayRicochetRobot.repostProblemMessage();
+						return;
+					}
+
+					let depth: number | undefined = parseInt(matches[2]);
+					if (Number.isNaN(depth)) {
+						depth = undefined;
+					} else if (depth >= 1000) {
+						depth = 1000;
+					} else if (depth <= 0) {
+						depth = 1;
+					}
+
+					const difficulty = {
+						"ベイビー": {size: {h: 3, w: 5}, numOfWalls: 3},
+						"スーパー": {size: {h: 5, w: 7}, numOfWalls: 10},
+						"ハイパー": {size: {h: 7, w: 9}, numOfWalls: 15},
+					}[text.match(/^(ベイビー|スーパー|ハイパー)/)[0]];
+
+					singlePlayRicochetRobot = await SinglePlayRicochetRobot.init({
+						slackClients,
+						channel: channel,
+						depth: depth,
+						size: difficulty.size,
+						numOfWalls: difficulty.numOfWalls,
+						threadTs: message.ts,
+						originalUser: message.user,
+					})
+
+					singlePlayRicochetRobot.start().then((result) => {
+						singlePlayRicochetRobot = undefined;
+						log.info(result);
+					});
+				}
+			} catch (e) {
+				log.error(e);
+				await postmessage('内部errorです:cry:\n' + String(e));
+				await unlock(message.user, 'ricochet-robots-debugger');
+			}
+
+			// TODO: バトルでない場合の処理を削除
 			try{
-				if(text.match(/^(ベイビー|スーパー|ハイパー)ロボット(バトル| (\d+)手)?$/)){
+				if(text.match(/^(ベイビー|スーパー|ハイパー)ロボットバトル?$/)){
 					let depth = undefined;
 					{
 						let matches = null;
@@ -216,7 +266,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 						await unlock(message.user, 'ricochet-robots-play');
 					}
 				}
-				else if(board.iscommand(text)){
+				else if(message.thread_ts === undefined && board.iscommand(text)){
 					if(!state){
 						await postmessage("まだ出題していませんよ:thinking_face:\nもし問題が欲しければ「ハイパーロボット」と言ってください");
 						return;
@@ -290,7 +340,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 				}
 			}
 			catch(e){
-				console.log('error',e);
+				log.error(e);
 				await postmessage('内部errorです:cry:\n' + String(e));
 				await unlock(message.user, 'ricochet-robots-debugger');
 			}

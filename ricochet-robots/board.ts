@@ -204,7 +204,7 @@ export const logstringfy = (log: Move[]) => {
 	return log.map(v => colournames[v.c]+directionnames[v.d]).join();
 };
 
-export const getBoard = async (boardspec: BoardSpec) => {
+export const getBoard = async (boardspec: BoardSpec): Promise<[Board, Move[]]> => {
 	const data = await rust_proxy.get_data(boardspec);
 	let lines = data.split('\n').filter((line) => line);
 	lines = lines.slice(lines.length-4,lines.length);
