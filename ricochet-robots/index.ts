@@ -1,14 +1,31 @@
 'use strict';
 
-const image = require('./image.js');
-const board = require('./board.js');
-const moment = require('moment');
-const querystring = require('querystring');
-const {Mutex} = require('async-mutex');
-const {unlock} = require('../achievements');
-const {round} = require('lodash');
+import * as image from './image';
+import * as board from './board';
+import moment from 'moment';
+import querystring from 'querystring';
+import { Mutex } from 'async-mutex';
+import { unlock } from '../achievements';
+import { round } from 'lodash';
+import type { SlackInterface } from '../lib/slack.js';
+import type { MessageEvent } from '@slack/bolt';
+import { extractMessage } from '../lib/slackUtils';
 
-function getTimeLink(time){
+interface State {
+	board: board.Board,
+	answer: board.Move[],
+	startDate: number,
+	battles: {
+		bids: {[key: string]: {decl: number, time: number}},
+		orderedbids?: {user: string, decl: number, time: number}[],
+		isbattle: boolean,
+		isbedding: boolean,
+		startbedding: boolean,
+		firstplayer?: boolean,
+	},
+}
+
+function getTimeLink(time: number){
 	const text = moment(time).utcOffset('+0900').format('HH:mm:ss');
 	const url = `https://www.timeanddate.com/countdown/generic?${querystring.stringify({
 		iso: moment(time).utcOffset('+0900').format('YYYYMMDDTHHmmss'),
@@ -20,12 +37,14 @@ function getTimeLink(time){
 	return `<${url}|${text}>`;
 };
 
-module.exports = ({eventClient, webClient: slack}) => {
-	let state = undefined;
+export default ({eventClient, webClient: slack}: SlackInterface) => {
+	let state: State | undefined = undefined;
 	const mutex = new Mutex();
 	
-	eventClient.on('message', async (message) => {
-		function toMention(user){
+	eventClient.on('message', async (messageEvent: MessageEvent) => {
+		const message = extractMessage(messageEvent);
+
+		function toMention(user: string){
 			return `<@${user}>`;
 		}
 		
@@ -36,7 +55,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 		const {text} = message;
 
 
-		async function postmessage(comment,url){
+		async function postmessage(comment: string,url?: string){
 			if(!url){
 				await slack.chat.postMessage({
 						channel: process.env.CHANNEL_SANDBOX,
@@ -59,7 +78,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 			}
 		}
 		
-		let timeoutId = null;
+		let timeoutId: NodeJS.Timeout | null = null;
 		
 		const beddingminutes = 1;
 		const answeringminutes = 1;
@@ -105,7 +124,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 			await chainbids();
 		}
 		
-		async function verifycommand(cmd){
+		async function verifycommand(cmd: board.Command){
 			if(!state.battles.isbattle && !cmd.isMADE && cmd.moves.length > state.answer.length){
 				await postmessage(
 					`この問題は${state.answer.length}手詰めだよ。その手は${cmd.moves.length}手かかってるよ:thinking_face:\n` +
@@ -175,7 +194,6 @@ module.exports = ({eventClient, webClient: slack}) => {
 						"ハイパー": {size: {h: 7, w: 9}, numOfWalls: 15},
 					}[text.match(/^(ベイビー|スーパー|ハイパー)/)[0]];
 					
-					const waittime = 10;
 					if(!state){
 						const [bo,ans] = await board.getBoard({depth: (depth || 1000) , ...difficulty});
 						state = {
@@ -184,8 +202,8 @@ module.exports = ({eventClient, webClient: slack}) => {
 							startDate: Date.now(),
 							battles: {
 								bids: {},
-								isbattle: isbattle,
-								isbedding: isbattle,
+								isbattle: Boolean(isbattle),
+								isbedding: Boolean(isbattle),
 								startbedding: false,
 							},
 						};

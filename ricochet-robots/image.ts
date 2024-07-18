@@ -1,9 +1,15 @@
 'use strict';
 
-const sharp = require('sharp');
-const cloudinary = require('cloudinary');
-const deepcopy = require('deepcopy');
+import sharp from 'sharp';
+import cloudinary, { UploadApiResponse } from 'cloudinary';
+import deepcopy from 'deepcopy';
+import type { Board } from './board';
+import type { OverlayOptions } from 'sharp';
 
+interface Position {
+	x: number,
+	y: number,
+}
 
 const size = {
 	grid: {
@@ -20,12 +26,12 @@ const size = {
 	},
 };
 
-function data2rawsharp(data) {
+function data2rawsharp(data: Board) {
 	return {
 		raw: {
 			height: size.grid.h * data.size.h + size.wall.thickness * 2,
 			width: size.grid.w * data.size.w + size.wall.thickness * 2,
-			channels: 4
+			channels: 4 as const,
 		}
 	};
 }
@@ -63,32 +69,32 @@ const graphics = {
 			<rect x="0" y="0" width="10" height="80" rx="3" ry="3" fill="#38382D"/>
 		</svg>
 	`,
-	robot: ({ colour }) => `
+	robot: ({ colour }: { colour: string }) => `
 		<svg width="50" height="50">
 			<circle cx="25" cy="25" r="25" fill="${colour}" shape-rendering="crispEdges"/>
 		</svg>
 	`,
-	trace: ({ colour }) => `
+	trace: ({ colour }: { colour: string }) => `
 		<svg width="50" height="50">
 			<circle cx="25" cy="25" r="22.5" fill="none" stroke="${colour}" stroke-width="5" shape-rendering="crispEdges"/>
 		</svg>
 	`,
-	goal: ({ colour }) => `
+	goal: ({ colour }: { colour: string }) => `
 		<svg width="50" height="50" viewBox="0 0 512 512">
 			<polygon points="256,12.531 327.047,183.922 512,198.531 370.938,319.047 414.219,499.469 256,402.563 97.781,499.469 141.063,319.047 0,198.531 184.953,183.922" fill="${colour}" shape-rendering="crispEdges"/>
 		</svg>
 	`,
 };
 
-async function data2buffer(data) {
+async function data2buffer(data: Board) {
 
 	const rawsharp = data2rawsharp(data);
 	let board = sharp({
 		create: Object.assign({ background: { r: 0, g: 0, b: 0, alpha: 255 } }, rawsharp.raw)
 	});
 	
-	const composites = [];
-	function compose_to_board(src,pos) {
+	const composites: OverlayOptions[] = [];
+	function compose_to_board(src: Buffer,pos: Position) {
 		composites.push({ input: src, left: pos.x, top: pos.y });
 	}
 	async function flush_board() {
@@ -105,7 +111,7 @@ async function data2buffer(data) {
 		}
 	}
 	
-	function pos2topleft(p) {
+	function pos2topleft(p: Position) {
 		return {
 			y: p.y * size.grid.h + (size.grid.h - size.robot.h) / 2 + size.wall.thickness,
 			x: p.x * size.grid.w + (size.grid.w - size.robot.w) / 2 + size.wall.thickness,
@@ -167,7 +173,7 @@ async function data2buffer(data) {
 
 		let svgstr = '';
 
-		function pos2cp(p) {
+		function pos2cp(p: { y: number, x: number }) {
 			const dc = -size.path.thickness / 2;
 			return {
 				y: (p.y + 0.5) * size.grid.h + size.wall.thickness + dc,
@@ -207,13 +213,8 @@ async function data2buffer(data) {
 };
 
 
-module.exports.data2dump = async (data, filename) => {
-	await sharp(await data2buffer(data), data2rawsharp(data)).toFile(filename);
-};
-
-
-async function uploadbuffer(image) {
-	const result = await new Promise((resolve, reject) => {
+async function uploadbuffer(image: Buffer) {
+	const result = await new Promise<UploadApiResponse>((resolve, reject) => {
 		cloudinary.v2.uploader.upload_stream({ resource_type: 'image' }, (error, data) => {
 			if (error) {
 				reject(error);
@@ -225,17 +226,17 @@ async function uploadbuffer(image) {
 	return result.secure_url;
 }
 
-module.exports.upload = async (data) => {
+export const upload = async (data: Board) => {
 	let image = await data2buffer(data);
 	image = await sharp(image, data2rawsharp(data))
 		.jpeg()
 		.toBuffer();
-	for (const _ of Array(20).fill()) {
+	for (const _ of Array(20).fill(undefined)) {
 		try {
 			return await uploadbuffer(image);
 		}
 		catch (e) {
 		}
 	}
-	return await uploadbuffer(data);
+	throw new Error('upload failed');
 };

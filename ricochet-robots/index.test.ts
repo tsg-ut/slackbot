@@ -1,29 +1,33 @@
 'use strict';
 
 jest.mock('cloudinary');
-jest.mock('./rust-proxy.js');
+jest.mock('./rust-proxy');
 jest.mock('../achievements');
+jest.mock('../lib/slackUtils');
 
-const cloudinary = require('cloudinary');
-const rust_proxy = require('./rust-proxy.js');
+import cloudinary from 'cloudinary';
+import * as rust_proxy from './rust-proxy';
 
-const hyperrobot = require('./index.js');
-const {default: Slack} = require('../lib/slackMock.ts');
+import hyperrobot from './index';
+import Slack from '../lib/slackMock';
 
-const fs = require('fs');
-const path = require('path');
-rust_proxy.get_data.mockImplementation((x) => {
+import fs from 'fs';
+import path from 'path';
+
+const get_data = rust_proxy.get_data as jest.MockedFunction<typeof rust_proxy.get_data>;
+get_data.mockImplementation((x) => {
 	return new Promise((resolve) => {
 		resolve(fs.readFileSync(path.join(__dirname,'rust_test_output.txt')).toString());
 	});
 });
 
+const cloudinaryMock = cloudinary as (typeof cloudinary & {url: string});
 
 
 // ./node_modules/jest/bin/jest.js --verbose --coverage ./ricochet-robots/
 
 describe('hyperrobot', () => {
-	let slack = null;
+	let slack: Slack | null = null;
 	beforeEach(() => {
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
@@ -35,7 +39,7 @@ describe('hyperrobot', () => {
 	});
 	describe('base', () => {
 		it('responds to ハイパーロボット', async () => {
-			cloudinary.url = 'https://hoge.com/hoge.png';
+			cloudinaryMock.url = 'https://hoge.com/hoge.png';
 			const {username, attachments, text,} = await slack.getResponseTo('ハイパーロボット');
 
 			expect(username).toBe('hyperrobot');
@@ -45,7 +49,7 @@ describe('hyperrobot', () => {
 	});
 	describe('battle', () => {
 		it('responds to ハイパーロボットバトル & responds to first bidding', async () => {
-			cloudinary.url = 'https://hoge.com/hoge.png';
+			cloudinaryMock.url = 'https://hoge.com/hoge.png';
 			{
 				const {username, attachments, text,} = await slack.getResponseTo('ハイパーロボットバトル');
 				expect(username).toBe('hyperrobot');

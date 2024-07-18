@@ -1,14 +1,45 @@
 'use strict';
 
-const image = require('./image.js');
-const deepcopy = require('deepcopy');
-const rust_proxy = require('./rust-proxy.js');
+import deepcopy from 'deepcopy';
+import * as rust_proxy from './rust-proxy';
 
-function rep(n,f){ for(let i = 0; i < n; i++)f(i); } 
-
-function randi(a,b){
-	return Math.floor(Math.random() * (b-a) + a);
+interface Position {
+	x: number,
+	y: number,
 }
+
+export interface Move {
+	c: number,
+	d: number,
+}
+
+export interface Command {
+	moves: Move[],
+	isMADE: boolean,
+}
+
+export interface BoardSpec {
+	depth: number,
+	size: {h: number, w: number},
+	numOfWalls: number,
+}
+
+interface GoalPosition extends Position {
+	colour: number,
+}
+
+interface WallPosition extends Position {
+	d: number,
+}
+
+interface BoardData {
+	h: number,
+	w: number,
+	walls: WallPosition[],
+	robots: Position[],
+}
+
+function rep(n: number,f: (i: number) => void){ for(let i = 0; i < n; i++)f(i); } 
 
 const colournames = [
 	'赤','緑','青','黄','黒'
@@ -18,8 +49,8 @@ const directionnames = [
 	'下','右','上','左'
 ];
 
-function arrays2idxs(arrs){
-	let res = {};
+function arrays2idxs(arrs: string[][]){
+	let res: {[key: string]: number} = {};
 	for(const v of arrs){
 		for(const k of v.entries()){
 			res[k[1]]=k[0];
@@ -40,11 +71,11 @@ const directionname2idx = arrays2idxs([
 	['j','l','k','h'],
 ]);
 
-module.exports.iscommand = (str) => {
+export const iscommand = (str: string) => {
 	return str.match(/^([赤青黄緑rgby]([上下左右wasdhjkl]+))+(まで)?$/);
 }
 
-module.exports.str2command = (str) => {
+export const str2command = (str: string): Command => {
 	const moves = [];
 	for (let matchArray, re = /([赤青黄緑rgby])([上下左右wasdhjkl]+)/g; (matchArray = re.exec(str));) {
 		//console.log(matchArray);
@@ -62,18 +93,26 @@ module.exports.str2command = (str) => {
 	};
 }
 
-function samep(p,q){
+function samep(p: Position,q: Position){
 	return p.x === q.x && p.y === q.y;
 }
 
-class Board{
+export class Board{
+	size: {h: number, w: number};
+	walls: WallPosition[];
+	robots: Position[];
+	goal: GoalPosition;
+	board: {haswall: boolean[]}[][];
+	directions: Position[];
+	logs: {c: number, d: number, from: Position, to: Position}[];
+
 	constructor(){}
-	load_board(data,goalcolour,goalpos){
+	load_board(data: BoardData,goalcolour: number,goalpos: GoalPosition) {
 		this.size = {
 			h: data["h"],
 			w: data["w"],
 		};
-		function pos2array(x){
+		function pos2array<T extends Position>(x: T){
 			return x;
 		}
 		this.walls = data["walls"].map(pos2array);
@@ -81,9 +120,9 @@ class Board{
 		this.goal = pos2array(goalpos);
 		this.goal.colour = goalcolour;
 		
-		this.board = Array(this.size.h).fill().map(_ => Array(this.size.w).fill().map(_ => {
+		this.board = Array(this.size.h).fill(undefined).map(_ => Array(this.size.w).fill(undefined).map(_ => {
 			return {
-				haswall: Array(4).fill().map(_ => false)
+				haswall: Array(4).fill(undefined).map(_ => false)
 			};
 		}));
 		
@@ -132,11 +171,11 @@ class Board{
 		return samep(this.robots[this.goal.colour],this.goal);
 	}
 	
-	isinside(p){
+	isinside(p: Position){
 		return 0 <= p.y && p.y < this.size.h && 0 <= p.x && p.x < this.size.w;
 	}
 		
-	move(c,d){
+	move(c: number,d: number){
 		let p = this.robots[c];
 		let mp = p;
 		for(;;){
@@ -154,18 +193,18 @@ class Board{
 		this.robots[c] = p;
 	}
 	
-	movecommand(cmd){
+	movecommand(cmd: Move[]){
 		for(const v of cmd){
 			this.move(v.c,v.d);
 		}	
 	}
 }
 
-module.exports.logstringfy = (log) => {
+export const logstringfy = (log: Move[]) => {
 	return log.map(v => colournames[v.c]+directionnames[v.d]).join();
 };
 
-module.exports.getBoard = async (boardspec) => {
+export const getBoard = async (boardspec: BoardSpec) => {
 	const data = await rust_proxy.get_data(boardspec);
 	let lines = data.split('\n').filter((line) => line);
 	lines = lines.slice(lines.length-4,lines.length);
@@ -179,11 +218,3 @@ module.exports.getBoard = async (boardspec) => {
 	bo.load_board(board_data,goalcolour,goalpos);
 	return [bo,answer];
 };
-
-
-
-
-
-
-
-
