@@ -5,9 +5,10 @@ import type { Message } from '@slack/web-api/dist/response/ConversationsHistoryR
 import { SlackInterface } from '../lib/slack';
 import * as image from './image';
 import * as board from './board';
-import { ChatPostMessageArguments, KnownBlock, WebAPICallOptions } from '@slack/web-api';
+import { ChatPostMessageArguments, KnownBlock } from '@slack/web-api';
 import { unlock } from '../achievements';
 import assert from 'assert';
+import { stripIndent } from 'common-tags';
 
 interface SingleRicochetRobotConstructor {
 	slackClients: SlackInterface,
@@ -43,7 +44,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 	}
 
 	static async init({slackClients, channel, depth, size, numOfWalls, threadTs, originalUser}: SingleRicochetRobotConstructor) {
-		const [boardData, answer] = await board.getBoard({depth: (depth || 1000) , size, numOfWalls});
+		const [boardData, answer] = await board.getBoard({depth, size, numOfWalls});
 		const imageData = await image.upload(boardData);
 		const quizText = `${answer.length}手詰めです`;
 
@@ -71,7 +72,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 						accessory: {
 							type: 'image',
 							image_url: thumbnailUrl,
-							alt_text: '',
+							alt_text: 'ハイパーロボット',
 						},
 					},
 				],
@@ -93,7 +94,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 					{
 						type: 'image',
 						image_url: imageData.secure_url,
-						alt_text: '',
+						alt_text: 'ハイパーロボット',
 					},
 				],
 			},
@@ -148,7 +149,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 				{
 					type: 'image',
 					image_url: imageData.secure_url,
-					alt_text: '',
+					alt_text: '結果',
 				},
 			],
 		});
@@ -157,25 +158,23 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 	judge(answer: string) {
 		if (board.iscommand(answer)) {
 			const command = board.str2command(answer);
-			if(!command.isMADE && command.moves.length > this.answer.length){
-				const message = [
-					`この問題は${this.answer.length}手詰めだよ。その手は${command.moves.length}手かかってるよ:thinking_face:`,
-					'もし最短でなくてもよいなら、手順のあとに「まで」をつけてね。'
-				].join('\n');
+			if (!command.isMADE && command.moves.length > this.answer.length) {
 				this.postMessage({
-					text: message,
+					text: stripIndent`
+						この問題は${this.answer.length}手詰めだよ。その手は${command.moves.length}手かかってるよ:thinking_face:
+						もし最短でなくてもよいなら、手順のあとに「まで」をつけてね。
+					`,
 				});
 				return false;
 			}
 			const playerBoard = this.boardData.clone(); 
 			playerBoard.movecommand(command.moves);
-			if(playerBoard.iscleared()){
+			if (playerBoard.iscleared()) {
 				this.endTime = Date.now();
 				return true;
-			} else {
-				this.postNotSolvedMessage(playerBoard);
-				return false;
 			}
+			this.postNotSolvedMessage(playerBoard);
+			return false;
 		}
 		return false;
 	}
@@ -190,7 +189,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 		assert(playerBoard.iscleared(), 'playerBoard is not cleared');
 
 		let comment = `<@${message.user}> 正解です!:tada:`;
-		if(command.moves.length === this.answer.length){
+		if (command.moves.length === this.answer.length) {
 			comment += 'さらに最短勝利です!:waiwai:';
 		}
 
@@ -232,10 +231,10 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 			});
 		}
 
-		blocks.push( {
+		blocks.push({
 			type: 'image',
 			image_url: playerBoardImageData.secure_url,
-			alt_text: '',
+			alt_text: 'プレイヤーの回答',
 		});
 		
 		const botcomment = (command.moves.length > this.answer.length) ?
@@ -257,7 +256,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 			{
 				type: 'image',
 				image_url: botBoardImageData.url,
-				alt_text: '',
+				alt_text: '想定回答',
 			},
 			{
 				type: 'section',
@@ -270,13 +269,13 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 		
 		if(command.moves.length <= this.answer.length){
 			await unlock(message.user, 'ricochet-robots-clear-shortest');
-			if(this.answer.length >= 10){
+			if (this.answer.length >= 10) {
 				await unlock(message.user, 'ricochet-robots-clear-shortest-over10');
 			}
-			if(this.answer.length >= 15){
+			if (this.answer.length >= 15) {
 				await unlock(message.user, 'ricochet-robots-clear-shortest-over15');
 			}
-			if(this.answer.length >= 20){
+			if (this.answer.length >= 20) {
 				await unlock(message.user, 'ricochet-robots-clear-shortest-over20');
 			}
 		}
