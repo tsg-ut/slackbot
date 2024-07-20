@@ -188,7 +188,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 		playerBoard.movecommand(command.moves);
 		assert(playerBoard.iscleared(), 'playerBoard is not cleared');
 
-		let comment = `<@${message.user}> 正解です!:tada:`;
+		let comment = '正解です!:tada:';
 		if (command.moves.length === this.answer.length) {
 			comment += 'さらに最短勝利です!:waiwai:';
 		}
