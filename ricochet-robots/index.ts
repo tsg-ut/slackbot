@@ -10,6 +10,10 @@ import { round } from 'lodash';
 import type { SlackInterface } from '../lib/slack.js';
 import type { MessageEvent } from '@slack/bolt';
 import { extractMessage } from '../lib/slackUtils';
+import logger from '../lib/logger';
+import SinglePlayRicochetRobot from './SinglePlayRicochetRobot';
+
+const log = logger.child({ bot: 'ricochet-robots' });
 
 interface State {
 	board: board.Board,
@@ -37,8 +41,10 @@ function getTimeLink(time: number){
 	return `<${url}|${text}>`;
 };
 
-export default ({eventClient, webClient: slack}: SlackInterface) => {
+export default (slackClients: SlackInterface) => {
+	const { eventClient, webClient: slack } = slackClients;
 	let state: State | undefined = undefined;
+	let singlePlayRicochetRobot: SinglePlayRicochetRobot | undefined = undefined;
 	const mutex = new Mutex();
 	
 	eventClient.on('message', async (messageEvent: MessageEvent) => {
@@ -52,8 +58,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			return;
 		}
 		if (!message.text)return;
-		const {text} = message;
-
+		const {text, channel} = message;
 
 		async function postmessage(comment: string,url?: string){
 			if(!url){
@@ -100,9 +105,10 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			else{
 				const answerBoard = state.board.clone();
 				answerBoard.movecommand(state.answer);
+				const imageData = await image.upload(answerBoard);
 				await postmessage(
 					`だれも正解できなかったよ:cry:\n正解は ${board.logstringfy(state.answer)} の${state.answer.length}手だよ。`,
-					await image.upload(answerBoard)
+					imageData.secure_url
 				);
 				state = undefined;
 			}
@@ -134,7 +140,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			}
 			const playerBoard = state.board.clone(); 
 			playerBoard.movecommand(cmd.moves);
-			const url = await image.upload(playerBoard);
+			const imageData = await image.upload(playerBoard);
 			if(playerBoard.iscleared()){
 				let comment = "正解です!:tada:";
 				if(cmd.moves.length === state.answer.length){
@@ -144,7 +150,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 					comment += "というか:bug:ってますね...?????  :satos:に連絡してください。";
 					await unlock(message.user, 'ricochet-robots-debugger');
 				}
-				await postmessage(comment,url);
+				await postmessage(comment,imageData.secure_url);
 				
 				const botcomment = (cmd.moves.length > state.answer.length) ?
 				                     `実は${state.answer.length}手でたどり着けるんです。\n${board.logstringfy(state.answer)}`:
@@ -152,7 +158,8 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 				
 				const botBoard = state.board.clone();
 				botBoard.movecommand(state.answer);
-				await postmessage(botcomment, await image.upload(botBoard));
+				const botBoardImageData = await image.upload(botBoard);
+				await postmessage(botcomment, botBoardImageData.secure_url);
 				
 				if(cmd.moves.length <= state.answer.length){
 					await unlock(message.user, 'ricochet-robots-clear-shortest');
@@ -169,14 +176,59 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 				return true;
 			}
 			else{
-				await postmessage("解けてませんね:thinking_face:",url);
+				await postmessage("解けてませんね:thinking_face:",imageData.secure_url);
 				return false;
 			}
 		}
 		
 		mutex.runExclusive(async () => {
+			try {
+				let matches: RegExpMatchArray | null = null;
+				if((matches = text.match(/^(ベイビー|スーパー|ハイパー)ロボット( (\d+)手)?$/))){
+					if (singlePlayRicochetRobot) {
+						await singlePlayRicochetRobot.repostProblemMessage();
+						return;
+					}
+
+					let depth: number = parseInt(matches[2]);
+					if (Number.isNaN(depth)) {
+						depth = 1000;
+					} else if (depth >= 1000) {
+						depth = 1000;
+					} else if (depth <= 0) {
+						depth = 1;
+					}
+
+					const difficulty = {
+						"ベイビー": {size: {h: 3, w: 5}, numOfWalls: 3},
+						"スーパー": {size: {h: 5, w: 7}, numOfWalls: 10},
+						"ハイパー": {size: {h: 7, w: 9}, numOfWalls: 15},
+					}[text.match(/^(ベイビー|スーパー|ハイパー)/)[0]];
+
+					singlePlayRicochetRobot = await SinglePlayRicochetRobot.init({
+						slackClients,
+						channel: channel,
+						depth: depth,
+						size: difficulty.size,
+						numOfWalls: difficulty.numOfWalls,
+						threadTs: message.ts,
+						originalUser: message.user,
+					})
+
+					singlePlayRicochetRobot.start().then((result) => {
+						singlePlayRicochetRobot = undefined;
+						log.info(result);
+					});
+				}
+			} catch (e) {
+				log.error(e);
+				await postmessage('内部errorです:cry:\n' + String(e));
+				await unlock(message.user, 'ricochet-robots-debugger');
+			}
+
+			// TODO: バトルでない場合の処理を削除
 			try{
-				if(text.match(/^(ベイビー|スーパー|ハイパー)ロボット(バトル| (\d+)手)?$/)){
+				if(text.match(/^(ベイビー|スーパー|ハイパー)ロボットバトル?$/)){
 					let depth = undefined;
 					{
 						let matches = null;
@@ -208,7 +260,8 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 							},
 						};
 					}
-					await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,await image.upload(state.board));
+					const imageData = await image.upload(state.board);
+					await postmessage(`${state.battles.isbattle ? ":question:": state.answer.length}手詰めです`,imageData.secure_url);
 					if(isbattle){
 						await unlock(message.user, 'ricochet-robots-buttle-play');
 					}
@@ -216,7 +269,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 						await unlock(message.user, 'ricochet-robots-play');
 					}
 				}
-				else if(board.iscommand(text)){
+				else if(message.thread_ts === undefined && board.iscommand(text)){
 					if(!state){
 						await postmessage("まだ出題していませんよ:thinking_face:\nもし問題が欲しければ「ハイパーロボット」と言ってください");
 						return;
@@ -290,7 +343,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 				}
 			}
 			catch(e){
-				console.log('error',e);
+				log.error(e);
 				await postmessage('内部errorです:cry:\n' + String(e));
 				await unlock(message.user, 'ricochet-robots-debugger');
 			}

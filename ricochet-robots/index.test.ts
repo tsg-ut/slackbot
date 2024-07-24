@@ -13,6 +13,7 @@ import Slack from '../lib/slackMock';
 
 import fs from 'fs';
 import path from 'path';
+import type { SectionBlock } from '@slack/web-api';
 
 const get_data = rust_proxy.get_data as jest.MockedFunction<typeof rust_proxy.get_data>;
 get_data.mockImplementation((x) => {
@@ -40,11 +41,17 @@ describe('hyperrobot', () => {
 	describe('base', () => {
 		it('responds to ハイパーロボット', async () => {
 			cloudinaryMock.url = 'https://hoge.com/hoge.png';
-			const {username, attachments, text,} = await slack.getResponseTo('ハイパーロボット');
+			const {username, attachments, blocks, text,} = await slack.getResponseTo('ハイパーロボット');
+
+			expect(get_data).toBeCalledTimes(1);
+			expect(get_data).toBeCalledWith({depth: 1000, size: {h: 7, w: 9}, numOfWalls: 15});
 
 			expect(username).toBe('hyperrobot');
 			expect(text).toContain('10手詰めです');
-			expect(attachments).toHaveLength(1);
+			expect(attachments).toBe(undefined);
+			expect(blocks).toHaveLength(1);
+			expect(blocks[0].type).toBe('section');
+			expect((blocks[0] as SectionBlock).accessory?.type).toBe('image');
 		}, 60000);
 	});
 	describe('battle', () => {
