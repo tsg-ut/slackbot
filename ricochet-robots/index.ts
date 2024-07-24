@@ -190,9 +190,9 @@ export default (slackClients: SlackInterface) => {
 						return;
 					}
 
-					let depth: number | undefined = parseInt(matches[2]);
+					let depth: number = parseInt(matches[2]);
 					if (Number.isNaN(depth)) {
-						depth = undefined;
+						depth = 1000;
 					} else if (depth >= 1000) {
 						depth = 1000;
 					} else if (depth <= 0) {
