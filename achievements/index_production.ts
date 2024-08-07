@@ -162,6 +162,15 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 		}
 	}
 
+	const ricochetRobotsAchievements = await db.collection('achievement_data').where('category', '==', 'ricochet-robots').get();
+	for (const doc of ricochetRobotsAchievements.docs) {
+		const data = doc.data();
+		const date = data.date.toDate();
+		if (date > new Date('2024-07-25T00:00:00+09:00') && date < new Date('2024-08-09T00:00:00+09:00')) {
+			await doc.ref.delete();
+		}
+	}
+
 	initializeDeferred.resolve();
 
 	const achievementsDataData = await db.collection('achievement_data').get();

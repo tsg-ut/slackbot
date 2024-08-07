@@ -211,7 +211,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 
 		const blocks: KnownBlock[] = [];
 
-		const passedMs = (this.endTime - this.startTime) / 1000;
+		const durationSeconds = (this.endTime - this.startTime) / 1000;
 
 		let comment = '';
 		if (command.moves.length < this.answer.length){
@@ -262,7 +262,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 				type: 'section',
 				text: {
 					type: 'mrkdwn',
-					text: `経過時間: ${round(passedMs, 3)} 秒`,
+					text: `経過時間: ${round(durationSeconds, 3)} 秒`,
 				},
 			}
 		);
@@ -281,13 +281,13 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 		}
 		await unlock(message.user, 'ricochet-robots-clear');
 		if (this.answer.length >= 8 && command.moves.length <= this.answer.length) {
-			if (passedMs <= this.answer.length * 10 * 1000) {
+			if (durationSeconds <= this.answer.length * 10) {
 				await unlock(message.user, 'ricochet-robots-clear-in-10sec-per-move-over8');
 			}
-			if (passedMs <= this.answer.length * 5 * 1000) {
+			if (durationSeconds <= this.answer.length * 5) {
 				await unlock(message.user, 'ricochet-robots-clear-in-5sec-per-move-over8');
 			}
-			if (passedMs <= this.answer.length * 1 * 1000) {
+			if (durationSeconds <= this.answer.length * 1) {
 				await unlock(message.user, 'ricochet-robots-clear-in-1sec-per-move-over8');
 			}
 		}
