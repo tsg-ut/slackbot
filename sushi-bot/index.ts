@@ -357,6 +357,12 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 			if (allText.match(/twitter(?!\.com)/i)) {
 				slack.reactions.add({name: 'x-logo', channel, timestamp})
 			}
+        }
+        
+        {
+			if (allText.match(/\bx(?!\.com)\b/i)) {
+				slack.reactions.add({name: 'twitter', channel, timestamp})
+			}
 		}
 	});
 
