@@ -6,6 +6,7 @@ import {countBy, throttle, groupBy, get as getter, chunk} from 'lodash';
 import moment from 'moment';
 import db from '../lib/firestore';
 // eslint-disable-next-line no-unused-vars
+import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getReactions} from '../lib/slackUtils';
 import {updateUsageCount} from '../lib/state';
@@ -13,6 +14,8 @@ import {Deferred} from '../lib/utils';
 import achievements, {Difficulty} from './achievements';
 
 const mutex = new Mutex();
+
+const log = logger.child({bot: 'achievements'});
 
 type users = {
 	chats?: number,
@@ -159,6 +162,23 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 			const data = doc.data();
 			state.users.set(doc.id, data || Object.create(null));
 			usersSet.add(doc.id);
+		}
+	}
+
+	// Temporal migration: Remove all achievements data with category = 'ricochet-robots' and created after 2024-07-25 and before 2024-08-08
+	const ricochetRobotsAchievements = await db.collection('achievement_data').where('category', '==', 'ricochet-robots').get();
+	for (const doc of ricochetRobotsAchievements.docs) {
+		const data = doc.data();
+		const ricochetRobotsAchievementsData = await db.collection('achievements').where('name', '==', data.id).get();
+		for (const doc2 of ricochetRobotsAchievementsData.docs) {
+			const achievementData = doc2.data();
+			if (
+				achievementData.date.toDate() > new Date('2024-07-25T00:00:00Z') &&
+				achievementData.date.toDate() < new Date('2024-08-09T00:00:00Z')
+			) {
+				await doc2.ref.delete();
+				log.debug(`${achievementData.user}の実績「${data.title}」を削除しました`);
+			}
 		}
 	}
 
@@ -353,14 +373,14 @@ export const lock = async (user: string, name: string) => {
 
 	const existingAchievement = await db.collection('achievements').where('name', '==', name).where('user', '==', user).get();
 	if (existingAchievement.empty) {
-		console.error(`${user} is not unlocking ${name} on db`);
+		log.error(`${user} is not unlocking ${name} on db`);
 	} else {
 		for (const doc of existingAchievement.docs) {
 			await doc.ref.delete();
 		}
 	}
 
-	console.log(`DEBUG: @${user}の実績「${achievement.title}」を削除しました`);
+	log.debug(`@${user}の実績「${achievement.title}」を削除しました`);
 };
 
 export const isUnlocked = async (user: string, name: string) => {
