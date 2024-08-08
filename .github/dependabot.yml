@@ -6,4 +6,4 @@ updates:
       interval: daily
     allow:
       - dependency-name: ytdl-core
-      - dependency-name: @distube/ytdl-core
+      - dependency-name: "@distube/ytdl-core"
