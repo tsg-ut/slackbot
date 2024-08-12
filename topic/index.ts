@@ -83,7 +83,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		for (const topic of [newTopic, ...currentTopics]) {
 			topics.push(topic);
 			const newTopicText = topics.join(' / ');
-			if (Buffer.from(newTopicText).length > 250) {
+			if (newTopicText.length > 250) {
 				break;
 			}
 			topicText = newTopicText;
