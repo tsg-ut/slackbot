@@ -23,8 +23,8 @@ const isQualifiableMessage = (message: Message) => {
 	}
 
 	const [line] = lines;
-	const lineLength = Buffer.from(line).length;
-	return lineLength >= 1 && lineLength <= 100;
+	const lineLength = line.length;
+	return lineLength >= 1 && lineLength <= 60;
 };
 
 interface StateObj {
@@ -82,7 +82,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		const topics = [headline];
 		for (const topic of [newTopic, ...currentTopics]) {
 			topics.push(topic);
-			const newTopicText = topics.join(' / ');
+			const newTopicText = topics.join('／');
 			if (newTopicText.length > 250) {
 				break;
 			}
@@ -128,7 +128,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		if (message === undefined) {
 			return;
 		}
-		
+
 		// スレッド内の発言はconversations.historyで取得できないため正しいメッセージが取得できない場合がある
 		if (event.item.ts !== message?.ts) {
 			return;
