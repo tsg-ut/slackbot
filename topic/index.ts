@@ -77,7 +77,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 
 	const updateTopic = async (newTopic: string) => {
 		const currentTopicText = await getTopic();
-		const [headline, ...currentTopics] = currentTopicText.split('/').map((topic) => topic.trim());
+		const [headline, ...currentTopics] = currentTopicText.split('／').map((topic) => topic.trim());
 		let topicText = '';
 		const topics = [headline];
 		for (const topic of [newTopic, ...currentTopics]) {
