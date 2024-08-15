@@ -134,7 +134,7 @@ describe('topic', () => {
 					ok: true,
 					channel: {
 						topic: {
-							value: 'Current Topic',
+							value: 'Current Topic 1／Current Topic 2／Current Topic 3',
 						},
 					},
 				});
@@ -176,7 +176,7 @@ describe('topic', () => {
 				expect(mockSlack.webClient.conversations.info).toBeCalledWith({channel: process.env.CHANNEL_SANDBOX});
 				expect(mockSlack.webClient.conversations.setTopic).toBeCalledWith({
 					channel: process.env.CHANNEL_SANDBOX,
-					topic: 'Current Topic／New Topic',
+					topic: 'Current Topic 1／New Topic／Current Topic 2／Current Topic 3',
 				});
 			});
 		});
