@@ -77,12 +77,12 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 
 	const updateTopic = async (newTopic: string) => {
 		const currentTopicText = await getTopic();
-		const [headline, ...currentTopics] = currentTopicText.split('／').map((topic) => topic.trim());
+		const [headline, ...currentTopics] = currentTopicText.split(/[／｜]/).map((topic) => topic.trim());
 		let topicText = '';
 		const topics = [headline];
 		for (const topic of [newTopic, ...currentTopics]) {
 			topics.push(topic);
-			const newTopicText = topics.join('／');
+			const newTopicText = topics.join('｜');
 			if (newTopicText.length > 250) {
 				break;
 			}
@@ -143,6 +143,6 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		await TopicMessages.doc(message.ts).set({message, likes: []});
 
 		increment(message.user, 'topic-adopted');
-		updateTopic(message.text.trim());
+		await updateTopic(message.text.trim());
 	});
 };
