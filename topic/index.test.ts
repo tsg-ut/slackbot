@@ -25,12 +25,9 @@ jest.mock('../lib/firestore', () => ({
 }));
 
 import type {firestore} from 'firebase-admin';
-import {set} from 'lodash';
 import db from '../lib/firestore';
 import Slack from '../lib/slackMock';
 import {getReactions} from '../lib/slackUtils';
-import State from '../lib/state';
-import {Deferred} from '../lib/utils';
 import topicHandler, {addLike, removeLike} from './index';
 
 const runTransaction = db.runTransaction as jest.MockedFunction<typeof db.runTransaction>;
@@ -126,15 +123,21 @@ describe('topic', () => {
 		});
 
 		describe('topicHandler', () => {
-			it('should initialize state and set topic', async () => {
-				const mockSlack = new Slack();
+			const setupTest = async (
+				mockSlack: Slack,
+				currentTopic: string,
+				message: string,
+				reaction: string,
+				reactions: Record<string, string[]>,
+			) => {
+				const MESSAGE_TS = '12345';
 
 				const converastionsInfo = mockSlack.webClient.conversations.info as jest.MockedFunction<typeof mockSlack.webClient.conversations.info>;
 				converastionsInfo.mockResolvedValue({
 					ok: true,
 					channel: {
 						topic: {
-							value: 'Current Topic 1／Current Topic 2／Current Topic 3',
+							value: currentTopic,
 						},
 					},
 				});
@@ -143,41 +146,87 @@ describe('topic', () => {
 				conversationsHistory.mockResolvedValue({
 					ok: true,
 					messages: [{
-						ts: '12345',
-						text: 'New Topic',
+						ts: MESSAGE_TS,
+						text: message,
 					}],
 				});
 
 				const setTopic = mockSlack.webClient.conversations.setTopic as jest.MockedFunction<typeof mockSlack.webClient.conversations.setTopic>;
-				const setTopicDeferred = new Deferred();
-				setTopic.mockImplementation(() => {
-					setTopicDeferred.resolve(null);
-					return Promise.resolve({ok: true});
-				});
+				setTopic.mockImplementation(() => Promise.resolve({ok: true}));
 
-				(getReactions as jest.MockedFunction<typeof getReactions>).mockResolvedValue({
-					koresuki: ['user1', 'user2', 'user3', 'user4', 'user5'],
-				});
+				(getReactions as jest.MockedFunction<typeof getReactions>).mockResolvedValue(reactions);
 
 				process.env.CHANNEL_SANDBOX = FAKE_SANDBOX;
 
 				await topicHandler(mockSlack);
 
-				mockSlack.eventClient.emit('reaction_added', {
+				const eventHandlers = mockSlack.eventClient.listeners('reaction_added');
+
+				expect(eventHandlers).toHaveLength(1);
+
+				await eventHandlers[0]({
 					item: {
 						channel: FAKE_SANDBOX,
-						ts: '12345',
+						ts: MESSAGE_TS,
 					},
-					reaction: 'koresuki',
+					reaction,
+				});
+			};
+
+			it('should set topic', async () => {
+				const mockSlack = new Slack();
+
+				await setupTest(mockSlack, 'Current Topic 1｜Current Topic 2／Current Topic 3', 'New Topic', 'koresuki', {
+					koresuki: ['user1', 'user2', 'user3', 'user4', 'user5'],
 				});
 
-				await setTopicDeferred.promise;
-
-				expect(mockSlack.webClient.conversations.info).toBeCalledWith({channel: process.env.CHANNEL_SANDBOX});
+				expect(mockSlack.webClient.conversations.info).toBeCalledWith({
+					channel: process.env.CHANNEL_SANDBOX,
+				});
 				expect(mockSlack.webClient.conversations.setTopic).toBeCalledWith({
 					channel: process.env.CHANNEL_SANDBOX,
-					topic: 'Current Topic 1／New Topic／Current Topic 2／Current Topic 3',
+					topic: 'Current Topic 1｜New Topic｜Current Topic 2｜Current Topic 3',
 				});
+			});
+
+			it('should not set topic if the incoming reaction is not koresuki', async () => {
+				const mockSlack = new Slack();
+
+				await setupTest(mockSlack, 'Current Topic', 'New Topic', 'invalid', {
+					koresuki: ['user1', 'user2', 'user3', 'user4', 'user5'],
+				});
+
+				expect(mockSlack.webClient.conversations.setTopic).not.toBeCalled();
+			});
+
+			it('should not set topic for a non-qualifying message', async () => {
+				const mockSlack = new Slack();
+
+				await setupTest(mockSlack, 'Current Topic', 'Invalid\nMessage', 'koresuki', {
+					koresuki: ['user1', 'user2', 'user3', 'user4', 'user5'],
+				});
+
+				expect(mockSlack.webClient.conversations.setTopic).not.toBeCalled();
+			});
+
+			it('should not set topic if the message is too long', async () => {
+				const mockSlack = new Slack();
+
+				await setupTest(mockSlack, 'Current Topic', 'A'.repeat(61), 'koresuki', {
+					koresuki: ['user1', 'user2', 'user3', 'user4', 'user5'],
+				});
+
+				expect(mockSlack.webClient.conversations.setTopic).not.toBeCalled();
+			});
+
+			it('should not set topic if reactions are less than 5', async () => {
+				const mockSlack = new Slack();
+
+				await setupTest(mockSlack, 'Current Topic', 'New Topic', 'koresuki', {
+					koresuki: ['user1', 'user2'],
+				});
+
+				expect(mockSlack.webClient.conversations.setTopic).not.toBeCalled();
 			});
 		});
 	});
