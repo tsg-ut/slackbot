@@ -3,14 +3,13 @@ import os from 'os';
 import {PassThrough} from 'stream';
 import {Webhooks} from '@octokit/webhooks';
 import concat from 'concat-stream';
-import {FastifyInstance} from 'fastify';
+import {FastifyInstance, type FastifyPluginOptions} from 'fastify';
+import plugin from 'fastify-plugin';
 import {get} from 'lodash';
 import pm2 from 'pm2';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
-
-// @ts-expect-error
-import Blocker from './block.js';
+import Blocker from './block';
 
 const log = logger.child({bot: 'deploy'});
 
@@ -31,8 +30,7 @@ const commands = [
 const deployBlocker = new Blocker();
 export const blockDeploy = (name: string) => deployBlocker.block(name);
 
-// eslint-disable-next-line require-await
-export const server = ({webClient: slack}: SlackInterface) => async (fastify: FastifyInstance) => {
+export const server = ({webClient: slack}: SlackInterface) => plugin((fastify: FastifyInstance, opts: FastifyPluginOptions, next: () => void) => {
 	let triggered = false;
 	let thread: string = null;
 
@@ -141,4 +139,6 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 		res.code(501);
 		return 'not implemented';
 	});
-};
+
+	next();
+});
