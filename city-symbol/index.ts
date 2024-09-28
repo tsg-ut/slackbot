@@ -1,10 +1,10 @@
 import qs from 'querystring';
-import {Mutex} from 'async-mutex';
-import {sample} from 'lodash';
-import {increment} from '../achievements';
-import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
-import {SlackInterface} from '../lib/slack';
-import {prefectures} from '../room-gacha/prefectures';
+import { Mutex } from 'async-mutex';
+import { sample } from 'lodash';
+import { increment } from '../achievements';
+import { AteQuiz, typicalMessageTextsGenerator } from '../atequiz';
+import { SlackInterface } from '../lib/slack';
+import { prefectures } from '../room-gacha/prefectures';
 
 const mutex = new Mutex();
 
@@ -95,7 +95,7 @@ class CitySymbolAteQuiz extends AteQuiz {
 }
 
 export default async (slackClients: SlackInterface) => {
-	const {eventClient} = slackClients;
+	const { eventClient } = slackClients;
 
 	eventClient.on('message', (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
@@ -125,7 +125,7 @@ export default async (slackClients: SlackInterface) => {
 									accessory: {
 										type: 'image',
 										image_url: imageUrl,
-										alt_text: 'QRコード',
+										alt_text: '市区町村章',
 									},
 								},
 							],
@@ -150,7 +150,7 @@ export default async (slackClients: SlackInterface) => {
 								{
 									type: 'image',
 									image_url: imageUrl,
-									alt_text: 'QRコード',
+									alt_text: '市区町村章',
 								},
 							],
 						},
