@@ -48,6 +48,7 @@ jobs:
           git ls-files | grep eslintrc | xargs -L 1 dirname | paste -sd ' ' | xargs -I {} sh -c "npx eslint --ext js,ts -f rdjson {} | reviewdog -f=rdjson -name=ESLint -reporter=github-pr-review"
 
       - name: codecov
+        continue-on-error: true
         run: npx codecov
 
   test-rust:

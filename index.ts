@@ -109,6 +109,7 @@ const allBots = [
 	'qrcode-quiz',
 	'oneiromancy',
 	'auto-archiver',
+	'city-symbol',
 ];
 
 log.info('slackbot started');
