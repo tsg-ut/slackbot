@@ -9,6 +9,6 @@
         "sourceType": "module"
     },
     "rules": {
-        "no-console": "off"
+        "prefer-named-capture-group": "off"
     }
 }
