@@ -9,6 +9,7 @@ import { ChatPostMessageArguments, KnownBlock } from '@slack/web-api';
 import { unlock } from '../achievements';
 import assert from 'assert';
 import { stripIndent } from 'common-tags';
+import type { GenericMessageEvent } from '@slack/bolt';
 
 interface SingleRicochetRobotConstructor {
 	slackClients: SlackInterface,
@@ -179,7 +180,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 		return false;
 	}
 
-	async solvedMessageGen(message: Message) {
+	async solvedMessageGen(message: GenericMessageEvent) {
 		const answer = message.text as string;
 		assert(board.iscommand(answer), 'answer is not command');
 
@@ -200,7 +201,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 		};
 	}
 
-	async answerMessageGen(message: Message) {
+	async answerMessageGen(message: GenericMessageEvent) {
 		const answer = message.text as string;
 		assert(board.iscommand(answer), 'answer is not command');
 

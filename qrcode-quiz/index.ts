@@ -1,5 +1,5 @@
 import {writeFileSync} from 'fs';
-import {Message} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
+import type {GenericMessageEvent} from '@slack/bolt';
 import {Mutex} from 'async-mutex';
 import {v2 as cloudinary} from 'cloudinary';
 import {stripIndent} from 'common-tags';
@@ -344,7 +344,7 @@ class QrAteQuiz extends AteQuiz {
 		return super.start();
 	}
 
-	solvedMessageGen(message: Message) {
+	solvedMessageGen(message: GenericMessageEvent) {
 		this.endTime = Date.now();
 
 		const duration = (this.endTime - this.startTime) / 1000;
