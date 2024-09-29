@@ -1,10 +1,14 @@
 import { WebAPICallOptions, WebClient } from '@slack/web-api';
-import type { EventEmitter } from 'events';
 import { SlackInterface } from '../lib/slack';
 import { ChatPostMessageArguments } from '@slack/web-api/dist/methods';
 import assert from 'assert';
 import { Mutex } from 'async-mutex';
 import { Deferred } from '../lib/utils';
+import logger from '../lib/logger';
+import type { GenericMessageEvent, MessageEvent } from '@slack/bolt';
+import { extractMessage, isBotMessage } from '../lib/slackUtils';
+
+const log = logger.child({ bot: 'atequiz' });
 
 export interface AteQuizProblem {
   problemMessage: ChatPostMessageArguments;
@@ -63,15 +67,17 @@ export const typicalMessageTextsGenerator = {
  * To use other judge/watSecGen/ngReaction, please extend this class.
  */
 export class AteQuiz {
-  eventClient: EventEmitter;
+  eventClient: SlackInterface['eventClient'];
   slack: WebClient;
   problem: AteQuizProblem;
   ngReaction: string | null = 'no_good';
   state: AteQuizState = 'waiting';
   replaceKeys: { correctAnswerer: string } = { correctAnswerer: '[[!user]]' };
-  mutex: Mutex;
+  mutex: Mutex = new Mutex();
+  deferred: Deferred<AteQuizResult> = new Deferred();
   postOption: WebAPICallOptions;
   threadTsDeferred: Deferred<string> = new Deferred();
+  tickTimer: NodeJS.Timeout | null = null;
 
   judge(answer: string, _user: string): boolean {
     return this.problem.correctAnswers.some(
@@ -88,7 +94,7 @@ export class AteQuiz {
    * @param {any} post the post judged as correct
    * @returns a object that specifies the parameters of a solved message
    */
-  solvedMessageGen(post: any): ChatPostMessageArguments | Promise<ChatPostMessageArguments> {
+  solvedMessageGen(post: GenericMessageEvent): ChatPostMessageArguments | Promise<ChatPostMessageArguments> {
     const message = Object.assign({}, this.problem.solvedMessage);
     message.text = message.text.replaceAll(
       this.replaceKeys.correctAnswerer,
@@ -97,14 +103,14 @@ export class AteQuiz {
     return message;
   }
 
-  answerMessageGen(_post?: any): ChatPostMessageArguments | null | Promise<ChatPostMessageArguments | null> {
+  answerMessageGen(_post?: GenericMessageEvent): ChatPostMessageArguments | null | Promise<ChatPostMessageArguments | null> {
     if (!this.problem.answerMessage) {
       return null;
     }
     return this.problem.answerMessage;
   }
 
-  incorrectMessageGen(post: any): ChatPostMessageArguments | null {
+  incorrectMessageGen(post: GenericMessageEvent): ChatPostMessageArguments | null {
     if (!this.problem.incorrectMessage) {
       return null;
     }
@@ -124,15 +130,13 @@ export class AteQuiz {
     this.eventClient = eventClient;
     this.slack = slack;
     this.problem = JSON.parse(JSON.stringify(problem));
-    this.postOption = JSON.parse(JSON.stringify(option));
+    this.postOption = option ? JSON.parse(JSON.stringify(option)) : option;
 
     assert(
       this.problem.hintMessages.every(
         (hint) => hint.channel === this.problem.problemMessage.channel
       )
     );
-
-    this.mutex = new Mutex();
   }
 
   async repostProblemMessage() {
@@ -150,6 +154,10 @@ export class AteQuiz {
    * @returns A promise of AteQuizResult that becomes resolved when the quiz ends.
    */
   async start(startOption?: AteQuizStartOption): Promise<AteQuizResult> {
+    if (this.state !== 'waiting') {
+      throw new Error('AteQuiz is already started');
+    }
+
     const _option = Object.assign(
       { mode: 'normal' } as AteQuizStartOption,
       startOption
@@ -171,41 +179,54 @@ export class AteQuiz {
     let previousHintTime: number = null;
     let hintIndex = 0;
 
-    const deferred = new Deferred<AteQuizResult>();
-
     const onTick = () => {
       this.mutex.runExclusive(async () => {
-        const now = Date.now();
-        const nextHintTime =
-          previousHintTime + 1000 * this.waitSecGen(hintIndex);
-        if (this.state === 'solving' && nextHintTime <= now) {
-          previousHintTime = now;
-          if (hintIndex < this.problem.hintMessages.length) {
-            const hint = this.problem.hintMessages[hintIndex];
-            await postMessage(Object.assign({}, hint, { thread_ts }));
-            hintIndex++;
-          } else {
-            this.state = 'unsolved';
-            await postMessage(
-              Object.assign({}, this.problem.unsolvedMessage, { thread_ts })
-            );
-
-            const answerMessage = await this.answerMessageGen();
-            if (this.problem.answerMessage) {
+        try {
+          const now = Date.now();
+          const nextHintTime =
+            previousHintTime + 1000 * this.waitSecGen(hintIndex);
+          if (this.state === 'solving' && nextHintTime <= now) {
+            previousHintTime = now;
+            if (hintIndex < this.problem.hintMessages.length) {
+              const hint = this.problem.hintMessages[hintIndex];
+              await postMessage(Object.assign({}, hint, { thread_ts }));
+              hintIndex++;
+            } else {
+              this.state = 'unsolved';
               await postMessage(
-                Object.assign({}, this.problem.answerMessage, { thread_ts })
+                Object.assign({}, this.problem.unsolvedMessage, { thread_ts })
               );
+
+              const answerMessage = await this.answerMessageGen();
+              if (answerMessage) {
+                await postMessage(
+                  Object.assign({}, answerMessage, { thread_ts })
+                );
+              }
+              clearInterval(this.tickTimer);
+              this.deferred.resolve(result);
             }
-            clearInterval(tickTimer);
-            deferred.resolve(result);
           }
+        } catch (error) {
+          log.error(error?.stack);
+          this.deferred.reject(error);
+          this.abort();
+
+          await postMessage({
+            username: 'AteQuiz',
+            channel: this.problem.problemMessage.channel,
+            text: `エラーが発生しました。\n${error?.stack}`,
+            thread_ts,
+          });
         }
       });
     };
 
-    this.eventClient.on('message', async (message) => {
-      if (message.thread_ts === thread_ts) {
-        if (message.subtype === 'bot_message') return;
+    this.eventClient.on('message', async (messageEvent: MessageEvent) => {
+      const message = extractMessage(messageEvent);
+
+      if (message !== null && message.thread_ts === thread_ts) {
+        if (isBotMessage(message)) return;
         if (_option.mode === 'solo' && message.user !== _option.player) return;
         this.mutex.runExclusive(async () => {
           if (this.state === 'solving') {
@@ -213,7 +234,7 @@ export class AteQuiz {
             const isCorrect = this.judge(answer, message.user as string);
             if (isCorrect) {
               this.state = 'solved';
-              clearInterval(tickTimer);
+              clearInterval(this.tickTimer);
 
               await postMessage(
                 Object.assign({}, await this.solvedMessageGen(message), { thread_ts })
@@ -229,7 +250,7 @@ export class AteQuiz {
               result.correctAnswerer = message.user;
               result.hintIndex = hintIndex;
               result.state = 'solved';
-              deferred.resolve(result);
+              this.deferred.resolve(result);
             } else {
               const generatedMessage = this.incorrectMessageGen(message);
               if (this.ngReaction) {
@@ -262,8 +283,13 @@ export class AteQuiz {
       );
     }
     previousHintTime = Date.now();
-    const tickTimer = setInterval(onTick, 1000);
+    this.tickTimer = setInterval(onTick, 1000);
 
-    return deferred.promise;
+    return this.deferred.promise;
+  }
+
+  abort() {
+    this.state = 'unsolved';
+    clearInterval(this.tickTimer);
   }
 }
