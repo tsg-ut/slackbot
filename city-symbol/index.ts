@@ -93,6 +93,26 @@ const getWikipediaSource = async (prefName: string) => {
 	return citySymbols;
 };
 
+const extractPlaceImage = (content: string) => {
+	{
+		const placeImageMatches = content.match(/位置画像.+\|image\s*=\s*(.+?)[|}]/);
+		if (placeImageMatches?.[1]) {
+			return placeImageMatches[1];
+		}
+	}
+
+	{
+		const placeImageMatches = content.match(/\{\{基礎自治体位置図\|(\d+)\|(\d+)\}\}/);
+		if (placeImageMatches?.[1] && placeImageMatches?.[2]) {
+			const prefCode = placeImageMatches[1].padStart(2, '0');
+			const cityCode = placeImageMatches[2].padStart(3, '0');
+			return `基礎自治体位置図_${prefCode}${cityCode}.svg`;
+		}
+	}
+
+	throw new Error('Failed to extract place image');
+};
+
 const getCityInformation = async (title: string): Promise<CityInformation> => {
 	log.info(`Getting wikipedia ${title}...`);
 
@@ -113,8 +133,7 @@ const getCityInformation = async (title: string): Promise<CityInformation> => {
 		throw new Error('Failed to get wikipedia source');
 	}
 
-	const placeImageMatches = content.match(/位置画像.+\|image\s*=\s*(.+?)\|/);
-	const placeImage = placeImageMatches?.[1] ?? '';
+	const placeImage = extractPlaceImage(content);
 
 	const rubyMatches = content.match(/（(.+?)）は/);
 	const ruby = rubyMatches?.[1] ?? '';
@@ -139,7 +158,7 @@ class CitySymbolAteQuiz extends AteQuiz {
 	}
 }
 
-export default async (slackClients: SlackInterface) => {
+export default (slackClients: SlackInterface) => {
 	const {eventClient} = slackClients;
 
 	eventClient.on('message', (message) => {
