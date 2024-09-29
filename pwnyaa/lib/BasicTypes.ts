@@ -7,12 +7,19 @@ export interface User {
   currentStreak?: number,
 }
 
+// Achievement Type
+export enum AchievementType {
+  RATIO = 0, // half and all
+  COUNT = 1, // 5, 10, 20, 50 problems
+}
+
 // Site Information
 export interface Contest{
   id: number,
   url: string,
   title: string,
   alias: string[],
+  achievementType: AchievementType,
   numChalls: number,
   joiningUsers: User[],
   achievementStr?: string,

@@ -3,7 +3,7 @@ import {constants, promises as fs} from 'fs';
 import path from 'path';
 import Slack from '../lib/slackMock';
 import {getMemberName} from '../lib/slackUtils';
-import {Challenge, SolvedInfo, Profile} from './lib/BasicTypes';
+import {AchievementType, Challenge, SolvedInfo, Profile} from './lib/BasicTypes';
 import {fetchChallsCH, fetchUserProfileCH} from './lib/CHManager';
 import {fetchChallsKSN, fetchUserProfileKSN} from './lib/KSNManager';
 import {fetchChallsTW, fetchUserProfileTW} from './lib/TWManager';
@@ -171,6 +171,7 @@ beforeEach(async () => {
 				alias: ['tw'],
 				joiningUsers: [{slackId: slack.fakeUser, idCtf: '23718'}],
 				numChalls: 46,
+				achievementType: AchievementType.RATIO,
 				achievementStr: 'tw',
 				fetchUserProfile: (_username: string) => getProfile(sampleProfileTW),
 				fetchChalls: () => getChalls(sampleChallsTW),
@@ -183,6 +184,7 @@ beforeEach(async () => {
 				alias: ['xyz'],
 				joiningUsers: [],
 				numChalls: 51,
+				achievementType: AchievementType.RATIO,
 				achievementStr: 'xyz',
 				fetchUserProfile: (_username: string) => getProfile(sampleProfileXYZ),
 				fetchChalls: () => getChalls(sampleChallsXYZ),
@@ -195,6 +197,7 @@ beforeEach(async () => {
 				alias: ['cryptohack', 'ch'],
 				joiningUsers: [],
 				numChalls: 51,
+				achievementType: AchievementType.RATIO,
 				achievementStr: 'ch',
 				fetchUserProfile: (_username: string) => getProfile(sampleProfileCH),
 				fetchChalls: () => getChalls(sampleChallsCH),
@@ -207,6 +210,7 @@ beforeEach(async () => {
 				alias: ['ksn', 'ksnctf'],
 				joiningUsers: [],
 				numChalls: 31,
+				achievementType: AchievementType.RATIO,
 				achievementStr: 'ksn',
 				fetchUserProfile: (_username: string) => getProfile(sampleProfileKSN),
 				fetchChalls: () => getChalls(sampleChallsKSN),
