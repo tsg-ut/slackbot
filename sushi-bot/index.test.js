@@ -354,6 +354,37 @@ it('does not react to "twitter.com"', async () => {
 	expect(slack.webClient.reactions.add).not.toHaveBeenCalled();
 });
 
+it('reacts to "X" with :twitter:', () => new Promise((resolve) => {
+	slack.on('reactions.add', ({name, channel, timestamp}) => {
+		expect(name).toBe('twitter');
+		expect(channel).toBe(slack.fakeChannel);
+		expect(timestamp).toBe(slack.fakeTimestamp);
+		resolve();
+	});
+
+	slack.eventClient.emit('message', {
+		channel: slack.fakeChannel,
+		text: '私のXアカウントは@Sqrt10_31622776です',
+		user: slack.fakeUser,
+		ts: slack.fakeTimestamp,
+	});
+}));
+
+it('does not react to words including letter "x" (e.g. "fox", "xylophone")', async () => {
+	slack.webClient.reactions.add.mockReturnValue(null);
+
+	slack.eventClient.emit('message', {
+		channel: slack.fakeChannel,
+		text: 'The quick brown fox jumps over the lazy dog.',
+		user: slack.fakeUser,
+		ts: slack.fakeTimestamp,
+	});
+
+	await new Promise((resolve) => process.nextTick(resolve));
+
+	expect(slack.webClient.reactions.add).not.toHaveBeenCalled();
+});
+
 it('reacts to sushi in an attachment', async () => {
 	slack.on('reactions.add', ({ name, channel, timestamp }) => {
 		expect(name).toBe('sushi');

@@ -358,6 +358,12 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 				slack.reactions.add({name: 'x-logo', channel, timestamp})
 			}
 		}
+
+		{
+			if (allText.match(/\bx(?!\.com)\b/i)) {
+				slack.reactions.add({ name: 'twitter', channel, timestamp})
+			}
+		}
 	});
 
 	schedule.scheduleJob('0 19 * * *', async (date) => {
