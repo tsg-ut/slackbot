@@ -1,6 +1,7 @@
 import Slack from '../lib/slackMock';
 import path from 'path';
 
+jest.mock('../lib/slackUtils');
 jest.mock('fs');
 import fs from 'fs';
 
