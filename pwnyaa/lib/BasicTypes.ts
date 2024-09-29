@@ -19,7 +19,7 @@ export interface Contest{
   url: string,
   title: string,
   alias: string[],
-  achievement: AchievementType,
+  achievementType: AchievementType,
   numChalls: number,
   joiningUsers: User[],
   achievementStr?: string,
