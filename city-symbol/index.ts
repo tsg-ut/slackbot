@@ -142,6 +142,20 @@ const getCityInformation = async (title: string): Promise<CityInformation> => {
 };
 
 const getRandomCitySymbol = async (): Promise<City> => {
+	if (Math.random() < 1 / 1719) {
+		return {
+			prefectureName: '',
+			cityName: '博多市',
+			cityWikipediaName: '博多市',
+			reason: '伯方の塩のパッケージに描かれている赤と青のストライプを直方体にあしらったもの',
+			date: '2020年6月21日',
+			notes: 'なし',
+			files: ['https://raw.githubusercontent.com/hakatashi/icon/master/images/icon_480px.png'],
+			placeImage: 'https://raw.githubusercontent.com/hakatashi/icon/master/images/icon_480px.png',
+			ruby: 'はかたし',
+		};
+	}
+
 	const prefectureChosen = sample(Object.keys(prefectures));
 	const citySymbols = await getWikipediaSource(prefectureChosen);
 	const citySymbol = sample(citySymbols);
@@ -150,7 +164,12 @@ const getRandomCitySymbol = async (): Promise<City> => {
 	return {...citySymbol, ...cityInformation};
 };
 
-const getWikimediaImageUrl = (fileName: string) => `https://commons.wikimedia.org/wiki/Special:FilePath/${qs.escape(fileName)}?width=200`;
+const getWikimediaImageUrl = (fileName: string) => {
+	if (fileName.startsWith('http')) {
+		return fileName;
+	}
+	return `https://commons.wikimedia.org/wiki/Special:FilePath/${qs.escape(fileName)}?width=200`;
+};
 
 class CitySymbolAteQuiz extends AteQuiz {
 	waitSecGen(): number {
@@ -277,6 +296,9 @@ export default (slackClients: SlackInterface) => {
 
 					if (result.state === 'solved') {
 						await increment(result.correctAnswerer, 'city-symbol-answer');
+					}
+					if (city.cityName === '博多市') {
+						await increment(result.correctAnswerer, 'city-symbol-answer-hakatashi');
 					}
 				}
 			} catch (error) {

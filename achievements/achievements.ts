@@ -4275,6 +4275,53 @@ const achievements: Achievement[] = [
 		value: 1,
 	},
 
+	// city-symbol
+
+	{
+		id: 'city-symbol-answer-1',
+		difficulty: 'easy',
+		title: '模範的村人',
+		condition: '市章当てクイズで正解する',
+		category: 'city-symbol',
+		counter: 'city-symbol-answer',
+		value: 1,
+	},
+	{
+		id: 'city-symbol-answer-10',
+		difficulty: 'medium',
+		title: '模範的町民',
+		condition: '市章当てクイズで10回正解する',
+		category: 'city-symbol',
+		counter: 'city-symbol-answer',
+		value: 10,
+	},
+	{
+		id: 'city-symbol-answer-100',
+		difficulty: 'hard',
+		title: '模範的区民',
+		condition: '市章当てクイズで100回正解する',
+		category: 'city-symbol',
+		counter: 'city-symbol-answer',
+		value: 100,
+	},
+	{
+		id: 'city-symbol-answer-1000',
+		difficulty: 'professional',
+		title: '模範的市民',
+		condition: '市章当てクイズで1000回正解する',
+		category: 'city-symbol',
+		counter: 'city-symbol-answer',
+		value: 1000,
+	},
+	{
+		id: 'city-symbol-answer-hakatashi-1',
+		difficulty: 'professional',
+		title: '博多市民',
+		condition: '市章当てクイズで博多市を正解する',
+		category: 'city-symbol',
+		counter: 'city-symbol-answer-hakatashi',
+		value: 1,
+	},
 
 	// achievements
 
