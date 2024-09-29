@@ -1,3 +1,5 @@
+jest.mock('../lib/slackUtils');
+
 import achievementQuiz from './index';
 import Slack from '../lib/slackMock';
 

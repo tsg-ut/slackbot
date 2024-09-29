@@ -1,6 +1,7 @@
 /* eslint-env node, jest */
 
 jest.mock('../achievements');
+jest.mock('../lib/slackUtils.ts');
 
 const {default: Slack} = require('../lib/slackMock.ts');
 const mahjong = require('./index.js');
