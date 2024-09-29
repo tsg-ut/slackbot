@@ -8,6 +8,7 @@ import {unlock} from '../achievements/index.js';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
+import {fetchChallsAH, fetchUserProfileAH, findUserByNameAH} from './lib/AHManager';
 import {Contest, User, SolvedInfo} from './lib/BasicTypes';
 import {fetchChallsCH, fetchUserProfileCH, findUserByNameCH} from './lib/CHManager';
 import {fetchChallsKSN, fetchUserProfileKSN, findUserByNameKSN} from './lib/KSNManager';
@@ -36,12 +37,14 @@ export const TW_ID = 0;
 export const XYZ_ID = 1;
 export const CH_ID = 2;
 export const KSN_ID = 3;
+export const AH_ID = 4;
 
 const CONTESTS: Contest[] = [
 	{url: 'https://pwnable.xyz', id: XYZ_ID, title: 'pwnable.xyz', alias: ['xyz', 'pnwable.xyz'], achievementStr: 'xyz', fetchUserProfile: fetchUserProfileXYZ, findUserByName: findUserByNameXYZ, fetchChalls: fetchChallsXYZ, numChalls: 0, joiningUsers: []},
 	{url: 'https://pwnable.tw', id: TW_ID, title: 'pwnable.tw', alias: ['tw', 'pwnable.tw'], achievementStr: 'tw', fetchUserProfile: fetchUserProfileTW, findUserByName: findUserByNameTW, fetchChalls: fetchChallsTW, numChalls: 0, joiningUsers: []},
 	{url: 'https://cryptohack.org', id: CH_ID, title: 'cryptohack', alias: ['cryptohack', 'ch'], achievementStr: 'ch', fetchUserProfile: fetchUserProfileCH, findUserByName: findUserByNameCH, fetchChalls: fetchChallsCH, numChalls: 0, joiningUsers: []},
 	{url: 'https://ksnctf.sweetduet.info', id: KSN_ID, title: 'ksnctf', alias: ['ksn', 'ksnctf'], achievementStr: 'ksn', fetchUserProfile: fetchUserProfileKSN, findUserByName: findUserByNameKSN, fetchChalls: fetchChallsKSN, numChalls: 0, joiningUsers: []},
+	{url: 'https://alpacahack.com', id: AH_ID, title: 'AlpacaHack', alias: ['ah', 'alpacahack', 'alpaca'], achievementStr: 'ah', fetchUserProfile: fetchUserProfileAH, findUserByName: findUserByNameAH, fetchChalls: fetchChallsAH, numChalls: 0, joiningUsers: []},
 ];
 
 const UPDATE_INTERVAL = 12;
@@ -72,6 +75,8 @@ const getContestColor = (ctfId: number) => {
 			return '#0099ff';
 		case KSN_ID:
 			return '#99cc00';
+		case AH_ID:
+			return '#873e23';
 		default:
 			return '#000000';
 	}
