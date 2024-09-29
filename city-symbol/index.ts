@@ -3,23 +3,34 @@ import {Mutex} from 'async-mutex';
 import {sample} from 'lodash';
 import {increment} from '../achievements';
 import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
+import logger from '../lib/logger';
 import {SlackInterface} from '../lib/slack';
 import {prefectures} from '../room-gacha/prefectures';
 
 const mutex = new Mutex();
 
+const log = logger.child({bot: 'city-symbol'});
+
 interface CitySymbol {
 	prefectureName: string;
 	cityName: string;
+	cityWikipediaName: string;
 	reason: string;
 	date: string;
 	notes: string;
 	files: string[];
 }
 
+interface CityInformation {
+	placeImage: string;
+	ruby: string;
+}
+
+type City = CitySymbol & CityInformation;
+
 const getWikipediaSource = async (prefName: string) => {
 	const title = `${prefName}の${prefName === '東京都' ? '区' : ''}市町村章一覧`;
-	console.log(`Getting wikipedia ${title}...`);
+	log.info(`Getting wikipedia ${title}...`);
 	const url = `https://ja.wikipedia.org/w/api.php?${qs.encode({
 		format: 'json',
 		action: 'query',
@@ -66,10 +77,12 @@ const getWikipediaSource = async (prefName: string) => {
 		}
 
 		const [cityName, , reason, date, notes] = columns.slice(-5);
+		const cityWikipediaName = line.match(new RegExp(`\\[\\[((:?[^|\\]]+\\|)?${cityName})\\]\\]`))?.[1] || '';
 
 		citySymbols.push({
 			prefectureName: prefName,
 			cityName: cityName.trim(),
+			cityWikipediaName: cityWikipediaName.split('|')[0].trim(),
 			reason: reason.trim(),
 			date: date.trim(),
 			notes: notes.trim().replaceAll(/<br \/>/g, '\n'),
@@ -80,10 +93,42 @@ const getWikipediaSource = async (prefName: string) => {
 	return citySymbols;
 };
 
-const getRandomCitySymbol = async () => {
+const getCityInformation = async (title: string): Promise<CityInformation> => {
+	log.info(`Getting wikipedia ${title}...`);
+
+	const url = `https://ja.wikipedia.org/w/api.php?${qs.encode({
+		format: 'json',
+		action: 'query',
+		prop: 'revisions',
+		rvprop: 'content',
+		titles: title,
+	})}`;
+
+	const response = await fetch(url);
+	const json = await response.json();
+
+	const pages = json?.query?.pages;
+	const content = pages?.[Object.keys(pages)[0]]?.revisions?.[0]?.['*'];
+	if (!content) {
+		throw new Error('Failed to get wikipedia source');
+	}
+
+	const placeImageMatches = content.match(/位置画像.+\|image\s*=\s*(.+?)\|/);
+	const placeImage = placeImageMatches?.[1] ?? '';
+
+	const rubyMatches = content.match(/（(.+?)）は/);
+	const ruby = rubyMatches?.[1] ?? '';
+
+	return {placeImage, ruby};
+};
+
+const getRandomCitySymbol = async (): Promise<City> => {
 	const prefectureChosen = sample(Object.keys(prefectures));
 	const citySymbols = await getWikipediaSource(prefectureChosen);
-	return sample(citySymbols);
+	const citySymbol = sample(citySymbols);
+	const cityInformation = await getCityInformation(citySymbol.cityWikipediaName);
+
+	return {...citySymbol, ...cityInformation};
 };
 
 const getWikimediaImageUrl = (fileName: string) => `https://commons.wikimedia.org/wiki/Special:FilePath/${qs.escape(fileName)}?width=200`;
@@ -108,9 +153,18 @@ export default async (slackClients: SlackInterface) => {
 					message.text &&
 					message.text.match(/^(?:市?区?町?村?)章当てクイズ$/)
 				) {
-					const citySymbol = await getRandomCitySymbol();
+					const city = await getRandomCitySymbol();
 					const quizText = 'この市区町村章ど～こだ？';
-					const imageUrl = getWikimediaImageUrl(sample(citySymbol.files));
+					const imageUrl = getWikimediaImageUrl(sample(city.files));
+					const correctAnswers = [
+						`${city.prefectureName}${city.cityName}`,
+						city.cityName,
+						city.cityName.replace(/(市|区|町|村)$/, ''),
+						...(city.ruby ? [
+							city.ruby,
+							city.ruby.replace(/(し|く|ちょう|まち|そん|むら)$/, ''),
+						] : []),
+					];
 					const problem = {
 						problemMessage: {
 							channel: message.channel,
@@ -133,7 +187,7 @@ export default async (slackClients: SlackInterface) => {
 						hintMessages: [
 							{
 								channel: message.channel,
-								text: `ヒント: ${citySymbol.prefectureName}の市区町村ですよ～`,
+								text: `ヒント: ${city.prefectureName}の市区町村ですよ～`,
 							},
 						],
 						immediateMessage: {
@@ -156,12 +210,12 @@ export default async (slackClients: SlackInterface) => {
 						},
 						solvedMessage: {
 							channel: message.channel,
-							text: typicalMessageTextsGenerator.solved(` ＊${citySymbol.prefectureName}${citySymbol.cityName}＊ `),
+							text: typicalMessageTextsGenerator.solved(` ＊${city.prefectureName}${city.cityName}＊ `),
 							reply_broadcast: true,
 						},
 						unsolvedMessage: {
 							channel: message.channel,
-							text: typicalMessageTextsGenerator.unsolved(` ＊${citySymbol.prefectureName}${citySymbol.cityName}＊ `),
+							text: typicalMessageTextsGenerator.unsolved(` ＊${city.prefectureName}${city.cityName}＊ `),
 							reply_broadcast: true,
 						},
 						answerMessage: {
@@ -171,27 +225,29 @@ export default async (slackClients: SlackInterface) => {
 								{
 									type: 'image',
 									image_url: imageUrl,
-									alt_text: citySymbol.cityName,
+									alt_text: city.cityName,
 								},
 								{
 									type: 'section',
 									text: {
 										type: 'mrkdwn',
 										text: [
-											`＊${citySymbol.prefectureName}${citySymbol.cityName}＊`,
-											`${citySymbol.reason}`,
-											`制定年月日: ${citySymbol.date}`,
-											`備考: ${citySymbol.notes || 'なし'}`,
+											`＊${city.prefectureName}${city.cityName}＊`,
+											`${city.reason}`,
+											`制定年月日: ${city.date}`,
+											`備考: ${city.notes || 'なし'}`,
+											`有効回答一覧: ${correctAnswers.join(', ')}`,
 										].join('\n'),
 									},
 								},
+								{
+									type: 'image',
+									image_url: getWikimediaImageUrl(city.placeImage),
+									alt_text: city.cityName,
+								},
 							],
 						},
-						correctAnswers: [
-							citySymbol.cityName,
-							citySymbol.cityName.replace(/(市|区|町|村)$/g, ''),
-							`${citySymbol.prefectureName}${citySymbol.cityName}`,
-						],
+						correctAnswers,
 					};
 
 					const quiz = new CitySymbolAteQuiz(slackClients, problem, {
@@ -205,7 +261,7 @@ export default async (slackClients: SlackInterface) => {
 					}
 				}
 			} catch (error) {
-				console.error(error.stack);
+				log.error(error.stack);
 
 				await slackClients.webClient.chat.postMessage({
 					channel: message.channel,
