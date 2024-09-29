@@ -1,10 +1,10 @@
-import type { MrkdwnElement, PlainTextElement } from '@slack/web-api';
-import type { Member } from '@slack/web-api/dist/response/UsersListResponse';
-import { WebClient } from '@slack/web-api';
-import { eventClient, getTokens } from './slack';
-import { Deferred } from './utils';
+import type {MrkdwnElement, PlainTextElement} from '@slack/web-api';
+import type {Member} from '@slack/web-api/dist/response/UsersListResponse';
+import {WebClient} from '@slack/web-api';
+import {eventClient, getTokens} from './slack';
+import {Deferred} from './utils';
 import SlackCache from './slackCache';
-import type { BotMessageEvent, GenericMessageEvent, MessageEvent } from '@slack/bolt';
+import type {BotMessageEvent, GenericMessageEvent, MessageEvent} from '@slack/bolt';
 
 const slackCaches = new Map<string, SlackCache>();
 const initializedSlackCachesDeferred = new Deferred<void>();
@@ -34,11 +34,11 @@ export const getAllTSGMembers = async (): Promise<Array<Member>> => {
 	return await slackCaches.get(process.env.TEAM_ID!)!.getUsers();
 };
 
-export const getMemberName = async (user: string): Promise<string | undefined> => {
+export const getMemberName = async (user: string): Promise<string|undefined> => {
 	await initializedSlackCachesDeferred.promise;
 
 	// TODO: receive team_id and use it to choose slackCache
-	let member: Member | null = null;
+	let member: Member|null = null;
 	for (const caches of slackCaches.values()) {
 		const found = await caches.getUser(user);
 		if (found) {
@@ -51,11 +51,11 @@ export const getMemberName = async (user: string): Promise<string | undefined> =
 };
 
 type IconResolution = 24 | 32 | 48 | 72 | 192 | 512;
-export const getMemberIcon = async (user: string, res: IconResolution = 24): Promise<string | undefined> => {
+export const getMemberIcon = async (user: string, res: IconResolution = 24): Promise<string|undefined> => {
 	await initializedSlackCachesDeferred.promise;
 
 	// TODO: receive team_id and use it to choose slackCache
-	let member: Member | null = null;
+	let member: Member|null = null;
 	for (const caches of slackCaches.values()) {
 		const found = await caches.getUser(user);
 		if (found) {
@@ -82,7 +82,7 @@ export const getMemberIcon = async (user: string, res: IconResolution = 24): Pro
 	}
 };
 
-export const getEmoji = async (name: string, team: string): Promise<string | undefined> => {
+export const getEmoji = async (name: string, team: string): Promise<string|undefined> => {
 	await initializedSlackCachesDeferred.promise;
 	return slackCaches.get(team)?.getEmoji(name);
 };
