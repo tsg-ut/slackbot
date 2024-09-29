@@ -841,7 +841,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 						break;
 					case AchievementType.COUNT:
 						const achievements_count: number[] = [50,20,10,5];
-						for (num of achievements_count){
+						for (const num of achievements_count){
 							if (profile.solvedChalls.length >= num) {
 								log.info(`[+] pwnyaa: unlocking: pwnyaa-${contest.achievementStr}-${num}`);
 								await unlock(user.slackId, `pwnyaa-${contest.achievementStr}-${num}`);
