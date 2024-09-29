@@ -2276,14 +2276,14 @@ const achievements: Achievement[] = [
 	{
 		id: 'pwnyaa-ah-half',
 		difficulty: 'hard',
-		title: 'アルパカかわいい！',
+		title: '_アルパカかわいい！',
 		condition: 'AlpacaHackで半分以上の問題を解く',
 		category: 'pwnyaa',
 	},
 	{
 		id: 'pwnyaa-ah-complete',
 		difficulty: 'professional',
-		title: 'しば犬かわいい！',
+		title: '_しば犬かわいい！',
 		condition: 'AlpacaHackを全完する',
 		category: 'pwnyaa',
 	},
