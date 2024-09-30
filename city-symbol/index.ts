@@ -1,15 +1,58 @@
 import qs from 'querystring';
 import {Mutex} from 'async-mutex';
+import {stripIndent} from 'common-tags';
 import {sample} from 'lodash';
 import {increment} from '../achievements';
 import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
 import logger from '../lib/logger';
+import openai from '../lib/openai';
 import {SlackInterface} from '../lib/slack';
+import {Loader} from '../lib/utils';
 import {prefectures} from '../room-gacha/prefectures';
 
 const mutex = new Mutex();
 
 const log = logger.child({bot: 'city-symbol'});
+
+const promptTemplate = stripIndent`
+	# 指示
+
+	{{cityname}}が答えになるクイズを作るとして、答えのヒントになるような短い文章を3つ作成してください。まず、{{cityname}}に関してあなたが知っている情報と、以下に示す{{cityname}}のWikipedia記事の内容をもとに、{{cityname}}に関する基本的な情報に関する辞書的な説明文を作成してください。続いて、{{cityname}}に関するニュースなどをもとに、有名な事実や面白いトリビアなどの情報をまとめてください。特に、この市町村が日本一であるようなことがらや、有名な観光地などについて優先的に列挙してください。次に、これらの情報から適切に取捨選択し、ヒントとして適切になるように組み合わせ、答えに導くような短いヒントを作成してください。ヒントには{{cityname}}に関連する固有名詞をなるべく多く含めてください。最後の行に、作成した3つのヒントを、string[]型を持つJSONの文字列の配列として出力してください。
+
+	## ヒントとしての適切である基準
+
+	* ヒントは「この市町村は、」や「この市町村には、」などの文言で始まる文章になっている。
+	* ヒントの文章の一部に答えを直接含まない。
+	* ほかの市町村には当てはまらない、{{cityname}}だけが該当する特徴を記述している。
+	* ヒントの長さが50文字以内程度である。
+	* ヒントに嘘の情報が含まれていない。
+	* 知っていることが日々の生活でプラスになるような、面白い情報が含まれている。
+	* ヒント1から3に進むにつれて、より答えに近い容易なヒントとなっている。
+
+	## ほかの市町村でのヒントの出題例
+
+	### 「高知県高知市」が答えとなるクイズのヒントの出題例
+
+	ヒント1: この市町村には、東経133度33分33秒・北緯33度33分33秒の通称「地球33番地」と呼ばれる地点が存在します。
+	ヒント2: この市町村では、現存する日本最古の路面電車である土佐電気鉄道が運行しています。
+	ヒント3: この市町村は、2021年までかつおの消費量で全国1位でしたが、宮崎市に抜かれました。
+
+	### 「神奈川県山北町」が答えとなるクイズのヒントの出題例
+
+	ヒント1: この市町村には古くから「お峰入り」という民俗芸能が伝わっており、この伝統文化を含む「風流踊り」は2022年にユネスコ無形文化遺産に登録されました。
+	ヒント2: この市町村には、日本の「ダム湖百選」にも選ばれたことで有名な丹沢湖があります。
+	ヒント3: この市町村には、東名高速道路の渋滞ポイントとして有名な都夫良野トンネルがあります。
+
+	### 「北海道幌加内町」が答えとなるクイズのヒントの出題例
+
+	ヒント1: この市町村は、ソバの作付面積が日本一多いことで知られています。
+	ヒント2: この市町村には、日本最大の人造湖である朱鞠内湖があります。
+	ヒント3: この市町村では、非公式ながら1978年に-41.2度の気温を記録し、これは公式の日本最低気温である旭川市の-41.0度を下回る気温です。
+
+	## {{cityname}}のWikipedia記事の内容
+
+	{{wikipedia_content}}
+`;
 
 interface CitySymbol {
 	prefectureName: string;
@@ -23,6 +66,7 @@ interface CitySymbol {
 
 interface CityInformation {
 	placeImage: string;
+	plainText: string;
 	ruby: string;
 }
 
@@ -81,7 +125,7 @@ const getWikipediaSource = async (prefName: string) => {
 
 		citySymbols.push({
 			prefectureName: prefName,
-			cityName: cityName.trim(),
+			cityName: cityName.trim().replaceAll('|', ''),
 			cityWikipediaName: cityWikipediaName.split('|')[0].trim(),
 			reason: reason.trim(),
 			date: date.trim(),
@@ -113,6 +157,29 @@ const extractPlaceImage = (content: string) => {
 	throw new Error('Failed to extract place image');
 };
 
+const getPlaintextWikipedia = async (title: string): Promise<string> => {
+	log.info(`Getting wikipedia ${title}...`);
+
+	const url = `https://ja.wikipedia.org/w/api.php?${qs.encode({
+		format: 'json',
+		action: 'query',
+		prop: 'extracts',
+		explaintext: true,
+		titles: title,
+	})}`;
+
+	const response = await fetch(url);
+	const json = await response.json();
+
+	const pages = json?.query?.pages;
+	const content = pages?.[Object.keys(pages)[0]]?.extract;
+	if (!content) {
+		throw new Error('Failed to get wikipedia source');
+	}
+
+	return content;
+};
+
 const getCityInformation = async (title: string): Promise<CityInformation> => {
 	log.info(`Getting wikipedia ${title}...`);
 
@@ -135,10 +202,12 @@ const getCityInformation = async (title: string): Promise<CityInformation> => {
 
 	const placeImage = extractPlaceImage(content);
 
-	const rubyMatches = content.match(/（(.+?)）は/);
+	const plainText = await getPlaintextWikipedia(title);
+
+	const rubyMatches = plainText.match(/（(.+?)）は/);
 	const ruby = rubyMatches?.[1] ?? '';
 
-	return {placeImage, ruby};
+	return {placeImage, ruby, plainText};
 };
 
 const getRandomCitySymbol = async (): Promise<City> => {
@@ -148,6 +217,7 @@ const getRandomCitySymbol = async (): Promise<City> => {
 			cityName: '博多市',
 			cityWikipediaName: '博多市',
 			reason: '伯方の塩のパッケージに描かれている赤と青のストライプを直方体にあしらったもの',
+			plainText: '',
 			date: '2020年6月21日',
 			notes: 'なし',
 			files: ['https://raw.githubusercontent.com/hakatashi/icon/master/images/icon_480px.png'],
@@ -171,9 +241,78 @@ const getWikimediaImageUrl = (fileName: string) => {
 	return `https://commons.wikimedia.org/wiki/Special:FilePath/${qs.escape(fileName)}?width=200`;
 };
 
+const getCorrectAnswers = (city: City): string[] => (
+	[
+		`${city.prefectureName}${city.cityName}`,
+		city.cityName,
+		city.cityName.replace(/(市|区|町|村)$/, ''),
+		...(city.ruby ? [
+			city.ruby,
+			city.ruby.replace(/(し|く|ちょう|まち|そん|むら)$/, ''),
+		] : []),
+	]
+);
+
+const generateAiHints = async (city: City): Promise<string[] | null> => {
+	const cityname = `${city.prefectureName}${city.cityName}`;
+	const prompt = promptTemplate
+		.replaceAll(/{{cityname}}/g, cityname)
+		.replaceAll(/{{reason}}/g, city.reason)
+		.replaceAll(/{{wikipedia_content}}/g, city.plainText);
+
+	log.info(`Generating AI hints for ${cityname}...`);
+
+	const response = await openai.chat.completions.create({
+		model: 'gpt-4o-mini',
+		messages: [
+			{
+				role: 'user',
+				content: prompt,
+			},
+		],
+		max_tokens: 1024,
+	});
+
+	log.info(`Consumed tokens: ${response?.usage?.total_tokens} (prompt = ${response?.usage?.prompt_tokens}, completion = ${response?.usage?.completion_tokens})`);
+
+	const result = response?.choices?.[0]?.message?.content;
+
+	if (!result) {
+		return null;
+	}
+
+	const hintJson = result.match(/\[.*?\]/)?.[0];
+	if (!hintJson) {
+		return null;
+	}
+
+	try {
+		const hints = JSON.parse(hintJson);
+		log.info(`Generated hints: ${hints.join(', ')}`);
+		const correctAnswers = getCorrectAnswers(city);
+		const concealedHints = hints.map((hint: string) => {
+			let hintString = hint;
+			for (const correctAnswer of correctAnswers.reverse()) {
+				hintString = hintString.replaceAll(correctAnswer, '〇〇');
+			}
+			return hintString;
+		});
+		log.info(`Concealed hints: ${concealedHints.join(', ')}`);
+		return concealedHints;
+	} catch (error) {
+		return null;
+	}
+};
+
 class CitySymbolAteQuiz extends AteQuiz {
-	waitSecGen(): number {
-		return 30;
+	waitSecGen(hintIndex: number): number {
+		if (hintIndex === 0) {
+			return 30;
+		}
+		if (hintIndex === 1) {
+			return 15;
+		}
+		return 10;
 	}
 }
 
@@ -194,15 +333,11 @@ export default (slackClients: SlackInterface) => {
 					const city = await getRandomCitySymbol();
 					const quizText = 'この市区町村章ど～こだ？';
 					const imageUrl = getWikimediaImageUrl(sample(city.files));
-					const correctAnswers = [
-						`${city.prefectureName}${city.cityName}`,
-						city.cityName,
-						city.cityName.replace(/(市|区|町|村)$/, ''),
-						...(city.ruby ? [
-							city.ruby,
-							city.ruby.replace(/(し|く|ちょう|まち|そん|むら)$/, ''),
-						] : []),
-					];
+					const correctAnswers = getCorrectAnswers(city);
+
+					const aiHintsLoader = new Loader<string[]>(() => generateAiHints(city));
+					aiHintsLoader.load();
+
 					const problem = {
 						problemMessage: {
 							channel: message.channel,
@@ -222,12 +357,19 @@ export default (slackClients: SlackInterface) => {
 								},
 							],
 						},
-						hintMessages: [
-							{
-								channel: message.channel,
-								text: `ヒント: ${city.prefectureName}の市区町村ですよ～`,
-							},
-						],
+						get hintMessages() {
+							const hints = aiHintsLoader.get() ?? [];
+							return [
+								{
+									channel: message.channel,
+									text: `ヒント: ${city.prefectureName}の市区町村ですよ～`,
+								},
+								...hints.map((hint, index) => ({
+									channel: message.channel,
+									text: `ChatGPTヒント${index + 1}: ${hint}`,
+								})),
+							];
+						},
 						immediateMessage: {
 							channel: message.channel,
 							text: '60秒以内に回答してね！',

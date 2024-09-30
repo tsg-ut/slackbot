@@ -123,8 +123,8 @@ export class AteQuiz {
   ) {
     this.eventClient = eventClient;
     this.slack = slack;
-    this.problem = JSON.parse(JSON.stringify(problem));
-    this.postOption = JSON.parse(JSON.stringify(option));
+    this.problem = problem;
+    this.postOption = option ? JSON.parse(JSON.stringify(option)) : option;
 
     assert(
       this.problem.hintMessages.every(

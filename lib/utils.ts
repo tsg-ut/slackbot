@@ -35,10 +35,12 @@ export class Loader<T> {
 	isTriggered: boolean;
 	loader: () => Promise<T>;
 	private deferred: Deferred<T>;
+	private value: T | null;
 
 	constructor(loader: () => Promise<T>) {
 		this.loader = loader;
 		this.isTriggered = false;
+		this.value = null;
 		this.deferred = new Deferred<T>();
 	}
 
@@ -48,6 +50,7 @@ export class Loader<T> {
 		}
 		this.isTriggered = true;
 		this.loader().then((value) => {
+			this.value = value;
 			this.deferred.resolve(value);
 		}, (error) => {
 			this.deferred.reject(error);
@@ -58,5 +61,9 @@ export class Loader<T> {
 	clear() {
 		this.isTriggered = false;
 		this.deferred = new Deferred<T>();
+	}
+
+	get() {
+		return this.value;
 	}
 }
