@@ -14,10 +14,10 @@ const mutex = new Mutex();
 
 const log = logger.child({bot: 'city-symbol'});
 
-const prompt = stripIndent`
+const promptTemplate = stripIndent`
 	# 指示
 
-	{{cityname}}が答えになるクイズを作るとして、答えのヒントになるような短い文章を3つ作成してください。まず、{{cityname}}に関するインターネット上の情報と、以下に示す{{cityname}}の市町村章の由来、{{cityname}}のWikipedia記事の内容をもとに、{{cityname}}に関する基本的な情報に関する辞書的な説明文を作成してください。続いて、{{cityname}}に関する有名な事実や面白いトリビアなどの情報をまとめてください。特に、この市町村が日本一であるようなことがらや、有名な観光地などについて優先的に列挙してください。次に、これらの情報から適切に取捨選択し、ヒントとして適切になるように組み合わせ、答えに導くような短いヒントを作成してください。最後の行に、作成した3つのヒントを、string[]型を持つJSONの文字列の配列として出力してください。
+	{{cityname}}が答えになるクイズを作るとして、答えのヒントになるような短い文章を3つ作成してください。まず、{{cityname}}に関してあなたが知っている情報と、以下に示す{{cityname}}のWikipedia記事の内容をもとに、{{cityname}}に関する基本的な情報に関する辞書的な説明文を作成してください。続いて、{{cityname}}に関するニュースなどをもとに、有名な事実や面白いトリビアなどの情報をまとめてください。特に、この市町村が日本一であるようなことがらや、有名な観光地などについて優先的に列挙してください。次に、これらの情報から適切に取捨選択し、ヒントとして適切になるように組み合わせ、答えに導くような短いヒントを作成してください。ヒントには{{cityname}}に関連する固有名詞をなるべく多く含めてください。最後の行に、作成した3つのヒントを、string[]型を持つJSONの文字列の配列として出力してください。
 
 	## ヒントとしての適切である基準
 
@@ -31,14 +31,23 @@ const prompt = stripIndent`
 
 	## ほかの市町村でのヒントの出題例
 
-	答え: 高知県高知市
+	### 「高知県高知市」が答えとなるクイズのヒントの出題例
+
 	ヒント1: この市町村には、東経133度33分33秒・北緯33度33分33秒の通称「地球33番地」と呼ばれる地点が存在します。
 	ヒント2: この市町村では、現存する日本最古の路面電車である土佐電気鉄道が運行しています。
 	ヒント3: この市町村は、2021年までかつおの消費量で全国1位でしたが、宮崎市に抜かれました。
 
-	## {{cityname}}の市町村章の由来
+	### 「神奈川県山北町」が答えとなるクイズのヒントの出題例
 
-	{{reason}}
+	ヒント1: この市町村には古くから「お峰入り」という民俗芸能が伝わっており、この伝統文化を含む「風流踊り」は2022年にユネスコ無形文化遺産に登録されました。
+	ヒント2: この市町村には、日本の「ダム湖百選」にも選ばれたことで有名な丹沢湖があります。
+	ヒント3: この市町村には、東名高速道路の渋滞ポイントとして有名な都夫良野トンネルがあります。
+
+	### 「北海道幌加内町」が答えとなるクイズのヒントの出題例
+
+	ヒント1: この市町村は、ソバの作付面積が日本一多いことで知られています。
+	ヒント2: この市町村には、日本最大の人造湖である朱鞠内湖があります。
+	ヒント3: この市町村では、非公式ながら1978年に-41.2度の気温を記録し、これは公式の日本最低気温である旭川市の-41.0度を下回る気温です。
 
 	## {{cityname}}のWikipedia記事の内容
 
@@ -57,6 +66,7 @@ interface CitySymbol {
 
 interface CityInformation {
 	placeImage: string;
+	plainText: string;
 	ruby: string;
 }
 
@@ -192,10 +202,12 @@ const getCityInformation = async (title: string): Promise<CityInformation> => {
 
 	const placeImage = extractPlaceImage(content);
 
-	const rubyMatches = content.match(/（(.+?)）は/);
+	const plainText = await getPlaintextWikipedia(title);
+
+	const rubyMatches = plainText.match(/（(.+?)）は/);
 	const ruby = rubyMatches?.[1] ?? '';
 
-	return {placeImage, ruby};
+	return {placeImage, ruby, plainText};
 };
 
 const getRandomCitySymbol = async (): Promise<City> => {
@@ -205,6 +217,7 @@ const getRandomCitySymbol = async (): Promise<City> => {
 			cityName: '博多市',
 			cityWikipediaName: '博多市',
 			reason: '伯方の塩のパッケージに描かれている赤と青のストライプを直方体にあしらったもの',
+			plainText: '',
 			date: '2020年6月21日',
 			notes: 'なし',
 			files: ['https://raw.githubusercontent.com/hakatashi/icon/master/images/icon_480px.png'],
@@ -228,14 +241,24 @@ const getWikimediaImageUrl = (fileName: string) => {
 	return `https://commons.wikimedia.org/wiki/Special:FilePath/${qs.escape(fileName)}?width=200`;
 };
 
-const generateAiHints = async (citySymbol: CitySymbol): Promise<string[] | null> => {
-	const wikipediaContent = await getPlaintextWikipedia(citySymbol.cityWikipediaName);
-	const cityname = `${citySymbol.prefectureName}${citySymbol.cityName}`;
-	const {reason} = citySymbol;
-	const hint = prompt
+const getCorrectAnswers = (city: City): string[] => (
+	[
+		`${city.prefectureName}${city.cityName}`,
+		city.cityName,
+		city.cityName.replace(/(市|区|町|村)$/, ''),
+		...(city.ruby ? [
+			city.ruby,
+			city.ruby.replace(/(し|く|ちょう|まち|そん|むら)$/, ''),
+		] : []),
+	]
+);
+
+const generateAiHints = async (city: City): Promise<string[] | null> => {
+	const cityname = `${city.prefectureName}${city.cityName}`;
+	const prompt = promptTemplate
 		.replaceAll(/{{cityname}}/g, cityname)
-		.replaceAll(/{{reason}}/g, reason)
-		.replaceAll(/{{wikipedia_content}}/g, wikipediaContent);
+		.replaceAll(/{{reason}}/g, city.reason)
+		.replaceAll(/{{wikipedia_content}}/g, city.plainText);
 
 	log.info(`Generating AI hints for ${cityname}...`);
 
@@ -244,12 +267,13 @@ const generateAiHints = async (citySymbol: CitySymbol): Promise<string[] | null>
 		messages: [
 			{
 				role: 'user',
-				content: hint,
+				content: prompt,
 			},
 		],
 		max_tokens: 1024,
 	});
 
+	log.info(`Consumed tokens: ${response?.usage?.total_tokens} (prompt = ${response?.usage?.prompt_tokens}, completion = ${response?.usage?.completion_tokens})`);
 
 	const result = response?.choices?.[0]?.message?.content;
 
@@ -265,7 +289,16 @@ const generateAiHints = async (citySymbol: CitySymbol): Promise<string[] | null>
 	try {
 		const hints = JSON.parse(hintJson);
 		log.info(`Generated hints: ${hints.join(', ')}`);
-		return hints;
+		const correctAnswers = getCorrectAnswers(city);
+		const concealedHints = hints.map((hint: string) => {
+			let hintString = hint;
+			for (const correctAnswer of correctAnswers.reverse()) {
+				hintString = hintString.replaceAll(correctAnswer, '〇〇');
+			}
+			return hintString;
+		});
+		log.info(`Concealed hints: ${concealedHints.join(', ')}`);
+		return concealedHints;
 	} catch (error) {
 		return null;
 	}
@@ -300,15 +333,7 @@ export default (slackClients: SlackInterface) => {
 					const city = await getRandomCitySymbol();
 					const quizText = 'この市区町村章ど～こだ？';
 					const imageUrl = getWikimediaImageUrl(sample(city.files));
-					const correctAnswers = [
-						`${city.prefectureName}${city.cityName}`,
-						city.cityName,
-						city.cityName.replace(/(市|区|町|村)$/, ''),
-						...(city.ruby ? [
-							city.ruby,
-							city.ruby.replace(/(し|く|ちょう|まち|そん|むら)$/, ''),
-						] : []),
-					];
+					const correctAnswers = getCorrectAnswers(city);
 
 					const aiHintsLoader = new Loader<string[]>(() => generateAiHints(city));
 					aiHintsLoader.load();
@@ -334,7 +359,6 @@ export default (slackClients: SlackInterface) => {
 						},
 						get hintMessages() {
 							const hints = aiHintsLoader.get() ?? [];
-							log.info(`Hints: ${hints.join(', ')}`);
 							return [
 								{
 									channel: message.channel,
