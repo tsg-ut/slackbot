@@ -398,34 +398,77 @@ export default (slackClients: SlackInterface) => {
 							text: typicalMessageTextsGenerator.unsolved(` ＊${city.prefectureName}${city.cityName}＊ `),
 							reply_broadcast: true,
 						},
-						answerMessage: {
-							channel: message.channel,
-							text: '市区町村章',
-							blocks: [
-								{
-									type: 'image',
-									image_url: imageUrl,
-									alt_text: city.cityName,
-								},
-								{
-									type: 'section',
-									text: {
-										type: 'mrkdwn',
-										text: [
-											`＊${city.prefectureName}${city.cityName}＊`,
-											`${city.reason}`,
-											`制定年月日: ${city.date}`,
-											`備考: ${city.notes || 'なし'}`,
-											`有効回答一覧: ${correctAnswers.join(', ')}`,
-										].join('\n'),
+						get answerMessage() {
+							const aiHints = aiHintsLoader.get() ?? [];
+							const answerHeader = `${city.prefectureName}${city.cityName} (${city.ruby})`;
+							const answerDetails = [
+								`${city.reason}`,
+								`制定年月日: ${city.date}`,
+								`備考: ${city.notes || 'なし'}`,
+								`有効回答一覧: ${correctAnswers.join(', ')}`,
+							].join('\n');
+
+							return {
+								channel: message.channel,
+								text: `${answerHeader}\n\n${answerDetails}`,
+								blocks: [
+									{
+										type: 'image',
+										image_url: imageUrl,
+										alt_text: city.cityName,
 									},
-								},
-								{
-									type: 'image',
-									image_url: getWikimediaImageUrl(city.placeImage),
-									alt_text: city.cityName,
-								},
-							],
+									{
+										type: 'header',
+										text: {
+											type: 'plain_text',
+											text: answerHeader,
+										},
+									},
+									{
+										type: 'section',
+										text: {
+											type: 'mrkdwn',
+											text: answerDetails,
+										},
+									},
+									{
+										type: 'image',
+										image_url: getWikimediaImageUrl(city.placeImage),
+										alt_text: city.cityName,
+									},
+									...(aiHints.length === 0 ? [] : [
+										{
+											type: 'rich_text',
+											elements: [
+												{
+													type: 'rich_text_section',
+													elements: [
+														{
+															type: 'text',
+															text: 'ChatGPTヒント',
+														},
+													],
+												},
+												{
+													type: 'rich_text_list',
+													style: 'ordered',
+													indent: 0,
+													border: 0,
+													elements: aiHints.map((hint) => ({
+														type: 'rich_text_section',
+														elements: [
+															{
+																type: 'text',
+																text: hint,
+															},
+														],
+													})),
+												},
+											],
+										},
+									]),
+								],
+							};
 						},
 						correctAnswers,
 					};
