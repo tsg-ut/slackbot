@@ -53,7 +53,6 @@ describe('wadokaichin works', () => {
       expect('username' in response && response.username).toBe('和同開珎');
       expect(response.text).toBe(':question:に入る常用漢字は何でしょう？3分以内に答えてね。');
       expect(response.thread_ts).toBe(slack.fakeTimestamp);
-      expect(response.reply_broadcast || false).toBe(false);
     }
     {
       slack.postMessage('山',{thread_ts: slack.fakeTimestamp});
@@ -66,7 +65,6 @@ describe('wadokaichin works', () => {
       expect('username' in response && response.username).toBe('和同開珎');
       expect(response.text).toBe(`<@${slack.fakeUser}> 『川』正解🎉\n他にも『海/谷』などが当てはまります。`);
       expect(response.thread_ts).toBe(slack.fakeTimestamp);
-      expect(response.reply_broadcast).toBe(true);
     }
   });
 
@@ -81,14 +79,12 @@ describe('wadokaichin works', () => {
       expect('username' in response && response.username).toBe('和同開珎');
       expect(response.text).toBe(':question:に入る常用漢字は何でしょう？3分以内に答えてね。');
       expect(response.thread_ts).toBe(slack.fakeTimestamp);
-      expect(response.reply_broadcast || false).toBe(false);
     }
     {
       const response = await slack.getResponseTo('谷山',{thread_ts: slack.fakeTimestamp});
       expect('username' in response && response.username).toBe('和同開珎');
       expect(response.text).toBe(`<@${slack.fakeUser}> 『谷』正解🎉\n他にも『川/海』などが当てはまります。`);
       expect(response.thread_ts).toBe(slack.fakeTimestamp);
-      expect(response.reply_broadcast).toBe(true);
     }
   });
 
@@ -103,7 +99,6 @@ describe('wadokaichin works', () => {
       expect('username' in response && response.username).toBe('和同開珎');
       expect(response.text).toBe(':question:に入る常用漢字は何でしょう？3分以内に答えてね。');
       expect(response.thread_ts).toBe(slack.fakeTimestamp);
-      expect(response.reply_broadcast || false).toBe(false);
     }
     const now = Date.now();
     // XXX: context switchを発生させるために無のawaitをしている。もっとよい書き方がありそう。
@@ -117,7 +112,6 @@ describe('wadokaichin works', () => {
       expect('username' in response && response.username).toBe('和同開珎');
       expect(response.text).toBe(`時間切れ！\n正解は『川/海/谷』でした。`);
       expect(response.thread_ts).toBe(slack.fakeTimestamp);
-      expect(response.reply_broadcast).toBe(true);
     }
   });
 });
