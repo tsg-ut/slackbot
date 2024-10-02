@@ -185,7 +185,11 @@ export class AteQuiz {
           } else {
             this.state = 'unsolved';
             await postMessage(
-              Object.assign({}, this.problem.unsolvedMessage, { thread_ts })
+              Object.assign(
+                {},
+                this.problem.unsolvedMessage,
+                { thread_ts, reply_to_broadcast: true },
+              )
             );
 
             const answerMessage = await this.answerMessageGen();
@@ -214,7 +218,11 @@ export class AteQuiz {
               clearInterval(tickTimer);
 
               await postMessage(
-                Object.assign({}, await this.solvedMessageGen(message), { thread_ts })
+                Object.assign(
+                  {},
+                  await this.solvedMessageGen(message),
+                  { thread_ts, reply_to_broadcast: true },
+                )
               );
 
               const answerMessage = await this.answerMessageGen(message);

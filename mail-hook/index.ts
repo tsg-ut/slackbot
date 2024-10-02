@@ -1,7 +1,7 @@
 import {randomUUID} from 'crypto';
 import {readFile} from 'fs/promises';
 import path from 'path';
-import type {BlockButtonAction} from '@slack/bolt';
+import type {ActionsBlock, BlockButtonAction} from '@slack/bolt';
 import {ChatPostMessageResponse} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
@@ -201,14 +201,14 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 							block_id: 'mail-hook-reply',
 							elements:
 								prompts.map(({id: promptId, label}) => ({
-									type: 'button',
+									type: 'button' as const,
 									text: {
-										type: 'plain_text',
+										type: 'plain_text' as const,
 										text: label,
 										emoji: true,
 									},
 									action_id: promptId,
-									style: 'primary',
+									style: 'primary' as const,
 									value: id,
 								})),
 						},

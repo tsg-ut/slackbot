@@ -292,7 +292,6 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 				`,
 				username: 'crossword',
 				icon_emoji: ':capital_abcd:',
-				reply_broadcast: true,
 				attachments: [{
 					title: state.isGrossword ? 'Grossword' : 'Crossword',
 					image_url: cloudinaryData.secure_url,
@@ -316,6 +315,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			});
 
 			state.timeouts.push(setTimeout(async () => {
+				const thread = state.thread;
 				state.thread = null;
 				await slack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
@@ -335,6 +335,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 					`,
 					username: 'crossword',
 					icon_emoji: ':capital_abcd:',
+					thread_ts: thread,
 					reply_broadcast: true,
 					attachments: [{
 						title: state.isGrossword ? 'Grossword' : 'Crossword',

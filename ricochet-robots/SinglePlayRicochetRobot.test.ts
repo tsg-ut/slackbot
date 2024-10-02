@@ -60,10 +60,13 @@ describe('hyperrobot', () => {
 			singlePlayRicochetRobot.start();
 
 			expect(mockedPostMessage).toBeCalledTimes(1);
-			expect(mockedPostMessage.mock.calls[0][0].username).toBe('hyperrobot');
-			expect(mockedPostMessage.mock.calls[0][0].text).toContain('10手詰めです');
-			expect(mockedPostMessage.mock.calls[0][0].channel).toBe(slack.fakeChannel);
-			expect(mockedPostMessage.mock.calls[0][0].blocks).toHaveLength(1);
+
+			const firstMessage = mockedPostMessage.mock.calls[0][0];
+			const blocks = 'blocks' in firstMessage ? firstMessage.blocks : [];
+			expect('username' in firstMessage && firstMessage.username).toBe('hyperrobot');
+			expect(firstMessage.text).toContain('10手詰めです');
+			expect(firstMessage.channel).toBe(slack.fakeChannel);
+			expect(blocks).toHaveLength(1);
 
 			mockedPostMessage.mockResolvedValueOnce({
 				ok: true,
@@ -78,8 +81,9 @@ describe('hyperrobot', () => {
 			});
 
 			expect(mockedPostMessage).toBeCalledTimes(2);
-			expect(mockedPostMessage.mock.calls[1][0].username).toBe('hyperrobot');
-			expect(mockedPostMessage.mock.calls[1][0].text).toContain('解けてませんね');
+			const secondMessage = mockedPostMessage.mock.calls[1][0];
+			expect('username' in secondMessage && secondMessage.username).toBe('hyperrobot');
+			expect(secondMessage.text).toContain('解けてませんね');
 		});
 	});
 });

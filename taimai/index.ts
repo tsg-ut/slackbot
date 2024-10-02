@@ -1,5 +1,5 @@
 import { createMessageAdapter } from '@slack/interactive-messages';
-import type { ChatPostMessageArguments, ChatUpdateArguments, WebClient } from '@slack/web-api';
+import type { ChatUpdateArguments, WebClient } from '@slack/web-api';
 import { Mutex } from 'async-mutex';
 import { increment } from '../achievements';
 import type { SlackInterface } from '../lib/slack';
@@ -91,13 +91,14 @@ class Taimai {
 		});
 	}
 
-	async postMessage(message: Partial<ChatPostMessageArguments>) {
+	async postMessage(message: {text?: string, thread_ts: string, reply_broadcast?: boolean}) {
 		return await this.webClient.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			username: "玳瑁",
 			icon_emoji: ":turtle:",
 			text: "お使いの環境でこのメッセージは閲覧できないようです。",
 			...message,
+			reply_broadcast: message.reply_broadcast ?? false,
 		});
 	}
 
@@ -105,8 +106,6 @@ class Taimai {
 		return await this.webClient.chat.update({
 			ts,
 			channel: process.env.CHANNEL_SANDBOX,
-			username: '玳瑁',
-			icon_emoji: ':turtle:',
 			text: "お使いの環境でこのメッセージは閲覧できないようです。",
 			...message,
 		});

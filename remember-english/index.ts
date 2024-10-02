@@ -300,7 +300,7 @@ export class RememberEnglish {
 						block_id: `remember_english_answer-${i}`,
 						label: plainText(`${word.en}: ${word.ja}`),
 						element: {
-							type: 'radio_buttons' as (const),
+							type: 'radio_buttons' as const,
 							action_id: 'action',
 							options: [
 								{

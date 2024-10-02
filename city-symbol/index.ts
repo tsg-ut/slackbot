@@ -391,12 +391,10 @@ export default (slackClients: SlackInterface) => {
 						solvedMessage: {
 							channel: message.channel,
 							text: typicalMessageTextsGenerator.solved(` ＊${city.prefectureName}${city.cityName}＊ `),
-							reply_broadcast: true,
 						},
 						unsolvedMessage: {
 							channel: message.channel,
 							text: typicalMessageTextsGenerator.unsolved(` ＊${city.prefectureName}${city.cityName}＊ `),
-							reply_broadcast: true,
 						},
 						get answerMessage() {
 							const aiHints = aiHintsLoader.get() ?? [];

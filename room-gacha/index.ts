@@ -210,7 +210,6 @@ export default async ({eventClient, webClient}: SlackInterface) => {
                 channel: message.channel,
                 username,
                 icon_emoji: ':house:',
-                icon_url: '',
                 text: '物件ガチャの結果だよ〜:full_moon_with_face:',
                 blocks,
             });

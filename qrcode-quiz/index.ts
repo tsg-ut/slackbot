@@ -440,12 +440,10 @@ export default (slackClients: SlackInterface) => {
 					solvedMessage: {
 						channel,
 						text: '',
-						reply_broadcast: true,
 					},
 					unsolvedMessage: {
 						channel,
 						text: typicalMessageTextsGenerator.unsolved(` ＊${quiz.data}＊ `),
-						reply_broadcast: true,
 					},
 					answerMessage: {
 						channel,

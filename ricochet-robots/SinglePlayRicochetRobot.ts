@@ -101,12 +101,10 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 			solvedMessage: {
 				channel,
 				text: '',
-				reply_broadcast: true,
 			},
 			unsolvedMessage: {
 				channel,
 				text: '',
-				reply_broadcast: true,
 			},
 			correctAnswers: [],
 		}, boardData, answer, originalUser);
@@ -123,7 +121,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 		return super.start();
 	}
 
-	postMessage(message: Partial<ChatPostMessageArguments>) {
+	postMessage(message: {text: string, blocks?: KnownBlock[]}) {
 		return this.slack.chat.postMessage({
 			...message,
 			channel: this.problem.problemMessage.channel,
@@ -196,7 +194,6 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 		return {
 			channel: this.problem.solvedMessage.channel,
 			text: comment,
-			reply_broadcast: true,
 		};
 	}
 
