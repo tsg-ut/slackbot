@@ -15,7 +15,7 @@ jest.mock('crypto', () => ({
 import type {MockedStateInterface} from '../lib/__mocks__/state';
 import Slack from '../lib/slackMock';
 import State from '../lib/state';
-import {HelloWorld, type StateObj} from '.';
+import {HelloWorld, type StateObj} from './HelloWorld';
 
 let slack: Slack = null;
 let helloWorld: HelloWorld = null;
