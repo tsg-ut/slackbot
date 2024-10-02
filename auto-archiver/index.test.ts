@@ -221,7 +221,7 @@ describe('auto-archiver', () => {
 		expect(mockedUpdateMessage.mock.calls[0][0].channel).toBe(FAKE_CHANNEL);
 		expect(mockedUpdateMessage.mock.calls[0][0].ts).toBe(FAKE_TIMESTAMP);
 		// eslint-disable-next-line no-restricted-syntax
-		const blocks = 'blocks' in mockedPostMessage.mock.calls[0][0] ? mockedPostMessage.mock.calls[0][0].blocks : [];
+		const blocks = 'blocks' in mockedUpdateMessage.mock.calls[0][0] ? mockedUpdateMessage.mock.calls[0][0].blocks : [];
 		expect(blocks).toHaveLength(3);
 		expect((blocks[1] as SectionBlock).text.text).toBe('<@U12345678>の回答: ＊使用しない＊');
 		expect(slack.webClient.conversations.archive).toBeCalledWith({
@@ -289,7 +289,7 @@ describe('auto-archiver', () => {
 		expect(mockedUpdateMessage.mock.calls[0][0].channel).toBe(FAKE_CHANNEL);
 		expect(mockedUpdateMessage.mock.calls[0][0].ts).toBe(FAKE_TIMESTAMP);
 		// eslint-disable-next-line no-restricted-syntax
-		const blocks = 'blocks' in mockedPostMessage.mock.calls[0][0] ? mockedPostMessage.mock.calls[0][0].blocks : [];
+		const blocks = 'blocks' in mockedUpdateMessage.mock.calls[0][0] ? mockedUpdateMessage.mock.calls[0][0].blocks : [];
 		expect(blocks).toHaveLength(3);
 		expect((blocks[1] as SectionBlock).text.text).toBe('<@U12345678>の回答: ＊使用する＊');
 

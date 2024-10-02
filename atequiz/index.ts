@@ -69,7 +69,7 @@ export class AteQuiz {
   state: AteQuizState = 'waiting';
   replaceKeys: { correctAnswerer: string } = { correctAnswerer: '[[!user]]' };
   mutex: Mutex;
-  postOption: ChatPostMessageArguments;
+  postOption: Partial<ChatPostMessageArguments>;
   threadTsDeferred: Deferred<string> = new Deferred();
 
   judge(answer: string, _user: string): boolean {
@@ -118,7 +118,7 @@ export class AteQuiz {
   constructor(
     { eventClient, webClient: slack }: SlackInterface,
     problem: AteQuizProblem,
-    option?: ChatPostMessageArguments,
+    option?: Partial<ChatPostMessageArguments>,
   ) {
     this.eventClient = eventClient;
     this.slack = slack;
