@@ -188,7 +188,7 @@ export class AteQuiz {
               Object.assign(
                 {},
                 this.problem.unsolvedMessage,
-                { thread_ts, reply_to_broadcast: true },
+                { thread_ts, reply_broadcast: true },
               )
             );
 
@@ -222,7 +222,7 @@ export class AteQuiz {
                 Object.assign(
                   {},
                   await this.solvedMessageGen(message),
-                  { thread_ts, reply_to_broadcast: true },
+                  { thread_ts, reply_broadcast: true },
                 )
               );
 
