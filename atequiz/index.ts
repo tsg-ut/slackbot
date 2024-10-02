@@ -206,6 +206,7 @@ export class AteQuiz {
     };
 
     this.eventClient.on('message', async (message) => {
+      const thread_ts = await this.threadTsDeferred.promise;
       if (message.thread_ts === thread_ts) {
         if (message.subtype === 'bot_message') return;
         if (_option.mode === 'solo' && message.user !== _option.player) return;

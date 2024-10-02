@@ -30,6 +30,15 @@ beforeEach(async () => {
 });
 
 describe('helloworld', () => {
+	it('responds to "Hello"', async () => {
+		const response = await slack.getResponseTo('Hello');
+		expect(response).toEqual({
+			username: 'helloworld [test-hostname]',
+			channel: slack.fakeChannel,
+			text: 'World!',
+		});
+	});
+
 	it('can post Hello world message', async () => {
 		const postMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
 		postMessage.mockResolvedValueOnce({
