@@ -291,7 +291,7 @@ export class RememberEnglish {
 			view: {
 				callback_id: 'remember_english_answer',
 				private_metadata: challenge.id,
-				type: 'modal' as 'modal',
+				type: 'modal' as const,
 				title: plainText('Answers'),
 				submit: plainText('Record Result'),
 				blocks: [
@@ -300,7 +300,7 @@ export class RememberEnglish {
 						block_id: `remember_english_answer-${i}`,
 						label: plainText(`${word.en}: ${word.ja}`),
 						element: {
-							type: 'radio_buttons' as ('radio_buttons'),
+							type: 'radio_buttons' as (const),
 							action_id: 'action',
 							options: [
 								{
@@ -324,7 +324,7 @@ export class RememberEnglish {
 			trigger_id: triggerId,
 			view: {
 				callback_id: 'remember_english_add_word',
-				type: 'modal' as 'modal',
+				type: 'modal' as const,
 				title: plainText('Add Today\'s English'),
 				submit: plainText('Add word'),
 				blocks: [
@@ -333,7 +333,7 @@ export class RememberEnglish {
 						block_id: 'remember_english_add_word-en',
 						label: plainText('English'),
 						element: {
-							type: 'plain_text_input' as 'plain_text_input',
+							type: 'plain_text_input' as const,
 							action_id: 'action',
 							placeholder: plainText('programming'),
 						},
@@ -343,7 +343,7 @@ export class RememberEnglish {
 						block_id: 'remember_english_add_word-ja',
 						label: plainText('Japanese'),
 						element: {
-							type: 'plain_text_input' as 'plain_text_input',
+							type: 'plain_text_input' as const,
 							action_id: 'action',
 							placeholder: plainText('プログラミング'),
 						},
@@ -407,11 +407,18 @@ export class RememberEnglish {
 
 	// eslint-disable-next-line camelcase
 	postMessage(message: {text: string, blocks?: KnownBlock[], username?: string, icon_url?: string}) {
+		// eslint-disable-next-line no-restricted-syntax
+		const normalizedMessage = 'icon_url' in message ? {
+			...message,
+		} : {
+			...message as Omit<typeof message, 'icon_url'>,
+			icon_emoji: ':abcd:',
+		};
+
 		return this.slack.chat.postMessage({
 			channel: process.env.CHANNEL_SIG_ENGLISH,
 			username: 'rememberbot',
-			...(message.icon_url ? {} : {icon_emoji: ':abcd:'}),
-			...message,
+			...normalizedMessage,
 		});
 	}
 

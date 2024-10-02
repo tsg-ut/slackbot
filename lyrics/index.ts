@@ -149,7 +149,6 @@ export default async ({eventClient, webClient}: SlackInterface) => {
                 channel: message.channel,
                 username: '歌詞検索くん',
                 icon_emoji: ':musical_note:',
-                icon_url: '',
             };
             if (songInfo) {
                 const fields = [

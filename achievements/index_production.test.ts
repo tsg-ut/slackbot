@@ -27,8 +27,9 @@ beforeEach(() => {
 
 describe('achievements', () => {
 	it('unlock chat achievement when chat is posted', async () => {
-		const {text, username} = await slack.getResponseTo('hoge');
-		expect(username).toBe('achievements');
-		expect(text).toContain('はじめまして!');
+		const response = await slack.getResponseTo('hoge');
+		// eslint-disable-next-line no-restricted-syntax
+		expect('username' in response && response.username).toBe('achievements');
+		expect(response.text).toContain('はじめまして!');
 	});
 });
