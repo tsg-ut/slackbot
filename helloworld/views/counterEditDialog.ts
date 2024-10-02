@@ -1,5 +1,5 @@
 import type {View} from '@slack/web-api';
-import type {StateObj} from '..';
+import type {StateObj} from '../HelloWorld';
 
 export default (state: StateObj): View => ({
 	type: 'modal',

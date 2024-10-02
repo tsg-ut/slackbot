@@ -1,5 +1,5 @@
 import type {KnownBlock} from '@slack/web-api';
-import type {StateObj} from '..';
+import type {StateObj} from '../HelloWorld';
 
 export default (state: StateObj): KnownBlock[] => [
 	{
