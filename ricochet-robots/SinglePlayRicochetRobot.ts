@@ -1,7 +1,7 @@
 import { AteQuiz, AteQuizProblem } from '../atequiz';
 import { round } from 'lodash';
 import cloudinary from 'cloudinary';
-import type { Message } from '@slack/web-api/dist/response/ConversationsHistoryResponse';
+import type { GenericMessageEvent } from '@slack/bolt';
 import { SlackInterface } from '../lib/slack';
 import * as image from './image';
 import * as board from './board';
@@ -179,7 +179,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 		return false;
 	}
 
-	async solvedMessageGen(message: Message) {
+	async solvedMessageGen(message: GenericMessageEvent) {
 		const answer = message.text as string;
 		assert(board.iscommand(answer), 'answer is not command');
 
@@ -200,7 +200,7 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 		};
 	}
 
-	async answerMessageGen(message: Message) {
+	async answerMessageGen(message: GenericMessageEvent) {
 		const answer = message.text as string;
 		assert(board.iscommand(answer), 'answer is not command');
 

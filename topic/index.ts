@@ -1,11 +1,11 @@
-import type {Message} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
+import type {GenericMessageEvent} from '@slack/bolt';
 import {increment} from '../achievements';
 import db from '../lib/firestore';
 import type {SlackInterface} from '../lib/slack';
 import {getReactions} from '../lib/slackUtils';
 import State from '../lib/state';
 
-const isQualifiableMessage = (message: Message) => {
+const isQualifiableMessage = (message: GenericMessageEvent) => {
 	if (message?.attachments?.length > 0) {
 		return false;
 	}

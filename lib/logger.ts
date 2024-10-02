@@ -36,20 +36,25 @@ const logger = winston.createLogger({
 					})(),
 					winston.format.colorize(),
 					winston.format.printf(({level, message, timestamp, bot}) => {
-						if (typeof message?.res === 'object') {
-							message.res = serializers.res(message.res);
-						}
-						if (typeof message?.req === 'object') {
-							message.req = serializers.req(message.req);
-						}
-						
 						const time = new Date(timestamp);
 						const hh = time.getHours().toString().padStart(2, '0');
 						const mm = time.getMinutes().toString().padStart(2, '0');
 						const ss = time.getSeconds().toString().padStart(2, '0');
-						const prettyMessage = typeof message === 'string' ? message : inspect(message, {colors: true});
+						const timeString = `\x1b[90m${hh}:${mm}:${ss}\x1b[0m`;
 						const botString = bot ? ` \x1b[35m(${bot})\x1b[0m` : '';
-						return `[${level}] \x1b[90m${hh}:${mm}:${ss}\x1b[0m${botString} ${prettyMessage}`;
+
+						if (typeof message?.res === 'object') {
+							message.res = serializers.res(message.res);
+						}
+
+						if (typeof message?.req === 'object') {
+							const method = message.req?.method ?? '';
+							const url = message.req?.url ?? '';
+							return `[${level}] ${timeString}${botString} \x1b[36m${method}\x1b[0m \x1b[35m${url}\x1b[0m`;
+						}
+						
+						const prettyMessage = typeof message === 'string' ? message : inspect(message, {colors: true});
+						return `[${level}] ${timeString}${botString} ${prettyMessage}`;
 					}),
 				),
 			}),
