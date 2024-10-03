@@ -9,7 +9,11 @@
 		"HTTP_PROXY_TOKEN": {
 			"description": "http-local-fwdをクローンするためのGitHubトークン。repo権限付きの Personal Access Token を使用してください。"
 		}
-	}
+	},
+	"runServices": [
+		"slackbot",
+		"tunnel"
+	]
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
