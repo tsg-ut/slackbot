@@ -1,0 +1,18 @@
+services:
+  slackbot:
+    build: slackbot
+    volumes:
+      - ..:/code
+    stdin_open: true
+    tty: true
+    command: sh -c "npm install && npm run dev -- --only better-custom-response"
+
+  tunnel:
+    build:
+      context: tunnel
+      dockerfile: Dockerfile
+      args:
+        - GITHUB_TOKEN=${GITHUB_TOKEN}
+    stdin_open: true
+    tty: true
+    command: node index.mjs --remote wss://slackbot-api.tsg.ne.jp/wsfwd --host slackbot
