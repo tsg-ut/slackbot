@@ -6,7 +6,7 @@
 	"service": "slackbot",
 	"workspaceFolder": "/code",
 	"secrets": {
-		"GITHUB_TOKEN": {
+		"HTTP_PROXY_TOKEN": {
 			"description": "http-local-fwdをクローンするためのGitHubトークン。repo権限付きの Personal Access Token を使用してください。"
 		}
 	}

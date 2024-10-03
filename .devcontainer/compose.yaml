@@ -12,7 +12,7 @@ services:
       context: tunnel
       dockerfile: Dockerfile
       args:
-        - GITHUB_TOKEN=${GITHUB_TOKEN}
+        - HTTP_PROXY_TOKEN=${HTTP_PROXY_TOKEN}
     stdin_open: true
     tty: true
     command: node index.mjs --remote wss://slackbot-api.tsg.ne.jp/wsfwd --host slackbot
