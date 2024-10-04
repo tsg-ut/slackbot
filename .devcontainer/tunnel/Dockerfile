@@ -1,7 +1,8 @@
-FROM mcr.microsoft.com/devcontainers/javascript-node:20
+FROM node:20-alpine
 ARG HTTP_PROXY_TOKEN
 
-RUN apt-get update -y && \
+RUN apk update && \
+    apk add git && \
     git clone https://${HTTP_PROXY_TOKEN}@github.com/tsg-ut/http-local-fwd.git && \
     cd http-local-fwd/local && \
     npm install
