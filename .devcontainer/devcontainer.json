@@ -10,6 +10,11 @@
 			"description": "http-local-fwdをクローンするためのGitHubトークン。repo権限付きの Personal Access Token を使用してください。"
 		}
 	},
+	"features":{
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {
+			"version": "latest"
+		}
+	},
 	"runServices": [
 		"slackbot",
 		"tunnel"
