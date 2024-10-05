@@ -4,6 +4,13 @@ FROM node:20-bookworm
 # https://github.com/Automattic/node-canvas/wiki/Installation%3A-Ubuntu-and-other-Debian-based-systems
 RUN apt-get update -y && \
     apt-get install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev -y && \
-    apt-get install git bash
+    apt-get install git bash && \
+    mkdir /code && \
+    mkdir -p ~/.cache/slackbot/node_modules && \
+    cd /code && \
+    ln -s ~/.cache/slackbot/node_modules node_modules && \
+    wget https://github.com/tsg-ut/slackbot/raw/refs/heads/master/package.json && \
+    wget https://github.com/tsg-ut/slackbot/raw/refs/heads/master/package-lock.json && \
+    npm install
 
 WORKDIR /code
