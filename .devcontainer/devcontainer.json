@@ -18,7 +18,13 @@
 	"runServices": [
 		"slackbot",
 		"tunnel"
-	]
+	],
+	"postAttachCommand": "docker logs slackbot_devcontainer-tunnel-1 && docker attach slackbot_devcontainer-tunnel-1",
+	"onCreateCommand": "echo 'onCreate: Please run `docker-compose up` to start the services.'",
+	"postStartCommand": "echo 'postStart: Please run `docker-compose up` to start the services.'",
+	"postCreateCommand": "echo 'postCreate: Please run `docker-compose up` to start the services.'",
+	"initializeCommand": "echo 'initialize: Please run `docker-compose up` to start the services.'",
+	"updateContentCommand": "echo 'updateContent: Please run `docker-compose up` to start the services.'"
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
