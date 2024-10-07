@@ -20,7 +20,7 @@
 		"tunnel"
 	],
 	"postAttachCommand": "docker logs slackbot_devcontainer-tunnel-1 && docker attach slackbot_devcontainer-tunnel-1",
-	"onCreateCommand": "cp -RTf ~/.cache/slackbot/node_modules /code/node_modules && cp -RTf ~/.cache/slackbot-functions/node_modules /code/functions/node_modules && npm install",
+	"onCreateCommand": "echo 'onCreate: Please run `docker-compose up` to start the services.'",
 	"postStartCommand": "echo 'postStart: Please run `docker-compose up` to start the services.'",
 	"postCreateCommand": "echo 'postCreate: Please run `docker-compose up` to start the services.'",
 	"initializeCommand": "echo 'initialize: Please run `docker-compose up` to start the services.'",
