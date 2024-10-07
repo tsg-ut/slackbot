@@ -5,7 +5,7 @@ services:
       - ..:/code
     stdin_open: true
     tty: true
-    command: npm run dev -- --only better-custom-response
+    command: sh -c "npm install && npm run dev -- --only better-custom-response"
     environment:
       - TEAM_ID=${TEAM_ID}
       - SIGNING_SECRET=${SIGNING_SECRET}
