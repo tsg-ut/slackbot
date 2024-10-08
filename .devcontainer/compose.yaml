@@ -3,9 +3,11 @@ services:
     build: slackbot
     volumes:
       - ..:/code
+      - /code/node_modules
+      - /code/functions/node_modules
     stdin_open: true
     tty: true
-    command: sh -c "echo hoge"
+    command: sleep infinity
     environment:
       - TEAM_ID=${TEAM_ID}
       - SIGNING_SECRET=${SIGNING_SECRET}
