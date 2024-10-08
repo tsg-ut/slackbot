@@ -17,8 +17,6 @@
 		"ghcr.io/devcontainers/features/common-utils:2": {
 			"installZsh": "true",
 			"username": "slackbot",
-			"userUid": "1000",
-			"userGid": "1000",
 			"upgradePackages": "true"
 		}
 	},
@@ -27,24 +25,10 @@
 		"tunnel"
 	],
 	"postAttachCommand": "docker logs slackbot_devcontainer-tunnel-1 && docker attach slackbot_devcontainer-tunnel-1",
-	"onCreateCommand": "cp -RTf ~/.cache/slackbot/node_modules /code/node_modules && cp -RTf ~/.cache/slackbot-functions/node_modules /code/functions/node_modules",
-	"postStartCommand": "echo 'postStart: Please run `docker-compose up` to start the services.'",
-	"postCreateCommand": "echo 'postCreate: Please run `docker-compose up` to start the services.'",
-	"initializeCommand": "echo 'initialize: Please run `docker-compose up` to start the services.'",
-	"updateContentCommand": "echo 'updateContent: Please run `docker-compose up` to start the services.'"
-
-	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "yarn install",
-
 	// Configure tool-specific properties.
 	// "customizations": {},
-
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
 }
