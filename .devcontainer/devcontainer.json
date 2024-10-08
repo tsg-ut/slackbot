@@ -25,10 +25,15 @@
 		"tunnel"
 	],
 	"postAttachCommand": "docker logs slackbot_devcontainer-tunnel-1 && docker attach slackbot_devcontainer-tunnel-1",
-
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-
-	// Configure tool-specific properties.
-	// "customizations": {},
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"files.autoSave": "off",
+				"editor.formatOnSave": true,
+				"editor.codeActionsOnSave": {
+					"source.fixAll.eslint": "explicit"
+				}
+			}
+		}
+	}
 }
