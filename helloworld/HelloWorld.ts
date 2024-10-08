@@ -110,6 +110,15 @@ export class HelloWorld {
 
 	// 「Hello, World!」メッセージを#sandboxに送信する
 	async postHelloWorld() {
+		if (this.#state.latestStatusMessage.channel === this.#SANDBOX_ID) {
+			const timestamp = new Date(parseInt(this.#state.latestStatusMessage.ts) * 1000);
+			const elapsed = (Date.now() - timestamp.getTime()) / 1000;
+			if (elapsed < 60 * 60) {
+				log.info('Skipping postHelloWorld because the latest message was posted less than 60 minutes ago');
+				return;
+			}
+		}
+
 		const result = await this.#slack.chat.postMessage({
 			username: this.username,
 			channel: process.env.CHANNEL_SANDBOX,
