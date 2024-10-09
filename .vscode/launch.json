@@ -2,16 +2,40 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "node",
-            "request": "launch",
             "name": "Slackbot起動",
+            "type": "node",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run-script",
+                "dev",
+                "--",
+                "--only",
+                "${input:onlyArgument}"
+            ],
+            "request": "launch",
             "skipFiles": [
                 "<node_internals>/**"
             ],
+            "console": "internalConsole",
+            "outputCapture": "std"
+        },
+        {
+            "name": "ユニットテストの実行",
+            "type": "node",
             "runtimeExecutable": "npm",
-            "runtimeArgs": [
-                "run-script", "dev", "--", "--only", "${input:onlyArgument}"
-            ]
+            "args": [
+                "run-script",
+                "test",
+                "--",
+                "${input:testFilterArgument}"
+            ],
+            "internalConsoleOptions": "openOnSessionStart",
+            "request": "launch",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "console": "internalConsole",
+            "outputCapture": "std"
         }
     ],
     "inputs": [
@@ -20,6 +44,12 @@
             "type": "promptString",
             "description": "起動するBOTの種類",
             "default": "helloworld"
+        },
+        {
+            "id": "testFilterArgument",
+            "type": "promptString",
+            "description": "実行するユニットテストの正規表現フィルタ",
+            "default": "**/*.{js,ts}"
         }
     ]
 }

@@ -1,13 +1,13 @@
-import {randomUUID} from 'crypto';
+import { randomUUID } from 'crypto';
 import type EventEmitter from 'events';
 import os from 'os';
-import type {BlockAction, ViewSubmitAction} from '@slack/bolt';
-import type {SlackMessageAdapter} from '@slack/interactive-messages';
-import type {MessageEvent, WebClient} from '@slack/web-api';
-import {Mutex} from 'async-mutex';
+import type { BlockAction, ViewSubmitAction } from '@slack/bolt';
+import type { SlackMessageAdapter } from '@slack/interactive-messages';
+import type { MessageEvent, WebClient } from '@slack/web-api';
+import { Mutex } from 'async-mutex';
 import logger from '../lib/logger';
-import type {SlackInterface} from '../lib/slack';
-import {extractMessage} from '../lib/slackUtils';
+import type { SlackInterface } from '../lib/slack';
+import { extractMessage } from '../lib/slackUtils';
 import State from '../lib/state';
 import counterEditDialog from './views/counterEditDialog';
 import helloWorldMessage from './views/helloWorldMessage';
@@ -15,12 +15,12 @@ import helloWorldMessage from './views/helloWorldMessage';
 export interface StateObj {
 	uuid: string,
 	counter: number,
-	latestStatusMessage: {ts: string, channel: string} | null,
+	latestStatusMessage: { ts: string, channel: string } | null,
 }
 
 const mutex = new Mutex();
 
-const log = logger.child({bot: 'helloworld'});
+const log = logger.child({ bot: 'helloworld' });
 
 export class HelloWorld {
 	#slack: WebClient;
@@ -110,7 +110,7 @@ export class HelloWorld {
 
 	// 「Hello, World!」メッセージを#sandboxに送信する
 	async postHelloWorld() {
-		if (this.#state.latestStatusMessage.channel === this.#SANDBOX_ID) {
+		if (this.#state.latestStatusMessage?.channel === this.#SANDBOX_ID) {
 			const timestamp = new Date(parseInt(this.#state.latestStatusMessage.ts) * 1000);
 			const elapsed = (Date.now() - timestamp.getTime()) / 1000;
 			if (elapsed < 60 * 60) {
@@ -152,7 +152,7 @@ export class HelloWorld {
 	}
 
 	// カウンター編集ダイアログを表示する
-	private async showCounterEditDialog({triggerId}: {triggerId: string}) {
+	private async showCounterEditDialog({ triggerId }: { triggerId: string }) {
 		log.info('Showing counter edit dialog');
 
 		await this.#slack.views.open({
