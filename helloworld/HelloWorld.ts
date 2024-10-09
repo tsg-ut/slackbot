@@ -14,7 +14,7 @@ import helloWorldMessage from './views/helloWorldMessage';
 export interface StateObj {
 	uuid: string,
 	counter: number,
-	latestStatusMessage: { ts: string, channel: string } | null,
+	latestStatusMessage: {ts: string, channel: string} | null,
 }
 
 const mutex = new Mutex();
