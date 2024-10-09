@@ -1,6 +1,7 @@
 services:
   slackbot:
-    build: slackbot
+    # build: slackbot
+    image: ghcr.io/tsg-ut/slackbot-codespaces-image-slackbot:master
     volumes:
       - ..:/code
       - /code/node_modules
