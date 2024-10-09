@@ -1,5 +1,7 @@
 # slackbot
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=false&ref=master&repo=105612722&skip_quickstart=false)
+
 [![Test][action-image]][action-url]
 [![Coverage Status][codecov-image]][codecov-url]
 
@@ -12,8 +14,6 @@
 [codecov-graph]: https://codecov.io/gh/tsg-ut/slackbot/branch/master/graphs/tree.svg?width=888&height=150
 
 TSGのSlackで動くSlackbotたち
-
-自分がOWNERのコードの変更は直接masterにpushして構いません。 ([CODEOWNERS](CODEOWNERS)参照)
 
 ## 環境構築
 

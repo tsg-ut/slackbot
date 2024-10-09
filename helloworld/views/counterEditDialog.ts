@@ -22,6 +22,7 @@ export default (state: StateObj): View => ({
 				action_id: 'counter_input',
 				is_decimal_allowed: false,
 				min_value: '0',
+				max_value: '10000000000',
 				initial_value: state.counter.toString(),
 			},
 			label: {

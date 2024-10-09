@@ -1,13 +1,13 @@
-import { randomUUID } from 'crypto';
+import {randomUUID} from 'crypto';
 import type EventEmitter from 'events';
 import os from 'os';
-import type { BlockAction, ViewSubmitAction } from '@slack/bolt';
-import type { SlackMessageAdapter } from '@slack/interactive-messages';
-import type { MessageEvent, WebClient } from '@slack/web-api';
-import { Mutex } from 'async-mutex';
+import type {BlockAction, ViewSubmitAction} from '@slack/bolt';
+import type {SlackMessageAdapter} from '@slack/interactive-messages';
+import type {MessageEvent, WebClient} from '@slack/web-api';
+import {Mutex} from 'async-mutex';
 import logger from '../lib/logger';
-import type { SlackInterface } from '../lib/slack';
-import { extractMessage } from '../lib/slackUtils';
+import type {SlackInterface} from '../lib/slack';
+import {extractMessage} from '../lib/slackUtils';
 import State from '../lib/state';
 import counterEditDialog from './views/counterEditDialog';
 import helloWorldMessage from './views/helloWorldMessage';
@@ -20,7 +20,7 @@ export interface StateObj {
 
 const mutex = new Mutex();
 
-const log = logger.child({ bot: 'helloworld' });
+const log = logger.child({bot: 'helloworld'});
 
 export class HelloWorld {
 	#slack: WebClient;
@@ -31,7 +31,7 @@ export class HelloWorld {
 
 	#state: StateObj;
 
-	#SANDBOX_ID = process.env.CHANNEL_SANDBOX!;
+	#SANDBOX_ID = process.env.CHANNEL_SANDBOX ?? '';
 
 	// インスタンスを生成するためのファクトリメソッド
 	static async create(slack: SlackInterface) {
@@ -86,7 +86,7 @@ export class HelloWorld {
 			const stateValues = Object.assign({}, ...stateObjects);
 
 			mutex.runExclusive(() => (
-				this.setCounterValue(parseInt(stateValues.counter_input.value))
+				this.setCounterValue(parseInt(stateValues.counter_input.value) || 0)
 			));
 		});
 
@@ -113,10 +113,19 @@ export class HelloWorld {
 		if (this.#state.latestStatusMessage?.channel === this.#SANDBOX_ID) {
 			const timestamp = new Date(parseInt(this.#state.latestStatusMessage.ts) * 1000);
 			const elapsed = (Date.now() - timestamp.getTime()) / 1000;
+
+			// 直近のメッセージが60分以内に投稿されている場合は何もせず終了
 			if (elapsed < 60 * 60) {
 				log.info('Skipping postHelloWorld because the latest message was posted less than 60 minutes ago');
 				return;
 			}
+
+			// 直近のメッセージが60分以上前に投稿されている場合は削除して投稿し直す
+			log.info('Removing last status message because the latest message was posted more than 60 minutes ago');
+			await this.#slack.chat.delete({
+				channel: this.#state.latestStatusMessage.channel,
+				ts: this.#state.latestStatusMessage.ts,
+			});
 		}
 
 		const result = await this.#slack.chat.postMessage({
@@ -138,7 +147,7 @@ export class HelloWorld {
 		this.#state.counter = value;
 
 		if (!this.#state.latestStatusMessage) {
-			log.warn('latestStatusMessage is not set');
+			log.error('latestStatusMessage is not set');
 			return;
 		}
 
@@ -152,7 +161,7 @@ export class HelloWorld {
 	}
 
 	// カウンター編集ダイアログを表示する
-	private async showCounterEditDialog({ triggerId }: { triggerId: string }) {
+	private async showCounterEditDialog({triggerId}: { triggerId: string }) {
 		log.info('Showing counter edit dialog');
 
 		await this.#slack.views.open({
