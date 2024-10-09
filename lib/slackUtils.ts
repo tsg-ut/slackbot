@@ -1,5 +1,5 @@
 import type {MrkdwnElement, PlainTextElement} from '@slack/web-api';
-import type {Member} from '@slack/web-api/dist/response/UsersListResponse';
+import type {Member} from '@slack/web-api/dist/types/response/UsersListResponse';
 import {WebClient} from '@slack/web-api';
 import {eventClient, getTokens} from './slack';
 import {Deferred} from './utils';

@@ -1,15 +1,16 @@
-import type {Message} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
+import type {MessageElement} from '@slack/web-api/dist/types/response/ConversationsHistoryResponse';
 import {increment} from '../achievements';
 import db from '../lib/firestore';
 import type {SlackInterface} from '../lib/slack';
 import {getReactions} from '../lib/slackUtils';
 import State from '../lib/state';
 
-const isQualifiableMessage = (message: Message) => {
+const isQualifiableMessage = (message: MessageElement) => {
 	if (message?.attachments?.length > 0) {
 		return false;
 	}
-	if (message?.files?.length > 0) {
+	// eslint-disable-next-line no-restricted-syntax
+	if ('files' in message && message?.files?.length > 0) {
 		return false;
 	}
 	if (message?.subtype === 'bot_message' && message?.blocks?.length > 1) {

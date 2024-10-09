@@ -7,7 +7,7 @@ import type {SlackInterface} from '../lib/slack';
 import {download} from '../lib/download';
 import {parse as csv_parse} from 'csv-parse';
 import {AteQuiz,AteQuizProblem} from '../atequiz';
-import type { WebAPICallOptions } from '@slack/web-api';
+import type { ChatPostMessageArguments } from '@slack/web-api';
 import { stripIndent } from 'common-tags';
 import {Loader} from '../lib/utils';
 
@@ -166,7 +166,7 @@ class WadoQuiz extends AteQuiz {
     problem: AteQuizProblem,
     data: Problem,
     channel: string,
-    option?: WebAPICallOptions,
+    option?: Partial<ChatPostMessageArguments>,
   ){
     super(clients, problem, option);
     this.data = data;
@@ -185,7 +185,6 @@ class WadoQuiz extends AteQuiz {
         this.data.answers.length === 1 ? "" : `\n他にも『${
           this.data.answers.filter((c) => c !== answerChar).join('/')}』などが当てはまります。`
       )),
-      reply_broadcast: true,
     })
   }
 }
@@ -227,7 +226,6 @@ export default (slackClients: SlackInterface) => {
           unsolvedMessage: {
             channel,
             text: `時間切れ！\n正解は『${data.answers.join('/')}』でした。`,
-            reply_broadcast: true,
           },
           answerMessage: null,
           correctAnswers: [...data.acceptAnswerMap.keys()]

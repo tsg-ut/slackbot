@@ -53,7 +53,6 @@ class DiceBot {
       channel: channel,
       username: "dicebot",
       icon_emoji: ":game_die:",
-      icon_url: "",
       text: text,
       thread_ts: thread
     });

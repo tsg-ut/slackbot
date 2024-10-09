@@ -13,15 +13,15 @@ beforeEach(() => {
 
 describe('voiperrobot', () => {
 	it('responds to ボイパーロボット', async () => {
-		const {text, username} = await slack.getResponseTo('ボイパーロボット');
+		const response = await slack.getResponseTo('ボイパーロボット');
 
-		expect(username).toBe('voiperrobot');
-		expect(text).toMatch(/(はっ|ひっ|くっ|むか|つく|パン|ツか){8}/);
+		expect('username' in response && response.username).toBe('voiperrobot');
+		expect(response.text).toMatch(/(はっ|ひっ|くっ|むか|つく|パン|ツか){8}/);
 	});
 	it('responds to ボイパーロボットバトル', async () => {
-		const {text, username} = await slack.getResponseTo('ボイパーロボットバトル');
+		const response = await slack.getResponseTo('ボイパーロボットバトル');
 
-		expect(username).toBe('voiperrobot');
-		expect(text).toContain('ボイパーロボットバトルをはじめるよ〜');
+		expect('username' in response && response.username).toBe('voiperrobot');
+		expect(response.text).toContain('ボイパーロボットバトルをはじめるよ〜');
 	});
 });

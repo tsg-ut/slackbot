@@ -105,12 +105,10 @@ export default ({ eventClient, webClient: slack }: SlackInterface) => {
             solvedMessage: {
               channel,
               text: typicalMessageTextsGenerator.solved(` *${title}* (${author}) `),
-              reply_broadcast: true,
             },
             unsolvedMessage: {
               channel,
               text: typicalMessageTextsGenerator.unsolved(` *${title}* (${author}) `),
-              reply_broadcast: true,
             },
             answerMessage: { channel, text: cardURL },
             correctAnswers: [title],
@@ -148,12 +146,10 @@ export default ({ eventClient, webClient: slack }: SlackInterface) => {
             solvedMessage: {
               channel,
               text: typicalMessageTextsGenerator.solved(` *${author}* (${title}) `),
-              reply_broadcast: true,
             },
             unsolvedMessage: {
               channel,
               text: typicalMessageTextsGenerator.unsolved(` *${author}* (${title}) `),
-              reply_broadcast: true,
             },
             answerMessage: { channel, text: cardURL },
             correctAnswers: author.split("　"),

@@ -27,8 +27,8 @@ beforeEach(async () => {
 
 describe('ponpe', () => {
 	it('responds to ぽんぺ出題', async () => {
-		const {text, username} = await slack.getResponseTo('ぽんぺ出題');
-		expect(username).toBe('ぽんぺマスター');
-		expect(text).toMatch(/^ぽんぺをはじめるよ:waiwai:。/);
+		const response = await slack.getResponseTo('ぽんぺ出題');
+		expect('username' in response && response.username).toBe('ぽんぺマスター');
+		expect(response.text).toMatch(/^ぽんぺをはじめるよ:waiwai:。/);
 	});
 });

@@ -379,7 +379,7 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 
 		// on Sundays
 		if (date.getDay() === 0) {
-			const {members} = await slack.users.list();
+			const {members} = await slack.users.list({});
 
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
