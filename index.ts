@@ -7,7 +7,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import Fastify from 'fastify';
-import os from 'os';
 import qs from 'querystring';
 import { eventClient, messageClient, tsgEventClient, webClient } from './lib/slack';
 
@@ -23,6 +22,7 @@ import { throttle, uniq } from 'lodash';
 import { RequestHandler } from 'express-serve-static-core';
 import { inspect } from 'util';
 import concat from 'concat-stream';
+import { getAuthorityLabel } from './lib/slackUtils';
 
 const log = logger.child({ bot: 'index' });
 
@@ -187,9 +187,10 @@ eventClient.on('error', (error) => {
 	fastify.use('/slack-message', messageClient.requestListener());
 
 	const loadedPlugins = new Set<string>();
+	const authority = getAuthorityLabel();
 
 	const initializationMessage = await webClient.chat.postMessage({
-		username: `tsgbot [${os.hostname()}]`,
+		username: `tsgbot [${authority}]`,
 		channel: process.env.CHANNEL_SANDBOX,
 		text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
 		attachments: plugins.map((name) => ({
@@ -246,7 +247,7 @@ eventClient.on('error', (error) => {
 
 	log.info('Launched');
 	webClient.chat.postMessage({
-		username: `tsgbot [${os.hostname()}]`,
+		username: `tsgbot [${authority}]`,
 		channel: process.env.CHANNEL_SANDBOX,
 		text: argv.startup,
 	});

@@ -1,13 +1,12 @@
 import {randomUUID} from 'crypto';
 import type EventEmitter from 'events';
-import os from 'os';
 import type {BlockAction, ViewSubmitAction} from '@slack/bolt';
 import type {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {MessageEvent, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
-import {extractMessage} from '../lib/slackUtils';
+import {extractMessage, getAuthorityLabel} from '../lib/slackUtils';
 import State from '../lib/state';
 import counterEditDialog from './views/counterEditDialog';
 import helloWorldMessage from './views/helloWorldMessage';
@@ -32,6 +31,8 @@ export class HelloWorld {
 	#state: StateObj;
 
 	#SANDBOX_ID = process.env.CHANNEL_SANDBOX ?? '';
+
+	#AUTHORITY = getAuthorityLabel();
 
 	// インスタンスを生成するためのファクトリメソッド
 	static async create(slack: SlackInterface) {
@@ -105,7 +106,7 @@ export class HelloWorld {
 	}
 
 	private get username() {
-		return `helloworld [${os.hostname()}]`;
+		return `helloworld [${this.#AUTHORITY}]`;
 	}
 
 	// 「Hello, World!」メッセージを#sandboxに送信する

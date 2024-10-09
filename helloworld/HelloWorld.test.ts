@@ -33,7 +33,7 @@ describe('helloworld', () => {
 	it('responds to "Hello"', async () => {
 		const response = await slack.getResponseTo('Hello');
 		expect(response).toEqual({
-			username: 'helloworld [test-hostname]',
+			username: 'helloworld [TEST_AUTHORITY]',
 			channel: slack.fakeChannel,
 			text: 'World!',
 		});
@@ -59,7 +59,7 @@ describe('helloworld', () => {
 
 		const mockedPostMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
 		expect(mockedPostMessage).toBeCalledWith({
-			username: 'helloworld [test-hostname]',
+			username: 'helloworld [TEST_AUTHORITY]',
 			channel: slack.fakeChannel,
 			text: 'Hello, World!',
 			blocks: [
@@ -113,7 +113,7 @@ describe('helloworld', () => {
 					elements: [
 						{
 							type: 'plain_text',
-							text: '⚠この値は再起動後も保存されます。前回このメッセージを投稿してから60分以上経っている場合はメッセージが再投稿されますが、以前のメッセージの数字は更新されなくなります。ボタンを押すとエラーが出る場合は、「Slackbotを作ろう」ページの「WebSocketトンネルをセットアップする」などを参考に Event API のセットアップが正常にできているかもう一度確認してください。',
+							text: '⚠この値は再起動後も保存されます。前回このメッセージを投稿してから60分以上経っている場合は、以前のメッセージが削除され再投稿されます。ボタンを押すとエラーが出る場合は、「Slackbotを作ろう」ページの「WebSocketトンネルをセットアップする」などを参考に Event API のセットアップが正常にできているかもう一度確認してください。',
 							emoji: true,
 						},
 					],

@@ -27,6 +27,7 @@
                 "run-script",
                 "test",
                 "--",
+                "--colors",
                 "${input:testFilterArgument}"
             ],
             "internalConsoleOptions": "openOnSessionStart",
@@ -48,8 +49,8 @@
         {
             "id": "testFilterArgument",
             "type": "promptString",
-            "description": "実行するユニットテストの正規表現フィルタ",
-            "default": "**/*.{js,ts}"
+            "description": "実行するユニットテストの正規表現フィルタ (全部実行する場合は空文字列を入力)",
+            "default": ""
         }
     ]
 }
