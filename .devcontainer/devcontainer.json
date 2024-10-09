@@ -1,0 +1,44 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/javascript-node
+{
+	"name": "Node.js",
+	"dockerComposeFile": "compose.yaml",
+	"service": "slackbot",
+	"workspaceFolder": "/code",
+	"features": {
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"installZsh": "true",
+			"username": "slackbot",
+			"upgradePackages": "true"
+		}
+	},
+	"runServices": [
+		"slackbot",
+		"tunnel"
+	],
+	"postAttachCommand": "docker logs slackbot_devcontainer-tunnel-1 && docker attach slackbot_devcontainer-tunnel-1",
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"files.autoSave": "off",
+				"editor.formatOnSave": true,
+				"editor.codeActionsOnSave": {
+					"source.fixAll": "always",
+					"source.fixAll.eslint": "always"
+				},
+				"eslint.format.enable": true
+			},
+			"extensions": [
+				"ms-vscode.vscode-typescript-next",
+				"dbaeumer.vscode-eslint",
+				"GitHub.copilot",
+				"GitHub.copilot-chat",
+				"GitHub.vscode-pull-request-github",
+				"toba.vsfire"
+			]
+		}
+	}
+}
