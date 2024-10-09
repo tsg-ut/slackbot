@@ -1,6 +1,6 @@
 # slackbot
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=false&ref=master&repo=105612722&skip_quickstart=false)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/tsg-ut/slackbot?quickstart=1)
 
 [![Test][action-image]][action-url]
 [![Coverage Status][codecov-image]][codecov-url]
