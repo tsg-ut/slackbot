@@ -41,6 +41,6 @@ jobs:
       - name: Generate artifact attestation (slackbot)
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ghcr.io/tsg-ut/slackbot-codespaces-image-slackbot:master
+          subject-name: ghcr.io/tsg-ut/slackbot-codespaces-image-slackbot
           subject-digest: ${{ steps.push_slackbot.outputs.digest }}
           push-to-registry: true
