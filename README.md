@@ -19,7 +19,7 @@ TSGのSlackで動くSlackbotたち
 
 ### Prerequisites
 
-* Node.js Latest
+* Node.js v20
 
 ### セットアップ
 
