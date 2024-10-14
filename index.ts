@@ -4,7 +4,7 @@ import 'canvas';
 
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ override: true });
 
 import Fastify from 'fastify';
 import qs from 'querystring';
