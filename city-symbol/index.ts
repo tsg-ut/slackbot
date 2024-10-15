@@ -82,11 +82,18 @@ interface CityInformation {
 	placeImage: string;
 	plainText: string;
 	ruby: string;
+	kotobankUrl: string | null;
 	kotobankDescription: string | null;
+	chakuwikiUrl: string | null;
 	chakuwikiDescription: string | null;
 }
 
 type City = CitySymbol & CityInformation;
+
+interface DictionaryInformation {
+	url: string;
+	description: string;
+}
 
 const extractWikipediaPlaintext = (content: string) => {
 	const normalizedContent = content
@@ -201,7 +208,7 @@ const getPlaintextWikipedia = async (title: string): Promise<string> => {
 	return content;
 };
 
-const getKotobankCityDescription = async (city: CitySymbol) => {
+const getKotobankCityDescription = async (city: CitySymbol): Promise<DictionaryInformation | null> => {
 	log.info(`Getting kotobank britannica information for ${city.cityName}...`);
 	const response = await fetch(`https://kotobank.jp/word/${city.cityName}`);
 
@@ -229,14 +236,21 @@ const getKotobankCityDescription = async (city: CitySymbol) => {
 			continue;
 		}
 
-		return normalizedDescription;
+		const id = $britannica.attr('id') ?? '';
+		const url = new URL(response.url);
+		url.hash = id;
+
+		return {
+			url: url.toString(),
+			description: normalizedDescription,
+		};
 	}
 
 	log.warn(`Kotobank britannica information for ${city.cityName} not found`);
 	return null;
 };
 
-const getChakuwikiCityDescription = async (city: CitySymbol) => {
+const getChakuwikiCityDescription = async (city: CitySymbol): Promise<DictionaryInformation | null> => {
 	log.info(`Getting chakuwiki information for ${city.cityName}...`);
 	const fullCityName = `${city.prefectureName}${city.cityName}`;
 	const title = chakuwikiTitleMap.get(fullCityName);
@@ -245,7 +259,7 @@ const getChakuwikiCityDescription = async (city: CitySymbol) => {
 		return null;
 	}
 
-	const url = `https://chakuwiki.org/w/api.php?${qs.encode({
+	const chakuwikiApiUrl = `https://chakuwiki.org/w/api.php?${qs.encode({
 		format: 'json',
 		action: 'query',
 		prop: 'revisions',
@@ -253,7 +267,7 @@ const getChakuwikiCityDescription = async (city: CitySymbol) => {
 		titles: title,
 	})}`;
 
-	const response = await fetch(url);
+	const response = await fetch(chakuwikiApiUrl);
 	const json = await response.json();
 
 	const pages = json?.query?.pages;
@@ -264,11 +278,15 @@ const getChakuwikiCityDescription = async (city: CitySymbol) => {
 	}
 
 	let isRumorSection = false;
+	let header = null;
 	const rumors: string[] = [];
 	for (const line of content.split('\n')) {
 		if (line.startsWith('=')) {
 			if (line.includes(city.cityName)) {
 				isRumorSection = true;
+				if (header === null) {
+					header = line.replaceAll('=', '').trim();
+				}
 			} else {
 				isRumorSection = false;
 			}
@@ -280,7 +298,14 @@ const getChakuwikiCityDescription = async (city: CitySymbol) => {
 		}
 	}
 
-	return rumors.map((rumor) => `* ${rumor}`).join('\n');
+	const description = rumors.map((rumor) => `* ${rumor}`).join('\n');
+	const url = new URL(`https://chakuwiki.org/wiki/${title}`);
+	url.hash = header;
+
+	return {
+		url: url.toString(),
+		description,
+	};
 };
 
 const getCityInformation = async (city: CitySymbol): Promise<CityInformation> => {
@@ -310,10 +335,18 @@ const getCityInformation = async (city: CitySymbol): Promise<CityInformation> =>
 	const rubyMatches = plainText.match(/（(.+?)）は/);
 	const ruby = rubyMatches?.[1] ?? '';
 
-	const kotobankDescription = await getKotobankCityDescription(city);
-	const chakuwikiDescription = await getChakuwikiCityDescription(city);
+	const kotobankInformation = await getKotobankCityDescription(city);
+	const chakuwikiInformation = await getChakuwikiCityDescription(city);
 
-	return {placeImage, ruby, plainText, kotobankDescription, chakuwikiDescription};
+	return {
+		placeImage,
+		plainText,
+		ruby,
+		kotobankUrl: kotobankInformation?.url ?? null,
+		kotobankDescription: kotobankInformation?.description ?? null,
+		chakuwikiUrl: chakuwikiInformation?.url ?? null,
+		chakuwikiDescription: chakuwikiInformation?.description ?? null,
+	};
 };
 
 const getRandomCitySymbol = async (): Promise<City> => {
@@ -325,7 +358,9 @@ const getRandomCitySymbol = async (): Promise<City> => {
 			reason: '伯方の塩のパッケージに描かれている赤と青のストライプを直方体にあしらったもの',
 			plainText: '博多市は、TSG CTF や TSG LIVE! の開催などを行ったTSG部員である。',
 			kotobankDescription: '博多市は、JavaScriptやTypeScriptなどのプログラミング言語を得意とするプログラマであり、AtCoderの最高レーティングは2309である。',
+			kotobankUrl: 'https://hakatashi.com',
 			chakuwikiDescription: '博多市は、加熱した玉ねぎを食べることを苦手としており、麦から作られたウイスキーやビールなどの飲み物を嫌っている。',
+			chakuwikiUrl: 'https://hakatashi.com',
 			date: '2020年6月21日',
 			notes: 'なし',
 			files: ['https://raw.githubusercontent.com/hakatashi/icon/master/images/icon_480px.png'],
@@ -448,6 +483,16 @@ export default (slackClients: SlackInterface) => {
 
 					const aiHintsLoader = new Loader<string[]>(() => generateAiHints(city));
 					aiHintsLoader.load();
+
+					const aiHintSources: string[] = [];
+					const wikipediaUrl = `https://ja.wikipedia.org/wiki/${encodeURIComponent(city.cityWikipediaName)}`;
+					aiHintSources.push(`<${wikipediaUrl}|Wikipedia>`);
+					if (city.kotobankUrl) {
+						aiHintSources.push(`<${city.kotobankUrl}|コトバンク>`);
+					}
+					if (city.chakuwikiUrl) {
+						aiHintSources.push(`<${city.chakuwikiUrl}|Chakuwiki>`);
+					}
 
 					const problem = {
 						problemMessage: {
@@ -572,6 +617,15 @@ export default (slackClients: SlackInterface) => {
 															},
 														],
 													})),
+												},
+											],
+										},
+										{
+											type: 'context',
+											elements: [
+												{
+													type: 'mrkdwn',
+													text: `ソース: ${aiHintSources.join(', ')}`,
 												},
 											],
 										},
