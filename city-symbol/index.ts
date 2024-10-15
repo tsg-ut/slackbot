@@ -565,6 +565,8 @@ export default (slackClients: SlackInterface) => {
 							return {
 								channel: message.channel,
 								text: `${answerHeader}\n\n${answerDetails}`,
+								unfurl_links: false,
+								unfurl_media: false,
 								blocks: [
 									{
 										type: 'image',
