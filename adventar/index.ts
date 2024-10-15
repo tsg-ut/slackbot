@@ -12,7 +12,7 @@ import { Mutex } from 'async-mutex';
 
 interface AdventarArticle {
   user: { uid: number; name: string; iconURI: string };
-  articleURI: string | null;
+  articleURI: 
 }
 
 interface AdventarCalendarSnapshot {
