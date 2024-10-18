@@ -646,6 +646,12 @@ export default (slackClients: SlackInterface) => {
 
 					if (result.state === 'solved') {
 						await increment(result.correctAnswerer, 'city-symbol-answer');
+						if (result.hintIndex === 0) {
+							await increment(result.correctAnswerer, 'city-symbol-answer-no-hint');
+						}
+						if (result.hintIndex <= 1) {
+							await increment(result.correctAnswerer, 'city-symbol-answer-no-chatgpt-hint');
+						}
 					}
 					if (city.cityName === '博多市') {
 						await increment(result.correctAnswerer, 'city-symbol-answer-hakatashi');
