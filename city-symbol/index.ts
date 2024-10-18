@@ -1,24 +1,24 @@
 import 'dotenv/config';
 
 import qs from 'querystring';
-import { Mutex } from 'async-mutex';
-import { load as cheerioLoad } from 'cheerio';
-import { stripIndent } from 'common-tags';
-import { sample } from 'lodash';
-import { increment } from '../achievements';
-import { AteQuiz, typicalMessageTextsGenerator } from '../atequiz';
+import {Mutex} from 'async-mutex';
+import {load as cheerioLoad} from 'cheerio';
+import {stripIndent} from 'common-tags';
+import {sample} from 'lodash';
+import {increment} from '../achievements';
+import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
 import logger from '../lib/logger';
 import openai from '../lib/openai';
-import { SlackInterface } from '../lib/slack';
-import { Loader } from '../lib/utils';
-import { prefectures } from '../room-gacha/prefectures';
+import {SlackInterface} from '../lib/slack';
+import {Loader} from '../lib/utils';
+import {prefectures} from '../room-gacha/prefectures';
 import chakuwikiTitles from './chakuwiki-title-map.json';
 
 const chakuwikiTitleMap = new Map(Object.entries(chakuwikiTitles));
 
 const mutex = new Mutex();
 
-const log = logger.child({ bot: 'city-symbol' });
+const log = logger.child({bot: 'city-symbol'});
 
 const promptTemplate = stripIndent`
 	# 指示
@@ -374,7 +374,7 @@ const getRandomCitySymbol = async (): Promise<City> => {
 	const citySymbol = sample(citySymbols);
 	const cityInformation = await getCityInformation(citySymbol);
 
-	return { ...citySymbol, ...cityInformation };
+	return {...citySymbol, ...cityInformation};
 };
 
 const getWikimediaImageUrl = (fileName: string) => {
@@ -463,7 +463,7 @@ class CitySymbolAteQuiz extends AteQuiz {
 }
 
 export default (slackClients: SlackInterface) => {
-	const { eventClient } = slackClients;
+	const {eventClient} = slackClients;
 
 	eventClient.on('message', (message) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
