@@ -344,7 +344,7 @@ export default (slackClients: SlackInterface) => {
 				) {
 					const prefecture = message.text.match(/^(?:市?区?町?村?)章当てクイズ\s?(?<pref>\p{sc=Han}+[都道府県])?$/u)?.groups?.pref;
 
-					if (prefecture && !Object.keys(prefectures).includes(prefecture)) {
+					if (prefecture && !Object.hasOwn(prefectures, prefecture)) {
 						await slackClients.webClient.chat.postMessage({
 							channel: message.channel,
 							text: `${prefecture}という都道府県は存在しないよ:angry:`,
