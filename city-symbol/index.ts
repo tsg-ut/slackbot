@@ -338,11 +338,12 @@ export default (slackClients: SlackInterface) => {
 
 		mutex.runExclusive(async () => {
 			try {
+				let matches;
 				if (
 					message.text &&
-					message.text.match(/^(?:市?区?町?村?)章当てクイズ\s?(?:\p{sc=Han}+[都道府県])?$/u)
+					(matches = message.text.match(/^(?:市?区?町?村?)章当てクイズ\s?(?<pref>\p{sc=Han}+[都道府県])?$/u))
 				) {
-					const prefecture = message.text.match(/^(?:市?区?町?村?)章当てクイズ\s?(?<pref>\p{sc=Han}+[都道府県])?$/u)?.groups?.pref;
+					const prefecture = matches?.groups?.pref;
 
 					if (prefecture && !Object.hasOwn(prefectures, prefecture)) {
 						await slackClients.webClient.chat.postMessage({
