@@ -4,10 +4,10 @@ import 'canvas';
 
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ override: true });
 
 import Fastify from 'fastify';
-import os from 'os';
+import qs from 'querystring';
 import { eventClient, messageClient, tsgEventClient, webClient } from './lib/slack';
 
 import yargs from 'yargs';
@@ -19,11 +19,15 @@ import fastifyFormbody from '@fastify/formbody';
 import sharp from 'sharp';
 
 import { throttle, uniq } from 'lodash';
+import { RequestHandler } from 'express-serve-static-core';
+import { inspect } from 'util';
+import concat from 'concat-stream';
+import { getAuthorityLabel } from './lib/slackUtils';
 
-const log = logger.child({bot: 'index'});
+const log = logger.child({ bot: 'index' });
 
 process.on('unhandledRejection', (error: Error, promise: Promise<any>) => {
-	log.error(`unhandledRejection at: ${promise} reason: ${error.message}`, {error, stack: error.stack, promise});
+	log.error(`unhandledRejection at: ${promise} reason: ${error.stack ?? error.message}`, { error, stack: error.stack, promise });
 });
 
 
@@ -31,11 +35,11 @@ process.on('unhandledRejection', (error: Error, promise: Promise<any>) => {
 sharp.cache(false);
 
 const fastify = Fastify({
-	logger: logger.child({bot: 'http/index'}),
+	logger: logger.child({ bot: 'http/index' }),
 	pluginTimeout: 50000,
 });
 
-const allBots = [
+const productionBots = [
 	'summary',
 	'mahjong',
 	'pocky',
@@ -112,12 +116,18 @@ const allBots = [
 	'city-symbol',
 ];
 
+const developmentBots = [
+	'helloworld',
+];
+
+const allBots = [...productionBots, ...developmentBots];
+
 log.info('slackbot started');
 
 const argv = yargs
 	.array('only')
 	.choices('only', allBots)
-	.default('only', allBots)
+	.default('only', productionBots)
 	.default('startup', 'ｼｭｯｼｭｯ (起動音)')
 	.argv;
 
@@ -128,7 +138,7 @@ if (plugins.length !== argv.only.length) {
 }
 
 eventClient.on('error', (error) => {
-	log.error(`EventsAPI error ${error.message}`, {error, stack: error.stack});
+	log.error(`EventsAPI error ${error.message}`, { error, stack: error.stack });
 });
 
 (async () => {
@@ -143,13 +153,44 @@ eventClient.on('error', (error) => {
 		}
 		next();
 	});
+
+	const loggingHandler = (type: string): RequestHandler => (
+		async (req, res, next) => {
+			const body = await new Promise((resolve) => {
+				req.pipe(concat((body) => {
+					resolve(body);
+				}));
+			});
+			const decodedBody = body.toString();
+			const header = `Incoming ${type}:\n`;
+
+			let data = null;
+			if (decodedBody.startsWith('{')) {
+				data = JSON.parse(decodedBody);
+			} else {
+				const parsedBody = qs.parse(decodedBody);
+				data = parsedBody?.payload ? JSON.parse(parsedBody.payload.toString()) : parsedBody;
+			}
+
+			const inspectedBody = inspect(type === 'Event' ? data?.event : data, { colors: true })
+			log.info(header + inspectedBody);
+
+			// @ts-expect-error
+			req.rawBody = Buffer.from(body);
+			next();
+		}
+	);
+
+	fastify.use('/slack-event', loggingHandler('Event'));
 	fastify.use('/slack-event', eventClient.expressMiddleware());
+	fastify.use('/slack-message', loggingHandler('Interactive Message'));
 	fastify.use('/slack-message', messageClient.requestListener());
 
 	const loadedPlugins = new Set<string>();
+	const authority = getAuthorityLabel();
 
 	const initializationMessage = await webClient.chat.postMessage({
-		username: `tsgbot [${os.hostname()}]`,
+		username: `tsgbot [${authority}]`,
 		channel: process.env.CHANNEL_SANDBOX,
 		text: `起動中⋯⋯ (${loadedPlugins.size}/${plugins.length})`,
 		attachments: plugins.map((name) => ({
@@ -179,13 +220,13 @@ eventClient.on('error', (error) => {
 	await Promise.all(plugins.map(async (name) => {
 		const plugin = await import(`./${name}`);
 		if (typeof plugin === 'function') {
-			await plugin({webClient, eventClient: tsgEventClient, messageClient});
+			await plugin({ webClient, eventClient: tsgEventClient, messageClient });
 		}
 		if (typeof plugin.default === 'function') {
-			await plugin.default({webClient, eventClient: tsgEventClient, messageClient});
+			await plugin.default({ webClient, eventClient: tsgEventClient, messageClient });
 		}
 		if (typeof plugin.server === 'function') {
-			await fastify.register(plugin.server({webClient, eventClient: tsgEventClient, messageClient}));
+			await fastify.register(plugin.server({ webClient, eventClient: tsgEventClient, messageClient }));
 		}
 		loadedPlugins.add(name);
 		log.info(`plugin "${name}" successfully loaded`);
@@ -198,7 +239,7 @@ eventClient.on('error', (error) => {
 		host: '0.0.0.0',
 	}, (error, address) => {
 		if (error) {
-			log.error(`fastify.listen error ${error.message}`, {error, stack: error.stack});
+			log.error(`fastify.listen error ${error.message}`, { error, stack: error.stack });
 		} else {
 			log.info(`Server launched at ${address}`);
 		}
@@ -206,7 +247,7 @@ eventClient.on('error', (error) => {
 
 	log.info('Launched');
 	webClient.chat.postMessage({
-		username: `tsgbot [${os.hostname()}]`,
+		username: `tsgbot [${authority}]`,
 		channel: process.env.CHANNEL_SANDBOX,
 		text: argv.startup,
 	});

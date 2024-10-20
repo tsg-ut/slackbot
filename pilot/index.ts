@@ -90,9 +90,6 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 		text,
 		blocks,
 		link_names: true,
-		icon_emoji: ':tsg:',
-		username: 'TSG',
-		thread_ts: threadTs,
 	});
 
 	const getTextAndBlocks = async (text: string, user: string, ts: string, invitationCompleted: boolean): Promise<{

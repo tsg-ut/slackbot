@@ -1,7 +1,6 @@
-import { WebAPICallOptions, WebClient } from '@slack/web-api';
+import { ChatPostMessageArguments, WebClient } from '@slack/web-api';
 import type { EventEmitter } from 'events';
 import { SlackInterface } from '../lib/slack';
-import { ChatPostMessageArguments } from '@slack/web-api/dist/methods';
 import assert from 'assert';
 import { Mutex } from 'async-mutex';
 import { Deferred } from '../lib/utils';
@@ -70,7 +69,7 @@ export class AteQuiz {
   state: AteQuizState = 'waiting';
   replaceKeys: { correctAnswerer: string } = { correctAnswerer: '[[!user]]' };
   mutex: Mutex;
-  postOption: WebAPICallOptions;
+  postOption: Partial<ChatPostMessageArguments>;
   threadTsDeferred: Deferred<string> = new Deferred();
 
   judge(answer: string, _user: string): boolean {
@@ -119,7 +118,7 @@ export class AteQuiz {
   constructor(
     { eventClient, webClient: slack }: SlackInterface,
     problem: AteQuizProblem,
-    option?: WebAPICallOptions
+    option?: Partial<ChatPostMessageArguments>,
   ) {
     this.eventClient = eventClient;
     this.slack = slack;
@@ -138,8 +137,7 @@ export class AteQuiz {
   async repostProblemMessage() {
     const threadTs = await this.threadTsDeferred.promise;
     return this.slack.chat.postMessage({
-      ...this.problem.problemMessage,
-      ...this.postOption,
+      ...Object.assign({}, this.problem.problemMessage, this.postOption),
       thread_ts: threadTs,
       reply_broadcast: true,
     });
@@ -187,13 +185,17 @@ export class AteQuiz {
           } else {
             this.state = 'unsolved';
             await postMessage(
-              Object.assign({}, this.problem.unsolvedMessage, { thread_ts })
+              Object.assign(
+                {},
+                this.problem.unsolvedMessage,
+                { thread_ts, reply_broadcast: true },
+              )
             );
 
             const answerMessage = await this.answerMessageGen();
-            if (this.problem.answerMessage) {
+            if (answerMessage) {
               await postMessage(
-                Object.assign({}, this.problem.answerMessage, { thread_ts })
+                Object.assign({}, answerMessage, { thread_ts })
               );
             }
             clearInterval(tickTimer);
@@ -204,6 +206,7 @@ export class AteQuiz {
     };
 
     this.eventClient.on('message', async (message) => {
+      const thread_ts = await this.threadTsDeferred.promise;
       if (message.thread_ts === thread_ts) {
         if (message.subtype === 'bot_message') return;
         if (_option.mode === 'solo' && message.user !== _option.player) return;
@@ -216,7 +219,11 @@ export class AteQuiz {
               clearInterval(tickTimer);
 
               await postMessage(
-                Object.assign({}, await this.solvedMessageGen(message), { thread_ts })
+                Object.assign(
+                  {},
+                  await this.solvedMessageGen(message),
+                  { thread_ts, reply_broadcast: true },
+                )
               );
 
               const answerMessage = await this.answerMessageGen(message);

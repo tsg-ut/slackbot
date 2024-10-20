@@ -13,7 +13,9 @@ beforeEach(async () => {
 
 describe('octas', () => {
     it('respond to octas', async () => {
-        const { channel, text, attachments } = await slack.getResponseTo('octas');
+        const response = await slack.getResponseTo('octas');
+        const { channel, text } = response;
+        const attachments = 'attachments' in response ? response.attachments : [];
 
         expect(channel).toBe(slack.fakeChannel);
         expect(text).toContain('Octas対人を始めるよ～');

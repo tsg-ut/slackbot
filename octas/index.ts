@@ -163,7 +163,6 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
             }],
             username: 'octas',
             icon_emoji: ':octopus:',
-            reply_broadcast: true,
         });
         state.thread = ts;
 
@@ -291,8 +290,6 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
                 title: 'octas',
                 image_url: cloudinaryData.secure_url
             }],
-            username: 'octas',
-            icon_emoji: ':octopus:',
         });
 
         await slack.chat.postMessage({

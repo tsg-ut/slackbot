@@ -1,5 +1,5 @@
 import {Mutex} from 'async-mutex';
-// @ts-expect-error
+// @ts-expect-error: not typed
 import levenshtein from 'fast-levenshtein';
 import {sample, shuffle, flatten, times, constant} from 'lodash';
 import type {SlackInterface} from '../lib/slack';
@@ -80,8 +80,6 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 					await slack.chat.update({
 						channel: process.env.CHANNEL_SANDBOX,
 						text: `問題です！\nQ. ${getQuestionText(state.question, state.hintCount)}\n\n⚠3回間違えると失格です！\n⚠「?」でメッセージを始めるとコメントできます`,
-						username: 'hayaoshi',
-						icon_emoji: ':question:',
 						ts: state.thread,
 					});
 				} else {

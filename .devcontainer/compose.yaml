@@ -1,0 +1,28 @@
+services:
+  slackbot:
+    # build: slackbot
+    image: ghcr.io/tsg-ut/slackbot-codespaces-image-slackbot:master
+    volumes:
+      - ..:/code
+      - /code/node_modules
+      - /code/functions/node_modules
+    stdin_open: true
+    tty: true
+    command: sleep infinity
+    environment:
+      - TEAM_ID=${TEAM_ID}
+      - SIGNING_SECRET=${SIGNING_SECRET}
+      - SLACK_TOKEN=${SLACK_TOKEN}
+      - HAKATASHI_TOKEN=${HAKATASHI_TOKEN}
+      - CHANNEL_SANDBOX=${CHANNEL_SANDBOX}
+      - SLACK_VERIFICATION_TOKEN=${SLACK_VERIFICATION_TOKEN}
+
+  tunnel:
+    build:
+      context: tunnel
+      dockerfile: Dockerfile
+      args:
+        - HTTP_PROXY_TOKEN=${HTTP_PROXY_TOKEN}
+    stdin_open: true
+    tty: true
+    command: node index.mjs --remote wss://slackbot-api.tsg.ne.jp/wsfwd --host slackbot

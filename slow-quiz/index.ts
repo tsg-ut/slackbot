@@ -854,6 +854,7 @@ class SlowQuiz {
 				game.finishDate = Date.now();
 
 				this.postMessage({
+					text: '1日1文字クイズの解答受付が終了しました',
 					blocks: [
 						{
 							type: 'header',
@@ -896,14 +897,14 @@ class SlowQuiz {
 							},
 						},
 						...await Promise.all(game.correctAnswers.map(async (answer, i) => ({
-							type: 'context',
+							type: 'context' as const,
 							elements: [
 								{
-									type: 'mrkdwn',
+									type: 'mrkdwn' as const,
 									text: `*${i + 1}位* ${getUserMention(answer.user)} (${answer.progress}文字)`,
 								},
 								{
-									type: 'image',
+									type: 'image' as const,
 									image_url: await getUserIcon(answer.user),
 									alt_text: await getUserName(answer.user),
 								},
@@ -1066,7 +1067,7 @@ class SlowQuiz {
 		return {text, invisibleCharacters};
 	}
 
-	async postMessage(message: Partial<ChatPostMessageArguments>) {
+	async postMessage(message: {text: string, blocks: KnownBlock[]}) {
 		const messages = [];
 
 		for (const channel of [process.env.CHANNEL_SANDBOX, process.env.CHANNEL_QUIZ]) {
@@ -1086,7 +1087,7 @@ class SlowQuiz {
 		return messages;
 	}
 
-	postShortMessage(message: Partial<ChatPostMessageArguments>) {
+	postShortMessage(message: {text: string, blocks?: KnownBlock[]}) {
 		return this.slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			username: '1日1文字クイズ',

@@ -3,7 +3,7 @@ import logger from '../lib/logger';
 import {stripIndents} from 'common-tags';
 import axios from 'axios';
 import { shuffle } from 'lodash';
-import { ChatPostMessageArguments, WebAPICallOptions } from '@slack/web-api';
+import { ChatPostMessageArguments } from '@slack/web-api';
 import { unlock, increment } from '../achievements';
 
 const BOT_NAME = "Wordle Battle (beta)";
@@ -97,7 +97,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
         }).join("\n");
     };
 
-    const postMessage = async (messageText: string, option: WebAPICallOptions) => {
+    const postMessage = async (messageText: string, option: Partial<ChatPostMessageArguments>) => {
         const args = Object.assign({}, {
             channel: process.env.CHANNEL_SANDBOX,
             text: messageText,

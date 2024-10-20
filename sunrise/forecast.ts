@@ -1,5 +1,4 @@
 import type {MessageAttachment, WebClient} from '@slack/web-api';
-import {Attachment} from '@slack/web-api/dist/response/ChatPostMessageResponse';
 import {FeatureCollection, MultiPolygon, points as Points, pointsWithinPolygon} from '@turf/turf';
 import {Loader} from '../lib/utils';
 import {AccuweatherMultiUnit, getCurrentWeather, getJmaForecast, getMinuteCast, getWeather} from './fetch';
