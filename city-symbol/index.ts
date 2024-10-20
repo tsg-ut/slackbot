@@ -8,7 +8,7 @@ import logger from '../lib/logger';
 import openai from '../lib/openai';
 import {SlackInterface} from '../lib/slack';
 import {Loader} from '../lib/utils';
-import {prefectures} from '../room-gacha/prefectures';
+import {PrefectureKanji, prefectures} from '../room-gacha/prefectures';
 
 const mutex = new Mutex();
 
@@ -210,23 +210,25 @@ const getCityInformation = async (title: string): Promise<CityInformation> => {
 	return {placeImage, ruby, plainText};
 };
 
-const getRandomCitySymbol = async (): Promise<City> => {
-	if (Math.random() < 1 / 1719) {
-		return {
-			prefectureName: '',
-			cityName: '博多市',
-			cityWikipediaName: '博多市',
-			reason: '伯方の塩のパッケージに描かれている赤と青のストライプを直方体にあしらったもの',
-			plainText: '',
-			date: '2020年6月21日',
-			notes: 'なし',
-			files: ['https://raw.githubusercontent.com/hakatashi/icon/master/images/icon_480px.png'],
-			placeImage: 'https://raw.githubusercontent.com/hakatashi/icon/master/images/icon_480px.png',
-			ruby: 'はかたし',
-		};
+const getRandomCitySymbol = async (prefSet: Set<PrefectureKanji> = new Set(Object.keys(prefectures) as PrefectureKanji[]), allowEasterEgg: boolean = true): Promise<City> => {
+	if (allowEasterEgg) {
+		if (Math.random() < 1 / 1719) {
+			return {
+				prefectureName: '',
+				cityName: '博多市',
+				cityWikipediaName: '博多市',
+				reason: '伯方の塩のパッケージに描かれている赤と青のストライプを直方体にあしらったもの',
+				plainText: '',
+				date: '2020年6月21日',
+				notes: 'なし',
+				files: ['https://raw.githubusercontent.com/hakatashi/icon/master/images/icon_480px.png'],
+				placeImage: 'https://raw.githubusercontent.com/hakatashi/icon/master/images/icon_480px.png',
+				ruby: 'はかたし',
+			};
+		}
 	}
 
-	const prefectureChosen = sample(Object.keys(prefectures));
+	const prefectureChosen = sample(Array.from(prefSet));
 	const citySymbols = await getWikipediaSource(prefectureChosen);
 	const citySymbol = sample(citySymbols);
 	const cityInformation = await getCityInformation(citySymbol.cityWikipediaName);
@@ -305,14 +307,24 @@ const generateAiHints = async (city: City): Promise<string[] | null> => {
 };
 
 class CitySymbolAteQuiz extends AteQuiz {
+	hasPrefHint: boolean;
+
 	waitSecGen(hintIndex: number): number {
-		if (hintIndex === 0) {
-			return 30;
+		if (this.hasPrefHint) {
+			if (hintIndex === 0) {
+				return 30;
+			}
+			if (hintIndex === 1) {
+				return 15;
+			}
+			return 10;
 		}
-		if (hintIndex === 1) {
-			return 15;
+		else {
+			if (hintIndex === 0) {
+				return 45;
+			}
+			return 10;
 		}
-		return 10;
 	}
 }
 
@@ -328,9 +340,22 @@ export default (slackClients: SlackInterface) => {
 			try {
 				if (
 					message.text &&
-					message.text.match(/^(?:市?区?町?村?)章当てクイズ$/)
+					message.text.match(/^(?:市?区?町?村?)章当てクイズ\s?(?:\p{sc=Han}+[都道府県])?$/u)
 				) {
-					const city = await getRandomCitySymbol();
+					const prefecture = message.text.match(/^(?:市?区?町?村?)章当てクイズ\s?(?<pref>\p{sc=Han}+[都道府県])?$/u)?.groups?.pref;
+
+					if (prefecture && !Object.keys(prefectures).includes(prefecture)) {
+						await slackClients.webClient.chat.postMessage({
+							channel: message.channel,
+							text: `${prefecture}という都道府県は存在しないよ:angry:`,
+							username: '市章当てクイズ',
+							icon_emoji: ':cityscape:',
+						});
+						return;
+					}
+
+					const needPrefHint = !prefecture;
+					const city = prefecture ? await getRandomCitySymbol(new Set([prefecture as PrefectureKanji]), false) : await getRandomCitySymbol();
 					const quizText = 'この市区町村章ど～こだ？';
 					const imageUrl = getWikimediaImageUrl(sample(city.files));
 					const correctAnswers = getCorrectAnswers(city);
@@ -358,17 +383,18 @@ export default (slackClients: SlackInterface) => {
 							],
 						},
 						get hintMessages() {
-							const hints = aiHintsLoader.get() ?? [];
-							return [
+							const aiHints = aiHintsLoader.get() ?? [];
+							const hints = (needPrefHint ? [
 								{
 									channel: message.channel,
 									text: `ヒント: ${city.prefectureName}の市区町村ですよ～`,
-								},
-								...hints.map((hint, index) => ({
-									channel: message.channel,
-									text: `ChatGPTヒント${index + 1}: ${hint}`,
-								})),
-							];
+								}
+							] : [])
+							.concat([...aiHints.map((hint, index) => ({
+								channel: message.channel,
+								text: `ChatGPTヒント${index + 1}: ${hint}`,
+							}))]);
+							return hints;
 						},
 						immediateMessage: {
 							channel: message.channel,
@@ -474,12 +500,13 @@ export default (slackClients: SlackInterface) => {
 					};
 
 					const quiz = new CitySymbolAteQuiz(slackClients, problem, {
-						username: '市章当てクイズ',
+						username: '市章当てクイズ' + (prefecture ? ` (${prefecture})` : ''),
 						icon_emoji: ':cityscape:',
 					});
+					quiz.hasPrefHint = needPrefHint;
 					const result = await quiz.start();
 
-					if (result.state === 'solved') {
+					if (result.state === 'solved' && !prefecture) {
 						await increment(result.correctAnswerer, 'city-symbol-answer');
 					}
 					if (city.cityName === '博多市') {
