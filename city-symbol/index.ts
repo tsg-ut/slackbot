@@ -385,17 +385,18 @@ export default (slackClients: SlackInterface) => {
 						},
 						get hintMessages() {
 							const aiHints = aiHintsLoader.get() ?? [];
-							const hints = (needPrefHint ? [
-								{
-									channel: message.channel,
-									text: `ヒント: ${city.prefectureName}の市区町村ですよ～`,
-								}
-							] : [])
-							.concat([...aiHints.map((hint, index) => ({
-								channel: message.channel,
-								text: `ChatGPTヒント${index + 1}: ${hint}`,
-							}))]);
-							return hints;
+							return [
+							  ...(needPrefHint ? [
+								  {
+									  channel: message.channel,
+									  text: `ヒント: ${city.prefectureName}の市区町村ですよ～`,
+								  },
+								] : []),
+							  ...aiHints.map((hint, index) => ({
+								  channel: message.channel,
+								  text: `ChatGPTヒント${index + 1}: ${hint}`,
+							  })),
+							];
 						},
 						immediateMessage: {
 							channel: message.channel,
