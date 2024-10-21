@@ -349,7 +349,7 @@ const getCityInformation = async (city: CitySymbol): Promise<CityInformation> =>
 	};
 };
 
-const getRandomCitySymbol = async (prefSet: Set<PrefectureKanji> = new Set(Object.keys(prefectures) as PrefectureKanji[]), allowEasterEgg: boolean = true): Promise<City> => {
+const getRandomCitySymbol = async (prefList: PrefectureKanji[] = Object.keys(prefectures) as PrefectureKanji[], allowEasterEgg: boolean = true): Promise<City> => {
 	if (allowEasterEgg) {
 		if (Math.random() < 1 / 1719) {
 			return {
@@ -371,7 +371,7 @@ const getRandomCitySymbol = async (prefSet: Set<PrefectureKanji> = new Set(Objec
 		}
 	}
 
-	const prefectureChosen = sample(Array.from(prefSet));
+	const prefectureChosen = sample(prefList);
 	const citySymbols = await getWikipediaSource(prefectureChosen);
 	const citySymbol = sample(citySymbols);
 	const cityInformation = await getCityInformation(citySymbol);
@@ -502,7 +502,7 @@ export default (slackClients: SlackInterface) => {
 					}
 
 					const needPrefHint = !prefecture;
-					const city = prefecture ? await getRandomCitySymbol(new Set([prefecture as PrefectureKanji]), false) : await getRandomCitySymbol();
+					const city = prefecture ? await getRandomCitySymbol([prefecture as PrefectureKanji], false) : await getRandomCitySymbol();
 					const quizText = 'この市区町村章ど～こだ？';
 					const imageUrl = getWikimediaImageUrl(sample(city.files));
 					const correctAnswers = getCorrectAnswers(city);
