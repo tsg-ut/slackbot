@@ -483,10 +483,10 @@ export default (slackClients: SlackInterface) => {
 
 		mutex.runExclusive(async () => {
 			try {
-				let matches;
+				let matches: RegExpMatchArray = null;
 				if (
 					message.text &&
-					(matches = message.text.match(/^(?:市?区?町?村?)章当てクイズ\s?(?<pref>\p{sc=Han}+[都道府県])?$/u))
+					(matches = (message.text as string).match(/^(?:市?区?町?村?)章当てクイズ\s?(?<pref>\p{sc=Han}+[都道府県])?$/u))
 				) {
 					const prefectureSpecified = matches?.groups?.pref;
 
