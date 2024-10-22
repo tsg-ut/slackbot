@@ -349,7 +349,7 @@ const getCityInformation = async (city: CitySymbol): Promise<CityInformation> =>
 	};
 };
 
-const getRandomCitySymbol = async (prefList: PrefectureKanji[] = Object.keys(prefectures) as PrefectureKanji[], allowEasterEgg: boolean = true): Promise<City> => {
+const getRandomCitySymbol = async (prefList: PrefectureKanji[] = Object.keys(prefectures) as PrefectureKanji[], allowEasterEgg = true): Promise<City> => {
 	if (allowEasterEgg) {
 		if (Math.random() < 1 / 1719) {
 			return {
@@ -465,12 +465,11 @@ class CitySymbolAteQuiz extends AteQuiz {
 			}
 			return 10;
 		}
-		else {
-			if (hintIndex === 0) {
-				return 45;
-			}
-			return 10;
+
+		if (hintIndex === 0) {
+			return 45;
 		}
+		return 10;
 	}
 }
 
@@ -667,7 +666,7 @@ export default (slackClients: SlackInterface) => {
 					};
 
 					const quiz = new CitySymbolAteQuiz(slackClients, problem, {
-						username: '市章当てクイズ' + (prefectureSpecified ? ` (${prefectureSpecified})` : ''),
+						username: `市章当てクイズ${prefectureSpecified ? ` (${prefectureSpecified})` : ''}`,
 						icon_emoji: ':cityscape:',
 					});
 					quiz.hasPrefHint = needPrefHint;
@@ -676,26 +675,22 @@ export default (slackClients: SlackInterface) => {
 					const hintCount = result.hintIndex + (prefectureSpecified ? 1 : 0);
 
 					if (result.state === 'solved') {
-						if (city.cityName === '博多市') {
-							await increment(result.correctAnswerer, 'city-symbol-answer');
-							await increment(result.correctAnswerer, 'city-symbol-answer-hakatashi');
-							if (hintCount === 0) {
-								await increment(result.correctAnswerer, 'city-symbol-answer-no-hint');
-							}
-							if (hintCount <= 1) {
-								await increment(result.correctAnswerer, 'city-symbol-answer-no-chatgpt-hint');
-							}
+						await increment(result.correctAnswerer, 'city-symbol-answer');
+						if (hintCount === 0) {
+							await increment(result.correctAnswerer, 'city-symbol-answer-no-hint');
 						}
-						else {
-							await increment(result.correctAnswerer, 'city-symbol-answer');
-							await increment(result.correctAnswerer, 'city-symbol-answer-' + city.prefectureName);
+						if (hintCount <= 1) {
+							await increment(result.correctAnswerer, 'city-symbol-answer-no-chatgpt-hint');
+						}
+						if (city.cityName === '博多市') {
+							await increment(result.correctAnswerer, 'city-symbol-answer-hakatashi');
+						} else {
+							await increment(result.correctAnswerer, `city-symbol-answer-${city.prefectureName}`);
 							if (hintCount === 0) {
-								await increment(result.correctAnswerer, 'city-symbol-answer-no-hint');
-								await increment(result.correctAnswerer, 'city-symbol-answer-no-hint-' + city.prefectureName);
+								await increment(result.correctAnswerer, `city-symbol-answer-no-hint-${city.prefectureName}`);
 							}
 							if (hintCount <= 1) {
-								await increment(result.correctAnswerer, 'city-symbol-answer-no-chatgpt-hint');
-								await increment(result.correctAnswerer, 'city-symbol-answer-no-chatgpt-hint-' + city.prefectureName);
+								await increment(result.correctAnswerer, `city-symbol-answer-no-chatgpt-hint-${city.prefectureName}`);
 							}
 						}
 					}
