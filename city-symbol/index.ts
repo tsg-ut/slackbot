@@ -13,6 +13,7 @@ import {SlackInterface} from '../lib/slack';
 import {Loader} from '../lib/utils';
 import {PrefectureKanji, prefectures} from '../room-gacha/prefectures';
 import chakuwikiTitles from './chakuwiki-title-map.json';
+import { boolean } from 'yargs';
 
 const chakuwikiTitleMap = new Map(Object.entries(chakuwikiTitles));
 
@@ -489,20 +490,20 @@ export default (slackClients: SlackInterface) => {
 					message.text &&
 					(matches = message.text.match(/^(?:市?区?町?村?)章当てクイズ\s?(?<pref>\p{sc=Han}+[都道府県])?$/u))
 				) {
-					const prefecture = matches?.groups?.pref;
+					const prefectureSpecified = matches?.groups?.pref;
 
-					if (prefecture && !Object.hasOwn(prefectures, prefecture)) {
+					if (prefectureSpecified && !Object.hasOwn(prefectures, prefectureSpecified)) {
 						await slackClients.webClient.chat.postMessage({
 							channel: message.channel,
-							text: `${prefecture}という都道府県は存在しないよ:angry:`,
+							text: `${prefectureSpecified}という都道府県は存在しないよ:angry:`,
 							username: '市章当てクイズ',
 							icon_emoji: ':cityscape:',
 						});
 						return;
 					}
 
-					const needPrefHint = !prefecture;
-					const city = prefecture ? await getRandomCitySymbol([prefecture as PrefectureKanji], false) : await getRandomCitySymbol();
+					const needPrefHint = !prefectureSpecified;
+					const city = prefectureSpecified ? await getRandomCitySymbol([prefectureSpecified as PrefectureKanji], false) : await getRandomCitySymbol();
 					const quizText = 'この市区町村章ど～こだ？';
 					const imageUrl = getWikimediaImageUrl(sample(city.files));
 					const correctAnswers = getCorrectAnswers(city);
@@ -667,23 +668,37 @@ export default (slackClients: SlackInterface) => {
 					};
 
 					const quiz = new CitySymbolAteQuiz(slackClients, problem, {
-						username: '市章当てクイズ' + (prefecture ? ` (${prefecture})` : ''),
+						username: '市章当てクイズ' + (prefectureSpecified ? ` (${prefectureSpecified})` : ''),
 						icon_emoji: ':cityscape:',
 					});
 					quiz.hasPrefHint = needPrefHint;
 					const result = await quiz.start();
 
-					if (result.state === 'solved' && !prefecture) {
-						await increment(result.correctAnswerer, 'city-symbol-answer');
-						if (result.hintIndex === 0) {
-							await increment(result.correctAnswerer, 'city-symbol-answer-no-hint');
+					const hintCount = result.hintIndex + (prefectureSpecified ? 1 : 0);
+
+					if (result.state === 'solved') {
+						if (city.cityName === '博多市') {
+							await increment(result.correctAnswerer, 'city-symbol-answer');
+							await increment(result.correctAnswerer, 'city-symbol-answer-hakatashi');
+							if (hintCount === 0) {
+								await increment(result.correctAnswerer, 'city-symbol-answer-no-hint');
+							}
+							if (hintCount <= 1) {
+								await increment(result.correctAnswerer, 'city-symbol-answer-no-chatgpt-hint');
+							}
 						}
-						if (result.hintIndex <= 1) {
-							await increment(result.correctAnswerer, 'city-symbol-answer-no-chatgpt-hint');
+						else {
+							await increment(result.correctAnswerer, 'city-symbol-answer');
+							await increment(result.correctAnswerer, 'city-symbol-answer-' + city.prefectureName);
+							if (hintCount === 0) {
+								await increment(result.correctAnswerer, 'city-symbol-answer-no-hint');
+								await increment(result.correctAnswerer, 'city-symbol-answer-no-hint-' + city.prefectureName);
+							}
+							if (hintCount <= 1) {
+								await increment(result.correctAnswerer, 'city-symbol-answer-no-chatgpt-hint');
+								await increment(result.correctAnswerer, 'city-symbol-answer-no-chatgpt-hint-' + city.prefectureName);
+							}
 						}
-					}
-					if (city.cityName === '博多市') {
-						await increment(result.correctAnswerer, 'city-symbol-answer-hakatashi');
 					}
 				}
 			} catch (error) {
