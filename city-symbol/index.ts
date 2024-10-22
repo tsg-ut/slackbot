@@ -11,7 +11,7 @@ import logger from '../lib/logger';
 import openai from '../lib/openai';
 import {SlackInterface} from '../lib/slack';
 import {Loader} from '../lib/utils';
-import {prefectures} from '../room-gacha/prefectures';
+import {PrefectureKanji, prefectures} from '../room-gacha/prefectures';
 import chakuwikiTitles from './chakuwiki-title-map.json';
 
 const chakuwikiTitleMap = new Map(Object.entries(chakuwikiTitles));
@@ -349,27 +349,29 @@ const getCityInformation = async (city: CitySymbol): Promise<CityInformation> =>
 	};
 };
 
-const getRandomCitySymbol = async (): Promise<City> => {
-	if (Math.random() < 1 / 1719) {
-		return {
-			prefectureName: '',
-			cityName: '博多市',
-			cityWikipediaName: '博多市',
-			reason: '伯方の塩のパッケージに描かれている赤と青のストライプを直方体にあしらったもの',
-			plainText: '博多市は、TSG CTF や TSG LIVE! の開催などを行ったTSG部員である。',
-			kotobankDescription: '博多市は、JavaScriptやTypeScriptなどのプログラミング言語を得意とするプログラマであり、AtCoderの最高レーティングは2309である。',
-			kotobankUrl: 'https://hakatashi.com',
-			chakuwikiDescription: '博多市は、加熱した玉ねぎを食べることを苦手としており、麦から作られたウイスキーやビールなどの飲み物を嫌っている。',
-			chakuwikiUrl: 'https://hakatashi.com',
-			date: '2020年6月21日',
-			notes: 'なし',
-			files: ['https://raw.githubusercontent.com/hakatashi/icon/master/images/icon_480px.png'],
-			placeImage: 'https://raw.githubusercontent.com/hakatashi/icon/master/images/icon_480px.png',
-			ruby: 'はかたし',
-		};
+const getRandomCitySymbol = async (prefList: PrefectureKanji[] = Object.keys(prefectures) as PrefectureKanji[], allowEasterEgg = true): Promise<City> => {
+	if (allowEasterEgg) {
+		if (Math.random() < 1 / 1719) {
+			return {
+				prefectureName: '',
+				cityName: '博多市',
+				cityWikipediaName: '博多市',
+				reason: '伯方の塩のパッケージに描かれている赤と青のストライプを直方体にあしらったもの',
+				plainText: '博多市は、TSG CTF や TSG LIVE! の開催などを行ったTSG部員である。',
+				kotobankDescription: '博多市は、JavaScriptやTypeScriptなどのプログラミング言語を得意とするプログラマであり、AtCoderの最高レーティングは2309である。',
+				kotobankUrl: 'https://hakatashi.com',
+				chakuwikiDescription: '博多市は、加熱した玉ねぎを食べることを苦手としており、麦から作られたウイスキーやビールなどの飲み物を嫌っている。',
+				chakuwikiUrl: 'https://hakatashi.com',
+				date: '2020年6月21日',
+				notes: 'なし',
+				files: ['https://raw.githubusercontent.com/hakatashi/icon/master/images/icon_480px.png'],
+				placeImage: 'https://raw.githubusercontent.com/hakatashi/icon/master/images/icon_480px.png',
+				ruby: 'はかたし',
+			};
+		}
 	}
 
-	const prefectureChosen = sample(Object.keys(prefectures));
+	const prefectureChosen = sample(prefList);
 	const citySymbols = await getWikipediaSource(prefectureChosen);
 	const citySymbol = sample(citySymbols);
 	const cityInformation = await getCityInformation(citySymbol);
@@ -451,12 +453,21 @@ const generateAiHints = async (city: City): Promise<string[] | null> => {
 };
 
 class CitySymbolAteQuiz extends AteQuiz {
+	hasPrefHint: boolean;
+
 	waitSecGen(hintIndex: number): number {
-		if (hintIndex === 0) {
-			return 30;
+		if (this.hasPrefHint) {
+			if (hintIndex === 0) {
+				return 30;
+			}
+			if (hintIndex === 1) {
+				return 15;
+			}
+			return 10;
 		}
-		if (hintIndex === 1) {
-			return 15;
+
+		if (hintIndex === 0) {
+			return 45;
 		}
 		return 10;
 	}
@@ -472,11 +483,25 @@ export default (slackClients: SlackInterface) => {
 
 		mutex.runExclusive(async () => {
 			try {
+				let matches: RegExpMatchArray = null;
 				if (
 					message.text &&
-					message.text.match(/^(?:市?区?町?村?)章当てクイズ$/)
+					(matches = (message.text as string).match(/^(?:市?区?町?村?)章当てクイズ\s?(?<pref>\p{sc=Han}+[都道府県])?$/u))
 				) {
-					const city = await getRandomCitySymbol();
+					const prefectureSpecified = matches?.groups?.pref;
+
+					if (prefectureSpecified && !Object.hasOwn(prefectures, prefectureSpecified)) {
+						await slackClients.webClient.chat.postMessage({
+							channel: message.channel,
+							text: `${prefectureSpecified}という都道府県は存在しないよ:angry:`,
+							username: '市章当てクイズ',
+							icon_emoji: ':cityscape:',
+						});
+						return;
+					}
+
+					const needPrefHint = !prefectureSpecified;
+					const city = prefectureSpecified ? await getRandomCitySymbol([prefectureSpecified as PrefectureKanji], false) : await getRandomCitySymbol();
 					const quizText = 'この市区町村章ど～こだ？';
 					const imageUrl = getWikimediaImageUrl(sample(city.files));
 					const correctAnswers = getCorrectAnswers(city);
@@ -514,16 +539,18 @@ export default (slackClients: SlackInterface) => {
 							],
 						},
 						get hintMessages() {
-							const hints = aiHintsLoader.get() ?? [];
+							const aiHints = aiHintsLoader.get() ?? [];
 							return [
-								{
-									channel: message.channel,
-									text: `ヒント: ${city.prefectureName}の市区町村ですよ～`,
-								},
-								...hints.map((hint, index) => ({
-									channel: message.channel,
-									text: `ChatGPTヒント${index + 1}: ${hint}`,
-								})),
+							  ...(needPrefHint ? [
+								  {
+									  channel: message.channel,
+									  text: `ヒント: ${city.prefectureName}の市区町村ですよ～`,
+								  },
+								] : []),
+							  ...aiHints.map((hint, index) => ({
+								  channel: message.channel,
+								  text: `ChatGPTヒント${index + 1}: ${hint}`,
+							  })),
 							];
 						},
 						immediateMessage: {
@@ -639,22 +666,33 @@ export default (slackClients: SlackInterface) => {
 					};
 
 					const quiz = new CitySymbolAteQuiz(slackClients, problem, {
-						username: '市章当てクイズ',
+						username: `市章当てクイズ${prefectureSpecified ? ` (${prefectureSpecified})` : ''}`,
 						icon_emoji: ':cityscape:',
 					});
+					quiz.hasPrefHint = needPrefHint;
 					const result = await quiz.start();
+
+					const hintCount = result.hintIndex + (prefectureSpecified ? 1 : 0);
 
 					if (result.state === 'solved') {
 						await increment(result.correctAnswerer, 'city-symbol-answer');
-						if (result.hintIndex === 0) {
+						if (hintCount === 0) {
 							await increment(result.correctAnswerer, 'city-symbol-answer-no-hint');
 						}
-						if (result.hintIndex <= 1) {
+						if (hintCount <= 1) {
 							await increment(result.correctAnswerer, 'city-symbol-answer-no-chatgpt-hint');
 						}
-					}
-					if (city.cityName === '博多市') {
-						await increment(result.correctAnswerer, 'city-symbol-answer-hakatashi');
+						if (city.cityName === '博多市') {
+							await increment(result.correctAnswerer, 'city-symbol-answer-hakatashi');
+						} else {
+							await increment(result.correctAnswerer, `city-symbol-answer-${city.prefectureName}`);
+							if (hintCount === 0) {
+								await increment(result.correctAnswerer, `city-symbol-answer-no-hint-${city.prefectureName}`);
+							}
+							if (hintCount <= 1) {
+								await increment(result.correctAnswerer, `city-symbol-answer-no-chatgpt-hint-${city.prefectureName}`);
+							}
+						}
 					}
 				}
 			} catch (error) {
