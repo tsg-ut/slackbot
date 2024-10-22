@@ -8,6 +8,7 @@ import path from "path";
 import puppeteer from "puppeteer";
 import sqlite3 from "sqlite3";
 import { AteQuizProblem } from "../atequiz";
+import logger from "../lib/logger";
 import type { SlackInterface } from "../lib/slack";
 const { Mutex } = require("async-mutex");
 const { AteQuiz } = require("../atequiz/index.ts");
@@ -154,11 +155,11 @@ const generateHTML = ({ lat, lng, heading, pitch }: Coordinate): string => `
     </body>
   </html>
 `;
-const saveHTML = (coord: Coordinate, outputPath = "template.html"): void => {
+const saveHTML = async (coord: Coordinate, outputPath = "template.html"): Promise<void> => {
   const htmlContent = generateHTML(coord);
   const filePath = path.resolve("nmpz", outputPath);
-  fs.writeFileSync(filePath, htmlContent, "utf8");
-  console.log(`HTML file saved at: ${filePath}`);
+  await fs.promises.writeFile(filePath, htmlContent, "utf8");
+  logger.info(`HTML file saved at: ${filePath}`);
 };
 
 async function captureStreetViewScreenshot(coord: Coordinate): Promise<string> {
@@ -183,7 +184,7 @@ async function captureStreetViewScreenshot(coord: Coordinate): Promise<string> {
       await page.goto(url, { waitUntil: "networkidle0" });
     }
     catch (error) {
-      console.error("Error loading page:", error);
+      logger.error("Error loading page:", error);
     }
 
     // upload screenshot to Cloudinary
@@ -202,7 +203,7 @@ async function captureStreetViewScreenshot(coord: Coordinate): Promise<string> {
 
     return result.secure_url;
   } catch (error) {
-    console.error("Error capturing screenshot:", error);
+    logger.error("Error capturing screenshot:", error);
     throw error;
   }
 }
@@ -238,11 +239,11 @@ class NmpzAteQuiz extends AteQuiz {
 async function problemGen(): Promise<[Country, number, number, string, string]> {
   const row = await getRandomCoordinate() as Coordinate;
   const country_code = row.country_code;
-  console.log(row);
+  logger.info(row);
   const country = await getCountryName(country_code);
-  console.log(country);
+  logger.info(country);
   const img_url = await captureStreetViewScreenshot(row);
-  console.log(img_url);
+  logger.info(img_url);
   const answer_url = coordToURL(row);
 
   return [country, row.lat, row.lng, img_url, answer_url];
@@ -363,7 +364,7 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
           ]);
           return arr;
         } catch (error) {
-          console.error("Error generating NmpzAteQuiz:", error);
+          logger.error("Error generating NmpzAteQuiz:", error);
           throw error;
         }
       }).catch((error: any): [null, null] => {
