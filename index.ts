@@ -114,6 +114,7 @@ const productionBots = [
 	'oneiromancy',
 	'auto-archiver',
 	'city-symbol',
+	'nmpz',
 ];
 
 const developmentBots = [
