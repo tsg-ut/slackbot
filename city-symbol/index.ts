@@ -13,7 +13,6 @@ import {SlackInterface} from '../lib/slack';
 import {Loader} from '../lib/utils';
 import {PrefectureKanji, prefectures} from '../room-gacha/prefectures';
 import chakuwikiTitles from './chakuwiki-title-map.json';
-import { boolean } from 'yargs';
 
 const chakuwikiTitleMap = new Map(Object.entries(chakuwikiTitles));
 
