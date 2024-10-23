@@ -383,7 +383,7 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
       if (result.state === "solved") {
         await increment(result.correctAnswerer, "nmpz-country-answer");
         if (result.hintIndex === 0) {
-          await increment(result.correctAnswerer, "nmpz-country-30sec-answer");
+          await increment(result.correctAnswerer, "nmpz-country-no-hint-answer");
         }
         if (result.quiz.answer === "タイ") {
           await increment(result.correctAnswerer, "nmpz-country-thailand-answer");

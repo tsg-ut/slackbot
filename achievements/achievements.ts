@@ -4381,12 +4381,12 @@ const achievements: Achievement[] = [
 		value: 1000,
 	},
 	{
-		id: 'nmpz-country-30sec',
+		id: 'nmpz-country-no-hint',
 		difficulty: 'hard',
-		title: 'in 0.5 minutes',
+		title: 'But I can see no hints',
 		condition: 'NMPZでヒントなしで国を正解する',
 		category: 'nmpz',
-		counter: 'nmpz-country-30sec-answer',
+		counter: 'nmpz-country-no-hint-answer',
 		value: 1,
 	},
 	{
