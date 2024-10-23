@@ -232,8 +232,8 @@ class NmpzAteQuiz extends AteQuiz {
     return answer.toLowerCase() === this.problem.answer.toLowerCase();
   }
 
-  waitSecGen(_hintIndex: number): number {
-    return 30;
+  waitSecGen(hintIndex: number): number {
+    return hintIndex <= this.problem.hintMessages.length - 1 ? 30 : 90;
   }
 }
 
@@ -289,7 +289,7 @@ function problemFormat(
         text: `ヒント: 画像の地域は${country.subregion}だよ。`,
       },
     ],
-    immediateMessage: { channel: CHANNEL, text: "制限時間: 90秒" },
+    immediateMessage: { channel: CHANNEL, text: "" },
     solvedMessage: {
       channel: CHANNEL,
       text: `<@[[!user]]> 正解！:tada: 正解地点は <${answer_url}|${coordToStr(lat, lng)}> だよ ${emoji}`,
@@ -309,6 +309,7 @@ function problemFormat(
     answer: country.name_official,
     correctAnswers: [country.name_official, country.name_common],
   };
+  problem.immediateMessage.text = `制限時間: ${problem.hintMessages.length * 30 + 90}秒`;
   return problem;
 }
 
