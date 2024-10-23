@@ -7,6 +7,7 @@ import fs from "fs";
 import path from "path";
 import puppeteer from "puppeteer";
 import sqlite3 from "sqlite3";
+import { increment } from '../achievements';
 import { AteQuizProblem } from "../atequiz";
 import logger from "../lib/logger";
 import type { SlackInterface } from "../lib/slack";
@@ -378,6 +379,16 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
         return [null, null];
       });
       if (!result) return;
+
+      if (result.state === "solved") {
+        await increment(result.correctAnswerer, "nmpz-country-answer");
+        if (result.hintIndex === 0) {
+          await increment(result.correctAnswerer, "nmpz-country-no-hint-answer");
+        }
+        if (result.quiz.answer === "タイ") {
+          await increment(result.correctAnswerer, "nmpz-country-thailand-answer");
+        }
+      }
     }
   });
 };

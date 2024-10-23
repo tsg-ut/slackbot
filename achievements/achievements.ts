@@ -4351,6 +4351,54 @@ const achievements: Achievement[] = [
 		value: 1,
 	},
 
+	// nmpz
+
+	{
+		id: 'nmpz-country-1',
+		difficulty: 'easy',
+		title: 'Guessing where I am on Google Maps',
+		condition: 'NMPZで国を1回正解する',
+		category: 'nmpz',
+		counter: 'nmpz-country-answer',
+		value: 1,
+	},
+	{
+		id: 'nmpz-country-100',
+		difficulty: 'hard',
+		title: 'Nice.',
+		condition: 'NMPZで国を100回正解する',
+		category: 'nmpz',
+		counter: 'nmpz-country-answer',
+		value: 100,
+	},
+	{
+		id: 'nmpz-country-1000',
+		difficulty: 'professional',
+		title: 'Next.',
+		condition: 'NMPZで国を1000回正解する',
+		category: 'nmpz',
+		counter: 'nmpz-country-answer',
+		value: 1000,
+	},
+	{
+		id: 'nmpz-country-no-hint',
+		difficulty: 'hard',
+		title: 'But I can see no hints',
+		condition: 'NMPZでヒントなしで国を正解する',
+		category: 'nmpz',
+		counter: 'nmpz-country-no-hint-answer',
+		value: 1,
+	},
+	{
+		id: 'nmpz-country-thailand',
+		difficulty: 'hard',
+		title: 'No, this is Thailand.',
+		condition: 'NMPZでタイを正解する',
+		category: 'nmpz',
+		counter: 'nmpz-country-thailand-answer',
+		value: 1,
+	},
+
 	// achievements
 
 	{
