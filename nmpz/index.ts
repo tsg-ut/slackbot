@@ -9,6 +9,7 @@ import puppeteer from "puppeteer";
 import sqlite3 from "sqlite3";
 import { increment } from '../achievements';
 import { AteQuizProblem } from "../atequiz";
+import { normalize } from "../hayaoshi";
 import logger from "../lib/logger";
 import type { SlackInterface } from "../lib/slack";
 const { Mutex } = require("async-mutex");
@@ -229,7 +230,11 @@ class NmpzAteQuiz extends AteQuiz {
   }
 
   judge(answer: string, _user: string) {
-    return answer.toLowerCase() === this.problem.answer.toLowerCase();
+    const normalizedAnswer = normalize(answer);
+    const normalizedCorrectAnswers = this.problem.correctAnswers.map(normalize);
+    return normalizedCorrectAnswers.some(
+      (normalizedCorrectAnswer: string): boolean => normalizedAnswer === normalizedCorrectAnswer
+    );
   }
 
   waitSecGen(_hintIndex: number): number {
