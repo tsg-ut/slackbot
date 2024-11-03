@@ -72,15 +72,19 @@ const getRandomCoordinate = async () => new Promise((resolve, reject) => {
 });
 
 const getCountryName = async (country_code: string): Promise<Country> => new Promise((resolve, reject) => {
-  const url = `https://restcountries.com/v3.1/alpha/${country_code}`;
+  const url = "https://raw.githubusercontent.com/sh-mug/countries/fix-jpn-translations/countries.json";
   fetch(url)
     .then((response) => response.json())
     .then((data) => {
-      const country = data[0];
+      const country = data.find((c: any) => c.cca2 === country_code.toUpperCase());
+      if (!country) {
+        reject(new Error("Country not found"));
+        return;
+      }
       const region = country.region;
       const subregion = country.subregion;
-      const name_official = country.translations.jpn.common;
-      const name_common = country.translations.jpn.official;
+      const name_official = country.translations.jpn.official;
+      const name_common = country.translations.jpn.common;
       resolve({ country_code, region, subregion, name_official, name_common });
     })
     .catch((error) => {
