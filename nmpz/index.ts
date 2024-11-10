@@ -72,7 +72,7 @@ const getRandomCoordinate = async () => new Promise((resolve, reject) => {
 });
 
 const getCountryName = async (country_code: string): Promise<Country> => new Promise((resolve, reject) => {
-  const url = "https://raw.githubusercontent.com/sh-mug/countries/fix-jpn-translations/countries.json";
+  const url = "https://raw.githubusercontent.com/mledoze/countries/master/countries.json";
   fetch(url)
     .then((response) => response.json())
     .then((data) => {
