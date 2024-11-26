@@ -11,10 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
+      - name: Setup Tools
+        uses: asdf-vm/actions/install@v3
 
       - name: Before Install
         run: |
@@ -57,11 +55,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly-2022-07-23
-          default: true
-          override: true
+      - name: Setup Tools
+        uses: asdf-vm/actions/install@v3
 
       - name: build
         run: cargo build --all --verbose
