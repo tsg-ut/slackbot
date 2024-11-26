@@ -15,10 +15,8 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@master
         
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
+      - name: Setup Tools
+        uses: asdf-vm/actions/install@v3
 
       - name: Install Dependencies
         run: npm install

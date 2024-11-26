@@ -17,7 +17,7 @@
     "test:coverage": "npm run test -- --coverage"
   },
   "engines": {
-    "node": ">=16.10.0"
+    "node": "^20.18.1"
   },
   "repository": {
     "type": "git",
@@ -163,7 +163,7 @@
     "eslint-formatter-rdjson": "^1.0.5",
     "eslint-plugin-react": "^7.31.8",
     "firebase-functions-test": "^3.0.0",
-    "jest": "^29.0.3",
+    "jest": "^29.7.0",
     "mock-cloud-firestore": "^0.12.0",
     "prettier-eslint-cli": "^7.1.0",
     "ts-jest": "^29.0.0",

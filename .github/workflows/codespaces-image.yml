@@ -35,7 +35,9 @@ jobs:
         with:
           context: .devcontainer/slackbot
           push: true
-          tags: ghcr.io/tsg-ut/slackbot-codespaces-image-slackbot:master
+          tags: ghcr.io/tsg-ut/slackbot-codespaces-image-slackbot:${{ env.BRANCH_NAME }}
+          build-args: |
+            BRANCH_NAME=${{ env.BRANCH_NAME }}
 
       - name: Generate artifact attestation (slackbot)
         uses: actions/attest-build-provenance@v1
