@@ -25,11 +25,14 @@
 			"settings": {
 				"files.autoSave": "off",
 				"editor.formatOnSave": true,
+				"editor.defaultFormatter": "dbaeumer.vscode-eslint",
 				"editor.codeActionsOnSave": {
 					"source.fixAll": "always",
 					"source.fixAll.eslint": "always"
 				},
-				"eslint.format.enable": true
+				"eslint.format.enable": true,
+				"typescript.format.enable": false,
+				"javascript.format.enable": false
 			},
 			"extensions": [
 				"ms-vscode.vscode-typescript-next",

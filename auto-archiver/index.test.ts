@@ -160,6 +160,9 @@ describe('auto-archiver', () => {
 	});
 
 	it('should archive channel if user responded with "stop"', async () => {
+		const FAKE_TOKEN = 'xoxt-1234-5678-91011';
+		process.env.HAKATASHI_TOKEN = FAKE_TOKEN;
+
 		const slack = new Slack();
 
 		const mockedAction = slack.messageClient.action as jest.MockedFunction<typeof slack.messageClient.action>;
@@ -226,6 +229,7 @@ describe('auto-archiver', () => {
 		expect((blocks[1] as SectionBlock).text.text).toBe('<@U12345678>の回答: ＊使用しない＊');
 		expect(slack.webClient.conversations.archive).toBeCalledWith({
 			channel: FAKE_CHANNEL,
+			token: FAKE_TOKEN,
 		});
 	});
 

@@ -36,7 +36,10 @@
                 "<node_internals>/**"
             ],
             "console": "internalConsole",
-            "outputCapture": "std"
+            "outputCapture": "std",
+            "env": {
+                "NODE_OPTIONS": "--max-old-space-size=4096"
+            }
         }
     ],
     "inputs": [

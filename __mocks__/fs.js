@@ -43,6 +43,18 @@ fs.promises.readFile = jest.fn((...args) => {
 	}
 });
 
+fs.promises.readdir = jest.fn((...args) => {
+	const [path] = args;
+	const fullPath = Path.resolve(process.cwd(), path);
+	const files = Object.keys(fs.virtualFiles).filter((file) => file.startsWith(fullPath));
+
+	if (files.length > 0) {
+		return new Promise((resolve) => resolve(files.map((file) => Path.basename(file))));
+	} else {
+		return realFs.promises.readdir(...args);
+	}
+});
+
 fs.access = jest.fn((...args) => {
 	const [path, , callback] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
