@@ -4302,6 +4302,15 @@ const achievements: Achievement[] = [
 		counter: 'oneiromancy-score-under-0',
 		value: 1,
 	},
+	{
+		id: 'oneiromancy-newyear-analyzed-1',
+		difficulty: 'medium',
+		title: '一年の計',
+		condition: '夢占いBOTに初夢を占われる',
+		category: 'oneiromancy',
+		counter: 'oneiromancy-newyear-analyzed',
+		value: 1,
+	},
 
 	// city-symbol
 
