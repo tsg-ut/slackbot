@@ -54,6 +54,11 @@ enum Voice {
 	AQ = 'AQ',
 	AR = 'AR',
 	AS = 'AS',
+	AT = 'AT',
+	AU = 'AU',
+	AV = 'AV',
+	AW = 'AW',
+	AX = 'AX',
 }
 export {Voice};
 
@@ -122,6 +127,11 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.AQ, {provider: 'openai', name: 'shimmer'}],
 	[Voice.AR, {provider: 'amazon', name: 'Kazuha'}],
 	[Voice.AS, {provider: 'amazon', name: 'Tomoko'}],
+	[Voice.AT, {provider: 'azure', name: 'ja-JP-AoiNeural'}],
+	[Voice.AU, {provider: 'azure', name: 'ja-JP-DaichiNeural'}],
+	[Voice.AV, {provider: 'azure', name: 'ja-JP-MayuNeural'}],
+	[Voice.AW, {provider: 'azure', name: 'ja-JP-NaokiNeural'}],
+	[Voice.AX, {provider: 'azure', name: 'ja-JP-ShioriNeural'}],
 	// coming soon
 	// [Voice., {provider: 'voicevox', name: 'whitecul', emotional: true}],
 	// [Voice., {provider: 'voicevox', name: 'goki', emotional: true}],
