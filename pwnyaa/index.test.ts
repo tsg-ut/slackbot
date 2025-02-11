@@ -4,6 +4,7 @@ import path from 'path';
 import Slack from '../lib/slackMock';
 import {getMemberName} from '../lib/slackUtils';
 import {AchievementType, Challenge, SolvedInfo, Profile} from './lib/BasicTypes';
+import {fetchChallsAH, fetchUserProfileAH} from './lib/AHManager';
 import {fetchChallsCH, fetchUserProfileCH} from './lib/CHManager';
 import {fetchChallsKSN, fetchUserProfileKSN} from './lib/KSNManager';
 import {fetchChallsTW, fetchUserProfileTW} from './lib/TWManager';
@@ -12,6 +13,7 @@ import pwnyaa, {State} from './index';
 
 jest.mock('../achievements');
 jest.unmock('axios');
+jest.mock('./lib/AHManager');
 jest.mock('./lib/CHManager');
 jest.mock('./lib/TWManager');
 jest.mock('./lib/XYZManager');
@@ -40,6 +42,11 @@ const sampleChallsCH: Challenge[] = [
 const sampleChallsKSN: Challenge[] = [
 	{name: 'ksnChallA', score: 400, id: '1'},
 	{name: 'ksnChallB', score: 500, id: '2'},
+];
+// eslint-disable-next-line array-plural/array-plural
+const sampleChallsAH: Challenge[] = [
+	{name: 'ahChallA', score: 400, id: '1'},
+	{name: 'ahChallB', score: 500, id: '2'},
 ];
 
 // eslint-disable-next-line no-unused-vars
@@ -107,6 +114,16 @@ const sampleProfileKSN: Profile = {
 	solvedChalls: [sampleSolved1],
 };
 
+const sampleProfileAH: Profile = {
+	username: 'hogeko',
+	country: 'JP',
+	rank: '30/1000',
+	score: '4000',
+	comment: 'Crazy Winter',
+	registeredAt: '2020/01/27',
+	solvedChalls: [sampleSolved1],
+};
+
 
 beforeAll(async () => {
 	// backup state file
@@ -155,6 +172,8 @@ beforeEach(async () => {
 	(fetchUserProfileCH as jest.Mock).mockReturnValue(sampleProfileCH);
 	(fetchChallsKSN as jest.Mock).mockReturnValue(sampleChallsKSN);
 	(fetchUserProfileKSN as jest.Mock).mockReturnValue(sampleProfileKSN);
+	(fetchChallsAH as jest.Mock).mockReturnValue(sampleChallsAH);
+	(fetchUserProfileAH as jest.Mock).mockReturnValue(sampleProfileAH);
 	(getMemberName as jest.Mock).mockReturnValue('FakeName');
 
 	slack = new Slack();

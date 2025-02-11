@@ -997,5 +997,5 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	});
 
 	// init
-	updateAll();
+	await updateAll();
 };
