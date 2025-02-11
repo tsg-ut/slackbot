@@ -57,6 +57,9 @@ jobs:
 
       - name: Setup Tools
         uses: asdf-vm/actions/install@v3
+        with:
+          # https://github.com/asdf-vm/actions/issues/587
+          asdf_branch: v0.15.0
 
       - name: build
         run: cargo build --all --verbose

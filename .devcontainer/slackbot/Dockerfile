@@ -8,7 +8,7 @@ RUN apt-get update -y && \
     # Install other dependencies
     apt-get install git curl bash gnupg -y && \
     # Setup asdf
-    git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.1 && \
+    git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.15.0 && \
     echo ". $HOME/.asdf/asdf.sh" >> ~/.bashrc && \
     echo ". $HOME/.asdf/completions/asdf.bash" >> ~/.bashrc && \
     echo "export ASDF_DIR=\"$HOME/.asdf\"" >> ~/.profile && \
