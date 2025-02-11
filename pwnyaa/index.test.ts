@@ -248,7 +248,9 @@ beforeEach(async () => {
 	await fs.writeFile(stateOriginalPath, JSON.stringify(fakeState));
 
 	jest.useFakeTimers();
-	await pwnyaa(slack);
+	const {initPromise} = await pwnyaa(slack);
+
+	await initPromise;
 });
 
 

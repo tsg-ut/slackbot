@@ -997,5 +997,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	});
 
 	// init
-	await updateAll();
+	const initPromise = updateAll();
+
+	return {initPromise};
 };
