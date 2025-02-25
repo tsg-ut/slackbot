@@ -25,11 +25,13 @@ const s3 = new S3({
 
 const cronJob = async () => {
 	let page = 1;
+	const now = Math.floor(Date.now() / 1000);
 
 	while (true) {
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 		const filesList = await slack.files.list({
 			page,
+			ts_to: now.toString(),
 			count: 100,
 		});
 
