@@ -30,8 +30,15 @@ import {slackFileArchiveCronJob} from './slackFileArchiveCronJob';
 
 const cronJob = test.wrap(slackFileArchiveCronJob);
 
+const CURRENT_TIME = 1700000000;
+
+jest.useFakeTimers();
+jest.spyOn(global, 'setTimeout');
+
 describe('slackFileArchiveCronJob', () => {
 	it('works', async () => {
+		jest.setSystemTime(CURRENT_TIME * 1000);
+
 		filesListMock.mockResolvedValue({
 			files: [{
 				id: 'file1',
@@ -59,11 +66,18 @@ describe('slackFileArchiveCronJob', () => {
 				promise: jest.fn(),
 			}));
 
-		await cronJob(undefined);
+		const cronJobPromise = cronJob(undefined);
+
+		expect(setTimeout).toHaveBeenCalledTimes(1);
+		expect(setTimeout).toHaveBeenLastCalledWith(expect.any(Function), 1000);
+
+		jest.runAllTimers();
+		await cronJobPromise;
 
 		expect(filesListMock).toHaveBeenCalledWith({
 			count: 100,
 			page: 1,
+			ts_to: CURRENT_TIME.toString(),
 		});
 
 		expect(batchGetMock).toHaveBeenCalledWith({
