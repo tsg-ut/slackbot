@@ -251,6 +251,9 @@ export default class TTS extends EventEmitter {
 						} else {
 							providerName = 'Unknown';
 						}
+						if (config.model) {
+							providerName += `: ${config.model} model`;
+						}
 						return `* \`${voice}\`: **${config.name}** (${providerName})`;
 					}).join('\n');
 					this.emit('message', voicesText);

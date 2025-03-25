@@ -5,7 +5,7 @@ type VoiceType = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
 
 const speech: SynthesizeFunction = async (text: string, voiceType: VoiceType, options, audioTags) => {
 	const mp3 = await openai.audio.speech.create({
-		model: 'tts-1',
+		model: options.engine ?? 'tts-1',
 		voice: voiceType,
 		input: text,
 	});
