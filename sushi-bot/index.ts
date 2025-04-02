@@ -216,8 +216,10 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 					switch (true) {
 						case cnt > 10:
 							unlock(user, 'get-infinite-sushi');
+							// fall through
 						case cnt >= 2:
 							unlock(user, 'get-multiple-sushi');
+							// fall through
 						case cnt >= 1:
 							unlock(user, 'get-sushi');
 					}
