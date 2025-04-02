@@ -230,6 +230,23 @@ const customResponses: CustomResponse[] = [
         icon_emoji: ':kczclock:',
         username: 'kcztime',
     },
+    {
+        input: [/^moratime$/, /^moraclock$/],
+        outputFunction: (input: string[]) => {
+            const nowCambridge = moment().tz('Europe/London');
+            const date = nowCambridge.format('YYYY年 M月D日');
+            const ampm = nowCambridge.hour() < 12 ? '午前' : '午後';
+            const yobi = ['日', '月', '火', '水', '木', '金', '土'][nowCambridge.day()] + '曜日';
+            const hour = nowCambridge.hour() % 12;
+            const minute = nowCambridge.minute();
+            return [stripIndent`\
+                現在のケンブリッジの時刻は
+                *${date} ${yobi} ${ampm}${hour}時${minute}分*
+                だよ`];
+        },
+        icon_emoji: ':circled_moratorium08:',
+        username: 'moratime',
+    },
 ];
 
 export default customResponses;
