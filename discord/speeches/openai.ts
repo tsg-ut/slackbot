@@ -8,6 +8,7 @@ const speech: SynthesizeFunction = async (text: string, voiceType: VoiceType, op
 		model: options.engine ?? 'tts-1',
 		voice: voiceType,
 		input: text,
+		instructions: 'You are a native Japanese speaker. If the given text is entirely in kanji and you are not sure whether it is Japanese or Chinese, read it in Japanese.\nTone: Emotionless, flat, calm like an announcer',
 	});
 
 	return {
