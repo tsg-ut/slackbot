@@ -72,7 +72,7 @@ export class AteQuiz {
   postOption: Partial<ChatPostMessageArguments>;
   threadTsDeferred: Deferred<string> = new Deferred();
 
-  judge(answer: string, _user: string): boolean {
+  judge(answer: string, _user: string): boolean | Promise<boolean> {
     return this.problem.correctAnswers.some(
       (correctAnswer) => answer === correctAnswer
     );
@@ -213,7 +213,7 @@ export class AteQuiz {
         this.mutex.runExclusive(async () => {
           if (this.state === 'solving') {
             const answer = message.text as string;
-            const isCorrect = this.judge(answer, message.user as string);
+            const isCorrect = await this.judge(answer, message.user as string);
             if (isCorrect) {
               this.state = 'solved';
               clearInterval(tickTimer);
