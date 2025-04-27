@@ -352,8 +352,6 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 };
 
 const generateQuiz = (genre: string | null): Promise<QuizGenerationInformation | null> => {
-	// const method = 'wikipedia';
-
 	if (!genre) {
 		const bigGenre = sample(Object.keys(genres));
 		const smallGenre = sample(genres[bigGenre]);
@@ -399,7 +397,7 @@ export default (slackClients: SlackInterface) => {
 					message.text &&
 					(
 						message.text === 'ランダムクイズ' ||
-						(matches = (message.text as string).match(/^(?<genre>.+?)のクイズ$/u))
+						(matches = (/^(?<genre>.+?)のクイズ$/u).exec(message.text))
 					)
 				) {
 					const genre = matches?.groups?.genre ?? null;
