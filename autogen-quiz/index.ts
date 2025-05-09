@@ -260,7 +260,9 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	}
 	chatHistory.push(resultMessage3);
 
-	const answerCandidates = extractBulletTitles(resultMessage3.content);
+	const answerCandidates = extractBulletTitles(resultMessage3.content).filter((title) => (
+		genre.includes(title)
+	));
 	if (answerCandidates.length === 0) {
 		log.info('No answer candidates found in the content');
 		return null;
@@ -511,10 +513,10 @@ export default (slackClients: SlackInterface) => {
 						await increment(result.correctAnswerer, 'autogen-quiz-answer');
 
 						const achievementMapping: Record<string, string> = {
-							'TSG': 'autogen-quiz-answer-main-answer-tsg',
-							'CHATGPT': 'autogen-quiz-answer-main-answer-chatgpt',
-							'クイズ': 'autogen-quiz-answer-main-answer-クイズ',
-							'コロンビア': 'autogen-quiz-answer-main-answer-コロンビア',
+							TSG: 'autogen-quiz-answer-main-answer-tsg',
+							CHATGPT: 'autogen-quiz-answer-main-answer-chatgpt',
+							クイズ: 'autogen-quiz-answer-main-answer-クイズ',
+							コロンビア: 'autogen-quiz-answer-main-answer-コロンビア',
 						};
 
 						for (const [key, achievementKey] of Object.entries(achievementMapping)) {
