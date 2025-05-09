@@ -10,17 +10,22 @@ import type {ChatPostMessageArguments} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import axios from 'axios';
 import {stripIndent} from 'common-tags';
+import eaw from 'eastasianwidth';
 import {readFile} from 'fs-extra';
 import yaml from 'js-yaml';
 import {sample, sortBy} from 'lodash';
+// @ts-ignore: untyped
+import emoji from 'node-emoji';
 import type OpenAI from 'openai';
 import {z} from 'zod';
+import {increment} from '../achievements';
 import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
 import type {AteQuizProblem} from '../atequiz';
 import {judgeAnswer} from '../discord/hayaoshiUtils';
 import logger from '../lib/logger';
 import openai from '../lib/openai';
 import {SlackInterface} from '../lib/slack';
+import {getMemberName} from '../lib/slackUtils';
 import {Loader} from '../lib/utils';
 import genres from './genres';
 
@@ -361,6 +366,15 @@ const generateQuiz = (genre: string | null): Promise<QuizGenerationInformation |
 	return generateQuizWikipediaMethod(genre);
 };
 
+const normalizeGenre = (genre: string): string => {
+	const normalizedGenre = genre.normalize('NFKC').replace(/\s+/g, ' ').trim();
+	return emoji.emojify(normalizedGenre);
+};
+
+const normalizeAnswer = (answer: string): string => (
+	answer.normalize('NFKC').replace(/\s+/g, ' ').trim().toUpperCase()
+);
+
 class AutogenQuiz extends AteQuiz {
 	constructor(
 		options: {
@@ -401,11 +415,12 @@ export default (slackClients: SlackInterface) => {
 					)
 				) {
 					const genre = matches?.groups?.genre ?? null;
+					const normalizedGenre = genre ? normalizeGenre(genre) : null;
 
-					if (genre && Array.from(genre).length > 12) {
+					if (normalizedGenre && eaw.length(normalizedGenre) > 24) {
 						await slackClients.webClient.chat.postMessage({
 							channel: message.channel,
-							text: 'トピックは12文字以内で指定してください❤',
+							text: 'トピックは全角12文字以内で指定してください❤',
 							username: 'ChatGPT',
 							icon_emoji: ':chatgpt:',
 						});
@@ -490,6 +505,32 @@ export default (slackClients: SlackInterface) => {
 					const result = await quiz.start();
 
 					log.info(`Quiz result: ${inspect(result)}`);
+
+					if (result.state === 'solved') {
+						const normalizedAnswer = normalizeAnswer(generation.generatedQuiz.mainAnswer);
+						await increment(result.correctAnswerer, 'autogen-quiz-answer');
+
+						if (normalizedAnswer === 'TSG') {
+							await increment(result.correctAnswerer, 'autogen-quiz-answer-main-answer-tsg');
+						}
+
+						if (normalizedAnswer === 'CHATGPT') {
+							await increment(result.correctAnswerer, 'autogen-quiz-answer-main-answer-chatgpt');
+						}
+
+						if (normalizedAnswer === 'クイズ') {
+							await increment(result.correctAnswerer, 'autogen-quiz-answer-main-answer-クイズ');
+						}
+
+						if (normalizedAnswer === 'コロンビア') {
+							await increment(result.correctAnswerer, 'autogen-quiz-answer-main-answer-コロンビア');
+						}
+
+						const memberName = await getMemberName(result.correctAnswerer);
+						if (normalizedAnswer === normalizeAnswer(memberName)) {
+							await increment(result.correctAnswerer, 'autogen-quiz-answer-main-answer-self-name');
+						}
+					}
 				}
 			} catch (error) {
 				log.error(error.stack);
