@@ -510,22 +510,18 @@ export default (slackClients: SlackInterface) => {
 						const normalizedAnswer = normalizeAnswer(generation.generatedQuiz.mainAnswer);
 						await increment(result.correctAnswerer, 'autogen-quiz-answer');
 
-						if (normalizedAnswer === 'TSG') {
-							await increment(result.correctAnswerer, 'autogen-quiz-answer-main-answer-tsg');
-						}
+						const achievementMapping: Record<string, string> = {
+							'TSG': 'autogen-quiz-answer-main-answer-tsg',
+							'CHATGPT': 'autogen-quiz-answer-main-answer-chatgpt',
+							'クイズ': 'autogen-quiz-answer-main-answer-クイズ',
+							'コロンビア': 'autogen-quiz-answer-main-answer-コロンビア',
+						};
 
-						if (normalizedAnswer === 'CHATGPT') {
-							await increment(result.correctAnswerer, 'autogen-quiz-answer-main-answer-chatgpt');
+						for (const [key, achievementKey] of Object.entries(achievementMapping)) {
+							if (normalizedAnswer === key) {
+								await increment(result.correctAnswerer, achievementKey);
+							}
 						}
-
-						if (normalizedAnswer === 'クイズ') {
-							await increment(result.correctAnswerer, 'autogen-quiz-answer-main-answer-クイズ');
-						}
-
-						if (normalizedAnswer === 'コロンビア') {
-							await increment(result.correctAnswerer, 'autogen-quiz-answer-main-answer-コロンビア');
-						}
-
 						const memberName = await getMemberName(result.correctAnswerer);
 						if (normalizedAnswer === normalizeAnswer(memberName)) {
 							await increment(result.correctAnswerer, 'autogen-quiz-answer-main-answer-self-name');
