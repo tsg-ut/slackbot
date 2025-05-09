@@ -429,13 +429,13 @@ export default (slackClients: SlackInterface) => {
 
 					await slackClients.webClient.chat.postEphemeral({
 						channel: message.channel,
-						text: genre ? `${genre}に関するクイズを生成中です...` : 'クイズを生成中です...',
+						text: normalizedGenre ? `${normalizedGenre}に関するクイズを生成中です...` : 'クイズを生成中です...',
 						username: 'ChatGPT',
 						icon_emoji: ':chatgpt:',
 						user: message.user,
 					});
 
-					const generation = await generateQuiz(genre);
+					const generation = await generateQuiz(normalizedGenre);
 
 					if (!generation) {
 						await slackClients.webClient.chat.postMessage({
@@ -452,7 +452,7 @@ export default (slackClients: SlackInterface) => {
 						concealedQuestion = concealedQuestion.replaceAll(correctAnswer, '◯◯');
 					}
 
-					const quizTextIntro = genre === null ? 'クイズを自動生成したよ' : `＊${genre}＊に関するクイズを自動生成したよ👍`;
+					const quizTextIntro = normalizedGenre === null ? 'クイズを自動生成したよ' : `＊${normalizedGenre}＊に関するクイズを自動生成したよ👍`;
 					const quizText = stripIndent`
 						${quizTextIntro}
 
