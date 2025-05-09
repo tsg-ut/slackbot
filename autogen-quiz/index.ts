@@ -261,7 +261,7 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	chatHistory.push(resultMessage3);
 
 	const answerCandidates = extractBulletTitles(resultMessage3.content).filter((title) => (
-		genre.includes(title)
+		!genre.includes(title)
 	));
 	if (answerCandidates.length === 0) {
 		log.info('No answer candidates found in the content');
