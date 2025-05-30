@@ -115,7 +115,7 @@ const productionBots = [
 	'auto-archiver',
 	'city-symbol',
 	'nmpz',
-	'autogen-quiz',
+	// 'autogen-quiz',
 ];
 
 const developmentBots = [
