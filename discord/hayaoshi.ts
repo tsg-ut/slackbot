@@ -270,7 +270,7 @@ export default class Hayaoshi extends EventEmitter {
 		const answerFileName = path.join(__dirname, `${this.state.quiz.answer.replaceAll('/', '_')}.ogg`);
 
 		this.emit('message', {
-			text: stripIndent`
+			content: stripIndent`
 				正解者: なし
 				${this.state.quiz.author ? `作問者: <@${this.state.quiz.author}>` : ''}
 				Q. ${this.state.quiz.question}
@@ -615,7 +615,7 @@ export default class Hayaoshi extends EventEmitter {
 					const answerFileName = path.join(__dirname, `${this.state.quiz.answer.replaceAll('/', '_')}.ogg`);
 
 					this.emit('message', {
-						text: stripIndent`
+						content: stripIndent`
 							正解者: <@${message.member.user.id}>
 							解答時間: ${(this.state.maximumPushTime / 1000).toFixed(2)}秒 / ${(max(this.state.timePoints) / 1000).toFixed(2)}秒
 							${this.state.quiz.author ? `作問者: <@${this.state.quiz.author}>` : ''}
