@@ -1,5 +1,5 @@
 import {writeFileSync} from 'fs';
-import {Message} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
+import type {GenericMessageEvent} from '@slack/bolt';
 import {Mutex} from 'async-mutex';
 import {v2 as cloudinary} from 'cloudinary';
 import {stripIndent} from 'common-tags';
@@ -344,7 +344,7 @@ class QrAteQuiz extends AteQuiz {
 		return super.start();
 	}
 
-	solvedMessageGen(message: Message) {
+	solvedMessageGen(message: GenericMessageEvent) {
 		this.endTime = Date.now();
 
 		const duration = (this.endTime - this.startTime) / 1000;
@@ -374,20 +374,20 @@ export default (slackClients: SlackInterface) => {
 
 		const {text, channel} = message;
 
-		if (mutex.isLocked()) {
-			slack.chat.postEphemeral({
-				channel,
-				text: '今クイズ中だよ',
-				user: message.user,
-			});
-			return;
-		}
-
-		mutex.runExclusive(async () => {
-			if (
-				text &&
+		if (
+			text &&
 				text.startsWith('QR当てクイズ')
-			) {
+		) {
+			if (mutex.isLocked()) {
+				slack.chat.postEphemeral({
+					channel,
+					text: '今クイズ中だよ',
+					user: message.user,
+				});
+				return;
+			}
+
+			mutex.runExclusive(async () => {
 				const quizOptions = parseQuizOptions(text.slice('QR当てクイズ'.length));
 				const quiz = await generateQuiz(quizOptions.difficulty, quizOptions.mode);
 				const imageUrl = await generateQrcode({
@@ -396,7 +396,8 @@ export default (slackClients: SlackInterface) => {
 					isUnmasked: quizOptions.isUnmasked,
 				});
 
-				const quizText = `このQRコード、なんと書いてあるでしょう? (difficulty = ${quizOptions.difficulty}, mode = ${quizOptions.mode}, masked = ${!quizOptions.isUnmasked})`;
+				const standardRuleUrl = 'https://scrapbox.io/tsg/QR%E5%BD%93%E3%81%A6%E3%82%AF%E3%82%A4%E3%82%BA%2F%E6%A8%99%E6%BA%96%E3%83%AB%E3%83%BC%E3%83%AB';
+				const quizText = `このQRコード、なんと書いてあるでしょう? (difficulty = ${quizOptions.difficulty}, mode = ${quizOptions.mode}, masked = ${!quizOptions.isUnmasked}) <${standardRuleUrl}|[標準ルール]>`;
 
 				const ateQuiz = new QrAteQuiz(slackClients, {
 					problemMessage: {
@@ -406,7 +407,7 @@ export default (slackClients: SlackInterface) => {
 							{
 								type: 'section',
 								text: {
-									type: 'plain_text',
+									type: 'mrkdwn',
 									text: quizText,
 								},
 								accessory: {
@@ -416,6 +417,8 @@ export default (slackClients: SlackInterface) => {
 								},
 							},
 						],
+						unfurl_links: false,
+						unfurl_media: false,
 					},
 					hintMessages: [],
 					immediateMessage: {
@@ -439,12 +442,10 @@ export default (slackClients: SlackInterface) => {
 					solvedMessage: {
 						channel,
 						text: '',
-						reply_broadcast: true,
 					},
 					unsolvedMessage: {
 						channel,
 						text: typicalMessageTextsGenerator.unsolved(` ＊${quiz.data}＊ `),
-						reply_broadcast: true,
 					},
 					answerMessage: {
 						channel,
@@ -506,7 +507,7 @@ export default (slackClients: SlackInterface) => {
 						await increment(result.correctAnswerer, 'qrcode-quiz-answer-less-than-150s');
 					}
 				}
-			}
-		});
+			});
+		}
 	});
 };

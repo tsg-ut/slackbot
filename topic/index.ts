@@ -1,15 +1,16 @@
-import type {Message} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
+import type {MessageElement} from '@slack/web-api/dist/types/response/ConversationsHistoryResponse';
 import {increment} from '../achievements';
 import db from '../lib/firestore';
 import type {SlackInterface} from '../lib/slack';
 import {getReactions} from '../lib/slackUtils';
 import State from '../lib/state';
 
-const isQualifiableMessage = (message: Message) => {
+const isQualifiableMessage = (message: MessageElement) => {
 	if (message?.attachments?.length > 0) {
 		return false;
 	}
-	if (message?.files?.length > 0) {
+	// eslint-disable-next-line no-restricted-syntax
+	if ('files' in message && message?.files?.length > 0) {
 		return false;
 	}
 	if (message?.subtype === 'bot_message' && message?.blocks?.length > 1) {
@@ -23,8 +24,8 @@ const isQualifiableMessage = (message: Message) => {
 	}
 
 	const [line] = lines;
-	const lineLength = Buffer.from(line).length;
-	return lineLength >= 1 && lineLength <= 100;
+	const lineLength = line.length;
+	return lineLength >= 1 && lineLength <= 60;
 };
 
 interface StateObj {
@@ -77,13 +78,13 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 
 	const updateTopic = async (newTopic: string) => {
 		const currentTopicText = await getTopic();
-		const [headline, ...currentTopics] = currentTopicText.split('/').map((topic) => topic.trim());
+		const [headline, ...currentTopics] = currentTopicText.split(/[／｜]/).map((topic) => topic.trim());
 		let topicText = '';
 		const topics = [headline];
 		for (const topic of [newTopic, ...currentTopics]) {
 			topics.push(topic);
-			const newTopicText = topics.join(' / ');
-			if (Buffer.from(newTopicText).length > 250) {
+			const newTopicText = topics.join('｜');
+			if (newTopicText.length > 250) {
 				break;
 			}
 			topicText = newTopicText;
@@ -128,7 +129,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		if (message === undefined) {
 			return;
 		}
-		
+
 		// スレッド内の発言はconversations.historyで取得できないため正しいメッセージが取得できない場合がある
 		if (event.item.ts !== message?.ts) {
 			return;
@@ -143,6 +144,6 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		await TopicMessages.doc(message.ts).set({message, likes: []});
 
 		increment(message.user, 'topic-adopted');
-		updateTopic(message.text.trim());
+		await updateTopic(message.text.trim());
 	});
 };

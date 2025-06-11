@@ -1,12 +1,12 @@
 import {get} from 'lodash';
+import type {EventEmitter} from 'events';
 import type {Token} from '../oauth/tokens';
 import {Deferred} from './utils';
 import {TeamEventClient} from './slackEventClient';
 import logger from './logger';
 
-import type {SlackEventAdapter} from '@slack/events-api';
-import type {Reaction} from '@slack/web-api/dist/response/ConversationsHistoryResponse';
-import type {Member} from '@slack/web-api/dist/response/UsersListResponse';
+import type {Reaction} from '@slack/web-api/dist/types/response/ConversationsHistoryResponse';
+import type {Member} from '@slack/web-api/dist/types/response/UsersListResponse';
 import type {
 	ConversationsHistoryArguments,
 	ConversationsHistoryResponse,
@@ -32,7 +32,7 @@ interface WebClient {
 
 interface Config {
 	token: Token;
-	eventClient: SlackEventAdapter;
+	eventClient: EventEmitter;
 	webClient: WebClient;
 	enableReactions?: boolean;
 }
@@ -141,6 +141,9 @@ export default class SlackCache {
 			}
 		}
 
+		console.log(5);
+		console.log(this.config.token, {channel, ts});
+		
 		const data = await this.config.webClient.conversations.history({
 			token: this.config.token.bot_access_token,
 			channel: channel,
@@ -148,6 +151,7 @@ export default class SlackCache {
 			limit: 1,
 			inclusive: true,
 		});
+		console.log(6);
 
 		{
 			// race condition

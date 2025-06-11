@@ -2,8 +2,7 @@ jest.mock('tinyreq');
 jest.mock('axios');
 
 import lyrics from './index';
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
+import Slack from '../lib/slackMock';
 // @ts-expect-error
 import tinyreq from 'tinyreq';
 import axios from 'axios';
@@ -117,16 +116,17 @@ describe('lyrics', () => {
             }
         });
         const response = await slack.getResponseTo('@lyrics 朝目が覚めたらもう');
-        expect(response.username).toBe('歌詞検索くん');
+        expect('username' in response && response.username).toBe('歌詞検索くん');
         expect(response.icon_url).toBe('https://is4-ssl.mzstatic.com/image/thumb/Music5/v4/52/33/6a/52336ad2-e139-98f3-fad8-fcf8edee53ab/source/60x60bb.jpg');
-        expect(response.attachments[0].title).toBe('歌詞 - 歌ネット');
-        expect(response.attachments[0].title_link).toBe('https://www.uta-net.com/song/159792/');
+        const attachments = 'attachments' in response ? response.attachments : [];
+        expect(attachments[0].title).toBe('歌詞 - 歌ネット');
+        expect(attachments[0].title_link).toBe('https://www.uta-net.com/song/159792/');
         expect(response.text).toContain(stripIndent`
             ＊朝目が覚めたらもう＊昨日みたいな日常はなくて
             「ホントあぁもう...えっとどうしよう」
             ため息混じりに練るお菓子と妄想のレシピの中に
             恋心入っちゃった`);
-        const fields = response.attachments[0].fields;
+        const fields = attachments[0].fields;
         expect(fields[0].value).toBe('とまどい→レシピ');
         expect(fields[1].value).toBe('みかくにんぐッ!');
         expect(fields[2].value).toBe('Junky');

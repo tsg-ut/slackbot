@@ -5,7 +5,7 @@ jest.mock('./tokenize.js');
 jest.mock('../achievements');
 
 const dajare = require('./index.js');
-const Slack = require('../lib/slackMock.js');
+const {default: Slack} = require('../lib/slackMock.ts');
 const tokenize = require('./tokenize.js');
 
 tokenize.virtualTokens = {

@@ -102,15 +102,21 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 	]);
 
 	eventClient.on('message', async (message) => {
-		const { channel, text, user, ts: timestamp } = message;
+		// when a message is changed (eg. link preview is loaded),
+		// this event is fired with message = {
+		// 	type: 'message', subtype: 'message_changed', channel: ..,
+		// 	message: .., ..
+		// }
+		const isChanged = message.subtype === 'message_changed';
+		const { channel, text, user, ts: timestamp, attachments } =
+			isChanged ? { ...message, ...message.message } as any : message;
 		if (!text) {
 			return;
 		}
-
-		if (message.channel.startsWith('D')) {
+		if (channel.startsWith('D')) {
 			const postDM = (text: string) => (
 				slack.chat.postMessage({
-					channel: message.channel,
+					channel,
 					text,
 					username: 'sushi-bot',
 					// eslint-disable-next-line camelcase
@@ -177,9 +183,19 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 			}
 		}
 
+		const texts = [text];
+		if (attachments) {
+			for (const attachment of attachments) {
+				if (attachment.pretext) texts.push(attachment.pretext);
+				if (attachment.text) texts.push(attachment.text);
+				if (attachment.title) texts.push(attachment.title);
+			}
+		}
+		const allText = texts.join('\n');
+
 		{
-			const rtext = text.
-				replace(/鮨/g, 'すし').
+			const rtext = allText.
+				replace(/[鮨鮓]/g, 'すし').
 				replace(/(su|zu|[スズず寿壽])/gi, 'す').
 				replace(/(sh?i|ci|[しシ司\u{0328}])/giu, 'し');
 			const cnt = count(rtext, 'すし');
@@ -200,8 +216,10 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 					switch (true) {
 						case cnt > 10:
 							unlock(user, 'get-infinite-sushi');
+							// fall through
 						case cnt >= 2:
 							unlock(user, 'get-multiple-sushi');
+							// fall through
 						case cnt >= 1:
 							unlock(user, 'get-sushi');
 					}
@@ -214,7 +232,7 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 		}
 
 		{
-			const rtext = text.
+			const rtext = allText.
 				replace(/(ca|(ke|け|ケ)(i|ぃ|い|ｨ|ィ|ｲ|イ|e|ぇ|え|ｪ|ェ|ｴ|エ|-|ー))(ki|ke|き|キ)/gi, 'ケーキ');
 
 			if (rtext.includes("ケーキ")) {
@@ -225,7 +243,7 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 		{
 			const chians = ["殺", "死", ":korosuzo:"];
 
-			const cnt = chians.reduce((sum, cur) => sum + count(text, cur), 0);
+			const cnt = chians.reduce((sum, cur) => sum + count(allText, cur), 0);
 
 			if(cnt >= 1) {
 				Promise.resolve()
@@ -247,7 +265,7 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 		}
 
 		{
-			const rtext = text.
+			const rtext = allText.
 				replace(/akouryyy/gi, 'akkoury').
 				replace(/akouryy/gi, '').
 				replace(/kk/gi, 'k').
@@ -263,7 +281,7 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 		{
 			const stars = ["欲し", "干し", "ほし", "星", "★", "☆"];
 			for(const star of stars) {
-				if (text.includes(star)) {
+				if (allText.includes(star)) {
 					slack.reactions.add({name: 'grapes', channel, timestamp});
 					break;
 				}
@@ -271,7 +289,7 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 		}
 
 		{
-			const rtext = text.
+			const rtext = allText.
 				replace(/\s/gi,'').
 				replace(/ｻ|サ|:(ahokusa|hokusai)-bottom-left:/gi,'さ').
 				replace(/ｱ|ア|:(ahokusa|hokusai)-top-right:/gi,'あ').
@@ -318,14 +336,14 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 
 		{
 			const kasu = 'カス';
-			if (channel === process.env.CHANNEL_SANDBOX && text.includes(kasu)) {
+			if (channel === process.env.CHANNEL_SANDBOX && allText.includes(kasu)) {
 				slack.reactions.add({name: 'kasukasu_dance', channel, timestamp});
 				kasuCounter.add(user);
 			}
 		}
 
 		{
-			if(text.includes(":exercise-done:")||text.includes(":kintore_houkoku:")){
+			if(allText.includes(":exercise-done:")||allText.includes(":kintore_houkoku:")){
 				slack.reactions.add({name: 'erai', channel, timestamp})
 				slack.reactions.add({name: 'sugoi', channel, timestamp})
 	
@@ -338,8 +356,14 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 		}
 
 		{
-			if (text.match(/twitter(?!\.com)/i)) {
+			if (allText.match(/twitter(?!\.com)/i)) {
 				slack.reactions.add({name: 'x-logo', channel, timestamp})
+			}
+		}
+
+		{
+			if (allText.match(/\bx(?!\.com)\b/i)) {
+				slack.reactions.add({ name: 'twitter', channel, timestamp})
 			}
 		}
 	});
@@ -357,7 +381,7 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 
 		// on Sundays
 		if (date.getDay() === 0) {
-			const {members} = await slack.users.list();
+			const {members} = await slack.users.list({});
 
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,

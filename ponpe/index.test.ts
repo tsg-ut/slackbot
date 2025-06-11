@@ -15,8 +15,7 @@ fs.virtualFiles = {
 };
 
 import ponpe from './index';
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
+import Slack from '../lib/slackMock';
 
 let slack: Slack = null;
 
@@ -28,8 +27,8 @@ beforeEach(async () => {
 
 describe('ponpe', () => {
 	it('responds to ぽんぺ出題', async () => {
-		const {text, username} = await slack.getResponseTo('ぽんぺ出題');
-		expect(username).toBe('ぽんぺマスター');
-		expect(text).toMatch(/^ぽんぺをはじめるよ:waiwai:。/);
+		const response = await slack.getResponseTo('ぽんぺ出題');
+		expect('username' in response && response.username).toBe('ぽんぺマスター');
+		expect(response.text).toMatch(/^ぽんぺをはじめるよ:waiwai:。/);
 	});
 });

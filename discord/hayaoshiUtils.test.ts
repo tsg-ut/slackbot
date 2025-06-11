@@ -3,6 +3,11 @@
 import {inspect} from 'util';
 import {extractValidAnswers} from './hayaoshiUtils';
 
+jest.mock('../hayaoshi', () => ({
+	isCorrectAnswer: jest.fn(),
+	normalize: jest.fn(),
+}));
+
 const testCases: [string, string, string[]][] = [
 	['', 'リトグラフ[lithograph]【「石版画」「石版印刷」「リトグラフィー[lithographie]」も○】',
 		['リトグラフ', 'lithograph', '石版画', '石版印刷', 'リトグラフィー', 'lithographie'],
@@ -76,12 +81,14 @@ const testCases: [string, string, string[]][] = [
 	],
 ];
 
-describe('extractValidAnswers', () => {
-	for (const [question, answer, expected] of testCases) {
-		it(`converts ${inspect(answer)} to ${inspect(expected)}`, () => {
-			const sortedResult = extractValidAnswers(question, answer).slice().sort();
-			const sortedExpected = expected.slice().sort();
-			expect(sortedResult).toStrictEqual(sortedExpected);
-		});
-	}
+describe('discord', () => {
+	describe('extractValidAnswers', () => {
+		for (const [question, answer, expected] of testCases) {
+			it(`converts ${inspect(answer)} to ${inspect(expected)}`, () => {
+				const sortedResult = extractValidAnswers(question, answer).slice().sort();
+				const sortedExpected = expected.slice().sort();
+				expect(sortedResult).toStrictEqual(sortedExpected);
+			});
+		}
+	});
 });

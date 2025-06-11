@@ -2,11 +2,21 @@
 
 jest.mock('cloudinary');
 jest.mock('sqlite');
+jest.mock('sqlite3', () => ({
+	Database: jest.fn(),
+}));
+jest.mock('fs');
 
+const fs = require('fs');
+const path = require('path');
 const cloudinary = require('cloudinary');
 const sqlite = require('sqlite');
-const Slack = require('../lib/slackMock.js');
+const {default: Slack} = require('../lib/slackMock.ts');
 const shogi = require('./index.js');
+
+fs.virtualFiles = {
+	[path.join(__dirname, 'boards', 'hoge.sqlite3')]: '',
+};
 
 let slack = null;
 

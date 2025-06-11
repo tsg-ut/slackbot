@@ -1,6 +1,5 @@
+import Slack from '../lib/slackMock';
 import cubebot from './index';
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
 
 let slack: Slack = null;
 
@@ -12,11 +11,12 @@ beforeEach(() => {
 
 describe('tiobot', () => {
 	it('responds to tio.run URL', async () => {
-		const {text, username} = await slack.getResponseTo(
-			'https://tio.run/##y0osSyxOLsosKNHNy09J/f8/OT@vOD8nVS8nP11DySM1JydfRyE8vygnRVFJ0/r/fwA'
+		const response = await slack.getResponseTo(
+			'https://tio.run/##y0osSyxOLsosKNHNy09J/f8/OT@vOD8nVS8nP11DySM1JydfRyE8vygnRVFJ0/r/fwA',
 		);
 
-		expect(username).toBe('tiobot');
-		expect(text).toBe('*javascript-node, 29 bytes* \n`console.log("Hello, World!");`');
+		// eslint-disable-next-line no-restricted-syntax
+		expect('username' in response && response.username).toBe('tiobot');
+		expect(response.text).toBe('*javascript-node, 29 bytes* \n`console.log("Hello, World!");`');
 	});
 });

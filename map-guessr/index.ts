@@ -5,11 +5,10 @@ import puppeteer from "puppeteer";
 import { AteQuizProblem, AteQuizResult } from "../atequiz";
 import {
   ChatPostMessageArguments,
-  WebAPICallOptions,
   WebClient,
 } from "@slack/web-api";
 import { increment } from "../achievements";
-import { TeamEventClient } from "../lib/slackEventClient";
+import { EventEmitter } from 'events';
 const { Mutex } = require("async-mutex");
 const { AteQuiz } = require("../atequiz/index.ts");
 const cloudinary = require("cloudinary");
@@ -36,10 +35,10 @@ interface CoordAteQuizProblem extends AteQuizProblem {
 }
 
 class CoordAteQuiz extends AteQuiz {
-  static option?: WebAPICallOptions = postOptions;
+  static option?: Partial<ChatPostMessageArguments> = postOptions;
   ngReaction: string | null = null;
   constructor(
-    eventClient: TeamEventClient,
+    eventClient: EventEmitter,
     slack: WebClient,
     problem: CoordAteQuizProblem
   ) {
@@ -618,6 +617,7 @@ function problemFormat(
       channel: CHANNEL,
       text: ``,
       reply_broadcast: true,
+      thread_ts,
       unfurl_links: false,
       unfurl_media: false,
     },
@@ -631,6 +631,7 @@ function problemFormat(
       channel: CHANNEL,
       text: `もう、しっかりして！\n中心点の座標は <https://maps.google.co.jp/maps?ll=${latitude},${longitude}&q=${latitude},${longitude}&&t=k|${answer}> だよ:anger:`,
       reply_broadcast: true,
+      thread_ts,
       unfurl_links: false,
       unfurl_media: false,
     },

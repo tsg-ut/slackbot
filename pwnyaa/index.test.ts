@@ -1,10 +1,10 @@
 /* eslint-disable no-undef */
 import {constants, promises as fs} from 'fs';
 import path from 'path';
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
+import Slack from '../lib/slackMock';
 import {getMemberName} from '../lib/slackUtils';
-import {Challenge, SolvedInfo, Profile} from './lib/BasicTypes';
+import {AchievementType, Challenge, SolvedInfo, Profile} from './lib/BasicTypes';
+import {fetchChallsAH, fetchUserProfileAH} from './lib/AHManager';
 import {fetchChallsCH, fetchUserProfileCH} from './lib/CHManager';
 import {fetchChallsKSN, fetchUserProfileKSN} from './lib/KSNManager';
 import {fetchChallsTW, fetchUserProfileTW} from './lib/TWManager';
@@ -13,6 +13,7 @@ import pwnyaa, {State} from './index';
 
 jest.mock('../achievements');
 jest.unmock('axios');
+jest.mock('./lib/AHManager');
 jest.mock('./lib/CHManager');
 jest.mock('./lib/TWManager');
 jest.mock('./lib/XYZManager');
@@ -41,6 +42,11 @@ const sampleChallsCH: Challenge[] = [
 const sampleChallsKSN: Challenge[] = [
 	{name: 'ksnChallA', score: 400, id: '1'},
 	{name: 'ksnChallB', score: 500, id: '2'},
+];
+// eslint-disable-next-line array-plural/array-plural
+const sampleChallsAH: Challenge[] = [
+	{name: 'ahChallA', score: 400, id: '1'},
+	{name: 'ahChallB', score: 500, id: '2'},
 ];
 
 // eslint-disable-next-line no-unused-vars
@@ -108,6 +114,16 @@ const sampleProfileKSN: Profile = {
 	solvedChalls: [sampleSolved1],
 };
 
+const sampleProfileAH: Profile = {
+	username: 'hogeko',
+	country: 'JP',
+	rank: '30/1000',
+	score: '4000',
+	comment: 'Crazy Winter',
+	registeredAt: '2020/01/27',
+	solvedChalls: [sampleSolved1],
+};
+
 
 beforeAll(async () => {
 	// backup state file
@@ -156,6 +172,8 @@ beforeEach(async () => {
 	(fetchUserProfileCH as jest.Mock).mockReturnValue(sampleProfileCH);
 	(fetchChallsKSN as jest.Mock).mockReturnValue(sampleChallsKSN);
 	(fetchUserProfileKSN as jest.Mock).mockReturnValue(sampleProfileKSN);
+	(fetchChallsAH as jest.Mock).mockReturnValue(sampleChallsAH);
+	(fetchUserProfileAH as jest.Mock).mockReturnValue(sampleProfileAH);
 	(getMemberName as jest.Mock).mockReturnValue('FakeName');
 
 	slack = new Slack();
@@ -172,6 +190,7 @@ beforeEach(async () => {
 				alias: ['tw'],
 				joiningUsers: [{slackId: slack.fakeUser, idCtf: '23718'}],
 				numChalls: 46,
+				achievementType: AchievementType.RATIO,
 				achievementStr: 'tw',
 				fetchUserProfile: (_username: string) => getProfile(sampleProfileTW),
 				fetchChalls: () => getChalls(sampleChallsTW),
@@ -184,6 +203,7 @@ beforeEach(async () => {
 				alias: ['xyz'],
 				joiningUsers: [],
 				numChalls: 51,
+				achievementType: AchievementType.RATIO,
 				achievementStr: 'xyz',
 				fetchUserProfile: (_username: string) => getProfile(sampleProfileXYZ),
 				fetchChalls: () => getChalls(sampleChallsXYZ),
@@ -196,6 +216,7 @@ beforeEach(async () => {
 				alias: ['cryptohack', 'ch'],
 				joiningUsers: [],
 				numChalls: 51,
+				achievementType: AchievementType.RATIO,
 				achievementStr: 'ch',
 				fetchUserProfile: (_username: string) => getProfile(sampleProfileCH),
 				fetchChalls: () => getChalls(sampleChallsCH),
@@ -208,6 +229,7 @@ beforeEach(async () => {
 				alias: ['ksn', 'ksnctf'],
 				joiningUsers: [],
 				numChalls: 31,
+				achievementType: AchievementType.RATIO,
 				achievementStr: 'ksn',
 				fetchUserProfile: (_username: string) => getProfile(sampleProfileKSN),
 				fetchChalls: () => getChalls(sampleChallsKSN),
@@ -226,12 +248,14 @@ beforeEach(async () => {
 	await fs.writeFile(stateOriginalPath, JSON.stringify(fakeState));
 
 	jest.useFakeTimers();
-	await pwnyaa(slack);
+	const {initPromise} = await pwnyaa(slack);
+
+	await initPromise;
 });
 
 
 it('respond to usage', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa usage');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa usage');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('list');
@@ -240,7 +264,7 @@ it('respond to usage', async () => {
 });
 
 it('respond to help', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa help');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa help');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('list');
@@ -249,13 +273,13 @@ it('respond to help', async () => {
 });
 
 it('respond to list', async () => {
-	const {channel}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa list');
+	const {channel} = await slack.getResponseTo('@pwnyaa list');
 
 	expect(channel).toBe(slack.fakeChannel);
 });
 
 it('respond to check tw', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa check tw');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa check tw');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('azaika');
@@ -264,27 +288,27 @@ it('respond to check tw', async () => {
 });
 
 it('respond to check xyz without joining', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa check xyz');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa check xyz');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('参加してないよ');
 });
 
 it('respond to check ch without joining', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa check ch');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa check ch');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('参加してないよ');
 });
 it('respond to check ksn without joining', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa check ksn');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa check ksn');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('参加してないよ');
 });
 
 it('respond to check', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa check');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa check');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('check');
@@ -292,14 +316,14 @@ it('respond to check', async () => {
 });
 
 it('respond to join hoge fuga', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa join hoge fuga');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa join hoge fuga');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('は見つからなかったよ');
 });
 
 it('respond to join tw', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa join tw');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa join tw');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('join');
@@ -307,7 +331,7 @@ it('respond to join tw', async () => {
 });
 
 it('respond to join xyz', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa join xyz');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa join xyz');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('join');
@@ -315,7 +339,7 @@ it('respond to join xyz', async () => {
 });
 
 it('respond to join ch', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa join ch');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa join ch');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('join');
@@ -323,7 +347,7 @@ it('respond to join ch', async () => {
 });
 
 it('respond to join ksn', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa join ksn');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa join ksn');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('join');
@@ -331,7 +355,7 @@ it('respond to join ksn', async () => {
 });
 
 it('respond to stat', async () => {
-	const {channel, text}: { channel: string, text: string } = await slack.getResponseTo('@pwnyaa stat');
+	const {channel, text} = await slack.getResponseTo('@pwnyaa stat');
 
 	expect(channel).toBe(slack.fakeChannel);
 	expect(text).toContain('状況だよ');

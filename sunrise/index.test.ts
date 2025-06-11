@@ -11,8 +11,7 @@ jest.mock('../lib/state');
 
 import FakeTimers from '@sinonjs/fake-timers';
 import type {InstalledClock} from '@sinonjs/fake-timers';
-// @ts-expect-error: Untyped
-import Slack from '../lib/slackMock.js';
+import Slack from '../lib/slackMock';
 import sunrise from './index';
 
 let slack: Slack = null;

@@ -2,8 +2,7 @@
 import noop from 'lodash/noop';
 // @ts-expect-error
 import MockFirebase from 'mock-cloud-firestore';
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
+import Slack from '../lib/slackMock';
 
 import achievements from './index_production';
 
@@ -28,8 +27,9 @@ beforeEach(() => {
 
 describe('achievements', () => {
 	it('unlock chat achievement when chat is posted', async () => {
-		const {text, username} = await slack.getResponseTo('hoge');
-		expect(username).toBe('achievements');
-		expect(text).toContain('はじめまして!');
+		const response = await slack.getResponseTo('hoge');
+		// eslint-disable-next-line no-restricted-syntax
+		expect('username' in response && response.username).toBe('achievements');
+		expect(response.text).toContain('はじめまして!');
 	});
 });

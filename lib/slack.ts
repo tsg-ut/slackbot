@@ -6,12 +6,13 @@ import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import {TeamEventClient} from './slackEventClient';
+import type {EventEmitter} from 'events';
 import {Deferred} from './utils';
 import {Token} from '../oauth/tokens';
 
 export interface SlackInterface {
 	webClient: WebClient;
-	eventClient: TeamEventClient;
+	eventClient: EventEmitter & Pick<TeamEventClient, keyof TeamEventClient>;
 	messageClient: ReturnType<typeof createMessageAdapter>;
 };
 

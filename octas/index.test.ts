@@ -1,9 +1,7 @@
 jest.mock('cloudinary');
 
 import octas from './index';
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
-import { List } from 'lodash';
+import Slack from '../lib/slackMock';
 
 let slack: Slack = null;
 
@@ -15,7 +13,9 @@ beforeEach(async () => {
 
 describe('octas', () => {
     it('respond to octas', async () => {
-        const { channel, text, attachments }: { channel: string, text: string, attachments: List<any> } = await slack.getResponseTo('octas');
+        const response = await slack.getResponseTo('octas');
+        const { channel, text } = response;
+        const attachments = 'attachments' in response ? response.attachments : [];
 
         expect(channel).toBe(slack.fakeChannel);
         expect(text).toContain('Octas対人を始めるよ～');

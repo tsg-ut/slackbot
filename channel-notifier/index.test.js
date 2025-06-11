@@ -2,7 +2,7 @@
 
 jest.mock('axios');
 
-const Slack = require('../lib/slackMock.js');
+const {default: Slack} = require('../lib/slackMock.ts');
 const channelNotifier = require('./index.js');
 
 let slack = null;

@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// @ts-expect-error
 import Slack from '../lib/slackMock';
 
 import welcome from './index';

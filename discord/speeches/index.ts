@@ -2,6 +2,7 @@ import logger from '../../lib/logger';
 import amazon from './amazon';
 import azure from './azure';
 import google from './google';
+import openai from './openai';
 import voicetext, {Emotion, EmoLV} from './voicetext';
 import voicevox from './voicevox';
 
@@ -45,6 +46,32 @@ enum Voice {
 	AI = 'AI',
 	AJ = 'AJ',
 	AK = 'AK',
+	AL = 'AL',
+	AM = 'AM',
+	AN = 'AN',
+	AO = 'AO',
+	AP = 'AP',
+	AQ = 'AQ',
+	AR = 'AR',
+	AS = 'AS',
+	AT = 'AT',
+	AU = 'AU',
+	AV = 'AV',
+	AW = 'AW',
+	AX = 'AX',
+	AY = 'AY',
+	AZ = 'AZ',
+	BA = 'BA',
+	BB = 'BB',
+	BC = 'BC',
+	BD = 'BD',
+	BE = 'BE',
+	BF = 'BF',
+	BG = 'BG',
+	BH = 'BH',
+	BI = 'BI',
+	BJ = 'BJ',
+	BK = 'BK',
 }
 export {Voice};
 
@@ -61,8 +88,9 @@ export const getDefaultVoiceMeta: () => VoiceMeta = () => ({
 });
 
 interface Config {
-	provider: 'google' | 'amazon' | 'azure' | 'voicetext' | 'voicevox',
+	provider: 'google' | 'amazon' | 'azure' | 'voicetext' | 'voicevox' | 'openai',
 	name: string,
+	model?: string,
 	emotional?: boolean,
 	lang?: string,
 }
@@ -105,6 +133,32 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.AI, {provider: 'google', name: 'ja-JP-Neural2-B', lang: 'ja-JP'}],
 	[Voice.AJ, {provider: 'google', name: 'ja-JP-Neural2-C', lang: 'ja-JP'}],
 	[Voice.AK, {provider: 'google', name: 'ja-JP-Neural2-D', lang: 'ja-JP'}],
+	[Voice.AL, {provider: 'openai', model: 'tts-1', name: 'alloy'}],
+	[Voice.AM, {provider: 'openai', model: 'tts-1', name: 'echo'}],
+	[Voice.AN, {provider: 'openai', model: 'tts-1', name: 'fable'}],
+	[Voice.AO, {provider: 'openai', model: 'tts-1', name: 'onyx'}],
+	[Voice.AP, {provider: 'openai', model: 'tts-1', name: 'nova'}],
+	[Voice.AQ, {provider: 'openai', model: 'tts-1', name: 'shimmer'}],
+	[Voice.AR, {provider: 'amazon', name: 'Kazuha'}],
+	[Voice.AS, {provider: 'amazon', name: 'Tomoko'}],
+	[Voice.AT, {provider: 'azure', name: 'ja-JP-AoiNeural'}],
+	[Voice.AU, {provider: 'azure', name: 'ja-JP-DaichiNeural'}],
+	[Voice.AV, {provider: 'azure', name: 'ja-JP-MayuNeural'}],
+	[Voice.AW, {provider: 'azure', name: 'ja-JP-NaokiNeural'}],
+	[Voice.AX, {provider: 'azure', name: 'ja-JP-ShioriNeural'}],
+	[Voice.AY, {provider: 'openai', model: 'tts-1', name: 'ash'}],
+	[Voice.AZ, {provider: 'openai', model: 'tts-1', name: 'coral'}],
+	[Voice.BA, {provider: 'openai', model: 'tts-1', name: 'sage'}],
+	[Voice.BB, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'alloy'}],
+	[Voice.BC, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'ash'}],
+	[Voice.BD, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'ballad'}],
+	[Voice.BE, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'coral'}],
+	[Voice.BF, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'echo'}],
+	[Voice.BG, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'fable'}],
+	[Voice.BH, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'onyx'}],
+	[Voice.BI, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'nova'}],
+	[Voice.BJ, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'sage'}],
+	[Voice.BK, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'shimmer'}],
 	// coming soon
 	// [Voice., {provider: 'voicevox', name: 'whitecul', emotional: true}],
 	// [Voice., {provider: 'voicevox', name: 'goki', emotional: true}],
@@ -127,11 +181,14 @@ export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta, audio
 	if (config.provider === 'amazon') {
 		return amazon(text, config.name, {
 			...meta,
-			engine: voiceType === Voice.AF ? 'neural' : 'standard',
+			engine: voiceType === Voice.E || voiceType === Voice.F ? 'standard' : 'neural',
 		});
 	}
 	if (config.provider === 'voicevox') {
 		return voicevox(text, config.name, meta);
+	}
+	if (config.provider === 'openai') {
+		return openai(text, config.name, {...meta, engine: config.model});
 	}
 	return voicetext(text, config.name, meta);
 };

@@ -8,7 +8,7 @@ const download = require('download');
 
 download.response = Array(10).fill('単語\tたんご\t単語\t000').join('\n');
 
-const Slack = require('../lib/slackMock.js');
+const {default: Slack} = require('../lib/slackMock.ts');
 const tahoiya = require('./index.js');
 
 let slack = null;

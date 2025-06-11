@@ -1,8 +1,7 @@
 import achievementQuiz from './index';
+import Slack from '../lib/slackMock';
 
-const Slack = require('../lib/slackMock.js');
-
-let slack: typeof Slack;
+let slack: Slack;
 
 beforeEach(() => {
   slack = new Slack();
@@ -13,7 +12,7 @@ beforeEach(() => {
 describe('response to /^実績当てクイズ$/', () => {
   it('starts game by "実績当てクイズ"', async () => {
     const response = await slack.getResponseTo('実績当てクイズ');
-    expect(response.username).toBe('実績当てクイズ');
+    expect('username' in response && response.username).toBe('実績当てクイズ');
     expect(response.text).toContain('この実績なーんだ');
   });
 });

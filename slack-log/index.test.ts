@@ -1,8 +1,7 @@
 import type {ChatUnfurlArguments} from '@slack/web-api';
 import axios from 'axios';
 import slacklog from './index';
-// @ts-expect-error
-import Slack from '../lib/slackMock.js';
+import Slack from '../lib/slackMock';
 
 jest.mock('axios');
 
@@ -24,7 +23,7 @@ beforeEach(async () => {
 
 describe('slacklog', () => {
 	it('respond to slacklog url request', async () => {
-		const {channel, text}: {channel: string, text: string} = await slack.getResponseTo('slacklog');
+		const {channel, text} = await slack.getResponseTo('slacklog');
 
 		expect(channel).toBe(slack.fakeChannel);
 		expect(text).toMatch('slack-log.tsg.ne.jp');
@@ -33,7 +32,7 @@ describe('slacklog', () => {
 
 	it('respond to canonical slacklog-ize request', async () => {
 		const requestURL: string = '<https://tsg-ut.slack.com/archives/C0123ABCD/p1501234567890123>';
-		const {channel, text}: {channel: string, text: string} = await slack.getResponseTo(`slacklog ${requestURL}`);
+		const {channel, text} = await slack.getResponseTo(`slacklog ${requestURL}`);
 
 		const expectURL: string = '<https://slack-log.tsg.ne.jp/C0123ABCD/1501234567.890123>';
 		expect(channel).toBe(slack.fakeChannel);
@@ -42,7 +41,7 @@ describe('slacklog', () => {
 
 	it('respond to slacklog-ize request of practical url from default web UI', async () => {
 		const requestURL: string = '<https://tsg-ut.slack.com/archives/C7AAX50QY/p1603287289337400?thread_ts=1603267719.496100&amp;cid=C7AAX50QY>';
-		const {channel, text}: {channel: string, text: string} = await slack.getResponseTo(`slacklog ${requestURL}`);
+		const {channel, text} = await slack.getResponseTo(`slacklog ${requestURL}`);
 
 		const expectURL: string = '<https://slack-log.tsg.ne.jp/C7AAX50QY/1603287289.337400>';
 		expect(channel).toBe(slack.fakeChannel);
@@ -51,7 +50,7 @@ describe('slacklog', () => {
 
 	it('respond to slacklog-ize request of practical url from iOS app', async () => {
 		const requestURL: string = '<https://tsg-ut.slack.com/archives/C7AAX50QY/p1603288141348600?thread_ts=1603287978.345500&channel=C7AAX50QY&message_ts=1603288141.348600>';
-		const {channel, text}: {channel: string, text: string} = await slack.getResponseTo(`slacklog ${requestURL}`);
+		const {channel, text} = await slack.getResponseTo(`slacklog ${requestURL}`);
 
 		const expectURL: string = '<https://slack-log.tsg.ne.jp/C7AAX50QY/1603288141.348600>';
 		expect(channel).toBe(slack.fakeChannel);

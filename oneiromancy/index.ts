@@ -1,10 +1,14 @@
 import {readFile} from 'fs/promises';
 import path from 'path';
+import {ReactionAddedEvent} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import yaml from 'js-yaml';
-import {ChatCompletionRequestMessage, Configuration, OpenAIApi} from 'openai';
+// eslint-disable-next-line import/no-named-as-default
+import OpenAI from 'openai';
 import {increment} from '../achievements';
+import dayjs from '../lib/dayjs';
 import logger from '../lib/logger';
+import openai from '../lib/openai';
 import {SlackInterface} from '../lib/slack';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';
@@ -12,16 +16,25 @@ import {Loader} from '../lib/utils';
 const mutex = new Mutex();
 const log = logger.child({bot: 'oneiromancy'});
 
-const promptLoader = new Loader<ChatCompletionRequestMessage[]>(async () => {
-	const promptYaml = await readFile(path.join(__dirname, 'prompt.yml'));
-	const prompt = yaml.load(promptYaml.toString()) as ChatCompletionRequestMessage[];
-	return prompt;
-});
+const normalPromptIntro = 'ありがとうございます。以下の夢についても同じように、夢の内容を診断して、今日の運勢を100点満点で占ってください。また、今後の生活にどのように活かすべきかのアドバイスを含んだ夢占いをしてください。';
+const newyearPromptIntro = 'ありがとうございます。以下の夢についても同じように、私が1月1日の元日から1週間のうちに見た夢を書き表したものです。日本の「初夢」の習慣にならって、夢の内容をもとに縁起の良さを判定し、今年の運勢を「大吉」「中吉」「小吉」「吉」「半吉」「末吉」「凶」「小凶」「半凶」「末凶」「大凶」のいずれかで占ってください。また、今年1年の間にどのようなことが起きるかの予測を含んだ夢占いをしてください。';
 
-const configuration = new Configuration({
-	apiKey: process.env.OPENAI_API_KEY,
+interface OneiromancyPrompts {
+	normal: OpenAI.Chat.ChatCompletionMessageParam[],
+	newyear: OpenAI.Chat.ChatCompletionMessageParam[],
+}
+
+const promptLoader = new Loader<OneiromancyPrompts>(async () => {
+	const prompts = await Promise.all(['prompt.yml', 'newyear-prompt.yml'].map(async (filename) => {
+		const promptYaml = await readFile(path.join(__dirname, filename));
+		const prompt = yaml.load(promptYaml.toString()) as OpenAI.Chat.ChatCompletionMessageParam[];
+		return prompt;
+	}));
+	return {
+		normal: prompts[0],
+		newyear: prompts[1],
+	};
 });
-const openai = new OpenAIApi(configuration);
 
 interface StateObj {
 	threadId: string | null,
@@ -39,10 +52,12 @@ export default async (slackClients: SlackInterface) => {
 		postedMessages: Object.create(null),
 	});
 
-	eventClient.on('reaction_added', (event) => {
+	eventClient.on('reaction_added', (event: ReactionAddedEvent) => {
 		if (event.reaction !== 'crystal_ball') {
 			return;
 		}
+
+		const now = dayjs(parseFloat(event.item.ts) * 1000).tz('Asia/Tokyo');
 
 		log.info(`reaction_added: ${event.item.channel} ${event.item.ts}`);
 
@@ -88,7 +103,11 @@ export default async (slackClients: SlackInterface) => {
 				messageUrl += `?thread_ts=${message.thread_ts}`;
 			}
 			const inputMessage = message.text.replaceAll(/[【】]/g, '');
-			const prompt = await promptLoader.load();
+			const prompts = await promptLoader.load();
+
+			const isNewYear = now.month() === 0 && now.date() <= 7;
+			const promptIntro = isNewYear ? newyearPromptIntro : normalPromptIntro;
+			const prompt = isNewYear ? prompts.newyear : prompts.normal;
 
 			await slack.chat.postEphemeral({
 				channel: event.item.channel,
@@ -99,19 +118,19 @@ export default async (slackClients: SlackInterface) => {
 			});
 
 			log.info('Requesting to OpenAI API...');
-			const completion = await openai.createChatCompletion({
-				model: 'gpt-3.5-turbo',
+			const completion = await openai.chat.completions.create({
+				model: 'gpt-4o-mini',
 				messages: [
 					...prompt,
 					{
 						role: 'user',
-						content: `ありがとうございます。以下の夢についても同じように、夢の内容を診断して、今日の運勢を100点満点で占ってください。また、今後の生活にどのように活かすべきかのアドバイスを含んだ夢占いをしてください。\n【${inputMessage}】`,
+						content: `${promptIntro}\n【${inputMessage}】`,
 					},
 				],
 				max_tokens: 1024,
 			});
 
-			const result = completion.data.choices?.[0]?.message?.content ?? 'すみません。この夢に関しては占えませんでした。';
+			const result = completion.choices?.[0]?.message?.content ?? 'すみません。この夢に関しては占えませんでした。';
 
 			let {threadId} = state;
 			if (threadId === null) {
@@ -124,12 +143,14 @@ export default async (slackClients: SlackInterface) => {
 				state.threadId = anchorMessage.ts;
 			}
 
+			const resultIntro = isNewYear ? '🎌🎍初夢占い🎍🎌\n\n' : '';
+
 			log.info(`threadId: ${threadId}`);
 			const postedMessage = await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				username: '夢占いBOT',
 				icon_emoji: 'crystal_ball',
-				text: `${messageUrl}\n\n${result}`,
+				text: `${messageUrl}\n\n${resultIntro}${result}`,
 				thread_ts: threadId,
 				reply_broadcast: true,
 				unfurl_links: true,
@@ -141,8 +162,11 @@ export default async (slackClients: SlackInterface) => {
 			if (event.item.channel === process.env.CHANNEL_SIG_DREAM) {
 				await increment(event.item_user, 'oneiromancy-analyzed');
 				await increment(event.user, 'oneiromancy-analyze');
+				if (isNewYear) {
+					await increment(event.item_user, 'oneiromancy-newyear-analyzed');
+				}
 
-				const scoreText = result.match(/【\s*今日の運勢\s*】\s*(?<score>[-\d]+)\s*点/)?.groups?.score;
+				const scoreText = result.match(/今日の運勢は【\s*(?<score>[-\d]+)\s*点\s*】/)?.groups?.score;
 				const score = scoreText === undefined ? null : parseInt(scoreText);
 
 				log.info(`score: ${score}`);

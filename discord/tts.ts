@@ -6,7 +6,7 @@ import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, c
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import Discord from 'discord.js';
-import {minBy, countBy} from 'lodash';
+import {minBy, countBy, chunk} from 'lodash';
 import logger from '../lib/logger';
 import State from '../lib/state';
 import {Loader, Deferred} from '../lib/utils';
@@ -65,7 +65,6 @@ interface StateObj {
 	userMetas: {[id: string]: VoiceMeta},
 	audioTags: {[id: string]: string},
 }
-
 
 export default class TTS extends EventEmitter {
 	users: Set<string>;
@@ -233,25 +232,33 @@ export default class TTS extends EventEmitter {
 				});
 			} else if (tokens[1] === 'voices') {
 				const voices: Voice[] = Object.values(Voice);
-				const voicesText = voices.map((voice) => {
-					const config = speechConfig.get(voice);
-					let providerName = '';
-					if (config.provider === 'google') {
-						providerName = 'Google Cloud Text-to-Speech';
-					} else if (config.provider === 'azure') {
-						providerName = 'Microsoft Azure Text-to-Speech';
-					} else if (config.provider === 'amazon') {
-						providerName = 'Amazon Polly';
-					} else if (config.provider === 'voicetext') {
-						providerName = 'VoiceText Web API';
-					} else if (config.provider === 'voicevox') {
-						providerName = 'VoiceVox Web API';
-					} else {
-						providerName = 'Unknown';
-					}
-					return `* \`${voice}\`: **${config.name}** (${providerName})`;
-				}).join('\n');
-				this.emit('message', voicesText);
+				for (const voicesChunk of chunk(voices, 20)) {
+					const voicesText = voicesChunk.map((voice) => {
+						const config = speechConfig.get(voice);
+						let providerName = '';
+						if (config.provider === 'google') {
+							providerName = 'Google Cloud Text-to-Speech';
+						} else if (config.provider === 'azure') {
+							providerName = 'Microsoft Azure Text-to-Speech';
+						} else if (config.provider === 'amazon') {
+							providerName = 'Amazon Polly';
+						} else if (config.provider === 'voicetext') {
+							providerName = 'VoiceText Web API';
+						} else if (config.provider === 'voicevox') {
+							providerName = 'VoiceVox Web API';
+						} else if (config.provider === 'openai') {
+							providerName = 'OpenAI Text-to-Speech';
+						} else {
+							providerName = 'Unknown';
+						}
+						if (config.model) {
+							providerName += `: ${config.model} model`;
+						}
+						return `* \`${voice}\`: **${config.name}** (${providerName})`;
+					}).join('\n');
+					this.emit('message', voicesText);
+					await new Promise((resolve) => setTimeout(resolve, 200));
+				}
 			} else if (tokens[1] === 'status') {
 				mutex.runExclusive(async () => {
 					if (this.users.size === 0) {

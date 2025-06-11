@@ -8,14 +8,21 @@
   "include": [
     "**/*"
   ],
+  "exclude": [
+    "./bin",
+    "./node_modules"
+  ],
   "compilerOptions": {
-    "target": "es2015",
+    "target": "ESNext",
     "module": "CommonJS",
     "moduleResolution": "node",
     "noImplicitAny": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "lib": ["es2021", "DOM"],
+    "lib": [
+      "ESNext",
+      "DOM"
+    ],
     "skipLibCheck": true,
     "experimentalDecorators": true
   }

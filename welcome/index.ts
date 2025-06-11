@@ -8,7 +8,7 @@ const log = logger.child({bot: 'welcome'});
 const welcomeScrapboxUrl = `https://scrapbox.io/api/code/tsg/welcome/message`;
 
 import { WebClient } from '@slack/web-api';
-import type { Member } from '@slack/web-api/dist/response/UsersListResponse';
+import type { Member } from '@slack/web-api/dist/types/response/UsersListResponse';
 
 import type { SlackInterface } from '../lib/slack';
 
@@ -31,6 +31,8 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
 			link_names: true,
 			icon_emoji: ':tsg:',
 			username: 'TSG',
+			unfurl_links: false,
+			unfurl_media: false,
 		});
 	};
 

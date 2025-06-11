@@ -1,5 +1,7 @@
 # slackbot
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/tsg-ut/slackbot?quickstart=1)
+
 [![Test][action-image]][action-url]
 [![Coverage Status][codecov-image]][codecov-url]
 
@@ -13,13 +15,11 @@
 
 TSGのSlackで動くSlackbotたち
 
-自分がOWNERのコードの変更は直接masterにpushして構いません。 ([CODEOWNERS](CODEOWNERS)参照)
-
 ## 環境構築
 
 ### Prerequisites
 
-* Node.js Latest
+* Node.js v20
 
 ### セットアップ
 

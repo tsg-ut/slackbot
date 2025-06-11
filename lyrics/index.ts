@@ -145,11 +145,14 @@ export default async ({eventClient, webClient}: SlackInterface) => {
         if (message.text.startsWith('@lyrics ')) {
             const keyword = message.text.replace('@lyrics ', '');
             const songInfo: SongInfo | null = await search(keyword);
-            const defaultResponseFormat = {
+            type ResponseFormat = {
+                channel: string;
+                username: string;
+            } & ({ icon_emoji: string } | { icon_url: string });
+            let defaultResponseFormat: ResponseFormat = {
                 channel: message.channel,
                 username: '歌詞検索くん',
                 icon_emoji: ':musical_note:',
-                icon_url: '',
             };
             if (songInfo) {
                 const fields = [
@@ -186,8 +189,11 @@ export default async ({eventClient, webClient}: SlackInterface) => {
                         "value": links.map(l => `<${l[0]}|${l[1]}>`).join(', '),
                         "short": false
                     });
-                    defaultResponseFormat.icon_url = songInfo.artworkUrl;
-                    delete defaultResponseFormat.icon_emoji;
+                    defaultResponseFormat = {
+                        channel: message.channel,
+                        username: '歌詞検索くん',
+                        icon_url: songInfo.artworkUrl,
+                    };
                 }
                 await webClient.chat.postMessage({
                     ...defaultResponseFormat,

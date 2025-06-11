@@ -11,10 +11,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Node.js
-        uses: actions/setup-node@v3
+      - name: Setup Tools
+        uses: asdf-vm/actions/install@v3
         with:
-          node-version: 16
+          # https://github.com/asdf-vm/actions/issues/587
+          asdf_branch: v0.15.0
 
       - name: Before Install
         run: |
@@ -48,6 +49,7 @@ jobs:
           git ls-files | grep eslintrc | xargs -L 1 dirname | paste -sd ' ' | xargs -I {} sh -c "npx eslint --ext js,ts -f rdjson {} | reviewdog -f=rdjson -name=ESLint -reporter=github-pr-review"
 
       - name: codecov
+        continue-on-error: true
         run: npx codecov
 
   test-rust:
@@ -56,11 +58,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions-rs/toolchain@v1
+      - name: Setup Tools
+        uses: asdf-vm/actions/install@v3
         with:
-          toolchain: nightly-2022-07-23
-          default: true
-          override: true
+          # https://github.com/asdf-vm/actions/issues/587
+          asdf_branch: v0.15.0
 
       - name: build
         run: cargo build --all --verbose
