@@ -375,13 +375,13 @@ export default class TTS extends EventEmitter {
 					const onFinishPlaying = () => {
 						playDeferred.resolve();
 					};
-					this.audioPlayer.once(AudioPlayerStatus.Idle, onFinishPlaying);
+					(this.audioPlayer as unknown as EventEmitter).once(AudioPlayerStatus.Idle, onFinishPlaying);
 					this.audioPlayer.play(resource);
 					await Promise.race([
 						playDeferred.promise,
 						new Promise<void>((resolve) => {
 							setTimeout(() => {
-								this.audioPlayer.off(AudioPlayerStatus.Idle, onFinishPlaying);
+								(this.audioPlayer as unknown as EventEmitter).off(AudioPlayerStatus.Idle, onFinishPlaying);
 								resolve();
 							}, 10 * 1000);
 						}),

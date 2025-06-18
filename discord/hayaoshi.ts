@@ -1,6 +1,7 @@
 import {EventEmitter} from 'events';
 import {WriteStream, createWriteStream, promises as fs} from 'fs';
 import path from 'path';
+import type {Readable} from 'stream';
 import type {AudioPlayer, AudioResource, PlayerSubscription, VoiceConnection} from '@discordjs/voice';
 import {createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discordjs/voice';
 import ytdl from '@distube/ytdl-core';
@@ -54,8 +55,8 @@ const createFFmpegStream = (path: string, seekms?: number) => {
 	const s16le = new FFmpeg({
 		args: ['-i', path, '-analyzeduration', '0', '-loglevel', '0', '-f', 's16le', '-ar', '48000', '-ac', '2', '-ss', `${seekPosition}ms`],
 	});
-	const ret = s16le.pipe(new opus.Encoder({rate: 48000, channels: 2, frameSize: 960}));
-	return ret;
+	const ret = s16le.pipe(new opus.Encoder({rate: 48000, channels: 2, frameSize: 960}) as any);
+	return ret as unknown as Readable;
 };
 
 export default class Hayaoshi extends EventEmitter {
@@ -324,7 +325,7 @@ export default class Hayaoshi extends EventEmitter {
 				begin,
 			});
 
-			audioStream.pipe(fileStream);
+			audioStream.pipe(fileStream as unknown as NodeJS.WritableStream);
 
 			let videoInfo: ytdl.videoInfo | null = null;
 
@@ -403,13 +404,12 @@ export default class Hayaoshi extends EventEmitter {
 
 	readQuestion() {
 		log.info('[hayaoshi] readQuestion');
-		this.state.audioPlayer.off(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
+		(this.state.audioPlayer as unknown as EventEmitter).off(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
 
 		const audiopath = path.join(
 			__dirname,
 			this.state.quizMode === 'quiz' ? 'questionText.mp3' : 'questionText.webm',
 		);
-
 		this.state.audioResource = createAudioResource(
 			this.state.resumeSeekms
 				? createFFmpegStream(audiopath, this.state.resumeSeekms)
@@ -426,7 +426,7 @@ export default class Hayaoshi extends EventEmitter {
 			this.state.playStartTime = Date.now();
 		});
 		log.info('[hayaoshi] readQuestion - started');
-		this.state.audioPlayer.once(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
+		(this.state.audioPlayer as unknown as EventEmitter).once(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
 	}
 
 	getTTS(text: string) {
@@ -542,12 +542,12 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	playSound(name: string) {
-		this.state.audioPlayer.off(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
+		(this.state.audioPlayer as unknown as EventEmitter).off(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
 
 		return new Promise<void>((resolve) => {
 			this.state.audioResource = createAudioResource(path.join(__dirname, `sounds/${name}.mp3`));
 			this.state.audioPlayer.play(this.state.audioResource);
-			this.state.audioPlayer.once(AudioPlayerStatus.Idle, () => {
+			(this.state.audioPlayer as unknown as EventEmitter).once(AudioPlayerStatus.Idle, () => {
 				resolve();
 			});
 		});
@@ -581,7 +581,8 @@ export default class Hayaoshi extends EventEmitter {
 			const questionAudio = await this.getTTS(ssml);
 
 			this.state.clauses = clauses;
-			this.state.timePoints = questionAudio.timepoints.map((point) => point.timeSeconds * 1000);		await fs.writeFile(path.join(__dirname, 'questionText.mp3'), new Uint8Array(questionAudio.data));
+			this.state.timePoints = questionAudio.timepoints.map((point) => point.timeSeconds * 1000);
+			await fs.writeFile(path.join(__dirname, 'questionText.mp3'), new Uint8Array(questionAudio.data));
 		}
 
 		const answerAudio = await this.getTTS(`<speak>答えは、${get(this.state.validAnswers, 0, '')}、でした。</speak>`);

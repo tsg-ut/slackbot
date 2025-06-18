@@ -28,7 +28,7 @@ import {DynamoDB} from 'aws-sdk';
 
 import {slackFileArchiveCronJob} from './slackFileArchiveCronJob';
 
-const cronJob = test.wrap(slackFileArchiveCronJob);
+const cronJob = test.wrap(slackFileArchiveCronJob as any);
 
 const CURRENT_TIME = 1700000000;
 

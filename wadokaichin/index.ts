@@ -68,7 +68,7 @@ const jukugoLoader : Loader<jukugoDict> = new Loader(async () => {
         parser.on('end', () => {
           resolve(uniq(res).join('\n'));
         });
-        text.pipe(parser);
+    		text.pipe(parser as any);
       })
     });
     await fs.promises.writeFile(dictionaryPath,dict);
