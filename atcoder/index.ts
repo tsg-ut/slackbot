@@ -5,7 +5,6 @@ import {stripIndent} from 'common-tags';
 import {sumBy, minBy, sum} from 'lodash';
 import moment from 'moment';
 import schedule from 'node-schedule';
-// @ts-expect-error
 import prime from 'primes-and-factors';
 import scrapeIt from 'scrape-it';
 import {increment, unlock, set, get} from '../achievements/index.js';

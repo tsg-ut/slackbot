@@ -46,7 +46,7 @@ const downloadEmoji = async (url: string): Promise<Emoji> => {
     url,
     {responseType: 'arraybuffer'}
   );
-  const data = Buffer.from(response.data);
+  const data = Buffer.from(response.data as any);
   if (response.headers['content-type'] === 'image/gif') {
     const codec = new GifCodec();
     const gif = await codec.decodeGif(data);

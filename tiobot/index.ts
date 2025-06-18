@@ -1,5 +1,5 @@
+import {inflateRaw} from 'zlib';
 import {stripIndent} from 'common-tags';
-import * as zlib from 'zlib';
 import type {SlackInterface} from '../lib/slack';
 
 export default ({eventClient, webClient: slack}: SlackInterface) => {
@@ -13,13 +13,13 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 		}
 
 		const {text} = message;
-		let matches: String[] = null;
+		let matches: string[] = null;
 
 		if ((matches = text.match(/https:\/\/tio.run\/##([\w@/]+)/))) {
 			const [, data] = matches;
 			const buffer = Buffer.from(data.replace(/@/g, '+'), 'base64');
 			const rawData = await new Promise<Buffer>((resolve, reject) => {
-				zlib.inflateRaw(buffer, (error, result) => {
+				inflateRaw(buffer as any, (error, result) => {
 					if (error) {
 						reject(error);
 					} else {

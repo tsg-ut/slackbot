@@ -4,9 +4,7 @@ import cloudinary from 'cloudinary';
 import sharp from 'sharp';
 import path from 'path';
 import {stripIndent} from 'common-tags';
-// @ts-expect-error
 import Board from './lib/Board';
-// @ts-expect-error
 import BoardElement from './lib/Render';
 import {JSDOM} from 'jsdom';
 import Queue from 'p-queue';

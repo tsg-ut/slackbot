@@ -3,7 +3,6 @@ import type { SlackInterface } from '../lib/slack';
 import axios from 'axios';
 import { stripIndent } from 'common-tags';
 import sample from 'lodash/sample';
-// @ts-expect-error
 import { getPageTitle, getWordUrl, getCandidateWords } from '../tahoiya/lib';
 import { unlock, increment } from '../achievements';
 

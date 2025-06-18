@@ -8,7 +8,7 @@ import {
   WebClient,
 } from "@slack/web-api";
 import { increment } from "../achievements";
-import { EventEmitter } from 'events';
+import {EventEmitter} from 'events';
 const { Mutex } = require("async-mutex");
 const { AteQuiz } = require("../atequiz/index.ts");
 const cloudinary = require("cloudinary");

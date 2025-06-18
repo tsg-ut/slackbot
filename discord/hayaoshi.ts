@@ -1,4 +1,4 @@
-import EventEmitter from 'events';
+import {EventEmitter} from 'events';
 import {WriteStream, createWriteStream, promises as fs} from 'fs';
 import path from 'path';
 import type {AudioPlayer, AudioResource, PlayerSubscription, VoiceConnection} from '@discordjs/voice';
@@ -440,7 +440,7 @@ export default class Hayaoshi extends EventEmitter {
 
 		const audio = await this.getTTS(text);
 
-		await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), audio.data);
+		await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), new Uint8Array(audio.data));
 
 		await this.playSound('../tempAudio');
 	}
@@ -581,13 +581,11 @@ export default class Hayaoshi extends EventEmitter {
 			const questionAudio = await this.getTTS(ssml);
 
 			this.state.clauses = clauses;
-			this.state.timePoints = questionAudio.timepoints.map((point) => point.timeSeconds * 1000);
-
-			await fs.writeFile(path.join(__dirname, 'questionText.mp3'), questionAudio.data);
+			this.state.timePoints = questionAudio.timepoints.map((point) => point.timeSeconds * 1000);		await fs.writeFile(path.join(__dirname, 'questionText.mp3'), new Uint8Array(questionAudio.data));
 		}
 
 		const answerAudio = await this.getTTS(`<speak>答えは、${get(this.state.validAnswers, 0, '')}、でした。</speak>`);
-		await fs.writeFile(path.join(__dirname, 'answerText.mp3'), answerAudio.data);
+		await fs.writeFile(path.join(__dirname, 'answerText.mp3'), new Uint8Array(answerAudio.data));
 
 		this.state.connection = this.joinVoiceChannelFn();
 		this.state.audioPlayer = createAudioPlayer();

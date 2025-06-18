@@ -1,5 +1,5 @@
 import { ChatPostMessageArguments, WebClient } from '@slack/web-api';
-import type { EventEmitter } from 'events';
+import {EventEmitter} from 'events';
 import { SlackInterface } from '../lib/slack';
 import assert from 'assert';
 import { Mutex } from 'async-mutex';

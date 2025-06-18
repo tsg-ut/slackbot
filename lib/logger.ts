@@ -1,9 +1,7 @@
 import winston from 'winston';
-// @ts-expect-error
 import {Syslog as WinstonSyslog} from 'winston-syslog';
 import {inspect} from 'util';
 import type {FastifyLogFn} from 'fastify';
-// @ts-expect-error
 import {serializers} from 'fastify/lib/logger';
 
 const logger = winston.createLogger({

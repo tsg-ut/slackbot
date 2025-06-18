@@ -1,5 +1,5 @@
 import {randomUUID} from 'crypto';
-import type EventEmitter from 'events';
+import {EventEmitter} from 'events';
 import type {BlockAction, ViewSubmitAction} from '@slack/bolt';
 import type {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {MessageEvent, WebClient} from '@slack/web-api';

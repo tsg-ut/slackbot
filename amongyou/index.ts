@@ -1,6 +1,5 @@
 import {constants, promises as fs} from 'fs';
 import path from 'path';
-import type {EventEmitter} from 'events';
 import {ChatPostMessageArguments, WebClient} from '@slack/web-api';
 import {stripIndent} from 'common-tags';
 import type {FastifyPluginCallback} from 'fastify';
@@ -10,6 +9,7 @@ import moment from 'moment';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import {Deferred} from '../lib/utils';
+import {TeamEventClient} from '../lib/slackEventClient';
 
 const CALLME = '@amongyou';
 const AMONGABLE_CHECK_INTERVAL = 60 *1000;
@@ -131,7 +131,7 @@ const getBlocks = () => [
 ];
 
 class Among {
-	eventClient: EventEmitter;
+	eventClient: TeamEventClient;
 
 	slack: WebClient;
 
@@ -149,7 +149,7 @@ class Among {
 		slack,
 		slackInteractions,
 	}: {
-		eventClient: EventEmitter,
+		eventClient: TeamEventClient,
 		slack: WebClient,
 		slackInteractions: any,
 	}) {
