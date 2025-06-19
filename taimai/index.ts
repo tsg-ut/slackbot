@@ -3,7 +3,7 @@ import type { ChatUpdateArguments, WebClient } from '@slack/web-api';
 import { Mutex } from 'async-mutex';
 import { increment } from '../achievements';
 import type { SlackInterface } from '../lib/slack';
-import type { EventEmitter } from 'events';
+import {EventEmitter} from 'events';
 import State from '../lib/state';
 import config from './config';
 import announceGameEnd from './views/announceGameEnd';

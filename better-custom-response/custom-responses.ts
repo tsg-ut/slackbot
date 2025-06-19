@@ -1,5 +1,4 @@
 import { stripIndent } from 'common-tags';
-// @ts-expect-error
 import { romanize, katakanize } from 'japanese';
 import { shuffle } from 'lodash';
 import { tokenize } from 'kuromojin';

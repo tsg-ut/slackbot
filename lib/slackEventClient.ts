@@ -1,4 +1,4 @@
-import type {EventEmitter} from 'events';
+import {EventEmitter} from 'events';
 
 export class TeamEventClient {
 	readonly #eventAdapter: EventEmitter;
@@ -26,6 +26,70 @@ export class TeamEventClient {
 			}
 		});
 	}
-
 	// feel free to add any other [Events](https://nodejs.org/api/events.html) methods you want!
+	
+	// Add missing EventEmitter methods for compatibility
+	emit(event: string | symbol, ...args: any[]): boolean {
+		return this.#eventAdapter.emit(event, ...args);
+	}
+
+	removeListener(event: string | symbol, listener: (...args: any[]) => void): this {
+		this.#eventAdapter.removeListener(event, listener);
+		return this;
+	}
+
+	removeAllListeners(event?: string | symbol): this {
+		this.#eventAdapter.removeAllListeners(event);
+		return this;
+	}
+
+	once(event: string | symbol, listener: (...args: any[]) => void): this {
+		this.#eventAdapter.once(event, listener);
+		return this;
+	}
+
+	off(event: string | symbol, listener: (...args: any[]) => void): this {
+		this.#eventAdapter.off(event, listener);
+		return this;
+	}
+
+	addListener(event: string | symbol, listener: (...args: any[]) => void): this {
+		this.#eventAdapter.addListener(event, listener);
+		return this;
+	}
+
+	prependListener(event: string | symbol, listener: (...args: any[]) => void): this {
+		this.#eventAdapter.prependListener(event, listener);
+		return this;
+	}
+
+	prependOnceListener(event: string | symbol, listener: (...args: any[]) => void): this {
+		this.#eventAdapter.prependOnceListener(event, listener);
+		return this;
+	}
+
+	setMaxListeners(n: number): this {
+		this.#eventAdapter.setMaxListeners(n);
+		return this;
+	}
+
+	getMaxListeners(): number {
+		return this.#eventAdapter.getMaxListeners();
+	}
+
+	listeners(event: string | symbol): Function[] {
+		return this.#eventAdapter.listeners(event);
+	}
+
+	rawListeners(event: string | symbol): Function[] {
+		return this.#eventAdapter.rawListeners(event);
+	}
+
+	listenerCount(event: string | symbol): number {
+		return this.#eventAdapter.listenerCount(event);
+	}
+
+	eventNames(): Array<string | symbol> {
+		return this.#eventAdapter.eventNames();
+	}
 }

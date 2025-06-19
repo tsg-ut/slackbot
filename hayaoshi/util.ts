@@ -4,7 +4,6 @@ import cheerio from 'cheerio';
 import {google, sheets_v4} from 'googleapis';
 import {decode as decodeHtmlEntities} from 'html-entities';
 import iconv from 'iconv-lite';
-// @ts-expect-error
 import {hiraganize} from 'japanese';
 import {random, sample, range} from 'lodash';
 import scrapeIt from 'scrape-it';

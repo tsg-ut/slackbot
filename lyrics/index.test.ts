@@ -3,7 +3,6 @@ jest.mock('axios');
 
 import lyrics from './index';
 import Slack from '../lib/slackMock';
-// @ts-expect-error
 import tinyreq from 'tinyreq';
 import axios from 'axios';
 import { oneLineTrim, stripIndent } from 'common-tags';

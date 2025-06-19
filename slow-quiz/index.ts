@@ -4,7 +4,6 @@ import {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {ChatPostMessageArguments, ImageElement, KnownBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {oneLine, stripIndent} from 'common-tags';
-// @ts-expect-error: Not typed
 import {hiraganize} from 'japanese';
 import yaml from 'js-yaml';
 import {last, minBy} from 'lodash';

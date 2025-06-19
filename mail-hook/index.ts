@@ -61,7 +61,7 @@ export const decodeMailBody = (text: string) => {
 	if (!isValidUTF8(buf)) {
 		buf = Buffer.from(text);
 	}
-	return encodingJapanese.convert(buf, {
+	return encodingJapanese.convert(Array.from(buf), {
 		to: 'UNICODE',
 		type: 'string',
 	});
@@ -323,7 +323,8 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 
 			log.info('loading prompt...');
 			const promptPath = path.resolve(__dirname, `prompts/${promptConfig.id}.yml`);
-			const promptYaml = await readFile(promptPath, 'utf-8');
+			const promptYamlBuffer = await readFile(promptPath, 'utf-8');
+			const promptYaml = promptYamlBuffer.toString();
 			const prompt = yaml.load(promptYaml) as OpenAI.Chat.ChatCompletionMessageParam[];
 			for (const message of prompt) {
 				if (typeof message.content === 'string') {

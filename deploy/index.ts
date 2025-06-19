@@ -9,7 +9,6 @@ import pm2 from 'pm2';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 
-// @ts-expect-error
 import Blocker from './block.js';
 
 const log = logger.child({bot: 'deploy'});
@@ -94,11 +93,10 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 						]).then(() => {
 							muxed.end();
 						});
-
 						const output = await new Promise<Buffer>((resolve) => {
 							muxed.pipe(concat({encoding: 'buffer'}, (data: Buffer) => {
 								resolve(data);
-							}));
+							}) as any);
 						});
 
 						const text = `\`\`\`\n$ ${[command, ...args].join(' ')}\n${output.toString().slice(0, 3500)}\`\`\``;

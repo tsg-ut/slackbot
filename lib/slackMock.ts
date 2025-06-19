@@ -5,6 +5,7 @@ import {EventEmitter} from 'events';
 import {last} from 'lodash';
 import type {SlackInterface} from './slack';
 import {createMessageAdapter} from '@slack/interactive-messages';
+import {TeamEventClient} from './slackEventClient';
 
 // https://jestjs.io/docs/mock-function-api
 const mockMethodCalls = [
@@ -77,13 +78,35 @@ const createWebClient = (
 	return handler([]);
 };
 
-class MockTeamEventClient extends EventEmitter {
+class MockTeamEventClient extends TeamEventClient {
+	private mockEventEmitter: any;
+
+	constructor() {
+		const {EventEmitter} = require('node:events');
+		const emitter = new EventEmitter();
+		super(emitter, 'T00000000');
+		this.mockEventEmitter = emitter;
+	}
+
+	on(event: string, listener: (...args: any[]) => void): any {
+		return this.mockEventEmitter.on(event, listener);
+	}
+
 	onAllTeam(event: string, listener: (...args: any[]) => void): any {
-		return this.on(event, listener);
+		return this.mockEventEmitter.on(event, listener);
+	}
+
+	emit(event: string, ...args: any[]): boolean {
+		return this.mockEventEmitter.emit(event, ...args);
+	}
+
+	removeListener(event: string, listener: (...args: any[]) => void): this {
+		this.mockEventEmitter.removeListener(event, listener);
+		return this;
 	}
 }
 
-export default class SlackMock extends EventEmitter implements SlackInterface {
+export default class SlackMock implements SlackInterface {
 	fakeChannel = 'C00000000';
 	fakeUser = 'U00000000';
 	fakeTeam = 'T00000000';
@@ -93,9 +116,11 @@ export default class SlackMock extends EventEmitter implements SlackInterface {
 	readonly registeredMocks: Map<string, jest.Mock>;
 	readonly webClient: WebClient;
 	readonly messageClient: ReturnType<typeof createMessageAdapter>;
+	private mockEventEmitter: any;
 
 	constructor() {
-		super();
+		const {EventEmitter} = require('node:events');
+		this.mockEventEmitter = new EventEmitter();
 		this.eventClient = new MockTeamEventClient();
 		this.registeredMocks = new Map();
 		this.webClient = createWebClient(
@@ -106,6 +131,26 @@ export default class SlackMock extends EventEmitter implements SlackInterface {
 			action: jest.fn(),
 			viewSubmission: jest.fn(),
 		} as any;
+	}
+
+	// EventEmitter interface for SlackMock
+	emit(event: string, ...args: any[]): boolean {
+		return this.mockEventEmitter.emit(event, ...args);
+	}
+
+	on(event: string, listener: (...args: any[]) => void): this {
+		this.mockEventEmitter.on(event, listener);
+		return this;
+	}
+
+	removeListener(event: string, listener: (...args: any[]) => void): this {
+		this.mockEventEmitter.removeListener(event, listener);
+		return this;
+	}
+
+	removeAllListeners(event?: string): this {
+		this.mockEventEmitter.removeAllListeners(event);
+		return this;
 	}
 
 	handleWebcall(stack: string[], ...args: any[]) {
