@@ -13,7 +13,7 @@ import type OpenAI from 'openai';
 import {increment} from '../achievements';
 import logger from '../lib/logger';
 import openai from '../lib/openai';
-import type {SlackInterface} from '../lib/slack';
+import {eventClient, type SlackInterface} from '../lib/slack';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';
 import {getUserIcon, getUserMention, getUserName} from './util';
@@ -786,21 +786,23 @@ class SlowQuiz {
 		}
 
 		await this.checkGameEnd();
-
 		if (this.state.games.some((game) => game.status === 'inprogress')) {
-			const blocks = await this.getGameBlocks();
-			const messages = await this.postMessage({
-				text: '現在開催中の1日1文字クイズ一覧',
-				blocks,
-			});
-
-			this.state.latestStatusMessages = messages.map((message) => ({
-				ts: message.ts,
-				channel: message.channel,
-			}));
+			await this.postGameStatus();
 		}
-
 		await this.createBotAnswers();
+	}
+
+	async postGameStatus() {
+		const blocks = await this.getGameBlocks();
+		const messages = await this.postMessage({
+			text: '現在開催中の1日1文字クイズ一覧',
+			blocks,
+		});
+
+		this.state.latestStatusMessages = messages.map((message) => ({
+			ts: message.ts,
+			channel: message.channel,
+		}));
 	}
 
 	chooseNewGame() {
@@ -1108,6 +1110,15 @@ class SlowQuiz {
 export default async ({webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
 	const slowquiz = new SlowQuiz({slack, slackInteractions});
 	await slowquiz.initialize();
+
+	eventClient.on('message', (message) => {
+		if (message.text === 'slow-quiz') {
+			mutex.runExclusive(() => {
+				log.info('Received /slow-quiz command');
+				slowquiz.postGameStatus();
+			});
+		}
+	});
 
 	scheduleJob('0 10 * * *', () => {
 		mutex.runExclusive(() => {
