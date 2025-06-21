@@ -1113,9 +1113,9 @@ export default async ({webClient: slack, messageClient: slackInteractions}: Slac
 
 	eventClient.on('message', (message) => {
 		if (message.text === 'slow-quiz') {
-			mutex.runExclusive(() => {
+			mutex.runExclusive(async () => {
 				log.info('Received /slow-quiz command');
-				slowquiz.postGameStatus();
+				await slowquiz.postGameStatus();
 			});
 		}
 	});
