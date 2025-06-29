@@ -6,13 +6,13 @@ import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import {TeamEventClient} from './slackEventClient';
-import type {EventEmitter} from 'events';
+import {EventEmitter} from 'events';
 import {Deferred} from './utils';
 import {Token} from '../oauth/tokens';
 
 export interface SlackInterface {
 	webClient: WebClient;
-	eventClient: EventEmitter & Pick<TeamEventClient, keyof TeamEventClient>;
+	eventClient: TeamEventClient;
 	messageClient: ReturnType<typeof createMessageAdapter>;
 };
 
@@ -56,7 +56,7 @@ const loadTokens = async () => {
 		filename: path.join(__dirname, '..', 'tokens.sqlite3'),
 		driver: sqlite3.Database,
 	});
-	const tokens = await db.all(sql`SELECT * FROM tokens WHERE bot_access_token <> ''`).catch(() => []);
+	const tokens: Token[] = await db.all(sql`SELECT * FROM tokens WHERE bot_access_token <> ''`).catch((): Token[] => []);
 	await db.close();
 
 	loadTokensDeferred.resolve(tokens.concat([{
@@ -64,6 +64,7 @@ const loadTokens = async () => {
 		team_name: process.env.TEAMNAME,
 		access_token: process.env.HAKATASHI_TOKEN,
 		bot_access_token: process.env.SLACK_TOKEN,
+		bot_user_id: process.env.USER_TSGBOT,
 	}]));
 };
 

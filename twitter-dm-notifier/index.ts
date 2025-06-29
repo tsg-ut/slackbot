@@ -95,7 +95,7 @@ const cacheFilePath = 'twitter-dm-notifier/after.txt';
 
 const getAfterValue = async () => {
     return fs.readFile(cacheFilePath, 'utf-8').then(data => {
-        return moment(data.trim());
+        return moment(data.toString().trim());
     }).catch(async () => {
         const now = moment();
         await fs.writeFile(cacheFilePath, now.format());
