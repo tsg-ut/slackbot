@@ -1,6 +1,7 @@
 import type {SlackInterface} from '../lib/slack';
 import moment from 'moment';
 import axios from 'axios';
+// @ts-expect-error
 import {hiraganize} from 'japanese';
 import sample from 'lodash/sample';
 import fs from 'fs';

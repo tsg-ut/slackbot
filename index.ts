@@ -158,9 +158,10 @@ eventClient.on('error', (error) => {
 
 	const loggingHandler = (type: string): RequestHandler => (
 		async (req, res, next) => {
-			const body = await new Promise((resolve) => {			req.pipe(concat((body) => {
-				resolve(body);
-			}) as any);
+			const body = await new Promise((resolve) => {
+				req.pipe(concat((body) => {
+					resolve(body);
+				}) as any);
 			});
 			const decodedBody = body.toString();
 			const header = `Incoming ${type}:\n`;

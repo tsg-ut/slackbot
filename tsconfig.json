@@ -1,7 +1,8 @@
 {
   "ts-node": {
     "files": true
-  },  "files": [
+  },
+  "files": [
     "globals.d.ts",
     "types/events.d.ts"
   ],
@@ -11,11 +12,12 @@
   "exclude": [
     "./bin",
     "./node_modules"
-  ],  "compilerOptions": {
+  ],
+  "compilerOptions": {
     "target": "ESNext",
     "module": "CommonJS",
     "moduleResolution": "node",
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -24,7 +26,6 @@
       "DOM"
     ],
     "skipLibCheck": true,
-    "experimentalDecorators": true,
-    "strict": false
+    "experimentalDecorators": true
   }
 }

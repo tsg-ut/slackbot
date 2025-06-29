@@ -130,7 +130,7 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 	const state = await State.init<MailsStateObj>('mail-hook-mails', {});
 	const configState = await State.init<MailConfigsStateObj>(
 		'mail-hook-mail-configs',
-		mapValues(configLabels, () => null),
+		mapValues(configLabels, (): null => null),
 	);
 
 	const callback: FastifyPluginCallback = async (fastify, opts, next) => {

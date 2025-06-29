@@ -2,7 +2,7 @@ import {
   ChatPostMessageArguments,
   WebClient,
 } from "@slack/web-api";
-import {EventEmitter} from 'events';
+import { EventEmitter } from 'events';
 import fs from "fs";
 import path from "path";
 import puppeteer from "puppeteer";

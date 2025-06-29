@@ -7,6 +7,7 @@ import {Mutex} from 'async-mutex';
 import axios from 'axios';
 import cloudinary from 'cloudinary';
 import type {CommonTransformationOptions} from 'cloudinary';
+// @ts-expect-error
 import {hiraganize} from 'japanese';
 import {random, sample, range} from 'lodash';
 import {increment} from '../achievements';
@@ -80,9 +81,9 @@ const loadCharacters = async (author: string) => {
 			const characterNames = characterName.split('、').filter((name) => name !== '');
 			const characterRubys = characterRuby.split('、').filter((name) => name !== '');
 
-			if (characterNames.length === 0 || characterRubys.length === 0) {
-				return [] as CharacterData[];
-			}
+			if (characterNames.length === 0 || characterRubys.length === 0) {  
+				return [] as CharacterData[];  
+			}  
 
 			const names = [...characterNames, ...characterRubys];
 			const namePartsList = names.map((name) => name.split('&').map((nameOne) => nameOne.split(' ')));
@@ -106,7 +107,7 @@ const loadCharacters = async (author: string) => {
 					author,
 					rating: rating ?? '0',
 					characterId: `${namePartsList[0].flat().join('')}\0${normalizedWorkName}`,
-				} as CharacterData,
+				} as CharacterData
 			];
 		})
 		.filter(({rating}) => rating === '0');

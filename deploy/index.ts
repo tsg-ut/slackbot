@@ -9,6 +9,7 @@ import pm2 from 'pm2';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 
+// @ts-expect-error
 import Blocker from './block.js';
 
 const log = logger.child({bot: 'deploy'});

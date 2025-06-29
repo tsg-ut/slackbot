@@ -1,5 +1,5 @@
 import {get} from 'lodash';
-import {EventEmitter} from 'events';
+import type {EventEmitter} from 'events';
 import type {Token} from '../oauth/tokens';
 import {Deferred} from './utils';
 import {TeamEventClient} from './slackEventClient';

@@ -1,9 +1,12 @@
 import {readFile} from 'fs/promises';
 import path from 'path';
 import {SlackMessageAdapter} from '@slack/interactive-messages';
-import type {ChatPostMessageArguments, ImageElement, KnownBlock, WebClient} from '@slack/web-api';
+import type {ImageElement, KnownBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {oneLine, stripIndent} from 'common-tags';
+import type {FastifyPluginCallback} from 'fastify';
+import plugin from 'fastify-plugin';
+// @ts-expect-error: Not typed
 import {hiraganize} from 'japanese';
 import yaml from 'js-yaml';
 import {last, minBy} from 'lodash';
@@ -12,7 +15,7 @@ import type OpenAI from 'openai';
 import {increment} from '../achievements';
 import logger from '../lib/logger';
 import openai from '../lib/openai';
-import type {SlackInterface} from '../lib/slack';
+import type {SlashCommandEndpoint, SlackInterface} from '../lib/slack';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';
 import {getUserIcon, getUserMention, getUserName} from './util';
@@ -785,21 +788,32 @@ class SlowQuiz {
 		}
 
 		await this.checkGameEnd();
-
 		if (this.state.games.some((game) => game.status === 'inprogress')) {
-			const blocks = await this.getGameBlocks();
-			const messages = await this.postMessage({
+			await this.postGameStatus(true);
+		}
+		await this.createBotAnswers();
+	}
+
+	async postGameStatus(replaceLatestStatusMessages: boolean, channels: string[] = []) {
+		const blocks = await this.getGameBlocks();
+		const messages = await this.postMessage(
+			{
 				text: '現在開催中の1日1文字クイズ一覧',
 				blocks,
-			});
+			},
+			...(channels.length > 0 ? [channels] : []),
+		);
 
-			this.state.latestStatusMessages = messages.map((message) => ({
-				ts: message.ts,
-				channel: message.channel,
-			}));
+		const newStatusMessages = messages.map((message) => ({
+			ts: message.ts,
+			channel: message.channel,
+		}));
+
+		if (replaceLatestStatusMessages) {
+			this.state.latestStatusMessages = newStatusMessages;
+		} else {
+			this.state.latestStatusMessages.push(...newStatusMessages);
 		}
-
-		await this.createBotAnswers();
 	}
 
 	chooseNewGame() {
@@ -1066,10 +1080,13 @@ class SlowQuiz {
 		return {text, invisibleCharacters};
 	}
 
-	async postMessage(message: {text: string, blocks: KnownBlock[]}) {
+	async postMessage(
+		message: {text: string, blocks: KnownBlock[]},
+		channels: string[] = [process.env.CHANNEL_SANDBOX, process.env.CHANNEL_QUIZ],
+	) {
 		const messages = [];
 
-		for (const channel of [process.env.CHANNEL_SANDBOX, process.env.CHANNEL_QUIZ]) {
+		for (const channel of channels) {
 			const response = await this.slack.chat.postMessage({
 				channel,
 				username: '1日1文字クイズ',
@@ -1104,13 +1121,36 @@ class SlowQuiz {
 	}
 }
 
-export default async ({webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
-	const slowquiz = new SlowQuiz({slack, slackInteractions});
-	await slowquiz.initialize();
+export const server = ({webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
+	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
+		const slowquiz = new SlowQuiz({slack, slackInteractions});
+		await slowquiz.initialize();
 
-	scheduleJob('0 10 * * *', () => {
-		mutex.runExclusive(() => {
-			slowquiz.progressGames();
+		fastify.post<SlashCommandEndpoint>('/slash/slow-quiz', (req, res) => {
+			if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
+				res.code(400);
+				return 'Bad Request';
+			}
+
+			mutex.runExclusive(async () => {
+				log.info('Received /slow-quiz command');
+				await slowquiz.postGameStatus(false, [req.body.channel_id]);
+			});
+
+			return {
+				response_type: 'in_channel',
+				text: 'Working...',
+			};
 		});
-	});
+
+		scheduleJob('0 10 * * *', () => {
+			mutex.runExclusive(() => {
+				slowquiz.progressGames();
+			});
+		});
+
+		next();
+	};
+
+	return plugin(callback);
 };

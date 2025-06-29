@@ -1,6 +1,7 @@
 import type {SlackInterface} from '../lib/slack';
 import cloudinary from 'cloudinary';
 import {stripIndent} from 'common-tags';
+// @ts-expect-error
 import {hiraganize} from 'japanese';
 import Queue from 'p-queue';
 import {renderCrossword} from './render';

@@ -2,7 +2,7 @@
 /* eslint-disable no-restricted-imports */
 /* eslint-disable react/no-access-state-in-setstate */
 // eslint-disable-next-line no-unused-vars
-import {EventEmitter} from 'events';
+import type {EventEmitter} from 'events';
 import {constants, promises as fs} from 'fs';
 import path from 'path';
 import type {KnownBlock, WebClient} from '@slack/web-api';
