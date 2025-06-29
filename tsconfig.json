@@ -2,10 +2,6 @@
   "ts-node": {
     "files": true
   },
-  "files": [
-    "globals.d.ts",
-    "types/events.d.ts"
-  ],
   "include": [
     "**/*"
   ],
@@ -22,9 +18,9 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "lib": [
-      "ESNext",
-      "DOM"
+      "ESNext"
     ],
+    "types": ["jest"],
     "skipLibCheck": true,
     "experimentalDecorators": true
   }
