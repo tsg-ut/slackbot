@@ -81,7 +81,7 @@
     "d3-cloud": "^1.2.5",
     "dayjs": "^1.11.10",
     "deepcopy": "^2.1.0",
-    "discord.js": "^14.3.0",
+    "discord.js": "^14.21.0",
     "dockerode": "^3.3.4",
     "dotenv": "^16.0.2",
     "download": "^8.0.0",
