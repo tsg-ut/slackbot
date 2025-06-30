@@ -2,6 +2,9 @@
   "ts-node": {
     "files": true
   },
+  "files": [
+    "globals.d.ts"
+  ],
   "include": [
     "**/*"
   ],
@@ -17,7 +20,6 @@
     "noImplicitAny": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
     "lib": [
       "ESNext"
     ],
