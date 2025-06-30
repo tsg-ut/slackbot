@@ -18,7 +18,7 @@ export const get_data = async (boardspec: BoardSpec) => {
 		const stream = concatstream({ encoding: 'buffer' }, (data) => {
 			resolve(data);
 		});
-		generator.stdout.pipe(stream as any);
+		generator.stdout.pipe(stream);
 	});
 	return output.toString();
 };

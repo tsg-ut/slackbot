@@ -43,7 +43,7 @@ const jukugoLoader : Loader<jukugoDict> = new Loader(async () => {
     await download(corpusPath,"https://repository.ninjal.ac.jp/?action=repository_uri&item_id=3231&file_id=22&file_no=1");
     const data = await fs.promises.readFile(corpusPath);
     const dict : string = await new Promise((resolve,reject) => {
-      JSZip.loadAsync(data as any).then((zip) => {
+      JSZip.loadAsync(data).then((zip) => {
         return zip.files["BCCWJ_frequencylist_luw2_ver1_1.tsv"].nodeStream('nodebuffer');
       }).then((text) => {
         const parser = csv_parse({
@@ -68,7 +68,7 @@ const jukugoLoader : Loader<jukugoDict> = new Loader(async () => {
         parser.on('end', () => {
           resolve(uniq(res).join('\n'));
         });
-    		text.pipe(parser as any);
+        text.pipe(parser);
       })
     });
     await fs.promises.writeFile(dictionaryPath,dict);

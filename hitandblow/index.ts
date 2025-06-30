@@ -3,7 +3,7 @@ import { range, shuffle, round } from 'lodash';
 import { stripIndent } from 'common-tags';
 import { unlock } from '../achievements';
 import assert from 'assert';
-import {EventEmitter} from 'events';
+import type { EventEmitter } from 'events';
 
 interface HitAndBlowHistory {
   call: number[];

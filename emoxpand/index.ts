@@ -44,7 +44,7 @@ let allEmojis : EmojiTable = new Map();
 const loadEmojis = async () => {
   allEmojis = new Map();
   const data = await fs.readFile(emojiPath, {encoding: 'utf8'});
-  const obj: {[key: string]: EmojiContent} = JSON.parse(data.toString());
+  const obj: {[key: string]: EmojiContent} = JSON.parse(data);
   log.info('emoxpand: loading big emojis...');
   for (const [name, content] of Object.entries(obj)) {
     allEmojis.set(name, emojiFromContent(content));
@@ -78,7 +78,7 @@ const alignEmojis = (es: BigEmoji[]): string[] => {
     return [''];
   }
   const wholeHeight = Math.max(...es.map((e) => e.height));
-  const voids = (width: number): string[] => Array(width).fill('_');
+  const voids = (width: number) => Array(width).fill('_');
   const emojiBlocks = es
     .map(({width, height, content}) =>
       content

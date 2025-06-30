@@ -115,7 +115,7 @@ export default async ({eventClient, webClient}: SlackInterface) => {
     }
 
     const dataStr = await fs.readFile(`${__dirname}/data.json`, 'utf-8');
-    const data: Data = JSON.parse(dataStr.toString());
+    const data: Data = JSON.parse(dataStr);
     const { sc, hiddenValue } = data;
     eventClient.on('message', async message => {
         const username = '物件ガチャ';

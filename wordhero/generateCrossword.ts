@@ -23,10 +23,11 @@ const convertToNewFormat = (board: string[]) => (
 
 const generate = async (usedAt: string): Promise<Crossword> => {
 	if (stocks.length === 0) {
-		const generator = spawn('../target/release/crossword_generator_main', {cwd: __dirname});		const output = await new Promise<Buffer>((resolve) => {
+		const generator = spawn('../target/release/crossword_generator_main', {cwd: __dirname});
+		const output = await new Promise<Buffer>((resolve) => {
 			generator.stdout.pipe(concat({encoding: 'buffer'}, (data: Buffer) => {
 				resolve(data);
-			}) as any);
+			}));
 		});
 
 		const lines = output.toString().split('\n').filter((line) => line);

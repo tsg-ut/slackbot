@@ -1,4 +1,4 @@
-import {EventEmitter} from 'events';
+import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
 import {inspect} from 'util';
@@ -368,20 +368,20 @@ export default class TTS extends EventEmitter {
 						return; // 再生時にTTSBotがログアウトしていたら諦める
 					}
 
-					await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), new Uint8Array(speech.data));
+					await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), speech.data);
 					const resource = createAudioResource(path.join(__dirname, 'tempAudio.mp3'));
 
 					const playDeferred = new Deferred<void>();
 					const onFinishPlaying = () => {
 						playDeferred.resolve();
 					};
-					(this.audioPlayer as unknown as EventEmitter).once(AudioPlayerStatus.Idle, onFinishPlaying);
+					this.audioPlayer.once(AudioPlayerStatus.Idle, onFinishPlaying);
 					this.audioPlayer.play(resource);
 					await Promise.race([
 						playDeferred.promise,
 						new Promise<void>((resolve) => {
 							setTimeout(() => {
-								(this.audioPlayer as unknown as EventEmitter).off(AudioPlayerStatus.Idle, onFinishPlaying);
+								this.audioPlayer.off(AudioPlayerStatus.Idle, onFinishPlaying);
 								resolve();
 							}, 10 * 1000);
 						}),
