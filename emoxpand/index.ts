@@ -82,7 +82,7 @@ const alignEmojis = (es: BigEmoji[]): string[] => {
   const emojiBlocks = es
     .map(({width, height, content}) =>
       content
-        .concat(Array(wholeHeight - height).fill(0).map((_) => []))
+        .concat(Array(wholeHeight - height).fill(0).map((_): string[] => []))
         .map((row) => row
           .concat(voids(width - row.length))
           .map((emoji) => `:${emoji}:`)

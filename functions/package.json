@@ -17,11 +17,11 @@
     "aws-sdk": "^2.1354.0",
     "axios": "^1.8.4",
     "firebase-admin": "^11.4.1",
-    "firebase-functions": "^4.0.1",
+    "firebase-functions": "^4.9.0",
     "lodash": "^4.17.21"
   },
   "devDependencies": {
-    "typescript": "^4.7.4"
+    "typescript": "^5.8.3"
   },
   "private": true
 }

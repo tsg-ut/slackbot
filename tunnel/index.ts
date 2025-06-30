@@ -37,7 +37,7 @@ export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 			filename: path.join(__dirname, '..', 'tokens.sqlite3'),
 			driver: sqlite3.Database,
 		});
-		const kmcToken = await db.get(sql`SELECT * FROM tokens WHERE team_id = ${process.env.KMC_TEAM_ID}`).catch(() => null);
+		const kmcToken = await db.get(sql`SELECT * FROM tokens WHERE team_id = ${process.env.KMC_TEAM_ID}`).catch((): null => null);
 		await db.close();
 
 		const kmcSlack = kmcToken === undefined ? null : new WebClient(kmcToken.bot_access_token);
@@ -225,8 +225,8 @@ export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 			eventClient.onAllTeam(eventType, (event: any, body: any) => {
 				const team =
 					body.team_id === process.env.TEAM_ID ? 'TSG'
-					: body.team_id === process.env.KMC_TEAM_ID ? 'KMC'
-					: null;
+						: body.team_id === process.env.KMC_TEAM_ID ? 'KMC'
+							: null;
 
 				if (!team) {
 					log.warn(`unknown team: ${body.team_id}`);
