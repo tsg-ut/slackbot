@@ -10,7 +10,6 @@
   ],
   "exclude": [
     "./bin",
-    "./functions",
     "./node_modules"
   ],
   "compilerOptions": {
