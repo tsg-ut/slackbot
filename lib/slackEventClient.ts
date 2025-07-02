@@ -61,12 +61,20 @@ export class TeamEventClient {
 
 			if (eventBody.team_id === this.#team) {
 				for (const listener of listeners) {
-					listener(...args);
+					try {
+						listener(...args);
+					} catch (error) {
+						log.error(`Error in listener for event "${event}":`, { error });
+					}
 				}
 			}
 
 			for (const listener of allTeamListeners) {
-				listener(...args);
+				try {
+					listener(...args);
+				} catch (error) {
+					log.error(`Error in all-team listener for event "${event}":`, { error });
+				}
 			}
 		});
 	}
