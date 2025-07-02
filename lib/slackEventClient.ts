@@ -1,13 +1,13 @@
 import {getDuplicateEventChecker} from './eventDeduplication';
 import logger from './logger';
 import assert from 'assert';
-import type {SlackEventAdapter} from '@slack/events-api';
+import type EventEmitter from 'events';
 import { inspect } from 'util';
 
 const log = logger.child({ bot: 'TeamEventClient' });
 
 export class TeamEventClient {
-	readonly #eventAdapter: SlackEventAdapter;
+	readonly #eventAdapter: EventEmitter;
 	readonly #team: string;
 	#listeners: Map<string, ((...args: any[]) => void)[]> = new Map();
 	#allTeamListeners: Map<string, ((...args: any[]) => void)[]> = new Map();
@@ -15,7 +15,7 @@ export class TeamEventClient {
 
 	static instances: TeamEventClient[] = [];
 
-	static create(eventAdapter: SlackEventAdapter, team: string) {
+	static create(eventAdapter: EventEmitter, team: string) {
 		for (const instance of TeamEventClient.instances) {
 			if (instance.#eventAdapter === eventAdapter && instance.#team === team) {
 				return instance;
@@ -28,7 +28,7 @@ export class TeamEventClient {
 	}
 
 	// contract: 渡されるeventAdapterは、EventAdapterOptions.includeBodyがtrueでなければならない。
-	private constructor(eventAdapter: SlackEventAdapter, team: string) {
+	private constructor(eventAdapter: EventEmitter, team: string) {
 		this.#eventAdapter = eventAdapter;
 		this.#team = team;
 	}

@@ -1,5 +1,5 @@
 import {get} from 'lodash';
-import type {SlackEventAdapter} from '@slack/events-api';
+import type EventEmitter from 'events';
 import type {Token} from '../oauth/tokens';
 import {Deferred} from './utils';
 import {TeamEventClient} from './slackEventClient';
@@ -32,7 +32,7 @@ interface WebClient {
 
 interface Config {
 	token: Token;
-	eventClient: SlackEventAdapter;
+	eventClient: EventEmitter;
 	webClient: WebClient;
 	enableReactions?: boolean;
 }
