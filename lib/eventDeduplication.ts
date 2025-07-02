@@ -1,16 +1,10 @@
-import { createClient, RedisClientType } from 'redis';
+import {createClient, RedisClientType} from 'redis';
 import logger from './logger';
-import { Mutex } from 'async-mutex';
+import {Mutex} from 'async-mutex';
 
-const log = logger.child({ bot: 'eventDeduplication' });
+const log = logger.child({bot: 'eventDeduplication'});
 
-interface DuplicateEventChecker {
-	isEventProcessed: (eventId: string) => Promise<boolean>;
-	markEventAsProcessed: (eventId: string) => Promise<void>;
-	close: () => Promise<void>;
-}
-
-class RedisDuplicateEventChecker implements DuplicateEventChecker {
+class DuplicateEventChecker {
 	#client: RedisClientType | null = null;
 	#connected = false;
 	#mutex: Mutex = new Mutex();
@@ -21,9 +15,7 @@ class RedisDuplicateEventChecker implements DuplicateEventChecker {
 			return;
 		}
 
-		this.#client = createClient({
-			url,
-		});
+		this.#client = createClient({url});
 
 		this.#client.on('error', (err) => {
 			log.error('Redis Client Error', err);
@@ -60,11 +52,11 @@ class RedisDuplicateEventChecker implements DuplicateEventChecker {
 		try {
 			await this.ensureConnected();
 			const key = `slack:event:${eventId}`;
-			return this.#mutex.runExclusive(async () => {
+			const isProcessed = await this.#mutex.runExclusive(async () => {
 				const exists = await this.#client.exists(key);
-				log.debug(`Checked if event is processed: ${JSON.stringify({ eventId, exists })}`);
 				return exists === 1;
 			});
+			return isProcessed;
 		} catch (error) {
 			log.error('Failed to check if event is processed', { eventId, error });
 			return false;
@@ -106,7 +98,7 @@ export const getDuplicateEventChecker = (): DuplicateEventChecker => {
 			redisUrl = null;
 		}
 
-		duplicateEventChecker = new RedisDuplicateEventChecker(redisUrl);
+		duplicateEventChecker = new DuplicateEventChecker(redisUrl);
 	}
 
 	return duplicateEventChecker;
