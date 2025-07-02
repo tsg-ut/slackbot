@@ -46,7 +46,6 @@ describe('Event Deduplication', () => {
 
 	describe('Redis implementation', () => {
 		beforeEach(() => {
-			// テスト用のダミーRedis URLを設定（実際のRedisには接続しない）
 			process.env.REDIS_URL = 'redis://localhost:6379';
 		});
 

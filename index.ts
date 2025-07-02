@@ -40,21 +40,15 @@ const fastify = Fastify({
 	pluginTimeout: 50000,
 });
 
-// グレースフルシャットダウンのためのクリーンアップ処理
 const gracefulShutdown = async (signal: string) => {
 	log.info(`Received ${signal}, starting graceful shutdown...`);
 	
 	try {
-		// Fastifyサーバーの停止
 		await fastify.close();
 		log.info('Fastify server closed');
 		
-		// イベント重複チェッカーのクリーンアップ
 		await closeDuplicateEventChecker();
 		log.info('Event deduplication checker closed');
-		
-		// その他の必要なクリーンアップ処理をここに追加
-		// 例: データベース接続の切断、進行中の処理の完了待ちなど
 		
 		log.info('Graceful shutdown completed');
 		process.exit(0);
@@ -64,13 +58,12 @@ const gracefulShutdown = async (signal: string) => {
 	}
 };
 
-// シグナルハンドリング
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-
-// PM2環境での追加シグナル対応
-process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2')); // PM2 restart
-process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));   // PM2 reload
+// pm2 restart
+process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2'));
+// pm2 reload
+process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
 
 const productionBots = [
 	'summary',

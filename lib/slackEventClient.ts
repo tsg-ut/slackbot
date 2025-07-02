@@ -40,7 +40,6 @@ export class TeamEventClient {
 					return;
 				}
 
-				// イベントを処理済みとしてマーク
 				await duplicateChecker.markEventAsProcessed(eventId);
 			} else {
 				log.warn('Event without event_id received', { event, teamId: args[1].team_id });
