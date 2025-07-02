@@ -44,7 +44,7 @@ export interface SlackOauthEndpoint {
 export const webClient = new WebClient(process.env.SLACK_TOKEN);
 export const eventClient = createEventAdapter(process.env.SIGNING_SECRET, {includeBody: true});
 export const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
-export const tsgEventClient = new TeamEventClient(
+export const tsgEventClient = TeamEventClient.create(
 	eventClient,
 	process.env.TEAM_ID,
 );

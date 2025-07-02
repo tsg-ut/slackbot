@@ -1,5 +1,5 @@
 import {get} from 'lodash';
-import type {EventEmitter} from 'events';
+import type EventEmitter from 'events';
 import type {Token} from '../oauth/tokens';
 import {Deferred} from './utils';
 import {TeamEventClient} from './slackEventClient';
@@ -49,7 +49,7 @@ export default class SlackCache {
 
 	constructor(config: Config) {
 		this.config = config;
-		const teamEventClient = new TeamEventClient(this.config.eventClient, this.config.token.team_id);
+		const teamEventClient = TeamEventClient.create(this.config.eventClient, this.config.token.team_id);
 
 		{
 			// user cache

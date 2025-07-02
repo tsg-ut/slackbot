@@ -23,6 +23,7 @@ import { RequestHandler } from 'express-serve-static-core';
 import { inspect } from 'util';
 import concat from 'concat-stream';
 import { getAuthorityLabel } from './lib/slackUtils';
+import { closeDuplicateEventChecker } from './lib/eventDeduplication';
 
 const log = logger.child({ bot: 'index' });
 
@@ -38,6 +39,31 @@ const fastify = Fastify({
 	logger: logger.child({ bot: 'http/index' }),
 	pluginTimeout: 50000,
 });
+
+const gracefulShutdown = async (signal: string) => {
+	log.info(`Received ${signal}, starting graceful shutdown...`);
+	
+	try {
+		await fastify.close();
+		log.info('Fastify server closed');
+		
+		await closeDuplicateEventChecker();
+		log.info('Event deduplication checker closed');
+		
+		log.info('Graceful shutdown completed');
+		process.exit(0);
+	} catch (error) {
+		log.error('Error during graceful shutdown', { error });
+		process.exit(1);
+	}
+};
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+// pm2 restart
+process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2'));
+// pm2 reload
+process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
 
 const productionBots = [
 	'summary',
