@@ -44,7 +44,7 @@ class DuplicateEventChecker {
 		});
 	}
 
-	async isEventProcessed(eventId: string): Promise<boolean> {
+	async markEventAsProcessed(eventId: string): Promise<boolean> {
 		if (this.#client === null) {
 			return false;
 		}
@@ -52,30 +52,18 @@ class DuplicateEventChecker {
 		try {
 			await this.ensureConnected();
 			const key = `slack:event:${eventId}`;
-			const isProcessed = await this.#mutex.runExclusive(async () => {
+			const wasAlreadyProcessed = await this.#mutex.runExclusive(async () => {
 				const exists = await this.#client.exists(key);
-				return exists === 1;
+				const isProcessed = exists === 1;
+				if (!isProcessed) {
+					await this.#client.setEx(key, 300, 'processed');
+				}
+				return isProcessed;
 			});
-			return isProcessed;
-		} catch (error) {
-			log.error('Failed to check if event is processed', { eventId, error });
-			return false;
-		}
-	}
-
-	async markEventAsProcessed(eventId: string): Promise<void> {
-		if (this.#client === null) {
-			return;
-		}
-
-		try {
-			await this.ensureConnected();
-			const key = `slack:event:${eventId}`;
-			await this.#mutex.runExclusive(async () => {
-				await this.#client.setEx(key, 300, 'processed');
-			});
+			return wasAlreadyProcessed;
 		} catch (error) {
 			log.error('Failed to mark event as processed', { eventId, error });
+			return false;
 		}
 	}
 

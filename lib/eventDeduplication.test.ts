@@ -42,7 +42,7 @@ describe('Event Deduplication', () => {
 			const eventId = 'test-event-123';
 
 			await checker.markEventAsProcessed(eventId);
-			expect(await checker.isEventProcessed(eventId)).toBe(false);
+			expect(await checker.markEventAsProcessed(eventId)).toBe(false);
 		});
 	});
 
@@ -70,11 +70,12 @@ describe('Event Deduplication', () => {
 			const checker = getDuplicateEventChecker();
 			const eventId = 'test-event-123';
 
-			const result = await checker.isEventProcessed(eventId);
+			const result = await checker.markEventAsProcessed(eventId);
 
 			expect(result).toBe(false);
 			expect(mockRedis.connect).toHaveBeenCalled();
 			expect(mockRedis.exists).toHaveBeenCalledWith('slack:event:test-event-123');
+			expect(mockRedis.setEx).toHaveBeenCalledWith('slack:event:test-event-123', 300, 'processed');
 		});
 
 		it('should return true for already processed event', async () => {
@@ -83,11 +84,12 @@ describe('Event Deduplication', () => {
 			const checker = getDuplicateEventChecker();
 			const eventId = 'test-event-456';
 
-			const result = await checker.isEventProcessed(eventId);
+			const result = await checker.markEventAsProcessed(eventId);
 
 			expect(result).toBe(true);
 			expect(mockRedis.connect).toHaveBeenCalled();
 			expect(mockRedis.exists).toHaveBeenCalledWith('slack:event:test-event-456');
+			expect(mockRedis.setEx).not.toHaveBeenCalled();
 		});
 
 		it('should mark event as processed', async () => {
@@ -98,19 +100,6 @@ describe('Event Deduplication', () => {
 
 			expect(mockRedis.connect).toHaveBeenCalled();
 			expect(mockRedis.setEx).toHaveBeenCalledWith('slack:event:test-event-789', 300, 'processed');
-		});
-
-		it('should handle Redis connection errors gracefully when checking event', async () => {
-			mockRedis.exists.mockRejectedValue(new Error());
-
-			const checker = getDuplicateEventChecker();
-			const eventId = 'test-event-error';
-
-			const isProcessed = await checker.isEventProcessed(eventId);
-			expect(isProcessed).toBe(false);
-
-			expect(mockRedis.connect).toHaveBeenCalled();
-			expect(mockRedis.exists).toHaveBeenCalledWith('slack:event:test-event-error');
 		});
 
 		it('should handle Redis connection errors gracefully when marking event', async () => {
@@ -141,12 +130,13 @@ describe('Event Deduplication', () => {
 			const eventId = 'duplicate-event-123';
 
 			mockRedis.exists.mockResolvedValueOnce(0);
-			expect(await checker.isEventProcessed(eventId)).toBe(false);
+			expect(await checker.markEventAsProcessed(eventId)).toBe(false);
 
 			mockRedis.exists.mockResolvedValueOnce(1);
-			expect(await checker.isEventProcessed(eventId)).toBe(true);
+			expect(await checker.markEventAsProcessed(eventId)).toBe(true);
 
 			expect(mockRedis.exists).toHaveBeenCalledTimes(2);
+			expect(mockRedis.setEx).toHaveBeenCalledTimes(1);
 		});
 
 		it('should set up proper Redis event handlers', () => {
