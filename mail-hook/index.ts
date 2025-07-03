@@ -13,14 +13,18 @@ import libmime from 'libmime';
 import {mapValues} from 'lodash';
 import type OpenAI from 'openai';
 import isValidUTF8 from 'utf-8-validate';
-import dayjs from '../lib/dayjs';
-import logger from '../lib/logger';
-import mailgun from '../lib/mailgun';
-import openai from '../lib/openai';
+import {fileURLToPath} from 'url';
+import dayjs from '../lib/dayjs.js';
+import logger from '../lib/logger.js';
+import mailgun from '../lib/mailgun.js';
+import openai from '../lib/openai.js';
 import type {SlackInterface} from '../lib/slack.js';
-import State from '../lib/state';
-import editAndSendMailDialog from './views/editAndSendMailDialog';
-import replyConfigDialog from './views/replyConfigDialog';
+import State from '../lib/state.js';
+import editAndSendMailDialog from './views/editAndSendMailDialog.js';
+import replyConfigDialog from './views/replyConfigDialog.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const mutex = new Mutex();
 
