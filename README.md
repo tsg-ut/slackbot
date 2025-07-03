@@ -30,13 +30,14 @@ TSGのSlackで動くSlackbotたち
     cd slackbot
     ```
     * [GitHub Desktop](https://desktop.github.com/) など、他の方法でcloneしても構いません。
-2. [node-canvas](https://github.com/Automattic/node-canvas)の依存ライブラリをインストールする。
-    * [node-canvasのインストールガイド](https://github.com/Automattic/node-canvas#compiling)に従ってください。
-    * 特にWindowsを使用している場合は `C:\GTK` 配下にGTKをインストールするのを忘れないでください。
+2. [node-gyp](https://github.com/nodejs/node-gyp)でのビルドに必要なライブラリをインストールする。
+    * [node-gypのインストールガイド](https://github.com/nodejs/node-gyp?tab=readme-ov-file#installation)に従ってください。
 3. 依存パッケージをインストールする
     ```sh
     npm install
     ```
+    * もし`ModuleNotFoundError: No module named 'distutils'`というエラーが出た場合、[setuptools](https://pypi.org/project/setuptools/)をインストールする。
+        * Mac (Homebrew) の例: `brew install python-setuptools`
 4. `.env` をテンプレートから作成し、編集する。
     ```sh
     cp .env.example .env
