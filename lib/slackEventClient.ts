@@ -1,5 +1,5 @@
-import {getDuplicateEventChecker} from './eventDeduplication';
-import logger from './logger';
+import {getDuplicateEventChecker} from './eventDeduplication.js';
+import logger from './logger.js';
 import assert from 'assert';
 import type EventEmitter from 'events';
 import { inspect } from 'util';

@@ -1,5 +1,5 @@
-import type {SlackInterface} from '../lib/slack';
-import {HelloWorld} from './HelloWorld';
+import type {SlackInterface} from '../lib/slack.js';
+import {HelloWorld} from './HelloWorld.js';
 
 export default async (slackInterface: SlackInterface) => {
 	const helloworld = await HelloWorld.create(slackInterface);

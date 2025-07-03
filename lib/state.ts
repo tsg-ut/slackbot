@@ -1,6 +1,6 @@
 import {throttle, groupBy} from 'lodash';
-import db from './firestore';
-import {Deferred} from './utils';
+import db from './firestore.js';
+import {Deferred} from './utils.js';
 import path from 'path';
 import {inspect} from 'util';
 import fs from 'fs-extra';
@@ -9,7 +9,11 @@ import {Mutex} from 'async-mutex';
 import {observable, toJS} from 'mobx';
 import type {IObjectDidChange, IArrayDidChange, IMapDidChange} from 'mobx';
 import {deepObserve} from 'mobx-utils';
-import logger from './logger';
+import logger from './logger.js';
+import {fileURLToPath} from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 declare type IChange = IObjectDidChange | IArrayDidChange | IMapDidChange;
 

@@ -9,7 +9,7 @@ import {fileURLToPath} from 'url';
 import {TeamEventClient} from './slackEventClient.js';
 import type {EventEmitter} from 'events';
 import {Deferred} from './utils.js';
-import {Token} from '../oauth/tokens.js';
+import {Token} from '../oauth/tokens.d.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

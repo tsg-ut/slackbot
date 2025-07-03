@@ -1,9 +1,9 @@
 import type { MrkdwnElement, PlainTextElement } from '@slack/web-api';
 import type { Member } from '@slack/web-api/dist/types/response/UsersListResponse';
 import { WebClient } from '@slack/web-api';
-import { eventClient, getTokens } from './slack';
-import { Deferred } from './utils';
-import SlackCache from './slackCache';
+import { eventClient, getTokens } from './slack.js';
+import { Deferred } from './utils.js';
+import SlackCache from './slackCache.js';
 import type { GenericMessageEvent, MessageEvent } from '@slack/bolt';
 import os from 'os';
 

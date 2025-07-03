@@ -10,7 +10,9 @@ module.exports = {
 		'^(\\.{1,2}/.*)\\.js$': '$1',
 	},
 	transform: {
-		'^.+\\.tsx?$': 'ts-jest',
+		'^.+\\.tsx?$': ['ts-jest', {
+			useESM: true,
+		}],
 	},
 	testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.[tj]s$',
 	collectCoverageFrom: [

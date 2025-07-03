@@ -4,14 +4,14 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import {countBy, throttle, groupBy, get as getter, chunk} from 'lodash';
 import moment from 'moment';
-import db from '../lib/firestore';
+import db from '../lib/firestore.js';
 // eslint-disable-next-line no-unused-vars
-import logger from '../lib/logger';
-import type {SlackInterface} from '../lib/slack';
-import {getReactions} from '../lib/slackUtils';
-import {updateUsageCount} from '../lib/state';
-import {Deferred} from '../lib/utils';
-import achievements, {Difficulty} from './achievements';
+import logger from '../lib/logger.js';
+import type {SlackInterface} from '../lib/slack.js';
+import {getReactions} from '../lib/slackUtils.js';
+import {updateUsageCount} from '../lib/state.js';
+import {Deferred} from '../lib/utils.js';
+import achievements, {Difficulty} from './achievements.js';
 
 const mutex = new Mutex();
 
