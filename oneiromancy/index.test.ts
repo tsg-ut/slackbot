@@ -1,24 +1,35 @@
 /* eslint-env node, jest */
 
-jest.mock('../lib/openai');
+// Set environment variables before importing modules
+process.env.OPENAI_API_KEY = 'test-openai-key';
+process.env.CHANNEL_SANDBOX = 'CSANDBOX';
+process.env.CHANNEL_SIG_DREAM = 'CSIGDREAM';
+process.env.HAKATASHI_TOKEN = 'test-token';
+
+jest.mock('../lib/openai', () => ({
+	default: {
+		chat: {
+			completions: {
+				create: jest.fn(),
+			},
+		},
+	},
+}));
 jest.mock('../achievements');
 
-const oneiromancy = require('./index.ts');
-const {default: Slack} = require('../lib/slackMock.ts');
+import oneiromancy from './index';
+import Slack from '../lib/slackMock';
 const openai = require('../lib/openai');
 const {increment} = require('../achievements');
 
 describe('oneiromancy', () => {
-	let slack;
+	let slack: Slack;
 
 	beforeEach(() => {
 		slack = new Slack();
-		process.env.CHANNEL_SANDBOX = 'CSANDBOX';
-		process.env.CHANNEL_SIG_DREAM = 'CSIGDREAM';
-		process.env.HAKATASHI_TOKEN = 'test-token';
 
 		// Mock OpenAI response
-		openai.chat.completions.create.mockResolvedValue({
+		openai.default.chat.completions.create.mockResolvedValue({
 			choices: [{
 				message: {
 					content: '今日の運勢は【85点】です。良い一日になるでしょう。',
@@ -27,7 +38,9 @@ describe('oneiromancy', () => {
 		});
 
 		// Mock slack conversations.replies
-		slack.webClient.conversations.replies.mockResolvedValue({
+		const conversationsReplies = slack.webClient.conversations.replies as jest.MockedFunction<typeof slack.webClient.conversations.replies>;
+		conversationsReplies.mockResolvedValue({
+			ok: true,
 			messages: [{
 				ts: slack.fakeTimestamp,
 				text: '昨日、空を飛ぶ夢を見ました。',
@@ -36,7 +49,9 @@ describe('oneiromancy', () => {
 		});
 
 		// Mock chat.postMessage
-		slack.webClient.chat.postMessage.mockResolvedValue({
+		const chatPostMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
+		chatPostMessage.mockResolvedValue({
+			ok: true,
 			ts: 'thread-ts',
 		});
 	});
@@ -62,8 +77,9 @@ describe('oneiromancy', () => {
 		await new Promise(resolve => setTimeout(resolve, 100));
 
 		// Check that postMessage was called with reply_broadcast: true
-		const postMessageCalls = slack.webClient.chat.postMessage.mock.calls;
-		const broadcastCall = postMessageCalls.find(call => 
+		const chatPostMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
+		const postMessageCalls = chatPostMessage.mock.calls;
+		const broadcastCall = postMessageCalls.find((call: any) => 
 			call[0].reply_broadcast === true
 		);
 		
@@ -91,8 +107,9 @@ describe('oneiromancy', () => {
 		await new Promise(resolve => setTimeout(resolve, 100));
 
 		// Check that postMessage was called with reply_broadcast: false 
-		const postMessageCalls = slack.webClient.chat.postMessage.mock.calls;
-		const sandboxCall = postMessageCalls.find(call => 
+		const chatPostMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
+		const postMessageCalls = chatPostMessage.mock.calls;
+		const sandboxCall = postMessageCalls.find((call: any) => 
 			call[0].channel === process.env.CHANNEL_SANDBOX
 		);
 		
@@ -153,11 +170,12 @@ describe('oneiromancy', () => {
 		await new Promise(resolve => setTimeout(resolve, 100));
 
 		// Should still call OpenAI API
-		expect(openai.chat.completions.create).toHaveBeenCalled();
+		expect(openai.default.chat.completions.create).toHaveBeenCalled();
 		
 		// Should still post to sandbox
-		const postMessageCalls = slack.webClient.chat.postMessage.mock.calls;
-		const sandboxCall = postMessageCalls.find(call => 
+		const chatPostMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
+		const postMessageCalls = chatPostMessage.mock.calls;
+		const sandboxCall = postMessageCalls.find((call: any) => 
 			call[0].channel === process.env.CHANNEL_SANDBOX
 		);
 		expect(sandboxCall).toBeDefined();
