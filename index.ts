@@ -8,10 +8,10 @@ dotenv.config({ override: true });
 
 import Fastify from 'fastify';
 import qs from 'querystring';
-import { eventClient, messageClient, tsgEventClient, webClient } from './lib/slack';
+import { eventClient, messageClient, tsgEventClient, webClient } from './lib/slack.js';
 
 import yargs from 'yargs';
-import logger from './lib/logger';
+import logger from './lib/logger.js';
 
 import fastifyExpress from '@fastify/express';
 import fastifyFormbody from '@fastify/formbody';
@@ -22,8 +22,8 @@ import { throttle, uniq } from 'lodash';
 import { RequestHandler } from 'express-serve-static-core';
 import { inspect } from 'util';
 import concat from 'concat-stream';
-import { getAuthorityLabel } from './lib/slackUtils';
-import { closeDuplicateEventChecker } from './lib/eventDeduplication';
+import { getAuthorityLabel } from './lib/slackUtils.js';
+import { closeDuplicateEventChecker } from './lib/eventDeduplication.js';
 
 const log = logger.child({ bot: 'index' });
 
@@ -246,7 +246,7 @@ eventClient.on('error', (error) => {
 	}, 0.5 * 1000);
 
 	await Promise.all(plugins.map(async (name) => {
-		const plugin = await import(`./${name}`);
+		const plugin = await import(`./${name}/index.js`);
 		if (typeof plugin === 'function') {
 			await plugin({ webClient, eventClient: tsgEventClient, messageClient });
 		}

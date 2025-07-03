@@ -14,8 +14,9 @@
   ],
   "compilerOptions": {
     "target": "ESNext",
-    "module": "CommonJS",
+    "module": "ESNext",
     "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
     "noImplicitAny": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,

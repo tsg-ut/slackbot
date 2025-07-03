@@ -1,20 +1,24 @@
-const assert = require('assert');
-const fs = require('fs');
-const path = require('path');
-const querystring = require('querystring');
-const {promisify} = require('util');
-const axios = require('axios');
-const download = require('download');
-const {hiraganize} = require('japanese');
-const get = require('lodash/get');
-const last = require('lodash/last');
-const shuffle = require('lodash/shuffle');
-const moment = require('moment');
-const {default: logger} = require('../lib/logger.ts');
+import assert from 'assert';
+import fs from 'fs';
+import path from 'path';
+import querystring from 'querystring';
+import {promisify} from 'util';
+import axios from 'axios';
+import download from 'download';
+import {hiraganize} from 'japanese';
+import get from 'lodash/get.js';
+import last from 'lodash/last.js';
+import shuffle from 'lodash/shuffle.js';
+import moment from 'moment';
+import logger from '../lib/logger.js';
+import {fileURLToPath} from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const log = logger.child({bot: 'tahoiya'});
 
-module.exports.getPageTitle = (url) => {
+export const getPageTitle = (url) => {
 	const urlTitle = decodeURI(url.match(/([^/]+)$/)[1]);
 
 	if (url.startsWith('https://ja.wikipedia.org')) {
@@ -46,7 +50,7 @@ module.exports.getPageTitle = (url) => {
 	return `${urlTitle} - ニコニコ大百科`;
 };
 
-module.exports.getWordUrl = (word, source, id) => {
+export const getWordUrl = (word, source, id) => {
 	if (source === 'wikipedia') {
 		return `https://ja.wikipedia.org/wiki/${encodeURIComponent(word)}`;
 	}
@@ -75,7 +79,7 @@ module.exports.getWordUrl = (word, source, id) => {
 	return `http://dic.nicovideo.jp/a/${encodeURIComponent(word)}`;
 };
 
-module.exports.getIconUrl = (source) => {
+export const getIconUrl = (source) => {
 	if (source === 'wikipedia') {
 		return 'https://ja.wikipedia.org/static/favicon/wikipedia.ico';
 	}
@@ -104,7 +108,7 @@ module.exports.getIconUrl = (source) => {
 	return 'http://dic.nicovideo.jp/favicon.ico';
 };
 
-module.exports.getTimeLink = (time) => {
+export const getTimeLink = (time) => {
 	const text = moment(time).utcOffset('+0900').format('HH:mm:ss');
 	const url = `https://www.timeanddate.com/countdown/generic?${querystring.stringify({
 		iso: moment(time).utcOffset('+0900').format('YYYYMMDDTHHmmss'),
@@ -130,9 +134,9 @@ const normalizeMeaning = (input) => {
 	return meaning.trim();
 };
 
-module.exports.normalizeMeaning = normalizeMeaning;
+export const normalizeMeaning = normalizeMeaning;
 
-module.exports.getMeaning = async ([word, , source, rawMeaning]) => {
+export const getMeaning = async ([word, , source, rawMeaning]) => {
 	if (source !== 'wikipedia' && source !== 'wiktionary') {
 		return rawMeaning;
 	}
@@ -213,7 +217,7 @@ module.exports.getMeaning = async ([word, , source, rawMeaning]) => {
 	return meaning;
 };
 
-module.exports.getCandidateWords = async ({min = 3, max = 7} = {}) => {
+export const getCandidateWords = async ({min = 3, max = 7} = {}) => {
 	const [
 		wikipediaText,
 		wiktionaryText,

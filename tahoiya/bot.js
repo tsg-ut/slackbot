@@ -1,9 +1,9 @@
-const assert = require('assert');
-const path = require('path');
-const concatStream = require('concat-stream');
-const Docker = require('dockerode');
-const download = require('download');
-const {hiraganize} = require('japanese');
+import assert from 'assert';
+import path from 'path';
+import concatStream from 'concat-stream';
+import Docker from 'dockerode';
+import download from 'download';
+import {hiraganize} from 'japanese';
 
 const docker = new Docker();
 
@@ -53,7 +53,7 @@ const normalizeBrackets = async (text) => {
 	return newChars.join('');
 };
 
-module.exports.getResult = async (rawInput, modelName) => {
+export const getResult = async (rawInput, modelName) => {
 	assert(modelName === 'tahoiyabot-01' || modelName === 'tahoiyabot-02');
 	let stdoutWriter = null;
 	const input = hiraganize(rawInput).replace(/[^\p{Script=Hiragana}ー]/gu, '');

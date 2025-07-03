@@ -1,33 +1,37 @@
-const assert = require('assert');
-const fs = require('fs');
-const path = require('path');
-const {promisify} = require('util');
-const axios = require('axios');
-const {stripIndent} = require('common-tags');
-const levenshtein = require('fast-levenshtein');
-const {hiraganize} = require('japanese');
-const get = require('lodash/get');
-const maxBy = require('lodash/maxBy');
-const minBy = require('lodash/minBy');
-const random = require('lodash/random');
-const sample = require('lodash/sample');
-const sampleSize = require('lodash/sampleSize');
-const shuffle = require('lodash/shuffle');
-const sum = require('lodash/sum');
-const nodePersist = require('node-persist');
-const schedule = require('node-schedule');
-const {default: Queue} = require('p-queue');
-const rouge = require('rouge');
-const sql = require('sql-template-strings');
-const sqlite = require('sqlite');
-const sqlite3 = require('sqlite3');
-const {unlock, increment} = require('../achievements');
-const getReading = require('../lib/getReading.js');
+import assert from 'assert';
+import fs from 'fs';
+import path from 'path';
+import {promisify} from 'util';
+import axios from 'axios';
+import {stripIndent} from 'common-tags';
+import levenshtein from 'fast-levenshtein';
+import {hiraganize} from 'japanese';
+import get from 'lodash/get.js';
+import maxBy from 'lodash/maxBy.js';
+import minBy from 'lodash/minBy.js';
+import random from 'lodash/random.js';
+import sample from 'lodash/sample.js';
+import sampleSize from 'lodash/sampleSize.js';
+import shuffle from 'lodash/shuffle.js';
+import sum from 'lodash/sum.js';
+import nodePersist from 'node-persist';
+import schedule from 'node-schedule';
+import Queue from 'p-queue';
+import rouge from 'rouge';
+import sql from 'sql-template-strings';
+import * as sqlite from 'sqlite';
+import sqlite3 from 'sqlite3';
+import {unlock, increment} from '../achievements/index.js';
+import getReading from '../lib/getReading.js';
+import {fileURLToPath} from 'url';
 
-const {default: logger} = require('../lib/logger.ts');
-const bot = require('./bot.js');
-const gist = require('./gist.js');
-const {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+import logger from '../lib/logger.js';
+import {getResult} from './bot.js';
+import {serialize} from './gist.js';
+import {
 	getPageTitle,
 	getWordUrl,
 	getIconUrl,
@@ -35,7 +39,7 @@ const {
 	getMeaning,
 	getCandidateWords,
 	normalizeMeaning,
-} = require('./lib.js');
+} from './lib.js';
 
 const log = logger.child({bot: 'tahoiya'});
 
@@ -51,11 +55,10 @@ const queue = new Queue({concurrency: 1});
 
 const transaction = (func) => queue.add(func);
 
-module.exports = async ({eventClient, webClient: slack}) => {
-	const state = (() => {
+export default async ({eventClient, webClient: slack}) => {
+	const state = await (async () => {
 		try {
-			// eslint-disable-next-line global-require
-			const savedState = require('./state.json');
+			const savedState = await import('./state.json', {assert: {type: 'json'}}).then(module => module.default);
 			if (savedState.endThisPhase !== null) {
 				assert(savedState.phase !== 'waiting');
 				const difftime = savedState.endThisPhase - Date.now();
@@ -261,7 +264,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 
 		battles.push(newBattle);
 
-		const markdown = gist.serialize({battles, offset}, members);
+		const markdown = serialize({battles, offset}, members);
 
 		if (process.env.NODE_ENV !== 'production') {
 			await promisify(fs.writeFile)(path.join(__dirname, 'tahoiya-0-logs.md'), markdown);
@@ -817,11 +820,11 @@ module.exports = async ({eventClient, webClient: slack}) => {
 		`);
 
 		if (!state.meanings.has('tahoiyabot-01')) {
-			await bot.getResult(state.theme.ruby, 'tahoiyabot-01').then(onBotResult);
+			await getResult(state.theme.ruby, 'tahoiyabot-01').then(onBotResult);
 		}
 
 		if (!state.meanings.has('tahoiyabot-02')) {
-			await bot.getResult(state.theme.ruby, 'tahoiyabot-02').then(onBotResult);
+			await getResult(state.theme.ruby, 'tahoiyabot-02').then(onBotResult);
 		}
 	};
 
@@ -876,11 +879,11 @@ module.exports = async ({eventClient, webClient: slack}) => {
 
 
 					if (!state.meanings.has('tahoiyabot-01')) {
-						await bot.getResult(ruby, 'tahoiyabot-01').then(onBotResult);
+						await getResult(ruby, 'tahoiyabot-01').then(onBotResult);
 					}
 
 					if (!state.meanings.has('tahoiyabot-02')) {
-						await bot.getResult(ruby, 'tahoiyabot-02').then(onBotResult);
+						await getResult(ruby, 'tahoiyabot-02').then(onBotResult);
 					}
 
 					return;
@@ -933,7 +936,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 							let data = await storage.getItem(key);
 							if (!data) {
 								try {
-									data = await bot.getResult(ruby, modelData[0]);
+									data = await getResult(ruby, modelData[0]);
 									await storage.setItem(key, data);
 								} catch (error) {
 									failed(error);

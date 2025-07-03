@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "index.ts",
   "scripts": {
     "install": "cd functions && npm install",
@@ -10,7 +11,7 @@
     "start": "pm2 start ecosystem.config.js",
     "stop": "pm2 stop ecosystem.config.js",
     "restart": "pm2 restart ecosystem.config.js",
-    "dev": "ts-node-dev --respawn --rs --ignore-watch \".json$\" index.ts",
+    "dev": "tsx watch --clear-screen=false index.ts",
     "lint": "sed \"s/\\/.\\+//g\" CODEOWNERS | grep \"^[a-z]\" | awk '{print $1}' | xargs -n 1 eslint --ext js,ts",
     "fix": "npm run lint -- --fix",
     "test": "jest --verbose --detectOpenHandles --forceExit",
@@ -145,6 +146,7 @@
     "trie-prefix-tree": "^1.5.1",
     "ts-node": "^10.9.1",
     "ts-trueskill": "^4.1.0",
+    "tsx": "^4.19.1",
     "twitter": "^1.7.1",
     "typescript": "^5.8.3",
     "utf-8-validate": "^5.0.9",
@@ -169,7 +171,6 @@
     "jest": "^29.7.0",
     "mock-cloud-firestore": "^0.12.0",
     "prettier-eslint-cli": "^7.1.0",
-    "ts-jest": "^29.0.0",
-    "ts-node-dev": "^2.0.0"
+    "ts-jest": "^29.0.0"
   }
 }

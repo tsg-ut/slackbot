@@ -1,9 +1,9 @@
-const moment = require('moment');
-const {
+import moment from 'moment';
+import {
 	getPageTitle,
-} = require('./lib.js');
+} from './lib.js';
 
-module.exports.serialize = ({battles, offset}, members) => {
+export const serialize = ({battles, offset}, members) => {
 	const entries = [];
 
 	const getMemberName = (user) => {
@@ -73,6 +73,6 @@ module.exports.serialize = ({battles, offset}, members) => {
 (async () => {
 	const data = await download('https://gist.github.com/hakatashi/a98baf571a8a448699db08fd29819b8f/raw/3ff758c4d5e2d472a6fe450aa19c0be9fba18e57/tahoiya-1-data.json');
 	const {members} = require('../users.json');
-	logger.info(module.exports.serialize(JSON.parse(data), members));
+	logger.info(serialize(JSON.parse(data), members));
 })();
 */

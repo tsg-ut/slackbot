@@ -5,10 +5,14 @@ import sql from 'sql-template-strings';
 import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
-import {TeamEventClient} from './slackEventClient';
+import {fileURLToPath} from 'url';
+import {TeamEventClient} from './slackEventClient.js';
 import type {EventEmitter} from 'events';
-import {Deferred} from './utils';
-import {Token} from '../oauth/tokens';
+import {Deferred} from './utils.js';
+import {Token} from '../oauth/tokens.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export interface SlackInterface {
 	webClient: WebClient;

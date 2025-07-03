@@ -1,4 +1,4 @@
-module.exports = class Blocker {
+export default class Blocker {
 	constructor() {
 		this.blocks = new Set();
 		this.waitPromise = null;
@@ -36,4 +36,4 @@ module.exports = class Blocker {
 
 		this.waitPromise = callback();
 	}
-};
+}
