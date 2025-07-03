@@ -140,7 +140,7 @@
     "snapsvg": "^0.5.1",
     "sql-template-strings": "^2.2.2",
     "sqlite": "^4.1.2",
-    "sqlite3": "^5.1.5",
+    "sqlite3": "^5.1.7",
     "suncalc": "^1.9.0",
     "trie-prefix-tree": "^1.5.1",
     "ts-node": "^10.9.1",
