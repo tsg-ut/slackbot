@@ -152,7 +152,7 @@ export default async (slackClients: SlackInterface) => {
 				icon_emoji: 'crystal_ball',
 				text: `${messageUrl}\n\n${resultIntro}${result}`,
 				thread_ts: threadId,
-				reply_broadcast: true,
+				reply_broadcast: event.item.channel === process.env.CHANNEL_SIG_DREAM,
 				unfurl_links: true,
 				unfurl_media: true,
 			});
