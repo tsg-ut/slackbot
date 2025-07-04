@@ -1,35 +1,48 @@
 /* eslint-disable import/imports-first, import/first */
 /* eslint-env jest */
 
-jest.mock('../lib/slackUtils');
-jest.mock('../lib/state');
-jest.mock('os', () => ({
-	hostname: () => 'test-hostname',
-	release: () => 'test-release',
-}));
-jest.mock('crypto', () => ({
-	randomUUID: () => 'test-uuid',
-}));
-
-
+import crypto from 'crypto';
 import type {MockedStateInterface} from '../lib/__mocks__/state';
 import Slack from '../lib/slackMock';
 import State from '../lib/state';
 import {HelloWorld, type StateObj} from './HelloWorld';
 
-let slack: Slack = null;
-let helloWorld: HelloWorld = null;
+jest.mock('../lib/slackUtils');
+jest.mock('../lib/state');
+jest.mock('os', () => ({
+	hostname: jest.fn(() => 'test-hostname'),
+	release: jest.fn(() => 'test-release'),
+}));
+jest.mock('crypto', () => ({
+	randomUUID: jest.fn(() => 'test-uuid'),
+}));
 
 const MockedState = State as MockedStateInterface<StateObj>;
-
-beforeEach(async () => {
-	slack = new Slack();
-	process.env.CHANNEL_SANDBOX = slack.fakeChannel;
-
-	helloWorld = await HelloWorld.create(slack);
-});
+const mockedCrypto = jest.mocked(crypto);
 
 describe('helloworld', () => {
+	let slack: Slack = null;
+	let helloWorld: HelloWorld = null;
+
+	beforeEach(async () => {
+		jest.clearAllMocks();
+
+		slack = new Slack();
+		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
+
+		helloWorld = await HelloWorld.create(slack);
+	});
+
+	it('initializes correctly', () => {
+		expect(mockedCrypto.randomUUID).toHaveBeenCalledTimes(1);
+		expect(mockedCrypto.randomUUID.mock.calls[0]).toHaveLength(0);
+
+		const state = MockedState.mocks.get('helloworld');
+		expect(state.counter).toBe(0);
+		expect(state.uuid).toBe('test-uuid');
+		expect(state.latestStatusMessage).toBe(null);
+	});
+
 	it('responds to "Hello"', async () => {
 		const response = await slack.getResponseTo('Hello');
 		expect(response).toEqual({
