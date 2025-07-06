@@ -3,6 +3,8 @@ import { Mutex } from 'async-mutex';
 import { increment } from '../achievements';
 import { AteQuiz, typicalMessageTextsGenerator } from '../atequiz';
 import { SlackInterface } from '../lib/slack';
+import { createCanvas } from 'canvas';
+import * as cloudinary from 'cloudinary';
 
 const mutex = new Mutex();
 
@@ -12,45 +14,46 @@ interface ResistorColor {
 	name: string;
 	value: number;
 	emoji: string;
+	color: string; // RGB color for image generation
 }
 
 const resistorColors: ResistorColor[] = [
-	{ name: '黒', value: 0, emoji: '⚫' },
-	{ name: '茶', value: 1, emoji: '🟤' },
-	{ name: '赤', value: 2, emoji: '🔴' },
-	{ name: '橙', value: 3, emoji: '🟠' },
-	{ name: '黄', value: 4, emoji: '🟡' },
-	{ name: '緑', value: 5, emoji: '🟢' },
-	{ name: '青', value: 6, emoji: '🔵' },
-	{ name: '紫', value: 7, emoji: '🟣' },
-	{ name: '灰', value: 8, emoji: '🩶' },
-	{ name: '白', value: 9, emoji: '⚪' },
+	{ name: 'Black', value: 0, emoji: '⚫', color: '#000000' },
+	{ name: 'Brown', value: 1, emoji: '🟤', color: '#8B4513' },
+	{ name: 'Red', value: 2, emoji: '🔴', color: '#FF0000' },
+	{ name: 'Orange', value: 3, emoji: '🟠', color: '#FFA500' },
+	{ name: 'Yellow', value: 4, emoji: '🟡', color: '#FFFF00' },
+	{ name: 'Green', value: 5, emoji: '🟢', color: '#008000' },
+	{ name: 'Blue', value: 6, emoji: '🔵', color: '#0000FF' },
+	{ name: 'Violet', value: 7, emoji: '🟣', color: '#800080' },
+	{ name: 'Gray', value: 8, emoji: '🩶', color: '#808080' },
+	{ name: 'White', value: 9, emoji: '⚪', color: '#FFFFFF' },
 ];
 
 const multiplierColors: ResistorColor[] = [
-	{ name: '黒', value: 1, emoji: '⚫' },
-	{ name: '茶', value: 10, emoji: '🟤' },
-	{ name: '赤', value: 100, emoji: '🔴' },
-	{ name: '橙', value: 1000, emoji: '🟠' },
-	{ name: '黄', value: 10000, emoji: '🟡' },
-	{ name: '緑', value: 100000, emoji: '🟢' },
-	{ name: '青', value: 1000000, emoji: '🔵' },
-	{ name: '紫', value: 10000000, emoji: '🟣' },
-	{ name: '灰', value: 100000000, emoji: '🩶' },
-	{ name: '白', value: 1000000000, emoji: '⚪' },
-	{ name: '金', value: 0.1, emoji: '🟨' },
-	{ name: '銀', value: 0.01, emoji: '🤍' },
+	{ name: 'Black', value: 1, emoji: '⚫', color: '#000000' },
+	{ name: 'Brown', value: 10, emoji: '🟤', color: '#8B4513' },
+	{ name: 'Red', value: 100, emoji: '🔴', color: '#FF0000' },
+	{ name: 'Orange', value: 1000, emoji: '🟠', color: '#FFA500' },
+	{ name: 'Yellow', value: 10000, emoji: '🟡', color: '#FFFF00' },
+	{ name: 'Green', value: 100000, emoji: '🟢', color: '#008000' },
+	{ name: 'Blue', value: 1000000, emoji: '🔵', color: '#0000FF' },
+	{ name: 'Violet', value: 10000000, emoji: '🟣', color: '#800080' },
+	{ name: 'Gray', value: 100000000, emoji: '🩶', color: '#808080' },
+	{ name: 'White', value: 1000000000, emoji: '⚪', color: '#FFFFFF' },
+	{ name: 'Gold', value: 0.1, emoji: '🟨', color: '#FFD700' },
+	{ name: 'Silver', value: 0.01, emoji: '🤍', color: '#C0C0C0' },
 ];
 
 const toleranceColors: ResistorColor[] = [
-	{ name: '茶', value: 1, emoji: '🟤' },
-	{ name: '赤', value: 2, emoji: '🔴' },
-	{ name: '緑', value: 0.5, emoji: '🟢' },
-	{ name: '青', value: 0.25, emoji: '🔵' },
-	{ name: '紫', value: 0.1, emoji: '🟣' },
-	{ name: '灰', value: 0.05, emoji: '🩶' },
-	{ name: '金', value: 5, emoji: '🟨' },
-	{ name: '銀', value: 10, emoji: '🤍' },
+	{ name: 'Brown', value: 1, emoji: '🟤', color: '#8B4513' },
+	{ name: 'Red', value: 2, emoji: '🔴', color: '#FF0000' },
+	{ name: 'Green', value: 0.5, emoji: '🟢', color: '#008000' },
+	{ name: 'Blue', value: 0.25, emoji: '🔵', color: '#0000FF' },
+	{ name: 'Violet', value: 0.1, emoji: '🟣', color: '#800080' },
+	{ name: 'Gray', value: 0.05, emoji: '🩶', color: '#808080' },
+	{ name: 'Gold', value: 5, emoji: '🟨', color: '#FFD700' },
+	{ name: 'Silver', value: 10, emoji: '🤍', color: '#C0C0C0' },
 ];
 
 // E24 series base values (1.0 to 9.1)
@@ -59,7 +62,121 @@ const e24Values = [
 	3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1
 ];
 
-const generateResistorProblem = (difficulty: Difficulty = 'easy') => {
+// Image generation functions
+const uploadImageToCloudinary = async (imageBuffer: Buffer): Promise<string> => {
+	const response = await new Promise<any>((resolve, reject) => {
+		cloudinary.v2.uploader.upload_stream(
+			{ resource_type: 'image' },
+			(error: any, result: any) => {
+				if (error) {
+					reject(error);
+				} else {
+					resolve(result);
+				}
+			}
+		).end(imageBuffer);
+	});
+	return response.secure_url;
+};
+
+const generateResistorImage = async (
+	firstDigit: ResistorColor,
+	secondDigit: ResistorColor, 
+	multiplier: ResistorColor,
+	tolerance?: ResistorColor
+): Promise<string> => {
+	const canvas = createCanvas(400, 150);
+	const ctx = canvas.getContext('2d');
+	
+	// Clear background
+	ctx.fillStyle = '#F0F0F0';
+	ctx.fillRect(0, 0, 400, 150);
+	
+	// Draw resistor body
+	const bodyStartX = 50;
+	const bodyEndX = 350;
+	const bodyY = 60;
+	const bodyHeight = 30;
+	
+	// Draw resistor cylinder
+	ctx.fillStyle = '#D2B48C'; // tan color for resistor body
+	ctx.fillRect(bodyStartX, bodyY, bodyEndX - bodyStartX, bodyHeight);
+	
+	// Draw leads (wires)
+	ctx.strokeStyle = '#C0C0C0';
+	ctx.lineWidth = 3;
+	ctx.beginPath();
+	ctx.moveTo(20, bodyY + bodyHeight / 2);
+	ctx.lineTo(bodyStartX, bodyY + bodyHeight / 2);
+	ctx.stroke();
+	
+	ctx.beginPath();
+	ctx.moveTo(bodyEndX, bodyY + bodyHeight / 2);
+	ctx.lineTo(380, bodyY + bodyHeight / 2);
+	ctx.stroke();
+	
+	// Draw color bands
+	const bandWidth = 20;
+	const bandSpacing = 40;
+	const startX = bodyStartX + 30;
+	
+	// First digit band
+	ctx.fillStyle = firstDigit.color;
+	ctx.fillRect(startX, bodyY, bandWidth, bodyHeight);
+	
+	// Second digit band  
+	ctx.fillStyle = secondDigit.color;
+	ctx.fillRect(startX + bandSpacing, bodyY, bandWidth, bodyHeight);
+	
+	// Multiplier band
+	ctx.fillStyle = multiplier.color;
+	ctx.fillRect(startX + bandSpacing * 2, bodyY, bandWidth, bodyHeight);
+	
+	// Tolerance band (if hard mode)
+	if (tolerance) {
+		ctx.fillStyle = tolerance.color;
+		ctx.fillRect(startX + bandSpacing * 3 + 20, bodyY, bandWidth, bodyHeight);
+	}
+	
+	// Add black outlines to bands for better visibility
+	ctx.strokeStyle = '#000000';
+	ctx.lineWidth = 1;
+	
+	// Outline first digit
+	ctx.strokeRect(startX, bodyY, bandWidth, bodyHeight);
+	
+	// Outline second digit
+	ctx.strokeRect(startX + bandSpacing, bodyY, bandWidth, bodyHeight);
+	
+	// Outline multiplier
+	ctx.strokeRect(startX + bandSpacing * 2, bodyY, bandWidth, bodyHeight);
+	
+	// Outline tolerance (if exists)
+	if (tolerance) {
+		ctx.strokeRect(startX + bandSpacing * 3 + 20, bodyY, bandWidth, bodyHeight);
+	}
+	
+	// Add labels below for better understanding
+	ctx.fillStyle = '#000000';
+	ctx.font = '12px Arial';
+	ctx.textAlign = 'center';
+	
+	ctx.fillText('1st', startX + bandWidth / 2, bodyY + bodyHeight + 20);
+	ctx.fillText('2nd', startX + bandSpacing + bandWidth / 2, bodyY + bodyHeight + 20);
+	ctx.fillText('Multi', startX + bandSpacing * 2 + bandWidth / 2, bodyY + bodyHeight + 20);
+	
+	if (tolerance) {
+		ctx.fillText('Tol', startX + bandSpacing * 3 + 20 + bandWidth / 2, bodyY + bodyHeight + 20);
+	}
+	
+	// Convert canvas to buffer
+	const buffer = canvas.toBuffer('image/png');
+	
+	// Upload to cloudinary
+	return await uploadImageToCloudinary(buffer);
+};
+
+const generateResistorProblem = async (difficulty: Difficulty = 'easy') => {
 	// Select E24 value and appropriate multiplier
 	const e24Value = sample(e24Values);
 	const e24String = e24Value.toString().replace('.', '');
@@ -134,7 +251,7 @@ const generateResistorProblem = (difficulty: Difficulty = 'easy') => {
 			}
 		}
 		
-		return [...new Set(answers)]; // Remove duplicates
+		return Array.from(new Set(answers)); // Remove duplicates
 	};
 	
 	const formatResistance = (value: number): string => {
@@ -150,6 +267,15 @@ const generateResistorProblem = (difficulty: Difficulty = 'easy') => {
 	};
 	
 	const resistanceText = formatResistance(resistance);
+	
+	// Generate resistor image
+	const imageUrl = await generateResistorImage(
+		firstDigit,
+		secondDigit,
+		multiplier,
+		difficulty === 'hard' ? tolerance : undefined
+	);
+	
 	const colorCode = difficulty === 'hard' 
 		? `${firstDigit.emoji}${secondDigit.emoji}${multiplier.emoji}${tolerance.emoji}`
 		: `${firstDigit.emoji}${secondDigit.emoji}${multiplier.emoji}`;
@@ -158,6 +284,7 @@ const generateResistorProblem = (difficulty: Difficulty = 'easy') => {
 	
 	return {
 		colorCode,
+		imageUrl,
 		resistance,
 		resistanceText,
 		correctAnswers,
@@ -200,7 +327,7 @@ export default (slackClients: SlackInterface) => {
 			mutex.runExclusive(async () => {
 				const difficultyMatch = text.match(/^抵抗器当てクイズ( (easy|hard))?$/);
 				const difficulty: Difficulty = (difficultyMatch?.[2] as Difficulty) || 'easy';
-				const problem = generateResistorProblem(difficulty);
+				const problem = await generateResistorProblem(difficulty);
 				
 				const toleranceHint = difficulty === 'hard' 
 					? `\n4桁目: ${problem.colors.tolerance.name} (±${problem.colors.tolerance.value}%)`
@@ -268,8 +395,8 @@ export default (slackClients: SlackInterface) => {
 					: '色の順番: 1桁目 → 2桁目 → 倍率';
 				
 				const problemText = difficulty === 'hard'
-					? `この抵抗器の抵抗値は何Ωでしょう？ (${difficulty}モード)\n${problem.colorCode}`
-					: `この抵抗器の抵抗値は何Ωでしょう？ (${difficulty}モード)\n${problem.colorCode}`;
+					? `この抵抗器の抵抗値は何Ωでしょう？ (${difficulty}モード)`
+					: `この抵抗器の抵抗値は何Ωでしょう？ (${difficulty}モード)`;
 
 				const ateQuiz = new AteQuiz(slackClients, {
 					problemMessage: {
@@ -282,6 +409,11 @@ export default (slackClients: SlackInterface) => {
 									type: 'mrkdwn',
 									text: problemText,
 								},
+							},
+							{
+								type: 'image',
+								image_url: problem.imageUrl,
+								alt_text: '抵抗器の色帯',
 							},
 							{
 								type: 'context',
@@ -315,9 +447,21 @@ export default (slackClients: SlackInterface) => {
 								type: 'section',
 								text: {
 									type: 'mrkdwn',
+									text: `答えは${problem.resistanceText}だよ！`,
+								},
+							},
+							{
+								type: 'image',
+								image_url: problem.imageUrl,
+								alt_text: '抵抗器の色帯',
+							},
+							{
+								type: 'section',
+								text: {
+									type: 'mrkdwn',
 									text: difficulty === 'hard'
-										? `答えは${problem.resistanceText}だよ！\n${problem.colorCode}\n\n計算式:\n${problem.colors.first.name}${problem.colors.first.emoji} (${problem.colors.first.value}) × 10 + ${problem.colors.second.name}${problem.colors.second.emoji} (${problem.colors.second.value}) = ${problem.colors.first.value * 10 + problem.colors.second.value}\n${problem.colors.first.value * 10 + problem.colors.second.value} × ${problem.colors.multiplier.name}${problem.colors.multiplier.emoji} (×${problem.colors.multiplier.value}) = ${problem.resistance}Ω\n許容差: ${problem.colors.tolerance.name}${problem.colors.tolerance.emoji} (±${problem.colors.tolerance.value}%)`
-										: `答えは${problem.resistanceText}だよ！\n${problem.colorCode}\n\n計算式:\n${problem.colors.first.name}${problem.colors.first.emoji} (${problem.colors.first.value}) × 10 + ${problem.colors.second.name}${problem.colors.second.emoji} (${problem.colors.second.value}) = ${problem.colors.first.value * 10 + problem.colors.second.value}\n${problem.colors.first.value * 10 + problem.colors.second.value} × ${problem.colors.multiplier.name}${problem.colors.multiplier.emoji} (×${problem.colors.multiplier.value}) = ${problem.resistance}Ω`,
+										? `計算式:\n${problem.colors.first.name} (${problem.colors.first.value}) × 10 + ${problem.colors.second.name} (${problem.colors.second.value}) = ${problem.colors.first.value * 10 + problem.colors.second.value}\n${problem.colors.first.value * 10 + problem.colors.second.value} × ${problem.colors.multiplier.name} (×${problem.colors.multiplier.value}) = ${problem.resistance}Ω\n許容差: ${problem.colors.tolerance.name} (±${problem.colors.tolerance.value}%)`
+										: `計算式:\n${problem.colors.first.name} (${problem.colors.first.value}) × 10 + ${problem.colors.second.name} (${problem.colors.second.value}) = ${problem.colors.first.value * 10 + problem.colors.second.value}\n${problem.colors.first.value * 10 + problem.colors.second.value} × ${problem.colors.multiplier.name} (×${problem.colors.multiplier.value}) = ${problem.resistance}Ω`,
 								},
 							},
 						],

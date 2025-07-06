@@ -20,25 +20,33 @@ describe('response to /^抵抗器当てクイズ( (easy|hard))?$/', () => {
     const response = await slack.getResponseTo('抵抗器当てクイズ easy');
     expect('username' in response && response.username).toBe('抵抗器当てクイズ (by Claude Code)');
     expect(response.text).toContain('この抵抗器の抵抗値は何Ωでしょう？ (easyモード)');
-    expect(response.text).toMatch(/[⚫🟤🔴🟠🟡🟢🔵🟣🩶⚪🟨🤍]{3}$/);
+    expect(response.blocks).toBeDefined();
+    expect(response.blocks.some((block: any) => block.type === 'image')).toBe(true);
   });
 
   it('starts hard game by "抵抗器当てクイズ hard"', async () => {
     const response = await slack.getResponseTo('抵抗器当てクイズ hard');
     expect('username' in response && response.username).toBe('抵抗器当てクイズ (by Claude Code)');
     expect(response.text).toContain('この抵抗器の抵抗値は何Ωでしょう？ (hardモード)');
-    expect(response.text).toMatch(/[⚫🟤🔴🟠🟡🟢🔵🟣🩶⚪🟨🤍]{4}$/);
+    expect(response.blocks).toBeDefined();
+    expect(response.blocks.some((block: any) => block.type === 'image')).toBe(true);
   });
 
-  it('shows 3-band color code in easy mode', async () => {
+  it('shows resistor image in easy mode', async () => {
     const response = await slack.getResponseTo('抵抗器当てクイズ easy');
-    expect(response.text).toMatch(/[⚫🟤🔴🟠🟡🟢🔵🟣🩶⚪🟨🤍]{3}$/);
+    expect(response.blocks).toBeDefined();
+    const imageBlock = response.blocks.find((block: any) => block.type === 'image');
+    expect(imageBlock).toBeDefined();
+    expect(imageBlock.alt_text).toBe('抵抗器の色帯');
     expect(response.text).toContain('色の順番: 1桁目 → 2桁目 → 倍率');
   });
 
-  it('shows 4-band color code in hard mode', async () => {
+  it('shows resistor image in hard mode', async () => {
     const response = await slack.getResponseTo('抵抗器当てクイズ hard');
-    expect(response.text).toMatch(/[⚫🟤🔴🟠🟡🟢🔵🟣🩶⚪🟨🤍]{4}$/);
+    expect(response.blocks).toBeDefined();
+    const imageBlock = response.blocks.find((block: any) => block.type === 'image');
+    expect(imageBlock).toBeDefined();
+    expect(imageBlock.alt_text).toBe('抵抗器の色帯');
     expect(response.text).toContain('色の順番: 1桁目 → 2桁目 → 倍率 → 許容差');
   });
 
