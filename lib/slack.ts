@@ -6,6 +6,7 @@ import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import {TeamEventClient} from './slackEventClient';
+import {EventClientWrapper} from './eventClientWrapper';
 import type {EventEmitter} from 'events';
 import {Deferred} from './utils';
 import {Token} from '../oauth/tokens';
@@ -42,12 +43,9 @@ export interface SlackOauthEndpoint {
 }
 
 export const webClient = new WebClient(process.env.SLACK_TOKEN);
-export const eventClient = createEventAdapter(process.env.SIGNING_SECRET, {includeBody: true});
+export const eventClient = new EventClientWrapper(createEventAdapter(process.env.SIGNING_SECRET, {includeBody: true}));
 export const messageClient = createMessageAdapter(process.env.SIGNING_SECRET);
-export const tsgEventClient = TeamEventClient.create(
-	eventClient,
-	process.env.TEAM_ID,
-);
+export const tsgEventClient = new TeamEventClient(eventClient, process.env.TEAM_ID);
 
 
 const loadTokensDeferred = new Deferred<Token[]>();
