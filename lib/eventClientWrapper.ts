@@ -8,7 +8,7 @@ const log = logger.child({ bot: 'EventClientWrapper' });
 // Slackのイベント重複除去を行うEventClientのラッパー
 export class EventClientWrapper extends EventEmitter {
 	readonly #eventAdapter: SlackEventAdapter;
-	#registeredEvents: Set<string> = new Set();
+	readonly #registeredEvents: Set<string> = new Set();
 	expressMiddleware: typeof SlackEventAdapter.prototype.expressMiddleware;
 
 	constructor(eventAdapter: SlackEventAdapter) {
