@@ -49,7 +49,7 @@ export default class SlackCache {
 
 	constructor(config: Config) {
 		this.config = config;
-		const teamEventClient = TeamEventClient.create(this.config.eventClient, this.config.token.team_id);
+		const teamEventClient = new TeamEventClient(this.config.eventClient, this.config.token.team_id);
 
 		{
 			// user cache

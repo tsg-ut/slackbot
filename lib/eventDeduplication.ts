@@ -4,7 +4,7 @@ import {Mutex} from 'async-mutex';
 
 const log = logger.child({bot: 'eventDeduplication'});
 
-class DuplicateEventChecker {
+export class DuplicateEventChecker {
 	#client: RedisClientType | null = null;
 	#connected = false;
 	#mutex: Mutex = new Mutex();
@@ -53,12 +53,15 @@ class DuplicateEventChecker {
 			await this.ensureConnected();
 			const key = `slack:event:${eventId}`;
 			const wasAlreadyProcessed = await this.#mutex.runExclusive(async () => {
-				const exists = await this.#client.exists(key);
-				const isProcessed = exists === 1;
-				if (!isProcessed) {
-					await this.#client.setEx(key, 300, 'processed');
-				}
-				return isProcessed;
+				// Returns 'OK' if key was set (first time), null if key already exists
+				const result = await this.#client.set(key, 'processed', {
+					condition: 'NX', // Only set if not exists
+					expiration: {
+						type: 'EX',
+						value: 300, // 5 minutes
+					},
+				});
+				return result === null;
 			});
 			return wasAlreadyProcessed;
 		} catch (error) {
