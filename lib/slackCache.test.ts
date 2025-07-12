@@ -1,11 +1,5 @@
 import fs from 'fs-extra';
 import path from 'path';
-import type {
-	UsersListArguments,
-	UsersListResponse,
-	EmojiListArguments,
-	EmojiListResponse,
-} from '@slack/web-api';
 import Slack from './slackMock';
 import SlackCache from './slackCache';
 import {conversationsHistory} from './slackPatron';
@@ -16,25 +10,16 @@ jest.mock('./slackPatron', () => ({
 	conversationsReplies: jest.fn(),
 }));
 
+jest.mock('./eventDeduplication', () => ({
+	getDuplicateEventChecker: jest.fn(() => ({
+		markEventAsProcessed: jest.fn().mockResolvedValue(false),
+	})),
+}));
+
 const userA = "USLACKBOT";
 const userB = "U12345678";
 const userC = "U31415926";
 const userD = "UTSGTSGTS";
-
-class WebClientMock {
-	readonly users = {
-		async list(args: UsersListArguments): Promise<UsersListResponse> {
-			const fn = path.join(__dirname, '__testdata__/users.list.json');
-			return await fs.readJson(fn);
-		},
-	};
-	readonly emoji = {
-		async list(args: EmojiListArguments): Promise<EmojiListResponse> {
-			const fn = path.join(__dirname, '__testdata__/emoji.list.json');
-			return await fs.readJson(fn);
-		},
-	};
-}
 
 describe('SlackCache', () => {
 	const teamId = 'T000000';
@@ -62,6 +47,18 @@ describe('SlackCache', () => {
 			}
 			res.messages = res.messages.filter(({ts}: {ts: string}) => ts === args.latest);
 			return res;
+		});
+
+		const mockedUsersList = jest.mocked(slack.webClient.users.list);
+		mockedUsersList.mockImplementation(async (args) => {
+			const fn = path.join(__dirname, '__testdata__/users.list.json');
+			return fs.readJson(fn);
+		});
+
+		const mockedEmojiList = jest.mocked(slack.webClient.emoji.list);
+		mockedEmojiList.mockImplementation(async (args) => {
+			const fn = path.join(__dirname, '__testdata__/emoji.list.json');
+			return fs.readJson(fn);
 		});
 
 		slackCache = new SlackCache({
@@ -97,7 +94,7 @@ describe('SlackCache', () => {
 
 		it('watches team_join', async () => {
 			// NOTE: 適当に作りました、たぶんこんなフォーマットでしょ
-			await emit('team_join', {
+			emit('team_join', {
 				'user': {
 					'id': 'U22222222',
 					'team_id': 'T00000000',
@@ -116,7 +113,7 @@ describe('SlackCache', () => {
 		});
 		it('watches user_change', async () => {
 			// NOTE: 適当に作りました、たぶんこんなフォーマットでしょ２
-			await emit('user_change', {
+			emit('user_change', {
 				'user': {
 					'id': 'U12345678',
 					'team_id': 'T00000000',
@@ -149,7 +146,7 @@ describe('SlackCache', () => {
 		});
 
 		it('watches team_join', async () => {
-			await emit('team_join', {
+			emit('team_join', {
 				"user": {
 					"id": "U22222222",
 					"team_id": "T00000000",
@@ -171,7 +168,7 @@ describe('SlackCache', () => {
 		});
 
 		it('watches user_change', async () => {
-			await emit('user_change', {
+			emit('user_change', {
 				"user": {
 					"id": "U12345678",
 					"team_id": "T00000000",
@@ -198,7 +195,7 @@ describe('SlackCache', () => {
 		});
 
 		it('watches emoji_changed', async () => {
-			await emit('emoji_changed', {
+			emit('emoji_changed', {
 				"subtype": "add",
 				"name": "dot-ojigineko",
 				"value": "https://emoji.slack-edge.com/T00000000/dot-ojigineko/0123456789.png",
@@ -222,48 +219,48 @@ describe('SlackCache', () => {
 			expect(react2).toEqual({});
 		});
 		it('watches reaction_added/deleted', async () => {
-			await emit('reaction_added', {
+			emit('reaction_added', {
 				"item": { "channel": "C00000000", "ts": "1640000000.000000" },
 				"reaction": "ojigineko",
 				"user": userC,
 			}); // history fetch, {ojigineko: [B], slack: [A, B]}
-			await emit('reaction_added', {
+			emit('reaction_added', {
 				"item": { "channel": "C00000000", "ts": "1640000000.000000" },
 				"reaction": "ojigineko",
 				"user": userB,
 			}); // ojigineko: [B] (already reacted)
-			await emit('reaction_added', {
+			emit('reaction_added', {
 				"item": { "channel": "C00000000", "ts": "1640000000.000000" },
 				"reaction": "white_square",
 				"user": userD,
 			}); // white_square: [D]
-			await emit('reaction_added', {
+			emit('reaction_added', {
 				"item": { "channel": "C00000000", "ts": "1640000000.000000" },
 				"reaction": "ojigineko",
 				"user": userA,
 			}); // ojigineko: [B, A]
-			await emit('reaction_removed', {
+			emit('reaction_removed', {
 				"item": { "channel": "C00000000", "ts": "1640000000.000000" },
 				"reaction": "slack",
 				"user": userA,
 			}); // slack: [B]
-			await emit('reaction_added', {
+			emit('reaction_added', {
 				"item": { "channel": "C00000000", "ts": "1640000000.000000" },
 				"reaction": "white_square",
 				"user": userD,
 			}); // white_square: [D] (already reacted)
-			await emit('reaction_removed', {
+			emit('reaction_removed', {
 				"item": { "channel": "C00000000", "ts": "1640000000.000000" },
 				"reaction": "slack",
 				"user": userA,
 			}); // slack: [B] (already removed)
 
-			await emit('reaction_added', {
+			emit('reaction_added', {
 				"item": { "channel": "C00000000", "ts": "1640001000.000000" },
 				"reaction": "dummy",
 				"user": userA,
 			}); // history fetch, {}
-			await emit('reaction_added', {
+			emit('reaction_added', {
 				"item": { "channel": "C00000000", "ts": "1640001000.000000" },
 				"reaction": "ojigineko",
 				"user": userA,
