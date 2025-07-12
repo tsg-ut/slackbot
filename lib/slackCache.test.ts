@@ -1,8 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
 import type {
-	ConversationsHistoryArguments,
-	ConversationsHistoryResponse,
 	UsersListArguments,
 	UsersListResponse,
 	EmojiListArguments,
@@ -10,6 +8,13 @@ import type {
 } from '@slack/web-api';
 import Slack from './slackMock';
 import SlackCache from './slackCache';
+import {conversationsHistory} from './slackPatron';
+
+jest.mock('./slackPatron', () => ({
+	__esModule: true,
+	conversationsHistory: jest.fn(),
+	conversationsReplies: jest.fn(),
+}));
 
 const userA = "USLACKBOT";
 const userB = "U12345678";
@@ -29,8 +34,23 @@ class WebClientMock {
 			return await fs.readJson(fn);
 		},
 	};
-	readonly conversations = {
-		async history(args: ConversationsHistoryArguments): Promise<ConversationsHistoryResponse> {
+}
+
+describe('SlackCache', () => {
+	const teamId = 'T000000';
+	let slackCache: SlackCache = null;
+	let slack: Slack = null;
+	const emit = (event: string, payload: any) => {
+		slack.eventClient.emit(event, payload, {
+			team_id: teamId,
+		});
+	};
+	beforeEach(async () => {
+		slack = new Slack();
+		
+		// Setup mock for conversationsHistory
+		const mockConversationsHistory = conversationsHistory as jest.MockedFunction<typeof conversationsHistory>;
+		mockConversationsHistory.mockImplementation(async (args: any) => {
 			if (args.limit && args.limit !== 1) {
 				throw Error('unsupported mock');
 			}
@@ -42,21 +62,8 @@ class WebClientMock {
 			}
 			res.messages = res.messages.filter(({ts}: {ts: string}) => ts === args.latest);
 			return res;
-		},
-	};
-}
-
-describe('SlackCache', () => {
-	const teamId = 'T000000';
-	let slackCache: SlackCache = null;
-	let slack: Slack = null;
-	const emit = async (event: string, payload: any) => {
-		await slack.eventClient.emit(event, payload, {
-			team_id: teamId,
 		});
-	};
-	beforeEach(async () => {
-		slack = new Slack();
+
 		slackCache = new SlackCache({
 			token: {
 				team_id: teamId,
@@ -66,8 +73,7 @@ describe('SlackCache', () => {
 				bot_access_token: 'xoxb-bot',
 			},
 			eventClient: slack.eventClient,
-			webClient: new WebClientMock(),
-			enableReactions: true,
+			webClient: slack.webClient,
 		});
 
 		// HACK:

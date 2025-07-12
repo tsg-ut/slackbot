@@ -1,5 +1,6 @@
 import path from 'path';
-import {WebClient} from '@slack/web-api';
+import {EnvelopedEvent} from '@slack/bolt';
+import {ReactionAddedEvent, ReactionRemovedEvent, WebClient} from '@slack/web-api';
 import {EmojiData} from 'emoji-data-ts';
 import type {FastifyPluginCallback} from 'fastify';
 import plugin from 'fastify-plugin';
@@ -9,11 +10,10 @@ import {open} from 'sqlite';
 import sqlite3 from 'sqlite3';
 import logger from '../lib/logger';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
-
-import {getEmoji, getMemberIcon, getMemberName} from '../lib/slackUtils';
+import {getEmoji, getMemberIcon, getMemberName, getReactions} from '../lib/slackUtils';
 
 const log = logger.child({bot: 'tunnel'});
-const messages = new Map();
+const messages = new Map<string, {team: string, ts: string, content: string}>();
 
 let isTsgAllowing = true;
 let isKmcAllowing = true;
@@ -31,6 +31,7 @@ const getEmojiImageUrl = async (name: string, team: string): Promise<string> => 
 	return null;
 };
 
+// eslint-disable-next-line import/prefer-default-export
 export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
 		const db = await open({
@@ -42,7 +43,7 @@ export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 
 		const kmcSlack = kmcToken === undefined ? null : new WebClient(kmcToken.bot_access_token);
 
-		const {team: tsgTeam}: any = await tsgSlack.team.info();
+		const {team: tsgTeam} = await tsgSlack.team.info();
 
 		fastify.post<SlashCommandEndpoint>('/slash/tunnel', async (req, res) => {
 			if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
@@ -96,7 +97,7 @@ export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 			const iconUrl = await getMemberIcon(req.body.user_id, 192);
 			const name = await getMemberName(req.body.user_id);
 
-			const [{ts: tsgTs}, {ts: kmcTs}]: any = await Promise.all([
+			const [{ts: tsgTs}, {ts: kmcTs}] = await Promise.all([
 				tsgSlack.chat.postMessage({
 					channel: process.env.CHANNEL_SANDBOX,
 					text: req.body.text,
@@ -113,78 +114,79 @@ export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 				}),
 			]);
 
-			messages.set(tsgTs, {team: 'KMC', ts: kmcTs});
-			messages.set(kmcTs, {team: 'TSG', ts: tsgTs});
+			messages.set(tsgTs, {team: 'KMC', ts: kmcTs, content: req.body.text});
+			messages.set(kmcTs, {team: 'TSG', ts: tsgTs, content: req.body.text});
 
 			return '';
 		});
 
-		const onReactionUpdated = async (event: any, updatedTeam: string) => {
+		const onReactionUpdated = async (event: ReactionAddedEvent | ReactionRemovedEvent, updatedTeam: string) => {
 			// update message of the other team
 			const updatingMessageData = messages.get(event.item.ts);
 			if (!updatingMessageData) {
 				return;
 			}
 
-			// fetch message detail
-			// eslint-disable-next-line prefer-destructuring
-			const updatedMessage: {ts: string, text: string, blocks: any[], reactions: any[]} = (await tsgSlack.conversations.history({
-				token: updatedTeam === 'TSG' ? process.env.SLACK_TOKEN : kmcToken.bot_access_token,
-				channel: updatedTeam === 'TSG' ? process.env.CHANNEL_SANDBOX : process.env.KMC_CHANNEL_SANDBOX,
-				latest: event.item.ts,
-				limit: 1,
-				inclusive: true,
-			}) as any).messages[0];
-
-			if (updatedMessage.ts !== event.item.ts) {
-				// message not found
-				return;
-			}
-
 			const teamId = updatedTeam === 'TSG' ? tsgTeam.id : process.env.KMC_TEAM_ID;
 
-			const users = uniq(flatten(updatedMessage.reactions.map((reaction) => reaction.users)));
-			const userNames = await Promise.all(users.map(async (user) => {
-				const name = await getMemberName(user);
-				return [user, name] as [string, string];
-			}));
+			const reactions = await getReactions(
+				event.item.channel,
+				event.item.ts,
+				teamId,
+			);
+
+			const users = uniq(
+				flatten(
+					Object.entries(reactions).map(
+						([, reactedUsers]) => reactedUsers,
+					),
+				),
+			);
+			const userNames = await Promise.all(
+				users.map(async (user): Promise<[string, string]> => {
+					const name = await getMemberName(user);
+					return [user, name ?? user];
+				}),
+			);
 			const userNameMap = new Map(userNames);
 
-			const emojis = updatedMessage.reactions.map((reaction) => reaction.name);
-			const emojiUrls = await Promise.all(emojis.map(async (emoji) => {
-				const url = await getEmojiImageUrl(emoji, teamId);
-				return [emoji, url] as [string, string];
-			}));
+			const emojis = Object.entries(reactions).map(([name]) => name);
+			const emojiUrls = await Promise.all(
+				emojis.map(async (emoji): Promise<[string, string]> => {
+					const url = await getEmojiImageUrl(emoji, teamId);
+					return [emoji, url];
+				}),
+			);
 			const emojiUrlMap = new Map(emojiUrls);
 
 			const blocks = [
-				(updatedMessage.blocks ? updatedMessage.blocks[0] : {
+				{
 					type: 'section',
 					text: {
 						type: 'mrkdwn',
 						verbatim: true,
-						text: updatedMessage.text,
+						text: updatingMessageData.content,
 					},
-				}),
-				...updatedMessage.reactions
-					.map((reaction: {name: string, users: string[]}) => (
-						emojiUrlMap.has(reaction.name)
+				},
+				...Object.entries(reactions)
+					.map(([name, reactedUsers]) => (
+						emojiUrlMap.has(name)
 							? [
 								{
 									type: 'image',
-									image_url: emojiUrlMap.get(reaction.name),
-									alt_text: `:${reaction.name}: by ${
-										reaction.users.map((user) => userNameMap.get(user)).join(', ')
+									image_url: emojiUrlMap.get(name),
+									alt_text: `:${name}: by ${
+										reactedUsers.map((user) => userNameMap.get(user)).join(', ')
 									}`,
 								},
 								{
 									type: 'mrkdwn',
-									text: `${reaction.users.length}`,
+									text: `${reactedUsers.length}`,
 								},
 							] : [ // TODO: use image for non-custom emojis too
 								{
 									type: 'mrkdwn',
-									text: `:${reaction.name}: ${reaction.users.length}`,
+									text: `:${name}: ${reactedUsers.length}`,
 								},
 							]
 					))
@@ -222,19 +224,25 @@ export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 		};
 
 		for (const eventType of ['reaction_added', 'reaction_removed']) {
-			eventClient.onAllTeam(eventType, (event: any, body: any) => {
-				const team =
-					body.team_id === process.env.TEAM_ID ? 'TSG'
-						: body.team_id === process.env.KMC_TEAM_ID ? 'KMC'
-							: null;
+			eventClient.onAllTeam(
+				eventType,
+				(
+					event: ReactionAddedEvent | ReactionRemovedEvent,
+					body: EnvelopedEvent<ReactionAddedEvent | ReactionRemovedEvent>,
+				) => {
+					const team =
+						body.team_id === process.env.TEAM_ID ? 'TSG'
+							: body.team_id === process.env.KMC_TEAM_ID ? 'KMC'
+								: null;
 
-				if (!team) {
-					log.warn(`unknown team: ${body.team_id}`);
-					return;
-				}
+					if (!team) {
+						log.warn(`unknown team: ${body.team_id}`);
+						return;
+					}
 
-				onReactionUpdated(event, team);
-			});
+					onReactionUpdated(event, team);
+				},
+			);
 		}
 
 		next();
