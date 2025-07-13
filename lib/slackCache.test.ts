@@ -22,7 +22,7 @@ const userC = "U31415926";
 const userD = "UTSGTSGTS";
 
 describe('SlackCache', () => {
-	const teamId = 'T000000';
+	const teamId = 'T00000000';
 	let slackCache: SlackCache = null;
 	let slack: Slack = null;
 	const emit = (event: string, payload: any) => {
@@ -34,8 +34,8 @@ describe('SlackCache', () => {
 		slack = new Slack();
 		
 		// Setup mock for conversationsHistory
-		const mockConversationsHistory = conversationsHistory as jest.MockedFunction<typeof conversationsHistory>;
-		mockConversationsHistory.mockImplementation(async (args: any) => {
+		const mockConversationsHistory = jest.mocked(conversationsHistory);
+		mockConversationsHistory.mockImplementation(async (args) => {
 			if (args.limit && args.limit !== 1) {
 				throw Error('unsupported mock');
 			}
@@ -50,13 +50,13 @@ describe('SlackCache', () => {
 		});
 
 		const mockedUsersList = jest.mocked(slack.webClient.users.list);
-		mockedUsersList.mockImplementation(async (args) => {
+		mockedUsersList.mockImplementation(async () => {
 			const fn = path.join(__dirname, '__testdata__/users.list.json');
 			return fs.readJson(fn);
 		});
 
 		const mockedEmojiList = jest.mocked(slack.webClient.emoji.list);
-		mockedEmojiList.mockImplementation(async (args) => {
+		mockedEmojiList.mockImplementation(async () => {
 			const fn = path.join(__dirname, '__testdata__/emoji.list.json');
 			return fs.readJson(fn);
 		});
