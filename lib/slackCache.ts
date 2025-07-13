@@ -3,6 +3,7 @@ import type EventEmitter from 'events';
 import type {Token} from '../oauth/tokens';
 import {Deferred} from './utils';
 import {TeamEventClient} from './slackEventClient';
+import {conversationsHistory} from './slackPatron';
 import logger from './logger';
 
 import type {Reaction} from '@slack/web-api/dist/types/response/ConversationsHistoryResponse';
@@ -14,6 +15,8 @@ import type {
 	UsersListResponse,
 	EmojiListArguments,
 	EmojiListResponse,
+	ReactionAddedEvent,
+	ReactionRemovedEvent,
 } from '@slack/web-api';
 
 const log = logger.child({bot: 'lib/slackCache'});
@@ -34,11 +37,12 @@ interface Config {
 	token: Token;
 	eventClient: EventEmitter;
 	webClient: WebClient;
-	enableReactions?: boolean;
 }
 
+const TSG_TEAM_ID = process.env.TEAM_ID || 'T00000000';
+
 export default class SlackCache {
-	private config: Config;
+	private readonly config: Config;
 	private users = new Map<string, Member>();
 	private emojis = new Map<string, string>();
 	// Cache for message reactions. This property holds user IDs who reacted to a message,
@@ -87,32 +91,36 @@ export default class SlackCache {
 				.catch((err: any) => log.error(`SlackCache/emoji.list(${this.config.token.team_id}): ${err}`, err));
 		}
 
-		if (this.config.enableReactions) {
-			teamEventClient.on('message', (message) => {
-				const key = `${message.channel}\0${message.ts}`;
-				if (!this.reactionsCache.has(key)) {
-					this.reactionsCache.set(key, Object.create(null));
-				}
-			});
-			teamEventClient.on('reaction_added', (event) => {
-				return this.modifyReaction({
+		teamEventClient.on('message', (message) => {
+			const key = `${message.channel}\0${message.ts}`;
+			if (!this.reactionsCache.has(key)) {
+				this.reactionsCache.set(key, Object.create(null));
+			}
+		});
+		teamEventClient.on(
+			'reaction_added',
+			(event: ReactionAddedEvent) => (
+				this.modifyReaction({
 					type: 'add',
 					channel: event.item.channel,
 					ts: event.item.ts,
 					reaction: event.reaction,
 					user: event.user,
-				});
-			});
-			teamEventClient.on('reaction_removed', (event) => {
-				return this.modifyReaction({
+				})
+			),
+		);
+		teamEventClient.on(
+			'reaction_removed',
+			(event: ReactionRemovedEvent) => (
+				this.modifyReaction({
 					type: 'remove',
 					channel: event.item.channel,
 					ts: event.item.ts,
 					reaction: event.reaction,
 					user: event.user,
-				});
-			});
-		}
+				})
+			),
+		);
 	}
 	public async getUsers(): Promise<Member[]> {
 		await this.loadUsersDeferred.promise;
@@ -130,9 +138,6 @@ export default class SlackCache {
 	}
 
 	public async getReactions(channel: string, ts: string): Promise<Record<string, string[]>> {
-		if (!this.config.enableReactions) {
-			throw new Error('reactionsCache disabled');
-		}
 		const key = `${channel}\0${ts}`;
 		{
 			const reactions = this.reactionsCache.get(key);
@@ -141,17 +146,19 @@ export default class SlackCache {
 			}
 		}
 
-		console.log(5);
-		console.log(this.config.token, {channel, ts});
-		
-		const data = await this.config.webClient.conversations.history({
+		if (this.config.token.team_id !== TSG_TEAM_ID) {
+			// conversationsHistoryはslack-patronを呼び出している都合上、
+			// TSGチーム以外のチームでは利用できない。諦める。
+			return {};
+		}
+
+		const data = await conversationsHistory({
 			token: this.config.token.bot_access_token,
 			channel: channel,
 			latest: ts,
 			limit: 1,
 			inclusive: true,
 		});
-		console.log(6);
 
 		{
 			// race condition
@@ -184,6 +191,13 @@ export default class SlackCache {
 	}): Promise<void> {
 		const key = `${channel}\0${ts}`;
 
+		if (this.config.token.team_id !== TSG_TEAM_ID && !this.reactionsCache.has(key)) {
+			// conversationsHistoryはslack-patronを呼び出している都合上
+			// TSGチーム以外のチームでは利用できない。
+			// 空のオブジェクトを初期状態として仮定する。
+			this.reactionsCache.set(key, Object.create(null));
+		}
+
 		{
 			const reactions = this.reactionsCache.get(key);
 			if (reactions) {
@@ -204,7 +218,7 @@ export default class SlackCache {
 			}
 		}
 
-		const data = await this.config.webClient.conversations.history({
+		const data = await conversationsHistory({
 			token: this.config.token.bot_access_token,
 			channel: channel,
 			latest: ts,

@@ -10,6 +10,11 @@ jest.mock('../lib/slackUtils', () => ({
 	__esModule: true,
 	getReactions: jest.fn(),
 }));
+jest.mock('../lib/slackPatron', () => ({
+	__esModule: true,
+	conversationsHistory: jest.fn(),
+	conversationsReplies: jest.fn(),
+}));
 jest.mock('../lib/firestore', () => ({
 	__esModule: true,
 	default: {
@@ -26,6 +31,7 @@ jest.mock('../lib/firestore', () => ({
 
 import type {firestore} from 'firebase-admin';
 import db from '../lib/firestore';
+import {conversationsHistory} from '../lib/slackPatron';
 import Slack from '../lib/slackMock';
 import {getReactions} from '../lib/slackUtils';
 import topicHandler, {addLike, removeLike} from './index';
@@ -142,8 +148,8 @@ describe('topic', () => {
 					},
 				});
 
-				const conversationsHistory = mockSlack.webClient.conversations.history as jest.MockedFunction<typeof mockSlack.webClient.conversations.history>;
-				conversationsHistory.mockResolvedValue({
+				const mockConversationsHistory = conversationsHistory as jest.MockedFunction<typeof conversationsHistory>;
+				mockConversationsHistory.mockResolvedValue({
 					ok: true,
 					messages: [{
 						ts: MESSAGE_TS,

@@ -18,16 +18,18 @@ const initializedSlackCachesDeferred = new Deferred<void>();
 			token,
 			eventClient,
 			webClient: new WebClient(),
-			enableReactions: token.team_id === process.env.TEAM_ID,
 		}));
 	}
 	initializedSlackCachesDeferred.resolve();
 })();
 
-// Note: support only TSG
-export const getReactions = async (channel: string, ts: string) => {
+export const getReactions = async (channel: string, ts: string, team: string = process.env.TEAM_ID!) => {
 	await initializedSlackCachesDeferred.promise;
-	return slackCaches.get(process.env.TEAM_ID!)!.getReactions(channel, ts);
+	const slackCache = slackCaches.get(team);
+	if (!slackCache) {
+		throw new Error(`Slack cache for team ${team} not found`);
+	}
+	return slackCache.getReactions(channel, ts);
 };
 
 export const getAllTSGMembers = async (): Promise<Array<Member>> => {

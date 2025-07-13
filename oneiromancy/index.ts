@@ -9,6 +9,7 @@ import {increment} from '../achievements';
 import dayjs from '../lib/dayjs';
 import logger from '../lib/logger';
 import openai from '../lib/openai';
+import {conversationsReplies} from '../lib/slackPatron';
 import {SlackInterface} from '../lib/slack';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';
@@ -76,7 +77,7 @@ export default async (slackClients: SlackInterface) => {
 			}
 
 			log.info('Requesting to Slack API...');
-			const res = await slack.conversations.replies({
+			const res = await conversationsReplies({
 				channel: event.item.channel,
 				ts: event.item.ts,
 				token: process.env.HAKATASHI_TOKEN,

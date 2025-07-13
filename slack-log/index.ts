@@ -1,12 +1,11 @@
-import axios, {AxiosPromise} from 'axios';
+import axios from 'axios';
 import logger from '../lib/logger';
 import type {LinkUnfurls} from '@slack/web-api';
 import qs from 'querystring';
-import type {ChatUnfurlResponse} from '@slack/web-api';
 
 const log = logger.child({bot: 'slack-log'});
 
-const slacklogAPIDomain = 'localhost:9292';
+const slacklogAPIDomain = process.env.SLACK_PATRON_API_HOST || 'localhost:4567';
 const slacklogURLRegexp = new RegExp('^https?://slack-log.tsg.ne.jp/([A-Z0-9]+)/([0-9]+\.[0-9]+)');
 const getAroundMessagesUrl = (channel: string) => `http://${slacklogAPIDomain}/around_messages/${channel}.json`;
 

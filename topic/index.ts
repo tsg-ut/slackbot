@@ -3,6 +3,7 @@ import {increment} from '../achievements';
 import db from '../lib/firestore';
 import type {SlackInterface} from '../lib/slack';
 import {getReactions} from '../lib/slackUtils';
+import {conversationsHistory} from '../lib/slackPatron';
 import State from '../lib/state';
 
 const isQualifiableMessage = (message: MessageElement) => {
@@ -113,7 +114,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
-		const res = await slack.conversations.history({
+		const res = await conversationsHistory({
 			channel: event.item.channel,
 			latest: event.item.ts,
 			limit: 1,
