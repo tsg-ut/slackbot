@@ -23,7 +23,7 @@ export const conversationsHistory = async (params: ConversationsHistoryArguments
 		}
 	}
 
-	const response = await fetch(url.toString());
+	const response = await fetch(url.toString(), {method: 'POST'});
 	
 	if (!response.ok) {
 		throw new Error(`Patron API request failed: ${response.status} ${response.statusText}`);
@@ -46,7 +46,7 @@ export const conversationsReplies = async (params: ConversationsRepliesArguments
 		}
 	}
 
-	const response = await fetch(url.toString());
+	const response = await fetch(url.toString(), {method: 'POST'});
 	
 	if (!response.ok) {
 		throw new Error(`Patron API request failed: ${response.status} ${response.statusText}`);
