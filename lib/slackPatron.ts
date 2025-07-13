@@ -17,11 +17,11 @@ export const conversationsHistory = async (params: ConversationsHistoryArguments
 	const url = new URL(`http://${PATRON_API_HOST}/api/conversations.history`);
 	
 	// Add query parameters
-	Object.entries(params).forEach(([key, value]) => {
+	for (const [key, value] of Object.entries(params)) {
 		if (value !== undefined) {
 			url.searchParams.append(key, String(value));
 		}
-	});
+	}
 
 	const response = await fetch(url.toString());
 	
@@ -40,11 +40,11 @@ export const conversationsReplies = async (params: ConversationsRepliesArguments
 	const url = new URL(`http://${PATRON_API_HOST}/api/conversations.replies`);
 	
 	// Add query parameters
-	Object.entries(params).forEach(([key, value]) => {
+	for (const [key, value] of Object.entries(params)) {
 		if (value !== undefined) {
 			url.searchParams.append(key, String(value));
 		}
-	});
+	}
 
 	const response = await fetch(url.toString());
 	
