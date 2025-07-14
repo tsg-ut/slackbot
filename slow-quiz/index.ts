@@ -1,5 +1,6 @@
 import {readFile} from 'fs/promises';
 import path from 'path';
+import type {BlockButtonAction, ViewSubmitAction} from '@slack/bolt';
 import {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {ImageElement, KnownBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
@@ -114,7 +115,7 @@ class SlowQuiz {
 		slackInteractions,
 	}: {
 		slack: WebClient,
-		slackInteractions: any,
+		slackInteractions: SlackMessageAdapter,
 	}) {
 		this.slack = slack;
 		this.slackInteractions = slackInteractions;
@@ -130,7 +131,7 @@ class SlowQuiz {
 		this.slackInteractions.action({
 			type: 'button',
 			actionId: 'slowquiz_register_quiz_button',
-		}, (payload: any) => {
+		}, (payload: BlockButtonAction) => {
 			mutex.runExclusive(() => (
 				this.showRegisterQuizDialog({
 					triggerId: payload?.trigger_id,
@@ -138,7 +139,7 @@ class SlowQuiz {
 			));
 		});
 
-		this.slackInteractions.viewSubmission('slowquiz_register_quiz_dialog', (payload: any) => {
+		this.slackInteractions.viewSubmission('slowquiz_register_quiz_dialog', (payload: ViewSubmitAction) => {
 			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
 			const state = Object.assign({}, ...stateObjects);
 
@@ -157,7 +158,7 @@ class SlowQuiz {
 		this.slackInteractions.action({
 			type: 'button',
 			actionId: 'slowquiz_list_quiz_button',
-		}, (payload: any) => {
+		}, (payload: BlockButtonAction) => {
 			mutex.runExclusive(() => (
 				this.showListQuizDialog({
 					triggerId: payload?.trigger_id,
@@ -169,8 +170,8 @@ class SlowQuiz {
 		this.slackInteractions.action({
 			type: 'button',
 			actionId: 'slowquiz_delete_quiz_button',
-		}, (payload: any) => {
-			const action = (payload?.actions ?? []).find((a: any) => (
+		}, (payload: BlockButtonAction) => {
+			const action = (payload?.actions ?? []).find((a) => (
 				a.action_id === 'slowquiz_delete_quiz_button'
 			));
 			mutex.runExclusive(() => (
@@ -185,7 +186,7 @@ class SlowQuiz {
 		this.slackInteractions.action({
 			type: 'button',
 			actionId: 'slowquiz_answer_question_button',
-		}, (payload: any) => {
+		}, (payload: BlockButtonAction) => {
 			mutex.runExclusive(() => (
 				this.showAnswerQuestionDialog({
 					triggerId: payload.trigger_id,
@@ -199,7 +200,7 @@ class SlowQuiz {
 		this.slackInteractions.action({
 			type: 'button',
 			actionId: 'slowquiz_show_game_details_button',
-		}, (payload: any) => {
+		}, (payload: BlockButtonAction) => {
 			mutex.runExclusive(() => (
 				this.showGameDetailsDialog({
 					triggerId: payload.trigger_id,
@@ -210,7 +211,7 @@ class SlowQuiz {
 			));
 		});
 
-		this.slackInteractions.viewSubmission('slowquiz_answer_question_dialog', (payload: any) => {
+		this.slackInteractions.viewSubmission('slowquiz_answer_question_dialog', (payload: ViewSubmitAction) => {
 			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
 			const state = Object.assign({}, ...stateObjects);
 			const id = payload?.view?.private_metadata;
@@ -227,7 +228,7 @@ class SlowQuiz {
 		this.slackInteractions.action({
 			type: 'button',
 			actionId: 'slowquiz_post_comment_submit_comment',
-		}, (payload) => {
+		}, (payload: BlockButtonAction) => {
 			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
 			const state = Object.assign({}, ...stateObjects);
 
@@ -242,7 +243,7 @@ class SlowQuiz {
 			));
 		});
 
-		this.slackInteractions.viewSubmission('slowquiz_post_comment_dialog', (payload: any) => {
+		this.slackInteractions.viewSubmission('slowquiz_post_comment_dialog', (payload: ViewSubmitAction) => {
 			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
 			const state = Object.assign({}, ...stateObjects);
 
@@ -417,13 +418,14 @@ class SlowQuiz {
 	}
 
 	async getChatGptAnswer(game: Game) {
+		log.info(`Getting ChatGPT answer for game ${game.id}...`);
 		const prompt = await promptLoader.load();
 		const questionText = this.getQuestionText(game);
 		const [visibleText] = questionText.split('\u200B');
 
 		log.info('Requesting to OpenAI API...');
 		const completion = await openai.chat.completions.create({
-			model: 'gpt-3.5-turbo',
+			model: 'gpt-4o-mini',
 			messages: [
 				...prompt,
 				{
@@ -437,6 +439,7 @@ class SlowQuiz {
 			],
 			max_tokens: 1024,
 		});
+		log.info(`OpenAI API response: ${JSON.stringify(completion)}`);
 
 		const result = completion.choices?.[0]?.message?.content;
 		if (typeof result !== 'string') {
@@ -514,19 +517,25 @@ class SlowQuiz {
 	}
 
 	async createBotAnswers() {
+		log.info('Creating bot answers...');
 		for (const game of this.state.games) {
-			const botId = 'chatgpt-3.5-turbo:ver1';
+			log.info(`Processing game ${game.id}...`);
+			const botId = 'chatgpt-4o-mini:ver1';
 			const userId = `bot:${botId}`;
 
 			if (game.status !== 'inprogress') {
+				log.info(`Game ${game.id} is not in progress, skipping...`);
 				continue;
 			}
 
 			if (game.correctAnswers.some((answer) => answer.user === userId)) {
+				log.info(`Game ${game.id} already has a bot answer, skipping...`);
 				continue;
 			}
 
 			const {answer, result} = await this.getChatGptAnswer(game);
+			log.info(`Bot answer for game ${game.id}: ${answer} (${result})`);
+
 			if (answer !== null) {
 				this.answerQuestion({
 					type: 'bot',
@@ -998,8 +1007,8 @@ class SlowQuiz {
 					},
 					...await Promise.all(game.correctAnswers.map(async (correctAnswer) => ({
 						type: 'image',
-						image_url: await getUserIcon(correctAnswer.user),
-						alt_text: await getUserName(correctAnswer.user),
+						image_url: (await getUserIcon(correctAnswer.user)) ?? 'https://slack.com/img/icons/app-57.png',
+						alt_text: (await getUserName(correctAnswer.user)) ?? 'ユーザー',
 					} as ImageElement))),
 				],
 			});
@@ -1134,7 +1143,7 @@ export const server = ({webClient: slack, messageClient: slackInteractions}: Sla
 
 			mutex.runExclusive(async () => {
 				log.info('Received /slow-quiz command');
-				await slowquiz.postGameStatus(false, [req.body.channel_id]);
+				await slowquiz.progressGames();
 			});
 
 			return {

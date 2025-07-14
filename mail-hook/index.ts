@@ -333,7 +333,7 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 
 			log.info('sending prompt to OpenAI...');
 			const completion = await openai.chat.completions.create({
-				model: 'gpt-3.5-turbo',
+				model: 'gpt-4o-mini',
 				max_tokens: 1024,
 				messages: prompt,
 			});
