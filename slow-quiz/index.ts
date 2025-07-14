@@ -12,7 +12,7 @@ import {hiraganize} from 'japanese';
 import yaml from 'js-yaml';
 import {last, minBy} from 'lodash';
 import {scheduleJob} from 'node-schedule';
-import type OpenAI from 'openai';
+import type {OpenAI} from 'openai';
 import {increment} from '../achievements';
 import logger from '../lib/logger';
 import openai from '../lib/openai';
@@ -368,7 +368,7 @@ class SlowQuiz {
 			return;
 		}
 
-		if (typeof ruby !== 'string' || !ruby.match(/^[ぁ-ゟァ-ヿa-z0-9,]+$/i)) {
+		if (typeof ruby !== 'string' || !(/^[ぁ-ゟァ-ヿa-z0-9,]+$/i).exec(ruby)) {
 			this.postEphemeral('読みがなに使える文字は「ひらがな・カタカナ・英数字」のみだよ🙄', user);
 			return;
 		}
@@ -463,12 +463,12 @@ class SlowQuiz {
 		}
 
 		let answer = null;
-		const answerMatches = result.match(/【(?<answer>.+?)】/);
+		const answerMatches = (/【(?<answer>.+?)】/).exec(result);
 		if (answerMatches?.groups?.answer) {
 			answer = answerMatches.groups.answer;
 		}
 
-		const rubyMatches = answer?.match(/[（(](?<ruby>.+?)[）)]/);
+		const rubyMatches = (/[（(](?<ruby>.+?)[）)]/).exec(answer ?? '');
 		if (rubyMatches?.groups?.ruby) {
 			answer = rubyMatches.groups.ruby;
 		}
@@ -568,7 +568,7 @@ class SlowQuiz {
 		}
 	}
 
-	async processBatchResults(batchJob: BatchJob, batch: unknown) {
+	async processBatchResults(batchJob: BatchJob, batch: OpenAI.Batches.Batch) {
 		log.info(`Processing batch results for job ${batchJob.id}...`);
 		const game = this.state.games.find((g) => g.id === batchJob.gameId);
 		if (!game) {
@@ -634,12 +634,12 @@ class SlowQuiz {
 
 	extractAnswerFromResponse(content: string): string | null {
 		let answer = null;
-		const answerMatches = content.match(/【(?<answer>.+?)】/);
+		const answerMatches = (/【(?<answer>.+?)】/).exec(content);
 		if (answerMatches?.groups?.answer) {
 			answer = answerMatches.groups.answer;
 		}
 
-		const rubyMatches = answer?.match(/[（(](?<ruby>.+?)[）)]/);
+		const rubyMatches = (/[（(](?<ruby>.+?)[）)]/).exec(answer ?? '');
 		if (rubyMatches?.groups?.ruby) {
 			answer = rubyMatches.groups.ruby;
 		}
@@ -684,7 +684,7 @@ class SlowQuiz {
 			return;
 		}
 
-		if (!ruby.match(/^[ぁ-ゟァ-ヿa-z0-9]+$/i)) {
+		if (!(/^[ぁ-ゟァ-ヿa-z0-9]+$/i).exec(ruby)) {
 			this.postEphemeral('答えに使える文字は「ひらがな・カタカナ・英数字」のみだよ🙄', user);
 			return;
 		}
@@ -789,9 +789,7 @@ class SlowQuiz {
 		});
 
 		if (!isCorrect) {
-			if (game.wrongAnswers === undefined) {
-				game.wrongAnswers = [];
-			}
+			game.wrongAnswers ??= [];
 			game.wrongAnswers.push({
 				user: userId,
 				progress: game.progress,
