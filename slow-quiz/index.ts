@@ -63,9 +63,21 @@ export interface Game {
 	genre: Genre,
 }
 
+interface BatchJob {
+	id: string,
+	gameId: string,
+	model: 'gpt-4o-mini' | 'o4-mini',
+	status: 'pending' | 'in_progress' | 'completed' | 'failed',
+	createdAt: number,
+	completedAt?: number,
+	response?: string,
+	answer?: string,
+}
+
 interface StateObj {
 	games: Game[],
 	latestStatusMessages: {ts: string, channel: string}[],
+	batchJobs: BatchJob[],
 }
 
 const mutex = new Mutex();
@@ -126,6 +138,7 @@ class SlowQuiz {
 		this.state = await State.init<StateObj>('slow-quiz', {
 			games: [],
 			latestStatusMessages: [],
+			batchJobs: [],
 		});
 
 		this.slackInteractions.action({
@@ -472,6 +485,174 @@ class SlowQuiz {
 		};
 	}
 
+	async createO4MiniBatchJob(game: Game) {
+		log.info(`Creating o4-mini batch job for game ${game.id}...`);
+		const prompt = await promptLoader.load();
+		const questionText = this.getQuestionText(game);
+		const [visibleText] = questionText.split('\u200B');
+
+		const batchRequest = {
+			custom_id: `slowquiz_${game.id}`,
+			method: 'POST',
+			url: '/v1/chat/completions',
+			body: {
+				model: 'o4-mini',
+				messages: [
+					...prompt,
+					{
+						role: 'user',
+						content: [
+							'ありがとうございます。以下の文章も、クイズの問題文の途中までを表示したものです。この文章の続きを推測し、問題の答えと読みを教えてください。',
+							'',
+							`問題: ${visibleText}`,
+						].join('\n'),
+					},
+				],
+				max_tokens: 1024,
+			},
+		};
+
+		try {
+			const batch = await openai.batches.create({
+				input_file_id: await this.createBatchFile([batchRequest]),
+				endpoint: '/v1/chat/completions',
+				completion_window: '24h',
+			});
+
+			const batchJob: BatchJob = {
+				id: batch.id,
+				gameId: game.id,
+				model: 'o4-mini',
+				status: 'pending',
+				createdAt: Date.now(),
+			};
+
+			this.state.batchJobs.push(batchJob);
+			log.info(`Created batch job ${batch.id} for game ${game.id}`);
+		} catch (error) {
+			log.error(`Failed to create batch job for game ${game.id}:`, error);
+		}
+	}
+
+	async createBatchFile(requests: unknown[]) {
+		const jsonlContent = requests.map((req) => JSON.stringify(req)).join('\n');
+		const file = await openai.files.create({
+			file: new File([jsonlContent], 'batch_requests.jsonl', {type: 'application/jsonl'}),
+			purpose: 'batch',
+		});
+		return file.id;
+	}
+
+	async checkBatchJobs() {
+		log.info('Checking batch jobs...');
+		for (const batchJob of this.state.batchJobs) {
+			if (batchJob.status === 'pending' || batchJob.status === 'in_progress') {
+				try {
+					const batch = await openai.batches.retrieve(batchJob.id);
+					log.info(`Batch job ${batchJob.id} status: ${batch.status}`);
+
+					if (batch.status === 'completed') {
+						batchJob.status = 'completed';
+						batchJob.completedAt = Date.now();
+						await this.processBatchResults(batchJob, batch);
+					} else if (batch.status === 'failed') {
+						batchJob.status = 'failed';
+						log.error(`Batch job ${batchJob.id} failed`);
+					} else if (batch.status === 'in_progress') {
+						batchJob.status = 'in_progress';
+					}
+				} catch (error) {
+					log.error(`Error checking batch job ${batchJob.id}:`, error);
+				}
+			}
+		}
+	}
+
+	async processBatchResults(batchJob: BatchJob, batch: unknown) {
+		log.info(`Processing batch results for job ${batchJob.id}...`);
+		const game = this.state.games.find((g) => g.id === batchJob.gameId);
+		if (!game) {
+			log.error(`Game ${batchJob.gameId} not found for batch job ${batchJob.id}`);
+			return;
+		}
+
+		if (game.status !== 'inprogress') {
+			log.info(`Game ${game.id} is not in progress, skipping batch result processing`);
+			return;
+		}
+
+		const botId = 'o4-mini-batch:ver1';
+		const userId = `bot:${botId}`;
+
+		if (game.correctAnswers.some((answer) => answer.user === userId)) {
+			log.info(`Game ${game.id} already has an o4-mini batch answer, skipping`);
+			return;
+		}
+
+		try {
+			const outputFile = await openai.files.content(batch.output_file_id);
+			const outputText = await outputFile.text();
+			const results = outputText.split('\n').filter((line) => line.trim());
+
+			for (const resultLine of results) {
+				const result = JSON.parse(resultLine);
+				if (result.custom_id === `slowquiz_${game.id}`) {
+					const content = result.response?.body?.choices?.[0]?.message?.content;
+					if (content) {
+						batchJob.response = content;
+						const answer = this.extractAnswerFromResponse(content);
+						batchJob.answer = answer;
+
+						log.info(`O4-mini batch answer for game ${game.id}: ${answer} (${content})`);
+
+						if (answer !== null) {
+							this.answerQuestion({
+								type: 'bot',
+								game,
+								ruby: answer,
+								user: botId,
+							});
+						}
+
+						if (content !== null) {
+							await this.postComment({
+								id: game.id,
+								viewId: '',
+								comment: content,
+								type: 'bot',
+								user: botId,
+							});
+						}
+						break;
+					}
+				}
+			}
+		} catch (error) {
+			log.error(`Error processing batch results for job ${batchJob.id}:`, error);
+		}
+	}
+
+	extractAnswerFromResponse(content: string): string | null {
+		let answer = null;
+		const answerMatches = content.match(/【(?<answer>.+?)】/);
+		if (answerMatches?.groups?.answer) {
+			answer = answerMatches.groups.answer;
+		}
+
+		const rubyMatches = answer?.match(/[（(](?<ruby>.+?)[）)]/);
+		if (rubyMatches?.groups?.ruby) {
+			answer = rubyMatches.groups.ruby;
+		}
+
+		answer = answer?.replaceAll(/[^ぁ-ゟァ-ヿa-z0-9]/ig, '');
+
+		if (answer === '') {
+			answer = null;
+		}
+
+		return answer;
+	}
+
 	answerUserQuestion({
 		id,
 		ruby,
@@ -554,6 +735,34 @@ class SlowQuiz {
 					user: botId,
 				});
 			}
+		}
+	}
+
+	async createO4MiniBatchJobs() {
+		log.info('Creating o4-mini batch jobs...');
+		for (const game of this.state.games) {
+			if (game.status !== 'inprogress') {
+				continue;
+			}
+
+			const existingBatchJob = this.state.batchJobs.find((job) => (
+				job.gameId === game.id && job.model === 'o4-mini'
+			));
+
+			if (existingBatchJob) {
+				log.info(`Game ${game.id} already has a batch job, skipping...`);
+				continue;
+			}
+
+			const botId = 'o4-mini-batch:ver1';
+			const userId = `bot:${botId}`;
+
+			if (game.correctAnswers.some((answer) => answer.user === userId)) {
+				log.info(`Game ${game.id} already has an o4-mini batch answer, skipping...`);
+				continue;
+			}
+
+			await this.createO4MiniBatchJob(game);
 		}
 	}
 
@@ -801,6 +1010,7 @@ class SlowQuiz {
 			await this.postGameStatus(true);
 		}
 		await this.createBotAnswers();
+		await this.createO4MiniBatchJobs();
 	}
 
 	async postGameStatus(replaceLatestStatusMessages: boolean, channels: string[] = []) {
@@ -1155,6 +1365,13 @@ export const server = ({webClient: slack, messageClient: slackInteractions}: Sla
 		scheduleJob('0 10 * * *', () => {
 			mutex.runExclusive(() => {
 				slowquiz.progressGames();
+			});
+		});
+
+		// Check batch jobs every 30 minutes
+		scheduleJob('*/30 * * * *', () => {
+			mutex.runExclusive(() => {
+				slowquiz.checkBatchJobs();
 			});
 		});
 
