@@ -9,8 +9,8 @@ import {increment} from '../achievements';
 import dayjs from '../lib/dayjs';
 import logger from '../lib/logger';
 import openai from '../lib/openai';
+import type {SlackInterface} from '../lib/slack';
 import {conversationsReplies} from '../lib/slackPatron';
-import {SlackInterface} from '../lib/slack';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';
 
