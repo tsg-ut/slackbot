@@ -506,13 +506,24 @@ class SlowQuiz {
 		const questionText = this.getQuestionText(game);
 		const [visibleText] = questionText.split('\u200B');
 
+		const botId = 'o4-mini:ver1';
+		const userId = `bot:${botId}`;
+
+		const wrongAnswers = game.wrongAnswers
+			.filter((answer) => answer.user !== userId)
+			.map((answer) => answer.answer);
+
 		const requestBody: ChatCompletionCreateParams = {
 			model: 'o4-mini',
 			messages: [
 				...prompt,
 				{
 					role: 'user',
-					content: `Q. ${visibleText}`,
+					content: [
+						`問題文: ${visibleText}`,
+						`残り文字数: ${game.progressOfComplete - game.progress}`,
+						`これまでの誤答: ${wrongAnswers.length > 0 ? wrongAnswers.join(', ') : 'なし'}`,
+					].join('\n'),
 				},
 			],
 			// 25,000 is recommended, but it will be too expensive for this game
