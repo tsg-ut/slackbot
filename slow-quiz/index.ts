@@ -510,7 +510,7 @@ class SlowQuiz {
 		const userId = `bot:${botId}`;
 
 		const wrongAnswers = game.wrongAnswers
-			.filter((answer) => answer.user !== userId)
+			.filter((answer) => answer.user === userId)
 			.map((answer) => answer.answer);
 
 		const requestBody: ChatCompletionCreateParams = {
