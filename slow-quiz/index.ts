@@ -1383,8 +1383,7 @@ export const server = ({webClient: slack, messageClient: slackInteractions}: Sla
 
 			mutex.runExclusive(async () => {
 				log.info('Received /slow-quiz command');
-				// await slowquiz.postGameStatus(false, [req.body.channel_id]);
-				await slowquiz.progressGames();
+				await slowquiz.postGameStatus(false, [req.body.channel_id]);
 			});
 
 			return {
