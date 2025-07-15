@@ -1,3 +1,4 @@
+import {File} from 'buffer';
 import {readFile} from 'fs/promises';
 import path from 'path';
 import type {BlockButtonAction, ViewSubmitAction} from '@slack/bolt';
@@ -12,7 +13,8 @@ import {hiraganize} from 'japanese';
 import yaml from 'js-yaml';
 import {last, minBy} from 'lodash';
 import {scheduleJob} from 'node-schedule';
-import type OpenAI from 'openai';
+import type {OpenAI} from 'openai';
+import type {ChatCompletion, ChatCompletionCreateParams} from 'openai/resources/chat';
 import {increment} from '../achievements';
 import logger from '../lib/logger';
 import openai from '../lib/openai';
@@ -63,9 +65,43 @@ export interface Game {
 	genre: Genre,
 }
 
+interface BatchJob {
+	id: string,
+	gameId: string,
+	model: 'gpt-4o-mini' | 'o4-mini',
+	status: 'pending' | 'in_progress' | 'completed' | 'failed',
+	createdAt: number,
+	completedAt?: number,
+	response?: string,
+	answer?: string,
+}
+
+// https://platform.openai.com/docs/api-reference/batch/request-input
+interface BatchRequest<Body> {
+	custom_id: string,
+	method: 'POST',
+	url: string,
+	body: Body,
+}
+
+// https://platform.openai.com/docs/api-reference/batch/request-output
+interface BatchResponse<Body> {
+	custom_id: string,
+	response: {
+		body: Body,
+		request_id: string,
+		status_code: number,
+	},
+	error?: {
+		message: string,
+		code: string,
+	},
+}
+
 interface StateObj {
 	games: Game[],
 	latestStatusMessages: {ts: string, channel: string}[],
+	batchJobs: BatchJob[],
 }
 
 const mutex = new Mutex();
@@ -93,6 +129,12 @@ const validateQuestion = (question: string) => {
 
 const promptLoader = new Loader<OpenAI.Chat.ChatCompletionMessageParam[]>(async () => {
 	const promptYaml = await readFile(path.join(__dirname, 'prompt.yml'));
+	const prompt = yaml.load(promptYaml.toString()) as OpenAI.Chat.ChatCompletionMessageParam[];
+	return prompt;
+});
+
+const reasoningPromptLoader = new Loader<OpenAI.Chat.ChatCompletionMessageParam[]>(async () => {
+	const promptYaml = await readFile(path.join(__dirname, 'prompt-reasoning.yml'));
 	const prompt = yaml.load(promptYaml.toString()) as OpenAI.Chat.ChatCompletionMessageParam[];
 	return prompt;
 });
@@ -126,6 +168,7 @@ class SlowQuiz {
 		this.state = await State.init<StateObj>('slow-quiz', {
 			games: [],
 			latestStatusMessages: [],
+			batchJobs: [],
 		});
 
 		this.slackInteractions.action({
@@ -355,7 +398,7 @@ class SlowQuiz {
 			return;
 		}
 
-		if (typeof ruby !== 'string' || !ruby.match(/^[ぁ-ゟァ-ヿa-z0-9,]+$/i)) {
+		if (typeof ruby !== 'string' || !(/^[ぁ-ゟァ-ヿa-z0-9,]+$/i).exec(ruby)) {
 			this.postEphemeral('読みがなに使える文字は「ひらがな・カタカナ・英数字」のみだよ🙄', user);
 			return;
 		}
@@ -449,27 +492,217 @@ class SlowQuiz {
 			};
 		}
 
+		const answer = this.extractAnswerFromResponse(result, completion.model);
+
+		return {
+			answer,
+			result,
+		};
+	}
+
+	async createO4MiniBatchJob(game: Game) {
+		log.info(`Creating o4-mini batch job for game ${game.id}...`);
+		const prompt = await reasoningPromptLoader.load();
+		const questionText = this.getQuestionText(game);
+		const [visibleText] = questionText.split('\u200B');
+
+		const botId = 'o4-mini:ver1';
+		const userId = `bot:${botId}`;
+
+		const wrongAnswers = game.wrongAnswers
+			.filter((answer) => answer.user !== userId)
+			.map((answer) => answer.answer);
+
+		const requestBody: ChatCompletionCreateParams = {
+			model: 'o4-mini',
+			messages: [
+				...prompt,
+				{
+					role: 'user',
+					content: [
+						`問題文: ${visibleText}`,
+						`残り文字数: ${game.progressOfComplete - game.progress}`,
+						`これまでの誤答: ${wrongAnswers.length > 0 ? wrongAnswers.join(', ') : 'なし'}`,
+					].join('\n'),
+				},
+			],
+			// 25,000 is recommended, but it will be too expensive for this game
+			// Input tokens: $0.55 / 1M * 2,000 = $0.0011
+			// Output tokens: $2.20 / 1M * 3,000 = $0.0066
+			max_completion_tokens: 3000,
+		};
+
+		// https://platform.openai.com/docs/api-reference/batch/request-input
+		const batchRequest: BatchRequest<ChatCompletionCreateParams> = {
+			custom_id: `slowquiz_${game.id}_day${game.days}`,
+			method: 'POST',
+			url: '/v1/chat/completions',
+			body: requestBody,
+		};
+
+		try {
+			const batch = await openai.batches.create({
+				input_file_id: await this.createBatchFile([batchRequest]),
+				endpoint: '/v1/chat/completions',
+				completion_window: '24h',
+			});
+
+			const batchJob: BatchJob = {
+				id: batch.id,
+				gameId: game.id,
+				model: 'o4-mini',
+				status: 'pending',
+				createdAt: Date.now(),
+			};
+
+			this.state.batchJobs.push(batchJob);
+			log.info(`Created batch job ${batch.id} for game ${game.id}`);
+		} catch (error) {
+			log.error(`Failed to create batch job for game ${game.id}:`, error);
+		}
+	}
+
+	async createBatchFile(requests: unknown[]) {
+		const jsonlContent = requests.map((req) => JSON.stringify(req)).join('\n');
+		const file = await openai.files.create({
+			file: new File([jsonlContent], 'batch_requests.jsonl', {type: 'application/jsonl'}),
+			purpose: 'batch',
+		});
+		return file.id;
+	}
+
+	async checkBatchJobs() {
+		log.info('Checking batch jobs...');
+
+		for (const batchJob of this.state.batchJobs) {
+			if (batchJob.status === 'pending' || batchJob.status === 'in_progress') {
+				try {
+					const batch = await openai.batches.retrieve(batchJob.id);
+					log.info(`Batch job ${batchJob.id} status: ${batch.status}`);
+
+					if (batch.status === 'completed') {
+						batchJob.status = 'completed';
+						batchJob.completedAt = Date.now();
+						await this.processBatchResults(batchJob, batch);
+					} else if (batch.status === 'failed') {
+						batchJob.status = 'failed';
+						log.error(`Batch job ${batchJob.id} failed`);
+					} else if (batch.status === 'in_progress') {
+						batchJob.status = 'in_progress';
+					}
+				} catch (error) {
+					log.error(`Error checking batch job ${batchJob.id}:`, error);
+				}
+			}
+		}
+	}
+
+	async processBatchResults(batchJob: BatchJob, batch: OpenAI.Batches.Batch) {
+		log.info(`Processing batch results for job ${batchJob.id}...`);
+		const game = this.state.games.find((g) => g.id === batchJob.gameId);
+		if (!game) {
+			log.error(`Game ${batchJob.gameId} not found for batch job ${batchJob.id}`);
+			return;
+		}
+
+		if (game.status !== 'inprogress') {
+			log.info(`Game ${game.id} is not in progress, skipping batch result processing`);
+			return;
+		}
+
+		const botId = 'o4-mini:ver1';
+		const userId = `bot:${botId}`;
+
+		if (game.correctAnswers.some((answer) => answer.user === userId)) {
+			log.info(`Game ${game.id} already has an o4-mini answer, skipping`);
+			return;
+		}
+
+		try {
+			const outputFile = await openai.files.content(batch.output_file_id);
+			const outputText = await outputFile.text();
+			const results = outputText.split('\n').filter((line) => line.trim());
+
+			for (const resultLine of results) {
+				const result: BatchResponse<ChatCompletion> = JSON.parse(resultLine);
+
+				if (result.custom_id !== `slowquiz_${game.id}_day${game.days}`) {
+					log.warn(`Unexpected custom_id in batch result: ${result.custom_id} (expected: slowquiz_${game.id}_day${game.days})`);
+				}
+
+				if (result.response?.body?.usage?.completion_tokens_details?.reasoning_tokens === 3000) {
+					log.warn(`Batch job ${batchJob.id} response has 3000 reasoning tokens, which means it might exceeded the limit. The response might be incomplete.`);
+				}
+
+				const content = result.response?.body?.choices?.[0]?.message?.content;
+				log.info(`Batch job ${batchJob.id} response content: ${content}`);
+
+				if (content) {
+					batchJob.response = content;
+					const answer = this.extractAnswerFromResponse(content, batchJob.model);
+					batchJob.answer = answer;
+
+					log.info(`O4-mini answer for game ${game.id}: ${answer} (${content})`);
+					log.info(`Prompt tokens: ${result.response?.body?.usage?.prompt_tokens}`);
+					log.info(`Completion tokens: ${result.response?.body?.usage?.completion_tokens}`);
+					log.info(`Reasoning tokens: ${result.response?.body?.usage?.completion_tokens_details?.reasoning_tokens}`);
+
+					if (answer !== null) {
+						this.answerQuestion({
+							type: 'bot',
+							game,
+							ruby: answer,
+							user: botId,
+						});
+					}
+
+					if (content !== null) {
+						await this.postComment({
+							id: game.id,
+							viewId: '',
+							comment: content,
+							type: 'bot',
+							user: botId,
+						});
+					}
+					break;
+				}
+			}
+		} catch (error) {
+			log.error(`Error processing batch results for job ${batchJob.id}:`, error);
+		}
+	}
+
+	extractAnswerFromResponse(content: string, model: string): string | null {
+		if (model === 'o4-mini') {
+			const matches = (/最終解答[:：]\s*(?<answer>.+?)(?<rubyParens>（(?<ruby>.+?)）)?$/m).exec(content);
+			if (matches?.groups?.ruby) {
+				return matches.groups.ruby.replaceAll(/[^ぁ-ゟァ-ヿa-z0-9]/ig, '') ?? null;
+			}
+			if (matches?.groups?.answer) {
+				return matches.groups.answer.replaceAll(/[^ぁ-ゟァ-ヿa-z0-9]/ig, '') ?? null;
+			}
+			return null;
+		}
+
 		let answer = null;
-		const answerMatches = result.match(/【(?<answer>.+?)】/);
+		const answerMatches = (/【(?<answer>.+?)】/).exec(content);
 		if (answerMatches?.groups?.answer) {
 			answer = answerMatches.groups.answer;
 		}
 
-		const rubyMatches = answer?.match(/[（(](?<ruby>.+?)[）)]/);
+		const rubyMatches = (/[（(](?<ruby>.+?)[）)]/).exec(answer ?? '');
 		if (rubyMatches?.groups?.ruby) {
 			answer = rubyMatches.groups.ruby;
 		}
 
 		answer = answer?.replaceAll(/[^ぁ-ゟァ-ヿa-z0-9]/ig, '');
 
-		if (answer === '') {
+		if (!answer) {
 			answer = null;
 		}
 
-		return {
-			answer,
-			result,
-		};
+		return answer;
 	}
 
 	answerUserQuestion({
@@ -503,7 +736,7 @@ class SlowQuiz {
 			return;
 		}
 
-		if (!ruby.match(/^[ぁ-ゟァ-ヿa-z0-9]+$/i)) {
+		if (!(/^[ぁ-ゟァ-ヿa-z0-9]+$/i).exec(ruby)) {
 			this.postEphemeral('答えに使える文字は「ひらがな・カタカナ・英数字」のみだよ🙄', user);
 			return;
 		}
@@ -557,6 +790,34 @@ class SlowQuiz {
 		}
 	}
 
+	async createO4MiniBatchJobs() {
+		log.info('Creating o4-mini batch jobs...');
+		for (const game of this.state.games) {
+			if (game.status !== 'inprogress') {
+				continue;
+			}
+
+			const existingBatchJob = this.state.batchJobs.find((job) => (
+				job.gameId === game.id && job.model === 'o4-mini'
+			));
+
+			if (existingBatchJob) {
+				log.info(`Game ${game.id} already has a batch job, skipping...`);
+				continue;
+			}
+
+			const botId = 'o4-mini:ver1';
+			const userId = `bot:${botId}`;
+
+			if (game.correctAnswers.some((answer) => answer.user === userId)) {
+				log.info(`Game ${game.id} already has an o4-mini answer, skipping...`);
+				continue;
+			}
+
+			await this.createO4MiniBatchJob(game);
+		}
+	}
+
 	answerQuestion({
 		type,
 		game,
@@ -580,9 +841,7 @@ class SlowQuiz {
 		});
 
 		if (!isCorrect) {
-			if (game.wrongAnswers === undefined) {
-				game.wrongAnswers = [];
-			}
+			game.wrongAnswers ??= [];
 			game.wrongAnswers.push({
 				user: userId,
 				progress: game.progress,
@@ -801,6 +1060,7 @@ class SlowQuiz {
 			await this.postGameStatus(true);
 		}
 		await this.createBotAnswers();
+		await this.createO4MiniBatchJobs();
 	}
 
 	async postGameStatus(replaceLatestStatusMessages: boolean, channels: string[] = []) {
@@ -1143,7 +1403,7 @@ export const server = ({webClient: slack, messageClient: slackInteractions}: Sla
 
 			mutex.runExclusive(async () => {
 				log.info('Received /slow-quiz command');
-				await slowquiz.progressGames();
+				await slowquiz.postGameStatus(false, [req.body.channel_id]);
 			});
 
 			return {
@@ -1155,6 +1415,13 @@ export const server = ({webClient: slack, messageClient: slackInteractions}: Sla
 		scheduleJob('0 10 * * *', () => {
 			mutex.runExclusive(() => {
 				slowquiz.progressGames();
+			});
+		});
+
+		// Check batch jobs every hour
+		scheduleJob('30 * * * *', () => {
+			mutex.runExclusive(() => {
+				slowquiz.checkBatchJobs();
 			});
 		});
 
