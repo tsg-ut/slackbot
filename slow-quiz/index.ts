@@ -1,3 +1,4 @@
+import {File} from 'buffer';
 import {readFile} from 'fs/promises';
 import path from 'path';
 import type {BlockButtonAction, ViewSubmitAction} from '@slack/bolt';
@@ -13,6 +14,7 @@ import yaml from 'js-yaml';
 import {last, minBy} from 'lodash';
 import {scheduleJob} from 'node-schedule';
 import type {OpenAI} from 'openai';
+import type {ChatCompletion, ChatCompletionCreateParams} from 'openai/resources/chat';
 import {increment} from '../achievements';
 import logger from '../lib/logger';
 import openai from '../lib/openai';
@@ -74,6 +76,28 @@ interface BatchJob {
 	answer?: string,
 }
 
+// https://platform.openai.com/docs/api-reference/batch/request-input
+interface BatchRequest<Body> {
+	custom_id: string,
+	method: 'POST',
+	url: string,
+	body: Body,
+}
+
+// https://platform.openai.com/docs/api-reference/batch/request-output
+interface BatchResponse<Body> {
+	custom_id: string,
+	response: {
+		body: Body,
+		request_id: string,
+		status_code: number,
+	},
+	error?: {
+		message: string,
+		code: string,
+	},
+}
+
 interface StateObj {
 	games: Game[],
 	latestStatusMessages: {ts: string, channel: string}[],
@@ -105,6 +129,12 @@ const validateQuestion = (question: string) => {
 
 const promptLoader = new Loader<OpenAI.Chat.ChatCompletionMessageParam[]>(async () => {
 	const promptYaml = await readFile(path.join(__dirname, 'prompt.yml'));
+	const prompt = yaml.load(promptYaml.toString()) as OpenAI.Chat.ChatCompletionMessageParam[];
+	return prompt;
+});
+
+const reasoningPromptLoader = new Loader<OpenAI.Chat.ChatCompletionMessageParam[]>(async () => {
+	const promptYaml = await readFile(path.join(__dirname, 'prompt-reasoning.yml'));
 	const prompt = yaml.load(promptYaml.toString()) as OpenAI.Chat.ChatCompletionMessageParam[];
 	return prompt;
 });
@@ -462,22 +492,7 @@ class SlowQuiz {
 			};
 		}
 
-		let answer = null;
-		const answerMatches = (/【(?<answer>.+?)】/).exec(result);
-		if (answerMatches?.groups?.answer) {
-			answer = answerMatches.groups.answer;
-		}
-
-		const rubyMatches = (/[（(](?<ruby>.+?)[）)]/).exec(answer ?? '');
-		if (rubyMatches?.groups?.ruby) {
-			answer = rubyMatches.groups.ruby;
-		}
-
-		answer = answer?.replaceAll(/[^ぁ-ゟァ-ヿa-z0-9]/ig, '');
-
-		if (answer === '') {
-			answer = null;
-		}
+		const answer = this.extractAnswerFromResponse(result, completion.model);
 
 		return {
 			answer,
@@ -487,29 +502,31 @@ class SlowQuiz {
 
 	async createO4MiniBatchJob(game: Game) {
 		log.info(`Creating o4-mini batch job for game ${game.id}...`);
-		const prompt = await promptLoader.load();
+		const prompt = await reasoningPromptLoader.load();
 		const questionText = this.getQuestionText(game);
 		const [visibleText] = questionText.split('\u200B');
 
-		const batchRequest = {
-			custom_id: `slowquiz_${game.id}`,
+		const requestBody: ChatCompletionCreateParams = {
+			model: 'o4-mini',
+			messages: [
+				...prompt,
+				{
+					role: 'user',
+					content: `Q. ${visibleText}`,
+				},
+			],
+			// 25,000 is recommended, but it will be too expensive for this game
+			// Input tokens: $0.55 / 11 * 2,000 = $0.0011
+			// Output tokens: $2.20 / 1M * 3,000 = $0.0066
+			max_completion_tokens: 3000,
+		};
+
+		// https://platform.openai.com/docs/api-reference/batch/request-input
+		const batchRequest: BatchRequest<ChatCompletionCreateParams> = {
+			custom_id: `slowquiz_${game.id}_day${game.days}`,
 			method: 'POST',
 			url: '/v1/chat/completions',
-			body: {
-				model: 'o4-mini',
-				messages: [
-					...prompt,
-					{
-						role: 'user',
-						content: [
-							'ありがとうございます。以下の文章も、クイズの問題文の途中までを表示したものです。この文章の続きを推測し、問題の答えと読みを教えてください。',
-							'',
-							`問題: ${visibleText}`,
-						].join('\n'),
-					},
-				],
-				max_tokens: 1024,
-			},
+			body: requestBody,
 		};
 
 		try {
@@ -545,6 +562,7 @@ class SlowQuiz {
 
 	async checkBatchJobs() {
 		log.info('Checking batch jobs...');
+
 		for (const batchJob of this.state.batchJobs) {
 			if (batchJob.status === 'pending' || batchJob.status === 'in_progress') {
 				try {
@@ -581,11 +599,11 @@ class SlowQuiz {
 			return;
 		}
 
-		const botId = 'o4-mini-batch:ver1';
+		const botId = 'o4-mini:ver1';
 		const userId = `bot:${botId}`;
 
 		if (game.correctAnswers.some((answer) => answer.user === userId)) {
-			log.info(`Game ${game.id} already has an o4-mini batch answer, skipping`);
+			log.info(`Game ${game.id} already has an o4-mini answer, skipping`);
 			return;
 		}
 
@@ -595,15 +613,18 @@ class SlowQuiz {
 			const results = outputText.split('\n').filter((line) => line.trim());
 
 			for (const resultLine of results) {
-				const result = JSON.parse(resultLine);
-				if (result.custom_id === `slowquiz_${game.id}`) {
+				const result: BatchResponse<ChatCompletion> = JSON.parse(resultLine);
+
+				if (result.custom_id === `slowquiz_${game.id}_day${game.days}`) {
 					const content = result.response?.body?.choices?.[0]?.message?.content;
 					if (content) {
 						batchJob.response = content;
-						const answer = this.extractAnswerFromResponse(content);
+						const answer = this.extractAnswerFromResponse(content, batchJob.model);
 						batchJob.answer = answer;
 
-						log.info(`O4-mini batch answer for game ${game.id}: ${answer} (${content})`);
+						log.info(`O4-mini answer for game ${game.id}: ${answer} (${content})`);
+						log.info(`Prompt tokens: ${result.response?.body?.usage?.prompt_tokens}`);
+						log.info(`Completion tokens: ${result.response?.body?.usage?.completion_tokens}`);
 
 						if (answer !== null) {
 							this.answerQuestion({
@@ -632,7 +653,18 @@ class SlowQuiz {
 		}
 	}
 
-	extractAnswerFromResponse(content: string): string | null {
+	extractAnswerFromResponse(content: string, model: string): string | null {
+		if (model === 'o4-mini') {
+			const matches = (/最終解答[:：]\s*(?<answer>.+?)(?<rubyParens>（(?<ruby>.+?)）)?$/m).exec(content);
+			if (matches?.groups?.ruby) {
+				return matches.groups.ruby.replaceAll(/[^ぁ-ゟァ-ヿa-z0-9]/ig, '') ?? null;
+			}
+			if (matches?.groups?.answer) {
+				return matches.groups.answer.replaceAll(/[^ぁ-ゟァ-ヿa-z0-9]/ig, '') ?? null;
+			}
+			return null;
+		}
+
 		let answer = null;
 		const answerMatches = (/【(?<answer>.+?)】/).exec(content);
 		if (answerMatches?.groups?.answer) {
@@ -646,7 +678,7 @@ class SlowQuiz {
 
 		answer = answer?.replaceAll(/[^ぁ-ゟァ-ヿa-z0-9]/ig, '');
 
-		if (answer === '') {
+		if (!answer) {
 			answer = null;
 		}
 
@@ -754,11 +786,11 @@ class SlowQuiz {
 				continue;
 			}
 
-			const botId = 'o4-mini-batch:ver1';
+			const botId = 'o4-mini:ver1';
 			const userId = `bot:${botId}`;
 
 			if (game.correctAnswers.some((answer) => answer.user === userId)) {
-				log.info(`Game ${game.id} already has an o4-mini batch answer, skipping...`);
+				log.info(`Game ${game.id} already has an o4-mini answer, skipping...`);
 				continue;
 			}
 
@@ -1351,6 +1383,7 @@ export const server = ({webClient: slack, messageClient: slackInteractions}: Sla
 
 			mutex.runExclusive(async () => {
 				log.info('Received /slow-quiz command');
+				// await slowquiz.postGameStatus(false, [req.body.channel_id]);
 				await slowquiz.progressGames();
 			});
 
