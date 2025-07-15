@@ -527,7 +527,7 @@ class SlowQuiz {
 				},
 			],
 			// 25,000 is recommended, but it will be too expensive for this game
-			// Input tokens: $0.55 / 11 * 2,000 = $0.0011
+			// Input tokens: $0.55 / 1M * 2,000 = $0.0011
 			// Output tokens: $2.20 / 1M * 3,000 = $0.0066
 			max_completion_tokens: 3000,
 		};
@@ -626,37 +626,46 @@ class SlowQuiz {
 			for (const resultLine of results) {
 				const result: BatchResponse<ChatCompletion> = JSON.parse(resultLine);
 
-				if (result.custom_id === `slowquiz_${game.id}_day${game.days}`) {
-					const content = result.response?.body?.choices?.[0]?.message?.content;
-					if (content) {
-						batchJob.response = content;
-						const answer = this.extractAnswerFromResponse(content, batchJob.model);
-						batchJob.answer = answer;
+				if (result.custom_id !== `slowquiz_${game.id}_day${game.days}`) {
+					log.warn(`Unexpected custom_id in batch result: ${result.custom_id} (expected: slowquiz_${game.id}_day${game.days})`);
+				}
 
-						log.info(`O4-mini answer for game ${game.id}: ${answer} (${content})`);
-						log.info(`Prompt tokens: ${result.response?.body?.usage?.prompt_tokens}`);
-						log.info(`Completion tokens: ${result.response?.body?.usage?.completion_tokens}`);
+				if (result.response?.body?.usage?.completion_tokens_details?.reasoning_tokens === 3000) {
+					log.warn(`Batch job ${batchJob.id} response has 3000 reasoning tokens, which means it might exceeded the limit. The response might be incomplete.`);
+				}
 
-						if (answer !== null) {
-							this.answerQuestion({
-								type: 'bot',
-								game,
-								ruby: answer,
-								user: botId,
-							});
-						}
+				const content = result.response?.body?.choices?.[0]?.message?.content;
+				log.info(`Batch job ${batchJob.id} response content: ${content}`);
 
-						if (content !== null) {
-							await this.postComment({
-								id: game.id,
-								viewId: '',
-								comment: content,
-								type: 'bot',
-								user: botId,
-							});
-						}
-						break;
+				if (content) {
+					batchJob.response = content;
+					const answer = this.extractAnswerFromResponse(content, batchJob.model);
+					batchJob.answer = answer;
+
+					log.info(`O4-mini answer for game ${game.id}: ${answer} (${content})`);
+					log.info(`Prompt tokens: ${result.response?.body?.usage?.prompt_tokens}`);
+					log.info(`Completion tokens: ${result.response?.body?.usage?.completion_tokens}`);
+					log.info(`Reasoning tokens: ${result.response?.body?.usage?.completion_tokens_details?.reasoning_tokens}`);
+
+					if (answer !== null) {
+						this.answerQuestion({
+							type: 'bot',
+							game,
+							ruby: answer,
+							user: botId,
+						});
 					}
+
+					if (content !== null) {
+						await this.postComment({
+							id: game.id,
+							viewId: '',
+							comment: content,
+							type: 'bot',
+							user: botId,
+						});
+					}
+					break;
 				}
 			}
 		} catch (error) {
@@ -1409,8 +1418,8 @@ export const server = ({webClient: slack, messageClient: slackInteractions}: Sla
 			});
 		});
 
-		// Check batch jobs every 30 minutes
-		scheduleJob('*/30 * * * *', () => {
+		// Check batch jobs every hour
+		scheduleJob('30 * * * *', () => {
 			mutex.runExclusive(() => {
 				slowquiz.checkBatchJobs();
 			});
