@@ -61,6 +61,20 @@ jobs:
           token: ${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
+      - name: Setup Tools
+        uses: asdf-vm/actions/install@v3
+        with:
+          # https://github.com/asdf-vm/actions/issues/587
+          asdf_branch: v0.15.0
+
+      - name: Before Install
+        run: |
+          mkdir -p shogi/boards
+          touch shogi/boards/temp.sqlite3
+
+      - name: Install Dependencies
+        run: npm ci
+
       - name: Get PR details (pull_request & workflow_dispatch)
         id: get_pr
         if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
@@ -131,70 +145,71 @@ jobs:
             }
           prompt: |
             You are an expert code reviewer. You have access to shell commands to gather PR information and perform the review.
-            
+
             IMPORTANT: Use the available shell commands to gather information. Do not ask for information to be provided.
-            
+
             Start by running these commands to gather the required data:
-            1. Run: echo "$PR_DATA" to get PR details (JSON format)
-            2. Run: echo "$CHANGED_FILES" to get the list of changed files
-            3. Run: echo "$PR_NUMBER" to get the PR number
-            4. Run: echo "$ADDITIONAL_INSTRUCTIONS" to see any specific review instructions from the user
-            5. Run: gh pr diff $PR_NUMBER to see the full diff
-            6. For any specific files, use: cat filename, head -50 filename, or tail -50 filename
-            
+            1. AI development instructions are provided in `.github/copilot-instructions.md`. Run `cat .github/copilot-instructions.md` to see the instructions.
+            2. Run: echo "$PR_DATA" to get PR details (JSON format)
+            3. Run: echo "$CHANGED_FILES" to get the list of changed files
+            4. Run: echo "$PR_NUMBER" to get the PR number
+            5. Run: echo "$ADDITIONAL_INSTRUCTIONS" to see any specific review instructions from the user
+            6. Run: gh pr diff $PR_NUMBER to see the full diff
+            7. For any specific files, use: cat filename, head -50 filename, or tail -50 filename
+
             Additional Review Instructions:
             If ADDITIONAL_INSTRUCTIONS contains text, prioritize those specific areas or focus points in your review.
             Common instruction examples: "focus on security", "check performance", "review error handling", "check for breaking changes"
-            
+
             Once you have the information, provide a comprehensive code review by:
             1. Writing your review to a file: write_file("review.md", "<your detailed review feedback here>")
             2. Posting the review: gh pr comment $PR_NUMBER --body-file review.md --repo $REPOSITORY
-            
+
             Review Areas:
             - **Security**: Authentication, authorization, input validation, data sanitization
             - **Performance**: Algorithms, database queries, caching, resource usage
             - **Reliability**: Error handling, logging, testing coverage, edge cases
             - **Maintainability**: Code structure, documentation, naming conventions
             - **Functionality**: Logic correctness, requirements fulfillment
-            
+
             Output Format:
-            Structure your review using this exact format with markdown:
-            
-            ## 📋 Review Summary
+            The review comments you output MUST be in Japanese. Structure your review using this exact format with markdown:
+
+            ## 📋 概要
             Provide a brief 2-3 sentence overview of the PR and overall assessment.
-            
-            ## 🔍 General Feedback
+
+            ## 🔍 フィードバック
             - List general observations about code quality
             - Mention overall patterns or architectural decisions
             - Highlight positive aspects of the implementation
             - Note any recurring themes across files
-            
-            ## 🎯 Specific Feedback
+
+            ## 🎯 具体的なフィードバック
             Only include sections below that have actual issues. If there are no issues in a priority category, omit that entire section.
-            
+
             ### 🔴 Critical
             (Only include this section if there are critical issues)
             Issues that must be addressed before merging (security vulnerabilities, breaking changes, major bugs):
             - **File: `filename:line`** - Description of critical issue with specific recommendation
-            
+
             ### 🟡 High
             (Only include this section if there are high priority issues)
             Important issues that should be addressed (performance problems, design flaws, significant bugs):
             - **File: `filename:line`** - Description of high priority issue with suggested fix
-            
+
             ### 🟢 Medium
             (Only include this section if there are medium priority issues)
             Improvements that would enhance code quality (style issues, minor optimizations, better practices):
             - **File: `filename:line`** - Description of medium priority improvement
-            
+
             ### 🔵 Low
             (Only include this section if there are suggestions)
             Nice-to-have improvements and suggestions (documentation, naming, minor refactoring):
             - **File: `filename:line`** - Description of suggestion or enhancement
-            
+
             **Note**: If no specific issues are found in any category, simply state "No specific issues identified in this review."
-            
-            ## ✅ Highlights
+
+            ## ✅ ハイライト
             (Only include this section if there are positive aspects to highlight)
             - Mention specific good practices or implementations
             - Acknowledge well-written code sections
