@@ -1,5 +1,7 @@
-import {TahoiyaBot} from './TahoiyaBot';
+import TahoiyaBot from './TahoiyaBot';
 import {normalizeMeaning, getPageTitle, getWordUrl} from './lib';
+
+/* eslint-env jest */
 
 // Mock SlackMessageAdapter
 const mockSlackMessageAdapter = {
@@ -76,10 +78,10 @@ jest.mock('./lib', () => ({
 }));
 
 describe('TahoiyaBot', () => {
-	let bot: TahoiyaBot;
+	let bot: TahoiyaBot = new TahoiyaBot(mockSlackInterface as unknown as import('../lib/slack').SlackInterface);
 
 	beforeEach(() => {
-		bot = new TahoiyaBot(mockSlackInterface as any);
+		bot = new TahoiyaBot(mockSlackInterface as unknown as import('../lib/slack').SlackInterface);
 	});
 
 	describe('initialization', () => {
@@ -90,17 +92,21 @@ describe('TahoiyaBot', () => {
 
 	describe('getMemberName', () => {
 		it('should return AI bot names correctly', () => {
-			const bot = new TahoiyaBot(mockSlackInterface as any);
-			expect((bot as any).getMemberName('tahoiyabot-01')).toBe('たほいやAIくん1号 (仮)');
-			expect((bot as any).getMemberName('tahoiyabot-02')).toBe('たほいやAIくん2号 (仮)');
+			const testBot = new TahoiyaBot(mockSlackInterface as unknown as import('../lib/slack').SlackInterface);
+			// @ts-expect-error - Testing private method
+			expect(testBot.getMemberName('tahoiyabot-01')).toBe('たほいやAIくん1号 (仮)');
+			// @ts-expect-error - Testing private method
+			expect(testBot.getMemberName('tahoiyabot-02')).toBe('たほいやAIくん2号 (仮)');
 		});
 	});
 
 	describe('getMention', () => {
 		it('should return proper mentions', () => {
-			const bot = new TahoiyaBot(mockSlackInterface as any);
-			expect((bot as any).getMention('U123456')).toBe('<@U123456>');
-			expect((bot as any).getMention('tahoiyabot-01')).toBe('たほいやAIくん1号 (仮)');
+			const testBot = new TahoiyaBot(mockSlackInterface as unknown as import('../lib/slack').SlackInterface);
+			// @ts-expect-error - Testing private method
+			expect(testBot.getMention('U123456')).toBe('<@U123456>');
+			// @ts-expect-error - Testing private method
+			expect(testBot.getMention('tahoiyabot-01')).toBe('たほいやAIくん1号 (仮)');
 		});
 	});
 });
@@ -127,10 +133,10 @@ describe('lib functions', () => {
 
 describe('Game flow', () => {
 	it('should handle basic game initialization', async () => {
-		const bot = new TahoiyaBot(mockSlackInterface as any);
-		await bot.initialize();
+		const testBot = new TahoiyaBot(mockSlackInterface as unknown as import('../lib/slack').SlackInterface);
+		await testBot.initialize();
 
 		// Test that the bot is in waiting state initially
-		expect((bot as any).state.phase).toBe('waiting');
+		expect((testBot as unknown as {state: {phase: string}}).state.phase).toBe('waiting');
 	});
 });

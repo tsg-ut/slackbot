@@ -14,7 +14,7 @@ import logger from '../lib/logger';
 const log = logger.child({bot: 'tahoiya'});
 
 export const getPageTitle = (url: string): string => {
-	const urlTitle = decodeURI(url.match(/([^/]+)$/)![1]);
+	const urlTitle = decodeURI(url.match(/(?<title>[^/]+)$/)![1]);
 
 	if (url.startsWith('https://ja.wikipedia.org')) {
 		return `${urlTitle} - Wikipedia`;
@@ -126,13 +126,13 @@ export const getTimeLink = (time: number): string => {
 
 export const normalizeMeaning = (input: string): string => {
 	let meaning = input;
-	meaning = meaning.replace(/[=]= (.+?) ==/g, '$1');
+	meaning = meaning.replace(/[=]= (?<content>.+?) ==/g, '$1');
 	meaning = meaning.replace(/\(.+?\)/g, '');
 	meaning = meaning.replace(/（.+?）/g, '');
 	meaning = meaning.replace(/【.+?】/g, '');
 	meaning = meaning.replace(/。.*$/, '');
 	meaning = meaning.replace(/^.+? -/, '');
-	meaning = meaning.replace(/(のこと|をいう|である)+$/, '');
+	meaning = meaning.replace(/(?<suffix>のこと|をいう|である)+$/, '');
 	meaning = meaning.replace(/，/g, '、');
 	meaning = meaning.replace(/．/g, '。');
 	return meaning.trim();
@@ -221,7 +221,7 @@ export const getMeaning = async (wordData: [string, string, string, string, stri
 	return meaning;
 };
 
-export const getCandidateWords = async (options: {min?: number, max?: number} = {}): Promise<any[]> => {
+export const getCandidateWords = async (options: {min?: number, max?: number} = {}): Promise<unknown[]> => {
 	const {min = 3, max = 7} = options;
 
 	const fileDownloads = [
@@ -237,11 +237,7 @@ export const getCandidateWords = async (options: {min?: number, max?: number} = 
 	const texts = await Promise.all(fileDownloads.map(async ([filename, url]) => {
 		const dataPath = path.join(__dirname, filename);
 
-		const dataExists = await new Promise<boolean>((resolve) => {
-			fs.access(dataPath, fs.constants.F_OK, (error) => {
-				resolve(!error);
-			});
-		});
+		const dataExists = await fs.promises.access(dataPath, fs.constants.F_OK).then(() => true).catch(() => false);
 
 		if (dataExists) {
 			const databaseBuffer = await promisify(fs.readFile)(dataPath);

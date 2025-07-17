@@ -3,22 +3,19 @@ import type {BlockButtonAction, ViewSubmitAction} from '@slack/bolt';
 import {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
-import {oneLine, stripIndent} from 'common-tags';
+import {stripIndent} from 'common-tags';
+// @ts-expect-error: No type definitions available
 import levenshtein from 'fast-levenshtein';
 import type {FastifyPluginCallback} from 'fastify';
 import plugin from 'fastify-plugin';
 // @ts-expect-error: No type definitions available
 import {hiraganize} from 'japanese';
-import {maxBy, minBy, random, sample, sampleSize, shuffle, sum} from 'lodash';
-// @ts-expect-error: No type definitions available
+import {random, sampleSize} from 'lodash';
 import {scheduleJob} from 'node-schedule';
-import Queue from 'p-queue';
-// @ts-expect-error: No type definitions available
-import rouge from 'rouge';
-import sql from 'sql-template-strings';
-import sqlite from 'sqlite';
-import sqlite3 from 'sqlite3';
-import {increment, unlock} from '../achievements';
+import PQueue from 'p-queue';
+import {open} from 'sqlite';
+import {Database} from 'sqlite3';
+import {unlock} from '../achievements';
 // @ts-expect-error: No type definitions available
 import getReading from '../lib/getReading.js';
 import logger from '../lib/logger';
@@ -31,11 +28,7 @@ import {
 	themeRegistrationDialog,
 	commentDialog,
 } from './dialogs';
-import {gist} from './gist';
 import {
-	getPageTitle,
-	getWordUrl,
-	getIconUrl,
 	getTimeLink,
 	getMeaning,
 	getCandidateWords,
@@ -43,63 +36,35 @@ import {
 } from './lib';
 import type {
 	TahoiyaState,
-	TahoiyaGame,
-	TahoiyaTheme,
-	TahoiyaMeaning,
-	TahoiyaBetting,
-	TahoiyaComment,
-	TahoiyaRating,
 } from './types';
 
 const log = logger.child({bot: 'tahoiya'});
 
 const timeCollectMeaningNormal = 3 * 60 * 1000;
-const timeCollectMeaningDaily = 90 * 60 * 1000;
-const timeCollectBettingNormal = 3 * 60 * 1000;
-const timeCollectBettingDaily = 30 * 60 * 1000;
 const timeExtraAddition = 60 * 1000;
 
-const colors = [
-	'#F44336',
-	'#7E57C2',
-	'#0288D1',
-	'#388E3C',
-	'#F4511E',
-	'#607D8B',
-	'#EC407A',
-	'#5C6BC0',
-	'#00838F',
-	'#558B2F',
-	'#8D6E63',
-	'#AB47BC',
-	'#1E88E5',
-	'#009688',
-	'#827717',
-	'#E65100',
-];
-
-export class TahoiyaBot {
+export default class TahoiyaBot {
 	private slack: WebClient;
 
-	private eventClient: any;
+	private eventClient: unknown;
 
 	private messageClient: SlackMessageAdapter;
 
 	private state: TahoiyaState;
 
-	private db: sqlite.Database;
+	private db: unknown;
 
-	private candidateWords: any[];
+	private candidateWords: unknown[];
 
-	private members: any[];
+	private members: unknown[];
 
-	private team: any;
+	private team: unknown;
 
-	private timeoutId: NodeJS.Timeout | null = null;
+	private timeoutId: ReturnType<typeof setTimeout> | null = null;
 
 	private mutex = new Mutex();
 
-	private queue = new Queue({concurrency: 1});
+	private queue = new PQueue({concurrency: 1});
 
 	constructor({webClient, eventClient, messageClient}: SlackInterface) {
 		this.slack = webClient;
@@ -126,9 +91,9 @@ export class TahoiyaBot {
 		});
 
 		// Initialize database
-		this.db = await sqlite.open({
+		this.db = await open({
 			filename: path.join(__dirname, 'themes.sqlite3'),
-			driver: sqlite3.Database,
+			driver: Database,
 		});
 
 		// Load candidate words
@@ -173,9 +138,8 @@ export class TahoiyaBot {
 	}
 
 	private setupEventListeners() {
-		this.eventClient.on('message', (message: any) => {
-			this.handleMessage(message);
-		});
+		// @ts-expect-error - Slack event client API
+		this.eventClient.on('message', this.handleMessage.bind(this));
 	}
 
 	private setupInteractions() {
@@ -184,7 +148,7 @@ export class TahoiyaBot {
 			type: 'button',
 			actionId: 'tahoiya_start_game',
 		}, (payload: BlockButtonAction) => {
-			this.mutex.runExclusive(() => this.handleStartGame(payload));
+			this.mutex.runExclusive(() => this.handleStartGame());
 		});
 
 		this.messageClient.action({
@@ -250,23 +214,24 @@ export class TahoiyaBot {
 		});
 	}
 
-	private async handleMessage(message: any) {
-		if (!message.text || message.subtype !== undefined) {
+	private async handleMessage(message: unknown) {
+		const msg = message as {text?: string, subtype?: string, channel?: string};
+		if (!msg.text || msg.subtype !== undefined) {
 			return;
 		}
 
 		try {
-			const {text} = message;
+			const {text} = msg;
 
-			if (message.channel === process.env.CHANNEL_SANDBOX) {
-				await this.handleChannelMessage(message, text);
+			if (msg.channel === process.env.CHANNEL_SANDBOX) {
+				await this.handleChannelMessage(msg, text);
 			}
 		} catch (error) {
-			this.postMessage(error.stack);
+			this.postMessage((error as Error).stack || 'Unknown error');
 		}
 	}
 
-	private async handleChannelMessage(message: any, text: string) {
+	private async handleChannelMessage(message: unknown, text: string) {
 		// Handle "たほいや" command
 		if (text === 'たほいや') {
 			if (this.state.phase !== 'waiting') {
@@ -339,7 +304,8 @@ export class TahoiyaBot {
 		this.state.phase = 'collect_meanings';
 		this.state.endThisPhase = end;
 
-		const [word, ruby, source, rawMeaning, id] = this.state.candidates.find(([, r]) => r === text);
+		const candidate = this.state.candidates.find(([, r]) => r === text) as [string, string, string, string, string];
+		const [word, ruby, source, rawMeaning, id] = candidate;
 		this.state.candidates = [];
 
 		const meaning = await getMeaning([word, ruby, source, rawMeaning, id]);
@@ -391,9 +357,9 @@ export class TahoiyaBot {
 		}
 	}
 
-	private async handleAIQuery(message: any, text: string) {
+	private async handleAIQuery(message: unknown, text: string) {
 		const isMention = text.startsWith('@tahoiya');
-		const body = text.replace(/^@\w+/, '').replace(/(って(なに|何)|とは)[？?⋯…・]*$/, '').trim();
+		const body = text.replace(/^@\w+/, '').replace(/(?:って(?:なに|何)|とは)[？?⋯…・]*$/, '').trim();
 		const ruby = hiraganize(await getReading(body)).replace(/[^\p{Script=Hiragana}ー]/gu, '');
 		const modelData = text.startsWith('@tahoiya2')
 			? ['tahoiyabot-02', 'model.ckpt-600001-ver2']
@@ -421,12 +387,12 @@ export class TahoiyaBot {
 						[],
 						{
 							username: this.getMemberName(modelData[0]),
-							thread_ts: message.ts,
+							thread_ts: (message as {ts?: string}).ts,
 							reply_broadcast: true,
 						},
 					);
 				} catch (error) {
-					this.postMessage(error.stack);
+					this.postMessage((error as Error).stack || 'Unknown error');
 				}
 			});
 			return;
@@ -456,27 +422,27 @@ export class TahoiyaBot {
 		);
 	}
 
-	private async onFinishMeanings() {
+	private onFinishMeanings() {
 		// Implementation similar to original but with modern patterns
 		// This is a placeholder - full implementation would be quite long
 		log.info('Finishing meanings collection phase');
 		// ... rest of the implementation
 	}
 
-	private async onFinishBettings() {
+	private onFinishBettings() {
 		// Implementation similar to original but with modern patterns
 		// This is a placeholder - full implementation would be quite long
 		log.info('Finishing betting phase');
 		// ... rest of the implementation
 	}
 
-	private async startDaily() {
+	private startDaily() {
 		// Implementation for daily game start
 		log.info('Starting daily tahoiya game');
 		// ... rest of the implementation
 	}
 
-	private async handleStartGame(payload: BlockButtonAction) {
+	private handleStartGame() {
 		// Implementation for handling start game button
 		log.info('Handling start game');
 	}
@@ -489,28 +455,28 @@ export class TahoiyaBot {
 		}
 	}
 
-	private async showMeaningDialog(payload: BlockButtonAction) {
+	private showMeaningDialog(payload: BlockButtonAction) {
 		return this.slack.views.open({
 			trigger_id: payload.trigger_id,
 			view: meaningCollectionDialog(),
 		});
 	}
 
-	private async showBettingDialog(payload: BlockButtonAction) {
+	private showBettingDialog(payload: BlockButtonAction) {
 		return this.slack.views.open({
 			trigger_id: payload.trigger_id,
 			view: bettingDialog(this.state.shuffledMeanings),
 		});
 	}
 
-	private async showThemeRegistrationDialog(payload: BlockButtonAction) {
+	private showThemeRegistrationDialog(payload: BlockButtonAction) {
 		return this.slack.views.open({
 			trigger_id: payload.trigger_id,
 			view: themeRegistrationDialog(),
 		});
 	}
 
-	private async showCommentDialog(payload: BlockButtonAction) {
+	private showCommentDialog(payload: BlockButtonAction) {
 		return this.slack.views.open({
 			trigger_id: payload.trigger_id,
 			view: commentDialog(),
@@ -523,7 +489,7 @@ export class TahoiyaBot {
 		const user = payload.user.id;
 
 		if (!meaning || this.state.phase !== 'collect_meanings') {
-			return;
+			return undefined;
 		}
 
 		if (this.state.author === user) {
@@ -532,19 +498,20 @@ export class TahoiyaBot {
 				errors: {
 					meaning_input: '出題者はたほいやに参加できないよ:fearful:',
 				},
-			};
+			} as const;
 		}
 
 		const isUpdate = this.state.meanings.has(user);
 		this.state.meanings.set(user, normalizeMeaning(meaning));
 
 		if (!isUpdate) {
-			const humanCount = Array.from(this.state.meanings.keys()).filter((user) => user.startsWith('U')).length;
-			const remainingText = this.state.author === null ? '' : (
-				humanCount > 3 ? '' : (
-					humanCount === 3 ? '(決行決定:tada:)' : `(決行まであと${3 - humanCount}人)`
-				)
-			);
+			const humanCount = Array.from(this.state.meanings.keys()).filter((userId) => userId.startsWith('U')).length;
+			let remainingText = '';
+			if (this.state.author !== null) {
+				if (humanCount <= 3) {
+					remainingText = humanCount === 3 ? '(決行決定:tada:)' : `(決行まであと${3 - humanCount}人)`;
+				}
+			}
 
 			await this.postMessage(
 				stripIndent`
@@ -555,6 +522,7 @@ export class TahoiyaBot {
 
 			await unlock(user, 'tahoiya');
 		}
+		return undefined;
 	}
 
 	private async submitBetting(payload: ViewSubmitAction) {
@@ -564,7 +532,7 @@ export class TahoiyaBot {
 		const user = payload.user.id;
 
 		if (this.state.phase !== 'collect_bettings') {
-			return;
+			return undefined;
 		}
 
 		if (!this.state.meanings.has(user)) {
@@ -573,7 +541,7 @@ export class TahoiyaBot {
 				errors: {
 					meaning_select: 'あなたは参加登録していないのでベッティングできないよ:innocent:',
 				},
-			};
+			} as const;
 		}
 
 		if (this.state.shuffledMeanings[meaningIndex]?.user === user) {
@@ -582,7 +550,7 @@ export class TahoiyaBot {
 				errors: {
 					meaning_select: '自分自身には投票できないよ:angry:',
 				},
-			};
+			} as const;
 		}
 
 		const isUpdate = this.state.bettings.has(user);
@@ -599,9 +567,10 @@ export class TahoiyaBot {
 			clearTimeout(this.timeoutId);
 			this.onFinishBettings();
 		}
+		return undefined;
 	}
 
-	private async submitThemeRegistration(payload: ViewSubmitAction) {
+	private submitThemeRegistration(payload: ViewSubmitAction) {
 		const {values} = payload.view.state;
 		const word = values?.word_input?.word?.value;
 		const ruby = values?.ruby_input?.ruby?.value;
@@ -615,7 +584,7 @@ export class TahoiyaBot {
 		log.info('Theme registration submitted', {word, ruby, meaning, source, url, user});
 	}
 
-	private async submitComment(payload: ViewSubmitAction) {
+	private submitComment(payload: ViewSubmitAction) {
 		const {values} = payload.view.state;
 		const comment = values?.comment_input?.comment?.value;
 		const user = payload.user.id;
@@ -640,7 +609,7 @@ export class TahoiyaBot {
 			return 'たほいやAIくん2号 (仮)';
 		}
 
-		const member = this.members.find(({id}) => id === user);
+		const member = this.members.find(({id}) => id === user) as {profile?: {display_name?: string}, name?: string};
 		return member?.profile?.display_name || member?.name || user;
 	}
 
@@ -649,7 +618,7 @@ export class TahoiyaBot {
 			return 'https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/apple/155/robot-face_1f916.png';
 		}
 
-		const member = this.members.find(({id}) => id === user);
+		const member = this.members.find(({id}) => id === user) as {profile?: {image_24?: string}};
 		return member?.profile?.image_24 || '';
 	}
 
@@ -665,7 +634,7 @@ export class TahoiyaBot {
 		return `<@${user}>`;
 	}
 
-	private async postMessage(text: string, attachments: any[] = [], options: any = {}) {
+	private postMessage(text: string, attachments: unknown[] = [], options: Record<string, unknown> = {}) {
 		return this.slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			text,
@@ -677,7 +646,7 @@ export class TahoiyaBot {
 	}
 
 	getServerPlugin(): FastifyPluginCallback {
-		const callback: FastifyPluginCallback = async (fastify, opts, next) => {
+		const callback: FastifyPluginCallback = (fastify, opts, next) => {
 			// No server endpoints needed for this version
 			next();
 		};

@@ -1,5 +1,4 @@
 import {stripIndent} from 'common-tags';
-import {get} from 'lodash';
 import moment from 'moment';
 
 interface Battle {
@@ -29,7 +28,7 @@ interface GistData {
 	offset: number;
 }
 
-const getMemberName = (user: string, members: any[]): string => {
+const getMemberName = (user: string, members: unknown[]): string => {
 	if (user === 'tahoiyabot-01') {
 		return 'たほいやAIくん1号 (仮)';
 	}
@@ -49,7 +48,7 @@ const pluralize = (count: number, noun: string): string => {
 	return `${count} ${noun}s`;
 };
 
-export const serialize = (data: GistData, members: any[]): string => {
+export const serialize = (data: GistData, members: unknown[]): string => {
 	const {battles, offset} = data;
 
 	const lines: string[] = [];

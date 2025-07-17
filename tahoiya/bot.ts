@@ -31,7 +31,7 @@ const normalizeBrackets = async (text: string): Promise<string> => {
 		}];
 	}));
 	const chars = Array.from(text);
-	const stack: {index: number, char: string, pair: string}[] = [];
+	const stackItems: {index: number, char: string, pair: string}[] = [];
 	const newChars = chars.map((char, index) => {
 		if (!bracketMap.has(char)) {
 			return char;
@@ -40,23 +40,23 @@ const normalizeBrackets = async (text: string): Promise<string> => {
 		const bracketInfo = bracketMap.get(char)!;
 		const {pair, type} = bracketInfo;
 		if (type === 'open') {
-			stack.push({index, char, pair});
+			stackItems.push({index, char, pair});
 			return char;
 		}
 
 		if (type === 'close') {
-			if (stack.length === 0) {
+			if (stackItems.length === 0) {
 				return '';
 			}
 
-			const pop = stack.pop()!;
+			const pop = stackItems.pop()!;
 			return pop.pair;
 		}
 
 		return '';
 	});
 
-	for (const {index} of stack) {
+	for (const {index} of stackItems) {
 		newChars[index] = '';
 	}
 
@@ -68,7 +68,7 @@ export const getResult = async (rawInput: string, modelName: string): Promise<Bo
 		throw new Error(`Invalid model name: ${modelName}`);
 	}
 
-	let stdoutWriter: NodeJS.WritableStream | null = null;
+	let stdoutWriter: ReturnType<typeof concatStream> | null = null;
 	const input = hiraganize(rawInput).replace(/[^\p{Script=Hiragana}ー]/gu, '');
 
 	const stdoutPromise = new Promise<Buffer>((resolve) => {
@@ -77,7 +77,7 @@ export const getResult = async (rawInput: string, modelName: string): Promise<Bo
 		});
 	});
 
-	let stderrWriter: NodeJS.WritableStream | null = null;
+	let stderrWriter: ReturnType<typeof concatStream> | null = null;
 
 	const stderrPromise = new Promise<Buffer>((resolve) => {
 		stderrWriter = concatStream({encoding: 'buffer'}, (stderr) => {
@@ -150,13 +150,13 @@ export const getResult = async (rawInput: string, modelName: string): Promise<Bo
 		]);
 	} finally {
 		if (container) {
-			await container.stop().catch((error: any) => {
-				if (error.statusCode !== 304) {
+			await container.stop().catch((error: unknown) => {
+				if ((error as {statusCode?: number}).statusCode !== 304) {
 					throw error;
 				}
 			});
-			await container.remove().catch((error: any) => {
-				if (error.statusCode !== 304) {
+			await container.remove().catch((error: unknown) => {
+				if ((error as {statusCode?: number}).statusCode !== 304) {
 					throw error;
 				}
 			});

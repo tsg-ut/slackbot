@@ -61,7 +61,7 @@ export interface TahoiyaState {
 	isWaitingDaily: boolean;
 	author: string | null;
 	authorHistory: string[];
-	candidates: any[];
+	candidates: unknown[];
 	meanings: Map<string, string>;
 	shuffledMeanings: TahoiyaMeaning[];
 	bettings: Map<string, TahoiyaBetting>;
