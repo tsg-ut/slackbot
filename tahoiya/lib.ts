@@ -1,21 +1,20 @@
-const assert = require('assert');
-const fs = require('fs');
-const path = require('path');
-const querystring = require('querystring');
-const {promisify} = require('util');
-const axios = require('axios');
-const download = require('download');
-const {hiraganize} = require('japanese');
-const get = require('lodash/get');
-const last = require('lodash/last');
-const shuffle = require('lodash/shuffle');
-const moment = require('moment');
-const {default: logger} = require('../lib/logger.ts');
+import fs from 'fs';
+import path from 'path';
+import querystring from 'querystring';
+import {promisify} from 'util';
+import axios from 'axios';
+// @ts-expect-error: No type definitions available
+import download from 'download';
+// @ts-expect-error: No type definitions available
+import {hiraganize} from 'japanese';
+import {get, last, shuffle} from 'lodash';
+import moment from 'moment';
+import logger from '../lib/logger';
 
 const log = logger.child({bot: 'tahoiya'});
 
-module.exports.getPageTitle = (url) => {
-	const urlTitle = decodeURI(url.match(/([^/]+)$/)[1]);
+export const getPageTitle = (url: string): string => {
+	const urlTitle = decodeURI(url.match(/([^/]+)$/)![1]);
 
 	if (url.startsWith('https://ja.wikipedia.org')) {
 		return `${urlTitle} - Wikipedia`;
@@ -42,11 +41,14 @@ module.exports.getPageTitle = (url) => {
 		return 'フィデリ IT用語辞典';
 	}
 
-	assert(url.startsWith('http://dic.nicovideo.jp'));
-	return `${urlTitle} - ニコニコ大百科`;
+	if (url.startsWith('http://dic.nicovideo.jp')) {
+		return `${urlTitle} - ニコニコ大百科`;
+	}
+
+	throw new Error(`Unknown URL format: ${url}`);
 };
 
-module.exports.getWordUrl = (word, source, id) => {
+export const getWordUrl = (word: string, source: string, id?: string): string => {
 	if (source === 'wikipedia') {
 		return `https://ja.wikipedia.org/wiki/${encodeURIComponent(word)}`;
 	}
@@ -68,14 +70,17 @@ module.exports.getWordUrl = (word, source, id) => {
 	}
 
 	if (source === 'fideli') {
-		return `http://dic-it.fideli.com/dictionary/m/word/w/${encodeURIComponent(id)}/index.html`;
+		return `http://dic-it.fideli.com/dictionary/m/word/w/${encodeURIComponent(id!)}/index.html`;
 	}
 
-	assert(source === 'nicopedia');
-	return `http://dic.nicovideo.jp/a/${encodeURIComponent(word)}`;
+	if (source === 'nicopedia') {
+		return `http://dic.nicovideo.jp/a/${encodeURIComponent(word)}`;
+	}
+
+	throw new Error(`Unknown source: ${source}`);
 };
 
-module.exports.getIconUrl = (source) => {
+export const getIconUrl = (source: string): string => {
 	if (source === 'wikipedia') {
 		return 'https://ja.wikipedia.org/static/favicon/wikipedia.ico';
 	}
@@ -100,11 +105,14 @@ module.exports.getIconUrl = (source) => {
 		return 'http://dic-it.fideli.com/image/favicon.ico';
 	}
 
-	assert(source === 'nicopedia');
-	return 'http://dic.nicovideo.jp/favicon.ico';
+	if (source === 'nicopedia') {
+		return 'http://dic.nicovideo.jp/favicon.ico';
+	}
+
+	throw new Error(`Unknown source: ${source}`);
 };
 
-module.exports.getTimeLink = (time) => {
+export const getTimeLink = (time: number): string => {
 	const text = moment(time).utcOffset('+0900').format('HH:mm:ss');
 	const url = `https://www.timeanddate.com/countdown/generic?${querystring.stringify({
 		iso: moment(time).utcOffset('+0900').format('YYYYMMDDTHHmmss'),
@@ -116,9 +124,9 @@ module.exports.getTimeLink = (time) => {
 	return `<${url}|${text}>`;
 };
 
-const normalizeMeaning = (input) => {
+export const normalizeMeaning = (input: string): string => {
 	let meaning = input;
-	meaning = meaning.replace(/== (.+?) ==/g, '$1');
+	meaning = meaning.replace(/[=]= (.+?) ==/g, '$1');
 	meaning = meaning.replace(/\(.+?\)/g, '');
 	meaning = meaning.replace(/（.+?）/g, '');
 	meaning = meaning.replace(/【.+?】/g, '');
@@ -130,14 +138,14 @@ const normalizeMeaning = (input) => {
 	return meaning.trim();
 };
 
-module.exports.normalizeMeaning = normalizeMeaning;
+export const getMeaning = async (wordData: [string, string, string, string, string?]): Promise<string> => {
+	const [word, , source, rawMeaning] = wordData;
 
-module.exports.getMeaning = async ([word, , source, rawMeaning]) => {
 	if (source !== 'wikipedia' && source !== 'wiktionary') {
 		return rawMeaning;
 	}
 
-	let wikitext = null;
+	let wikitext: string | null = null;
 	let exsentences = 0;
 
 	await axios.post(
@@ -185,11 +193,11 @@ module.exports.getMeaning = async ([word, , source, rawMeaning]) => {
 
 	log.info(wikitext);
 
-	let meaning = null;
+	let meaning: string | null = null;
 	const lines = wikitext.split('\n').filter((line) => line.trim().length !== 0);
 
 	if (lines.length > 1) {
-		meaning = source === 'wikipedia' ? lines[1] : last(lines);
+		meaning = source === 'wikipedia' ? lines[1] : last(lines)!;
 		meaning = normalizeMeaning(meaning);
 	} else {
 		meaning = normalizeMeaning(wikitext);
@@ -213,16 +221,10 @@ module.exports.getMeaning = async ([word, , source, rawMeaning]) => {
 	return meaning;
 };
 
-module.exports.getCandidateWords = async ({min = 3, max = 7} = {}) => {
-	const [
-		wikipediaText,
-		wiktionaryText,
-		nicopediaText,
-		asciiText,
-		binaryText,
-		ewordsText,
-		fideliText,
-	] = await Promise.all([
+export const getCandidateWords = async (options: {min?: number, max?: number} = {}): Promise<any[]> => {
+	const {min = 3, max = 7} = options;
+
+	const fileDownloads = [
 		['wikipedia.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/wikipedia.txt'],
 		['wiktionary.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/wiktionary.txt'],
 		['nicopedia.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/nicopedia.txt'],
@@ -230,10 +232,12 @@ module.exports.getCandidateWords = async ({min = 3, max = 7} = {}) => {
 		['binary.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/binary.txt'],
 		['ewords.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/ewords.txt'],
 		['fideli.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/fideli.txt'],
-	].map(async ([filename, url]) => {
+	];
+
+	const texts = await Promise.all(fileDownloads.map(async ([filename, url]) => {
 		const dataPath = path.join(__dirname, filename);
 
-		const dataExists = await new Promise((resolve) => {
+		const dataExists = await new Promise<boolean>((resolve) => {
 			fs.access(dataPath, fs.constants.F_OK, (error) => {
 				resolve(!error);
 			});
@@ -244,12 +248,20 @@ module.exports.getCandidateWords = async ({min = 3, max = 7} = {}) => {
 			return databaseBuffer.toString();
 		}
 
-		{
-			const databaseBuffer = await download(url);
-			await promisify(fs.writeFile)(dataPath, databaseBuffer);
-			return databaseBuffer.toString();
-		}
+		const databaseBuffer = await download(url);
+		await promisify(fs.writeFile)(dataPath, databaseBuffer);
+		return databaseBuffer.toString();
 	}));
+
+	const [
+		wikipediaText,
+		wiktionaryText,
+		nicopediaText,
+		asciiText,
+		binaryText,
+		ewordsText,
+		fideliText,
+	] = texts;
 
 	const databaseWords = [
 		...wikipediaText.split('\n').filter((line) => line.length !== 0).map((line) => [

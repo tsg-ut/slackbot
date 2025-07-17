@@ -1,20 +1,29 @@
-const assert = require('assert');
-const path = require('path');
-const concatStream = require('concat-stream');
-const Docker = require('dockerode');
-const download = require('download');
-const {hiraganize} = require('japanese');
+import path from 'path';
+import concatStream from 'concat-stream';
+// @ts-expect-error: No type definitions available
+import Docker from 'dockerode';
+// @ts-expect-error: No type definitions available
+import download from 'download';
+// @ts-expect-error: No type definitions available
+import {hiraganize} from 'japanese';
 
 const docker = new Docker();
 
-class TimeoutError extends Error { }
+class TimeoutError extends Error {}
+
+interface BotResult {
+	result: string;
+	modelName: string;
+	stdout: string;
+	stderr: string;
+}
 
 const downloadBracketsPromise = download('https://www.unicode.org/Public/UCD/latest/ucd/BidiBrackets.txt');
 
-const normalizeBrackets = async (text) => {
+const normalizeBrackets = async (text: string): Promise<string> => {
 	const bracketData = await downloadBracketsPromise;
-	const bracketEntries = bracketData.toString().split('\n').filter((line) => line.length > 0 && !line.startsWith('#'));
-	const bracketMap = new Map(bracketEntries.map((line) => {
+	const bracketEntries = bracketData.toString().split('\n').filter((line: string) => line.length > 0 && !line.startsWith('#'));
+	const bracketMap = new Map<string, {pair: string, type: 'open' | 'close'}>(bracketEntries.map((line: string) => {
 		const [from, to, type] = line.split(/[;#]/);
 		return [String.fromCodePoint(parseInt(from.trim(), 16)), {
 			pair: String.fromCodePoint(parseInt(to.trim(), 16)),
@@ -22,13 +31,14 @@ const normalizeBrackets = async (text) => {
 		}];
 	}));
 	const chars = Array.from(text);
-	const stack = [];
+	const stack: {index: number, char: string, pair: string}[] = [];
 	const newChars = chars.map((char, index) => {
 		if (!bracketMap.has(char)) {
 			return char;
 		}
 
-		const {pair, type} = bracketMap.get(char);
+		const bracketInfo = bracketMap.get(char)!;
+		const {pair, type} = bracketInfo;
 		if (type === 'open') {
 			stack.push({index, char, pair});
 			return char;
@@ -39,7 +49,7 @@ const normalizeBrackets = async (text) => {
 				return '';
 			}
 
-			const pop = stack.pop();
+			const pop = stack.pop()!;
 			return pop.pair;
 		}
 
@@ -53,20 +63,23 @@ const normalizeBrackets = async (text) => {
 	return newChars.join('');
 };
 
-module.exports.getResult = async (rawInput, modelName) => {
-	assert(modelName === 'tahoiyabot-01' || modelName === 'tahoiyabot-02');
-	let stdoutWriter = null;
+export const getResult = async (rawInput: string, modelName: string): Promise<BotResult> => {
+	if (modelName !== 'tahoiyabot-01' && modelName !== 'tahoiyabot-02') {
+		throw new Error(`Invalid model name: ${modelName}`);
+	}
+
+	let stdoutWriter: NodeJS.WritableStream | null = null;
 	const input = hiraganize(rawInput).replace(/[^\p{Script=Hiragana}ー]/gu, '');
 
-	const stdoutPromise = new Promise((resolve) => {
+	const stdoutPromise = new Promise<Buffer>((resolve) => {
 		stdoutWriter = concatStream({encoding: 'buffer'}, (stdout) => {
 			resolve(stdout);
 		});
 	});
 
-	let stderrWriter = null;
+	let stderrWriter: NodeJS.WritableStream | null = null;
 
-	const stderrPromise = new Promise((resolve) => {
+	const stderrPromise = new Promise<Buffer>((resolve) => {
 		stderrWriter = concatStream({encoding: 'buffer'}, (stderr) => {
 			resolve(stderr);
 		});
@@ -75,7 +88,7 @@ module.exports.getResult = async (rawInput, modelName) => {
 	const modelPath = path.join(__dirname, 'models', modelName);
 	const dockerVolumePath = path.sep === '\\' ? modelPath.replace('C:\\', '/c/').replace(/\\/g, '/') : modelPath;
 
-	let container = null;
+	let container: Docker.Container | null = null;
 
 	const executeContainer = async () => {
 		container = await docker.createContainer({
@@ -106,10 +119,10 @@ module.exports.getResult = async (rawInput, modelName) => {
 			stderr: true,
 		});
 
-		container.modem.demuxStream(stream, stdoutWriter, stderrWriter);
+		container.modem.demuxStream(stream, stdoutWriter!, stderrWriter!);
 		stream.on('end', () => {
-			stdoutWriter.end();
-			stderrWriter.end();
+			stdoutWriter!.end();
+			stderrWriter!.end();
 		});
 
 		await container.start();
@@ -123,13 +136,13 @@ module.exports.getResult = async (rawInput, modelName) => {
 		executeContainer(),
 	]);
 
-	let stdout = null;
-	let stderr = null;
+	let stdout: Buffer | null = null;
+	let stderr: Buffer | null = null;
 
 	try {
 		[stdout, stderr] = await Promise.race([
 			runner,
-			new Promise((resolve, reject) => {
+			new Promise<never>((resolve, reject) => {
 				setTimeout(() => {
 					reject(new TimeoutError());
 				}, 60000);
@@ -137,12 +150,12 @@ module.exports.getResult = async (rawInput, modelName) => {
 		]);
 	} finally {
 		if (container) {
-			await container.stop().catch((error) => {
+			await container.stop().catch((error: any) => {
 				if (error.statusCode !== 304) {
 					throw error;
 				}
 			});
-			await container.remove().catch((error) => {
+			await container.remove().catch((error: any) => {
 				if (error.statusCode !== 304) {
 					throw error;
 				}
@@ -167,4 +180,8 @@ module.exports.getResult = async (rawInput, modelName) => {
 		stdout: stdout ? stdout.toString() : '',
 		stderr: stderr ? stderr.toString() : '',
 	};
+};
+
+export const bot = {
+	getResult,
 };
