@@ -142,15 +142,15 @@ const reasoningPromptLoader = new Loader<OpenAI.Chat.ChatCompletionMessageParam[
 const log = logger.child({bot: 'slow-quiz'});
 
 class SlowQuiz {
-	slack: WebClient;
+	readonly #slack: WebClient;
 
-	slackInteractions: SlackMessageAdapter;
+	readonly #slackInteractions: SlackMessageAdapter;
 
-	state: StateObj;
+	#state: StateObj;
 
-	previousTick: number;
+	readonly #MAX_CORRECT_ANSWERS = 3;
 
-	MAX_CORRECT_ANSWERS = 3;
+	readonly #MAX_O4_MINI_OUTPUT_TOKENS = 3000;
 
 	constructor({
 		slack,
@@ -159,35 +159,34 @@ class SlowQuiz {
 		slack: WebClient,
 		slackInteractions: SlackMessageAdapter,
 	}) {
-		this.slack = slack;
-		this.slackInteractions = slackInteractions;
-		this.previousTick = 0;
+		this.#slack = slack;
+		this.#slackInteractions = slackInteractions;
 	}
 
 	async initialize() {
-		this.state = await State.init<StateObj>('slow-quiz', {
+		this.#state = await State.init<StateObj>('slow-quiz', {
 			games: [],
 			latestStatusMessages: [],
 			batchJobs: [],
 		});
 
-		this.slackInteractions.action({
+		this.#slackInteractions.action({
 			type: 'button',
 			actionId: 'slowquiz_register_quiz_button',
 		}, (payload: BlockButtonAction) => {
 			mutex.runExclusive(() => (
-				this.showRegisterQuizDialog({
+				this.#showRegisterQuizDialog({
 					triggerId: payload?.trigger_id,
 				})
 			));
 		});
 
-		this.slackInteractions.viewSubmission('slowquiz_register_quiz_dialog', (payload: ViewSubmitAction) => {
+		this.#slackInteractions.viewSubmission('slowquiz_register_quiz_dialog', (payload: ViewSubmitAction) => {
 			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
 			const state = Object.assign({}, ...stateObjects);
 
 			mutex.runExclusive(() => (
-				this.registerQuiz({
+				this.#registerQuiz({
 					question: state?.question?.value,
 					answer: state?.answer?.value,
 					ruby: state?.ruby?.value,
@@ -198,19 +197,19 @@ class SlowQuiz {
 			));
 		});
 
-		this.slackInteractions.action({
+		this.#slackInteractions.action({
 			type: 'button',
 			actionId: 'slowquiz_list_quiz_button',
 		}, (payload: BlockButtonAction) => {
 			mutex.runExclusive(() => (
-				this.showListQuizDialog({
+				this.#showListQuizDialog({
 					triggerId: payload?.trigger_id,
 					user: payload?.user?.id,
 				})
 			));
 		});
 
-		this.slackInteractions.action({
+		this.#slackInteractions.action({
 			type: 'button',
 			actionId: 'slowquiz_delete_quiz_button',
 		}, (payload: BlockButtonAction) => {
@@ -218,7 +217,7 @@ class SlowQuiz {
 				a.action_id === 'slowquiz_delete_quiz_button'
 			));
 			mutex.runExclusive(() => (
-				this.deleteQuiz({
+				this.#deleteQuiz({
 					viewId: payload?.view?.id,
 					id: action?.value,
 					user: payload?.user?.id,
@@ -226,12 +225,12 @@ class SlowQuiz {
 			));
 		});
 
-		this.slackInteractions.action({
+		this.#slackInteractions.action({
 			type: 'button',
 			actionId: 'slowquiz_answer_question_button',
 		}, (payload: BlockButtonAction) => {
 			mutex.runExclusive(() => (
-				this.showAnswerQuestionDialog({
+				this.#showAnswerQuestionDialog({
 					triggerId: payload.trigger_id,
 					id: payload?.actions?.[0]?.value,
 					user: payload?.user?.id,
@@ -240,12 +239,12 @@ class SlowQuiz {
 			));
 		});
 
-		this.slackInteractions.action({
+		this.#slackInteractions.action({
 			type: 'button',
 			actionId: 'slowquiz_show_game_details_button',
 		}, (payload: BlockButtonAction) => {
 			mutex.runExclusive(() => (
-				this.showGameDetailsDialog({
+				this.#showGameDetailsDialog({
 					triggerId: payload.trigger_id,
 					id: payload?.actions?.[0]?.value,
 					user: payload?.user?.id,
@@ -254,13 +253,13 @@ class SlowQuiz {
 			));
 		});
 
-		this.slackInteractions.viewSubmission('slowquiz_answer_question_dialog', (payload: ViewSubmitAction) => {
+		this.#slackInteractions.viewSubmission('slowquiz_answer_question_dialog', (payload: ViewSubmitAction) => {
 			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
 			const state = Object.assign({}, ...stateObjects);
 			const id = payload?.view?.private_metadata;
 
 			mutex.runExclusive(() => (
-				this.answerUserQuestion({
+				this.#answerUserQuestion({
 					id,
 					ruby: state?.ruby?.value,
 					user: payload.user.id,
@@ -268,7 +267,7 @@ class SlowQuiz {
 			));
 		});
 
-		this.slackInteractions.action({
+		this.#slackInteractions.action({
 			type: 'button',
 			actionId: 'slowquiz_post_comment_submit_comment',
 		}, (payload: BlockButtonAction) => {
@@ -276,7 +275,7 @@ class SlowQuiz {
 			const state = Object.assign({}, ...stateObjects);
 
 			mutex.runExclusive(() => (
-				this.postComment({
+				this.#postComment({
 					id: payload?.view?.private_metadata,
 					viewId: payload?.view?.id,
 					comment: state?.slowquiz_post_comment_input_comment?.value,
@@ -286,12 +285,12 @@ class SlowQuiz {
 			));
 		});
 
-		this.slackInteractions.viewSubmission('slowquiz_post_comment_dialog', (payload: ViewSubmitAction) => {
+		this.#slackInteractions.viewSubmission('slowquiz_post_comment_dialog', (payload: ViewSubmitAction) => {
 			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
 			const state = Object.assign({}, ...stateObjects);
 
 			mutex.runExclusive(() => (
-				this.postComment({
+				this.#postComment({
 					id: payload?.view?.private_metadata,
 					viewId: payload?.view?.id,
 					comment: state?.slowquiz_post_comment_input_comment?.value,
@@ -302,24 +301,24 @@ class SlowQuiz {
 		});
 	}
 
-	showRegisterQuizDialog({triggerId}: {triggerId: string}) {
-		return this.slack.views.open({
+	#showRegisterQuizDialog({triggerId}: {triggerId: string}) {
+		return this.#slack.views.open({
 			trigger_id: triggerId,
 			view: registerQuizDialog,
 		});
 	}
 
-	showListQuizDialog({triggerId, user}: {triggerId: string, user: string}) {
-		const games = this.state.games.filter((game) => (
+	#showListQuizDialog({triggerId, user}: {triggerId: string, user: string}) {
+		const games = this.#state.games.filter((game) => (
 			game.author === user && game.status === 'waitlisted'
 		));
-		return this.slack.views.open({
+		return this.#slack.views.open({
 			trigger_id: triggerId,
 			view: listQuizDialog(games),
 		});
 	}
 
-	showAnswerQuestionDialog({
+	#showAnswerQuestionDialog({
 		triggerId,
 		id,
 		user,
@@ -330,10 +329,10 @@ class SlowQuiz {
 		user: string,
 		channel: string,
 	}) {
-		const game = this.state.games.find((g) => g.id === id);
+		const game = this.#state.games.find((g) => g.id === id);
 
 		if (!game) {
-			this.postEphemeral('Error: 問題が見つかりません', user, channel);
+			this.#postEphemeral('Error: 問題が見つかりません', user, channel);
 			return null;
 		}
 
@@ -342,38 +341,38 @@ class SlowQuiz {
 		}
 
 		if (game.author === user) {
-			return this.slack.views.open({
+			return this.#slack.views.open({
 				trigger_id: triggerId,
 				view: gameDetailsDialog(game),
 			});
 		}
 
 		if (game.status !== 'inprogress') {
-			this.postEphemeral('この問題の解答受付は終了しているよ🙄', user, channel);
+			this.#postEphemeral('この問題の解答受付は終了しているよ🙄', user, channel);
 			return null;
 		}
 
 		if (game.answeredUsers.includes(user)) {
-			return this.slack.views.open({
+			return this.#slack.views.open({
 				trigger_id: triggerId,
 				view: postCommentDialog(game, user),
 			});
 		}
 
 		if (game.correctAnswers.some((answer) => answer.user === user)) {
-			return this.slack.views.open({
+			return this.#slack.views.open({
 				trigger_id: triggerId,
 				view: postCommentDialog(game, user),
 			});
 		}
 
-		return this.slack.views.open({
+		return this.#slack.views.open({
 			trigger_id: triggerId,
-			view: answerQuestionDialog(game, this.getQuestionText(game), user),
+			view: answerQuestionDialog(game, this.#getQuestionText(game), user),
 		});
 	}
 
-	async registerQuiz({
+	async #registerQuiz({
 		question,
 		answer,
 		ruby,
@@ -389,22 +388,22 @@ class SlowQuiz {
 		genre: Genre,
 	}): Promise<void> {
 		if (typeof question !== 'string' || question.length === 0) {
-			this.postEphemeral('問題を入力してね🙄', user);
+			this.#postEphemeral('問題を入力してね🙄', user);
 			return;
 		}
 
 		if (typeof answer !== 'string' || answer.length === 0) {
-			this.postEphemeral('答えを入力してね🙄', user);
+			this.#postEphemeral('答えを入力してね🙄', user);
 			return;
 		}
 
 		if (typeof ruby !== 'string' || !(/^[ぁ-ゟァ-ヿa-z0-9,]+$/i).exec(ruby)) {
-			this.postEphemeral('読みがなに使える文字は「ひらがな・カタカナ・英数字」のみだよ🙄', user);
+			this.#postEphemeral('読みがなに使える文字は「ひらがな・カタカナ・英数字」のみだよ🙄', user);
 			return;
 		}
 
 		if (!validateQuestion(question)) {
-			this.postEphemeral('問題文の長さは原則90文字以下だよ🙄', user);
+			this.#postEphemeral('問題文の長さは原則90文字以下だよ🙄', user);
 			return;
 		}
 
@@ -422,7 +421,7 @@ class SlowQuiz {
 			}
 		}
 
-		this.state.games.push({
+		this.#state.games.push({
 			id: Math.floor(Math.random() * 10000000000).toString(),
 			question,
 			answer,
@@ -446,7 +445,7 @@ class SlowQuiz {
 
 		increment(user, 'slowquiz-register-quiz');
 
-		await this.postShortMessage({
+		await this.#postShortMessage({
 			text: `${getUserMention(user)}が1日1文字クイズの問題を登録したよ💪`,
 			blocks: [
 				{
@@ -460,10 +459,10 @@ class SlowQuiz {
 		});
 	}
 
-	async getChatGptAnswer(game: Game) {
+	async #getChatGptAnswer(game: Game) {
 		log.info(`Getting ChatGPT answer for game ${game.id}...`);
 		const prompt = await promptLoader.load();
-		const questionText = this.getQuestionText(game);
+		const questionText = this.#getQuestionText(game);
 		const [visibleText] = questionText.split('\u200B');
 
 		log.info('Requesting to OpenAI API...');
@@ -492,7 +491,7 @@ class SlowQuiz {
 			};
 		}
 
-		const answer = this.extractAnswerFromResponse(result, completion.model);
+		const answer = this.#extractAnswerFromResponse(result, completion.model);
 
 		return {
 			answer,
@@ -500,10 +499,10 @@ class SlowQuiz {
 		};
 	}
 
-	async createO4MiniBatchJob(game: Game) {
+	async #createO4MiniBatchJob(game: Game) {
 		log.info(`Creating o4-mini batch job for game ${game.id}...`);
 		const prompt = await reasoningPromptLoader.load();
-		const questionText = this.getQuestionText(game);
+		const questionText = this.#getQuestionText(game);
 		const [visibleText] = questionText.split('\u200B');
 
 		const botId = 'o4-mini:ver1';
@@ -529,7 +528,7 @@ class SlowQuiz {
 			// 25,000 is recommended, but it will be too expensive for this game
 			// Input tokens: $0.55 / 1M * 2,000 = $0.0011
 			// Output tokens: $2.20 / 1M * 3,000 = $0.0066
-			max_completion_tokens: 3000,
+			max_completion_tokens: this.#MAX_O4_MINI_OUTPUT_TOKENS,
 		};
 
 		// https://platform.openai.com/docs/api-reference/batch/request-input
@@ -542,7 +541,7 @@ class SlowQuiz {
 
 		try {
 			const batch = await openai.batches.create({
-				input_file_id: await this.createBatchFile([batchRequest]),
+				input_file_id: await this.#createBatchFile([batchRequest]),
 				endpoint: '/v1/chat/completions',
 				completion_window: '24h',
 			});
@@ -555,14 +554,14 @@ class SlowQuiz {
 				createdAt: Date.now(),
 			};
 
-			this.state.batchJobs.push(batchJob);
+			this.#state.batchJobs.push(batchJob);
 			log.info(`Created batch job ${batch.id} for game ${game.id}`);
 		} catch (error) {
 			log.error(`Failed to create batch job for game ${game.id}:`, error);
 		}
 	}
 
-	async createBatchFile(requests: unknown[]) {
+	async #createBatchFile(requests: unknown[]) {
 		const jsonlContent = requests.map((req) => JSON.stringify(req)).join('\n');
 		const file = await openai.files.create({
 			file: new File([jsonlContent], 'batch_requests.jsonl', {type: 'application/jsonl'}),
@@ -574,7 +573,7 @@ class SlowQuiz {
 	async checkBatchJobs() {
 		log.info('Checking batch jobs...');
 
-		for (const batchJob of this.state.batchJobs) {
+		for (const batchJob of this.#state.batchJobs) {
 			if (batchJob.status === 'pending' || batchJob.status === 'in_progress') {
 				try {
 					const batch = await openai.batches.retrieve(batchJob.id);
@@ -583,7 +582,7 @@ class SlowQuiz {
 					if (batch.status === 'completed') {
 						batchJob.status = 'completed';
 						batchJob.completedAt = Date.now();
-						await this.processBatchResults(batchJob, batch);
+						await this.#processBatchResults(batchJob, batch);
 					} else if (batch.status === 'failed') {
 						batchJob.status = 'failed';
 						log.error(`Batch job ${batchJob.id} failed`);
@@ -597,9 +596,9 @@ class SlowQuiz {
 		}
 	}
 
-	async processBatchResults(batchJob: BatchJob, batch: OpenAI.Batches.Batch) {
+	async #processBatchResults(batchJob: BatchJob, batch: OpenAI.Batches.Batch) {
 		log.info(`Processing batch results for job ${batchJob.id}...`);
-		const game = this.state.games.find((g) => g.id === batchJob.gameId);
+		const game = this.#state.games.find((g) => g.id === batchJob.gameId);
 		if (!game) {
 			log.error(`Game ${batchJob.gameId} not found for batch job ${batchJob.id}`);
 			return;
@@ -630,8 +629,8 @@ class SlowQuiz {
 					log.warn(`Unexpected custom_id in batch result: ${result.custom_id} (expected: slowquiz_${game.id}_day${game.days})`);
 				}
 
-				if (result.response?.body?.usage?.completion_tokens_details?.reasoning_tokens === 3000) {
-					log.warn(`Batch job ${batchJob.id} response has 3000 reasoning tokens, which means it might exceeded the limit. The response might be incomplete.`);
+				if (result.response?.body?.usage?.completion_tokens_details?.reasoning_tokens === this.#MAX_O4_MINI_OUTPUT_TOKENS) {
+					log.warn(`Batch job ${batchJob.id} response has ${this.#MAX_O4_MINI_OUTPUT_TOKENS} reasoning tokens, which means it might exceeded the limit. The response might be incomplete.`);
 				}
 
 				const content = result.response?.body?.choices?.[0]?.message?.content;
@@ -639,7 +638,7 @@ class SlowQuiz {
 
 				if (content) {
 					batchJob.response = content;
-					const answer = this.extractAnswerFromResponse(content, batchJob.model);
+					const answer = this.#extractAnswerFromResponse(content, batchJob.model);
 					batchJob.answer = answer;
 
 					log.info(`O4-mini answer for game ${game.id}: ${answer} (${content})`);
@@ -648,7 +647,7 @@ class SlowQuiz {
 					log.info(`Reasoning tokens: ${result.response?.body?.usage?.completion_tokens_details?.reasoning_tokens}`);
 
 					if (answer !== null) {
-						this.answerQuestion({
+						this.#answerQuestion({
 							type: 'bot',
 							game,
 							ruby: answer,
@@ -657,7 +656,7 @@ class SlowQuiz {
 					}
 
 					if (content !== null) {
-						await this.postComment({
+						await this.#postComment({
 							id: game.id,
 							viewId: '',
 							comment: content,
@@ -673,7 +672,7 @@ class SlowQuiz {
 		}
 	}
 
-	extractAnswerFromResponse(content: string, model: string): string | null {
+	#extractAnswerFromResponse(content: string, model: string): string | null {
 		if (model === 'o4-mini') {
 			const matches = (/最終解答[:：]\s*(?<answer>.+?)(?<rubyParens>（(?<ruby>.+?)）)?$/m).exec(content);
 			if (matches?.groups?.ruby) {
@@ -705,7 +704,7 @@ class SlowQuiz {
 		return answer;
 	}
 
-	answerUserQuestion({
+	#answerUserQuestion({
 		id,
 		ruby,
 		user,
@@ -714,34 +713,34 @@ class SlowQuiz {
 		ruby: string,
 		user: string,
 	}) {
-		const game = this.state.games.find((g) => g.id === id);
+		const game = this.#state.games.find((g) => g.id === id);
 
 		if (!game) {
-			this.postEphemeral('Error: 問題が見つかりません', user);
+			this.#postEphemeral('Error: 問題が見つかりません', user);
 			return;
 		}
 
 		if (game.author === user) {
-			this.postEphemeral('出題者は問題に答えることができないよ🙄', user);
+			this.#postEphemeral('出題者は問題に答えることができないよ🙄', user);
 			return;
 		}
 
-		if (game.status !== 'inprogress' || game.correctAnswers.length >= this.MAX_CORRECT_ANSWERS) {
-			this.postEphemeral('Error: この問題の解答受付は終了しています', user);
+		if (game.status !== 'inprogress' || game.correctAnswers.length >= this.#MAX_CORRECT_ANSWERS) {
+			this.#postEphemeral('Error: この問題の解答受付は終了しています', user);
 			return;
 		}
 
 		if (game.answeredUsers.includes(user)) {
-			this.postEphemeral('Error: この問題にすでに解答しています', user);
+			this.#postEphemeral('Error: この問題にすでに解答しています', user);
 			return;
 		}
 
 		if (!(/^[ぁ-ゟァ-ヿa-z0-9]+$/i).exec(ruby)) {
-			this.postEphemeral('答えに使える文字は「ひらがな・カタカナ・英数字」のみだよ🙄', user);
+			this.#postEphemeral('答えに使える文字は「ひらがな・カタカナ・英数字」のみだよ🙄', user);
 			return;
 		}
 
-		this.answerQuestion({
+		this.#answerQuestion({
 			type: 'user',
 			game,
 			ruby,
@@ -749,9 +748,9 @@ class SlowQuiz {
 		});
 	}
 
-	async createBotAnswers() {
+	async #createBotAnswers() {
 		log.info('Creating bot answers...');
-		for (const game of this.state.games) {
+		for (const game of this.#state.games) {
 			log.info(`Processing game ${game.id}...`);
 			const botId = 'chatgpt-4o-mini:ver1';
 			const userId = `bot:${botId}`;
@@ -766,11 +765,11 @@ class SlowQuiz {
 				continue;
 			}
 
-			const {answer, result} = await this.getChatGptAnswer(game);
+			const {answer, result} = await this.#getChatGptAnswer(game);
 			log.info(`Bot answer for game ${game.id}: ${answer} (${result})`);
 
 			if (answer !== null) {
-				this.answerQuestion({
+				this.#answerQuestion({
 					type: 'bot',
 					game,
 					ruby: answer,
@@ -779,7 +778,7 @@ class SlowQuiz {
 			}
 
 			if (result !== null) {
-				await this.postComment({
+				await this.#postComment({
 					id: game.id,
 					viewId: '',
 					comment: result,
@@ -790,15 +789,15 @@ class SlowQuiz {
 		}
 	}
 
-	async createO4MiniBatchJobs() {
+	async #createO4MiniBatchJobs() {
 		log.info('Creating o4-mini batch jobs...');
-		for (const game of this.state.games) {
+		for (const game of this.#state.games) {
 			if (game.status !== 'inprogress') {
 				continue;
 			}
 
-			const existingBatchJob = this.state.batchJobs.find((job) => (
-				job.gameId === game.id && job.model === 'o4-mini'
+			const existingBatchJob = this.#state.batchJobs.find((job) => (
+				job.gameId === game.id && job.model === 'o4-mini' && job.status === 'pending'
 			));
 
 			if (existingBatchJob) {
@@ -814,11 +813,11 @@ class SlowQuiz {
 				continue;
 			}
 
-			await this.createO4MiniBatchJob(game);
+			await this.#createO4MiniBatchJob(game);
 		}
 	}
 
-	answerQuestion({
+	#answerQuestion({
 		type,
 		game,
 		ruby,
@@ -850,10 +849,10 @@ class SlowQuiz {
 				answer: ruby,
 			});
 			if (type === 'user') {
-				this.postEphemeral('残念！🙄', user);
+				this.#postEphemeral('残念！🙄', user);
 				increment(user, 'slowquiz-wrong-answer');
 			}
-			this.updateLatestStatusMessages();
+			this.#updateLatestStatusMessages();
 			return;
 		}
 
@@ -866,10 +865,10 @@ class SlowQuiz {
 		});
 
 		if (type === 'user') {
-			this.postEphemeral('正解です🎉🎉🎉', user);
+			this.#postEphemeral('正解です🎉🎉🎉', user);
 		}
 
-		this.postShortMessage({
+		this.#postShortMessage({
 			text: `${userMention}が1日1文字クイズに正解しました🎉🎉🎉`,
 			blocks: [
 				{
@@ -884,7 +883,7 @@ class SlowQuiz {
 					elements: [
 						{
 							type: 'plain_text',
-							text: this.getQuestionText(game),
+							text: this.#getQuestionText(game),
 						},
 					],
 				},
@@ -914,12 +913,12 @@ class SlowQuiz {
 			}
 		}
 
-		this.checkGameEnd();
+		this.#checkGameEnd();
 
-		this.updateLatestStatusMessages();
+		this.#updateLatestStatusMessages();
 	}
 
-	async postComment({
+	async #postComment({
 		id,
 		viewId,
 		comment,
@@ -932,19 +931,19 @@ class SlowQuiz {
 		type: 'user' | 'bot',
 		user: string,
 	}) {
-		const game = this.state.games.find((g) => g.id === id);
+		const game = this.#state.games.find((g) => g.id === id);
 		const userId = type === 'user' ? user : `bot:${user}`;
 
 		if (!game) {
 			if (type === 'user') {
-				this.postEphemeral('Error: 問題が見つかりません', user);
+				this.#postEphemeral('Error: 問題が見つかりません', user);
 			}
 			return;
 		}
 
 		if (game.status === 'finished') {
 			if (type === 'user') {
-				this.postEphemeral('Error: この問題の解答受付は終了しています', user);
+				this.#postEphemeral('Error: この問題の解答受付は終了しています', user);
 			}
 			return;
 		}
@@ -962,39 +961,39 @@ class SlowQuiz {
 		});
 
 		if (type === 'user') {
-			await this.slack.views.update({
+			await this.#slack.views.update({
 				view_id: viewId,
 				view: postCommentDialog(game, user),
 			});
 		}
 	}
 
-	deleteQuiz({viewId, id, user}: {viewId: string, id: string, user: string}) {
-		const gameIndex = this.state.games.findIndex((g) => g.id === id);
+	#deleteQuiz({viewId, id, user}: {viewId: string, id: string, user: string}) {
+		const gameIndex = this.#state.games.findIndex((g) => g.id === id);
 
 		if (gameIndex === -1) {
-			this.postEphemeral('Error: 問題が見つかりません', user);
+			this.#postEphemeral('Error: 問題が見つかりません', user);
 			return null;
 		}
 
-		const removedGame = this.state.games[gameIndex];
+		const removedGame = this.#state.games[gameIndex];
 		if (removedGame.status !== 'waitlisted') {
-			this.postEphemeral('Error: 出題待ちの問題ではありません', user);
+			this.#postEphemeral('Error: 出題待ちの問題ではありません', user);
 			return null;
 		}
 
-		this.state.games.splice(gameIndex, 1);
+		this.#state.games.splice(gameIndex, 1);
 
-		const games = this.state.games.filter((game) => (
+		const games = this.#state.games.filter((game) => (
 			game.author === user && game.status === 'waitlisted'
 		));
-		return this.slack.views.update({
+		return this.#slack.views.update({
 			view_id: viewId,
 			view: listQuizDialog(games),
 		});
 	}
 
-	showGameDetailsDialog({
+	#showGameDetailsDialog({
 		triggerId,
 		id,
 		user,
@@ -1005,10 +1004,10 @@ class SlowQuiz {
 		user: string,
 		channel: string,
 	}) {
-		const game = this.state.games.find((g) => g.id === id);
+		const game = this.#state.games.find((g) => g.id === id);
 
 		if (!game) {
-			this.postEphemeral('Error: 問題が見つかりません', user, channel);
+			this.#postEphemeral('Error: 問題が見つかりません', user, channel);
 			return null;
 		}
 
@@ -1017,30 +1016,30 @@ class SlowQuiz {
 		}
 
 		if (game.status !== 'finished') {
-			this.postEphemeral('Error: この問題は終了していません', user, channel);
+			this.#postEphemeral('Error: この問題は終了していません', user, channel);
 			return null;
 		}
 
-		return this.slack.views.open({
+		return this.#slack.views.open({
 			trigger_id: triggerId,
 			view: gameDetailsDialog(game),
 		});
 	}
 
 	async progressGames() {
-		const newGame = this.chooseNewGame();
+		const newGame = this.#chooseNewGame();
 
 		if (newGame !== null) {
 			newGame.status = 'inprogress';
 			newGame.startDate = Date.now();
 		}
 
-		for (const game of this.state.games) {
+		for (const game of this.#state.games) {
 			if (game.status === 'inprogress') {
 				game.progress++;
 				game.days++;
 
-				const {text} = this.getVisibleQuestionText(game);
+				const {text} = this.#getVisibleQuestionText(game);
 				// 括弧で終わるならもう1文字
 				if ((last(Array.from(text)) ?? '').match(/^[\p{Ps}\p{Pe}]$/u)) {
 					game.progress++;
@@ -1055,17 +1054,17 @@ class SlowQuiz {
 			game.answeredUsers = [];
 		}
 
-		await this.checkGameEnd();
-		if (this.state.games.some((game) => game.status === 'inprogress')) {
+		await this.#checkGameEnd();
+		if (this.#state.games.some((game) => game.status === 'inprogress')) {
 			await this.postGameStatus(true);
 		}
-		await this.createBotAnswers();
-		await this.createO4MiniBatchJobs();
+		await this.#createBotAnswers();
+		await this.#createO4MiniBatchJobs();
 	}
 
 	async postGameStatus(replaceLatestStatusMessages: boolean, channels: string[] = []) {
-		const blocks = await this.getGameBlocks();
-		const messages = await this.postMessage(
+		const blocks = await this.#getGameBlocks();
+		const messages = await this.#postMessage(
 			{
 				text: '現在開催中の1日1文字クイズ一覧',
 				blocks,
@@ -1079,15 +1078,15 @@ class SlowQuiz {
 		}));
 
 		if (replaceLatestStatusMessages) {
-			this.state.latestStatusMessages = newStatusMessages;
+			this.#state.latestStatusMessages = newStatusMessages;
 		} else {
-			this.state.latestStatusMessages.push(...newStatusMessages);
+			this.#state.latestStatusMessages.push(...newStatusMessages);
 		}
 	}
 
-	chooseNewGame() {
+	#chooseNewGame() {
 		// これまでの出題者のリスト
-		const authorHistory = this.state.games
+		const authorHistory = this.#state.games
 			.filter((game) => game.status !== 'waitlisted')
 			.sort((a, b) => b.startDate - a.startDate)
 			.map((game) => game.author);
@@ -1102,7 +1101,7 @@ class SlowQuiz {
 
 		// 一度も選ばれてないユーザーの問題から選ぶ
 		const authorHistorySet = new Set(authorHistory);
-		const unchosenGames = this.state.games
+		const unchosenGames = this.#state.games
 			.filter((game) => !authorHistorySet.has(game.author) && game.status === 'waitlisted');
 
 		if (unchosenGames.length > 0) {
@@ -1111,7 +1110,7 @@ class SlowQuiz {
 
 		// 最近選ばれていないユーザーを優先して選ぶ
 		for (const author of uniqueAuthorHistory.slice().reverse()) {
-			const authorGames = this.state.games
+			const authorGames = this.#state.games
 				.filter((game) => game.author === author && game.status === 'waitlisted');
 			if (authorGames.length > 0) {
 				return minBy(authorGames, (game) => game.registrationDate);
@@ -1122,20 +1121,20 @@ class SlowQuiz {
 		return null;
 	}
 
-	async checkGameEnd() {
-		for (const game of this.state.games) {
+	async #checkGameEnd() {
+		for (const game of this.#state.games) {
 			if (game.status !== 'inprogress') {
 				continue;
 			}
 
 			if (
-				game.correctAnswers.length >= this.MAX_CORRECT_ANSWERS ||
+				game.correctAnswers.length >= this.#MAX_CORRECT_ANSWERS ||
 				(game.progress > game.progressOfComplete && game.completed)
 			) {
 				game.status = 'finished';
 				game.finishDate = Date.now();
 
-				this.postMessage({
+				this.#postMessage({
 					text: '1日1文字クイズの解答受付が終了しました',
 					blocks: [
 						{
@@ -1198,14 +1197,14 @@ class SlowQuiz {
 		}
 	}
 
-	async updateLatestStatusMessages() {
+	async #updateLatestStatusMessages() {
 		const blocks = [
-			...await this.getGameBlocks(),
+			...await this.#getGameBlocks(),
 			...footer,
 		];
 
-		for (const message of this.state.latestStatusMessages) {
-			await this.slack.chat.update({
+		for (const message of this.#state.latestStatusMessages) {
+			await this.#slack.chat.update({
 				ts: message.ts,
 				channel: message.channel,
 				text: '現在開催中の1日1文字クイズ一覧',
@@ -1214,8 +1213,8 @@ class SlowQuiz {
 		}
 	}
 
-	async getGameBlocks(): Promise<KnownBlock[]> {
-		const ongoingGames = this.state.games
+	async #getGameBlocks(): Promise<KnownBlock[]> {
+		const ongoingGames = this.#state.games
 			.filter((game) => game.status === 'inprogress')
 			.sort((a, b) => a.startDate - b.startDate);
 
@@ -1232,7 +1231,7 @@ class SlowQuiz {
 		const blocks: KnownBlock[] = [];
 
 		for (const game of ongoingGames) {
-			const questionText = this.getQuestionText(game);
+			const questionText = this.#getQuestionText(game);
 
 			blocks.push({
 				type: 'section',
@@ -1277,7 +1276,7 @@ class SlowQuiz {
 		return blocks;
 	}
 
-	getQuestionText(game: Game) {
+	#getQuestionText(game: Game) {
 		if (game.question.split('/').length >= 5) {
 			const tokens = game.question.split('/');
 
@@ -1302,7 +1301,7 @@ class SlowQuiz {
 		}
 
 		const lastCharacter = last(Array.from(game.question));
-		const {text, invisibleCharacters} = this.getVisibleQuestionText(game);
+		const {text, invisibleCharacters} = this.#getVisibleQuestionText(game);
 		const invisibleText = Array(invisibleCharacters).fill('').map((char, i) => {
 			if (
 				i === invisibleCharacters - 1 &&
@@ -1316,7 +1315,7 @@ class SlowQuiz {
 		return `${text}\u200B${invisibleText}`;
 	}
 
-	getVisibleQuestionText(game: Game) {
+	#getVisibleQuestionText(game: Game) {
 		if (game.question.split('/').length >= 5) {
 			return {text: '', invisibleCharacters: 0};
 		}
@@ -1349,14 +1348,14 @@ class SlowQuiz {
 		return {text, invisibleCharacters};
 	}
 
-	async postMessage(
+	async #postMessage(
 		message: {text: string, blocks: KnownBlock[]},
 		channels: string[] = [process.env.CHANNEL_SANDBOX, process.env.CHANNEL_QUIZ],
 	) {
 		const messages = [];
 
 		for (const channel of channels) {
-			const response = await this.slack.chat.postMessage({
+			const response = await this.#slack.chat.postMessage({
 				channel,
 				username: '1日1文字クイズ',
 				icon_emoji: ':face_with_rolling_eyes:',
@@ -1372,8 +1371,8 @@ class SlowQuiz {
 		return messages;
 	}
 
-	postShortMessage(message: {text: string, blocks?: KnownBlock[]}) {
-		return this.slack.chat.postMessage({
+	#postShortMessage(message: {text: string, blocks?: KnownBlock[]}) {
+		return this.#slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			username: '1日1文字クイズ',
 			icon_emoji: ':face_with_rolling_eyes:',
@@ -1381,8 +1380,8 @@ class SlowQuiz {
 		});
 	}
 
-	postEphemeral(message: string, user: string, channel: string = process.env.CHANNEL_SANDBOX) {
-		return this.slack.chat.postEphemeral({
+	#postEphemeral(message: string, user: string, channel: string = process.env.CHANNEL_SANDBOX) {
+		return this.#slack.chat.postEphemeral({
 			channel,
 			text: message,
 			user,
