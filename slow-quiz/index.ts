@@ -122,7 +122,6 @@ const validateQuestion = (question: string) => {
 	}
 
 	const normalizedQuestion = question.replaceAll(/【.*?】/g, '');
-	console.log({normalizedQuestion});
 
 	return Array.from(normalizedQuestion).length <= 90;
 };
