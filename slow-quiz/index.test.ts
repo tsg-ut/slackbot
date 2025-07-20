@@ -1,8 +1,6 @@
 /* eslint-disable init-declarations */
 /* eslint-env jest */
 
-import {SlackMessageAdapter} from '@slack/interactive-messages';
-import type {WebClient} from '@slack/web-api';
 import type {MockedStateInterface} from '../lib/__mocks__/state';
 import openai from '../lib/openai';
 import Slack from '../lib/slackMock';
@@ -97,8 +95,8 @@ describe('slow-quiz', () => {
 		});
 
 		slowQuiz = new SlowQuiz({
-			slack: slack.webClient as WebClient,
-			slackInteractions: slack.messageClient as SlackMessageAdapter,
+			slack: slack.webClient,
+			slackInteractions: slack.messageClient,
 		});
 		await slowQuiz.initialize();
 	});
