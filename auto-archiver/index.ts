@@ -109,7 +109,7 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 			});
 
 			allChannels.push(...channelsResult.channels);
-			cursor = channelsResult.response_metadata?.next_cursor;
+			cursor = channelsResult.response_metadata?.next_cursor ?? null;
 		} while (cursor);
 
 		log.info(`Fetched ${allChannels.length} channels`);
@@ -130,7 +130,9 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 				continue;
 			}
 
-			if (channels[channel.id] === undefined) {
+			// 理論上、チャンネルが作成されてから一度もメッセージが投稿されないこともあるが、
+			// 誤動作を防ぐためにchannelsオブジェクトに存在しないチャンネルはスキップする
+			if (!Object.hasOwn(channels, channel.id)) {
 				log.debug(`Channel ${channel.id} (${channel.name}) has no messages recorded yet. Skipping`);
 				continue;
 			}
