@@ -130,6 +130,11 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 				continue;
 			}
 
+			if (channels[channel.id] === undefined) {
+				log.info(`Channel ${channel.id} (${channel.name}) has no messages recorded yet. Skipping`);
+				continue;
+			}
+
 			const lastMessageTs = channels[channel.id] ?? '0';
 			const lastMessageDate = new Date(parseFloat(lastMessageTs) * 1000);
 			const diff = now.getTime() - lastMessageDate.getTime();
