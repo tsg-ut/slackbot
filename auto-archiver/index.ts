@@ -1,4 +1,5 @@
 import {BlockButtonAction, MessageEvent} from '@slack/bolt';
+import type {Channel} from '@slack/web-api/dist/types/response/ConversationsListResponse';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import schedule from 'node-schedule';
@@ -71,13 +72,18 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 	});
 
 	const postArchiveProposal = async (now: Date) => {
+		log.info(`Checking channels for archiving at ${now.toISOString()}`);
+
 		if (now.getTime() < ARCHIVE_BOT_LOCK_TIME) {
 			return;
 		}
 
+		log.info(`Processing ${state.notices.length} notices`);
 		for (const notice of state.notices) {
 			const noticeTs = parseFloat(notice.ts) * 1000;
 			const expire = noticeTs + ARCHIVE_WAIT_DURATION;
+			log.info(`Checking notice for channel ${notice.channelId}: ${notice.ts}, expire at ${new Date(expire).toISOString()}`);
+
 			if (now.getTime() >= expire) {
 				await slack.chat.postMessage({
 					channel: notice.channelId,
@@ -91,12 +97,28 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 			}
 		}
 
-		const channelsResult = await slack.conversations.list({
-			types: 'public_channel',
-		});
+		log.info('Fetching channels for archiving');
+		const allChannels: Channel[] = [];
+		let cursor: string | null = null;
 
-		for (const channel of channelsResult.channels) {
+		do {
+			const channelsResult = await slack.conversations.list({
+				types: 'public_channel',
+				limit: 1000,
+				...(cursor ? {cursor} : {}),
+			});
+
+			allChannels.push(...channelsResult.channels);
+			cursor = channelsResult.response_metadata?.next_cursor ?? null;
+		} while (cursor);
+
+		log.info(`Fetched ${allChannels.length} channels`);
+
+		for (const channel of allChannels) {
+			log.debug(`Checking channel ${channel.id} (${channel.name}) for archiving`);
+
 			if (channel.is_archived || channel.is_general || channel.name.startsWith('_')) {
+				log.debug(`Skipping channel ${channel.id} (${channel.name}) - already archived or special channel`);
 				continue;
 			}
 
@@ -104,6 +126,14 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 				snooze.channelId === channel.id &&
 				snooze.expire > now.getTime()
 			))) {
+				log.debug(`Skipping channel ${channel.id} (${channel.name}) - snoozed`);
+				continue;
+			}
+
+			// 理論上、チャンネルが作成されてから一度もメッセージが投稿されないこともあるが、
+			// 誤動作を防ぐためにchannelsオブジェクトに存在しないチャンネルはスキップする
+			if (!Object.hasOwn(channels, channel.id)) {
+				log.debug(`Channel ${channel.id} (${channel.name}) has no messages recorded yet. Skipping`);
 				continue;
 			}
 
@@ -111,7 +141,11 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 			const lastMessageDate = new Date(parseFloat(lastMessageTs) * 1000);
 			const diff = now.getTime() - lastMessageDate.getTime();
 
+			log.debug(`Last message in channel ${channel.id} (${channel.name}) was at ${lastMessageDate.toISOString()}, diff: ${diff}ms`);
+
 			if (diff > ARCHIVE_LIMIT_DURATION) {
+				log.info(`Channel ${channel.id} (${channel.name}) has not received any messages for more than ${ARCHIVE_LIMIT_DAYS} days`);
+
 				const message = await slack.chat.postMessage({
 					channel: channel.id,
 					text: ARCHIVE_PROPOSAL_MESSAGE,
