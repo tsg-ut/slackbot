@@ -89,7 +89,7 @@ describe('auto-archiver', () => {
 		const slack = new Slack();
 		const listConversations = jest.mocked(slack.webClient.conversations.list);
 		listConversations.mockResolvedValueOnce({
-			channels: [],
+			channels: [{id: FAKE_CHANNEL, name: 'random'}],
 			ok: true,
 			response_metadata: {},
 		});
@@ -106,16 +106,42 @@ describe('auto-archiver', () => {
 
 		const MockedState = State as MockedStateInterface<ChannelsStateObj>;
 		const state = MockedState.mocks.get('auto-archiver_channels');
-		state[FAKE_CHANNEL] = (new Date('2024-08-11T00:00:00Z').getTime() / 1000).toString();
+		state[FAKE_CHANNEL] = (new Date('2024-05-13T00:00:01Z').getTime() / 1000).toString();
 
 		const callbackFn = await callbackFnPromise;
-		await callbackFn(new Date('2024-08-11T00:00:01Z'));
+		await callbackFn(new Date('2024-08-11T00:00:00Z'));
 
 		expect(slack.webClient.conversations.list).toBeCalled();
 		expect(slack.webClient.chat.postMessage).not.toBeCalled();
 	});
 
-	it('should remind channel to archive when no public message is posted', async () => {
+	it('should not remind to archive if no message is posted to channel', async () => {
+		const slack = new Slack();
+		const listConversations = jest.mocked(slack.webClient.conversations.list);
+		listConversations.mockResolvedValueOnce({
+			channels: [{id: FAKE_CHANNEL, name: 'random'}],
+			ok: true,
+			response_metadata: {},
+		});
+
+		const postMessage = jest.mocked(slack.webClient.chat.postMessage);
+		postMessage.mockResolvedValueOnce({
+			ok: true,
+			ts: FAKE_TIMESTAMP,
+		});
+
+		const callbackFnPromise = registerScheduleCallback();
+
+		await autoArchiver(slack);
+
+		const callbackFn = await callbackFnPromise;
+		await callbackFn(new Date('2024-08-11T00:00:00Z'));
+
+		expect(slack.webClient.conversations.list).toBeCalled();
+		expect(slack.webClient.chat.postMessage).not.toBeCalled();
+	});
+
+	it('should remind channel to archive if message is posted after 90 days', async () => {
 		const slack = new Slack();
 
 		const listConversations = jest.mocked(slack.webClient.conversations.list);
@@ -135,8 +161,12 @@ describe('auto-archiver', () => {
 
 		await autoArchiver(slack);
 
+		const MockedState = State as MockedStateInterface<ChannelsStateObj>;
+		const channelsState = MockedState.mocks.get('auto-archiver_channels');
+		channelsState[FAKE_CHANNEL] = (new Date('2024-05-12T23:59:59Z').getTime() / 1000).toString();
+
 		const callbackFn = await callbackFnPromise;
-		await callbackFn(new Date('2024-08-11T00:00:01Z'));
+		await callbackFn(new Date('2024-08-11T00:00:00Z'));
 
 		expect(slack.webClient.conversations.list).toBeCalledWith({
 			types: 'public_channel',
@@ -154,7 +184,6 @@ describe('auto-archiver', () => {
 		const blocks = 'blocks' in mockedPostMessage.mock.calls[0][0] ? mockedPostMessage.mock.calls[0][0].blocks : [];
 		expect(blocks).toHaveLength(3);
 
-		const MockedState = State as MockedStateInterface<StateObj>;
 		const state = MockedState.mocks.get('auto-archiver_state');
 		expect(state).not.toBeUndefined();
 		expect(state?.notices).toHaveLength(1);
