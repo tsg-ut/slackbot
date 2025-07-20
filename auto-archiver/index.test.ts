@@ -27,7 +27,7 @@ describe('auto-archiver', () => {
 	jest.useFakeTimers();
 
 	const registerScheduleCallback = () => {
-		const scheduleMock = schedule as jest.Mocked<typeof schedule>;
+		const scheduleMock = jest.mocked(schedule);
 		const deferred = new Deferred<JobCallback>();
 
 		scheduleMock.scheduleJob.mockImplementationOnce((rule, fn) => {
