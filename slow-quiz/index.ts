@@ -29,7 +29,7 @@ import listQuizDialog from './views/listQuizDialog';
 import postCommentDialog from './views/postCommentDialog';
 import registerQuizDialog from './views/registerQuizDialog';
 
-type Genre = 'normal' | 'strange' | 'anything';
+export type Genre = 'normal' | 'strange' | 'anything';
 
 export interface Submission {
 	user: string,
@@ -98,7 +98,7 @@ interface BatchResponse<Body> {
 	},
 }
 
-interface StateObj {
+export interface StateObj {
 	games: Game[],
 	latestStatusMessages: {ts: string, channel: string}[],
 	batchJobs: BatchJob[],
@@ -106,7 +106,7 @@ interface StateObj {
 
 const mutex = new Mutex();
 
-const getGenreText = (genre: Genre) => {
+export const getGenreText = (genre: Genre) => {
 	if (genre === 'strange') {
 		return '変化球';
 	}
@@ -116,7 +116,7 @@ const getGenreText = (genre: Genre) => {
 	return 'なんでも';
 };
 
-const validateQuestion = (question: string) => {
+export const validateQuestion = (question: string) => {
 	if (question.split('/').length >= 5) {
 		return question.split('/').length <= 90;
 	}
@@ -140,7 +140,7 @@ const reasoningPromptLoader = new Loader<OpenAI.Chat.ChatCompletionMessageParam[
 
 const log = logger.child({bot: 'slow-quiz'});
 
-class SlowQuiz {
+export class SlowQuiz {
 	readonly #slack: WebClient;
 
 	readonly #slackInteractions: SlackMessageAdapter;
