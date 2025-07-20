@@ -1,12 +1,13 @@
+/* eslint-disable init-declarations */
 /* eslint-env jest */
 
-import {jest} from '@jest/globals';
 import {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {WebClient} from '@slack/web-api';
 import type {MockedStateInterface} from '../lib/__mocks__/state';
+import openai from '../lib/openai';
 import Slack from '../lib/slackMock';
 import State from '../lib/state';
-import {SlowQuiz, getGenreText, validateQuestion, type StateObj, type Game, type Genre} from './index';
+import {SlowQuiz, validateQuestion, type StateObj, type Game} from './index';
 
 process.env.OPENAI_API_KEY = 'test-api-key';
 
@@ -39,6 +40,30 @@ jest.mock('node-schedule', () => ({
 
 const MockedState = State as MockedStateInterface<StateObj>;
 
+const now = Date.now();
+
+const getBaseGame = (): Game => ({
+	id: 'test-game',
+	status: 'waitlisted',
+	author: 'U123456789',
+	question: '日本一高い山は何？',
+	answer: '富士山',
+	ruby: 'ふじさん,ふじやま',
+	hint: '答えはかな4文字',
+	registrationDate: now - 1000,
+	startDate: null,
+	finishDate: null,
+	progress: 0,
+	progressOfComplete: 8,
+	completed: false,
+	days: 0,
+	correctAnswers: [],
+	wrongAnswers: [],
+	comments: [],
+	answeredUsers: [],
+	genre: 'normal',
+});
+
 describe('slow-quiz', () => {
 	let slack: Slack;
 	let slowQuiz: SlowQuiz;
@@ -49,23 +74,25 @@ describe('slow-quiz', () => {
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		process.env.CHANNEL_QUIZ = slack.fakeChannel;
 
-		// Mock OpenAI API responses
-		const openai = require('../lib/openai');
-		openai.default.chat.completions.create.mockResolvedValue({
+		jest.mocked(openai.chat.completions.create).mockResolvedValue({
 			choices: [{
+				// @ts-expect-error: Mocking only the necessary properties
 				message: {
-					content: '【テスト答え】（てすとこたえ）',
+					content: '【テスト解答（てすとかいとう）】',
 				},
 			}],
 			model: 'gpt-4o-mini',
 		});
-		openai.default.batches.create.mockResolvedValue({
+		// @ts-expect-error: Mocking only the necessary properties
+		jest.mocked(openai.batches.create).mockResolvedValue({
 			id: 'batch-123',
 		});
-		openai.default.batches.retrieve.mockResolvedValue({
+		// @ts-expect-error: Mocking only the necessary properties
+		jest.mocked(openai.batches.retrieve).mockResolvedValue({
 			status: 'completed',
 		});
-		openai.default.files.create.mockResolvedValue({
+		// @ts-expect-error: Mocking only the necessary properties
+		jest.mocked(openai.files.create).mockResolvedValue({
 			id: 'file-123',
 		});
 
@@ -76,43 +103,29 @@ describe('slow-quiz', () => {
 		await slowQuiz.initialize();
 	});
 
-	describe('getGenreText', () => {
-		it('should return correct text for normal genre', () => {
-			expect(getGenreText('normal')).toBe('正統派');
-		});
-
-		it('should return correct text for strange genre', () => {
-			expect(getGenreText('strange')).toBe('変化球');
-		});
-
-		it('should return correct text for anything genre', () => {
-			expect(getGenreText('anything')).toBe('なんでも');
-		});
-	});
-
 	describe('validateQuestion', () => {
 		it('should validate short questions correctly', () => {
-			expect(validateQuestion('これは短い問題です')).toBe(true);
+			expect(validateQuestion('日本一高い山は何？')).toBe(true);
 			expect(validateQuestion('a'.repeat(90))).toBe(true);
 			expect(validateQuestion('a'.repeat(91))).toBe(false);
 		});
 
 		it('should handle questions with special brackets', () => {
-			expect(validateQuestion('これは【特別な】問題です')).toBe(true);
-			expect(validateQuestion(`【長い説明文】${'a'.repeat(90)}`)).toBe(true);
+			expect(validateQuestion('日本一高い山【山梨県と静岡県の境にある】は何？')).toBe(true);
+			expect(validateQuestion(`【説明文】${'a'.repeat(90)}`)).toBe(true);
 		});
 
 		it('should validate multi-part questions with slashes', () => {
-			expect(validateQuestion('part1/part2/part3/part4/part5')).toBe(true);
-			expect(validateQuestion(`${'a'.repeat(15)}/${'b'.repeat(15)}/${'c'.repeat(15)}/${'d'.repeat(15)}/${'e'.repeat(15)}`)).toBe(true);
-			const manyParts = Array(95).fill('a').join('/');
+			expect(validateQuestion('日本で/一番/高い/山は/何？')).toBe(true);
+			expect(validateQuestion(`${'a'.repeat(20)}/${'b'.repeat(20)}/${'c'.repeat(20)}/${'d'.repeat(20)}/${'e'.repeat(20)}`)).toBe(true);
+			const manyParts = Array(91).fill('a').join('/');
 			expect(validateQuestion(manyParts)).toBe(false);
 		});
 
 		it('should handle edge cases', () => {
 			expect(validateQuestion('')).toBe(true);
 			expect(validateQuestion('/')).toBe(true);
-			expect(validateQuestion('a/b/c/d')).toBe(true); // Less than 5 parts
+			expect(validateQuestion(`a/b/c/${'d'.repeat(85)}`)).toBe(false);
 		});
 	});
 
@@ -124,150 +137,163 @@ describe('slow-quiz', () => {
 			expect(state.batchJobs).toEqual([]);
 		});
 
-		it('should initialize with existing state', async () => {
-			// Create a fresh state for this test
-			const existingState: StateObj = {
-				games: [{
-					id: 'test-game',
-					status: 'waitlisted',
-					author: 'U123456789',
-					question: 'テスト問題',
-					answer: 'テスト答え',
-					ruby: 'てすとこたえ',
-					hint: null,
-					registrationDate: Date.now(),
-					startDate: null,
-					finishDate: null,
-					progress: 0,
-					progressOfComplete: 5,
-					completed: false,
-					days: 0,
-					correctAnswers: [],
-					wrongAnswers: [],
-					comments: [],
-					answeredUsers: [],
-					genre: 'normal',
-				}],
-				latestStatusMessages: [],
-				batchJobs: [],
-			};
-
-			// Create new instance with pre-populated state
-			const testSlowQuiz = new SlowQuiz({
-				slack: slack.webClient as WebClient,
-				slackInteractions: slack.messageClient as SlackMessageAdapter,
-			});
-
-			// Override the state after initialization
-			MockedState.mocks.set('slow-quiz', existingState);
-
-			const state = MockedState.mocks.get('slow-quiz');
-			expect(state.games).toHaveLength(1);
-			expect(state.games[0].id).toBe('test-game');
-		});
-
 		describe('progressGames', () => {
 			it('should start a new game from waitlist', async () => {
 				const state = MockedState.mocks.get('slow-quiz');
 				const testGame: Game = {
-					id: 'test-game-1',
-					status: 'waitlisted',
-					author: 'U123456789',
-					question: 'テスト問題',
-					answer: 'テスト答え',
-					ruby: 'てすとこたえ',
-					hint: null,
-					registrationDate: Date.now() - 1000,
-					startDate: null,
-					finishDate: null,
-					progress: 0,
-					progressOfComplete: 5,
-					completed: false,
-					days: 0,
-					correctAnswers: [],
-					wrongAnswers: [],
-					comments: [],
-					answeredUsers: [],
-					genre: 'normal',
+					...getBaseGame(),
 				};
 				state.games.push(testGame);
 
 				await slowQuiz.progressGames();
 
-				expect(state.games[0].status).toBe('inprogress');
-				expect(state.games[0].startDate).toBeGreaterThan(0);
-				expect(state.games[0].progress).toBe(1);
-				expect(state.games[0].days).toBe(1);
+				expect(testGame).toEqual({
+					...getBaseGame(),
+					status: 'inprogress',
+					startDate: expect.any(Number),
+					progress: 1,
+					days: 1,
+					answeredUsers: ['bot:chatgpt-4o-mini:ver1'],
+					comments: [
+						{
+							answer: '【テスト解答（てすとかいとう）】',
+							date: expect.any(Number),
+							days: 1,
+							progress: 1,
+							user: 'bot:chatgpt-4o-mini:ver1',
+						},
+					],
+					wrongAnswers: [
+						{
+							answer: 'てすとかいとう',
+							date: expect.any(Number),
+							days: 1,
+							progress: 1,
+							user: 'bot:chatgpt-4o-mini:ver1',
+						},
+					],
+				});
+				expect(testGame.startDate).toBeGreaterThan(0);
 			});
 
 			it('should progress existing games', async () => {
 				const state = MockedState.mocks.get('slow-quiz');
+				const startDate = Date.now() - 2000;
+				const answerDate = Date.now() - 1000;
 				const testGame: Game = {
-					id: 'test-game-1',
+					...getBaseGame(),
 					status: 'inprogress',
-					author: 'U123456789',
-					question: 'テスト問題',
-					answer: 'テスト答え',
-					ruby: 'てすとこたえ',
-					hint: null,
-					registrationDate: Date.now() - 2000,
-					startDate: Date.now() - 1000,
-					finishDate: null,
+					startDate,
 					progress: 2,
-					progressOfComplete: 5,
-					completed: false,
 					days: 2,
-					correctAnswers: [{
-						user: 'bot:chatgpt-4o-mini:ver1',
+					wrongAnswers: [{
+						user: 'U123456789',
 						progress: 1,
 						days: 1,
-						date: Date.now() - 500,
-						answer: 'テストえ',
+						date: answerDate,
+						answer: 'ふじ',
 					}],
-					wrongAnswers: [],
-					comments: [],
-					answeredUsers: ['U999999999'],
-					genre: 'normal',
+					answeredUsers: ['U123456789'],
 				};
 				state.games.push(testGame);
 
 				await slowQuiz.progressGames();
 
-				expect(state.games[0].status).toBe('inprogress');
-				expect(state.games[0].progress).toBe(3);
-				expect(state.games[0].days).toBe(3);
-				expect(state.games[0].answeredUsers).toEqual([]);
+				expect(testGame).toEqual({
+					...getBaseGame(),
+					status: 'inprogress',
+					startDate,
+					progress: 3,
+					days: 3,
+					comments: [
+						{
+							answer: '【テスト解答（てすとかいとう）】',
+							date: expect.any(Number),
+							days: 3,
+							progress: 3,
+							user: 'bot:chatgpt-4o-mini:ver1',
+						},
+					],
+					wrongAnswers: [
+						{
+							user: 'U123456789',
+							progress: 1,
+							days: 1,
+							date: answerDate,
+							answer: 'ふじ',
+						},
+						{
+							user: 'bot:chatgpt-4o-mini:ver1',
+							progress: 3,
+							days: 3,
+							date: expect.any(Number),
+							answer: 'てすとかいとう',
+						},
+					],
+					answeredUsers: ['bot:chatgpt-4o-mini:ver1'],
+				});
 			});
 
-			it('should complete game when progress reaches progressOfComplete', async () => {
+			it('should mark game as complete when progress reaches progressOfComplete', async () => {
 				const state = MockedState.mocks.get('slow-quiz');
+				const startDate = Date.now() - 1000;
 				const testGame: Game = {
-					id: 'test-game-1',
+					...getBaseGame(),
 					status: 'inprogress',
-					author: 'U123456789',
-					question: 'テスト',
-					answer: 'テスト答え',
-					ruby: 'てすとこたえ',
-					hint: null,
-					registrationDate: Date.now() - 2000,
-					startDate: Date.now() - 1000,
-					finishDate: null,
-					progress: 2,
-					progressOfComplete: 3,
-					completed: false,
-					days: 2,
-					correctAnswers: [],
-					wrongAnswers: [],
-					comments: [],
-					answeredUsers: [],
-					genre: 'normal',
+					startDate,
+					progress: 7,
+					days: 7,
 				};
 				state.games.push(testGame);
 
 				await slowQuiz.progressGames();
 
-				expect(state.games[0].progress).toBe(3);
-				expect(state.games[0].completed).toBe(true);
+				expect(testGame).toEqual({
+					...getBaseGame(),
+					status: 'inprogress',
+					startDate,
+					completed: true,
+					progress: 8,
+					days: 8,
+					correctAnswers: [],
+					wrongAnswers: [
+						{
+							answer: 'てすとかいとう',
+							date: expect.any(Number),
+							days: 8,
+							progress: 8,
+							user: 'bot:chatgpt-4o-mini:ver1',
+						},
+					],
+					comments: [
+						{
+							answer: '【テスト解答（てすとかいとう）】',
+							date: expect.any(Number),
+							days: 8,
+							progress: 8,
+							user: 'bot:chatgpt-4o-mini:ver1',
+						},
+					],
+					answeredUsers: ['bot:chatgpt-4o-mini:ver1'],
+				});
+			});
+
+			it('should handle games with bracket endings in progress', async () => {
+				const state = MockedState.mocks.get('slow-quiz');
+				const testGame: Game = {
+					...getBaseGame(),
+					status: 'inprogress',
+					startDate: Date.now() - 2000,
+					question: '小説『吾輩は猫である』の著者は誰？',
+					progress: 2,
+					days: 2,
+				};
+				state.games.push(testGame);
+
+				await slowQuiz.progressGames();
+
+				// Should increment by 2 when hitting a bracket character
+				expect(state.games[0].progress).toBe(4);
 			});
 		});
 
@@ -277,71 +303,44 @@ describe('slow-quiz', () => {
 
 				// Game from a user who has been selected before
 				const oldGame: Game = {
+					...getBaseGame(),
 					id: 'old-game',
 					status: 'finished',
 					author: 'U111111111',
-					question: '過去の問題',
-					answer: '過去の答え',
-					ruby: 'かこのこたえ',
-					hint: null,
 					registrationDate: Date.now() - 5000,
 					startDate: Date.now() - 4000,
 					finishDate: Date.now() - 1000,
-					progress: 5,
-					progressOfComplete: 5,
+					progress: 8,
+					days: 8,
 					completed: true,
-					days: 5,
-					correctAnswers: [],
-					wrongAnswers: [],
-					comments: [],
-					answeredUsers: [],
-					genre: 'normal',
 				};
 
 				// Waitlisted game from same user
 				const waitlistedGameFromOldUser: Game = {
+					...getBaseGame(),
 					id: 'waitlisted-old-user',
 					status: 'waitlisted',
 					author: 'U111111111',
-					question: '待機中の問題（古いユーザー）',
-					answer: '答え',
-					ruby: 'こたえ',
-					hint: null,
 					registrationDate: Date.now() - 3000,
 					startDate: null,
 					finishDate: null,
 					progress: 0,
-					progressOfComplete: 5,
-					completed: false,
 					days: 0,
-					correctAnswers: [],
-					wrongAnswers: [],
-					comments: [],
-					answeredUsers: [],
-					genre: 'normal',
+					completed: false,
 				};
 
 				// Waitlisted game from new user
 				const waitlistedGameFromNewUser: Game = {
+					...getBaseGame(),
 					id: 'waitlisted-new-user',
 					status: 'waitlisted',
 					author: 'U222222222',
-					question: '待機中の問題（新しいユーザー）',
-					answer: '答え',
-					ruby: 'こたえ',
-					hint: null,
 					registrationDate: Date.now() - 2000,
 					startDate: null,
 					finishDate: null,
 					progress: 0,
-					progressOfComplete: 5,
-					completed: false,
 					days: 0,
-					correctAnswers: [],
-					wrongAnswers: [],
-					comments: [],
-					answeredUsers: [],
-					genre: 'normal',
+					completed: false,
 				};
 
 				state.games.push(oldGame, waitlistedGameFromOldUser, waitlistedGameFromNewUser);
@@ -377,109 +376,6 @@ describe('slow-quiz', () => {
 				});
 
 				await expect(slowQuiz.checkBatchJobs()).resolves.not.toThrow();
-			});
-		});
-
-		describe('edge cases', () => {
-			it('should handle games with bracket endings in progress', async () => {
-				const state = MockedState.mocks.get('slow-quiz');
-				const testGame: Game = {
-					id: 'bracket-game',
-					status: 'inprogress',
-					author: 'U123456789',
-					question: 'これは（テスト）問題です。',
-					answer: 'テスト答え',
-					ruby: 'てすとこたえ',
-					hint: null,
-					registrationDate: Date.now() - 2000,
-					startDate: Date.now() - 1000,
-					finishDate: null,
-					progress: 3, // Should land on '（'
-					progressOfComplete: 11,
-					completed: false,
-					days: 3,
-					correctAnswers: [],
-					wrongAnswers: [],
-					comments: [],
-					answeredUsers: [],
-					genre: 'normal',
-				};
-				state.games.push(testGame);
-
-				await slowQuiz.progressGames();
-
-				// Should increment by 2 when hitting a bracket character
-				expect(state.games[0].progress).toBe(5);
-			});
-
-			it('should handle multi-part questions correctly', async () => {
-				const state = MockedState.mocks.get('slow-quiz');
-				const testGame: Game = {
-					id: 'multi-part-game',
-					status: 'inprogress',
-					author: 'U123456789',
-					question: 'パート1/パート2/パート3/パート4/パート5',
-					answer: 'テスト答え',
-					ruby: 'てすとこたえ',
-					hint: null,
-					registrationDate: Date.now() - 2000,
-					startDate: Date.now() - 1000,
-					finishDate: null,
-					progress: 2,
-					progressOfComplete: 5,
-					completed: false,
-					days: 2,
-					correctAnswers: [],
-					wrongAnswers: [],
-					comments: [],
-					answeredUsers: [],
-					genre: 'normal',
-				};
-				state.games.push(testGame);
-
-				await slowQuiz.progressGames();
-
-				expect(state.games[0].progress).toBe(3);
-				expect(state.games[0].days).toBe(3);
-			});
-
-			it('should handle empty question gracefully', () => {
-				expect(validateQuestion('')).toBe(true);
-			});
-
-			it('should handle question with only brackets', () => {
-				expect(validateQuestion('【】')).toBe(true);
-			});
-		});
-
-		describe('comment functionality', () => {
-			it('should initialize with empty comments array', () => {
-				const state = MockedState.mocks.get('slow-quiz');
-				const testGame: Game = {
-					id: 'test-game-comment',
-					status: 'inprogress',
-					author: 'U123456789',
-					question: 'テスト問題',
-					answer: 'テスト答え',
-					ruby: 'てすとこたえ',
-					hint: null,
-					registrationDate: Date.now() - 2000,
-					startDate: Date.now() - 1000,
-					finishDate: null,
-					progress: 2,
-					progressOfComplete: 5,
-					completed: false,
-					days: 2,
-					correctAnswers: [],
-					wrongAnswers: [],
-					comments: [],
-					answeredUsers: [],
-					genre: 'normal',
-				};
-				state.games.push(testGame);
-
-				// Verify the game has an empty comments array initially
-				expect(state.games[0].comments).toEqual([]);
 			});
 		});
 	});

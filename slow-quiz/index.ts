@@ -106,7 +106,7 @@ export interface StateObj {
 
 const mutex = new Mutex();
 
-export const getGenreText = (genre: Genre) => {
+const getGenreText = (genre: Genre) => {
 	if (genre === 'strange') {
 		return '変化球';
 	}
