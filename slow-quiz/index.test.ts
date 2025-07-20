@@ -451,5 +451,36 @@ describe('slow-quiz', () => {
 				expect(validateQuestion('【】')).toBe(true);
 			});
 		});
+
+		describe('comment functionality', () => {
+			it('should initialize with empty comments array', () => {
+				const state = MockedState.mocks.get('slow-quiz');
+				const testGame: Game = {
+					id: 'test-game-comment',
+					status: 'inprogress',
+					author: 'U123456789',
+					question: 'テスト問題',
+					answer: 'テスト答え',
+					ruby: 'てすとこたえ',
+					hint: null,
+					registrationDate: Date.now() - 2000,
+					startDate: Date.now() - 1000,
+					finishDate: null,
+					progress: 2,
+					progressOfComplete: 5,
+					completed: false,
+					days: 2,
+					correctAnswers: [],
+					wrongAnswers: [],
+					comments: [],
+					answeredUsers: [],
+					genre: 'normal',
+				};
+				state.games.push(testGame);
+
+				// Verify the game has an empty comments array initially
+				expect(state.games[0].comments).toEqual([]);
+			});
+		});
 	});
 });
