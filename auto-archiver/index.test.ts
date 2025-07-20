@@ -1,13 +1,4 @@
-/* eslint-disable import/imports-first */
-/* eslint-disable import/first */
 /* eslint-env jest */
-
-jest.mock('../lib/state');
-jest.mock('../lib/slack');
-jest.mock('../lib/slackUtils');
-jest.mock('node-schedule', () => ({
-	scheduleJob: jest.fn(),
-}));
 
 import {SectionBlock} from '@slack/web-api';
 import {noop} from 'lodash';
@@ -17,6 +8,13 @@ import Slack from '../lib/slackMock';
 import State from '../lib/state';
 import {Deferred} from '../lib/utils';
 import autoArchiver, {ChannelsStateObj, StateObj} from './index';
+
+jest.mock('../lib/state');
+jest.mock('../lib/slack');
+jest.mock('../lib/slackUtils');
+jest.mock('node-schedule', () => ({
+	scheduleJob: jest.fn(),
+}));
 
 describe('auto-archiver', () => {
 	const FAKE_CHANNEL = 'C12345678';
