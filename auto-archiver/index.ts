@@ -115,10 +115,10 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 		log.info(`Fetched ${allChannels.length} channels`);
 
 		for (const channel of allChannels) {
-			log.info(`Checking channel ${channel.id} (${channel.name}) for archiving`);
+			log.debug(`Checking channel ${channel.id} (${channel.name}) for archiving`);
 
 			if (channel.is_archived || channel.is_general || channel.name.startsWith('_')) {
-				log.info(`Skipping channel ${channel.id} (${channel.name}) - already archived or special channel`);
+				log.debug(`Skipping channel ${channel.id} (${channel.name}) - already archived or special channel`);
 				continue;
 			}
 
@@ -126,12 +126,12 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 				snooze.channelId === channel.id &&
 				snooze.expire > now.getTime()
 			))) {
-				log.info(`Skipping channel ${channel.id} (${channel.name}) - snoozed`);
+				log.debug(`Skipping channel ${channel.id} (${channel.name}) - snoozed`);
 				continue;
 			}
 
 			if (channels[channel.id] === undefined) {
-				log.info(`Channel ${channel.id} (${channel.name}) has no messages recorded yet. Skipping`);
+				log.debug(`Channel ${channel.id} (${channel.name}) has no messages recorded yet. Skipping`);
 				continue;
 			}
 
@@ -139,7 +139,7 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 			const lastMessageDate = new Date(parseFloat(lastMessageTs) * 1000);
 			const diff = now.getTime() - lastMessageDate.getTime();
 
-			log.info(`Last message in channel ${channel.id} (${channel.name}) was at ${lastMessageDate.toISOString()}, diff: ${diff}ms`);
+			log.debug(`Last message in channel ${channel.id} (${channel.name}) was at ${lastMessageDate.toISOString()}, diff: ${diff}ms`);
 
 			if (diff > ARCHIVE_LIMIT_DURATION) {
 				log.info(`Channel ${channel.id} (${channel.name}) has not received any messages for more than ${ARCHIVE_LIMIT_DAYS} days`);
