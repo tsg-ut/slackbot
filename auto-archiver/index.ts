@@ -15,7 +15,8 @@ const ARCHIVE_SNOOZE_DURATION = 1000 * 60 * 60 * 24 * ARCHIVE_SNOOZE_DAYS;
 const ARCHIVE_LIMIT_DAYS = 90;
 const ARCHIVE_LIMIT_DURATION = 1000 * 60 * 60 * 24 * ARCHIVE_LIMIT_DAYS;
 const ARCHIVE_WAIT_HOURS = 24;
-const ARCHIVE_WAIT_DURATION = 1000 * 60 * 60 * ARCHIVE_WAIT_HOURS;
+const ARCHIVE_WAIT_EPSILON = 1000 * 60 * 5; // 5 minutes
+const ARCHIVE_WAIT_DURATION = 1000 * 60 * 60 * ARCHIVE_WAIT_HOURS - ARCHIVE_WAIT_EPSILON;
 const ARCHIVE_PROPOSAL_MESSAGE = stripIndent`
 	<!channel> このチャンネルには${ARCHIVE_LIMIT_DAYS}日以上BOT以外のメッセージが投稿されていません。
 	引き続きこのチャンネルを使用しますか?
@@ -26,7 +27,6 @@ const ARCHIVE_NOTE_MESSAGE = stripIndent`
 	* アーカイブされたチャンネルは、必要に応じて復元できます。
 	* BOTの投稿がメインのチャンネルの場合、チャンネル名の先頭に「_」をつけることでアーカイブを回避できます。
 `;
-const ARCHIVE_BOT_LOCK_TIME = new Date('2024-08-11T00:00:00Z').getTime();
 
 const log = logger.child({bot: 'auto-archiver'});
 
@@ -74,11 +74,8 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 	const postArchiveProposal = async (now: Date) => {
 		log.info(`Checking channels for archiving at ${now.toISOString()}`);
 
-		if (now.getTime() < ARCHIVE_BOT_LOCK_TIME) {
-			return;
-		}
-
 		log.info(`Processing ${state.notices.length} notices`);
+		const archivedChannels: Set<string> = new Set();
 		for (const notice of state.notices) {
 			const noticeTs = parseFloat(notice.ts) * 1000;
 			const expire = noticeTs + ARCHIVE_WAIT_DURATION;
@@ -94,6 +91,7 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 					token: process.env.HAKATASHI_TOKEN,
 				});
 				state.notices = state.notices.filter((n) => n.ts !== notice.ts);
+				archivedChannels.add(notice.channelId);
 			}
 		}
 
@@ -127,6 +125,16 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 				snooze.expire > now.getTime()
 			))) {
 				log.debug(`Skipping channel ${channel.id} (${channel.name}) - snoozed`);
+				continue;
+			}
+
+			if (state.notices.some((notice) => notice.channelId === channel.id)) {
+				log.debug(`Skipping channel ${channel.id} (${channel.name}) - already has a notice`);
+				continue;
+			}
+
+			if (archivedChannels.has(channel.id)) {
+				log.debug(`Skipping channel ${channel.id} (${channel.name}) - already archived`);
 				continue;
 			}
 

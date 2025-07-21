@@ -64,24 +64,6 @@ describe('auto-archiver', () => {
 		expect(schedule.scheduleJob).toBeCalled();
 	});
 
-	it('should stop working until 2024-08-11T00:00:00Z', async () => {
-		const slack = new Slack();
-		const listConversations = jest.mocked(slack.webClient.conversations.list);
-		listConversations.mockResolvedValueOnce({
-			channels: [],
-			ok: true,
-			response_metadata: {},
-		});
-
-		const callbackFnPromise = registerScheduleCallback();
-
-		await autoArchiver(slack);
-
-		const callbackFn = await callbackFnPromise;
-		await callbackFn(new Date('2024-08-10T23:59:59Z'));
-
-		expect(slack.webClient.conversations.list).not.toBeCalled();
-	});
 
 	it('should not remind to archive if message is posted within 90 days', async () => {
 		const slack = new Slack();
@@ -137,6 +119,90 @@ describe('auto-archiver', () => {
 
 		expect(slack.webClient.conversations.list).toBeCalled();
 		expect(slack.webClient.chat.postMessage).not.toBeCalled();
+	});
+
+	it('should not remind to archive if channel already has a notice', async () => {
+		const slack = new Slack();
+		const listConversations = jest.mocked(slack.webClient.conversations.list);
+		listConversations.mockResolvedValueOnce({
+			channels: [{id: FAKE_CHANNEL, name: 'random'}],
+			ok: true,
+			response_metadata: {},
+		});
+
+		const postMessage = jest.mocked(slack.webClient.chat.postMessage);
+		postMessage.mockResolvedValue({
+			ok: true,
+			ts: FAKE_TIMESTAMP,
+		});
+
+		const callbackFnPromise = registerScheduleCallback();
+
+		await autoArchiver(slack);
+
+		const MockedChannelsState = State as MockedStateInterface<ChannelsStateObj>;
+		const channelsState = MockedChannelsState.mocks.get('auto-archiver_channels');
+		channelsState[FAKE_CHANNEL] = (new Date('2024-05-12T23:59:59Z').getTime() / 1000).toString();
+
+		const MockedState = State as MockedStateInterface<StateObj>;
+		const stateObj = MockedState.mocks.get('auto-archiver_state');
+		stateObj.notices = [{
+			channelId: FAKE_CHANNEL,
+			ts: (new Date('2024-08-10T12:00:00Z').getTime() / 1000).toString(),
+		}];
+
+		const callbackFn = await callbackFnPromise;
+		// Scheduled function is called:
+		// - after 90 days + 1 second from the last message
+		// - after 12 hours from the notice (< 24 hours)
+		await callbackFn(new Date('2024-08-11T00:00:00Z'));
+
+		expect(slack.webClient.conversations.list).toBeCalled();
+		expect(slack.webClient.chat.postMessage).not.toBeCalled();
+	});
+
+	it('should not remind to archive if channel was archived in the same session', async () => {
+		const slack = new Slack();
+		const listConversations = jest.mocked(slack.webClient.conversations.list);
+		listConversations.mockResolvedValueOnce({
+			channels: [{id: FAKE_CHANNEL, name: 'random'}],
+			ok: true,
+			response_metadata: {},
+		});
+
+		const postMessage = jest.mocked(slack.webClient.chat.postMessage);
+		postMessage.mockResolvedValue({
+			ok: true,
+			ts: FAKE_TIMESTAMP,
+		});
+
+		const callbackFnPromise = registerScheduleCallback();
+
+		await autoArchiver(slack);
+
+		const MockedChannelsState = State as MockedStateInterface<ChannelsStateObj>;
+		const channelsState = MockedChannelsState.mocks.get('auto-archiver_channels');
+		channelsState[FAKE_CHANNEL] = (new Date('2024-05-12T23:59:59Z').getTime() / 1000).toString();
+
+		const MockedState = State as MockedStateInterface<StateObj>;
+		const stateObj = MockedState.mocks.get('auto-archiver_state');
+		stateObj.notices = [{
+			channelId: FAKE_CHANNEL,
+			ts: (new Date('2024-08-09T12:00:00Z').getTime() / 1000).toString(),
+		}];
+
+		const callbackFn = await callbackFnPromise;
+		// Scheduled function is called:
+		// - after 90 days + 1 second from the last message
+		// - after 36 hours from the notice (> 24 hours)
+		await callbackFn(new Date('2024-08-11T00:00:00Z'));
+
+		expect(slack.webClient.conversations.list).toBeCalled();
+		expect(slack.webClient.chat.postMessage).toBeCalledTimes(1);
+		expect(slack.webClient.chat.postMessage).toBeCalledWith({
+			channel: FAKE_CHANNEL,
+			text: '24時間以内に応答がなかったため、チャンネルをアーカイブしました。',
+		});
 	});
 
 	it('should remind channel to archive if message is posted after 90 days', async () => {
