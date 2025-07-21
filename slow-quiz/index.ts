@@ -29,7 +29,7 @@ import listQuizDialog from './views/listQuizDialog';
 import postCommentDialog from './views/postCommentDialog';
 import registerQuizDialog from './views/registerQuizDialog';
 
-type Genre = 'normal' | 'strange' | 'anything';
+export type Genre = 'normal' | 'strange' | 'anything';
 
 export interface Submission {
 	user: string,
@@ -98,7 +98,7 @@ interface BatchResponse<Body> {
 	},
 }
 
-interface StateObj {
+export interface StateObj {
 	games: Game[],
 	latestStatusMessages: {ts: string, channel: string}[],
 	batchJobs: BatchJob[],
@@ -116,7 +116,7 @@ const getGenreText = (genre: Genre) => {
 	return 'なんでも';
 };
 
-const validateQuestion = (question: string) => {
+export const validateQuestion = (question: string) => {
 	if (question.split('/').length >= 5) {
 		return question.split('/').length <= 90;
 	}
@@ -140,7 +140,7 @@ const reasoningPromptLoader = new Loader<OpenAI.Chat.ChatCompletionMessageParam[
 
 const log = logger.child({bot: 'slow-quiz'});
 
-class SlowQuiz {
+export class SlowQuiz {
 	readonly #slack: WebClient;
 
 	readonly #slackInteractions: SlackMessageAdapter;
@@ -256,28 +256,48 @@ class SlowQuiz {
 			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
 			const state = Object.assign({}, ...stateObjects);
 			const id = payload?.view?.private_metadata;
+			log.info({state, id, payload});
 
 			mutex.runExclusive(() => (
 				this.#answerUserQuestion({
 					id,
 					ruby: state?.ruby?.value,
+					comment: state?.slowquiz_answer_dialog_submit_comment?.value ?? null,
 					user: payload.user.id,
 				})
 			));
 		});
 
 		this.#slackInteractions.action({
-			type: 'button',
-			actionId: 'slowquiz_post_comment_submit_comment',
+			type: 'plain_text_input',
+			actionId: 'slowquiz_answer_dialog_submit_comment',
 		}, (payload: BlockButtonAction) => {
-			const stateObjects = Object.values(payload?.view?.state?.values ?? {});
-			const state = Object.assign({}, ...stateObjects);
+			const comment = payload?.actions?.[0]?.value ?? null;
 
 			mutex.runExclusive(() => (
 				this.#postComment({
 					id: payload?.view?.private_metadata,
 					viewId: payload?.view?.id,
-					comment: state?.slowquiz_post_comment_input_comment?.value,
+					viewType: 'slowquiz_answer_dialog',
+					comment,
+					type: 'user',
+					user: payload?.user?.id,
+				})
+			));
+		});
+
+		this.#slackInteractions.action({
+			type: 'plain_text_input',
+			actionId: 'slowquiz_post_comment_submit_comment',
+		}, (payload: BlockButtonAction) => {
+			const comment = payload?.actions?.[0]?.value ?? null;
+
+			mutex.runExclusive(() => (
+				this.#postComment({
+					id: payload?.view?.private_metadata,
+					viewId: payload?.view?.id,
+					viewType: 'slowquiz_post_comment_dialog',
+					comment,
 					type: 'user',
 					user: payload?.user?.id,
 				})
@@ -292,7 +312,8 @@ class SlowQuiz {
 				this.#postComment({
 					id: payload?.view?.private_metadata,
 					viewId: payload?.view?.id,
-					comment: state?.slowquiz_post_comment_input_comment?.value,
+					viewType: 'slowquiz_post_comment_dialog',
+					comment: state?.slowquiz_post_comment_submit_comment?.value ?? null,
 					type: 'user',
 					user: payload?.user?.id,
 				})
@@ -657,7 +678,8 @@ class SlowQuiz {
 					if (content !== null) {
 						await this.#postComment({
 							id: game.id,
-							viewId: '',
+							viewId: null,
+							viewType: null,
 							comment: content,
 							type: 'bot',
 							user: botId,
@@ -706,10 +728,12 @@ class SlowQuiz {
 	#answerUserQuestion({
 		id,
 		ruby,
+		comment,
 		user,
 	}: {
 		id: string,
 		ruby: string,
+		comment: string | null,
 		user: string,
 	}) {
 		const game = this.#state.games.find((g) => g.id === id);
@@ -737,6 +761,18 @@ class SlowQuiz {
 		if (!(/^[ぁ-ゟァ-ヿa-z0-9]+$/i).exec(ruby)) {
 			this.#postEphemeral('答えに使える文字は「ひらがな・カタカナ・英数字」のみだよ🙄', user);
 			return;
+		}
+
+		// Handle optional comment
+		if (comment && comment.trim()) {
+			this.#postComment({
+				id,
+				viewId: null,
+				viewType: null,
+				comment: comment.trim(),
+				type: 'user',
+				user,
+			});
 		}
 
 		this.#answerQuestion({
@@ -779,7 +815,8 @@ class SlowQuiz {
 			if (result !== null) {
 				await this.#postComment({
 					id: game.id,
-					viewId: '',
+					viewId: null,
+					viewType: null,
 					comment: result,
 					type: 'bot',
 					user: botId,
@@ -920,12 +957,14 @@ class SlowQuiz {
 	async #postComment({
 		id,
 		viewId,
+		viewType,
 		comment,
 		type,
 		user,
 	}: {
 		id: string,
-		viewId: string,
+		viewId: string | null,
+		viewType: 'slowquiz_answer_dialog' | 'slowquiz_post_comment_dialog' | null,
 		comment: string,
 		type: 'user' | 'bot',
 		user: string,
@@ -959,11 +998,18 @@ class SlowQuiz {
 			answer: comment,
 		});
 
-		if (type === 'user') {
-			await this.#slack.views.update({
-				view_id: viewId,
-				view: postCommentDialog(game, user),
-			});
+		if (type === 'user' && viewId !== null && viewType !== null) {
+			if (viewType === 'slowquiz_answer_dialog') {
+				await this.#slack.views.update({
+					view_id: viewId,
+					view: answerQuestionDialog(game, this.#getQuestionText(game), user),
+				});
+			} else if (viewType === 'slowquiz_post_comment_dialog') {
+				await this.#slack.views.update({
+					view_id: viewId,
+					view: postCommentDialog(game, user),
+				});
+			}
 		}
 	}
 

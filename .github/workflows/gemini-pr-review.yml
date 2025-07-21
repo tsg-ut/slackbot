@@ -156,6 +156,7 @@ jobs:
             5. Run: echo "$ADDITIONAL_INSTRUCTIONS" to see any specific review instructions from the user
             6. Run: gh pr diff $PR_NUMBER to see the full diff
             7. For any specific files, use: cat filename, head -50 filename, or tail -50 filename
+            8. To read the general instructions for the AI, run: cat .github/copilot-instructions.md
 
             Additional Review Instructions:
             If ADDITIONAL_INSTRUCTIONS contains text, prioritize those specific areas or focus points in your review.
