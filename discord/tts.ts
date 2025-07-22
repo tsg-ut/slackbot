@@ -5,7 +5,7 @@ import {inspect} from 'util';
 import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discordjs/voice';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-import Discord from 'discord.js';
+import Discord, {ChannelType} from 'discord.js';
 import {minBy, countBy, chunk} from 'lodash';
 import logger from '../lib/logger';
 import State from '../lib/state';
@@ -176,6 +176,10 @@ export default class TTS extends EventEmitter {
 
 		const tokens = message.content.split(/\s+/);
 		const user = message.member.user.id;
+
+		// Check if message is from a voice channel's text channel
+		// In Discord, voice channels can have associated text channels
+		const isVoiceChannelTextChannel = message.channel.type === ChannelType.GuildVoice;
 
 		if (tokens[0]?.toUpperCase() === 'TTS') {
 			if (tokens.length === 1 || tokens[1] === 'start') {
@@ -349,12 +353,44 @@ export default class TTS extends EventEmitter {
 					* TTS help - ヘルプを表示
 				`, message.channel.id);
 			}
-		} else if (this.users.has(user) && !message.content.startsWith('-') && !this.isPaused) {
+		} else if ((this.users.has(user) || isVoiceChannelTextChannel) && !message.content.startsWith('-') && !this.isPaused) {
 			const {content, id, meta, audioTags} = await mutex.runExclusive(async () => {
 				const state = await this.state.load();
+
+				// If user is in voice channel text channel but not registered, auto-register them
+				if (isVoiceChannelTextChannel && !this.users.has(user)) {
+					if (!{}.hasOwnProperty.call(state.userVoices, user)) {
+						const newVoice = await this.assignNewVoice();
+						state.userVoices[user] = newVoice;
+					}
+					if (!{}.hasOwnProperty.call(state.userMetas, user)) {
+						state.userMetas[user] = getDefaultVoiceMeta();
+					}
+					this.users.add(user);
+					const timer = new Timer(() => {
+						this.users.delete(user);
+						this.userTimers.get(user)?.cancel();
+						this.emit('message', stripIndent`
+							30分以上発言がなかったので<@${user}>のTTSを解除しました
+						`);
+						this.onUsersModified();
+					}, 30 * 60 * 1000);
+					this.userTimers.set(user, timer);
+
+					// Set the voice channel from the message context
+					if (message.member.voice?.channelId) {
+						this.lastActiveVoiceChannel = message.member.voice.channelId;
+					}
+					this.onUsersModified();
+				}
+
 				const id = state.userVoices[user] || Voice.A;
 				const meta = state.userMetas[user] || getDefaultVoiceMeta();
-				this.userTimers.get(user)?.resetTimer();
+
+				// Reset timer for existing users
+				if (this.users.has(user)) {
+					this.userTimers.get(user)?.resetTimer();
+				}
 				let {content} = message;
 				for (const {key, value} of this.ttsDictionary) {
 					content = content.replace(new RegExp(key, 'g'), value);
