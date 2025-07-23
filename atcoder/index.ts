@@ -497,7 +497,14 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			const typicalSolve = typicalSolves.get(user.slack) || 0;
 
 			const previousAbsSolve = (await get(user.slack, 'atcoder-abs-solves')) || 0;
-			const previousTypicalSolve = ((await get(user.slack, 'atcoder-typical-solves')) || 0) - previousAbsSolve;
+			if (typeof previousAbsSolve !== 'number') {
+				throw new Error(`Invalid type for atcoder-abs-solves: ${typeof previousAbsSolve}`);
+			}
+			const previousTypicalSolves = (await get(user.slack, 'atcoder-typical-solves')) || 0;
+			if (typeof previousTypicalSolves !== 'number') {
+				throw new Error(`Invalid type for atcoder-typical-solves: ${typeof previousTypicalSolves}`);
+			}
+			const previousTypicalSolve = previousTypicalSolves - previousAbsSolve;
 
 			set(user.slack, 'atcoder-abs-solves', absSolve);
 			set(user.slack, 'atcoder-typical-solves', absSolve + typicalSolve);
