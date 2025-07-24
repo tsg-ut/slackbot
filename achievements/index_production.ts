@@ -1,23 +1,31 @@
-// eslint-disable-next-line no-unused-vars
+/* eslint-disable @typescript-eslint/no-use-before-define */
+/* eslint-disable no-restricted-syntax */
+
+import type {MessageEvent, ReactionAddedEvent, BlockButtonAction, RespondFn} from '@slack/bolt';
 import {WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-import {countBy, throttle, groupBy, get as getter, chunk} from 'lodash';
+import type {CollectionReference} from 'firebase-admin/lib/firestore';
+// @ts-expect-error: Not typed
+import japanese from 'japanese';
+import {countBy, throttle, groupBy, get as getter, chunk, uniq} from 'lodash';
 import moment from 'moment';
-import db from '../lib/firestore';
-// eslint-disable-next-line no-unused-vars
+import {db} from '../lib/firestore';
+// @ts-expect-error: Not typed
+import getReading from '../lib/getReading';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
+import {conversationsHistory} from '../lib/slackPatron';
 import {getReactions} from '../lib/slackUtils';
 import {updateUsageCount} from '../lib/state';
 import {Deferred} from '../lib/utils';
-import achievements, {Difficulty} from './achievements';
+import achievements, {Difficulty, type Achievement} from './achievements';
 
 const mutex = new Mutex();
 
 const log = logger.child({bot: 'achievements'});
 
-type users = {
+interface Users {
 	chats?: number,
 	chatDays?: number,
 	lastChatDay?: string,
@@ -26,11 +34,11 @@ type users = {
 	tahoiyaDeceive?: number,
 	tahoiyaParitcipate?: number,
 	shogiWin?: number,
-	[key: string]: any,
-};
+	[key: string]: unknown,
+}
 
 interface State {
-	users: Map<string, users>,
+	users: Map<string, Users>,
 	achievements: Map<string, Set<string>>
 }
 
@@ -52,11 +60,163 @@ const difficultyToStars = (difficulty: Difficulty) => (
 const loadDeferred = new Deferred<WebClient>();
 const initializeDeferred = new Deferred<void>();
 
+const unlockReactionCountAchievements = async (event: ReactionAddedEvent) => {
+	if (!event.item.channel.startsWith('C')) {
+		return;
+	}
+
+	const reactionAchievements = Array.from(achievements.values()).filter((achievement) => (
+		achievement.reaction === event.reaction
+	));
+	const reactions = await getReactions(event.item.channel, event.item.ts);
+	const reactedUsers = reactions[event.reaction] || [];
+	const messageURL = event.item.type === 'message'
+		? `<https://tsg-ut.slack.com/archives/${event.item.channel}/p${event.item.ts.replace('.', '')}|[メッセージ]>`
+		: '';
+
+	for (const achievement of reactionAchievements) {
+		if (achievement.value <= reactedUsers.length) {
+			await unlock(event.item_user, achievement.id, messageURL);
+		}
+	}
+
+	if (reactedUsers.length >= 1) {
+		const firstReactedUser = reactedUsers[0];
+
+		for (const threshold of [5, 10, 15, 20, 25, 30]) {
+			if (reactedUsers.length >= threshold) {
+				const messagesKey = `reaction-${event.reaction}-${threshold}-first-reaction-messages`;
+				const achievementName = `reaction-${event.reaction}-${threshold}-first-reaction`;
+
+				mutex.runExclusive(async () => {
+					const reactionMessages = (await get(firstReactedUser, messagesKey)) || [];
+					if (!Array.isArray(reactionMessages)) {
+						log.error(`Invalid reaction messages for ${firstReactedUser} on ${messagesKey}: ${JSON.stringify(reactionMessages)}`);
+						return;
+					}
+					if (!reactionMessages.includes(event.item.ts)) {
+						await set(firstReactedUser, messagesKey, [...reactionMessages, event.item.ts]);
+						await increment(firstReactedUser, achievementName, 1, messageURL);
+						await increment(firstReactedUser, `reaction-${threshold}-reactions-first-reaction`, 1, messageURL);
+					}
+				});
+			}
+		}
+	}
+};
+
+const kiToOAchievementsCache = new Set<string>();
+
+const unlockKiToOAchievements = async (event: ReactionAddedEvent) => {
+	if (!event.item.channel.startsWith('C')) {
+		return;
+	}
+
+	let mode: 'ki-to-o' | 'o-to-ki' | null = null;
+	if (event.reaction.startsWith('o')) {
+		mode = 'ki-to-o';
+	} else if (event.reaction.startsWith('ki')) {
+		mode = 'o-to-ki';
+	}
+
+	if (mode === null) {
+		return;
+	}
+
+	if (event.item_user === event.user) {
+		log.info(`Skipping self-reaction for ${event.reaction} on ${event.item.channel} at ${event.item.ts}`);
+		return;
+	}
+
+	const normalizedReaction = event.reaction.toLowerCase().replaceAll(/[^a-z]/g, '');
+
+	const cacheKey = `${event.item.channel}-${event.item.ts}-${event.reaction}-${event.user}`;
+	if (kiToOAchievementsCache.has(cacheKey)) {
+		log.info(`Skipping already processed reaction ${event.reaction} on ${event.item.channel} at ${event.item.ts} for user ${event.user}`);
+		return;
+	}
+	kiToOAchievementsCache.add(cacheKey);
+
+	await mutex.runExclusive(async () => {
+		const messageData = await conversationsHistory({
+			channel: event.item.channel,
+			latest: event.item.ts,
+			limit: 1,
+			inclusive: true,
+		});
+
+		const message = messageData?.messages?.[0];
+
+		const reactedUsers = message?.reactions?.find((r) => r.name === event.reaction)?.users || [];
+
+		if (!message || !message.text) {
+			log.warn(`No message found for reaction ${event.reaction} on ${event.item.channel} at ${event.item.ts}`);
+			return;
+		}
+
+		const reading = await getReading(message.text);
+		if (typeof reading !== 'string') {
+			log.warn(`No reading found for message ${message.text}`);
+			return;
+		}
+
+		if (
+			(mode === 'ki-to-o' && !reading.startsWith('キ')) ||
+			(mode === 'o-to-ki' && !reading.startsWith('オ'))
+		) {
+			return;
+		}
+
+		const romanizedReading = japanese.romanize(reading);
+
+		if (
+			(mode === 'ki-to-o' && !romanizedReading.startsWith('ki')) ||
+			(mode === 'o-to-ki' && !romanizedReading.startsWith('o'))
+		) {
+			return;
+		}
+
+		const replacedRomanization = mode === 'ki-to-o'
+			? romanizedReading.replace(/^ki/, 'o')
+			: romanizedReading.replace(/^o/, 'ki');
+		const isOk = replacedRomanization === normalizedReaction;
+
+		if (!isOk) {
+			return;
+		}
+
+		const achievedEmojis = (await get(event.user, `reaction-${mode}-reactions-emojis`)) || [];
+		if (!Array.isArray(achievedEmojis)) {
+			log.error(`Invalid emojiTypes for ${event.user}: ${JSON.stringify(achievedEmojis)}`);
+			return;
+		}
+
+		const newAchievedEmojis = uniq([...achievedEmojis, event.reaction]);
+		await increment(event.user, `reaction-${mode}-reactions`);
+		await set(event.user, `reaction-${mode}-reactions-emojis`, newAchievedEmojis);
+		await set(event.user, `reaction-${mode}-reactions-emoji-types`, newAchievedEmojis.length);
+		if (reactedUsers.length >= 1) {
+			const firstReactedUser = reactedUsers[0];
+			if (firstReactedUser === event.user) {
+				await increment(event.user, `reaction-${mode}-reactions-first`, 1);
+			}
+		}
+	});
+};
+
 export default async ({eventClient, webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
 	loadDeferred.resolve(slack);
 
-	eventClient.on('message', async (message) => {
-		if (message.text && message.user && !message.bot_id && !message.subtype && message.channel.startsWith('C')) {
+	eventClient.on('message', async (message: MessageEvent) => {
+		if (
+			'text' in message &&
+			message.text &&
+			'user' in message &&
+			message.user &&
+			(!('bot_id' in message) || !message.bot_id) &&
+			!message.subtype &&
+			message.channel.startsWith('C')
+		) {
 			const day = moment(parseFloat(message.ts) * 1000).utcOffset(9).format('YYYY-MM-DD');
 			increment(message.user, 'chats');
 			const lastChatDay = await get(message.user, 'lastChatDay');
@@ -66,13 +226,12 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 			}
 		}
 
-		if (message.channel.startsWith('D') && message.text === '実績解除') {
+		if (message.channel.startsWith('D') && 'text' in message && message.text === '実績解除') {
 			const manualAchievements = Array.from(achievements.values()).filter((achievement) => (
 				achievement.manual === true &&
 				state.achievements.has(message.user) &&
 				Array.from(state.achievements.get(message.user)).every((id) => id !== achievement.id)
 			));
-			const button: 'button' = 'button';
 			await slack.chat.postMessage({
 				channel: message.channel,
 				text: '未解除の実績一覧',
@@ -92,7 +251,7 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 					actions: achievementChunk.map((achievement) => ({
 						name: 'unlock',
 						text: achievement.condition,
-						type: button,
+						type: 'button',
 						value: achievement.id,
 					})),
 				})),
@@ -100,49 +259,18 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 		}
 	});
 
-	eventClient.on('reaction_added', async (event) => {
-		if (event.user && event.item && event.item.channel.startsWith('C') && event.item_user) {
-			const reactionAchievements = Array.from(achievements.values()).filter((achievement) => (
-				achievement.reaction === event.reaction
-			));
-			const reactions = await getReactions(event.item.channel, event.item.ts);
-			const reactedUsers = reactions[event.reaction] || [];
-			const messageURL = event.item.type === 'message'
-				? `<https://tsg-ut.slack.com/archives/${event.item.channel}/p${event.item.ts.replace('.', '')}|[メッセージ]>`
-				: '';
-
-			for (const achievement of reactionAchievements) {
-				if (achievement.value <= reactedUsers.length) {
-					await unlock(event.item_user, achievement.id, messageURL);
-				}
-			}
-
-			if (reactedUsers.length >= 1) {
-				const firstReactedUser = reactedUsers[0];
-
-				for (const threshold of [5, 10, 15, 20, 25, 30]) {
-					if (reactedUsers.length >= threshold) {
-						const messagesKey = `reaction-${event.reaction}-${threshold}-first-reaction-messages`;
-						const achievementName = `reaction-${event.reaction}-${threshold}-first-reaction`;
-
-						mutex.runExclusive(async () => {
-							const reactionMessages = (await get(firstReactedUser, messagesKey)) || [];
-							if (!reactionMessages.includes(event.item.ts)) {
-								await set(firstReactedUser, messagesKey, [...reactionMessages, event.item.ts]);
-								await increment(firstReactedUser, achievementName, 1, messageURL);
-								await increment(firstReactedUser, `reaction-${threshold}-reactions-first-reaction`, 1, messageURL);
-							}
-						});
-					}
-				}
-			}
-		}
+	eventClient.on('reaction_added', async (event: ReactionAddedEvent) => {
+		await unlockReactionCountAchievements(event);
+		await unlockKiToOAchievements(event);
 	});
 
-	slackInteractions.action({type: 'button', callbackId: 'achievements'}, (payload: any, respond: any) => {
-		unlock(payload.user.id, payload.actions[0].value);
-		respond({text: 'おめでとう!:tada:'});
-	});
+	slackInteractions.action(
+		{type: 'button', callbackId: 'achievements'},
+		(payload: BlockButtonAction, respond: RespondFn) => {
+			unlock(payload.user.id, payload.actions[0].value);
+			respond({text: 'おめでとう!:tada:'});
+		},
+	);
 
 	const achievementsData = await db.collection('achievements').get();
 	if (!achievementsData.empty) {
@@ -184,15 +312,17 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 
 	initializeDeferred.resolve();
 
-	const achievementsDataData = await db.collection('achievement_data').get();
+	const AchievementData = db.collection('achievement_data') as CollectionReference<Achievement>;
+
+	const achievementsDataData = await AchievementData.get();
 	const achievementsDataSet = new Set(achievementsDataData.docs.map((a) => a.id));
-	for (const achievementChunks of chunk(Array.from(achievements), 300) as any) {
+	for (const achievementChunks of chunk(Array.from(achievements), 300)) {
 		const batch = db.batch();
 		for (const [id, achievement] of achievementChunks) {
 			if (achievementsDataSet.has(id)) {
-				batch.update(db.collection('achievement_data').doc(id), achievement);
+				batch.update(AchievementData.doc(id), achievement);
 			} else {
-				batch.set(db.collection('achievement_data').doc(id), achievement);
+				batch.set(AchievementData.doc(id), achievement);
 			}
 		}
 		await batch.commit();
@@ -209,7 +339,7 @@ interface IncrementOperation {
 interface SetOperation {
 	type: 'set',
 	name: string,
-	value: any,
+	value: unknown,
 	user: string,
 }
 
@@ -402,7 +532,12 @@ export const isUnlocked = async (user: string, name: string) => {
 	return state.achievements.get(user).has(name);
 };
 
-export const increment = async (user: string, name: string, value = 1, additionalInfo: string = undefined) => {
+export const increment = async (
+	user: string,
+	name: string,
+	value = 1,
+	additionalInfo: string = undefined,
+) => {
 	await initializeDeferred.promise;
 
 	if (!user || !user.startsWith('U') || user === 'USLACKBOT') {
@@ -413,7 +548,12 @@ export const increment = async (user: string, name: string, value = 1, additiona
 		state.users.set(user, Object.create(null));
 	}
 
-	const newValue = (state.users.get(user)[name] || 0) + value;
+	const oldValue = state.users.get(user)[name] ?? 0;
+	if (typeof oldValue !== 'number') {
+		log.error(`Invalid value for ${user} on ${name}: ${oldValue}`);
+		return;
+	}
+	const newValue = oldValue + value;
 	state.users.get(user)[name] = newValue;
 
 	const unlocked = Array.from(achievements.values()).filter((achievement) => achievement.counter === name && achievement.value <= newValue);
@@ -438,7 +578,7 @@ export const get = async (user: string, name: string) => {
 	return state.users.get(user)[name];
 };
 
-export const set = async (user: string, name: string, value: any) => {
+export const set = async (user: string, name: string, value: unknown) => {
 	await initializeDeferred.promise;
 
 	if (!user || !user.startsWith('U') || user === 'USLACKBOT') {

@@ -16,7 +16,7 @@ jest.mock('../lib/firestore', () => {
 	const firebase = new MockFirebase({});
 	const db = firebase.firestore();
 	db.runTransaction = noop;
-	return db;
+	return {db};
 });
 
 beforeEach(() => {
