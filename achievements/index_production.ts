@@ -167,7 +167,13 @@ const unlockKiToOAchievements = async (event: ReactionAddedEvent) => {
 			return;
 		}
 
-		const romanizedReading = japanese.romanize(reading);
+		const romanizedReading = japanese.romanize(reading, {
+			うう: 'uu',
+			おお: 'oo',
+			おう: 'ou',
+			んあ: 'na',
+			あー: 'a-',
+		});
 
 		if (
 			(mode === 'ki-to-o' && !romanizedReading.startsWith('ki')) ||
