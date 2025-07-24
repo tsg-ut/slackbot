@@ -137,6 +137,11 @@ const unlockKiToOAchievements = async (event: ReactionAddedEvent) => {
 	}
 	kiToOAchievementsCache.add(cacheKey);
 
+	// Add delay here to allow slack-patron to cache the reaction data
+	await new Promise((resolve) => {
+		setTimeout(resolve, 5000);
+	});
+
 	await mutex.runExclusive(async () => {
 		const messageData = await conversationsHistory({
 			channel: event.item.channel,
