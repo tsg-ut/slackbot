@@ -11,6 +11,7 @@ import {webClient as slack} from "./slack";
 import discord from "./discord";
 import type { TextChannel } from "discord.js";
 import type { ChatCompletion, ChatCompletionCreateParamsNonStreaming } from "openai/resources/chat";
+import assert from "assert";
 
 const log = logger.child({bot: 'lib/openai'});
 
@@ -83,8 +84,23 @@ const checkUsageLimit = async (errorDestination: 'slack' | 'discord'): Promise<v
 	}
 };
 
+const checkAudioSpeechCreateModel = (params: SpeechCreateParams) => {
+	const model: string = params.model;
+
+	if (
+		model === 'gpt-4o-mini-tts' ||
+		model === 'tts-1' ||
+		model === 'tts-1-hd'
+	) {
+		return model;
+	}
+
+	throw new Error(`Unsupported model for audio.speech.create: ${params.model}`);
+}
+
 const audioSpeechCreate = async (params: SpeechCreateParams): Promise<Response> => {
 	await checkUsageLimit('discord');
+	const model = checkAudioSpeechCreateModel(params);
 
 	const response = await openai.audio.speech.create(params);
 
@@ -95,7 +111,7 @@ const audioSpeechCreate = async (params: SpeechCreateParams): Promise<Response> 
 
 	let cost: number | null = null;
 
-	if (params.model === 'gpt-4o-mini-tts') {
+	if (model === 'gpt-4o-mini-tts') {
 		// The price for the gpt-4o-mini-tts model is calculated against the number of tokens, but
 		// currently it is not possible to get the usage information from the response.
 		// For now, we will use the official cost estimation equation provided by OpenAI:
@@ -104,15 +120,15 @@ const audioSpeechCreate = async (params: SpeechCreateParams): Promise<Response> 
 		const data = await response.arrayBuffer();
 		const duration = await mp3Duration(Buffer.from(data));
 		cost = (duration / 60) * 0.015;
-	} else if (params.model === 'tts-1' || params.model === 'tts-1-hd') {
+	} else {
+		assert(model === 'tts-1' || model === 'tts-1-hd', `Unexpected model: ${model}`);
+
 		// tts-1: $15.00 / 1M characters
 		// tts-1-hd: $30.00 / 1M characters
 		// https://platform.openai.com/docs/pricing
 		const characterCount = params.input.length;
-		const costPerMillionCharacters = params.model === 'tts-1' ? 15 : 30;
+		const costPerMillionCharacters = model === 'tts-1' ? 15 : 30;
 		cost = (characterCount / 1_000_000) * costPerMillionCharacters;
-	} else {
-		log.warn(`Unknown model for audio.speech.create: ${params.model}. Cost calculation is not implemented.`);
 	}
 
 	log.info(`OpenAI audio.speech.create API cost: $${cost?.toFixed(4) ?? 'unknown'}`);
@@ -131,9 +147,22 @@ const audioSpeechCreate = async (params: SpeechCreateParams): Promise<Response> 
 	return response;
 };
 
+const checkChatCompletionCreateModel = (params: ChatCompletionCreateParamsNonStreaming): string => {
+	const model: string = params.model;
+
+	if (
+		model === 'gpt-4o-mini' ||
+		model === 'o4-mini'
+	) {
+		return model;
+	}
+
+	throw new Error(`Unsupported model for chat.completions.create: ${params.model}`);
+};
 
 const chatCompletionCreate = async (params: ChatCompletionCreateParamsNonStreaming): Promise<ChatCompletion> => {
 	await checkUsageLimit('slack');
+	const model = checkChatCompletionCreateModel(params);
 
 	const response = await openai.chat.completions.create(params);
 
@@ -144,18 +173,18 @@ const chatCompletionCreate = async (params: ChatCompletionCreateParamsNonStreami
 
 	let cost: number | null = null;
 
-	if (params.model === 'gpt-4o-mini') {
+	if (model === 'gpt-4o-mini') {
 		// Input: $0.15 / 1M tokens
 		// Output: $0.60 / 1M tokens
 		// https://platform.openai.com/docs/pricing
 		cost = (promptTokens / 1_000_000) * 0.15 + (completionTokens / 1_000_000) * 0.60;
-	} else if (params.model === 'o4-mini') {
+	} else {
+		assert(model === 'o4-mini', `Unexpected model: ${model}`);
+
 		// Input: $1.10 / 1M tokens
 		// Output: $4.40 / 1M tokens
 		// https://platform.openai.com/docs/pricing
 		cost = (promptTokens / 1_000_000) * 1.10 + ((completionTokens + reasoningTokens) / 1_000_000) * 4.40;
-	} else {
-		log.warn(`Unknown model for chat.completions.create: ${params.model}. Cost calculation is not implemented.`);
 	}
 
 	log.info(`OpenAI chat.completions.create API cost: $${cost?.toFixed(4) ?? 'unknown'}`);
