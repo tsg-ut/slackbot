@@ -5,7 +5,6 @@ import logger from "./logger";
 import mp3Duration from "mp3-duration";
 import { firestore } from "firebase-admin";
 import type { SpeechCreateParams } from "openai/resources/audio/speech";
-import type { Response } from "openai/src/_shims/index";
 import dayjs from "dayjs";
 import { sumBy } from "lodash";
 import {webClient as slack} from "./slack";
