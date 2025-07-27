@@ -17,7 +17,7 @@ import type {OpenAI} from 'openai';
 import type {ChatCompletion, ChatCompletionCreateParams} from 'openai/resources/chat';
 import {increment} from '../achievements';
 import logger from '../lib/logger';
-import openai from '../lib/openai';
+import openai, {systemOpenAIClient as systemOpenai} from '../lib/openai';
 import type {SlashCommandEndpoint, SlackInterface} from '../lib/slack';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';
@@ -560,7 +560,7 @@ export class SlowQuiz {
 		};
 
 		try {
-			const batch = await openai.batches.create({
+			const batch = await systemOpenai.batches.create({
 				input_file_id: await this.#createBatchFile([batchRequest]),
 				endpoint: '/v1/chat/completions',
 				completion_window: '24h',
@@ -583,7 +583,7 @@ export class SlowQuiz {
 
 	async #createBatchFile(requests: unknown[]) {
 		const jsonlContent = requests.map((req) => JSON.stringify(req)).join('\n');
-		const file = await openai.files.create({
+		const file = await systemOpenai.files.create({
 			file: new File([jsonlContent], 'batch_requests.jsonl', {type: 'application/jsonl'}),
 			purpose: 'batch',
 		});
@@ -596,7 +596,7 @@ export class SlowQuiz {
 		for (const batchJob of this.#state.batchJobs) {
 			if (batchJob.status === 'pending' || batchJob.status === 'in_progress') {
 				try {
-					const batch = await openai.batches.retrieve(batchJob.id);
+					const batch = await systemOpenai.batches.retrieve(batchJob.id);
 					log.info(`Batch job ${batchJob.id} status: ${batch.status}`);
 
 					if (batch.status === 'completed') {
@@ -638,7 +638,7 @@ export class SlowQuiz {
 		}
 
 		try {
-			const outputFile = await openai.files.content(batch.output_file_id);
+			const outputFile = await systemOpenai.files.content(batch.output_file_id);
 			const outputText = await outputFile.text();
 			const results = outputText.split('\n').filter((line) => line.trim());
 

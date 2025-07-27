@@ -119,6 +119,7 @@
     "mobx-utils": "^6.0.5",
     "moment": "^2.29.4",
     "moment-timezone": "^0.5.37",
+    "mp3-duration": "^1.1.0",
     "mustache": "^4.2.0",
     "node-emoji": "^1.11.0",
     "node-persist": "^3.1.0",

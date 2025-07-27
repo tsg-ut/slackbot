@@ -1,6 +1,7 @@
 import {joinVoiceChannel} from '@discordjs/voice';
 import type {DiscordGatewayAdapterCreator} from '@discordjs/voice';
-import Discord, {TextChannel, VoiceChannel, GatewayIntentBits} from 'discord.js';
+import Discord, {TextChannel, VoiceChannel} from 'discord.js';
+import discord from '../lib/discord';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
@@ -18,18 +19,6 @@ interface StateObj {
 		urls: string[],
 	},
 }
-
-// eslint-disable-next-line import/no-named-as-default-member
-const discord = new Discord.Client({
-	intents: [
-		GatewayIntentBits.Guilds,
-		GatewayIntentBits.GuildMessages,
-		GatewayIntentBits.GuildVoiceStates,
-		GatewayIntentBits.MessageContent,
-	],
-});
-
-discord.login(process.env.TSGBOT_DISCORD_TOKEN);
 
 export default async ({webClient: slack, eventClient}: SlackInterface) => {
 	const state = await State.init<StateObj>('discord', {
