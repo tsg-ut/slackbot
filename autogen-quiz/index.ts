@@ -55,6 +55,17 @@ const GeneratedQuiz = z.object({
 // eslint-disable-next-line no-redeclare
 type GeneratedQuiz = z.infer<typeof GeneratedQuiz>;
 
+const WikipediaPagesResponse = z.object({
+	query: z.object({
+		pages: z.record(z.object({
+			extract: z.string(),
+		})),
+	}),
+});
+
+// eslint-disable-next-line no-redeclare
+type WikipediaPagesResponse = z.infer<typeof WikipediaPagesResponse>;
+
 const promptsLoader = new Loader<AutogenQuizPrompts>(async () => {
 	const prompts = await Promise.all(['wikipedia'].map(async (filename) => {
 		const promptYaml = await readFile(path.join(__dirname, 'prompts', `${filename}.yaml`));
@@ -76,7 +87,7 @@ const getPlaintextWikipedia = async (title: string): Promise<string> => {
 	})}`;
 
 	const response = await fetch(url);
-	const json = await response.json();
+	const json = WikipediaPagesResponse.parse(await response.json());
 
 	const pages = json?.query?.pages;
 	const content = pages?.[Object.keys(pages)[0]]?.extract;
