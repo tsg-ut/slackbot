@@ -2,7 +2,7 @@
 /* eslint-disable array-plural/array-plural */
 import 'dotenv/config';
 
-import assert from 'assert';
+import assert, {AssertionError} from 'assert';
 import path from 'path';
 import qs from 'querystring';
 import {inspect} from 'util';
@@ -115,7 +115,12 @@ const formatTemplate = (content: string, params: Record<string, string> = {}): s
 	for (const [key, value] of Object.entries(params)) {
 		result = result.replaceAll(`{{${key}}}`, value);
 	}
-	assert(!result.match(/\{\{.*?\}\}/g));
+	let match: RegExpMatchArray | null = null;
+	if ((match = result.match(/\{\{.*?\}\}/g)) !== null) {
+		throw new AssertionError({
+			message: `Unresolved template variables: ${match.join(', ')}`,
+		});
+	}
 	return result.trim();
 };
 
@@ -236,16 +241,27 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	log.info(`Selected Wikipedia: ${inspect(selectedWikipedia)}`);
 
 	if (selectedWikipedia) {
-		const wikipediaContent = await getPlaintextWikipedia(selectedWikipedia);
-		chatHistory.push({
-			role: 'user',
-			content: formatTemplate(prompts.wikipedia.enumerate_answers_with_wikipedia, {
-				genre,
-				topic: selectedTopic,
-				wikipedia_title: selectedWikipedia,
-				wikipedia_content: wikipediaContent,
-			}),
-		});
+		try {
+			const wikipediaContent = await getPlaintextWikipedia(selectedWikipedia);
+			chatHistory.push({
+				role: 'user',
+				content: formatTemplate(prompts.wikipedia.enumerate_answers_with_wikipedia, {
+					genre,
+					topic: selectedTopic,
+					wikipedia_title: selectedWikipedia,
+					wikipedia_content: wikipediaContent,
+				}),
+			});
+		} catch (error) {
+			log.error(`Failed to get Wikipedia content: ${error.message}`);
+			chatHistory.push({
+				role: 'user',
+				content: formatTemplate(prompts.wikipedia.enumerate_answers_without_wikipedia, {
+					genre,
+					topic: selectedTopic,
+				}),
+			});
+		}
 	} else {
 		chatHistory.push({
 			role: 'user',
