@@ -120,6 +120,7 @@ const composePost = async (message: string): Promise<string> => {
 
   let first = true;
   let match = null;
+  let replacementCount = 0;
 
   while ((match = /(?<placeholder>{(?:<(?<phTag>[^{}<>]*)>)?(?<phName>[^{}<>]*)})/.exec(response)) != null) {
     const {placeholder, phTag, phName} = match.groups;
@@ -141,7 +142,14 @@ const composePost = async (message: string): Promise<string> => {
     else {
       response = response.replace(new RegExp(escapeRegExp(placeholder), 'g'), word);
     }
+
+    replacementCount++;
   }
+
+  if (replacementCount === 0) {
+    throw new Error('No placeholders found in the message.');
+  }
+
   return response;
 };
 
