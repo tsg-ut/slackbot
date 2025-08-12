@@ -1,7 +1,7 @@
 import {randomUUID} from 'crypto';
 import {readFile} from 'fs/promises';
 import path from 'path';
-import type {BlockButtonAction} from '@slack/bolt';
+import type {BlockButtonAction, BlockStaticSelectAction} from '@slack/bolt';
 import {ChatPostMessageResponse} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
@@ -11,7 +11,7 @@ import plugin from 'fastify-plugin';
 import yaml from 'js-yaml';
 import libmime from 'libmime';
 import {mapValues} from 'lodash';
-import type OpenAI from 'openai';
+import type {OpenAI} from 'openai';
 import isValidUTF8 from 'utf-8-validate';
 import dayjs from '../lib/dayjs';
 import logger from '../lib/logger';
@@ -29,17 +29,6 @@ const log = logger.child({bot: 'mail-hook'});
 interface PromptConfig {
 	id: string,
 	label: string,
-}
-
-interface StaticSelectActionPayload {
-	action: {
-		selected_option: {
-			value: string,
-		},
-	},
-	user: {
-		id: string,
-	},
 }
 
 const prompts: PromptConfig[] = [
@@ -144,7 +133,7 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 		mapValues(configLabels, (): null => null),
 	);
 
-	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
+	const callback: FastifyPluginCallback = (fastify, opts, next) => {
 		fastify.post<SmtpHookEndpoint>('/api/smtp-hook', async (req, res) => {
 			const timestamp = Date.now();
 			const id = `mail-${timestamp}-${randomUUID()}`;
@@ -180,23 +169,6 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 								type: 'mrkdwn',
 								text: messageBody,
 							},
-						},
-						{
-							type: 'section',
-							text: {
-								type: 'mrkdwn',
-								text: `>>>${text}`,
-							},
-						},
-						{
-							type: 'divider',
-						},
-						{
-							type: 'section',
-							text: {
-								type: 'plain_text',
-								text: 'クイック返信 (ChatGPT使用)',
-							},
 							accessory: {
 								type: 'button',
 								text: {
@@ -211,7 +183,17 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 							type: 'section',
 							text: {
 								type: 'mrkdwn',
-								text: '返信パターンを選択してください:',
+								text: `>>>${text}`,
+							},
+						},
+						{
+							type: 'divider',
+						},
+						{
+							type: 'section',
+							text: {
+								type: 'mrkdwn',
+								text: 'クイック返信 (ChatGPT使用)',
 							},
 							accessory: {
 								type: 'static_select',
@@ -296,10 +278,10 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 	slackInteractions.action({
 		type: 'static_select',
 		actionId: 'mail-hook-reply-select',
-	}, (payload: StaticSelectActionPayload) => {
+	}, (payload: BlockStaticSelectAction) => {
 		mutex.runExclusive(async () => {
 			log.info('mail-hook-reply triggered');
-			const selectedOption = payload.action.selected_option;
+			const selectedOption = payload.actions?.[0]?.selected_option;
 			if (!selectedOption) {
 				log.error('selected option not found');
 				return;
