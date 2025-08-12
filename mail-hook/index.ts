@@ -13,6 +13,7 @@ import libmime from 'libmime';
 import {mapValues} from 'lodash';
 import type {OpenAI} from 'openai';
 import isValidUTF8 from 'utf-8-validate';
+import {z} from 'zod';
 import dayjs from '../lib/dayjs';
 import logger from '../lib/logger';
 import mailgun from '../lib/mailgun';
@@ -30,6 +31,20 @@ interface PromptConfig {
 	id: string,
 	label: string,
 }
+
+const DropdownSelectionSchema = z.object({
+	promptId: z.string(),
+	mailId: z.string(),
+});
+
+const parseDropdownSelection = (value: string): z.infer<typeof DropdownSelectionSchema> | null => {
+	try {
+		const jsonValue = JSON.parse(value);
+		return DropdownSelectionSchema.parse(jsonValue);
+	} catch {
+		return null;
+	}
+};
 
 const prompts: PromptConfig[] = [
 	{
@@ -287,7 +302,15 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 				return;
 			}
 
-			const {promptId, mailId} = JSON.parse(selectedOption.value);
+			const parsedValue = parseDropdownSelection(selectedOption.value);
+			if (!parsedValue) {
+				log.error('Invalid dropdown selection value', {
+					value: selectedOption.value,
+				});
+				return;
+			}
+
+			const {promptId, mailId} = parsedValue;
 			log.info(`promptId: ${promptId}, mailId: ${mailId}`);
 
 			const mail = state[mailId];
