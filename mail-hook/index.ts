@@ -1,7 +1,7 @@
 import {randomUUID} from 'crypto';
 import {readFile} from 'fs/promises';
 import path from 'path';
-import type {ActionsBlock, BlockButtonAction} from '@slack/bolt';
+import type {BlockButtonAction, BlockStaticSelectAction} from '@slack/bolt';
 import {ChatPostMessageResponse} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
@@ -11,8 +11,9 @@ import plugin from 'fastify-plugin';
 import yaml from 'js-yaml';
 import libmime from 'libmime';
 import {mapValues} from 'lodash';
-import type OpenAI from 'openai';
+import type {OpenAI} from 'openai';
 import isValidUTF8 from 'utf-8-validate';
+import {z} from 'zod';
 import dayjs from '../lib/dayjs';
 import logger from '../lib/logger';
 import mailgun from '../lib/mailgun';
@@ -30,6 +31,20 @@ interface PromptConfig {
 	id: string,
 	label: string,
 }
+
+const DropdownSelectionSchema = z.object({
+	promptId: z.string(),
+	mailId: z.string(),
+});
+
+const parseDropdownSelection = (value: string): z.infer<typeof DropdownSelectionSchema> | null => {
+	try {
+		const jsonValue = JSON.parse(value);
+		return DropdownSelectionSchema.parse(jsonValue);
+	} catch {
+		return null;
+	}
+};
 
 const prompts: PromptConfig[] = [
 	{
@@ -133,7 +148,7 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 		mapValues(configLabels, (): null => null),
 	);
 
-	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
+	const callback: FastifyPluginCallback = (fastify, opts, next) => {
 		fastify.post<SmtpHookEndpoint>('/api/smtp-hook', async (req, res) => {
 			const timestamp = Date.now();
 			const id = `mail-${timestamp}-${randomUUID()}`;
@@ -169,6 +184,15 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 								type: 'mrkdwn',
 								text: messageBody,
 							},
+							accessory: {
+								type: 'button',
+								text: {
+									type: 'plain_text',
+									text: 'メール設定',
+									emoji: true,
+								},
+								action_id: 'mail-hook-reply-config',
+							},
 						},
 						{
 							type: 'section',
@@ -183,34 +207,24 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 						{
 							type: 'section',
 							text: {
-								type: 'plain_text',
+								type: 'mrkdwn',
 								text: 'クイック返信 (ChatGPT使用)',
 							},
 							accessory: {
-								type: 'button',
-								text: {
+								type: 'static_select',
+								placeholder: {
 									type: 'plain_text',
-									text: 'メール設定',
-									emoji: true,
+									text: '返信パターンを選択...',
 								},
-								action_id: 'mail-hook-reply-config',
-							},
-						},
-						{
-							type: 'actions',
-							block_id: 'mail-hook-reply',
-							elements:
-								prompts.map(({id: promptId, label}) => ({
-									type: 'button' as const,
+								options: prompts.map(({id: promptId, label}) => ({
 									text: {
-										type: 'plain_text' as const,
+										type: 'plain_text',
 										text: label,
-										emoji: true,
 									},
-									action_id: promptId,
-									style: 'primary' as const,
-									value: id,
+									value: JSON.stringify({promptId, mailId: id}),
 								})),
+								action_id: 'mail-hook-reply-select',
+							},
 						},
 					],
 				});
@@ -275,22 +289,29 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 		});
 	});
 
-	// 返信ボタン
+	// 返信ドロップダウン
 	slackInteractions.action({
-		type: 'button',
-		blockId: 'mail-hook-reply',
-	}, (payload: BlockButtonAction) => {
+		type: 'static_select',
+		actionId: 'mail-hook-reply-select',
+	}, (payload: BlockStaticSelectAction) => {
 		mutex.runExclusive(async () => {
 			log.info('mail-hook-reply triggered');
-			const action = payload.actions?.[0];
-			if (!action) {
-				log.error('action not found');
+			const selectedOption = payload.actions?.[0]?.selected_option;
+			if (!selectedOption) {
+				log.error('selected option not found');
 				return;
 			}
 
-			const actionId = action.action_id;
-			const mailId = action.value;
-			log.info(`actionId: ${actionId}, mailId: ${mailId}`);
+			const parsedValue = parseDropdownSelection(selectedOption.value);
+			if (!parsedValue) {
+				log.error('Invalid dropdown selection value', {
+					value: selectedOption.value,
+				});
+				return;
+			}
+
+			const {promptId, mailId} = parsedValue;
+			log.info(`promptId: ${promptId}, mailId: ${mailId}`);
 
 			const mail = state[mailId];
 			if (!mail) {
@@ -298,7 +319,7 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 				return;
 			}
 
-			const promptConfig = prompts.find(({id}) => id === actionId);
+			const promptConfig = prompts.find(({id}) => id === promptId);
 			if (!promptConfig) {
 				log.error('prompt not found');
 				return;
