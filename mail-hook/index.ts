@@ -1,7 +1,7 @@
 import {randomUUID} from 'crypto';
 import {readFile} from 'fs/promises';
 import path from 'path';
-import type {ActionsBlock, BlockButtonAction} from '@slack/bolt';
+import type {BlockButtonAction} from '@slack/bolt';
 import {ChatPostMessageResponse} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
@@ -29,6 +29,17 @@ const log = logger.child({bot: 'mail-hook'});
 interface PromptConfig {
 	id: string,
 	label: string,
+}
+
+interface StaticSelectActionPayload {
+	action: {
+		selected_option: {
+			value: string,
+		},
+	},
+	user: {
+		id: string,
+	},
 }
 
 const prompts: PromptConfig[] = [
@@ -197,20 +208,26 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 							},
 						},
 						{
-							type: 'actions',
-							block_id: 'mail-hook-reply',
-							elements:
-								prompts.map(({id: promptId, label}) => ({
-									type: 'button' as const,
+							type: 'section',
+							text: {
+								type: 'mrkdwn',
+								text: '返信パターンを選択してください:',
+							},
+							accessory: {
+								type: 'static_select',
+								placeholder: {
+									type: 'plain_text',
+									text: '返信パターンを選択...',
+								},
+								options: prompts.map(({id: promptId, label}) => ({
 									text: {
-										type: 'plain_text' as const,
+										type: 'plain_text',
 										text: label,
-										emoji: true,
 									},
-									action_id: promptId,
-									style: 'primary' as const,
-									value: id,
+									value: JSON.stringify({promptId, mailId: id}),
 								})),
+								action_id: 'mail-hook-reply-select',
+							},
 						},
 					],
 				});
@@ -275,22 +292,21 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 		});
 	});
 
-	// 返信ボタン
+	// 返信ドロップダウン
 	slackInteractions.action({
-		type: 'button',
-		blockId: 'mail-hook-reply',
-	}, (payload: BlockButtonAction) => {
+		type: 'static_select',
+		actionId: 'mail-hook-reply-select',
+	}, (payload: StaticSelectActionPayload) => {
 		mutex.runExclusive(async () => {
 			log.info('mail-hook-reply triggered');
-			const action = payload.actions?.[0];
-			if (!action) {
-				log.error('action not found');
+			const selectedOption = payload.action.selected_option;
+			if (!selectedOption) {
+				log.error('selected option not found');
 				return;
 			}
 
-			const actionId = action.action_id;
-			const mailId = action.value;
-			log.info(`actionId: ${actionId}, mailId: ${mailId}`);
+			const {promptId, mailId} = JSON.parse(selectedOption.value);
+			log.info(`promptId: ${promptId}, mailId: ${mailId}`);
 
 			const mail = state[mailId];
 			if (!mail) {
@@ -298,7 +314,7 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 				return;
 			}
 
-			const promptConfig = prompts.find(({id}) => id === actionId);
+			const promptConfig = prompts.find(({id}) => id === promptId);
 			if (!promptConfig) {
 				log.error('prompt not found');
 				return;
