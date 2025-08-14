@@ -164,8 +164,8 @@ jobs:
             Common instruction examples: "focus on security", "check performance", "review error handling", "check for breaking changes"
 
             Once you have the information, provide a comprehensive code review by:
-            1. Writing your review to a file: write_file("review.md", "<your detailed review feedback here>")
-            2. Posting the review: gh pr comment $PR_NUMBER --body-file review.md --repo $REPOSITORY
+            1. Writing your review to a file: write_file("/tmp/review.md", "<your detailed review feedback here>")
+            2. Posting the review: gh pr comment $PR_NUMBER --body-file /tmp/review.md --repo $REPOSITORY
 
             Review Areas:
             - **Security**: Authentication, authorization, input validation, data sanitization
