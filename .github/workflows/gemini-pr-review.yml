@@ -1,4 +1,4 @@
-# Mostly copied from https://github.com/google-gemini/gemini-cli-action/blob/main/examples/gemini-pr-review.yml
+# Updated from deprecated google-gemini/gemini-cli-action to google-github-actions/run-gemini-cli
 
 name: 🧐 Gemini Pull Request Review
 
@@ -118,7 +118,7 @@ jobs:
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Run Gemini PR Review
-        uses: google-gemini/gemini-cli-action@main
+        uses: google-github-actions/run-gemini-cli@v0
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
           PR_NUMBER: ${{ steps.get_pr.outputs.pr_number || steps.get_pr_comment.outputs.pr_number }}
@@ -127,8 +127,8 @@ jobs:
           ADDITIONAL_INSTRUCTIONS: ${{ steps.get_pr.outputs.additional_instructions || steps.get_pr_comment.outputs.additional_instructions }}
           REPOSITORY: ${{ github.repository }}
         with:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          settings_json: |
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          settings: |
             {
               "coreTools": [
                 "run_shell_command(echo)",
@@ -164,8 +164,8 @@ jobs:
             Common instruction examples: "focus on security", "check performance", "review error handling", "check for breaking changes"
 
             Once you have the information, provide a comprehensive code review by:
-            1. Writing your review to a file: write_file("review.md", "<your detailed review feedback here>")
-            2. Posting the review: gh pr comment $PR_NUMBER --body-file review.md --repo $REPOSITORY
+            1. Writing your review to a file: write_file("/tmp/review.md", "<your detailed review feedback here>")
+            2. Posting the review: gh pr comment $PR_NUMBER --body-file /tmp/review.md --repo $REPOSITORY
 
             Review Areas:
             - **Security**: Authentication, authorization, input validation, data sanitization
