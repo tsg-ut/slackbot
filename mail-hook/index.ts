@@ -22,6 +22,7 @@ import type {SlackInterface} from '../lib/slack.js';
 import State from '../lib/state';
 import editAndSendMailDialog from './views/editAndSendMailDialog';
 import replyConfigDialog from './views/replyConfigDialog';
+import replyMailDialog from './views/replyMailDialog';
 
 const mutex = new Mutex();
 
@@ -32,10 +33,17 @@ interface PromptConfig {
 	label: string,
 }
 
-const DropdownSelectionSchema = z.object({
-	promptId: z.string(),
-	mailId: z.string(),
-});
+const DropdownSelectionSchema = z.union([
+	z.object({
+		type: z.literal('prompt'),
+		promptId: z.string(),
+		mailId: z.string(),
+	}),
+	z.object({
+		type: z.literal('direct'),
+		mailId: z.string(),
+	}),
+]);
 
 const parseDropdownSelection = (value: string): z.infer<typeof DropdownSelectionSchema> | null => {
 	try {
@@ -208,7 +216,7 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 							type: 'section',
 							text: {
 								type: 'mrkdwn',
-								text: 'クイック返信 (ChatGPT使用)',
+								text: '返信する',
 							},
 							accessory: {
 								type: 'static_select',
@@ -216,13 +224,22 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 									type: 'plain_text',
 									text: '返信パターンを選択...',
 								},
-								options: prompts.map(({id: promptId, label}) => ({
-									text: {
-										type: 'plain_text',
-										text: label,
+								options: [
+									...prompts.map(({id: promptId, label}) => ({
+										text: {
+											type: 'plain_text' as const,
+											text: label,
+										},
+										value: JSON.stringify({type: 'prompt', promptId, mailId: id}),
+									})),
+									{
+										text: {
+											type: 'plain_text' as const,
+											text: '直接返信する',
+										},
+										value: JSON.stringify({type: 'direct', mailId: id}),
 									},
-									value: JSON.stringify({promptId, mailId: id}),
-								})),
+								],
 								action_id: 'mail-hook-reply-select',
 							},
 						},
@@ -310,14 +327,47 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 				return;
 			}
 
-			const {promptId, mailId} = parsedValue;
-			log.info(`promptId: ${promptId}, mailId: ${mailId}`);
+			const {mailId} = parsedValue;
+			log.info(`mailId: ${mailId}`);
 
 			const mail = state[mailId];
 			if (!mail) {
 				log.error('mail not found');
 				return;
 			}
+
+			const user = await slack.users.info({
+				user: payload.user.id,
+			});
+
+			if (!user.user?.is_admin && !user.user?.is_owner && !user.user?.is_primary_owner) {
+				await slack.chat.postEphemeral({
+					channel: mail.message.channel,
+					user: payload.user.id,
+					text: 'この操作は管理者のみが実行できます',
+				});
+				return;
+			}
+
+			if (parsedValue.type === 'direct') {
+				if (mail.replyCandidates.some(({isSent}) => isSent)) {
+					await slack.chat.postEphemeral({
+						channel: mail.message.channel,
+						user: payload.user.id,
+						text: 'このメールは既に返信が送信されています',
+					});
+					return;
+				}
+
+				await slack.views.open({
+					trigger_id: payload.trigger_id,
+					view: replyMailDialog(mail),
+				});
+				return;
+			}
+
+			const {promptId} = parsedValue;
+			log.info(`promptId: ${promptId}`);
 
 			const promptConfig = prompts.find(({id}) => id === promptId);
 			if (!promptConfig) {
@@ -492,13 +542,16 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 	// 「メール送信」ダイアログ送信
 	slackInteractions.viewSubmission('mail_hook_edit_and_send_mail_dialog', (payload) => {
 		mutex.runExclusive(async () => {
+			const {mailId} = JSON.parse(payload.view.private_metadata);
+			const mail = state[mailId];
+
 			const user = await slack.users.info({
 				user: payload.user.id,
 			});
 
 			if (!user.user?.is_admin && !user.user?.is_owner && !user.user?.is_primary_owner) {
 				await slack.chat.postEphemeral({
-					channel: payload.channel.id,
+					channel: mail.message.channel,
 					user: payload.user.id,
 					text: 'この操作は管理者のみが実行できます',
 				});
@@ -506,7 +559,7 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 			}
 
 			await slack.chat.postEphemeral({
-				channel: process.env.CHANNEL_PRLOG,
+				channel: mail.message.channel,
 				user: payload.user.id,
 				text: 'メールを送信中... :email:',
 			});
@@ -515,12 +568,7 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 
 			const {view} = payload;
 			const values = view.state.values as {[id: string]: {[id: string]: {type: 'plain_text_input', value: string}}};
-			const {mailId, replyId} = JSON.parse(view.private_metadata);
-			const mail = state[mailId];
-			if (!mail) {
-				log.error('mail not found');
-				return;
-			}
+			const {replyId} = JSON.parse(view.private_metadata);
 
 			// eslint-disable-next-line prefer-destructuring
 			const {body} = Object.values(values)[0];
@@ -566,6 +614,118 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 				channel: mail.message.channel,
 				username: 'ChatGPT',
 				icon_emoji: ':chatgpt:',
+				thread_ts: mail.message.ts,
+				reply_broadcast: true,
+				text: 'メールを送信しました',
+				blocks: [
+					{
+						type: 'section',
+						text: {
+							type: 'mrkdwn',
+							text: `:email: メールを送信しました (Sent by <@${payload.user.id}>)`,
+						},
+					},
+					{
+						type: 'section',
+						text: {
+							type: 'mrkdwn',
+							text: stripIndent`
+								FROM: \`${process.env.MAIL_HOOK_REPLY_FROM}\`
+								REPLY-TO: \`${process.env.MAIL_HOOK_REPLY_FROM}\`
+								TO: \`${mail.addresses.from}\`
+								CC: \`${mail.addresses.cc}\`
+								SUBJECT: \`Re: ${mail.subject}\`
+							`,
+						},
+					},
+					{
+						type: 'section',
+						text: {
+							type: 'mrkdwn',
+							text: `>>>${replyContent}`,
+						},
+					},
+				],
+			});
+		});
+	});
+
+	// 「メール返信」ダイアログ送信
+	slackInteractions.viewSubmission('mail_hook_reply_mail_dialog', (payload) => {
+		mutex.runExclusive(async () => {
+			const {view} = payload;
+			const {mailId} = JSON.parse(view.private_metadata);
+			const mail = state[mailId];
+			if (!mail) {
+				log.error('mail not found');
+				return;
+			}
+
+			const user = await slack.users.info({
+				user: payload.user.id,
+			});
+
+			if (!user.user?.is_admin && !user.user?.is_owner && !user.user?.is_primary_owner) {
+				await slack.chat.postEphemeral({
+					channel: mail.message.channel,
+					user: payload.user.id,
+					text: 'この操作は管理者のみが実行できます',
+				});
+				return;
+			}
+
+			await slack.chat.postEphemeral({
+				channel: mail.message.channel,
+				user: payload.user.id,
+				text: 'メールを送信中... :email:',
+			});
+
+			log.info('sending mail...');
+
+			const values = view.state.values as {[id: string]: {[id: string]: {type: 'plain_text_input', value: string}}};
+
+			// eslint-disable-next-line prefer-destructuring
+			const {body} = Object.values(values)[0];
+
+			const replyContent = generateReplyMailBody(mail, body.value);
+			// eslint-disable-next-line array-plural/array-plural
+			const cc = [process.env.MAIL_HOOK_REPLY_FROM];
+			if (mail.addresses.cc) {
+				cc.push(mail.addresses.cc);
+			}
+
+			const res = await mailgun.messages.create(process.env.MAILGUN_DOMAIN, {
+				from: process.env.MAIL_HOOK_REPLY_FROM,
+				to: mail.addresses.from,
+				cc,
+				'h:Reply-To': process.env.MAIL_HOOK_REPLY_FROM,
+				subject: `Re: ${mail.subject}`,
+				text: replyContent,
+			});
+
+			if (res.status !== 200) {
+				await slack.chat.postEphemeral({
+					channel: mail.message.channel,
+					user: payload.user.id,
+					text: 'メールの送信に失敗しました',
+				});
+				return;
+			}
+
+			mail.replyCandidates.push({
+				id: randomUUID(),
+				user: payload.user.id,
+				content: body.value,
+				isSent: true,
+				sentContent: body.value,
+				sentBy: payload.user.id,
+				sentAt: Date.now(),
+			});
+
+			await slack.chat.postMessage({
+				channel: mail.message.channel,
+				username: 'Email Sender',
+				icon_emoji: ':email:',
 				thread_ts: mail.message.ts,
 				reply_broadcast: true,
 				text: 'メールを送信しました',
