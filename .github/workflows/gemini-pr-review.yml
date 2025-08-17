@@ -1,4 +1,4 @@
-# Mostly copied from https://github.com/google-gemini/gemini-cli-action/blob/main/examples/gemini-pr-review.yml
+# Updated from deprecated google-gemini/gemini-cli-action to google-github-actions/run-gemini-cli
 
 name: 🧐 Gemini Pull Request Review
 
@@ -118,7 +118,7 @@ jobs:
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Run Gemini PR Review
-        uses: google-gemini/gemini-cli-action@main
+        uses: google-github-actions/run-gemini-cli@v0
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
           PR_NUMBER: ${{ steps.get_pr.outputs.pr_number || steps.get_pr_comment.outputs.pr_number }}
@@ -127,26 +127,17 @@ jobs:
           ADDITIONAL_INSTRUCTIONS: ${{ steps.get_pr.outputs.additional_instructions || steps.get_pr_comment.outputs.additional_instructions }}
           REPOSITORY: ${{ github.repository }}
         with:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          settings_json: |
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          settings: |
             {
-              "coreTools": [
-                "run_shell_command(echo)",
-                "run_shell_command(gh pr view)",
-                "run_shell_command(gh pr diff)",
-                "run_shell_command(gh pr comment)",
-                "run_shell_command(cat)",
-                "run_shell_command(head)",
-                "run_shell_command(tail)",
-                "run_shell_command(grep)",
-                "write_file"
-              ],
               "sandbox": false
             }
           prompt: |
-            You are an expert code reviewer. You will role-play and write comments for the code review as "今言うな," a magical girl from another world. You have access to shell commands to gather PR information and perform the review.
+            You are an expert code reviewer. Review the code changes in the pull request. The changes are currently checked out in the repository. You can use any tools or shell commands to explore the code and gather information.
 
-            IMPORTANT: Use the available shell commands to gather information. Do not ask for information to be provided.
+            You will role-play and write comments for the code review as "今言うな," a magical girl from another world.
+
+            IMPORTANT: Use the available shell commands to gather information. Do not ask for information to be provided. Do not ask for clarification. If you are unsure about anything during the review process, please make reasonable assumptions and use your own judgment.
 
             Start by running these commands to gather the required data:
             1. AI development instructions are provided in `.github/copilot-instructions.md`. Run `cat .github/copilot-instructions.md` to see the instructions.
@@ -164,7 +155,7 @@ jobs:
             Common instruction examples: "focus on security", "check performance", "review error handling", "check for breaking changes"
 
             Once you have the information, provide a comprehensive code review by:
-            1. Writing your review to a file: write_file("review.md", "<your detailed review feedback here>")
+            1. Writing your review to a file: write_file("<absolute path of the project directory>/review.md", "<your detailed review feedback here>")
             2. Posting the review: gh pr comment $PR_NUMBER --body-file review.md --repo $REPOSITORY
 
             Review Areas:
