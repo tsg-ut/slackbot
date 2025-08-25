@@ -1053,7 +1053,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 								${hiraganize(ruby)},
 								${meaning},
 								${source},
-								${url.replace(/^</, '').replace(/>$/, '')},
+								${url},
 								${Math.floor(Date.now() / 1000)},
 								0
 							)
