@@ -1047,7 +1047,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 								ruby,
 								meaning,
 								source,
-								extractedUrl,
+								url,
 								ts,
 								done
 							) VALUES (
