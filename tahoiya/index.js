@@ -999,6 +999,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 
 						const [word, ruby, rawMeaning, source, url] = themeTokens;
 						const meaning = normalizeMeaning(rawMeaning);
+						const urlMatch = /^<(?<extractedUrl>.+?)(?:\|.+)?>$/.exec(url);
 
 						const existingRecord = await db.get(sql`
 							SELECT 1
@@ -1032,10 +1033,12 @@ module.exports = async ({eventClient, webClient: slack}) => {
 							return;
 						}
 
-						if (!url.match(/^<.+>$/)) {
+						if (urlMatch === null) {
 							await postDM('URLがおかしいよ:nauseated_face:');
 							return;
 						}
+
+						const {extractedUrl} = urlMatch.groups;
 
 						await db.run(sql`
 							INSERT INTO themes (
@@ -1044,7 +1047,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 								ruby,
 								meaning,
 								source,
-								url,
+								extractedUrl,
 								ts,
 								done
 							) VALUES (
@@ -1053,7 +1056,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 								${hiraganize(ruby)},
 								${meaning},
 								${source},
-								${url.match(/^<([^>|]+)/)?.[1]},
+								${extractedUrl},
 								${Math.floor(Date.now() / 1000)},
 								0
 							)
