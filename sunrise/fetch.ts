@@ -16,159 +16,113 @@ interface Archive {
 	articles: Article[],
 }
 
-const accuweatherDailyForecastResponseSchema = z.object({
-	Headline: z.object({
-		Text: z.string(),
-		EffectiveDate: z.string(),
-		EffectiveEpochDate: z.number(),
-		Severity: z.number(),
-		Category: z.string(),
+
+const openWeatherOneCallSchema = z.object({
+	lat: z.number(),
+	lon: z.number(),
+	timezone: z.string(),
+	timezone_offset: z.number(),
+	current: z.object({
+		dt: z.number(),
+		sunrise: z.number(),
+		sunset: z.number(),
+		temp: z.number(),
+		feels_like: z.number(),
+		pressure: z.number(),
+		humidity: z.number(),
+		dew_point: z.number(),
+		uvi: z.number(),
+		clouds: z.number(),
+		visibility: z.number(),
+		wind_speed: z.number(),
+		wind_deg: z.number(),
+		weather: z.array(z.object({
+			id: z.number(),
+			main: z.string(),
+			description: z.string(),
+			icon: z.string(),
+		})),
+		rain: z.object({
+			'1h': z.number(),
+		}).optional(),
+		snow: z.object({
+			'1h': z.number(),
+		}).optional(),
 	}),
-	DailyForecasts: z.array(
-		z.object({
-			Date: z.string(),
-			Temperature: z.object({
-				Minimum: z.object({
-					Value: z.number(),
-				}),
-				Maximum: z.object({
-					Value: z.number(),
-				}),
-			}),
-			RealFeelTemperature: z.object({
-				Minimum: z.object({
-					Value: z.number(),
-					Phrase: z.string(),
-				}),
-				Maximum: z.object({
-					Value: z.number(),
-					Phrase: z.string(),
-				}),
-			}),
-			Day: z.object({
-				Icon: z.number(),
-				IconPhrase: z.string(),
-				TotalLiquid: z.object({
-					Value: z.number(),
-				}),
-				Wind: z.object({
-					Speed: z.object({
-						Value: z.number(),
-					}),
-					Direction: z.object({
-						Degrees: z.number(),
-					}),
-				}),
-			}),
-			Night: z.object({
-				Icon: z.number(),
-				IconPhrase: z.string(),
-				TotalLiquid: z.object({
-					Value: z.number(),
-				}),
-				Wind: z.object({
-					Speed: z.object({
-						Value: z.number(),
-					}),
-					Direction: z.object({
-						Degrees: z.number(),
-					}),
-				}),
-			}),
+	minutely: z.array(z.object({
+		dt: z.number(),
+		precipitation: z.number(),
+	})).optional(),
+	hourly: z.array(z.object({
+		dt: z.number(),
+		temp: z.number(),
+		feels_like: z.number(),
+		pressure: z.number(),
+		humidity: z.number(),
+		dew_point: z.number(),
+		uvi: z.number(),
+		clouds: z.number(),
+		visibility: z.number(),
+		wind_speed: z.number(),
+		wind_deg: z.number(),
+		weather: z.array(z.object({
+			id: z.number(),
+			main: z.string(),
+			description: z.string(),
+			icon: z.string(),
+		})),
+		pop: z.number(),
+	})),
+	daily: z.array(z.object({
+		dt: z.number(),
+		sunrise: z.number(),
+		sunset: z.number(),
+		moonrise: z.number(),
+		moonset: z.number(),
+		moon_phase: z.number(),
+		summary: z.string(),
+		temp: z.object({
+			day: z.number(),
+			min: z.number(),
+			max: z.number(),
+			night: z.number(),
+			eve: z.number(),
+			morn: z.number(),
 		}),
-	),
-});
-
-export type AccuweatherDailyForecastResponse = z.infer<typeof accuweatherDailyForecastResponseSchema>;
-
-const accuweatherMinuteCastResponseSchema = z.object({
-	Summary: z.object({
-		Phrase: z.string(),
-		Type: z.string().nullable(),
-		TypeId: z.number(),
-	}),
-	Summaries: z.array(
-		z.object({
-			StartMinute: z.number(),
-			EndMinute: z.number(),
-			CountMinute: z.number(),
-			MinuteText: z.string(),
-			Type: z.string().nullable(),
-			TypeId: z.number(),
+		feels_like: z.object({
+			day: z.number(),
+			night: z.number(),
+			eve: z.number(),
+			morn: z.number(),
 		}),
-	),
-	Link: z.string(),
-	MobileLink: z.string(),
+		pressure: z.number(),
+		humidity: z.number(),
+		dew_point: z.number(),
+		wind_speed: z.number(),
+		wind_deg: z.number(),
+		wind_gust: z.number().optional(),
+		weather: z.array(z.object({
+			id: z.number(),
+			main: z.string(),
+			description: z.string(),
+			icon: z.string(),
+		})),
+		clouds: z.number(),
+		pop: z.number(),
+		rain: z.number().optional(),
+		uvi: z.number(),
+	})),
+	alerts: z.array(z.object({
+		sender_name: z.string(),
+		event: z.string(),
+		start: z.number(),
+		end: z.number(),
+		description: z.string(),
+		tags: z.array(z.string()),
+	})).optional(),
 });
 
-export type AccuweatherMinuteCastResponse = z.infer<typeof accuweatherMinuteCastResponseSchema>;
-
-const accuweatherUnitSchema = z.object({
-	Value: z.number(),
-	Unit: z.string(),
-	UnitType: z.number(),
-});
-
-const accuweatherMultiUnitSchema = z.object({
-	Metric: accuweatherUnitSchema,
-	Imperial: accuweatherUnitSchema,
-});
-
-const accuweatherMultiUnitSchemaWithPhrase = z.object({
-	Metric: accuweatherUnitSchema.extend({
-		Phrase: z.string(),
-	}),
-	Imperial: accuweatherUnitSchema.extend({
-		Phrase: z.string(),
-	}),
-});
-
-export type AccuweatherMultiUnit = z.infer<typeof accuweatherMultiUnitSchema>;
-
-const accuweatherWindSchema = z.object({
-	Direction: z.object({
-		Degrees: z.number(),
-		Localized: z.string(),
-		English: z.string(),
-	}),
-	Speed: accuweatherMultiUnitSchema,
-});
-
-export type AccuweatherWind = z.infer<typeof accuweatherWindSchema>;
-
-const accuweatherCurrentConditionsResponseSchema = z.array(
-	z.object({
-		LocalObservationDateTime: z.string(),
-		EpochTime: z.number(),
-		WeatherText: z.string(),
-		WeatherIcon: z.number(),
-		HasPrecipitation: z.boolean(),
-		PrecipitationType: z.string().nullable(),
-		Temperature: accuweatherMultiUnitSchema,
-		RealFeelTemperature: accuweatherMultiUnitSchemaWithPhrase,
-		RealFeelTemperatureShade: accuweatherMultiUnitSchemaWithPhrase,
-		PrecipitationSummary: z.object({
-			Precipitation: accuweatherMultiUnitSchema,
-			PastHour: accuweatherMultiUnitSchema,
-			Past3Hours: accuweatherMultiUnitSchema,
-			Past6Hours: accuweatherMultiUnitSchema,
-			Past9Hours: accuweatherMultiUnitSchema,
-			Past12Hours: accuweatherMultiUnitSchema,
-			Past18Hours: accuweatherMultiUnitSchema,
-			Past24Hours: accuweatherMultiUnitSchema,
-		}),
-		Past24HourTemperatureDeparture: accuweatherMultiUnitSchema,
-		RelativeHumidity: z.number(),
-		DewPoint: accuweatherMultiUnitSchema,
-		Wind: accuweatherWindSchema,
-		UVIndex: z.number(),
-		UVIndexText: z.string(),
-		MobileLink: z.string(),
-		Link: z.string(),
-	}),
-);
-
-export type AccuweatherCurrentConditionsResponse = z.infer<typeof accuweatherCurrentConditionsResponseSchema>;
+export type OpenWeatherOneCallResponse = z.infer<typeof openWeatherOneCallSchema>;
 
 const jmaForecastSchema = z.object({
 	publicTime: z.string(),
@@ -290,55 +244,20 @@ export const getHaiku = async () => {
 	return {text, author, note};
 };
 
-const getLocationId = async (location: [number, number]) => {
-	interface GeopositionResponse {
-		Key: string,
-	}
-
-	// Fetch location id of target location
-	const {data: locationData} = await axios.get<GeopositionResponse>(`http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?${qs.encode({
-		apikey: process.env.ACCUWEATHER_KEY,
-		q: location.join(','),
-		details: 'true',
-	})}`);
-	const locationId = locationData.Key;
-
-	return locationId;
-};
 
 export const getWeather = async (location: [number, number]) => {
-	const locationId = await getLocationId(location);
+	const {data} = await axios.get('https://api.openweathermap.org/data/3.0/onecall', {
+		params: {
+			lat: location[0],
+			lon: location[1],
+			appid: process.env.OPENWEATHER_API_KEY,
+			exclude: 'minutely',
+			units: 'metric',
+			lang: 'ja',
+		},
+	});
 
-	const {data} = await axios.get(`http://dataservice.accuweather.com/forecasts/v1/daily/5day/${locationId}?${qs.encode({
-		apikey: process.env.ACCUWEATHER_KEY,
-		language: 'ja-JP',
-		details: 'true',
-		metric: 'true',
-	})}`);
-
-	return {data: accuweatherDailyForecastResponseSchema.parse(data), locationId};
-};
-
-export const getCurrentWeather = async (location: [number, number]) => {
-	const locationId = await getLocationId(location);
-
-	const {data} = await axios.get(`http://dataservice.accuweather.com/currentconditions/v1/${locationId}?${qs.encode({
-		apikey: process.env.ACCUWEATHER_KEY,
-		language: 'ja-JP',
-		details: 'true',
-	})}`);
-
-	return {data: accuweatherCurrentConditionsResponseSchema.parse(data), locationId};
-};
-
-export const getMinuteCast = async (location: [number, number]) => {
-	const {data} = await axios.get(`http://dataservice.accuweather.com/forecasts/v1/minute?${qs.encode({
-		q: `${location[0]},${location[1]}`,
-		apikey: process.env.ACCUWEATHER_MINUTECAST_KEY,
-		language: 'ja-JP',
-	})}`);
-
-	return accuweatherMinuteCastResponseSchema.parse(data);
+	return openWeatherOneCallSchema.parse(data);
 };
 
 export const getJmaForecast = async (firstAreaCode: string) => {
