@@ -1,0 +1,593 @@
+{
+  "lat": -23.8633,
+  "lon": -69.1328,
+  "timezone": "America/Santiago",
+  "timezone_offset": -10800,
+  "current": {
+    "dt": 1757776987,
+    "sunrise": 1757759721,
+    "sunset": 1757802581,
+    "temp": 19.78,
+    "feels_like": 17.87,
+    "pressure": 1015,
+    "humidity": 2,
+    "dew_point": -28.12,
+    "uvi": 8.88,
+    "clouds": 5,
+    "visibility": 10000,
+    "wind_speed": 2.79,
+    "wind_deg": 285,
+    "weather": [
+      {
+        "id": 800,
+        "main": "Clear",
+        "description": "clear sky",
+        "icon": "01d"
+      }
+    ]
+  },
+  "minutely": [
+    {
+      "dt": 1757777040,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777100,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777160,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777220,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777280,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777340,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777400,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777460,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777520,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777580,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777640,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777700,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777760,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777820,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777880,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757777940,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778000,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778060,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778120,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778180,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778240,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778300,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778360,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778420,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778480,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778540,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778600,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778660,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778720,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778780,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778840,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778900,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757778960,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779020,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779080,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779140,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779200,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779260,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779320,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779380,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779440,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779500,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779560,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779620,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779680,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779740,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779800,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779860,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779920,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757779980,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757780040,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757780100,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757780160,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757780220,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757780280,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757780340,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757780400,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757780460,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757780520,
+      "precipitation": 0
+    },
+    {
+      "dt": 1757780580,
+      "precipitation": 0
+    }
+  ],
+  "daily": [
+    {
+      "dt": 1757779200,
+      "sunrise": 1757759721,
+      "sunset": 1757802581,
+      "moonrise": 1757736000,
+      "moonset": 1757774580,
+      "moon_phase": 0.72,
+      "summary": "Expect a day of partly cloudy with clear spells",
+      "temp": {
+        "day": 19.93,
+        "min": 6.94,
+        "max": 21.42,
+        "night": 12.41,
+        "eve": 18.3,
+        "morn": 7.14
+      },
+      "feels_like": {
+        "day": 18.06,
+        "night": 10.05,
+        "eve": 16.42,
+        "morn": 5.67
+      },
+      "pressure": 1015,
+      "humidity": 3,
+      "dew_point": -24,
+      "wind_speed": 6.01,
+      "wind_deg": 250,
+      "wind_gust": 6.35,
+      "weather": [
+        {
+          "id": 800,
+          "main": "Clear",
+          "description": "clear sky",
+          "icon": "01d"
+        }
+      ],
+      "clouds": 5,
+      "pop": 0,
+      "uvi": 11.32
+    },
+    {
+      "dt": 1757865600,
+      "sunrise": 1757846058,
+      "sunset": 1757888999,
+      "moonrise": 1757826420,
+      "moonset": 1757864460,
+      "moon_phase": 0.75,
+      "summary": "There will be clear sky today",
+      "temp": {
+        "day": 21.23,
+        "min": 8.27,
+        "max": 22.42,
+        "night": 10.97,
+        "eve": 17.88,
+        "morn": 8.27
+      },
+      "feels_like": {
+        "day": 19.51,
+        "night": 8.57,
+        "eve": 15.98,
+        "morn": 7.01
+      },
+      "pressure": 1012,
+      "humidity": 4,
+      "dew_point": -20.9,
+      "wind_speed": 7.3,
+      "wind_deg": 261,
+      "wind_gust": 4.65,
+      "weather": [
+        {
+          "id": 800,
+          "main": "Clear",
+          "description": "clear sky",
+          "icon": "01d"
+        }
+      ],
+      "clouds": 0,
+      "pop": 0,
+      "uvi": 11.4
+    },
+    {
+      "dt": 1757952000,
+      "sunrise": 1757932395,
+      "sunset": 1757975418,
+      "moonrise": 1757916600,
+      "moonset": 1757954640,
+      "moon_phase": 0.79,
+      "summary": "There will be clear sky today",
+      "temp": {
+        "day": 21.4,
+        "min": 8.2,
+        "max": 22.55,
+        "night": 11.04,
+        "eve": 18.51,
+        "morn": 8.2
+      },
+      "feels_like": {
+        "day": 19.67,
+        "night": 8.67,
+        "eve": 16.68,
+        "morn": 6.67
+      },
+      "pressure": 1012,
+      "humidity": 3,
+      "dew_point": -23.46,
+      "wind_speed": 6.6,
+      "wind_deg": 262,
+      "wind_gust": 4.67,
+      "weather": [
+        {
+          "id": 800,
+          "main": "Clear",
+          "description": "clear sky",
+          "icon": "01d"
+        }
+      ],
+      "clouds": 0,
+      "pop": 0,
+      "uvi": 11.64
+    },
+    {
+      "dt": 1758038400,
+      "sunrise": 1758018732,
+      "sunset": 1758061837,
+      "moonrise": 1758006360,
+      "moonset": 1758044880,
+      "moon_phase": 0.83,
+      "summary": "You can expect clear sky in the morning, with partly cloudy in the afternoon",
+      "temp": {
+        "day": 19.49,
+        "min": 7.52,
+        "max": 21.82,
+        "night": 11.86,
+        "eve": 19.11,
+        "morn": 7.52
+      },
+      "feels_like": {
+        "day": 17.63,
+        "night": 9.62,
+        "eve": 17.31,
+        "morn": 6.35
+      },
+      "pressure": 1013,
+      "humidity": 5,
+      "dew_point": -21.02,
+      "wind_speed": 7.12,
+      "wind_deg": 276,
+      "wind_gust": 5.58,
+      "weather": [
+        {
+          "id": 800,
+          "main": "Clear",
+          "description": "clear sky",
+          "icon": "01d"
+        }
+      ],
+      "clouds": 5,
+      "pop": 0,
+      "uvi": 11.58
+    },
+    {
+      "dt": 1758124800,
+      "sunrise": 1758105069,
+      "sunset": 1758148256,
+      "moonrise": 1758095640,
+      "moonset": 1758135060,
+      "moon_phase": 0.86,
+      "summary": "There will be clear sky today",
+      "temp": {
+        "day": 18.41,
+        "min": 7.41,
+        "max": 20.59,
+        "night": 11.13,
+        "eve": 17.85,
+        "morn": 7.41
+      },
+      "feels_like": {
+        "day": 16.44,
+        "night": 8.87,
+        "eve": 15.98,
+        "morn": 6.08
+      },
+      "pressure": 1014,
+      "humidity": 5,
+      "dew_point": -20.48,
+      "wind_speed": 8.06,
+      "wind_deg": 286,
+      "wind_gust": 6.75,
+      "weather": [
+        {
+          "id": 800,
+          "main": "Clear",
+          "description": "clear sky",
+          "icon": "01d"
+        }
+      ],
+      "clouds": 0,
+      "pop": 0,
+      "uvi": 0.98
+    },
+    {
+      "dt": 1758211200,
+      "sunrise": 1758191406,
+      "sunset": 1758234675,
+      "moonrise": 1758184560,
+      "moonset": 1758225000,
+      "moon_phase": 0.9,
+      "summary": "Expect a day of partly cloudy with clear spells",
+      "temp": {
+        "day": 18.13,
+        "min": 6.79,
+        "max": 20.56,
+        "night": 10.93,
+        "eve": 18.12,
+        "morn": 6.79
+      },
+      "feels_like": {
+        "day": 16.16,
+        "night": 8.6,
+        "eve": 16.22,
+        "morn": 5.35
+      },
+      "pressure": 1015,
+      "humidity": 6,
+      "dew_point": -19.52,
+      "wind_speed": 7,
+      "wind_deg": 267,
+      "wind_gust": 4.31,
+      "weather": [
+        {
+          "id": 800,
+          "main": "Clear",
+          "description": "clear sky",
+          "icon": "01d"
+        }
+      ],
+      "clouds": 6,
+      "pop": 0,
+      "uvi": 1
+    },
+    {
+      "dt": 1758297600,
+      "sunrise": 1758277742,
+      "sunset": 1758321094,
+      "moonrise": 1758273120,
+      "moonset": 1758314880,
+      "moon_phase": 0.93,
+      "summary": "You can expect partly cloudy in the morning, with clearing in the afternoon",
+      "temp": {
+        "day": 18.63,
+        "min": 6.86,
+        "max": 21.12,
+        "night": 10.97,
+        "eve": 19,
+        "morn": 6.86
+      },
+      "feels_like": {
+        "day": 16.65,
+        "night": 8.38,
+        "eve": 17.06,
+        "morn": 5.73
+      },
+      "pressure": 1015,
+      "humidity": 4,
+      "dew_point": -22.78,
+      "wind_speed": 5.95,
+      "wind_deg": 257,
+      "wind_gust": 4.61,
+      "weather": [
+        {
+          "id": 802,
+          "main": "Clouds",
+          "description": "scattered clouds",
+          "icon": "03d"
+        }
+      ],
+      "clouds": 36,
+      "pop": 0,
+      "uvi": 1
+    },
+    {
+      "dt": 1758384000,
+      "sunrise": 1758364079,
+      "sunset": 1758407513,
+      "moonrise": 1758361500,
+      "moonset": 1758404460,
+      "moon_phase": 0.96,
+      "summary": "There will be clear sky until morning, then partly cloudy",
+      "temp": {
+        "day": 19.03,
+        "min": 7.89,
+        "max": 20.23,
+        "night": 10.45,
+        "eve": 16.98,
+        "morn": 7.89
+      },
+      "feels_like": {
+        "day": 17.09,
+        "night": 8.18,
+        "eve": 14.99,
+        "morn": 6.29
+      },
+      "pressure": 1013,
+      "humidity": 4,
+      "dew_point": -22.17,
+      "wind_speed": 7.24,
+      "wind_deg": 277,
+      "wind_gust": 5.77,
+      "weather": [
+        {
+          "id": 801,
+          "main": "Clouds",
+          "description": "few clouds",
+          "icon": "02d"
+        }
+      ],
+      "clouds": 21,
+      "pop": 0,
+      "uvi": 1
+    }
+  ]
+}
