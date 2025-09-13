@@ -168,8 +168,6 @@ export const getRainMinuteCast = async (weatherData: OpenWeatherOneCallResponse)
 		description: generateRainCastDescription(weatherData.current.dt, minutely),
 	});
 
-	console.log(replacedPrompt);
-
 	const response = await openai.chat.completions.create({
 		model: 'gpt-5-mini',
 		messages: [

@@ -8,6 +8,16 @@ jest.mock('./render');
 jest.mock('./fetch');
 jest.mock('../lib/slackUtils');
 jest.mock('../lib/state');
+jest.mock('../lib/openai', () => ({
+	__esModule: true,
+	default: {
+		chat: {
+			completions: {
+				create: jest.fn(),
+			},
+		},
+	},
+}));
 
 import FakeTimers from '@sinonjs/fake-timers';
 import type {InstalledClock} from '@sinonjs/fake-timers';
