@@ -152,6 +152,7 @@ const checkChatCompletionCreateModel = (params: ChatCompletionCreateParamsNonStr
 
 	if (
 		model === 'gpt-4o-mini' ||
+		model === 'gpt-5-mini' ||
 		model === 'o4-mini'
 	) {
 		return model;
@@ -178,6 +179,11 @@ const chatCompletionCreate = async (params: ChatCompletionCreateParamsNonStreami
 		// Output: $0.60 / 1M tokens
 		// https://platform.openai.com/docs/pricing
 		cost = (promptTokens / 1_000_000) * 0.15 + (completionTokens / 1_000_000) * 0.60;
+	} else if (model === 'gpt-5-mini') {
+		// Input: $0.25 / 1M tokens
+		// Output: $2.00 / 1M tokens
+		// https://platform.openai.com/docs/models/gpt-5-mini
+		cost = (promptTokens / 1_000_000) * 0.25 + (completionTokens / 1_000_000) * 2.00;
 	} else {
 		assert(model === 'o4-mini', `Unexpected model: ${model}`);
 

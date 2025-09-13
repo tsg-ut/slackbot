@@ -442,7 +442,7 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 				attachments: [{
 					color: '#FFA726',
 					title: `本日の天気${weatherEmojis[weatherId]}「${matchingWeather.name}」`,
-					title_link: `https://openweathermap.org/`,
+					title_link: 'https://openweathermap.org/',
 					image_url: cloudinaryData.secure_url,
 					fallback: matchingWeather.name,
 				}, {

@@ -1,9 +1,11 @@
-import qs from 'querystring';
 import axios from 'axios';
 import cheerio from 'cheerio';
 import {flatten, sortBy} from 'lodash';
 import scrapeIt from 'scrape-it';
 import {z} from 'zod';
+import logger from '../lib/logger';
+
+const log = logger.child({module: 'sunrise/fetch'});
 
 interface Article {
 	date?: string,
@@ -52,26 +54,6 @@ const openWeatherOneCallSchema = z.object({
 	minutely: z.array(z.object({
 		dt: z.number(),
 		precipitation: z.number(),
-	})).optional(),
-	hourly: z.array(z.object({
-		dt: z.number(),
-		temp: z.number(),
-		feels_like: z.number(),
-		pressure: z.number(),
-		humidity: z.number(),
-		dew_point: z.number(),
-		uvi: z.number(),
-		clouds: z.number(),
-		visibility: z.number(),
-		wind_speed: z.number(),
-		wind_deg: z.number(),
-		weather: z.array(z.object({
-			id: z.number(),
-			main: z.string(),
-			description: z.string(),
-			icon: z.string(),
-		})),
-		pop: z.number(),
 	})),
 	daily: z.array(z.object({
 		dt: z.number(),
@@ -110,6 +92,7 @@ const openWeatherOneCallSchema = z.object({
 		clouds: z.number(),
 		pop: z.number(),
 		rain: z.number().optional(),
+		snow: z.number().optional(),
 		uvi: z.number(),
 	})),
 	alerts: z.array(z.object({
@@ -246,14 +229,15 @@ export const getHaiku = async () => {
 
 
 export const getWeather = async (location: [number, number]) => {
+	log.info(`Fetching weather for location: ${location[0]}, ${location[1]}`);
 	const {data} = await axios.get('https://api.openweathermap.org/data/3.0/onecall', {
 		params: {
 			lat: location[0],
 			lon: location[1],
 			appid: process.env.OPENWEATHER_API_KEY,
-			exclude: 'minutely',
+			exclude: 'hourly',
 			units: 'metric',
-			lang: 'ja',
+			lang: 'en',
 		},
 	});
 

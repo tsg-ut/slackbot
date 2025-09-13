@@ -1,45 +1,35 @@
 import type {MessageAttachment, WebClient} from '@slack/web-api';
 import {FeatureCollection, MultiPolygon, points as Points, pointsWithinPolygon} from '@turf/turf';
 import {Loader} from '../lib/utils';
+import {getRainMinuteCast, getWeatherCastForecast, getWeatherCastHeadline} from './aiGeneration';
 import {getJmaForecast, getWeather} from './fetch';
 import type {OpenWeatherOneCallResponse} from './fetch';
 import type {Point} from './index';
 
 const firstAreaGeojsonLoader = new Loader<FeatureCollection<MultiPolygon>>(() => {
 	const url = 'https://raw.githubusercontent.com/tmiyachi/jma-gis/master/geojson/firstarea.geojson';
-	return fetch(url).then((res) => res.json());
+	return fetch(url).then((res) => res.json()) as Promise<FeatureCollection<MultiPolygon>>;
 });
 
 export const postRainMinuteCast = async (point: Point, slack: WebClient, threadTimestamp?: string) => {
 	const weatherData = await getWeather([point.latitude, point.longitude]);
 
-	const summary = weatherData.daily[0]?.summary;
-	if (!summary) {
-		await slack.chat.postMessage({
-			channel: process.env.CHANNEL_SANDBOX,
-			username: 'sunrise',
-			icon_emoji: ':sunrise:',
-			text: `${point.name}の天気予報は取得できませんでした。`,
-			...(threadTimestamp ? {thread_ts: threadTimestamp} : {}),
-		});
-		return;
-	}
-
-	const text = `${point.name}では、${summary}。`;
+	const rawRainMinuteCast = await getRainMinuteCast(weatherData);
+	const rainMinuteCast = rawRainMinuteCast.replaceAll('[PLACE]', point.name);
 	const link = `<https://openweathermap.org/weathermap/?basemap=map&cities=true&layer=temperature&lat=${point.latitude}&lon=${point.longitude}&zoom=10|[詳細]>`;
 
 	await slack.chat.postMessage({
 		channel: process.env.CHANNEL_SANDBOX,
 		username: 'sunrise',
 		icon_emoji: ':sunrise:',
-		text,
+		text: rainMinuteCast,
 		...(threadTimestamp ? {thread_ts: threadTimestamp} : {}),
 		blocks: [
 			{
 				type: 'section',
 				text: {
 					type: 'mrkdwn',
-					text: `${text} ${link}`,
+					text: `${rainMinuteCast} ${link}`,
 				},
 			},
 		],
@@ -89,6 +79,18 @@ const getBeaufortWindScale = (speedMph: number) => {
 	return 12;
 };
 
+const getPrecipitationText = (current: OpenWeatherOneCallResponse['current']) => {
+	const rain = current.rain?.['1h'];
+	if (rain) {
+		return `${rain}mmの雨が降っています。`;
+	}
+	const snow = current.snow?.['1h'];
+	if (snow) {
+		return `${snow}mmの雪が降っています。`;
+	}
+	return '';
+};
+
 export const postWeatherCast = async (point: Point, slack: WebClient, threadTimestamp?: string) => {
 	const weatherData = await getWeather([point.latitude, point.longitude]);
 
@@ -100,26 +102,15 @@ export const postWeatherCast = async (point: Point, slack: WebClient, threadTime
 	}
 
 	const beaufortScale = getBeaufortWindScale(current.wind_speed * 2.23694);
-	const windText = `風力${beaufortScale}、風速${current.wind_speed.toFixed(1)}m/sの${current.wind_deg}°方向の風が吹いています。`;
+	const windText = `風力${beaufortScale}、${current.wind_deg}°方向の風が吹いています。`;
 
-	const getPrecipitationText = (current: OpenWeatherOneCallResponse['current']) => {
-		const rain = current.rain?.['1h'];
-		if (rain) {
-			return `${rain}mmの雨が降っています。`;
-		}
-		const snow = current.snow?.['1h'];
-		if (snow) {
-			return `${snow}mmの雪が降っています。`;
-		}
-		return '';
-	};
-
-	const headlineText = `${point.name}は、＊${current.weather[0]?.description}です＊。`;
+	const rawHeadlineText = await getWeatherCastHeadline(weatherData);
+	const headlineText = rawHeadlineText.replaceAll('[PLACE]', point.name);
 	const percipitationText = getPrecipitationText(current);
-	const forecastText = daily.summary ? `${daily.summary}。` : '';
+	const forecastText = await getWeatherCastForecast(weatherData);
 	const link = `<https://openweathermap.org/weathermap/?basemap=map&cities=true&layer=temperature&lat=${point.latitude}&lon=${point.longitude}&zoom=10|[詳細]>`;
 
-	const text = [headlineText, percipitationText, windText, '\n', forecastText].join('');
+	const text = [`＊${headlineText}＊`, percipitationText, windText, '\n', forecastText].join('');
 
 	const firstAreaGeojson = await firstAreaGeojsonLoader.load();
 	const points = Points([[point.longitude, point.latitude]]);
@@ -144,7 +135,7 @@ export const postWeatherCast = async (point: Point, slack: WebClient, threadTime
 		channel: process.env.CHANNEL_SANDBOX,
 		username: 'sunrise',
 		icon_emoji: ':sunrise:',
-		text,
+		text: `＊${headlineText}＊${percipitationText}`,
 		attachments,
 		...(threadTimestamp ? {thread_ts: threadTimestamp} : {}),
 		blocks: [
@@ -161,10 +152,6 @@ export const postWeatherCast = async (point: Point, slack: WebClient, threadTime
 	});
 };
 
-const getForecastPhraseText = (forecastPhrase: string) => {
-	return `${forecastPhrase}でしょう。`;
-};
-
 export const postTemperatureReport = async (point: Point, slack: WebClient, threadTimestamp?: string) => {
 	const weatherData = await getWeather([point.latitude, point.longitude]);
 
@@ -178,13 +165,11 @@ export const postTemperatureReport = async (point: Point, slack: WebClient, thre
 	const headlineText = `${point.name}の現在の気温は ＊${current.temp.toFixed(1)}°C＊ です。`;
 	const realFeelText = `体感温度は ＊${current.feels_like.toFixed(1)}°C＊ です。`;
 	const minMaxForecastText = `本日の最高気温は ＊${daily.temp.max.toFixed(1)}°C＊ 、最低気温は ＊${daily.temp.min.toFixed(1)}°C＊ の見込みです。`;
-	const forecastPhraseText = getForecastPhraseText(daily.summary);
 	const link = `<https://openweathermap.org/weathermap/?basemap=map&cities=true&layer=temperature&lat=${point.latitude}&lon=${point.longitude}&zoom=10|[詳細]>`;
 
 	const text = [
 		headlineText, realFeelText, '\n',
-		minMaxForecastText, '\n',
-		forecastPhraseText,
+		minMaxForecastText,
 	].join('');
 
 	await slack.chat.postMessage({
