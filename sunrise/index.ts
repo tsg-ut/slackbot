@@ -77,60 +77,83 @@ const moonEmojis = [
 	':waning_crescent_moon:',
 ];
 
-// https://developer.accuweather.com/weather-icons
+// https://openweathermap.org/weather-conditions
 const conditionIds: {[weather: string]: number[]} = {
-	clear: [1, 2],
-	sunny: [1, 2, 3, 4, 30, 31, 32],
-	haze: [5],
-	cloud: [6, 7, 8],
-	mist: [11],
-	sunshower: [14, 17, 21],
-	thunderstorm: [15, 16],
-	rain: [18, 26],
-	shower: [12, 13],
-	changing: [19, 20],
-	snow: [22, 23, 24],
-	sleet: [25, 29],
-	drizzle: [],
-	dust: [],
+	clear: [800],
+	sunny: [800],
+	haze: [721],
+	cloud: [801, 802, 803, 804],
+	mist: [701],
+	sunshower: [520, 521, 522, 531],
+	thunderstorm: [200, 201, 202, 210, 211, 212, 221, 230, 231, 232],
+	rain: [500, 501, 502, 503, 504],
+	shower: [300, 301, 302, 310, 311, 312, 313, 314, 321],
+	changing: [],
+	snow: [600, 601, 602],
+	sleet: [611, 612, 613, 615, 616],
+	drizzle: [300, 301, 302, 310, 311, 312, 313, 314, 321],
+	dust: [731, 751, 761],
 };
 
 const weatherEmojis: {[iconId: number]: string} = {
-	1: ':sunny:',
-	2: ':sunny:',
-	3: ':mostly_sunny:',
-	4: ':partly_sunny:',
-	5: ':fog:',
-	6: ':barely_sunny:',
-	7: ':cloud:',
-	8: ':cloud:',
-	11: ':fog:',
-	12: ':umbrella_with_rain_drops:',
-	13: ':umbrella_with_rain_drops:',
-	14: ':partly_sunny_rain:',
-	15: ':thunder_cloud_and_rain:',
-	16: ':thunder_cloud_and_rain:',
-	17: ':thunder_cloud_and_rain:',
-	18: ':umbrella_with_rain_drops:',
-	19: ':cloud:',
-	20: ':barely_sunny:',
-	21: ':barely_sunny:',
-	22: ':snowman:',
-	23: ':snowman:',
-	24: ':ice_skate:',
-	25: ':umbrella_with_rain_drops:',
-	26: ':umbrella_with_rain_drops:',
-	29: ':umbrella_with_rain_drops:',
-	30: ':sunny:',
-	31: ':sunny:',
-	32: ':sunny:',
+	200: ':thunder_cloud_and_rain:',
+	201: ':thunder_cloud_and_rain:',
+	202: ':thunder_cloud_and_rain:',
+	210: ':thunder_cloud_and_rain:',
+	211: ':thunder_cloud_and_rain:',
+	212: ':thunder_cloud_and_rain:',
+	221: ':thunder_cloud_and_rain:',
+	230: ':thunder_cloud_and_rain:',
+	231: ':thunder_cloud_and_rain:',
+	232: ':thunder_cloud_and_rain:',
+	300: ':umbrella_with_rain_drops:',
+	301: ':umbrella_with_rain_drops:',
+	302: ':umbrella_with_rain_drops:',
+	310: ':umbrella_with_rain_drops:',
+	311: ':umbrella_with_rain_drops:',
+	312: ':umbrella_with_rain_drops:',
+	313: ':umbrella_with_rain_drops:',
+	314: ':umbrella_with_rain_drops:',
+	321: ':umbrella_with_rain_drops:',
+	500: ':umbrella_with_rain_drops:',
+	501: ':umbrella_with_rain_drops:',
+	502: ':umbrella_with_rain_drops:',
+	503: ':umbrella_with_rain_drops:',
+	504: ':umbrella_with_rain_drops:',
+	511: ':snowman:',
+	520: ':partly_sunny_rain:',
+	521: ':partly_sunny_rain:',
+	522: ':partly_sunny_rain:',
+	531: ':partly_sunny_rain:',
+	600: ':snowman:',
+	601: ':snowman:',
+	602: ':snowman:',
+	611: ':snowman:',
+	612: ':snowman:',
+	613: ':snowman:',
+	615: ':snowman:',
+	616: ':snowman:',
+	620: ':snowman:',
+	621: ':snowman:',
+	622: ':snowman:',
+	701: ':fog:',
+	711: ':fog:',
+	721: ':fog:',
+	731: ':fog:',
+	741: ':fog:',
+	751: ':fog:',
+	761: ':fog:',
+	762: ':fog:',
+	771: ':fog:',
+	781: ':fog:',
+	800: ':sunny:',
+	801: ':barely_sunny:',
+	802: ':partly_sunny:',
+	803: ':mostly_sunny:',
+	804: ':cloud:',
 };
 
 const 漢数字s = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
-
-const FtoC = (F: number) => (F - 32) * 5 / 9;
-const miphToMps = (miph: number) => miph * 0.447;
-const inchToMm = (inch: number) => inch * 25.4;
 
 const getWeatherRegex = (pointNames: string[]) => {
 	const pointNamesRegex = pointNames.map(escapeRegExp).join('|');
@@ -174,26 +197,21 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 		const nextSunrise = sunrises.find((sunrise) => sunrise.getTime() > state.lastSunrise);
 
 		if (now >= nextSunrise) {
-			const noon = moment(now).utcOffset(9).startOf('day').add(12, 'hour').toDate();
-			const {sunrise, sunset} = suncalc.getTimes(noon, ...location);
-
 			state.lastSunrise = now.getTime();
-			const {rise: moonrise, set: moonset} = suncalc.getMoonTimes(noon, ...location);
-			const {phase: moonphase} = suncalc.getMoonIllumination(noon);
+			const {phase: moonphase} = suncalc.getMoonIllumination(now);
 			const moonEmoji = moonEmojis[Math.round(moonphase * 8) % 8];
 
-			const {data: weatherData, locationId} = await getWeather(location);
-			const today = moment().utcOffset(9).startOf('day').toDate();
-			const forecast = weatherData.DailyForecasts.find((cast) => new Date(cast.Date) >= today);
+			const weatherData = await getWeather(location);
+			const forecast = weatherData.daily[0];
 
 			const lastWeather = state.lastWeather ?? null;
 
 			const month = moment().utcOffset(9).month() + 1;
 			const date = moment().utcOffset(9).date();
 
-			const weatherId = forecast?.Day?.Icon;
+			const weatherId = forecast?.weather[0]?.id;
 
-			const temperature = FtoC(forecast?.Temperature?.Maximum?.Value);
+			const temperature = forecast?.temp?.max;
 			let temperatureLevel: number = null;
 			if (temperature < 5) {
 				temperatureLevel = 0;
@@ -209,7 +227,7 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 				temperatureLevel = 5;
 			}
 
-			const totalLiquid = inchToMm(forecast?.Day?.TotalLiquid?.Value);
+			const totalLiquid = forecast?.rain ?? 0;
 			let rainLevel: number = null;
 			if (totalLiquid < 0.01) {
 				rainLevel = 0;
@@ -223,8 +241,8 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 				rainLevel = 4;
 			}
 
-			const wind = miphToMps(forecast?.Day?.Wind?.Speed?.Value);
-			const winddeg = forecast?.Day?.Wind?.Direction?.Degrees;
+			const wind = forecast?.wind_speed;
+			const winddeg = forecast?.wind_deg;
 			let windLevel: number = null;
 			if (wind < 3) {
 				windLevel = 0;
@@ -407,15 +425,6 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 
 			const haiku = await getHaiku();
 
-			const moonAge = moonphase * 29.5;
-
-			// https://eco.mtk.nao.ac.jp/koyomi/wiki/B7EEA4CECBFEA4C1B7E7A4B12FB7EECEF0A4C8CBFEA4C1B7E7A4B1.html#t10ca351
-			const moonStateText =
-			// eslint-disable-next-line no-nested-ternary
-				(moonAge <= 0.5 || moonAge >= 29.0) ? ':new_moon_with_face:新月:new_moon_with_face:'
-					: Math.round(moonAge) === 14 ? ':full_moon_with_face:満月:full_moon_with_face:'
-						: '';
-
 			await slack.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,
 				text: ':ahokusa-top-right::ahokusa-bottom-left::heavy_exclamation_mark:',
@@ -424,16 +433,15 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 				attachments: [{
 					color: '#FFA726',
 					title: `本日の天気${weatherEmojis[weatherId]}「${matchingWeather.name}」`,
-					title_link: `https://www.accuweather.com/ja/jp/tokyo/${locationId}/daily-weather-forecast/${locationId}`,
+					title_link: 'https://openweathermap.org/',
 					image_url: cloudinaryData.secure_url,
 					fallback: matchingWeather.name,
 				}, {
 					color: '#1976D2',
 					title: '本日のこよみ',
 					text: stripIndent`
-						:sunrise_over_mountains: *日の出* ${moment(sunrise).format('HH:mm')} ～ *日の入* ${moment(sunset).format('HH:mm')}
-						${moonEmoji} *月の出* ${moment(moonrise).format('HH:mm')} ～ *月の入* ${moment(moonset).format('HH:mm')}
-						${moonStateText}
+						:sunrise_over_mountains: *日の出* ${moment.unix(forecast.sunrise).format('HH:mm')} ～ *日の入* ${moment.unix(forecast.sunset).format('HH:mm')}
+						${moonEmoji} *月の出* ${moment.unix(forecast.moonrise).format('HH:mm')} ～ *月の入* ${moment.unix(forecast.moonset).format('HH:mm')}
 					`,
 				}, ...(entry ? [{
 					color: '#4DB6AC',
