@@ -129,7 +129,7 @@ const productionBots = [
 	'achievement-quiz',
 	'wadokaichin',
 	'wordle-battle',
-	'slow-quiz',
+	// 'slow-quiz',
 	'dicebot',
 	'taimai',
 	'map-guessr',
