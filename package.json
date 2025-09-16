@@ -17,7 +17,7 @@
     "test:coverage": "npm run test -- --coverage"
   },
   "engines": {
-    "node": "^20.18.1"
+    "node": "^22.19.0"
   },
   "repository": {
     "type": "git",
