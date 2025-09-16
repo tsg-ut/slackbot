@@ -19,7 +19,9 @@ TSGのSlackで動くSlackbotたち
 
 ### Prerequisites
 
-* Node.js v20
+* Node.js v22.19.0
+
+MacもしくはLinuxでは[asdf](https://asdf-vm.com/)を使用してインストールすることをオススメします。
 
 ### セットアップ
 
