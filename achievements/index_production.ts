@@ -304,6 +304,22 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 		}
 	}
 
+	for (const [userId, userData] of state.users.entries()) {
+		const userAchievements = state.achievements.get(userId) ?? new Set();
+		for (const achievement of achievements.values()) {
+			if (
+				achievement.counter &&
+				typeof achievement.value === 'number' &&
+				!userAchievements.has(achievement.id)
+			) {
+				const counterValue = userData[achievement.counter];
+				if (typeof counterValue === 'number' && counterValue >= achievement.value) {
+					unlock(userId, achievement.id);
+				}
+			}
+		}
+	}
+
 	// Temporal migration: Remove all achievements data with category = 'ricochet-robots' and created after 2024-07-25 and before 2024-08-08
 	const ricochetRobotsAchievements = await db.collection('achievement_data').where('category', '==', 'ricochet-robots').get();
 	for (const doc of ricochetRobotsAchievements.docs) {
