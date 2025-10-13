@@ -7,7 +7,6 @@ export interface Achievement {
 	condition: string,
 	category: string,
 	counter?: string,
-	reaction?: string,
 	value?: number,
 	manual?: true,
 }

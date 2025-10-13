@@ -65,20 +65,11 @@ const unlockReactionCountAchievements = async (event: ReactionAddedEvent) => {
 		return;
 	}
 
-	const reactionAchievements = Array.from(achievements.values()).filter((achievement) => (
-		achievement.reaction === event.reaction
-	));
 	const reactions = await getReactions(event.item.channel, event.item.ts);
 	const reactedUsers = reactions[event.reaction] || [];
 	const messageURL = event.item.type === 'message'
 		? `<https://tsg-ut.slack.com/archives/${event.item.channel}/p${event.item.ts.replace('.', '')}|[メッセージ]>`
 		: '';
-
-	for (const achievement of reactionAchievements) {
-		if (achievement.value <= reactedUsers.length) {
-			await unlock(event.item_user, achievement.id, messageURL);
-		}
-	}
 
 	if (reactedUsers.length >= 1) {
 		const firstReactedUser = reactedUsers[0];
