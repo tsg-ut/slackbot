@@ -12,23 +12,23 @@ export interface Achievement {
 	manual?: true,
 }
 
-const reactionAchievementFactory = (title: string, reaction: string, value: number): Achievement => {
+const reactionAchievementFactory = (title: string, reaction: string, reactionThreshold: number): Achievement => {
 	let difficulty: Difficulty = 'medium';
-	if (value <= 3) {
+	if (reactionThreshold <= 3) {
 		difficulty = 'medium';
-	} else if (value <= 5) {
+	} else if (reactionThreshold <= 5) {
 		difficulty = 'hard';
-	} else if (value <= 10) {
+	} else {
 		difficulty = 'professional';
 	}
 	return {
-		id: `reaction-${reaction}-${value}`,
+		id: `reaction-${reaction}-${reactionThreshold}`,
 		difficulty,
 		title,
-		condition: `1つのメッセージに対し${value}人以上から:${reaction}:リアクションをもらう`,
+		condition: `1つのメッセージに対し${reactionThreshold}人以上から:${reaction}:リアクションをもらう`,
 		category: 'reactions',
-		reaction,
-		value,
+		counter: `reaction-${reaction}-${reactionThreshold}`,
+		value: 1,
 	};
 };
 
@@ -147,6 +147,8 @@ const achievements: Achievement[] = [
 	reactionAchievementFactory('デビルマン', 'wakari', 5),
 	reactionAchievementFactory('ジャガーマン', 'koresuki', 5),
 	reactionAchievementFactory('あーここすき', 'koresuki', 10),
+	reactionAchievementFactory('もっとすいみんぶそく', 'koresuki', 15),
+	reactionAchievementFactory('伝説のアイドル', 'koresuki', 20),
 	reactionAchievementFactory('今日からやの付く自由業', 'yakuza', 5),
 	reactionAchievementFactory('狂気の沙汰ほど面白い...！', 'shoki-ka', 5),
 	reactionAchievementFactory('聞いてよアカネちゃん！', 'seyana', 5),
@@ -154,6 +156,8 @@ const achievements: Achievement[] = [
 	reactionAchievementFactory('コンテキスト不一致', 'context', 5),
 	reactionAchievementFactory('みんな違ってみんなプロ', 'pro', 5),
 	reactionAchievementFactory('仕事の流儀', 'pro', 10),
+	reactionAchievementFactory('プロプログラマー', 'pro', 15),
+	reactionAchievementFactory('あなたにとって、sandboxとは何ですか？', 'pro', 20),
 	reactionAchievementFactory('君はお肉が好き？', 'shirimetsuretsu', 5),
 	reactionAchievementFactory('理性ある生き物', 'riaru', 5),
 	reactionAchievementFactory('地位は人をつくる', 'erai', 5),
@@ -176,16 +180,7 @@ const achievements: Achievement[] = [
 	reactionAchievementFactory('LooksGoodToTSG', 'yosasou', 5),
 	reactionAchievementFactory('私がプロだ', 'hakatashi-pro', 5),
 	reactionAchievementFactory('この町で出会えた奇跡', 'shamiko', 5),
-	// backward compatibility
-	{
-		id: 'reaction-fleshpeach-5',
-		difficulty: 'hard',
-		title: 'ずっと輝いてる未来はここにある',
-		condition: '1つのメッセージに対し5人以上から:freshpeach:リアクションをもらう',
-		category: 'reactions',
-		reaction: 'freshpeach',
-		value: 5,
-	},
+	reactionAchievementFactory('ずっと輝いてる未来はここにある', 'freshpeach', 5),
 	reactionAchievementFactory('誰がなんと言おうと優上のはずなんだ', '95', 5),
 	reactionAchievementFactory('今日も一日がんばるぞい！', 'zoi', 5),
 	reactionAchievementFactory('河童のラッパー今日もご立派', 'rhyme', 5),
@@ -200,16 +195,7 @@ const achievements: Achievement[] = [
 	reactionAchievementFactory('TSGの松尾芭蕉', 'ikku', 5),
 	reactionAchievementFactory('なんだ猫か...', 'nya-n', 5),
 	reactionAchievementFactory('理由もなくチヤホヤされたい', 'yumemiriamu', 5),
-	// backward compatibility
-	{
-		id: 'reaction-yumemiriamu-10',
-		difficulty: 'hard',
-		title: 'チョロいなオタク！',
-		condition: '1つのメッセージに対し10人以上から:yumemiriamu:リアクションをもらう',
-		category: 'reactions',
-		reaction: 'yumemiriamu',
-		value: 10,
-	},
+	reactionAchievementFactory('チョロいなオタク！', 'yumemiriamu', 10),
 	reactionAchievementFactory('あまり強い言葉を使うなよ', 'jimei', 5),
 	reactionAchievementFactory('平和より戦争を始める方がはるかに易しい', 'kaishaku-chigai', 5),
 	reactionAchievementFactory('自堕落アイドルへの道', 'kurotorianzu', 5),
@@ -227,16 +213,7 @@ const achievements: Achievement[] = [
 	reactionAchievementFactory('実績になるから散歩したい', 'jimmy-sanpo', 5),
 	reactionAchievementFactory('ハッ！取り乱してしまいましたわ！', 'kusowayo', 5),
 	reactionAchievementFactory('学歴コンプ', 'kyoudai-kanjo', 5),
-	// backward compatibility
-	{
-		id: 'reaction-masaka-sakasama-5',
-		difficulty: 'hard',
-		title: '実績を解除したいという煩悩',
-		condition: '1つのメッセージに対し5人以上から:108:リアクションをもらう',
-		category: 'reactions',
-		reaction: '108',
-		value: 5,
-	},
+	reactionAchievementFactory('実績を解除したいという煩悩', '108', 5),
 	reactionAchievementFactory('自身が転んでもおかしいお年頃', 'nameraka_rotating_rolling_on_the_floor_laughing', 5),
 	reactionAchievementFactory('インドのナンごをたべるんご', 'appingorou', 5),
 	reactionAchievementFactory('なんだ猫...か...?', 'neko', 5),
@@ -251,6 +228,16 @@ const achievements: Achievement[] = [
 	reactionAchievementFactory('Understand 完全に理解した', 'understand-10', 5),
 	reactionAchievementFactory('無知の知', 'understand-', 5),
 	reactionAchievementFactory('今言うなは考えるにゃしである', 'んー', 5),
+	reactionAchievementFactory('最低の思考は混乱の中から生まれる', 'blob-panic', 5),
+	reactionAchievementFactory('「突然ですが、僕はTSGが大好きだ。」', 'kaibunsho', 5),
+	reactionAchievementFactory('時には詩人のように', 'iihanashi', 5),
+	reactionAchievementFactory('領収書が捨てられる', 'yatta-', 5),
+	reactionAchievementFactory('まだまだ上がある', '100', 5),
+	reactionAchievementFactory('くぅーっ‼️', 'oxtu', 5),
+	reactionAchievementFactory('男達が後ろから撃たれるチャンネル', 'otaku', 5),
+	reactionAchievementFactory('「友ある者は、敗残者ではない」', 'waiwai', 5),
+	reactionAchievementFactory('非エモーショナル', 'hie-', 5),
+	reactionAchievementFactory('お気の毒に...', 'pensive', 5),
 
 	{
 		id: 'reaction-koresuki-5-first-reaction-1',

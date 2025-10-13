@@ -83,20 +83,33 @@ const unlockReactionCountAchievements = async (event: ReactionAddedEvent) => {
 	if (reactedUsers.length >= 1) {
 		const firstReactedUser = reactedUsers[0];
 
-		for (const threshold of [5, 10, 15, 20, 25, 30]) {
+		for (const threshold of [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]) {
 			if (reactedUsers.length >= threshold) {
-				const messagesKey = `reaction-${event.reaction}-${threshold}-first-reaction-messages`;
-				const achievementName = `reaction-${event.reaction}-${threshold}-first-reaction`;
+				const messagesKey = `reaction-${event.reaction}-${threshold}-messages`;
+				const counterName = `reaction-${event.reaction}-${threshold}`;
+				const firstReactionMessagesKey = `reaction-${event.reaction}-${threshold}-first-reaction-messages`;
+				const firstReactionCounterName = `reaction-${event.reaction}-${threshold}-first-reaction`;
 
 				mutex.runExclusive(async () => {
-					const reactionMessages = (await get(firstReactedUser, messagesKey)) || [];
-					if (!Array.isArray(reactionMessages)) {
-						log.error(`Invalid reaction messages for ${firstReactedUser} on ${messagesKey}: ${JSON.stringify(reactionMessages)}`);
+					const messages = (await get(event.item_user, messagesKey)) || [];
+					if (!Array.isArray(messages)) {
+						log.error(`Invalid reaction messages for ${event.item_user} on ${messagesKey}: ${JSON.stringify(messages)}`);
 						return;
 					}
-					if (!reactionMessages.includes(event.item.ts)) {
-						await set(firstReactedUser, messagesKey, [...reactionMessages, event.item.ts]);
-						await increment(firstReactedUser, achievementName, 1, messageURL);
+					if (!messages.includes(event.item.ts)) {
+						await set(event.item_user, messagesKey, [...messages, event.item.ts]);
+						await increment(event.item_user, counterName, 1, messageURL);
+						await increment(event.item_user, `reaction-${threshold}-reactions`, 1, messageURL);
+					}
+
+					const firstReactionMessages = (await get(firstReactedUser, firstReactionMessagesKey)) || [];
+					if (!Array.isArray(firstReactionMessages)) {
+						log.error(`Invalid reaction messages for ${firstReactedUser} on ${firstReactionMessagesKey}: ${JSON.stringify(firstReactionMessages)}`);
+						return;
+					}
+					if (!firstReactionMessages.includes(event.item.ts)) {
+						await set(firstReactedUser, firstReactionMessagesKey, [...firstReactionMessages, event.item.ts]);
+						await increment(firstReactedUser, firstReactionCounterName, 1, messageURL);
 						await increment(firstReactedUser, `reaction-${threshold}-reactions-first-reaction`, 1, messageURL);
 					}
 				});
@@ -316,23 +329,6 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 				if (typeof counterValue === 'number' && counterValue >= achievement.value) {
 					unlock(userId, achievement.id);
 				}
-			}
-		}
-	}
-
-	// Temporal migration: Remove all achievements data with category = 'ricochet-robots' and created after 2024-07-25 and before 2024-08-08
-	const ricochetRobotsAchievements = await db.collection('achievement_data').where('category', '==', 'ricochet-robots').get();
-	for (const doc of ricochetRobotsAchievements.docs) {
-		const data = doc.data();
-		const ricochetRobotsAchievementsData = await db.collection('achievements').where('name', '==', data.id).get();
-		for (const doc2 of ricochetRobotsAchievementsData.docs) {
-			const achievementData = doc2.data();
-			if (
-				achievementData.date.toDate() > new Date('2024-07-25T00:00:00Z') &&
-				achievementData.date.toDate() < new Date('2024-08-09T00:00:00Z')
-			) {
-				await doc2.ref.delete();
-				log.debug(`${achievementData.user}の実績「${data.title}」を削除しました`);
 			}
 		}
 	}
