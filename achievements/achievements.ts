@@ -237,6 +237,7 @@ const achievements: Achievement[] = [
 	reactionAchievementFactory('「友ある者は、敗残者ではない」', 'waiwai', 5),
 	reactionAchievementFactory('非エモーショナル', 'hie-', 5),
 	reactionAchievementFactory('お気の毒に...', 'pensive', 5),
+	reactionAchievementFactory('年の功カナ💦❓', 'ojisan', 5),
 
 	{
 		id: 'reaction-koresuki-5-first-reaction-1',
