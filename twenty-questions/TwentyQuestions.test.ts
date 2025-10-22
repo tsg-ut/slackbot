@@ -6,14 +6,14 @@ import Slack from '../lib/slackMock';
 import State from '../lib/state';
 import {TwentyQuestions, type StateObj} from './TwentyQuestions';
 import openai from '../lib/openai';
-import tahoiyaLib from '../tahoiya/lib';
+import {getCandidateWords} from '../lib/candidateWords';
 
 jest.mock('axios');
 jest.mock('../lib/slackUtils');
 jest.mock('../lib/state');
 jest.mock('../lib/openai');
 jest.mock('../lib/firestore');
-jest.mock('../tahoiya/lib');
+jest.mock('../lib/candidateWords');
 jest.mock('../achievements');
 jest.mock('../lib/slack', () => ({
 	webClient: {},
@@ -27,7 +27,7 @@ jest.mock('crypto', () => ({
 const MockedState = State as MockedStateInterface<StateObj>;
 const mockedCrypto = jest.mocked(crypto);
 const mockedChatCompletionsCreate = jest.mocked(openai.chat.completions.create);
-const mockedGetCandidateWords = jest.mocked(tahoiyaLib.getCandidateWords);
+const mockedGetCandidateWords = jest.mocked(getCandidateWords);
 
 describe('twenty-questions', () => {
 	let slack: Slack = null;

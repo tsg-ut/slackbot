@@ -1,6 +1,6 @@
 import type {KnownBlock, View} from '@slack/web-api';
 import type {PlayerState, StateObj} from '../TwentyQuestions';
-import {MAX_QUESTION_LENGTH, MAX_ANSWER_LENGTH} from '../TwentyQuestions';
+import {MAX_QUESTION_LENGTH, MAX_ANSWER_LENGTH} from '../const';
 
 export default (state: StateObj, player: PlayerState): View => {
 	const questionsText =

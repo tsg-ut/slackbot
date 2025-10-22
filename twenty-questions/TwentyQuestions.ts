@@ -15,15 +15,12 @@ import {increment} from '../achievements';
 import gameStatusMessage from './views/gameStatusMessage';
 import playerModal from './views/playerModal';
 import gameLogModal from './views/gameLogModal';
+import {MAX_QUESTIONS, MAX_QUESTION_LENGTH, MAX_ANSWER_LENGTH} from './const';
 
 const mutex = new Mutex();
 const log = logger.child({bot: 'twenty-questions'});
 
 const GAME_TIMEOUT = 30 * 60 * 1000;
-
-export const MAX_QUESTIONS = 20;
-export const MAX_QUESTION_LENGTH = 30;
-export const MAX_ANSWER_LENGTH = 15;
 
 export interface Question {
 	question: string;
@@ -752,10 +749,8 @@ export class TwentyQuestions {
 			return normalized;
 		}
 
-		// AIが想定外の応答を返した場合は「答えられません」に統一する
-		// これにより、ルール違反の質問（例：「答えは何ですか？」）やAIの誤った応答が
-		// プレイヤーに適切にフィードバックされ、ゲームの一貫性が保たれる
 		log.warn(`Invalid AI response: "${response}", replacing with "答えられません"`);
+
 		return '答えられません';
 	}
 }
