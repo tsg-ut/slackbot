@@ -603,7 +603,7 @@ export class TwentyQuestions {
 					content: `プレイヤーの答え: ${answer}\nお題: ${topic}\n同一ですか？`,
 				},
 			],
-			max_completion_tokens: 10,
+			max_completion_tokens: 50,
 			reasoning_effort: 'minimal',
 		});
 
