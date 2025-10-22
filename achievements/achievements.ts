@@ -4097,7 +4097,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'twenty-questions-correct-5plus-wakaranai-1',
 		difficulty: 'hard',
-		title: '無知の知',
+		title: '「すみません、よくわかりません。」',
 		condition: '20の扉で5回以上「わかりません」と答えられた状態で正解する',
 		category: 'twenty-questions',
 		counter: 'twenty-questions-correct-5plus-wakaranai',
