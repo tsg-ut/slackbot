@@ -519,7 +519,8 @@ export class TwentyQuestions {
 					content: question,
 				},
 			],
-			max_tokens: 50,
+			max_completion_tokens: 50,
+			reasoning_effort: 'minimal',
 		});
 
 		const rawAnswer = completion.choices[0]?.message?.content?.trim() || 'わかりません';
@@ -602,7 +603,8 @@ export class TwentyQuestions {
 					content: `プレイヤーの答え: ${answer}\nお題: ${topic}\n同一ですか？`,
 				},
 			],
-			max_tokens: 10,
+			max_completion_tokens: 10,
+			reasoning_effort: 'minimal',
 		});
 
 		log.info(`Answer evaluation completion: ${JSON.stringify(completion.choices[0]?.message)}`);
