@@ -49,7 +49,6 @@ export interface GameState {
 }
 
 export interface StateObj {
-	uuid: string;
 	currentGame: GameState | null;
 }
 
@@ -79,7 +78,6 @@ export class TwentyQuestions {
 		log.info('Creating twenty-questions bot instance');
 
 		const state = await State.init<StateObj>('twenty-questions', {
-			uuid: randomUUID(),
 			currentGame: null,
 		});
 
@@ -97,14 +95,14 @@ export class TwentyQuestions {
 
 		this.#interactions.action({
 			type: 'button',
-			actionId: new RegExp(`^twenty_questions_${this.#state.uuid}_join_button$`),
+			actionId: new RegExp(`^twenty_questions_join_button$`),
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked the join button`);
 			mutex.runExclusive(() => this.handleJoinButton(payload));
 		});
 
 		this.#interactions.viewSubmission(
-			new RegExp(`^twenty_questions_${this.#state.uuid}_player_modal$`),
+			new RegExp(`^twenty_questions_player_modal$`),
 			(payload: ViewSubmitAction) => {
 				log.info(`${payload.user.name} submitted player modal`);
 				mutex.runExclusive(() => this.handleModalSubmit(payload));
@@ -113,7 +111,7 @@ export class TwentyQuestions {
 
 		this.#interactions.action({
 			type: 'button',
-			actionId: new RegExp(`^twenty_questions_${this.#state.uuid}_submit_question$`),
+			actionId: new RegExp(`^twenty_questions_submit_question$`),
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked submit question button`);
 			mutex.runExclusive(() => this.handleQuestionSubmit(payload));
@@ -121,7 +119,7 @@ export class TwentyQuestions {
 
 		this.#interactions.action({
 			type: 'button',
-			actionId: new RegExp(`^twenty_questions_${this.#state.uuid}_submit_answer$`),
+			actionId: new RegExp(`^twenty_questions_submit_answer$`),
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked submit answer button`);
 			mutex.runExclusive(() => this.handleAnswerSubmit(payload));
@@ -129,7 +127,7 @@ export class TwentyQuestions {
 
 		this.#interactions.action({
 			type: 'button',
-			actionId: new RegExp(`^twenty_questions_${this.#state.uuid}_view_log_button$`),
+			actionId: new RegExp(`^twenty_questions_view_log_button$`),
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked view log button`);
 			this.handleViewLogButton(payload);

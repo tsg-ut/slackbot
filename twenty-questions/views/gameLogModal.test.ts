@@ -120,7 +120,7 @@ describe('gameLogModal', () => {
 			.join('\n');
 
 		expect(sections).toContain('5問で正解');
-		expect(sections).toContain('20問使い切り');
+		expect(sections).toContain('不正解');
 	});
 
 	it('displays question history for player', () => {

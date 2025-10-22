@@ -25,7 +25,6 @@ jest.mock('crypto', () => ({
 }));
 
 const MockedState = State as MockedStateInterface<StateObj>;
-const mockedCrypto = jest.mocked(crypto);
 const mockedChatCompletionsCreate = jest.mocked(openai.chat.completions.create);
 const mockedGetCandidateWords = jest.mocked(getCandidateWords);
 
@@ -43,10 +42,7 @@ describe('twenty-questions', () => {
 	});
 
 	it('initializes correctly', () => {
-		expect(mockedCrypto.randomUUID).toHaveBeenCalledTimes(1);
-
 		const state = MockedState.mocks.get('twenty-questions');
-		expect(state.uuid).toBe('test-uuid');
 		expect(state.currentGame).toBe(null);
 	});
 

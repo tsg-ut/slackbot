@@ -57,7 +57,7 @@ export default (state: StateObj, player: PlayerState): View => {
 
 		return {
 			type: 'modal',
-			callback_id: `twenty_questions_${state.uuid}_player_modal`,
+			callback_id: 'twenty_questions_player_modal',
 			title: {
 				text: '20の扉',
 				type: 'plain_text',
@@ -99,7 +99,7 @@ export default (state: StateObj, player: PlayerState): View => {
 							text: '質問を送信',
 							emoji: true,
 						},
-						action_id: `twenty_questions_${state.uuid}_submit_question`,
+						action_id: 'twenty_questions_submit_question',
 						style: 'primary',
 					},
 				],
@@ -141,7 +141,7 @@ export default (state: StateObj, player: PlayerState): View => {
 						text: '答えを送信',
 						emoji: true,
 					},
-					action_id: `twenty_questions_${state.uuid}_submit_answer`,
+					action_id: 'twenty_questions_submit_answer',
 					style: 'danger',
 				},
 			],
@@ -153,7 +153,7 @@ export default (state: StateObj, player: PlayerState): View => {
 
 	return {
 		type: 'modal',
-		callback_id: `twenty_questions_${state.uuid}_player_modal`,
+		callback_id: 'twenty_questions_player_modal',
 		title: {
 			text: '20の扉',
 			type: 'plain_text',
