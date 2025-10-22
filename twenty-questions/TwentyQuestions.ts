@@ -16,6 +16,7 @@ import gameStatusMessage from './views/gameStatusMessage';
 import playerModal from './views/playerModal';
 import gameLogModal from './views/gameLogModal';
 import {MAX_QUESTIONS, MAX_QUESTION_LENGTH, MAX_ANSWER_LENGTH} from './const';
+import type {CollectionReference} from 'firebase-admin/lib/firestore';
 
 const mutex = new Mutex();
 const log = logger.child({bot: 'twenty-questions'});
@@ -64,6 +65,8 @@ export interface FinishedGame {
 		questions: Question[];
 	}[];
 }
+
+const TwentyQuestionsGames = db.collection('twenty_questions_games') as CollectionReference<FinishedGame>;
 
 export class TwentyQuestions {
 	#slack: WebClient;
@@ -328,8 +331,6 @@ export class TwentyQuestions {
 	}
 
 	private async saveGameToFirestore(game: GameState) {
-		const gamesCollection = db.collection('twenty_questions_games');
-
 		const players = Object.values(game.players).map((player) => ({
 			userId: player.userId,
 			questionCount: player.questionCount,
@@ -337,15 +338,14 @@ export class TwentyQuestions {
 			questions: player.questions,
 		}));
 
-		const finishedGame: FinishedGame = {
+		await TwentyQuestionsGames.add({
 			id: game.id,
 			topic: game.topic,
 			startedAt: firestore.Timestamp.fromMillis(game.startedAt),
 			finishedAt: firestore.Timestamp.fromMillis(game.finishedAt!),
 			players,
-		};
+		});
 
-		await gamesCollection.add(finishedGame);
 		log.info(`Game ${game.id} saved to Firestore`);
 	}
 
@@ -396,8 +396,7 @@ export class TwentyQuestions {
 
 		log.info(`Fetching game log for game ID: ${gameId}`);
 
-		const gamesCollection = db.collection('twenty_questions_games');
-		const snapshot = await gamesCollection.where('id', '==', gameId).limit(1).get();
+		const snapshot = await TwentyQuestionsGames.where('id', '==', gameId).limit(1).get();
 
 		if (snapshot.empty) {
 			await this.#slack.chat.postEphemeral({
@@ -408,7 +407,7 @@ export class TwentyQuestions {
 			return;
 		}
 
-		const gameData = snapshot.docs[0].data() as FinishedGame;
+		const gameData = snapshot.docs[0].data();
 
 		await this.#slack.views.open({
 			trigger_id: payload.trigger_id,
