@@ -14,7 +14,7 @@ import {getDictionary} from '../hangman';
 import logger from '../lib/logger';
 import {SlackInterface} from '../lib/slack';
 import {Loader} from '../lib/utils';
-import {getCandidateWords} from '../tahoiya/lib';
+import {getCandidateWords} from '../lib/candidateWords';
 
 const mutex = new Mutex();
 

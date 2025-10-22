@@ -1,5 +1,4 @@
 import {randomUUID} from 'crypto';
-import type EventEmitter from 'events';
 import type {BlockAction, ViewSubmitAction} from '@slack/bolt';
 import type {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {WebClient} from '@slack/web-api';
@@ -11,7 +10,7 @@ import type {SlackInterface} from '../lib/slack';
 import State from '../lib/state';
 import db from '../lib/firestore';
 import {firestore} from 'firebase-admin';
-import {getCandidateWords} from '../tahoiya/lib';
+import {getCandidateWords} from '../lib/candidateWords';
 import {increment} from '../achievements';
 import gameStatusMessage from './views/gameStatusMessage';
 import playerModal from './views/playerModal';
@@ -21,7 +20,10 @@ const mutex = new Mutex();
 const log = logger.child({bot: 'twenty-questions'});
 
 const GAME_TIMEOUT = 30 * 60 * 1000;
-const MAX_QUESTIONS = 20;
+
+export const MAX_QUESTIONS = 20;
+export const MAX_QUESTION_LENGTH = 30;
+export const MAX_ANSWER_LENGTH = 15;
 
 export interface Question {
 	question: string;
@@ -482,7 +484,7 @@ export class TwentyQuestions {
 		}
 
 		// 長さ制限のチェック
-		if (question.length > 30) {
+		if (question.length > MAX_QUESTION_LENGTH) {
 			log.warn(`Question too long: ${question.length} characters`);
 			return;
 		}
@@ -578,7 +580,7 @@ export class TwentyQuestions {
 		}
 
 		// 長さ制限のチェック
-		if (answer.length > 15) {
+		if (answer.length > MAX_ANSWER_LENGTH) {
 			log.warn(`Answer too long: ${answer.length} characters`);
 			return;
 		}
@@ -750,6 +752,9 @@ export class TwentyQuestions {
 			return normalized;
 		}
 
+		// AIが想定外の応答を返した場合は「答えられません」に統一する
+		// これにより、ルール違反の質問（例：「答えは何ですか？」）やAIの誤った応答が
+		// プレイヤーに適切にフィードバックされ、ゲームの一貫性が保たれる
 		log.warn(`Invalid AI response: "${response}", replacing with "答えられません"`);
 		return '答えられません';
 	}

@@ -1,5 +1,6 @@
 import type {KnownBlock, View} from '@slack/web-api';
 import type {PlayerState, StateObj} from '../TwentyQuestions';
+import {MAX_QUESTION_LENGTH, MAX_ANSWER_LENGTH} from '../TwentyQuestions';
 
 export default (state: StateObj, player: PlayerState): View => {
 	const questionsText =
@@ -17,27 +18,27 @@ export default (state: StateObj, player: PlayerState): View => {
 
 	const blocks: KnownBlock[] = [
 		{
-			type: 'header' as const,
+			type: 'header',
 			text: {
-				type: 'plain_text' as const,
+				type: 'plain_text',
 				text: 'これまでの質問と回答',
 				emoji: true,
 			},
 		},
 		{
-			type: 'section' as const,
+			type: 'section',
 			text: {
-				type: 'mrkdwn' as const,
+				type: 'mrkdwn',
 				text: questionsText,
 			},
 		},
 		{
-			type: 'divider' as const,
+			type: 'divider',
 		},
 		{
-			type: 'section' as const,
+			type: 'section',
 			text: {
-				type: 'mrkdwn' as const,
+				type: 'mrkdwn',
 				text: `質問回数: ${player.questionCount} / 20`,
 			},
 		},
@@ -45,9 +46,9 @@ export default (state: StateObj, player: PlayerState): View => {
 
 	if (player.isFinished) {
 		blocks.push({
-			type: 'section' as const,
+			type: 'section',
 			text: {
-				type: 'mrkdwn' as const,
+				type: 'mrkdwn',
 				text: player.score !== null
 					? `🎉 ＊正解済み！＊ (${player.score}問で正解)`
 					: '❌ ＊ゲーム終了＊ (20問使い切りました)',
@@ -70,41 +71,41 @@ export default (state: StateObj, player: PlayerState): View => {
 	if (player.questionCount < 19) {
 		blocks.push(
 			{
-				type: 'input' as const,
+				type: 'input',
 				block_id: 'question_input',
 				optional: true,
 				element: {
-					type: 'plain_text_input' as const,
+					type: 'plain_text_input',
 					action_id: 'question_input_field',
-					max_length: 30,
+					max_length: MAX_QUESTION_LENGTH,
 					placeholder: {
-						type: 'plain_text' as const,
+						type: 'plain_text',
 						text: '「はい」「いいえ」で答えられる質問を入力',
 					},
 				},
 				label: {
-					type: 'plain_text' as const,
-					text: '質問する (最大30文字)',
+					type: 'plain_text',
+					text: `質問する (最大${MAX_QUESTION_LENGTH}文字)`,
 				},
 			},
 			{
-				type: 'actions' as const,
+				type: 'actions',
 				block_id: 'question_actions',
 				elements: [
 					{
-						type: 'button' as const,
+						type: 'button',
 						text: {
-							type: 'plain_text' as const,
+							type: 'plain_text',
 							text: '質問を送信',
 							emoji: true,
 						},
 						action_id: `twenty_questions_${state.uuid}_submit_question`,
-						style: 'primary' as const,
+						style: 'primary',
 					},
 				],
 			},
 			{
-				type: 'divider' as const,
+				type: 'divider',
 			},
 		);
 	}
@@ -112,36 +113,36 @@ export default (state: StateObj, player: PlayerState): View => {
 	// 答えセクションは常に表示
 	blocks.push(
 		{
-			type: 'input' as const,
+			type: 'input',
 			block_id: 'answer_input',
 			optional: true,
 			element: {
-				type: 'plain_text_input' as const,
+				type: 'plain_text_input',
 				action_id: 'answer_input_field',
-				max_length: 15,
+				max_length: MAX_ANSWER_LENGTH,
 				placeholder: {
-					type: 'plain_text' as const,
+					type: 'plain_text',
 					text: 'お題だと思う単語を入力',
 				},
 			},
 			label: {
-				type: 'plain_text' as const,
-				text: '答えを当てる (最大15文字)',
+				type: 'plain_text',
+				text: `答えを当てる (最大${MAX_ANSWER_LENGTH}文字)`,
 			},
 		},
 		{
-			type: 'actions' as const,
+			type: 'actions',
 			block_id: 'answer_actions',
 			elements: [
 				{
-					type: 'button' as const,
+					type: 'button',
 					text: {
-						type: 'plain_text' as const,
+						type: 'plain_text',
 						text: '答えを送信',
 						emoji: true,
 					},
 					action_id: `twenty_questions_${state.uuid}_submit_answer`,
-					style: 'danger' as const,
+					style: 'danger',
 				},
 			],
 		},
