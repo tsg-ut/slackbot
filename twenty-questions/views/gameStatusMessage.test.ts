@@ -131,6 +131,7 @@ describe('gameStatusMessage', () => {
 		expect(viewLogButton).toBeDefined();
 		expectEquals(viewLogButton.type, 'button');
 		expect(viewLogButton.action_id).toBe('twenty_questions_test-uuid_view_log_button');
+		expect('value' in viewLogButton && viewLogButton.value).toBe('game-1');
 	});
 
 	it('shows ranking with correct players', () => {

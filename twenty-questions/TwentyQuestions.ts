@@ -384,18 +384,37 @@ export class TwentyQuestions {
 	}
 
 	private async handleViewLogButton(payload: BlockAction) {
-		if (!this.#state.currentGame) {
+		const action = 'actions' in payload && payload.actions?.[0];
+		if (!action || !('value' in action)) {
+			log.error('No action or value found in payload');
+			return;
+		}
+
+		const gameId = action.value;
+		if (!gameId) {
+			log.error('No game ID found in button value');
+			return;
+		}
+
+		log.info(`Fetching game log for game ID: ${gameId}`);
+
+		const gamesCollection = db.collection('twenty_questions_games');
+		const snapshot = await gamesCollection.where('id', '==', gameId).limit(1).get();
+
+		if (snapshot.empty) {
 			await this.#slack.chat.postEphemeral({
 				channel: payload.channel?.id ?? this.#SANDBOX_ID,
 				user: payload.user.id,
-				text: '現在進行中のゲームはありません。',
+				text: 'ゲームログが見つかりませんでした。',
 			});
 			return;
 		}
 
+		const gameData = snapshot.docs[0].data() as FinishedGame;
+
 		await this.#slack.views.open({
 			trigger_id: payload.trigger_id,
-			view: gameLogModal(this.#state),
+			view: gameLogModal(gameData),
 		});
 	}
 

@@ -136,6 +136,7 @@ export default (state: StateObj): KnownBlock[] => {
 							emoji: true,
 						},
 						action_id: `twenty_questions_${state.uuid}_view_log_button`,
+						value: currentGame.id,
 						style: 'primary',
 					},
 				],

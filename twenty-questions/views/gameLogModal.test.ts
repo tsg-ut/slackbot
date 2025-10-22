@@ -1,46 +1,25 @@
 /* eslint-env jest */
 
 import gameLogModal from './gameLogModal';
-import type {StateObj} from '../TwentyQuestions';
+import type {FinishedGame} from '../TwentyQuestions';
 import type {KnownBlock} from '@slack/web-api';
+import {firestore} from 'firebase-admin';
 
 const expectEquals: <S, T extends S>(actual: S, expected: T) => asserts actual is T = <S, T extends S>(actual: S, expected: T) => {
 	expect(actual).toBe(expected);
 };
 
 describe('gameLogModal', () => {
-	it('shows message when no game exists', () => {
-		const state: StateObj = {
-			uuid: 'test-uuid',
-			currentGame: null,
-		};
-
-		const view = gameLogModal(state);
-
-		expectEquals(view.type, 'modal');
-		expect(view.title?.text).toBe('ゲームログ');
-
-		const blocks = view.blocks as KnownBlock[];
-		const section = blocks.find((block) => block.type === 'section');
-		expectEquals(section?.type, 'section');
-		expect(section.text.text).toBe('ゲームが見つかりません。');
-	});
-
 	it('shows topic in header', () => {
-		const state: StateObj = {
-			uuid: 'test-uuid',
-			currentGame: {
-				id: 'game-1',
-				topic: 'りんご',
-				status: 'active',
-				startedAt: Date.now(),
-				finishedAt: null,
-				players: {},
-				statusMessageTs: '1234567890.123456',
-			},
+		const game: FinishedGame = {
+			id: 'game-1',
+			topic: 'りんご',
+			startedAt: firestore.Timestamp.now(),
+			finishedAt: firestore.Timestamp.now(),
+			players: [],
 		};
 
-		const view = gameLogModal(state);
+		const view = gameLogModal(game);
 
 		const blocks = view.blocks as KnownBlock[];
 		const header = blocks.find((block) => block.type === 'header');
@@ -49,20 +28,15 @@ describe('gameLogModal', () => {
 	});
 
 	it('shows message when no players', () => {
-		const state: StateObj = {
-			uuid: 'test-uuid',
-			currentGame: {
-				id: 'game-1',
-				topic: 'りんご',
-				status: 'active',
-				startedAt: Date.now(),
-				finishedAt: null,
-				players: {},
-				statusMessageTs: '1234567890.123456',
-			},
+		const game: FinishedGame = {
+			id: 'game-1',
+			topic: 'りんご',
+			startedAt: firestore.Timestamp.now(),
+			finishedAt: firestore.Timestamp.now(),
+			players: [],
 		};
 
-		const view = gameLogModal(state);
+		const view = gameLogModal(game);
 
 		const blocks = view.blocks as KnownBlock[];
 		const section = blocks.find(
@@ -72,42 +46,34 @@ describe('gameLogModal', () => {
 	});
 
 	it('displays correct players in order', () => {
-		const state: StateObj = {
-			uuid: 'test-uuid',
-			currentGame: {
-				id: 'game-1',
-				topic: 'りんご',
-				status: 'finished',
-				startedAt: Date.now(),
-				finishedAt: Date.now(),
-				players: {
-					U123: {
-						userId: 'U123',
-						questions: [],
-						questionCount: 10,
-						isFinished: true,
-						score: 10,
-					},
-					U456: {
-						userId: 'U456',
-						questions: [],
-						questionCount: 5,
-						isFinished: true,
-						score: 5,
-					},
-					U789: {
-						userId: 'U789',
-						questions: [],
-						questionCount: 15,
-						isFinished: true,
-						score: null, // 失敗
-					},
+		const game: FinishedGame = {
+			id: 'game-1',
+			topic: 'りんご',
+			startedAt: firestore.Timestamp.now(),
+			finishedAt: firestore.Timestamp.now(),
+			players: [
+				{
+					userId: 'U123',
+					questions: [],
+					questionCount: 10,
+					score: 10,
 				},
-				statusMessageTs: '1234567890.123456',
-			},
+				{
+					userId: 'U456',
+					questions: [],
+					questionCount: 5,
+					score: 5,
+				},
+				{
+					userId: 'U789',
+					questions: [],
+					questionCount: 15,
+					score: null,
+				},
+			],
 		};
 
-		const view = gameLogModal(state);
+		const view = gameLogModal(game);
 
 		const blocks = view.blocks as KnownBlock[];
 		const sections = blocks.filter((block) => block.type === 'section');
@@ -124,42 +90,28 @@ describe('gameLogModal', () => {
 	});
 
 	it('shows player status correctly', () => {
-		const state: StateObj = {
-			uuid: 'test-uuid',
-			currentGame: {
-				id: 'game-1',
-				topic: 'りんご',
-				status: 'active',
-				startedAt: Date.now(),
-				finishedAt: null,
-				players: {
-					U123: {
-						userId: 'U123',
-						questions: [],
-						questionCount: 5,
-						isFinished: true,
-						score: 5,
-					},
-					U456: {
-						userId: 'U456',
-						questions: [],
-						questionCount: 20,
-						isFinished: true,
-						score: null,
-					},
-					U789: {
-						userId: 'U789',
-						questions: [],
-						questionCount: 3,
-						isFinished: false,
-						score: null,
-					},
+		const game: FinishedGame = {
+			id: 'game-1',
+			topic: 'りんご',
+			startedAt: firestore.Timestamp.now(),
+			finishedAt: firestore.Timestamp.now(),
+			players: [
+				{
+					userId: 'U123',
+					questions: [],
+					questionCount: 5,
+					score: 5,
 				},
-				statusMessageTs: '1234567890.123456',
-			},
+				{
+					userId: 'U456',
+					questions: [],
+					questionCount: 20,
+					score: null,
+				},
+			],
 		};
 
-		const view = gameLogModal(state);
+		const view = gameLogModal(game);
 
 		const blocks = view.blocks as KnownBlock[];
 		const sections = blocks
@@ -169,45 +121,38 @@ describe('gameLogModal', () => {
 
 		expect(sections).toContain('5問で正解');
 		expect(sections).toContain('20問使い切り');
-		expect(sections).toContain('プレイ中');
 	});
 
 	it('displays question history for player', () => {
-		const state: StateObj = {
-			uuid: 'test-uuid',
-			currentGame: {
-				id: 'game-1',
-				topic: 'りんご',
-				status: 'active',
-				startedAt: Date.now(),
-				finishedAt: null,
-				players: {
-					U123: {
-						userId: 'U123',
-						questions: [
-							{
-								question: '食べ物ですか？',
-								answer: 'はい',
-								timestamp: Date.now(),
-								isAnswerAttempt: false,
-							},
-							{
-								question: '果物ですか？',
-								answer: 'はい',
-								timestamp: Date.now(),
-								isAnswerAttempt: false,
-							},
-						],
-						questionCount: 2,
-						isFinished: false,
-						score: null,
-					},
+		const game: FinishedGame = {
+			id: 'game-1',
+			topic: 'りんご',
+			startedAt: firestore.Timestamp.now(),
+			finishedAt: firestore.Timestamp.now(),
+			players: [
+				{
+					userId: 'U123',
+					questions: [
+						{
+							question: '食べ物ですか？',
+							answer: 'はい',
+							timestamp: Date.now(),
+							isAnswerAttempt: false,
+						},
+						{
+							question: '果物ですか？',
+							answer: 'はい',
+							timestamp: Date.now(),
+							isAnswerAttempt: false,
+						},
+					],
+					questionCount: 2,
+					score: null,
 				},
-				statusMessageTs: '1234567890.123456',
-			},
+			],
 		};
 
-		const view = gameLogModal(state);
+		const view = gameLogModal(game);
 
 		const blocks = view.blocks as KnownBlock[];
 		const sections = blocks
@@ -222,41 +167,35 @@ describe('gameLogModal', () => {
 	});
 
 	it('shows answer attempts with correct formatting', () => {
-		const state: StateObj = {
-			uuid: 'test-uuid',
-			currentGame: {
-				id: 'game-1',
-				topic: 'りんご',
-				status: 'active',
-				startedAt: Date.now(),
-				finishedAt: null,
-				players: {
-					U123: {
-						userId: 'U123',
-						questions: [
-							{
-								question: '食べ物ですか？',
-								answer: 'はい',
-								timestamp: Date.now(),
-								isAnswerAttempt: false,
-							},
-							{
-								question: 'みかん',
-								answer: '不正解です',
-								timestamp: Date.now(),
-								isAnswerAttempt: true,
-							},
-						],
-						questionCount: 2,
-						isFinished: false,
-						score: null,
-					},
+		const game: FinishedGame = {
+			id: 'game-1',
+			topic: 'りんご',
+			startedAt: firestore.Timestamp.now(),
+			finishedAt: firestore.Timestamp.now(),
+			players: [
+				{
+					userId: 'U123',
+					questions: [
+						{
+							question: '食べ物ですか？',
+							answer: 'はい',
+							timestamp: Date.now(),
+							isAnswerAttempt: false,
+						},
+						{
+							question: 'みかん',
+							answer: '不正解です',
+							timestamp: Date.now(),
+							isAnswerAttempt: true,
+						},
+					],
+					questionCount: 2,
+					score: null,
 				},
-				statusMessageTs: '1234567890.123456',
-			},
+			],
 		};
 
-		const view = gameLogModal(state);
+		const view = gameLogModal(game);
 
 		const blocks = view.blocks as KnownBlock[];
 		const sections = blocks
@@ -269,28 +208,22 @@ describe('gameLogModal', () => {
 	});
 
 	it('shows empty message when player has no questions', () => {
-		const state: StateObj = {
-			uuid: 'test-uuid',
-			currentGame: {
-				id: 'game-1',
-				topic: 'りんご',
-				status: 'active',
-				startedAt: Date.now(),
-				finishedAt: null,
-				players: {
-					U123: {
-						userId: 'U123',
-						questions: [],
-						questionCount: 1,
-						isFinished: false,
-						score: null,
-					},
+		const game: FinishedGame = {
+			id: 'game-1',
+			topic: 'りんご',
+			startedAt: firestore.Timestamp.now(),
+			finishedAt: firestore.Timestamp.now(),
+			players: [
+				{
+					userId: 'U123',
+					questions: [],
+					questionCount: 1,
+					score: null,
 				},
-				statusMessageTs: '1234567890.123456',
-			},
+			],
 		};
 
-		const view = gameLogModal(state);
+		const view = gameLogModal(game);
 
 		const blocks = view.blocks as KnownBlock[];
 		const sections = blocks
