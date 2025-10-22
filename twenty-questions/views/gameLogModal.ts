@@ -13,6 +13,13 @@ export default (game: FinishedGame): View => {
 			},
 		},
 		{
+			type: 'section',
+			text: {
+				type: 'mrkdwn',
+				text: `*【データシート】*\n${game.topicDescription}`,
+			},
+		},
+		{
 			type: 'divider',
 		},
 	];

@@ -42,6 +42,7 @@ export interface PlayerState {
 export interface GameState {
 	id: string;
 	topic: string;
+	topicDescription: string;
 	status: 'active' | 'finished';
 	startedAt: number;
 	finishedAt: number | null;
@@ -56,6 +57,7 @@ export interface StateObj {
 export interface FinishedGame {
 	id: string;
 	topic: string;
+	topicDescription: string;
 	startedAt: firestore.Timestamp;
 	finishedAt: firestore.Timestamp;
 	players: {
@@ -163,12 +165,16 @@ export class TwentyQuestions {
 		const topic = await this.selectTopic();
 		log.info(`Selected topic: ${topic}`);
 
+		const topicDescription = await this.generateTopicDescription(topic);
+		log.info(`Generated topic description: ${topicDescription}`);
+
 		const gameId = randomUUID();
 		const now = Date.now();
 
 		const newGame: GameState = {
 			id: gameId,
 			topic,
+			topicDescription,
 			status: 'active',
 			startedAt: now,
 			finishedAt: null,
@@ -189,6 +195,67 @@ export class TwentyQuestions {
 		this.#state.currentGame.statusMessageTs = result.ts;
 
 		this.scheduleGameEnd(newGame);
+	}
+
+	private async generateTopicDescription(topic: string): Promise<string> {
+		log.info(`Generating description for topic: ${topic}`);
+
+		const completion = await openai.chat.completions.create({
+			model: 'gpt-5-mini',
+			messages: [
+				{
+					role: 'system',
+					content:
+						`あなたは「20の扉」の質問に答えるアシスタントです。正解となるお題は「${topic}」です。\n` +
+						`\n` +
+						`質問に対して統一した回答ができるよう、「${topic}」に関する基本的なデータを300文字程度でまとめてください。以下は説明の例です。\n` +
+						`\n` +
+						`お題: 谷\n` +
+						`説明: 山と山の間にある低くくぼんだ地形。川が流れることが多く、侵食によって形成される。\n` +
+						`大きさ: 決まった大きさを持たないが、人間よりは遥かに大きい。小さいもので数十メートル、大きいものでは数千キロメートル程度。\n` +
+						`材質: 無機物。土や岩などでできている。\n` +
+						`色: 様々なものがある。代表的な色は、茶色・赤色・黄色など。\n` +
+						`用途: 自然の地形であり、使用するものではない。\n` +
+						`場所: 国や地方を問わず、さまざまな場所に存在する。\n` +
+						`形: 山々に挟まれた細長い地形で、U字型やV字型などがある。\n` +
+						`触感: 固い。地面や岩などの感触を持つ。\n` +
+						`味: 味はない。食べることができない。\n` +
+						`\n` +
+						`お題: オムライス\n` +
+						`説明: チキンライスを薄焼き卵で包んだ日本発祥の洋食料理。明治時代末期から大正時代に考案されたとされる。\n` +
+						`大きさ: 一人前で直径15〜20センチメートル程度、高さ5〜8センチメートル程度。手のひらに収まるサイズ。\n` +
+						`材質: 有機物。主な材料はご飯、卵、鶏肉、玉ねぎ、ケチャップなど。\n` +
+						`色: 外側は黄色(卵の色)。中身は赤色やオレンジ色(ケチャップライス)。上からかけるケチャップやデミグラスソースで赤色や茶色が加わることもあるが、全体的に見たら黄色いと言える。\n` +
+						`用途: 食べ物。食事やランチとして提供される。\n` +
+						`場所: 日本の洋食レストラン、喫茶店、カフェ、家庭など。現在は世界各地の日本食レストランでも見られる。\n` +
+						`形: 楕円形や俵型が一般的。ふんわりとした半熟卵でとろとろに仕上げるスタイルもある。\n` +
+						`触感: 外側は柔らかく滑らか。中のライスはほろほろとしている。温かい。\n` +
+						`味: ケチャップの甘酸っぱさと卵のまろやかさが特徴。鶏肉や玉ねぎなどの具材の旨味もある。\n` +
+						`\n` +
+						`お題: ハリネズミ\n` +
+						`説明: 背中に針のような棘を持つ小型の哺乳類。夜行性で、危険を感じると体を丸めて棘で身を守る。昆虫や小動物を食べる雑食性。\n` +
+						`大きさ: 体長15〜30センチメートル程度、体重400〜1200グラム程度。両手で抱えられるサイズ。\n` +
+						`材質: 有機物。柔らかい毛と硬い針状の棘で覆われている。\n` +
+						`色: 茶色、灰色、白色など。棘は茶色と白のまだら模様が一般的だが、品種により異なる。顔や腹部は薄い茶色や灰色。\n` +
+						`用途: ペットとして飼育される。野生では害虫を食べるため生態系の一部として機能する。使役動物ではない。\n` +
+						`場所: 野生ではヨーロッパ、アジア、アフリカの森林や草原に生息。日本には野生個体はいないが、ペットとして家庭で飼育される。\n` +
+						`形: 丸みを帯びた体型で、尖った鼻と小さな耳を持つ。四本の短い脚がある。丸まると球状になる。\n` +
+						`触感: 背中は針状の棘で覆われ、触ると硬くチクチクする。腹部は柔らかい毛で覆われている。温かい。\n` +
+						`味: 味はない。ペット動物であり、食用ではない。`,
+				},
+				{
+					role: 'user',
+					content: `お題: ${topic}`,
+				},
+			],
+			max_completion_tokens: 800,
+			reasoning_effort: 'minimal',
+		});
+
+		const description = completion.choices[0]?.message?.content?.trim() || '';
+		log.info(`Generated description: ${description}`);
+
+		return description;
 	}
 
 	private async selectTopic(): Promise<string> {
@@ -214,6 +281,7 @@ export class TwentyQuestions {
 							'2. 具体的な実体があるものを指す単語であること\n' +
 							'3. 複合語(例: 「電気自動車」「あじさい園」「りんご売り」など)は避けること\n' +
 							'4. なるべく簡単で、多くの人が知っている単語であること\n' +
+							'5. 広すぎる意味を持つ単語(例: 「おもちゃ」「建物」「乗り物」「食べ物」「動物」など)は避け、より具体的な単語を選ぶこと\n' +
 							'単語のみを回答してください。説明は不要です。',
 					},
 					{
@@ -243,6 +311,7 @@ export class TwentyQuestions {
 						'2. 具体的な実体があるものを指す単語であること\n' +
 						'3. 複合語(例: 「電気自動車」「あじさい園」「りんご売り」など)は避けること\n' +
 						'4. なるべく簡単で、多くの人が知っている単語であること\n' +
+						'5. 広すぎる意味を持つ単語(例: 「おもちゃ」「建物」「乗り物」「食べ物」「動物」など)は避け、より具体的な単語を選ぶこと\n' +
 						'抽出された単語リストのみを回答してください。説明は不要です。',
 				},
 				{
@@ -301,6 +370,15 @@ export class TwentyQuestions {
 			icon_emoji: ':door:',
 		});
 
+		await this.#slack.chat.postMessage({
+			channel: this.#SANDBOX_ID,
+			thread_ts: this.#state.currentGame.statusMessageTs ?? undefined,
+			reply_broadcast: false,
+			text: `【データシート】\n${this.#state.currentGame.topicDescription}`,
+			username: '20の扉',
+			icon_emoji: ':door:',
+		});
+
 		// ランキング1位の実績を付与
 		const correctPlayers = Object.values(this.#state.currentGame.players)
 			.filter((p) => p.score !== null)
@@ -341,6 +419,7 @@ export class TwentyQuestions {
 		await TwentyQuestionsGames.add({
 			id: game.id,
 			topic: game.topic,
+			topicDescription: game.topicDescription,
 			startedAt: firestore.Timestamp.fromMillis(game.startedAt),
 			finishedAt: firestore.Timestamp.fromMillis(game.finishedAt!),
 			players,
@@ -503,6 +582,7 @@ export class TwentyQuestions {
 		}
 
 		const topic = this.#state.currentGame.topic;
+		const topicDescription = this.#state.currentGame.topicDescription;
 
 		const completion = await openai.chat.completions.create({
 			model: 'gpt-5-mini',
@@ -510,29 +590,37 @@ export class TwentyQuestions {
 				{
 					role: 'system',
 					content:
-						`あなたは「20の扉」ゲームのアシスタントです。お題は「${topic}」です。\n` +
+						`あなたは「20の扉」ゲームのアシスタントです。正解となるお題は「${topic}」です。\n` +
+						`\n` +
+						`以下は、お題「${topic}」に関する基本的な情報です。この情報に基づいて、一貫した回答を行ってください：\n` +
+						`${topicDescription}\n` +
 						`\n` +
 						`プレイヤーからの質問に対して、以下のいずれか一つのみで答えてください：\n` +
 						`- はい\n` +
 						`- いいえ\n` +
 						`- どちらかと言えばはい\n` +
 						`- どちらかと言えばいいえ\n` +
+						`- どちらともいえない\n` +
 						`- わかりません\n` +
 						`- 答えられません\n` +
 						`\n` +
 						`重要な注意事項：\n` +
+						`- 上記の基本情報を常に参照し、一貫した回答を心がけてください\n` +
 						`- 「はい」または「いいえ」で答えられない質問（例：「答えはなんですか？」「中身は何ですか？」など）には必ず「答えられません」と答えてください\n` +
-						`- 上記の6つの選択肢以外の回答は絶対にしないでください\n` +
+						`- 上記の7つの選択肢以外の回答は絶対にしないでください\n` +
 						`- 説明や補足は一切不要です\n` +
 						`- 句点（。）は付けても付けなくても構いません`,
 				},
 				...player.questions.filter((q) => !q.isAnswerAttempt).map((q) => [
-					{role: 'user' as const, content: q.question},
+					{
+						role: 'user' as const,
+						content: `お題: ${topic}\nプレイヤーからの質問: ${q.question}`,
+					},
 					{role: 'assistant' as const, content: q.answer},
 				]).flat(),
 				{
 					role: 'user',
-					content: question,
+					content: `お題: ${topic}\nプレイヤーからの質問: ${question}`,
 				},
 			],
 			max_completion_tokens: 50,
@@ -601,6 +689,10 @@ export class TwentyQuestions {
 
 		const topic = this.#state.currentGame.topic;
 
+		// Letter/Number以外の文字を除去して正規化
+		const normalizedAnswer = this.normalizeAnswer(answer);
+		const normalizedTopic = this.normalizeAnswer(topic);
+
 		player.questionCount++;
 
 		const completion = await openai.chat.completions.create({
@@ -610,13 +702,13 @@ export class TwentyQuestions {
 					role: 'system',
 					content:
 						`あなたは「20の扉」ゲームの回答を判定するアシスタントです。` +
-						`お題は「${topic}」です。` +
-						`プレイヤーの答え「${answer}」がお題と同一であるかどうかを判定してください。` +
+						`お題は「${normalizedTopic}」です。` +
+						`プレイヤーの答え「${normalizedAnswer}」がお題と同一であるかどうかを判定してください。` +
 						`「YES」または「NO」のみで答えてください。説明は不要です。`,
 				},
 				{
 					role: 'user',
-					content: `プレイヤーの答え: ${answer}\nお題: ${topic}\n同一ですか？`,
+					content: `プレイヤーの答え: ${normalizedAnswer}\nお題: ${normalizedTopic}\n同一ですか？`,
 				},
 			],
 			max_completion_tokens: 50,
@@ -751,6 +843,12 @@ export class TwentyQuestions {
 		}
 	}
 
+	private normalizeAnswer(text: string): string {
+		// Unicode CategoryがLetterまたはNumberの文字のみを保持
+		// \p{L} = Letter, \p{N} = Number
+		return text.replace(/[^\p{L}\p{N}]/gu, '');
+	}
+
 	private validateAIResponse(response: string): string {
 		const normalized = response.replace(/[。、]/g, '').trim();
 
@@ -759,6 +857,7 @@ export class TwentyQuestions {
 			'いいえ',
 			'どちらかと言えばはい',
 			'どちらかと言えばいいえ',
+			'どちらともいえない',
 			'わかりません',
 			'答えられません',
 		];

@@ -13,6 +13,7 @@ describe('playerModal', () => {
 		currentGame: {
 			id: 'game-1',
 			topic: 'テスト',
+			topicDescription: 'テスト説明',
 			status: 'active',
 			startedAt: Date.now(),
 			finishedAt: null,
