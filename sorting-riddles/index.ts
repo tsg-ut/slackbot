@@ -3,8 +3,8 @@ import type { SlackInterface } from '../lib/slack';
 import axios from 'axios';
 import { stripIndent } from 'common-tags';
 import sample from 'lodash/sample';
-// @ts-expect-error
-import { getPageTitle, getWordUrl, getCandidateWords } from '../tahoiya/lib';
+import { getPageTitle, getWordUrl } from '../tahoiya/lib';
+import { getCandidateWords } from '../lib/candidateWords';
 import { unlock, increment } from '../achievements';
 
 interface ChatPostMessageResult extends WebAPICallResult {

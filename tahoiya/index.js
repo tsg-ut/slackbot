@@ -22,6 +22,7 @@ const sql = require('sql-template-strings');
 const sqlite = require('sqlite');
 const sqlite3 = require('sqlite3');
 const {unlock, increment} = require('../achievements');
+const {getCandidateWords} = require('../lib/candidateWords.ts');
 const getReading = require('../lib/getReading.js');
 
 const {default: logger} = require('../lib/logger.ts');
@@ -33,7 +34,6 @@ const {
 	getIconUrl,
 	getTimeLink,
 	getMeaning,
-	getCandidateWords,
 	normalizeMeaning,
 } = require('./lib.js');
 
@@ -999,7 +999,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 
 						const [word, ruby, rawMeaning, source, url] = themeTokens;
 						const meaning = normalizeMeaning(rawMeaning);
-						const urlMatch = /^<(?<extractedUrl>.+?)(?:\|.+)?>$/.exec(url);
+						const urlMatch = (/^<(?<extractedUrl>.+?)(?:\|.+)?>$/).exec(url);
 
 						const existingRecord = await db.get(sql`
 							SELECT 1

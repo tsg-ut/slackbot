@@ -142,6 +142,7 @@ const productionBots = [
 	'city-symbol',
 	'nmpz',
 	'autogen-quiz',
+	'twenty-questions',
 ];
 
 const developmentBots = [
