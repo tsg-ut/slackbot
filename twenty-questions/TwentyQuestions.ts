@@ -609,7 +609,7 @@ export class TwentyQuestions {
 		log.info(`Answer evaluation completion: ${JSON.stringify(completion.choices[0]?.message)}`);
 
 		const isCorrect =
-			!answer.toUpperCase().includes('YES') &&
+			answer.trim().toUpperCase() !== 'YES' &&
 			completion.choices[0]?.message?.content?.trim().toUpperCase() === 'YES';
 
 		player.questions.push({
