@@ -95,14 +95,14 @@ export class TwentyQuestions {
 
 		this.#interactions.action({
 			type: 'button',
-			actionId: new RegExp(`^twenty_questions_join_button$`),
+			actionId: 'twenty_questions_join_button',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked the join button`);
 			mutex.runExclusive(() => this.handleJoinButton(payload));
 		});
 
 		this.#interactions.viewSubmission(
-			new RegExp(`^twenty_questions_player_modal$`),
+			'twenty_questions_player_modal',
 			(payload: ViewSubmitAction) => {
 				log.info(`${payload.user.name} submitted player modal`);
 				mutex.runExclusive(() => this.handleModalSubmit(payload));
@@ -111,7 +111,7 @@ export class TwentyQuestions {
 
 		this.#interactions.action({
 			type: 'button',
-			actionId: new RegExp(`^twenty_questions_submit_question$`),
+			actionId: 'twenty_questions_submit_question',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked submit question button`);
 			mutex.runExclusive(() => this.handleQuestionSubmit(payload));
@@ -119,7 +119,7 @@ export class TwentyQuestions {
 
 		this.#interactions.action({
 			type: 'button',
-			actionId: new RegExp(`^twenty_questions_submit_answer$`),
+			actionId: 'twenty_questions_submit_answer',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked submit answer button`);
 			mutex.runExclusive(() => this.handleAnswerSubmit(payload));
@@ -127,7 +127,7 @@ export class TwentyQuestions {
 
 		this.#interactions.action({
 			type: 'button',
-			actionId: new RegExp(`^twenty_questions_view_log_button$`),
+			actionId: 'twenty_questions_view_log_button',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked view log button`);
 			this.handleViewLogButton(payload);
