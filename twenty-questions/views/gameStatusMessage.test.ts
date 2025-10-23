@@ -31,6 +31,7 @@ describe('gameStatusMessage', () => {
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
+				topicRuby: 'りんご',
 				topicDescription: 'テスト説明',
 				status: 'active',
 				startedAt: Date.now(),
@@ -54,6 +55,7 @@ describe('gameStatusMessage', () => {
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
+				topicRuby: 'りんご',
 				topicDescription: 'テスト説明',
 				status: 'finished',
 				startedAt: Date.now(),
@@ -83,6 +85,7 @@ describe('gameStatusMessage', () => {
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
+				topicRuby: 'りんご',
 				topicDescription: 'テスト説明',
 				status: 'active',
 				startedAt: Date.now(),
@@ -110,6 +113,7 @@ describe('gameStatusMessage', () => {
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
+				topicRuby: 'りんご',
 				topicDescription: 'テスト説明',
 				status: 'finished',
 				startedAt: Date.now(),
@@ -138,6 +142,7 @@ describe('gameStatusMessage', () => {
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
+				topicRuby: 'りんご',
 				topicDescription: 'テスト説明',
 				status: 'active',
 				startedAt: Date.now(),
@@ -186,6 +191,7 @@ describe('gameStatusMessage', () => {
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
+				topicRuby: 'りんご',
 				topicDescription: 'テスト説明',
 				status: 'active',
 				startedAt: Date.now(),
@@ -235,6 +241,7 @@ describe('gameStatusMessage', () => {
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
+				topicRuby: 'りんご',
 				topicDescription: 'テスト説明',
 				status: 'active',
 				startedAt: Date.now(),
@@ -259,6 +266,7 @@ describe('gameStatusMessage', () => {
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
+				topicRuby: 'りんご',
 				topicDescription: 'テスト説明',
 				status: 'active',
 				startedAt: Date.now(),
@@ -292,6 +300,7 @@ describe('gameStatusMessage', () => {
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
+				topicRuby: 'りんご',
 				topicDescription: 'テスト説明',
 				status: 'active',
 				startedAt: Date.now(),

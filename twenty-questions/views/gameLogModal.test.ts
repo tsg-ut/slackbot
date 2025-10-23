@@ -14,6 +14,7 @@ describe('gameLogModal', () => {
 		const game: FinishedGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicRuby: 'りんご',
 			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
@@ -40,6 +41,7 @@ describe('gameLogModal', () => {
 		const game: FinishedGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicRuby: 'りんご',
 			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
@@ -59,6 +61,7 @@ describe('gameLogModal', () => {
 		const game: FinishedGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicRuby: 'りんご',
 			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
@@ -104,6 +107,7 @@ describe('gameLogModal', () => {
 		const game: FinishedGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicRuby: 'りんご',
 			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
@@ -139,6 +143,7 @@ describe('gameLogModal', () => {
 		const game: FinishedGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicRuby: 'りんご',
 			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
@@ -183,6 +188,7 @@ describe('gameLogModal', () => {
 		const game: FinishedGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicRuby: 'りんご',
 			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
@@ -225,6 +231,7 @@ describe('gameLogModal', () => {
 		const game: FinishedGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicRuby: 'りんご',
 			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),

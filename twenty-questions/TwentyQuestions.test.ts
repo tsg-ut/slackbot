@@ -90,7 +90,9 @@ describe('twenty-questions', () => {
 		expect(state.currentGame).not.toBe(null);
 		expect(state.currentGame?.status).toBe('active');
 		expect(state.currentGame?.topic).toBe('テスト');
-		expect(state.currentGame?.topicDescription).toBe('テスト');
+		expect(state.currentGame?.topicDescription).toContain('テスト');
+		expect(state.currentGame?.topicDescription).toContain('文字数:');
+		expect(state.currentGame?.topicDescription).toContain('読みの文字数:');
 
 		// 10回の選択 + 最終選択 + 説明文生成で12回
 		expect(mockedChatCompletionsCreate).toHaveBeenCalledTimes(12);
@@ -109,6 +111,7 @@ describe('twenty-questions', () => {
 		state.currentGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicRuby: 'りんご',
 			topicDescription: 'テスト説明',
 			status: 'active',
 			startedAt: Date.now(),
