@@ -77,6 +77,11 @@ describe('twenty-questions', () => {
 			ts: slack.fakeTimestamp,
 		});
 
+		const postEphemeral = jest.mocked(slack.webClient.chat.postEphemeral);
+		postEphemeral.mockResolvedValueOnce({
+			ok: true,
+		});
+
 		const state = MockedState.mocks.get('twenty-questions');
 		await twentyQuestions.startGame(slack.fakeUser);
 
@@ -85,9 +90,10 @@ describe('twenty-questions', () => {
 		expect(state.currentGame).not.toBe(null);
 		expect(state.currentGame?.status).toBe('active');
 		expect(state.currentGame?.topic).toBe('テスト');
+		expect(state.currentGame?.topicDescription).toBe('テスト');
 
-		// 10回の選択 + 最終選択で11回
-		expect(mockedChatCompletionsCreate).toHaveBeenCalledTimes(11);
+		// 10回の選択 + 最終選択 + 説明文生成で12回
+		expect(mockedChatCompletionsCreate).toHaveBeenCalledTimes(12);
 		expect(mockedGetCandidateWords).toHaveBeenCalledTimes(1);
 
 		expect(mockedPostMessage).toHaveBeenCalledTimes(1);
@@ -103,6 +109,7 @@ describe('twenty-questions', () => {
 		state.currentGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicDescription: 'テスト説明',
 			status: 'active',
 			startedAt: Date.now(),
 			finishedAt: null,

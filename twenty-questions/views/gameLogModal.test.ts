@@ -14,6 +14,7 @@ describe('gameLogModal', () => {
 		const game: FinishedGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
 			players: [],
@@ -25,12 +26,21 @@ describe('gameLogModal', () => {
 		const header = blocks.find((block) => block.type === 'header');
 		expectEquals(header?.type, 'header');
 		expect(header.text.text).toBe('お題: りんご');
+
+		// データシートセクションを確認
+		const dataSheetSection = blocks.find(
+			(block) => block.type === 'section' && 'text' in block && block.text?.text?.includes('【データシート】'),
+		);
+		expect(dataSheetSection).toBeDefined();
+		expectEquals(dataSheetSection?.type, 'section');
+		expect(dataSheetSection.text.text).toContain('テスト説明');
 	});
 
 	it('shows message when no players', () => {
 		const game: FinishedGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
 			players: [],
@@ -49,6 +59,7 @@ describe('gameLogModal', () => {
 		const game: FinishedGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
 			players: [
@@ -93,6 +104,7 @@ describe('gameLogModal', () => {
 		const game: FinishedGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
 			players: [
@@ -127,6 +139,7 @@ describe('gameLogModal', () => {
 		const game: FinishedGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
 			players: [
@@ -170,6 +183,7 @@ describe('gameLogModal', () => {
 		const game: FinishedGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
 			players: [
@@ -211,6 +225,7 @@ describe('gameLogModal', () => {
 		const game: FinishedGame = {
 			id: 'game-1',
 			topic: 'りんご',
+			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
 			players: [
