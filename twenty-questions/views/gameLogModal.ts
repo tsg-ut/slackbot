@@ -1,35 +1,14 @@
 import type {KnownBlock, View} from '@slack/web-api';
 import {sortBy} from 'lodash';
-import type {StateObj} from '../TwentyQuestions';
+import type {FinishedGame} from '../TwentyQuestions';
 
-export default (state: StateObj): View => {
-	const {currentGame} = state;
-
-	if (!currentGame) {
-		return {
-			type: 'modal',
-			title: {
-				text: 'ゲームログ',
-				type: 'plain_text',
-			},
-			blocks: [
-				{
-					type: 'section',
-					text: {
-						type: 'mrkdwn',
-						text: 'ゲームが見つかりません。',
-					},
-				},
-			],
-		};
-	}
-
+export default (game: FinishedGame): View => {
 	const blocks: KnownBlock[] = [
 		{
 			type: 'header',
 			text: {
 				type: 'plain_text',
-				text: `お題: ${currentGame.topic}`,
+				text: `お題: ${game.topic}`,
 				emoji: true,
 			},
 		},
@@ -40,12 +19,12 @@ export default (state: StateObj): View => {
 
 	// 正解者を質問回数順にソート
 	const correctPlayers = sortBy(
-		Object.values(currentGame.players).filter((p) => p.score !== null),
+		game.players.filter((p) => p.score !== null),
 		(p) => p.score,
 	);
 
 	// 未正解者（質問したが正解できなかった）
-	const failedPlayers = Object.values(currentGame.players).filter(
+	const failedPlayers = game.players.filter(
 		(p) => p.questionCount > 0 && p.score === null,
 	);
 
@@ -66,9 +45,7 @@ export default (state: StateObj): View => {
 			const statusText =
 				player.score !== null
 					? `${player.score}問で正解`
-					: player.isFinished
-						? '20問使い切り'
-						: 'プレイ中';
+					: '不正解';
 
 			blocks.push({
 				type: 'section',

@@ -11,7 +11,6 @@ const expectEquals: <S, T extends S>(actual: S, expected: T) => asserts actual i
 describe('gameStatusMessage', () => {
 	it('shows message when no game exists', () => {
 		const state: StateObj = {
-			uuid: 'test-uuid',
 			currentGame: null,
 		};
 
@@ -29,7 +28,6 @@ describe('gameStatusMessage', () => {
 
 	it('shows active game status', () => {
 		const state: StateObj = {
-			uuid: 'test-uuid',
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
@@ -52,7 +50,6 @@ describe('gameStatusMessage', () => {
 
 	it('shows finished game status with topic', () => {
 		const state: StateObj = {
-			uuid: 'test-uuid',
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
@@ -81,7 +78,6 @@ describe('gameStatusMessage', () => {
 
 	it('shows join button when game is active', () => {
 		const state: StateObj = {
-			uuid: 'test-uuid',
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
@@ -103,12 +99,11 @@ describe('gameStatusMessage', () => {
 		);
 		expect(joinButton).toBeDefined();
 		expectEquals(joinButton.type, 'button');
-		expect(joinButton.action_id).toBe('twenty_questions_test-uuid_join_button');
+		expect(joinButton.action_id).toBe('twenty_questions_join_button');
 	});
 
 	it('shows view log button when game is finished', () => {
 		const state: StateObj = {
-			uuid: 'test-uuid',
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
@@ -130,12 +125,12 @@ describe('gameStatusMessage', () => {
 		);
 		expect(viewLogButton).toBeDefined();
 		expectEquals(viewLogButton.type, 'button');
-		expect(viewLogButton.action_id).toBe('twenty_questions_test-uuid_view_log_button');
+		expect(viewLogButton.action_id).toBe('twenty_questions_view_log_button');
+		expect('value' in viewLogButton && viewLogButton.value).toBe('game-1');
 	});
 
 	it('shows ranking with correct players', () => {
 		const state: StateObj = {
-			uuid: 'test-uuid',
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
@@ -183,7 +178,6 @@ describe('gameStatusMessage', () => {
 
 	it('shows failed players separately', () => {
 		const state: StateObj = {
-			uuid: 'test-uuid',
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
@@ -232,7 +226,6 @@ describe('gameStatusMessage', () => {
 
 	it('shows message when no participants', () => {
 		const state: StateObj = {
-			uuid: 'test-uuid',
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
@@ -256,7 +249,6 @@ describe('gameStatusMessage', () => {
 
 	it('shows message when no correct answers yet', () => {
 		const state: StateObj = {
-			uuid: 'test-uuid',
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',
@@ -289,7 +281,6 @@ describe('gameStatusMessage', () => {
 
 	it('includes game rules', () => {
 		const state: StateObj = {
-			uuid: 'test-uuid',
 			currentGame: {
 				id: 'game-1',
 				topic: 'りんご',

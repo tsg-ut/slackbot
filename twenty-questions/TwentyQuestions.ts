@@ -16,6 +16,7 @@ import gameStatusMessage from './views/gameStatusMessage';
 import playerModal from './views/playerModal';
 import gameLogModal from './views/gameLogModal';
 import {MAX_QUESTIONS, MAX_QUESTION_LENGTH, MAX_ANSWER_LENGTH} from './const';
+import type {CollectionReference} from 'firebase-admin/lib/firestore';
 
 const mutex = new Mutex();
 const log = logger.child({bot: 'twenty-questions'});
@@ -49,7 +50,6 @@ export interface GameState {
 }
 
 export interface StateObj {
-	uuid: string;
 	currentGame: GameState | null;
 }
 
@@ -66,6 +66,8 @@ export interface FinishedGame {
 	}[];
 }
 
+const TwentyQuestionsGames = db.collection('twenty_questions_games') as CollectionReference<FinishedGame>;
+
 export class TwentyQuestions {
 	#slack: WebClient;
 
@@ -79,7 +81,6 @@ export class TwentyQuestions {
 		log.info('Creating twenty-questions bot instance');
 
 		const state = await State.init<StateObj>('twenty-questions', {
-			uuid: randomUUID(),
 			currentGame: null,
 		});
 
@@ -97,14 +98,14 @@ export class TwentyQuestions {
 
 		this.#interactions.action({
 			type: 'button',
-			actionId: new RegExp(`^twenty_questions_${this.#state.uuid}_join_button$`),
+			actionId: 'twenty_questions_join_button',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked the join button`);
 			mutex.runExclusive(() => this.handleJoinButton(payload));
 		});
 
 		this.#interactions.viewSubmission(
-			new RegExp(`^twenty_questions_${this.#state.uuid}_player_modal$`),
+			'twenty_questions_player_modal',
 			(payload: ViewSubmitAction) => {
 				log.info(`${payload.user.name} submitted player modal`);
 				mutex.runExclusive(() => this.handleModalSubmit(payload));
@@ -113,7 +114,7 @@ export class TwentyQuestions {
 
 		this.#interactions.action({
 			type: 'button',
-			actionId: new RegExp(`^twenty_questions_${this.#state.uuid}_submit_question$`),
+			actionId: 'twenty_questions_submit_question',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked submit question button`);
 			mutex.runExclusive(() => this.handleQuestionSubmit(payload));
@@ -121,7 +122,7 @@ export class TwentyQuestions {
 
 		this.#interactions.action({
 			type: 'button',
-			actionId: new RegExp(`^twenty_questions_${this.#state.uuid}_submit_answer$`),
+			actionId: 'twenty_questions_submit_answer',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked submit answer button`);
 			mutex.runExclusive(() => this.handleAnswerSubmit(payload));
@@ -129,7 +130,7 @@ export class TwentyQuestions {
 
 		this.#interactions.action({
 			type: 'button',
-			actionId: new RegExp(`^twenty_questions_${this.#state.uuid}_view_log_button$`),
+			actionId: 'twenty_questions_view_log_button',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked view log button`);
 			this.handleViewLogButton(payload);
@@ -330,8 +331,6 @@ export class TwentyQuestions {
 	}
 
 	private async saveGameToFirestore(game: GameState) {
-		const gamesCollection = db.collection('twenty_questions_games');
-
 		const players = Object.values(game.players).map((player) => ({
 			userId: player.userId,
 			questionCount: player.questionCount,
@@ -339,15 +338,14 @@ export class TwentyQuestions {
 			questions: player.questions,
 		}));
 
-		const finishedGame: FinishedGame = {
+		await TwentyQuestionsGames.add({
 			id: game.id,
 			topic: game.topic,
 			startedAt: firestore.Timestamp.fromMillis(game.startedAt),
 			finishedAt: firestore.Timestamp.fromMillis(game.finishedAt!),
 			players,
-		};
+		});
 
-		await gamesCollection.add(finishedGame);
 		log.info(`Game ${game.id} saved to Firestore`);
 	}
 
@@ -384,18 +382,36 @@ export class TwentyQuestions {
 	}
 
 	private async handleViewLogButton(payload: BlockAction) {
-		if (!this.#state.currentGame) {
+		const action = 'actions' in payload && payload.actions?.[0];
+		if (!action || !('value' in action)) {
+			log.error('No action or value found in payload');
+			return;
+		}
+
+		const gameId = action.value;
+		if (!gameId) {
+			log.error('No game ID found in button value');
+			return;
+		}
+
+		log.info(`Fetching game log for game ID: ${gameId}`);
+
+		const snapshot = await TwentyQuestionsGames.where('id', '==', gameId).limit(1).get();
+
+		if (snapshot.empty) {
 			await this.#slack.chat.postEphemeral({
 				channel: payload.channel?.id ?? this.#SANDBOX_ID,
 				user: payload.user.id,
-				text: '現在進行中のゲームはありません。',
+				text: 'ゲームログが見つかりませんでした。',
 			});
 			return;
 		}
 
+		const gameData = snapshot.docs[0].data();
+
 		await this.#slack.views.open({
 			trigger_id: payload.trigger_id,
-			view: gameLogModal(this.#state),
+			view: gameLogModal(gameData),
 		});
 	}
 
@@ -603,7 +619,7 @@ export class TwentyQuestions {
 					content: `プレイヤーの答え: ${answer}\nお題: ${topic}\n同一ですか？`,
 				},
 			],
-			max_completion_tokens: 10,
+			max_completion_tokens: 50,
 			reasoning_effort: 'minimal',
 		});
 

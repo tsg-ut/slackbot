@@ -10,7 +10,6 @@ const expectEquals: <S, T extends S>(actual: S, expected: T) => asserts actual i
 
 describe('playerModal', () => {
 	const baseState: StateObj = {
-		uuid: 'test-uuid',
 		currentGame: {
 			id: 'game-1',
 			topic: 'テスト',
