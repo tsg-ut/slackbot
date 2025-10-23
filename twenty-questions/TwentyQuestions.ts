@@ -42,6 +42,7 @@ export interface PlayerState {
 export interface GameState {
 	id: string;
 	topic: string;
+	topicRuby: string;
 	topicDescription: string;
 	status: 'active' | 'finished';
 	startedAt: number;
@@ -57,6 +58,7 @@ export interface StateObj {
 export interface FinishedGame {
 	id: string;
 	topic: string;
+	topicRuby: string;
 	topicDescription: string;
 	startedAt: firestore.Timestamp;
 	finishedAt: firestore.Timestamp;
@@ -162,10 +164,10 @@ export class TwentyQuestions {
 			text: 'お題を選択中です⋯⋯',
 		});
 
-		const topic = await this.selectTopic();
-		log.info(`Selected topic: ${topic}`);
+		const {topic, ruby} = await this.selectTopic();
+		log.info(`Selected topic: ${topic} (ruby: ${ruby})`);
 
-		const topicDescription = await this.generateTopicDescription(topic);
+		const topicDescription = await this.generateTopicDescription(topic, ruby);
 		log.info(`Generated topic description: ${topicDescription}`);
 
 		const gameId = randomUUID();
@@ -174,6 +176,7 @@ export class TwentyQuestions {
 		const newGame: GameState = {
 			id: gameId,
 			topic,
+			topicRuby: ruby,
 			topicDescription,
 			status: 'active',
 			startedAt: now,
@@ -197,8 +200,8 @@ export class TwentyQuestions {
 		this.scheduleGameEnd(newGame);
 	}
 
-	private async generateTopicDescription(topic: string): Promise<string> {
-		log.info(`Generating description for topic: ${topic}`);
+	private async generateTopicDescription(topic: string, ruby: string): Promise<string> {
+		log.info(`Generating description for topic: ${topic} (ruby: ${ruby})`);
 
 		const completion = await openai.chat.completions.create({
 			model: 'gpt-5-mini',
@@ -206,42 +209,48 @@ export class TwentyQuestions {
 				{
 					role: 'system',
 					content:
-						`あなたは「20の扉」の質問に答えるアシスタントです。正解となるお題は「${topic}」です。\n` +
+						`あなたは「20の扉」の質問に答えるアシスタントです。正解となるお題は「${topic}」(読み: ${ruby})です。\n` +
 						`\n` +
-						`質問に対して統一した回答ができるよう、「${topic}」に関する基本的なデータを300文字程度でまとめてください。以下は説明の例です。\n` +
+						`質問に対して統一した回答ができるよう、「${topic}」に関する基本的なデータを300文字程度でまとめてください。以下は説明の例です。「製法」の項目に「人工物」か「自然物」かを必ず含めてください。\n` +
 						`\n` +
 						`お題: 谷\n` +
 						`説明: 山と山の間にある低くくぼんだ地形。川が流れることが多く、侵食によって形成される。\n` +
 						`大きさ: 決まった大きさを持たないが、人間よりは遥かに大きい。小さいもので数十メートル、大きいものでは数千キロメートル程度。\n` +
-						`材質: 無機物。土や岩などでできている。\n` +
+						`組成: 無機物。土や岩などでできている。\n` +
 						`色: 様々なものがある。代表的な色は、茶色・赤色・黄色など。\n` +
 						`用途: 自然の地形であり、使用するものではない。\n` +
 						`場所: 国や地方を問わず、さまざまな場所に存在する。\n` +
 						`形: 山々に挟まれた細長い地形で、U字型やV字型などがある。\n` +
 						`触感: 固い。地面や岩などの感触を持つ。\n` +
 						`味: 味はない。食べることができない。\n` +
+						`製法: 自然物であり、人為的に作られるものではない。\n` +
+						`生誕: 地球の地殻変動や侵食作用によって数百万年から数十億年前に形成された。\n` +
 						`\n` +
 						`お題: オムライス\n` +
 						`説明: チキンライスを薄焼き卵で包んだ日本発祥の洋食料理。明治時代末期から大正時代に考案されたとされる。\n` +
 						`大きさ: 一人前で直径15〜20センチメートル程度、高さ5〜8センチメートル程度。手のひらに収まるサイズ。\n` +
-						`材質: 有機物。主な材料はご飯、卵、鶏肉、玉ねぎ、ケチャップなど。\n` +
+						`組成: 有機物。たんぱく質、炭水化物、脂質などで構成される。\n` +
 						`色: 外側は黄色(卵の色)。中身は赤色やオレンジ色(ケチャップライス)。上からかけるケチャップやデミグラスソースで赤色や茶色が加わることもあるが、全体的に見たら黄色いと言える。\n` +
 						`用途: 食べ物。食事やランチとして提供される。\n` +
 						`場所: 日本の洋食レストラン、喫茶店、カフェ、家庭など。現在は世界各地の日本食レストランでも見られる。\n` +
 						`形: 楕円形や俵型が一般的。ふんわりとした半熟卵でとろとろに仕上げるスタイルもある。\n` +
 						`触感: 外側は柔らかく滑らか。中のライスはほろほろとしている。温かい。\n` +
 						`味: ケチャップの甘酸っぱさと卵のまろやかさが特徴。鶏肉や玉ねぎなどの具材の旨味もある。\n` +
+						`製法: 人工物。主な材料はご飯、卵、鶏肉、玉ねぎ、ケチャップなど。\n` +
+						`生誕: 明治時代末期から大正時代にかけて日本で考案された。\n` +
 						`\n` +
 						`お題: ハリネズミ\n` +
 						`説明: 背中に針のような棘を持つ小型の哺乳類。夜行性で、危険を感じると体を丸めて棘で身を守る。昆虫や小動物を食べる雑食性。\n` +
 						`大きさ: 体長15〜30センチメートル程度、体重400〜1200グラム程度。両手で抱えられるサイズ。\n` +
-						`材質: 有機物。柔らかい毛と硬い針状の棘で覆われている。\n` +
+						`組成: 有機物。体は筋肉、骨、内臓などで構成され、脊椎動物に分類される。\n` +
 						`色: 茶色、灰色、白色など。棘は茶色と白のまだら模様が一般的だが、品種により異なる。顔や腹部は薄い茶色や灰色。\n` +
 						`用途: ペットとして飼育される。野生では害虫を食べるため生態系の一部として機能する。使役動物ではない。\n` +
 						`場所: 野生ではヨーロッパ、アジア、アフリカの森林や草原に生息。日本には野生個体はいないが、ペットとして家庭で飼育される。\n` +
 						`形: 丸みを帯びた体型で、尖った鼻と小さな耳を持つ。四本の短い脚がある。丸まると球状になる。\n` +
 						`触感: 背中は針状の棘で覆われ、触ると硬くチクチクする。腹部は柔らかい毛で覆われている。温かい。\n` +
-						`味: 味はない。ペット動物であり、食用ではない。`,
+						`味: 味はない。ペット動物であり、食用ではない。\n` +
+						`製法: 自然物であり、人為的に作られるものではない。\n` +
+						`生誕: 種によるが、数百万年前から存在すると考えられている。`,
 				},
 				{
 					role: 'user',
@@ -255,10 +264,14 @@ export class TwentyQuestions {
 		const description = completion.choices[0]?.message?.content?.trim() || '';
 		log.info(`Generated description: ${description}`);
 
-		return description;
+		// 文字情報を連結
+		const charInfo = this.analyzeCharacters(topic, ruby);
+		const fullDescription = `${description}\n${charInfo}`;
+
+		return fullDescription;
 	}
 
-	private async selectTopic(): Promise<string> {
+	private async selectTopic(): Promise<{topic: string; ruby: string}> {
 		log.info('Selecting topic from candidate words');
 
 		const candidateWords = await getCandidateWords({min: 2, max: 10});
@@ -333,7 +346,11 @@ export class TwentyQuestions {
 			throw new Error('トピックの選択に失敗しました');
 		}
 
-		return topic;
+		// candidateWordsから選択されたお題の読みを取得
+		const wordEntry = candidateWords.find(([word]) => word === topic);
+		const ruby = wordEntry?.[1] || topic;
+
+		return {topic, ruby};
 	}
 
 	private scheduleGameEnd(game: GameState) {
@@ -419,6 +436,7 @@ export class TwentyQuestions {
 		await TwentyQuestionsGames.add({
 			id: game.id,
 			topic: game.topic,
+			topicRuby: game.topicRuby,
 			topicDescription: game.topicDescription,
 			startedAt: firestore.Timestamp.fromMillis(game.startedAt),
 			finishedAt: firestore.Timestamp.fromMillis(game.finishedAt!),
@@ -841,6 +859,32 @@ export class TwentyQuestions {
 			// expired_trigger_idなどのエラーは無視（モーダルが既に閉じている可能性がある）
 			log.warn(`Failed to update modal: ${error instanceof Error ? error.message : String(error)}`);
 		}
+	}
+
+	private analyzeCharacters(topic: string, ruby: string): string {
+		const topicLength = Array.from(topic).length;
+		const rubyLength = Array.from(ruby).length;
+
+		const charTypes: string[] = [];
+		const hasHiragana = /\p{Script=Hiragana}/u.test(topic);
+		const hasKatakana = /\p{Script=Katakana}/u.test(topic);
+		const hasKanji = /\p{Script=Han}/u.test(topic);
+		const hasAlphabet = /\p{Script=Latin}/u.test(topic);
+		const hasNumber = /\p{Number}/u.test(topic);
+
+		if (hasHiragana) charTypes.push('ひらがな');
+		if (hasKatakana) charTypes.push('カタカナ');
+		if (hasKanji) charTypes.push('漢字');
+		if (hasAlphabet) charTypes.push('アルファベット');
+		if (hasNumber) charTypes.push('数字');
+
+		const charTypesStr = charTypes.length > 0 ? charTypes.join('・') : 'その他';
+
+		return [
+			`文字数: ${topicLength}文字 (${Array.from(topic).map((c) => `「${c}」`).join('')})`,
+			`読みの文字数: ${rubyLength}文字 (${Array.from(ruby).map((c) => `「${c}」`).join('')})`,
+			`構成する文字種: ${charTypesStr}`,
+		].join('\n');
 	}
 
 	private normalizeAnswer(text: string): string {
