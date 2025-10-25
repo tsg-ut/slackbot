@@ -418,6 +418,11 @@ export class TwentyQuestions {
 				// 5人以上参加している場合
 				if (participantCount >= 5) {
 					await increment(player.userId, 'twenty-questions-first-place-5plus-players');
+
+					// 唯一の正解者である場合
+					if (correctPlayers.length === 1) {
+						await increment(player.userId, 'twenty-questions-only-correct-player-5plus-players');
+					}
 				}
 			}
 		}
@@ -803,14 +808,30 @@ export class TwentyQuestions {
 				}
 
 				// 「わかりません」が5回以上
-				const wakaranaiCount = actualQuestions.filter((q) => q.answer === 'わかりません').length;
-				if (wakaranaiCount >= 5) {
+				const wakaranaiCount = new Set(
+					actualQuestions
+						.filter((q) => q.answer === 'わかりません')
+						.map((q) => q.question)
+				).size;
+				const wakaranaiCount2 = actualQuestions
+					.slice(0, 10)
+					.filter((q) => q.answer === 'わかりません')
+					.length;
+				if (wakaranaiCount >= 5 && wakaranaiCount2 !== 0 && wakaranaiCount2 < 5) {
 					await increment(userId, 'twenty-questions-correct-5plus-wakaranai');
 				}
 
 				// 「答えられません」が5回以上
-				const kotaerarenaiCount = actualQuestions.filter((q) => q.answer === '答えられません').length;
-				if (kotaerarenaiCount >= 5) {
+				const kotaerarenaiCount = new Set(
+					actualQuestions
+						.filter((q) => q.answer === '答えられません')
+						.map((q) => q.question)
+				).size;
+				const kotaerarenaiCount2 = actualQuestions
+					.slice(0, 10)
+					.filter((q) => q.answer === '答えられません')
+					.length;
+				if (kotaerarenaiCount >= 5 && kotaerarenaiCount2 !== 0 && kotaerarenaiCount2 < 5) {
 					await increment(userId, 'twenty-questions-correct-5plus-kotaerarenai');
 				}
 			}
