@@ -813,11 +813,7 @@ export class TwentyQuestions {
 						.filter((q) => q.answer === 'わかりません')
 						.map((q) => q.question)
 				).size;
-				const wakaranaiCount2 = actualQuestions
-					.slice(0, 10)
-					.filter((q) => q.answer === 'わかりません')
-					.length;
-				if (wakaranaiCount >= 5 && wakaranaiCount2 !== 0 && wakaranaiCount2 < 5) {
+				if (wakaranaiCount >= 5) {
 					await increment(userId, 'twenty-questions-correct-5plus-wakaranai');
 				}
 
@@ -827,11 +823,7 @@ export class TwentyQuestions {
 						.filter((q) => q.answer === '答えられません')
 						.map((q) => q.question)
 				).size;
-				const kotaerarenaiCount2 = actualQuestions
-					.slice(0, 10)
-					.filter((q) => q.answer === '答えられません')
-					.length;
-				if (kotaerarenaiCount >= 5 && kotaerarenaiCount2 !== 0 && kotaerarenaiCount2 < 5) {
+				if (kotaerarenaiCount >= 5) {
 					await increment(userId, 'twenty-questions-correct-5plus-kotaerarenai');
 				}
 			}
