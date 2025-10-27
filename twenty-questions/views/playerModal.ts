@@ -82,6 +82,7 @@ export default (state: StateObj, player: PlayerState): View => {
 						type: 'plain_text',
 						text: '「はい」「いいえ」で答えられる質問を入力',
 					},
+					initial_value: '',
 				},
 				label: {
 					type: 'plain_text',
@@ -110,7 +111,7 @@ export default (state: StateObj, player: PlayerState): View => {
 		);
 	}
 
-	// 答えセクションは常に表示
+	// 答えセクションは進行中のみ表示
 	blocks.push(
 		{
 			type: 'input',
@@ -124,6 +125,7 @@ export default (state: StateObj, player: PlayerState): View => {
 					type: 'plain_text',
 					text: 'お題だと思う単語を入力',
 				},
+				initial_value: '',
 			},
 			label: {
 				type: 'plain_text',

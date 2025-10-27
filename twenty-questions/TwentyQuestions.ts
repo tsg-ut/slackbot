@@ -688,12 +688,10 @@ export class TwentyQuestions {
 		});
 		player.questionCount++;
 
-		if (viewId) {
-			await this.updatePlayerModal(viewId, player);
-		}
-
 		if (player.questionCount >= MAX_QUESTIONS) {
-			await this.finishPlayer(userId, player, false);
+			await this.finishPlayer(userId, player, false, viewId);
+		} else if (viewId) {
+			await this.updatePlayerModal(viewId, player);
 		}
 
 		await this.updateStatusMessage();
@@ -752,24 +750,26 @@ export class TwentyQuestions {
 			isCorrect,
 		});
 
-		if (viewId) {
-			await this.updatePlayerModal(viewId, player);
-		}
-
 		if (isCorrect) {
-			await this.finishPlayer(userId, player, true);
+			await this.finishPlayer(userId, player, true, viewId);
 		} else if (player.questionCount >= MAX_QUESTIONS) {
-			await this.finishPlayer(userId, player, false);
+			await this.finishPlayer(userId, player, false, viewId);
+		} else if (viewId) {
+			await this.updatePlayerModal(viewId, player);
 		}
 	}
 
-	private async finishPlayer(userId: string, player: PlayerState, isCorrect: boolean) {
+	private async finishPlayer(userId: string, player: PlayerState, isCorrect: boolean, viewId?: string) {
 		if (!this.#state.currentGame) {
 			return;
 		}
 
 		player.isFinished = true;
 		player.score = isCorrect ? player.questionCount : null;
+
+		if (viewId) {
+			await this.updatePlayerModal(viewId, player);
+		}
 
 		if (isCorrect) {
 			await this.#slack.chat.postMessage({
@@ -811,7 +811,7 @@ export class TwentyQuestions {
 				const wakaranaiCount = new Set(
 					actualQuestions
 						.filter((q) => q.answer === 'わかりません')
-						.map((q) => q.question)
+						.map((q) => this.normalizeAnswer(q.question))
 				).size;
 				if (wakaranaiCount >= 5) {
 					await increment(userId, 'twenty-questions-correct-5plus-wakaranai');
@@ -821,7 +821,7 @@ export class TwentyQuestions {
 				const kotaerarenaiCount = new Set(
 					actualQuestions
 						.filter((q) => q.answer === '答えられません')
-						.map((q) => q.question)
+						.map((q) => this.normalizeAnswer(q.question))
 				).size;
 				if (kotaerarenaiCount >= 5) {
 					await increment(userId, 'twenty-questions-correct-5plus-kotaerarenai');
@@ -831,7 +831,7 @@ export class TwentyQuestions {
 				const dochiraCount = new Set(
 					actualQuestions
 						.filter((q) => q.answer === 'どちらともいえない')
-						.map((q) => q.question)
+						.map((q) => this.normalizeAnswer(q.question))
 				).size;
 				if (dochiraCount >= 5) {
 					await increment(userId, 'twenty-questions-correct-5plus-dochira');
