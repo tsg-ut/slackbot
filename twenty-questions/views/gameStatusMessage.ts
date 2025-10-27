@@ -1,6 +1,6 @@
 import type {KnownBlock} from '@slack/web-api';
-import {sortBy} from 'lodash';
 import type {StateObj} from '../TwentyQuestions';
+import {getRankedPlayers} from '../rankingUtils';
 
 export default (state: StateObj): KnownBlock[] => {
 	const {currentGame} = state;
@@ -27,10 +27,7 @@ export default (state: StateObj): KnownBlock[] => {
 
 	const statusText = currentGame.status === 'active' ? '参加受付中' : '終了';
 
-	const correctPlayers = sortBy(
-		Object.values(currentGame.players).filter((p) => p.score !== null),
-		(p) => p.score,
-	);
+	const correctPlayers = Object.values(currentGame.players).filter((p) => p.score !== null);
 
 	// 1回でも質問・回答したが正解していないプレイヤー
 	const failedPlayers = Object.values(currentGame.players).filter(
@@ -42,11 +39,9 @@ export default (state: StateObj): KnownBlock[] => {
 		rankingText = 'まだ参加者はいません。';
 	} else {
 		if (correctPlayers.length > 0) {
-			rankingText = correctPlayers
-				.map(
-					(p, index) =>
-						`${index + 1}位: <@${p.userId}> (${p.score}問)`,
-				)
+			const rankedPlayers = getRankedPlayers(correctPlayers);
+			rankingText = rankedPlayers
+				.map(({player, displayRank}) => `${displayRank}: <@${player.userId}> (${player.score}問)`)
 				.join('\n');
 		} else {
 			rankingText = 'まだ正解者はいません。';

@@ -1,9 +1,9 @@
 import {randomUUID} from 'crypto';
 import type {BlockAction, ViewSubmitAction} from '@slack/bolt';
 import type {SlackMessageAdapter} from '@slack/interactive-messages';
-import type {WebClient} from '@slack/web-api';
+import type {WebClient, KnownBlock} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
-import {sampleSize, sample} from 'lodash';
+import {sampleSize, sample, last} from 'lodash';
 import logger from '../lib/logger';
 import openai from '../lib/openai';
 import type {SlackInterface} from '../lib/slack';
@@ -17,6 +17,7 @@ import playerModal from './views/playerModal';
 import gameLogModal from './views/gameLogModal';
 import {MAX_QUESTIONS, MAX_QUESTION_LENGTH, MAX_ANSWER_LENGTH} from './const';
 import type {CollectionReference} from 'firebase-admin/lib/firestore';
+import {getRankedPlayers, getRankEmoji} from './rankingUtils';
 
 const mutex = new Mutex();
 const log = logger.child({bot: 'twenty-questions'});
@@ -378,11 +379,14 @@ export class TwentyQuestions {
 
 		await this.updateStatusMessage();
 
+		const blocks = this.generateGameEndBlocks();
+
 		await this.#slack.chat.postMessage({
 			channel: this.#SANDBOX_ID,
 			thread_ts: this.#state.currentGame.statusMessageTs ?? undefined,
 			reply_broadcast: true,
 			text: `ゲーム終了！お題は「${this.#state.currentGame.topic}」でした。`,
+			blocks,
 			username: '20の扉',
 			icon_emoji: ':door:',
 		});
@@ -882,6 +886,74 @@ export class TwentyQuestions {
 			// expired_trigger_idなどのエラーは無視（モーダルが既に閉じている可能性がある）
 			log.warn(`Failed to update modal: ${error instanceof Error ? error.message : String(error)}`);
 		}
+	}
+
+	private generateGameEndBlocks(): KnownBlock[] {
+		if (!this.#state.currentGame) {
+			return [];
+		}
+
+		const blocks: KnownBlock[] = [
+			{
+				type: 'header',
+				text: {
+					type: 'plain_text',
+					text: `ゲーム終了！お題は「${this.#state.currentGame.topic}」でした`,
+					emoji: true,
+				},
+			},
+			{
+				type: 'divider',
+			},
+		];
+
+		const allPlayers = Object.values(this.#state.currentGame.players).filter(
+			(p) => p.questionCount > 0,
+		);
+
+		if (allPlayers.length === 0) {
+			return blocks;
+		}
+
+		const correctPlayers = allPlayers.filter((p) => p.score !== null);
+		const incorrectPlayers = allPlayers.filter((p) => p.score === null);
+
+		if (correctPlayers.length > 0) {
+			const rankedPlayers = getRankedPlayers(correctPlayers);
+			for (const {player, rank} of rankedPlayers) {
+				const rankEmoji = getRankEmoji(rank);
+				blocks.push({
+					type: 'section',
+					text: {
+						type: 'mrkdwn',
+						text: `${rankEmoji} <@${player.userId}> - *${player.score}問*で正解`,
+					},
+				});
+			}
+		}
+
+		if (incorrectPlayers.length > 0) {
+			if (correctPlayers.length > 0) {
+				blocks.push({
+					type: 'divider',
+				});
+			}
+
+			for (const player of incorrectPlayers) {
+				const lastAnswerText = last(player.questions.filter((q) => q.isAnswerAttempt));
+				const lastAnswer = lastAnswerText ? lastAnswerText.question.replace(/^答え: /, '') : null;
+				const answerText = lastAnswer ? `(最終回答: ＊${lastAnswer}＊)` : '';
+				blocks.push({
+					type: 'section',
+					text: {
+						type: 'mrkdwn',
+						text: `<@${player.userId}> - 不正解 ${answerText}`,
+					},
+				});
+			}
+		}
+
+		return blocks;
 	}
 
 	private analyzeCharacters(topic: string, ruby: string): string {
