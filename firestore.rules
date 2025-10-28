@@ -22,5 +22,8 @@ service cloud.firestore {
     match /slow_quiz_games/{game} {
       allow read: if resource.data.status == 'finished';
     }
+    match /twenty_questions_games/{document=**} {
+      allow read;
+    }
   }
 }
