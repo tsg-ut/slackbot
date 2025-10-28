@@ -63,6 +63,7 @@ export interface FinishedGame {
 	topicDescription: string;
 	startedAt: firestore.Timestamp;
 	finishedAt: firestore.Timestamp;
+	statusMessageTs: string | null;
 	players: {
 		userId: string;
 		questionCount: number;
@@ -294,7 +295,7 @@ export class TwentyQuestions {
 							'1. 名詞であること\n' +
 							'2. 具体的な実体があるものを指す単語であること\n' +
 							'3. 複合語(例: 「電気自動車」「あじさい園」「りんご売り」など)は避けること\n' +
-							'4. なるべく簡単で、多くの人が知っている単語であること\n' +
+							'4. 簡単で、ほとんどの日本人が知っている単語であること\n' +
 							'5. 広すぎる意味を持つ単語(例: 「おもちゃ」「建物」「乗り物」「食べ物」「動物」など)は避け、より具体的な単語を選ぶこと\n' +
 							'単語のみを回答してください。説明は不要です。',
 					},
@@ -324,7 +325,7 @@ export class TwentyQuestions {
 						'1. 名詞であること\n' +
 						'2. 具体的な実体があるものを指す単語であること\n' +
 						'3. 複合語(例: 「電気自動車」「あじさい園」「りんご売り」など)は避けること\n' +
-						'4. なるべく簡単で、多くの人が知っている単語であること\n' +
+						'4. 簡単で、ほとんどの日本人が知っている単語であること\n' +
 						'5. 広すぎる意味を持つ単語(例: 「おもちゃ」「建物」「乗り物」「食べ物」「動物」など)は避け、より具体的な単語を選ぶこと\n' +
 						'抽出された単語リストのみを回答してください。説明は不要です。',
 				},
@@ -449,6 +450,7 @@ export class TwentyQuestions {
 			topicDescription: game.topicDescription,
 			startedAt: firestore.Timestamp.fromMillis(game.startedAt),
 			finishedAt: firestore.Timestamp.fromMillis(game.finishedAt!),
+			statusMessageTs: game.statusMessageTs,
 			players,
 		});
 

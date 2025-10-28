@@ -18,6 +18,7 @@ describe('gameLogModal', () => {
 			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
+			statusMessageTs: null,
 			players: [],
 		};
 
@@ -45,6 +46,7 @@ describe('gameLogModal', () => {
 			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
+			statusMessageTs: null,
 			players: [],
 		};
 
@@ -65,6 +67,7 @@ describe('gameLogModal', () => {
 			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
+			statusMessageTs: null,
 			players: [
 				{
 					userId: 'U123',
@@ -111,6 +114,7 @@ describe('gameLogModal', () => {
 			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
+			statusMessageTs: null,
 			players: [
 				{
 					userId: 'U123',
@@ -147,6 +151,7 @@ describe('gameLogModal', () => {
 			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
+			statusMessageTs: null,
 			players: [
 				{
 					userId: 'U123',
@@ -192,6 +197,7 @@ describe('gameLogModal', () => {
 			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
+			statusMessageTs: null,
 			players: [
 				{
 					userId: 'U123',
@@ -235,6 +241,7 @@ describe('gameLogModal', () => {
 			topicDescription: 'テスト説明',
 			startedAt: firestore.Timestamp.now(),
 			finishedAt: firestore.Timestamp.now(),
+			statusMessageTs: null,
 			players: [
 				{
 					userId: 'U123',
