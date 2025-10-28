@@ -26,7 +26,7 @@
      - 質問フィールドの下の「質問を送信」ボタンをクリック
      - モーダル右上の「質問を送信」ボタンをクリック（またはEnterキー）
    - AIが「はい」「いいえ」「どちらかと言えばはい」「どちらかと言えばいいえ」「わかりません」「答えられません」のいずれかで回答
-   - 「はい」「いいえ」で答えられません質問（例：「答えはなんですか？」）には「答えられません」と回答されます
+   - 「はい」「いいえ」で答えられない質問（例：「答えはなんですか？」）には「答えられません」と回答されます
    - AIの回答フォーマットが検証され、不正な場合は「答えられません」に置換されます
    - 質問するたびに質問回数が1増えます
    - AIの回答を受け取るとモーダルが自動的に更新され、質問履歴に追加されます
@@ -41,7 +41,10 @@
 6. **ゲーム終了**:
    - 正解した場合: お祝いメッセージがゲーム開始メッセージへのスレッド返信として投稿され、ランキングに記録されます
    - 20回の質問を使い切った場合: ゲーム終了メッセージと共に正解がスレッド返信として表示されます
-   - 30分経過した場合: ゲームが終了し、最終ランキングがスレッド返信として表示されます
+   - 30分経過した場合: ゲームが終了し、最終ランキングがSlack Blocks形式でブロードキャスト表示されます
+     - 正解者ランキング: 質問数の少ない順に表示（1-3位はメダル絵文字、4位以降は順位数字）
+     - 同率順位の適切な処理（例: 1位、1位、3位）
+     - 不正解者: 各ユーザーの最終回答を表示
    - すべてのゲーム結果メッセージはブロードキャストされ、チャンネルに表示されます
 
 ## 技術的詳細
@@ -60,6 +63,9 @@ twenty-questions/
 ├── TwentyQuestions.ts            # メインのbotクラス
 ├── TwentyQuestions.test.ts       # メインクラスのユニットテスト
 ├── index.ts                       # エントリーポイント
+├── rankingUtils.ts               # ランキング計算ユーティリティ
+├── rankingUtils.test.ts          # ランキングユーティリティのテスト
+├── const.ts                       # 定数定義
 ├── views/
 │   ├── gameStatusMessage.ts      # ゲーム状態表示用のブロック
 │   ├── gameStatusMessage.test.ts # ゲーム状態表示のユニットテスト
@@ -84,6 +90,8 @@ interface Question {
 interface GameState {
   id: string;
   topic: string;
+  topicRuby: string;
+  topicDescription: string;
   status: 'active' | 'finished';
   startedAt: number;
   finishedAt: number | null;
@@ -102,14 +110,23 @@ interface PlayerState {
 interface FinishedGame {
   id: string;
   topic: string;
+  topicRuby: string;
+  topicDescription: string;
   startedAt: firestore.Timestamp;
   finishedAt: firestore.Timestamp;
+  statusMessageTs: string | null;
   players: {
     userId: string;
     questionCount: number;
     score: number | null;
     questions: Question[];     // プレイヤーの質問ログも保存
   }[];
+}
+
+interface RankedPlayer {
+  player: PlayerState;
+  rank: number;               // 実際の順位（同率の場合は同じ値）
+  displayRank: string;        // 表示用の順位文字列（例: "1位"）
 }
 ```
 
@@ -128,6 +145,13 @@ npm test -- twenty-questions
   - ゲーム開始処理
   - 重複開始の防止
 
+- **rankingUtils.test.ts** (8 tests): ランキング計算ユーティリティをテスト
+  - 単一プレイヤーのランキング
+  - 異なるスコアの複数プレイヤー
+  - 同率順位の処理（1位、1位、3位）
+  - 複数の同率グループの処理
+  - ランク表示の絵文字/文字列変換
+
 - **playerModal.test.ts** (6 tests): プレイヤーモーダルの表示をテスト
   - 質問入力フィールドの表示/非表示
   - 答え入力フィールドの表示
@@ -135,29 +159,54 @@ npm test -- twenty-questions
   - 送信ボタンのテキスト変化
   - 答えの試行履歴の表示
 
-- **gameLogModal.test.ts** (8 tests): ゲームログモーダルの表示をテスト
-  - ゲーム不在時のメッセージ
+- **gameLogModal.test.ts** (7 tests): ゲームログモーダルの表示をテスト
   - お題の表示
+  - プレイヤー不在時のメッセージ
   - プレイヤー一覧の表示順序
   - プレイヤーステータスの表示
   - 質問履歴の表示
   - 答えの試行の表示
+  - 質問なしプレイヤーの表示
 
 - **gameStatusMessage.test.ts** (10 tests): ゲーム状態メッセージの表示をテスト
   - ゲーム不在時のメッセージ
   - アクティブ/終了状態の表示
   - ボタンの表示（参加、ログ確認）
-  - ランキングの表示
+  - ランキングの表示（同率順位を考慮）
   - 正解者/未正解者の表示分離
   - ゲームルールの表示
 
-全27テストがTypeScriptの型安全性を保ちながら実装されています。
+全34テストがTypeScriptの型安全性を保ちながら実装されています。
+
+## ランキング機能
+
+### 同率順位の処理
+
+ランキングは`rankingUtils.ts`の共通関数によって計算され、同率順位を適切に処理します：
+
+- 同じスコアのプレイヤーは同じ順位
+- 次の順位は適切にスキップ（例: 2人が1位の場合、次は3位）
+- 例: 1位、1位、3位、3位、5位
+
+### 順位表示
+
+- **1位**: 🥇 (`:first_place_medal:`)
+- **2位**: 🥈 (`:second_place_medal:`)
+- **3位**: 🥉 (`:third_place_medal:`)
+- **4位以降**: 数字表記（例: "4位"、"5位"）
+
+### ランキング表示箇所
+
+1. **ゲーム中**: ゲーム状態メッセージに現在のランキングを表示
+2. **ゲーム終了時**: Slack Blocks形式でリッチなランキングを表示
+   - 正解者セクション: 質問数順にメダルまたは順位を表示
+   - 不正解者セクション: 最終回答を表示
 
 ## 使用技術
 
 - TypeScript
 - Slack Web API
-- OpenAI API (gpt-4o-mini)
+- OpenAI API (gpt-4o-mini, gpt-5-mini)
 - Firestore
 - async-mutex (並行処理制御)
 - lodash (ユーティリティ関数)
