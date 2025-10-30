@@ -105,23 +105,23 @@ export class TwentyQuestions {
 			actionId: 'twenty_questions_join_button',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked the join button`);
-			return mutex.runExclusive(() => this.handleJoinButton(payload));
+			return mutex.runExclusive(() => this.handleJoinButton(payload)).catch(this.handleError);
 		});
 
 		this.#interactions.viewSubmission(
 			'twenty_questions_player_modal',
 			(payload: ViewSubmitAction) => {
 				log.info(`${payload.user.name} submitted player modal`);
-				return mutex.runExclusive(() => this.handleModalSubmit(payload));
+				return mutex.runExclusive(() => this.handleModalSubmit(payload)).catch(this.handleError);
 			},
 		);
 
 		this.#interactions.action({
 			type: 'button',
 			actionId: 'twenty_questions_submit_question',
-		}, (payload: BlockAction) => {
+		}, async (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked submit question button`);
-			return mutex.runExclusive(() => this.handleQuestionSubmit(payload));
+			return mutex.runExclusive(() => this.handleQuestionSubmit(payload)).catch(this.handleError);
 		});
 
 		this.#interactions.action({
@@ -129,7 +129,7 @@ export class TwentyQuestions {
 			actionId: 'twenty_questions_submit_answer',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked submit answer button`);
-			return mutex.runExclusive(() => this.handleAnswerSubmit(payload));
+			return mutex.runExclusive(() => this.handleAnswerSubmit(payload)).catch(this.handleError);
 		});
 
 		this.#interactions.action({
@@ -137,7 +137,7 @@ export class TwentyQuestions {
 			actionId: 'twenty_questions_view_log_button',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked view log button`);
-			return mutex.runExclusive(() => this.handleViewLogButton(payload));
+			return mutex.runExclusive(() => this.handleViewLogButton(payload)).catch(this.handleError);
 		});
 
 		if (this.#state.currentGame) {
@@ -612,7 +612,7 @@ export class TwentyQuestions {
 		const topicDescription = this.#state.currentGame.topicDescription;
 
 		const completion = await openai.chat.completions.create({
-			model: 'gpt-5-mini',
+			model: 'gpt-4.1-mini',
 			messages: [
 				{
 					role: 'system',
@@ -651,7 +651,6 @@ export class TwentyQuestions {
 				},
 			],
 			max_completion_tokens: 50,
-			reasoning_effort: 'minimal',
 			temperature: 0,
 			seed: CHAT_COMPLETION_SEED,
 		});
@@ -888,6 +887,19 @@ export class TwentyQuestions {
 			// expired_trigger_idなどのエラーは無視（モーダルが既に閉じている可能性がある）
 			log.warn(`Failed to update modal: ${error instanceof Error ? error.message : String(error)}`);
 		}
+	}
+
+	private async handleError(error: any) {
+		const errorString = error instanceof Error ? `${error.message}\n${error.stack}` : String(error);
+		log.error(`Error occurred: ${errorString}`);
+		await this.#slack.chat.postMessage({
+			channel: this.#SANDBOX_ID,
+			thread_ts: this.#state.currentGame.statusMessageTs ?? undefined,
+			reply_broadcast: false,
+			text: `エラー😢\n${errorString}`,
+			username: '20の扉',
+			icon_emoji: ':door:',
+		});
 	}
 
 	private generateGameEndBlocks(): KnownBlock[] {
