@@ -107,14 +107,14 @@ export class TwentyQuestions {
 			actionId: 'twenty_questions_join_button',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked the join button`);
-			mutex.runExclusive(() => this.handleJoinButton(payload));
+			return mutex.runExclusive(() => this.handleJoinButton(payload));
 		});
 
 		this.#interactions.viewSubmission(
 			'twenty_questions_player_modal',
 			(payload: ViewSubmitAction) => {
 				log.info(`${payload.user.name} submitted player modal`);
-				mutex.runExclusive(() => this.handleModalSubmit(payload));
+				return mutex.runExclusive(() => this.handleModalSubmit(payload));
 			},
 		);
 
@@ -123,7 +123,7 @@ export class TwentyQuestions {
 			actionId: 'twenty_questions_submit_question',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked submit question button`);
-			mutex.runExclusive(() => this.handleQuestionSubmit(payload));
+			return mutex.runExclusive(() => this.handleQuestionSubmit(payload));
 		});
 
 		this.#interactions.action({
@@ -131,7 +131,7 @@ export class TwentyQuestions {
 			actionId: 'twenty_questions_submit_answer',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked submit answer button`);
-			mutex.runExclusive(() => this.handleAnswerSubmit(payload));
+			return mutex.runExclusive(() => this.handleAnswerSubmit(payload));
 		});
 
 		this.#interactions.action({
@@ -139,7 +139,7 @@ export class TwentyQuestions {
 			actionId: 'twenty_questions_view_log_button',
 		}, (payload: BlockAction) => {
 			log.info(`${payload.user.name} clicked view log button`);
-			this.handleViewLogButton(payload);
+			return mutex.runExclusive(() => this.handleViewLogButton(payload));
 		});
 
 		if (this.#state.currentGame) {
