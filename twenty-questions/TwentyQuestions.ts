@@ -15,14 +15,12 @@ import {increment} from '../achievements';
 import gameStatusMessage from './views/gameStatusMessage';
 import playerModal from './views/playerModal';
 import gameLogModal from './views/gameLogModal';
-import {MAX_QUESTIONS, MAX_QUESTION_LENGTH, MAX_ANSWER_LENGTH} from './const';
+import {MAX_QUESTIONS, MAX_QUESTION_LENGTH, MAX_ANSWER_LENGTH, GAME_TIMEOUT, CHAT_COMPLETION_SEED} from './const';
 import type {CollectionReference} from 'firebase-admin/lib/firestore';
 import {getRankedPlayers, getRankEmoji} from './rankingUtils';
 
 const mutex = new Mutex();
 const log = logger.child({bot: 'twenty-questions'});
-
-const GAME_TIMEOUT = 30 * 60 * 1000;
 
 export interface Question {
 	question: string;
@@ -654,6 +652,8 @@ export class TwentyQuestions {
 			],
 			max_completion_tokens: 50,
 			reasoning_effort: 'minimal',
+			temperature: 0,
+			seed: CHAT_COMPLETION_SEED,
 		});
 
 		const rawAnswer = completion.choices[0]?.message?.content?.trim() || 'わかりません';
