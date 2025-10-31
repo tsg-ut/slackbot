@@ -7,7 +7,7 @@ import {TwentyQuestions, type StateObj} from './TwentyQuestions';
 import openai from '../lib/openai';
 import {getCandidateWords} from '../lib/candidateWords';
 import {increment} from '../achievements';
-import { BlockAction, BlockElementAction } from '@slack/bolt';
+import {BlockAction, BlockElementAction} from '@slack/bolt';
 
 jest.mock('axios');
 jest.mock('../lib/slackUtils');
