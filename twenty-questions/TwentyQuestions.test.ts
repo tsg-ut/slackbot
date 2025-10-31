@@ -201,9 +201,27 @@ describe('twenty-questions', () => {
 
 			const payload: BlockAction<BlockElementAction> = {
 				type: 'block_actions',
-				user: { id: slack.fakeUser, name: 'testuser' },
+				user: {
+					id: slack.fakeUser,
+					name: 'testuser',
+					username: 'testuser',
+				},
+				team: null,
 				view: {
 					id: 'test-view-id',
+					type: 'modal',
+					callback_id: '',
+					team_id: slack.fakeTeam,
+					app_id: 'test-app-id',
+					bot_id: 'test-bot-id',
+					title: {
+						type: 'plain_text',
+						text: 'Test Modal',
+						emoji: true,
+					},
+					blocks: [],
+					close: null,
+					submit: null,
 					state: {
 						values: {
 							question_input: {
@@ -214,14 +232,35 @@ describe('twenty-questions', () => {
 							},
 						},
 					},
+					hash: 'test-hash',
+					private_metadata: '',
+					root_view_id: 'test-view-id',
+					previous_view_id: null,
+					clear_on_close: false,
+					notify_on_close: false,
 				},
 				actions: [
 					{
 						type: 'button',
 						action_id: 'twenty_questions_submit_question',
+						block_id: 'test-block-id',
+						action_ts: '1234567890.123456',
+						text: {
+							type: 'plain_text',
+							text: 'Submit',
+							emoji: true,
+						},
 					},
 				],
-			} as any;
+				token: 'test-token',
+				response_url: 'https://hooks.slack.com/actions/test',
+				trigger_id: 'test-trigger-id',
+				api_app_id: 'test-app-id',
+				container: {
+					type: 'view',
+					view_id: 'test-view-id',
+				},
+			};
 
 			await slack.messageClient.sendAction(payload);
 
