@@ -5,6 +5,7 @@ import {EventEmitter} from 'events';
 import {last} from 'lodash';
 import type {SlackInterface} from './slack';
 import {createMessageAdapter} from '@slack/interactive-messages';
+import type {BlockAction} from '@slack/bolt';
 
 // https://jestjs.io/docs/mock-function-api
 const mockMethodCalls = [
@@ -83,6 +84,55 @@ class MockTeamEventClient extends EventEmitter {
 	}
 }
 
+class MockMessageClient {
+	action = jest.fn();
+	viewSubmission = jest.fn();
+	async sendAction(
+		payload: BlockAction,
+		callbackId?: string,
+		respondFn?: (response: any) => Promise<void>,
+	): Promise<any> {
+		const actionHandlers = this.action.mock.calls;
+		const action = payload.actions[0];
+		if (!action) {
+			return null;
+		}
+		const handlerEntry = actionHandlers.find(
+			([pattern]) => {
+				if (typeof pattern === 'string') {
+					return pattern === callbackId;
+				}
+				if (pattern instanceof RegExp) {
+					return callbackId && pattern.test(callbackId);
+				}
+				return (
+					matchPattern(pattern.actionId, action.action_id) &&
+					matchPattern(pattern.callbackId, callbackId) &&
+					matchPattern(pattern.blockId, action.block_id) &&
+					matchPattern(pattern.type, action.type)
+				);
+			}
+		);
+		if (handlerEntry) {
+			const handler = handlerEntry[1];
+			return handler(payload, respondFn ?? jest.fn());
+		}
+	}
+}
+
+const matchPattern = (pattern: undefined | string | RegExp, test: undefined | string) => {
+	if (pattern === undefined) {
+		return true;
+	}
+	if (test === undefined) {
+		return false;
+	}
+	if (typeof pattern === 'string') {
+		return pattern === test;
+	}
+	return pattern.test(test);
+}
+
 export default class SlackMock extends EventEmitter implements SlackInterface {
 	fakeChannel = 'C00000000';
 	fakeUser = 'U00000000';
@@ -92,7 +142,7 @@ export default class SlackMock extends EventEmitter implements SlackInterface {
 	readonly eventClient: MockTeamEventClient;
 	readonly registeredMocks: Map<string, jest.Mock>;
 	readonly webClient: WebClient;
-	readonly messageClient: ReturnType<typeof createMessageAdapter>;
+	readonly messageClient: ReturnType<typeof createMessageAdapter> & MockMessageClient;
 
 	constructor() {
 		super();
@@ -102,10 +152,7 @@ export default class SlackMock extends EventEmitter implements SlackInterface {
 			(stack: string[], ...args: any[]) => this.handleWebcall(stack, ...args),
 			this.registeredMocks,
 		) as unknown as WebClient;
-		this.messageClient = {
-			action: jest.fn(),
-			viewSubmission: jest.fn(),
-		} as any;
+		this.messageClient = new MockMessageClient() as any;
 	}
 
 	handleWebcall(stack: string[], ...args: any[]) {
