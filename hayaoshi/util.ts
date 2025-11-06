@@ -71,9 +71,9 @@ const loader = new Loader<LoaderData>(async () => {
 		abc2019Candidates: [],
 	});
 
-	const auth = await new google.auth.GoogleAuth({
+	const auth = new google.auth.GoogleAuth({
 		scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-	}).getClient();
+	});
 
 	const sheets = google.sheets({version: 'v4', auth});
 
