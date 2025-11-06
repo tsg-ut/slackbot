@@ -1,6 +1,7 @@
 import {firestore} from 'firebase-admin';
 import {initializeApp} from 'firebase-admin/app';
-import {firestore as functions_firestore, logger} from 'firebase-functions';
+import {logger} from 'firebase-functions';
+import {onDocumentCreated, onDocumentUpdated} from 'firebase-functions/v2/firestore';
 import {isEqual} from 'lodash';
 
 export {slackFileArchiveCronJob} from './jobs/slackFileArchiveCronJob';
@@ -12,7 +13,13 @@ interface SlowQuizGame {
 initializeApp();
 const db = firestore();
 
-export const updateCounts = functions_firestore.document('achievements/{id}').onCreate(async (achievement) => {
+export const updateCounts = onDocumentCreated('achievements/{id}', async (event) => {
+	const achievement = event.data;
+	if (!achievement) {
+		logger.error('Achievement data is undefined');
+		return;
+	}
+
 	await db.runTransaction(async (transaction) => {
 		const name = achievement.get('name');
 		const user = achievement.get('user');
@@ -54,21 +61,27 @@ export const updateCounts = functions_firestore.document('achievements/{id}').on
 	});
 });
 
-export const updateSlowQuizCollection = functions_firestore.document('states/slow-quiz').onUpdate(async (change) => {
+export const updateSlowQuizCollection = onDocumentUpdated('states/slow-quiz', async (event) => {
 	const gamesRef = db.collection('slow_quiz_games');
 
-	logger.info(`Old games: ${change.before.get('games').length}`);
-	logger.info(`New games: ${change.after.get('games').length}`);
+	const data = event.data;
+	if (!data) {
+		logger.error('Event data is undefined');
+		return;
+	}
+
+	logger.info(`Old games: ${data.before.get('games').length}`);
+	logger.info(`New games: ${data.after.get('games').length}`);
 
 	await db.runTransaction((transaction) => {
-		const oldGames = change.before.get('games') as SlowQuizGame[];
+		const oldGames = data.before.get('games') as SlowQuizGame[];
 		const oldGamesMap = new Map<string, SlowQuizGame>();
 
 		for (const game of oldGames) {
 			oldGamesMap.set(game.id, game);
 		}
 
-		const newGames = change.after.get('games') as SlowQuizGame[];
+		const newGames = data.after.get('games') as SlowQuizGame[];
 		for (const newGame of newGames) {
 			const oldGame = oldGamesMap.get(newGame.id);
 			if (oldGame === undefined || !isEqual(oldGame, newGame)) {

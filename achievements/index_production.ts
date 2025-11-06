@@ -333,10 +333,19 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 	for (const achievementChunks of chunk(Array.from(achievements), 300)) {
 		const batch = db.batch();
 		for (const [id, achievement] of achievementChunks) {
+			const docRef = AchievementData.doc(id);
 			if (achievementsDataSet.has(id)) {
-				batch.update(AchievementData.doc(id), achievement);
+				batch.update(docRef, {
+					difficulty: achievement.difficulty,
+					title: achievement.title,
+					condition: achievement.condition,
+					category: achievement.category,
+					...(achievement.counter !== undefined && {counter: achievement.counter}),
+					...(achievement.value !== undefined && {value: achievement.value}),
+					...(achievement.manual !== undefined && {manual: achievement.manual}),
+				});
 			} else {
-				batch.set(AchievementData.doc(id), achievement);
+				batch.set(docRef, achievement);
 			}
 		}
 		await batch.commit();

@@ -294,9 +294,9 @@ interface NormalizedPlaylist {
 }
 
 export const fetchIntroQuizData = async () => {
-	const auth = await new google.auth.GoogleAuth({
+	const auth = new google.auth.GoogleAuth({
 		scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-	}).getClient();
+	});
 
 	const sheets = google.sheets({version: 'v4', auth});
 

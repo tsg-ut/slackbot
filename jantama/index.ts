@@ -71,9 +71,9 @@ const getRatingChangeText = (ratingChanges: RatingChange[], users: UserEntry[]) 
 };
 
 const getRecordedPaipuIds = async () => {
-	const auth = await new google.auth.GoogleAuth({
+	const auth = new google.auth.GoogleAuth({
 		scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-	}).getClient();
+	});
 	const sheets = google.sheets({version: 'v4', auth});
 
 	const sheetsData = await new Promise<string[][]>((resolve, reject) => {
@@ -95,9 +95,9 @@ const getRecordedPaipuIds = async () => {
 };
 
 const getSheetsData = async (spreadsheetId: string, range: string) => {
-	const auth = await new google.auth.GoogleAuth({
+	const auth = new google.auth.GoogleAuth({
 		scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-	}).getClient();
+	});
 	const sheets = google.sheets({version: 'v4', auth});
 
 	const sheetsData = await new Promise<string[][]>((resolve, reject) => {
@@ -172,9 +172,9 @@ const generateRatingsFromHistory = async () => {
 };
 
 const appendResultToHistory = async (paipuId: string, date: Date, players: Player[]) => {
-	const auth = await new google.auth.GoogleAuth({
+	const auth = new google.auth.GoogleAuth({
 		scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-	}).getClient();
+	});
 	const sheets = google.sheets({version: 'v4', auth});
 
 	const targetRange = players.length === 4 ? 'log!A:N' : 'samma!A:K';

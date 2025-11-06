@@ -66,9 +66,9 @@ async function getZipData(drive, month) {
 }
 
 async function getRecords() {
-    const auth = await new google.auth.GoogleAuth({
+    const auth = new google.auth.GoogleAuth({
         scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-    }).getClient();
+    });
     const drive = google.drive({version: 'v3', auth});
     // const drive = null; // for local test
 
