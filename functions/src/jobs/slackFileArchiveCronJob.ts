@@ -4,26 +4,26 @@ import axios from 'axios';
 import {chunk} from 'lodash';
 import {runWith, config as getConfig, logger} from 'firebase-functions/v1';
 
-const config = getConfig();
-
-const slack = new WebClient(config.slack.token);
-
-const db = new DynamoDB.DocumentClient({
-	region: 'ap-northeast-1',
-	credentials: {
-		secretAccessKey: config.aws.secret_access_key,
-		accessKeyId: config.aws.access_key_id,
-	},
-});
-
-const s3 = new S3({
-	credentials: {
-		secretAccessKey: config.aws.secret_access_key,
-		accessKeyId: config.aws.access_key_id,
-	},
-});
-
 const cronJob = async () => {
+	const config = getConfig();
+
+	const slack = new WebClient(config.slack.token);
+
+	const db = new DynamoDB.DocumentClient({
+		region: 'ap-northeast-1',
+		credentials: {
+			secretAccessKey: config.aws.secret_access_key,
+			accessKeyId: config.aws.access_key_id,
+		},
+	});
+
+	const s3 = new S3({
+		credentials: {
+			secretAccessKey: config.aws.secret_access_key,
+			accessKeyId: config.aws.access_key_id,
+		},
+	});
+
 	let page = 1;
 	const now = Math.floor(Date.now() / 1000);
 
