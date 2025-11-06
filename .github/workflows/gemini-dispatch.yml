@@ -1,0 +1,162 @@
+# Gemini CLI Dispatcher Workflow
+# Based on: https://github.com/google-github-actions/run-gemini-cli/blob/main/examples/workflows/gemini-dispatch/gemini-dispatch.yml
+
+name: 🤖 Gemini CLI Dispatcher
+
+on:
+  pull_request:
+    types: [opened, reopened]
+  issue_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  dispatch:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+      issues: write
+    outputs:
+      review: ${{ steps.route.outputs.review }}
+    steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        if: ${{ vars.GH_APP_ID }}
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+      - name: Route request
+        id: route
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if this is a PR from a fork
+          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+            echo "Skipping review for fork PR for security reasons"
+            echo "review=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Route based on event type and comment content
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "review=true" >> "$GITHUB_OUTPUT"
+            echo "additional_context=" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "issue_comment" ] && [ "${{ github.event.issue.pull_request }}" != "" ]; then
+            COMMENT_BODY="${{ github.event.comment.body }}"
+            if echo "$COMMENT_BODY" | grep -q "@gemini-cli /review"; then
+              # Check if commenter has permission
+              ASSOCIATION="${{ github.event.comment.author_association }}"
+              if [ "$ASSOCIATION" = "OWNER" ] || [ "$ASSOCIATION" = "MEMBER" ] || [ "$ASSOCIATION" = "COLLABORATOR" ]; then
+                echo "review=true" >> "$GITHUB_OUTPUT"
+                # Extract additional context after /review command
+                ADDITIONAL_CONTEXT=$(echo "$COMMENT_BODY" | sed 's/.*@gemini-cli \/review//' | xargs)
+                echo "additional_context=$ADDITIONAL_CONTEXT" >> "$GITHUB_OUTPUT"
+              else
+                echo "review=false" >> "$GITHUB_OUTPUT"
+                gh issue comment ${{ github.event.issue.number }} --body "Sorry, only repository owners, members, and collaborators can request reviews."
+              fi
+            else
+              echo "review=false" >> "$GITHUB_OUTPUT"
+            fi
+          elif [ "${{ github.event_name }}" = "pull_request_review" ]; then
+            REVIEW_BODY="${{ github.event.review.body }}"
+            if echo "$REVIEW_BODY" | grep -q "@gemini-cli /review"; then
+              ASSOCIATION="${{ github.event.review.author_association }}"
+              if [ "$ASSOCIATION" = "OWNER" ] || [ "$ASSOCIATION" = "MEMBER" ] || [ "$ASSOCIATION" = "COLLABORATOR" ]; then
+                echo "review=true" >> "$GITHUB_OUTPUT"
+                ADDITIONAL_CONTEXT=$(echo "$REVIEW_BODY" | sed 's/.*@gemini-cli \/review//' | xargs)
+                echo "additional_context=$ADDITIONAL_CONTEXT" >> "$GITHUB_OUTPUT"
+              else
+                echo "review=false" >> "$GITHUB_OUTPUT"
+                gh pr comment ${{ github.event.pull_request.number }} --body "Sorry, only repository owners, members, and collaborators can request reviews."
+              fi
+            else
+              echo "review=false" >> "$GITHUB_OUTPUT"
+            fi
+          elif [ "${{ github.event_name }}" = "pull_request_review_comment" ]; then
+            COMMENT_BODY="${{ github.event.comment.body }}"
+            if echo "$COMMENT_BODY" | grep -q "@gemini-cli /review"; then
+              ASSOCIATION="${{ github.event.comment.author_association }}"
+              if [ "$ASSOCIATION" = "OWNER" ] || [ "$ASSOCIATION" = "MEMBER" ] || [ "$ASSOCIATION" = "COLLABORATOR" ]; then
+                echo "review=true" >> "$GITHUB_OUTPUT"
+                ADDITIONAL_CONTEXT=$(echo "$COMMENT_BODY" | sed 's/.*@gemini-cli \/review//' | xargs)
+                echo "additional_context=$ADDITIONAL_CONTEXT" >> "$GITHUB_OUTPUT"
+              else
+                echo "review=false" >> "$GITHUB_OUTPUT"
+                gh pr comment ${{ github.event.pull_request.number }} --body "Sorry, only repository owners, members, and collaborators can request reviews."
+              fi
+            else
+              echo "review=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "review=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Acknowledge request
+        if: steps.route.outputs.review == 'true'
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            gh pr comment ${{ github.event.pull_request.number }} --body "Starting automated code review..."
+          elif [ "${{ github.event_name }}" = "issue_comment" ]; then
+            gh issue comment ${{ github.event.issue.number }} --body "Starting automated code review..."
+          elif [ "${{ github.event_name }}" = "pull_request_review" ] || [ "${{ github.event_name }}" = "pull_request_review_comment" ]; then
+            gh pr comment ${{ github.event.pull_request.number }} --body "Starting automated code review..."
+          fi
+
+  review:
+    needs: dispatch
+    if: needs.dispatch.outputs.review == 'true'
+    uses: ./.github/workflows/gemini-pr-review.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+      issues: write
+    with:
+      additional_context: ${{ needs.dispatch.outputs.additional_context }}
+
+  fallthrough:
+    needs: [dispatch, review]
+    if: failure() || cancelled()
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        if: ${{ vars.GH_APP_ID }}
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+      - name: Report failure
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}
+        run: |
+          MESSAGE="The automated review encountered an issue. Please check the [action logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details."
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            gh pr comment ${{ github.event.pull_request.number }} --body "$MESSAGE"
+          elif [ "${{ github.event_name }}" = "issue_comment" ]; then
+            gh issue comment ${{ github.event.issue.number }} --body "$MESSAGE"
+          elif [ "${{ github.event_name }}" = "pull_request_review" ] || [ "${{ github.event_name }}" = "pull_request_review_comment" ]; then
+            gh pr comment ${{ github.event.pull_request.number }} --body "$MESSAGE"
+          fi
