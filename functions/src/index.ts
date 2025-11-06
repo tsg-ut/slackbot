@@ -15,6 +15,11 @@ const db = firestore();
 
 export const updateCounts = onDocumentCreated('achievements/{id}', async (event) => {
 	const achievement = event.data;
+	if (!achievement) {
+		logger.error('Achievement data is undefined');
+		return;
+	}
+
 	await db.runTransaction(async (transaction) => {
 		const name = achievement.get('name');
 		const user = achievement.get('user');
@@ -59,18 +64,24 @@ export const updateCounts = onDocumentCreated('achievements/{id}', async (event)
 export const updateSlowQuizCollection = onDocumentUpdated('states/slow-quiz', async (event) => {
 	const gamesRef = db.collection('slow_quiz_games');
 
-	logger.info(`Old games: ${event.data.before.get('games').length}`);
-	logger.info(`New games: ${event.data.after.get('games').length}`);
+	const data = event.data;
+	if (!data) {
+		logger.error('Event data is undefined');
+		return;
+	}
+
+	logger.info(`Old games: ${data.before.get('games').length}`);
+	logger.info(`New games: ${data.after.get('games').length}`);
 
 	await db.runTransaction((transaction) => {
-		const oldGames = event.data.before.get('games') as SlowQuizGame[];
+		const oldGames = data.before.get('games') as SlowQuizGame[];
 		const oldGamesMap = new Map<string, SlowQuizGame>();
 
 		for (const game of oldGames) {
 			oldGamesMap.set(game.id, game);
 		}
 
-		const newGames = event.data.after.get('games') as SlowQuizGame[];
+		const newGames = data.after.get('games') as SlowQuizGame[];
 		for (const newGame of newGames) {
 			const oldGame = oldGamesMap.get(newGame.id);
 			if (oldGame === undefined || !isEqual(oldGame, newGame)) {
