@@ -193,12 +193,23 @@ export const server = ({eventClient, webClient: slack}: SlackInterface) => plugi
       response.code(200);
       return '/emoxpand is only for TSG. Sorry!';
     }
-    slack.chat.postMessage({
-      channel: request.body.channel_id,
-      text: expandEmoji(request.body.text),
-      username: await getMemberName(request.body.user_id),
-      icon_url: await getMemberIcon(request.body.user_id, 192),
-    });
+    if (request.body.text.trim() === 'list') {
+      const emojiList = Array.from(allEmojis.keys())
+        .map((name) => `\`!${name}!\``)
+        .join('\n');
+      slack.chat.postEphemeral({
+        channel: request.body.channel_id,
+        user: request.body.user_id,
+        text: `利用可能な大絵文字:\n${emojiList}`,
+      });
+    } else {
+      slack.chat.postMessage({
+        channel: request.body.channel_id,
+        text: expandEmoji(request.body.text),
+        username: await getMemberName(request.body.user_id),
+        icon_url: await getMemberIcon(request.body.user_id, 192),
+      });
+    }
     return '';
   });
   // }}}
@@ -271,4 +282,3 @@ ${match.groups.content}
     // }}}
   });
 });
-
