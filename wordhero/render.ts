@@ -30,8 +30,10 @@ export const renderCrossword = async (board: {letter: string, color: string}[], 
 			90,
 		).toSVG(2).replace('<path', `<path fill="${cell.color}"`)
 	)).join('');
-	const cells = board.map((cell, index) => (cell === null || cell.letter === null) ? {x: 0, y: 0} : {x: index % 20 + 1, y: Math.floor(index / 20) + 1});
-	const svg = Buffer.from(`<svg width="${max(cells.map(({x}) => x)) * 100 + 30}" height="${max(cells.map(({y}) => y)) * 100 + 30}">${fontPath}</svg>`);
+	const cells = board.map((cell, index) => (cell === null || cell.letter === null) ? null : {x: index % 20 + 1, y: Math.floor(index / 20) + 1}).filter((cell): cell is {x: number, y: number} => cell !== null);
+	const maxX = cells.length > 0 ? max(cells.map(({x}) => x)) : 1;
+	const maxY = cells.length > 0 ? max(cells.map(({y}) => y)) : 1;
+	const svg = Buffer.from(`<svg width="${maxX * 100 + 30}" height="${maxY * 100 + 30}">${fontPath}</svg>`);
 	const png = await sharp(path.join(__dirname, `${boardId}.png`)).composite([{input: svg, top: 0, left: 0}]).png().toBuffer();
 	return png;
 };
