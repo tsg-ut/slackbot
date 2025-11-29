@@ -2,10 +2,12 @@ import sharp from 'sharp';
 import loadFont from '../lib/loadFont';
 import path from 'path';
 import {max} from 'lodash';
+import fs from 'fs/promises';
+import {stripIndents} from 'common-tags';
 
 const render = async (board: string[], {color = 'black'}: {color: string}) => {
 	const font = await loadFont('Noto Serif JP Bold');
-	const fontPath = board.map((letter, index) => (
+	const letterPaths = board.map((letter, index) => (
 		font.getPath(
 			letter,
 			index % 4 * 100,
@@ -13,25 +15,55 @@ const render = async (board: string[], {color = 'black'}: {color: string}) => {
 			100,
 		).toSVG(2).replace('<path', `<path fill="${color}"`)
 	)).join('');
-	const svg = Buffer.from(`<svg width="400" height="400">${fontPath}</svg>`);
+	const svg = Buffer.from(`<svg width="400" height="400">${letterPaths}</svg>`);
 	const png = await sharp(svg).png().toBuffer();
 	return png;
 };
 
 export default render;
 
-export const renderCrossword = async (board: {letter: string, color: string}[], boardId: string) => {
+interface CellInfo {
+	x: number;
+	y: number;
+	letter: string;
+	color: string;
+}
+
+export const renderCrossword = async (board: ({letter: string | null, color: string} | null)[], boardId: string) => {
 	const font = await loadFont('Noto Serif JP Bold');
-	const fontPath = board.map((cell, index) => (
-		(cell === null || cell.letter === null) ? '' : font.getPath(
+	const cells = board.flatMap<CellInfo>((cell, index) => {
+		if (cell === null || cell.letter === null) {
+			return [];
+		}
+		return [{
+			x: index % 20,
+			y: Math.floor(index / 20),
+			letter: cell.letter,
+			color: cell.color,
+		}];
+	});
+
+	if (cells.length === 0) {
+		return fs.readFile(path.join(__dirname, `${boardId}.png`));
+	}
+
+	const letterPaths = cells.map((cell) => (
+		font.getPath(
 			cell.letter,
-			index % 20 * 100 + 25,
-			Math.floor(index / 20) * 100 + 105,
+			cell.x * 100 + 25,
+			cell.y * 100 + 105,
 			90,
 		).toSVG(2).replace('<path', `<path fill="${cell.color}"`)
-	)).join('');
-	const cells = board.map((cell, index) => (cell === null || cell.letter === null) ? {x: 0, y: 0} : {x: index % 20 + 1, y: Math.floor(index / 20) + 1});
-	const svg = Buffer.from(`<svg width="${max(cells.map(({x}) => x)) * 100 + 30}" height="${max(cells.map(({y}) => y)) * 100 + 30}">${fontPath}</svg>`);
-	const png = await sharp(path.join(__dirname, `${boardId}.png`)).composite([{input: svg, top: 0, left: 0}]).png().toBuffer();
-	return png;
+	));
+	const maxX = max(cells.map(({x}) => x));
+	const maxY = max(cells.map(({y}) => y));
+	const svg = Buffer.from(stripIndents`
+		<svg width="${maxX * 100 + 130}" height="${maxY * 100 + 130}">
+			${letterPaths.join('')}
+		</svg>
+	`);
+	return sharp(path.join(__dirname, `${boardId}.png`))
+		.composite([{input: svg, top: 0, left: 0}])
+		.png()
+		.toBuffer();
 };
