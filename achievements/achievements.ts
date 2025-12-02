@@ -4255,7 +4255,7 @@ const achievements: Achievement[] = [
 		id: 'slack-self-emoji',
 		difficulty: 'medium',
 		title: 'アヴァターラ',
-		condition: 'Slackに自分の絵文字を登録する',
+		condition: 'Slackに自分を表す絵文字を登録する、もしくは登録される',
 		category: 'manual',
 		manual: true,
 	},
