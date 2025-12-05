@@ -225,6 +225,20 @@ export const server = ({eventClient, webClient: slack}: SlackInterface) => plugi
       return;
     }
 
+    // Big Emoji list {{{
+    if (/^大(?:絵文字|emoji)一覧$/.test(message.text)) {
+      const emojiNames = Array.from(allEmojis.keys());
+      if (emojiNames.length === 0) {
+        postMessage('登録されている大絵文字はありません');
+      }
+      else {
+        const list = emojiNames.map((name) => `\`!${name}!\``).join(' ');
+        postMessage(`登録されている大絵文字一覧:\n${list}`);
+      }
+      return;
+    }
+    // }}}
+
     if (state !== 'WaitingRegistration' &&
         message.text === 'やーめた') {
       postMessage(':OK:');
