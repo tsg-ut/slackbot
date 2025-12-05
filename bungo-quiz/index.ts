@@ -1,6 +1,6 @@
 import { Mutex } from 'async-mutex';
-import cheerio from 'cheerio';
 import axios from 'axios';
+import { load as cheerioLoad } from 'cheerio';
 import { sample, random } from 'lodash';
 import type { SlackInterface } from '../lib/slack';
 import { AteQuizProblem, AteQuiz, typicalMessageTextsGenerator } from '../atequiz';
@@ -48,7 +48,7 @@ const fetchCorpus = async (cardURL: string) => {
       },
     },
   );
-  const $ = cheerio.load(data);
+  const $ = cheerioLoad(data);
   const wholeText = removeWhiteSpaces(
     $('.main_text').children().map((_, e) => $(e).text() + $(e.next).text()).toArray().join("")
   );

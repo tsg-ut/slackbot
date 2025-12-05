@@ -1,6 +1,6 @@
 import {encode} from 'querystring';
 import axios from 'axios';
-import cheerio from 'cheerio';
+import {load as cheerioLoad} from 'cheerio';
 import {google, sheets_v4} from 'googleapis';
 import {decode as decodeHtmlEntities} from 'html-entities';
 import iconv from 'iconv-lite';
@@ -176,7 +176,7 @@ export const getQuiz = async () => {
 	const page = id > 1200 ? 7 : Math.ceil(id / 200);
 	const url = `http://www.chukai.ne.jp/~shintaku/hayaoshi/haya${page.toString().padStart(3, '0')}.htm`;
 	const {data} = await axios.get<Buffer>(url, {responseType: 'arraybuffer'});
-	const $ = cheerio.load(iconv.decode(data, 'sjis'));
+	const $ = cheerioLoad(iconv.decode(data, 'sjis'));
 	const {quizes} = await scrapeIt.scrapeHTML<Data>($, {
 		test: 'tbody',
 		quizes: {
