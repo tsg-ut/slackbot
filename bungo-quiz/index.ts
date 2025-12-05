@@ -1,5 +1,5 @@
 import { Mutex } from 'async-mutex';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import axios from 'axios';
 import { sample, random } from 'lodash';
 import type { SlackInterface } from '../lib/slack';
