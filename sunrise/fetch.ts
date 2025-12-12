@@ -1,5 +1,5 @@
 import axios from 'axios';
-import cheerio from 'cheerio';
+import {load as cheerioLoad} from 'cheerio';
 import {flatten, sortBy} from 'lodash';
 import scrapeIt from 'scrape-it';
 import {z} from 'zod';
@@ -216,7 +216,7 @@ export const getEntries = () => (
 
 export const getHaiku = async () => {
 	const {data} = await axios.get('https://www.haijinkyokai.jp/');
-	const $ = cheerio.load(data);
+	const $ = cheerioLoad(data);
 	$('rt').each((i, element) => {
 		$(element).remove(); // Remove ruby
 	});
