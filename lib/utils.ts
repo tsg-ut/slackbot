@@ -75,6 +75,6 @@ export function isPlayground(channelId: string) {
   const playgroundChannels = [
     process.env.CHANNEL_SANDBOX,
     process.env.CHANNEL_GAMES,
-  ];
+  ].filter(Boolean);
   return playgroundChannels.includes(channelId);
 }
