@@ -67,3 +67,14 @@ export class Loader<T> {
 		return this.value;
 	}
 }
+
+/**
+ * 指定された channelID のチャンネルがゲームの起動を意図されたチャンネルかどうかを判定する
+ */
+export function isPlayground(channelId: string) {
+  const playgroundChannels = [
+    process.env.CHANNEL_SANDBOX,
+    process.env.CHANNEL_GAMES,
+  ];
+  return playgroundChannels.includes(channelId);
+}
