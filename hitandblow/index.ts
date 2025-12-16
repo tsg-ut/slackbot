@@ -2,6 +2,7 @@ import { WebClient } from '@slack/web-api';
 import { range, shuffle, round } from 'lodash';
 import { stripIndent } from 'common-tags';
 import { unlock } from '../achievements';
+import { isPlayground } from '../lib/slackUtils';
 import assert from 'assert';
 import type { EventEmitter } from 'events';
 
@@ -14,6 +15,7 @@ interface HitAndBlowHistory {
 class HitAndBlowState {
   answer: number[] = [];
   history: HitAndBlowHistory[] = [];
+  channel: string | null = null;
   thread: string | null = null;
   startDate: number | null = null;
   timer: NodeJS.Timeout | null = null;
@@ -100,7 +102,7 @@ export default ({
     if (history.length === 0) {
       await slack.chat.postMessage({
         text: 'コール履歴: なし',
-        channel: process.env.CHANNEL_SANDBOX as string,
+        channel: state.channel, // これが呼び出される時点ではchannelはnullにならないはず
         username: 'Hit & Blow',
         icon_emoji: '1234',
         thread_ts: state.thread,
@@ -112,7 +114,7 @@ export default ({
         .map((hist: HitAndBlowHistory) => generateHistoryString(hist))
         .join('\n')}\`\`\`
       `,
-        channel: process.env.CHANNEL_SANDBOX as string,
+        channel: state.channel, // これが呼び出される時点ではchannelはnullにならないはず
         username: 'Hit & Blow',
         icon_emoji: '1234',
         thread_ts: state.thread,
@@ -124,7 +126,7 @@ export default ({
   const timeUp = async () => {
     await slack.chat.postMessage({
       text: '～～～～～～～～～～おわり～～～～～～～～～～',
-      channel: process.env.CHANNEL_SANDBOX as string,
+      channel: state.channel, // これが呼び出される時点ではchannelはnullにならないはず
       username: 'Hit & Blow',
       icon_emoji: '1234',
       thread_ts: state.thread,
@@ -135,7 +137,7 @@ export default ({
           答えは \`${state.answer
             .map((dig: number) => String(dig))
             .join('')}\` だよ:cry:`,
-      channel: process.env.CHANNEL_SANDBOX as string,
+      channel: state.channel, // これが呼び出される時点ではchannelはnullにならないはず
       username: 'Hit & Blow',
       icon_emoji: '1234',
       thread_ts: state.thread,
@@ -147,8 +149,8 @@ export default ({
     state.clear();
   };
 
-  eventClient.on('message', async message => {
-    if (message.channel !== process.env.CHANNEL_SANDBOX) {
+  eventClient.on('message', async (message) => {
+    if (!isPlayground(message.channel)) {
       return;
     }
     if (
@@ -164,13 +166,15 @@ export default ({
     // game開始処理
     if (message.text.match(/^hitandblow( \d+)?$/)) {
       if (state.inGame) {
+        const ongoingUrl = `https://tsg.slack.com/archives/${
+          state.channel
+        }/p${state.thread.replace('.', '')}`;
         await slack.chat.postMessage({
-          text: '進行中のゲームがあるよ:thinking_face:',
-          channel: process.env.CHANNEL_SANDBOX as string,
+          text: `<${ongoingUrl}|進行中のゲーム>があるよ:thinking_face:`,
+          channel: message.channel as string,
           username: 'Hit & Blow',
           icon_emoji: '1234',
-          thread_ts: state.thread,
-          reply_broadcast: true,
+          // thread_ts: state.thread,
         });
         return;
       } else {
@@ -180,18 +184,20 @@ export default ({
         if (answerLength <= 0 || 10 < answerLength) {
           await slack.chat.postMessage({
             text: '桁数は1以上10以下で指定してね:thinking_face:',
-            channel: process.env.CHANNEL_SANDBOX as string,
+            channel: message.channel as string,
             username: 'Hit & Blow',
             icon_emoji: '1234',
           });
         } else {
+          // state を更新してゲームを開始
           state.inGame = true;
           state.answer = shuffle(range(10)).slice(0, answerLength);
+          state.channel = message.channel as string;
           const { ts } = await slack.chat.postMessage({
             text: stripIndent`
             Hit & Blow (${state.answer.length}桁) を開始します。
             スレッドに数字でコールしてね`,
-            channel: process.env.CHANNEL_SANDBOX as string,
+            channel: state.channel,
             username: 'Hit & Blow',
             icon_emoji: '1234',
           });
@@ -201,7 +207,7 @@ export default ({
           state.timer = setTimeout(timeUp, timeLimit);
           await slack.chat.postMessage({
             text: `制限時間は${timeLimit / 1000 / 60}分です`,
-            channel: process.env.CHANNEL_SANDBOX as string,
+            channel: state.channel,
             username: 'Hit & Blow',
             icon_emoji: '1234',
             thread_ts: state.thread,
@@ -225,7 +231,7 @@ export default ({
         if (call.length !== state.answer.length) {
           await slack.chat.postMessage({
             text: `桁数が違うよ:thinking_face: (${state.answer.length}桁)`,
-            channel: process.env.CHANNEL_SANDBOX as string,
+            channel: state.channel,
             username: 'Hit & Blow',
             icon_emoji: '1234',
             thread_ts: state.thread,
@@ -233,9 +239,8 @@ export default ({
         } else {
           if (!isValidCall(call)) {
             await slack.chat.postMessage({
-              text:
-                'コール中に同じ数字を2個以上含めることはできないよ:thinking_face:',
-              channel: process.env.CHANNEL_SANDBOX as string,
+              text: 'コール中に同じ数字を2個以上含めることはできないよ:thinking_face:',
+              channel: state.channel,
               username: 'Hit & Blow',
               icon_emoji: '1234',
               thread_ts: state.thread,
@@ -254,7 +259,7 @@ export default ({
               text: `\`${call.map((dig: number) => String(dig)).join('')}\`: ${
                 hits.size
               } Hit ${blows.size - hits.size} Blow`, // ここもgenerateHistoryStringとまとめようと思ったけど、ここ一箇所のために``用の分岐を入れるのもなんか違う気がしてる
-              channel: process.env.CHANNEL_SANDBOX as string,
+              channel: state.channel,
               username: 'Hit & Blow',
               icon_emoji: '1234',
               thread_ts: state.thread,
@@ -270,7 +275,7 @@ export default ({
                   .join('')}\` だよ:muscle:
                 手数: ${state.history.length}手
                 経過時間: ${round(passedTime / 1000, 3).toFixed(3)}秒`,
-                channel: process.env.CHANNEL_SANDBOX as string,
+                channel: state.channel,
                 username: 'Hit & Blow',
                 icon_emoji: '1234',
                 thread_ts: state.thread,
@@ -342,7 +347,7 @@ export default ({
       if (call1.length !== call2.length) {
         await slack.chat.postMessage({
           text: `桁数が違うので比較できないよ:cry:`,
-          channel: process.env.CHANNEL_SANDBOX as string,
+          channel: message.channel as string,
           username: 'Hit & Blow',
           icon_emoji: '1234',
           thread_ts: message.ts,
@@ -351,7 +356,7 @@ export default ({
         if (!isValidCall(call1) || !isValidCall(call2)) {
           await slack.chat.postMessage({
             text: 'どちらかのコール中に同じ数字が含まれているよ:cry:',
-            channel: process.env.CHANNEL_SANDBOX as string,
+            channel: message.channel as string,
             username: 'Hit & Blow',
             icon_emoji: '1234',
             thread_ts: message.ts,
@@ -362,7 +367,7 @@ export default ({
           await slack.chat.postMessage({
             text: stripIndent`
             >>>${call1
-              .map(dig => {
+              .map((dig) => {
                 if (hits.has(dig)) {
                   return `*${dig}*`;
                 } else if (blows.has(dig)) {
@@ -373,7 +378,7 @@ export default ({
               })
               .join(' ')}
             ${call2
-              .map(dig => {
+              .map((dig) => {
                 if (hits.has(dig)) {
                   return `*${dig}*`;
                 } else if (blows.has(dig)) {
@@ -384,7 +389,7 @@ export default ({
               })
               .join(' ')}
             `,
-            channel: process.env.CHANNEL_SANDBOX as string,
+            channel: message.channel as string,
             username: 'Hit & Blow',
             icon_emoji: '1234',
             thread_ts: message.ts,
