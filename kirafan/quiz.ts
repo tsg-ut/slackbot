@@ -64,7 +64,7 @@ const generateHintPictures = async (url: string) => {
         top: -trimmedFromTop,
         left: 0,
         width,
-        height: height - -trimmedFromTop - trimmedFromBottom,
+        height: height - -trimmedFromTop - -trimmedFromBottom,
       })
       .toBuffer();
 
@@ -72,7 +72,7 @@ const generateHintPictures = async (url: string) => {
       await sharp({
         create: {
           width,
-          height: height - -trimmedFromTop - trimmedFromBottom,
+          height: height - -trimmedFromTop - -trimmedFromBottom,
           channels: 4,
           background: '#FFFFFFFF',
         },
