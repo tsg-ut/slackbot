@@ -1,11 +1,15 @@
 import achievementQuiz from './index';
 import Slack from '../lib/slackMock';
+jest.mock('../lib/slackUtils', () => ({
+  isPlayground: () => true,
+}));
 
 let slack: Slack;
 
 beforeEach(() => {
   slack = new Slack();
   process.env.CHANNEL_SANDBOX = slack.fakeChannel;
+  process.env.CHANNEL_GAMES = slack.fakeChannel;
   achievementQuiz(slack);
 });
 

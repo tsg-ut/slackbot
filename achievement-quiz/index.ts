@@ -1,6 +1,7 @@
 import { AteQuizProblem, AteQuiz } from '../atequiz';
 import { SlackInterface } from '../lib/slack';
 import { ChatPostMessageArguments } from '@slack/web-api';
+import { isPlayground } from '../lib/slackUtils';
 import { sample } from 'lodash';
 import { increment, unlock } from '../achievements';
 import achievementsMap, {
@@ -31,12 +32,14 @@ const difficultyToStars = (difficulty: Difficulty) =>
     professional: '★★★★★',
   }[difficulty]);
 
-const generateProblem = (answer: Achievement): AchievementAteQuizProblem => {
-  const channel = process.env.CHANNEL_SANDBOX;
+const generateProblem = (
+  answer: Achievement,
+  channel: string
+): AchievementAteQuizProblem => {
   const titleHided =
     answer.title[0] +
     Array.from(answer.title.slice(1))
-      .map(char => {
+      .map((char) => {
         if (char.match(/^[\p{Letter}\p{Number}]$/u)) {
           return '_';
         } else {
@@ -107,8 +110,8 @@ const achievements = Array.from(achievementsMap.values());
 export default (slackClients: SlackInterface): void => {
   const { eventClient } = slackClients;
 
-  eventClient.on('message', async message => {
-    if (message.channel !== process.env.CHANNEL_SANDBOX) {
+  eventClient.on('message', async (message) => {
+    if (!isPlayground(message.channel as string)) {
       return;
     }
     if (
@@ -124,7 +127,10 @@ export default (slackClients: SlackInterface): void => {
     // クイズ開始処理
     if (message.text === '実績当てクイズ') {
       const randomAchievement = sample(achievements);
-      const problem = generateProblem(randomAchievement);
+      const problem = generateProblem(
+        randomAchievement,
+        message.channel as string
+      );
       const quiz = new AchievementAteQuiz(slackClients, problem, postOption);
       const result = await quiz.start();
 
