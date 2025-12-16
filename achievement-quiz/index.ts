@@ -111,7 +111,7 @@ export default (slackClients: SlackInterface): void => {
   const { eventClient } = slackClients;
 
   eventClient.on('message', async (message) => {
-    if (!isPlayground(message.channel as string)) {
+    if (!isPlayground(message.channel)) {
       return;
     }
     if (
