@@ -137,9 +137,9 @@ export const getAuthorityLabel = () => {
  * 指定された Channel ID のチャンネルがゲームの起動を意図されたチャンネルかどうかを判定する
  */
 export function isPlayground(channelId: string) {
-  const playgroundChannels = [
-    process.env.CHANNEL_SANDBOX,
-    process.env.CHANNEL_GAMES,
-  ].filter(Boolean);
-  return playgroundChannels.includes(channelId);
+	const playgroundChannels = [
+		process.env.CHANNEL_SANDBOX,
+		process.env.CHANNEL_GAMES,
+	].filter(Boolean);
+	return playgroundChannels.includes(channelId);
 }
