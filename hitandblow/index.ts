@@ -174,7 +174,6 @@ export default ({
           channel: message.channel as string,
           username: 'Hit & Blow',
           icon_emoji: '1234',
-          // thread_ts: state.thread,
         });
         return;
       } else {
