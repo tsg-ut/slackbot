@@ -10,6 +10,7 @@ import cloudinary, { UploadApiResponse } from 'cloudinary';
 // @ts-expect-error
 import { hiraganize } from 'japanese';
 import { increment } from '../achievements';
+import { isPlayground } from '../lib/slackUtils';
 
 interface KirafanAteQuizProblem extends AteQuizProblem {
   correctAnswerCard: KirafanCard;
@@ -48,9 +49,7 @@ const generateHintPictures = async (url: string) => {
       .rotate(180)
       .toBuffer({ resolveWithObject: true });
 
-    const trimmedOriginal = sharp(halfTrimmedBuffer)
-      .trim()
-      .rotate(180);
+    const trimmedOriginal = sharp(halfTrimmedBuffer).trim().rotate(180);
 
     const trimmedFromBottom = (
       await trimmedOriginal.toBuffer({ resolveWithObject: true })
@@ -215,20 +214,22 @@ const generateHintPictures = async (url: string) => {
         await Promise.all(
           filters.map(async filter => {
             const imageBuffer = await filter(trimmedSharp);
-            return ((await new Promise((resolve, reject) =>
-              cloudinary.v2.uploader
-                .upload_stream(
-                  { resource_type: 'image' },
-                  (error, response) => {
-                    if (error) {
-                      reject(error);
-                    } else {
-                      resolve(response);
+            return (
+              (await new Promise((resolve, reject) =>
+                cloudinary.v2.uploader
+                  .upload_stream(
+                    { resource_type: 'image' },
+                    (error, response) => {
+                      if (error) {
+                        reject(error);
+                      } else {
+                        resolve(response);
+                      }
                     }
-                  }
-                )
-                .end(imageBuffer)
-            )) as UploadApiResponse).secure_url as string;
+                  )
+                  .end(imageBuffer)
+              )) as UploadApiResponse
+            ).secure_url as string;
           })
         )
     )
@@ -272,9 +273,9 @@ const generateCorrectAnswers = (card: KirafanCard) => {
 };
 
 const generateProblem = async (
-  card: KirafanCard
+  card: KirafanCard,
+  channel: string
 ): Promise<KirafanAteQuizProblem> => {
-  const channel = process.env.CHANNEL_SANDBOX;
   const hintImageUrls = await generateHintPictures(
     kirafanTools.getKirafanCardBustIllustUrl(card.cardId)
   );
@@ -408,7 +409,7 @@ export default (slackClients: SlackInterface): void => {
   const { eventClient } = slackClients;
 
   eventClient.on('message', async message => {
-    if (message.channel !== process.env.CHANNEL_SANDBOX) {
+    if (!isPlayground(message.channel)) {
       return;
     }
     if (
@@ -424,7 +425,7 @@ export default (slackClients: SlackInterface): void => {
     // クイズ開始処理
     if (message.text.match(/^きらファン当てクイズ$/)) {
       const randomKirafanCard = sample(await getKirafanCards());
-      const problem = await generateProblem(randomKirafanCard);
+      const problem = await generateProblem(randomKirafanCard, message.channel);
       const quiz = new KirafanAteQuiz(slackClients, problem, postOption);
       const result = await quiz.start();
       if (result.state === 'solved') {
@@ -442,20 +443,31 @@ export default (slackClients: SlackInterface): void => {
     }
 
     if (message.text.match(/^きらファン当てクイズ\s?(easy|[☆★]3)$/)) {
-      const randomKirafanCard = sample((await getKirafanCards()).filter(card => card.rare === 2));
-      const problem = await generateProblem(randomKirafanCard);
+      const randomKirafanCard = sample(
+        (await getKirafanCards()).filter(card => card.rare === 2)
+      );
+      const problem = await generateProblem(randomKirafanCard, message.channel);
       const quiz = new KirafanAteQuiz(slackClients, problem, postOptionEasy);
       const result = await quiz.start();
       if (result.state === 'solved') {
         await increment(result.correctAnswerer, 'kirafan-easy-answer');
         if (result.hintIndex === 0) {
-          await increment(result.correctAnswerer, 'kirafan-easy-answer-first-hint');
+          await increment(
+            result.correctAnswerer,
+            'kirafan-easy-answer-first-hint'
+          );
         }
         if (result.hintIndex <= 1) {
-          await increment(result.correctAnswerer, 'kirafan-easy-answer-second-hint');
+          await increment(
+            result.correctAnswerer,
+            'kirafan-easy-answer-second-hint'
+          );
         }
         if (result.hintIndex <= 2) {
-          await increment(result.correctAnswerer, 'kirafan-easy-answer-third-hint');
+          await increment(
+            result.correctAnswerer,
+            'kirafan-easy-answer-third-hint'
+          );
         }
       }
     }
