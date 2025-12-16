@@ -129,7 +129,7 @@ export default (slackClients: SlackInterface): void => {
       const randomAchievement = sample(achievements);
       const problem = generateProblem(
         randomAchievement,
-        message.channel as string
+        message.channel
       );
       const quiz = new AchievementAteQuiz(slackClients, problem, postOption);
       const result = await quiz.start();
