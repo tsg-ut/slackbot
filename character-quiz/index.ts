@@ -20,7 +20,7 @@ import {
 import {SlackInterface} from '../lib/slack';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';
-import { isPlayground } from '../lib/slackUtils';
+import {isPlayground} from '../lib/slackUtils';
 
 const mutex = new Mutex();
 
