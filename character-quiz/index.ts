@@ -20,6 +20,7 @@ import {
 import {SlackInterface} from '../lib/slack';
 import State from '../lib/state';
 import {Loader} from '../lib/utils';
+import { isPlayground } from '../lib/slackUtils';
 
 const mutex = new Mutex();
 
@@ -214,9 +215,8 @@ const postOption = {
 
 const generateProblem = async (
 	character: CharacterData,
+	channel: string,
 ): Promise<CharacterQuizProblem> => {
-	const channel = process.env.CHANNEL_SANDBOX;
-
 	const image = await uploadImage(character.imageUrl);
 
 	const problemMessage: ChatPostMessageArguments = {
@@ -348,7 +348,7 @@ export default async (slackClients: SlackInterface) => {
 	});
 
 	eventClient.on('message', (message) => {
-		if (message.channel !== process.env.CHANNEL_SANDBOX) {
+		if (!isPlayground(message.channel)) {
 			return;
 		}
 
@@ -384,7 +384,7 @@ export default async (slackClients: SlackInterface) => {
 					),
 				);
 
-				const problem = await generateProblem(answer);
+				const problem = await generateProblem(answer, message.channel);
 				const quiz = new CharacterQuiz(slackClients, problem, postOption);
 
 				persistentState.recentCharacterIds.push(answer.characterId);
