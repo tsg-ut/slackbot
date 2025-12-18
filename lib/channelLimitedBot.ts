@@ -74,7 +74,7 @@ export class ChannelLimitedBot {
 	}
 
 	protected async onWakeWord(event: GenericMessageEvent, targetChannel: string): Promise<string | null> {
-		// Should be overriden
+		// Should be overridden
 		return null;
 	}
 }

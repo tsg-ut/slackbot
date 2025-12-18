@@ -10,7 +10,7 @@ import generateGrossword from './generateGrossword';
 import {unlock, increment} from '../achievements';
 import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 import {extractMessage} from '../lib/slackUtils';
-import type {GenericMessageEvent, MessageEvent} from '@slack/web-api';
+import type {GenericMessageEvent, MessageEvent} from '@slack/bolt';
 
 interface Description {
 	word: string,
@@ -265,6 +265,7 @@ class CrosswordBot extends ChannelLimitedBot {
 					clearTimeout(timeout);
 				}
 				const thread = this.state.thread;
+				const channel = this.state.channel;
 				this.state.thread = null;
 				this.state.channel = null;
 				this.state.isHolding = false;
@@ -281,7 +282,7 @@ class CrosswordBot extends ChannelLimitedBot {
 				})), this.state.crossword.boardId);
 
 				await this.slack.chat.postMessage({
-					channel: process.env.CHANNEL_SANDBOX,
+					channel,
 					text: stripIndent`
 						クリア！:raised_hands:
 					`,
