@@ -87,7 +87,7 @@ const getColor = (isGrossword: boolean, descriptionId: string) => {
 };
 
 class CrosswordBot extends ChannelLimitedBot {
-	private state: State = {
+	private readonly state: State = {
 		thread: null,
 		channel: null,
 		isHolding: false,
@@ -124,7 +124,7 @@ class CrosswordBot extends ChannelLimitedBot {
 		}
 		this.state.isGrossword = isGrossword;
 		this.state.isHolding = true;
-		this.state.board = Array(400).fill(null);
+		this.state.board = new Array(400).fill(null);
 		this.state.hitWords = [];
 		this.state.timeouts = [];
 		this.state.users = new Set();
@@ -370,6 +370,6 @@ class CrosswordBot extends ChannelLimitedBot {
 	}
 }
 
-export default async (slackClients: SlackInterface) => {
+export default async function crossword(slackClients: SlackInterface) {
 	new CrosswordBot(slackClients);
 };
