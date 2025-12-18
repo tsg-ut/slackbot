@@ -8,6 +8,9 @@ import {renderCrossword} from './render';
 import generateCrossword from './generateCrossword';
 import generateGrossword from './generateGrossword';
 import {unlock, increment} from '../achievements';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot';
+import {extractMessage} from '../lib/slackUtils';
+import type {GenericMessageEvent, MessageEvent} from '@slack/bolt';
 
 interface Description {
 	word: string,
@@ -25,7 +28,8 @@ export interface Crossword {
 }
 
 interface State {
-	thread: string,
+	thread: string | null,
+	channel: string | null,
 	isHolding: boolean,
 	crossword: Crossword,
 	board: string[],
@@ -82,9 +86,10 @@ const getColor = (isGrossword: boolean, descriptionId: string) => {
 	return colors[parseInt(descriptionId) % colors.length];
 };
 
-export default async ({eventClient, webClient: slack}: SlackInterface) => {
-	const state: State = {
+class CrosswordBot extends ChannelLimitedBot {
+	private readonly state: State = {
 		thread: null,
+		channel: null,
 		isHolding: false,
 		isGrossword: false,
 		crossword: null,
@@ -97,25 +102,134 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		misses: new Map(),
 	};
 
-	eventClient.on('message', async (message) => {
-		if (!message.text || message.subtype || message.channel !== process.env.CHANNEL_SANDBOX) {
+	protected override wakeWordRegex = /^(crossword|grossword)$/i;
+
+	protected override async onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+		if (this.state.isHolding) {
+			return null;
+		}
+
+		const isGrossword = Boolean(message.text.match(/^grossword$/i));
+		const crossword = await (isGrossword ? generateGrossword(message.ts) : generateCrossword(message.ts));
+		if (crossword === null) {
+			const response = await this.slack.chat.postMessage({
+				channel,
+				text: stripIndent`
+					grosswordのタネがないよ:cry:
+				`,
+				username: 'crossword',
+				icon_emoji: ':capital_abcd:',
+			});
+			return response.ts ?? null;
+		}
+		this.state.isGrossword = isGrossword;
+		this.state.isHolding = true;
+		this.state.board = new Array(400).fill(null);
+		this.state.hitWords = [];
+		this.state.timeouts = [];
+		this.state.users = new Set();
+		this.state.contributors = new Set();
+		this.state.crossword = crossword;
+		this.state.misses = new Map();
+
+		const cloudinaryData: any = await uploadImage([], this.state.crossword.boardId);
+		const seconds = this.state.crossword.constraints.length * 10;
+
+		const {ts}: any = await this.slack.chat.postMessage({
+			channel,
+			text: stripIndent`
+				楽しいクロスワードパズルを始めるよ～
+				マスに入ると思う単語を${seconds}秒以内に *スレッドで* 返信してね!
+			`,
+			username: 'crossword',
+			icon_emoji: ':capital_abcd:',
+			attachments: [{
+				title: this.state.isGrossword ? 'Grossword' : 'Crossword',
+				image_url: cloudinaryData.secure_url,
+			}, ...this.state.crossword.descriptions.map(({description, descriptionId}) => {
+				const cells = this.state.crossword.constraints.find((constraint) => constraint.descriptionId === descriptionId).cells;
+				return {
+					text: `${descriptionId}. ${cells.map((cell) => this.state.board[cell] || '◯').join('')}: ${description}`,
+					color: getColor(this.state.isGrossword, descriptionId),
+				};
+			})],
+		});
+
+		this.state.thread = ts;
+		this.state.channel = channel;
+
+		await this.slack.chat.postMessage({
+			channel,
+			text: 'ここにお願いします！',
+			thread_ts: ts,
+			username: 'crossword',
+			icon_emoji: ':capital_abcd:',
+		});
+
+		this.state.timeouts.push(setTimeout(async () => {
+			this.state.thread = null;
+			await this.slack.chat.postMessage({
+				channel,
+				text: '～～～～～～～～～～おわり～～～～～～～～～～',
+				thread_ts: ts,
+				username: 'crossword',
+				icon_emoji: ':capital_abcd:',
+			});
+			const cloudinaryData: any = await uploadImage(this.state.crossword.board.map((letter, index) => ({
+				color: this.state.board[index] === null ? 'gray' : 'black',
+				letter,
+			})), this.state.crossword.boardId);
+			await this.slack.chat.postMessage({
+				channel,
+				text: stripIndent`
+					残念、クリアならず:cry:
+				`,
+				username: 'crossword',
+				icon_emoji: ':capital_abcd:',
+				thread_ts: ts,
+				reply_broadcast: true,
+				attachments: [{
+					title: this.state.isGrossword ? 'Grossword' : 'Crossword',
+					image_url: cloudinaryData.secure_url,
+				}, ...this.state.crossword.descriptions.map(({word, ruby, description, descriptionId}) => ({
+					text: `${descriptionId}. ${word} (${ruby}): ${description}`,
+					color: this.state.hitWords.includes(ruby) ? '#FF6F00' : '',
+				}))],
+			});
+			this.state.isHolding = false;
+		}, seconds * 1000));
+		this.state.endTime = Date.now() + seconds * 1000;
+
+		return ts ?? null;
+	}
+
+	protected override async onMessageEvent(event: MessageEvent) {
+		await super.onMessageEvent(event);
+
+		const message = extractMessage(event);
+
+		if (
+			message === null ||
+			!message.text ||
+			message.subtype
+		) {
 			return;
 		}
 
-		const remainingTime = state.endTime - Date.now();
+		const remainingTime = this.state.endTime - Date.now();
 
-		if (message.thread_ts && message.thread_ts === state.thread) {
+		if ('thread_ts' in message && message.thread_ts === this.state.thread) {
 			const word = hiraganize(message.text);
-			const isFirstAnswer = !state.users.has(message.user);
-			state.users.add(message.user);
+			const isFirstAnswer = !this.state.users.has(message.user);
+			this.state.users.add(message.user);
 
-			if (!state.crossword.words.includes(word) || state.hitWords.includes(word)) {
-				if (!state.misses.has(message.user)) {
-					state.misses.set(message.user, 0);
+			if (!this.state.crossword.words.includes(word) || this.state.hitWords.includes(word)) {
+				if (!this.state.misses.has(message.user)) {
+					this.state.misses.set(message.user, 0);
 				}
-				state.misses.set(message.user, state.misses.get(message.user) + 1);
+				this.state.misses.set(message.user, this.state.misses.get(message.user) + 1);
 
-				await slack.reactions.add({
+				await this.slack.reactions.add({
 					name: 'no_good',
 					channel: message.channel,
 					timestamp: message.ts,
@@ -123,50 +237,52 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 				return;
 			}
 
-			const oldOpenCells = state.board.filter((cell) => cell !== null).length;
+			const oldOpenCells = this.state.board.filter((cell) => cell !== null).length;
 
 			const newIndices = new Set();
 
-			for (const description of state.crossword.descriptions) {
+			for (const description of this.state.crossword.descriptions) {
 				if (word === description.ruby) {
-					for (const letterIndex of state.crossword.constraints.find((constraint) => constraint.descriptionId === description.descriptionId).cells) {
+					for (const letterIndex of this.state.crossword.constraints.find((constraint) => constraint.descriptionId === description.descriptionId).cells) {
 						newIndices.add(letterIndex);
-						state.board[letterIndex] = state.crossword.board[letterIndex];
+						this.state.board[letterIndex] = this.state.crossword.board[letterIndex];
 					}
 				}
 			}
 
-			const newOpenCells = state.board.filter((cell) => cell !== null).length;
+			const newOpenCells = this.state.board.filter((cell) => cell !== null).length;
 
-			state.hitWords = state.crossword.descriptions.filter((description) => {
-				const cells = state.crossword.constraints.find((constraint) => constraint.descriptionId === description.descriptionId).cells;
-				return cells.every((cell) => state.board[cell] !== null);
+			this.state.hitWords = this.state.crossword.descriptions.filter((description) => {
+				const cells = this.state.crossword.constraints.find((constraint) => constraint.descriptionId === description.descriptionId).cells;
+				return cells.every((cell) => this.state.board[cell] !== null);
 			}).map((description) => description.ruby);
 
 			increment(message.user, 'crossword-cells', newOpenCells - oldOpenCells);
-			state.contributors.add(message.user);
+			this.state.contributors.add(message.user);
 
-			if (state.board.every((cell, index) => state.crossword.board[index] === null || cell !== null)) {
-				for (const timeout of state.timeouts) {
+			if (this.state.board.every((cell, index) => this.state.crossword.board[index] === null || cell !== null)) {
+				for (const timeout of this.state.timeouts) {
 					clearTimeout(timeout);
 				}
-				const thread = state.thread;
-				state.thread = null;
-				state.isHolding = false;
+				const thread = this.state.thread;
+				const channel = this.state.channel;
+				this.state.thread = null;
+				this.state.channel = null;
+				this.state.isHolding = false;
 
-				await slack.reactions.add({
+				await this.slack.reactions.add({
 					name: 'tada',
 					channel: message.channel,
 					timestamp: message.ts,
 				});
 
-				const cloudinaryData: any = await uploadImage(state.crossword.board.map((letter) => ({
+				const cloudinaryData: any = await uploadImage(this.state.crossword.board.map((letter) => ({
 					color: 'red',
 					letter,
-				})), state.crossword.boardId);
+				})), this.state.crossword.boardId);
 
-				await slack.chat.postMessage({
-					channel: process.env.CHANNEL_SANDBOX,
+				await this.slack.chat.postMessage({
+					channel,
 					text: stripIndent`
 						クリア！:raised_hands:
 					`,
@@ -175,33 +291,33 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 					thread_ts: thread,
 					reply_broadcast: true,
 					attachments: [{
-						title: state.isGrossword ? 'Grossword' : 'Crossword',
+						title: this.state.isGrossword ? 'Grossword' : 'Crossword',
 						image_url: cloudinaryData.secure_url,
-					}, ...state.crossword.descriptions.map(({word, ruby, description}, index) => ({
+					}, ...this.state.crossword.descriptions.map(({word, ruby, description}, index) => ({
 						text: `${index + 1}. ${word} (${ruby}): ${description}`,
-						color: state.hitWords.includes(ruby) ? '#FF6F00' : '',
+						color: this.state.hitWords.includes(ruby) ? '#FF6F00' : '',
 					}))],
 				});
 
 				await unlock(message.user, 'crossword-clear');
-				for (const user of state.contributors) {
+				for (const user of this.state.contributors) {
 					await increment(user, 'crossword-wins');
-					if (state.isGrossword) {
+					if (this.state.isGrossword) {
 						await increment(user, 'grossword-wins');
 					}
-					if (state.contributors.size >= 11) {
+					if (this.state.contributors.size >= 11) {
 						await unlock(user, 'crossword-contributors-ge-11');
 					}
-					if (remainingTime >= state.crossword.constraints.length * 10000 * 0.75) {
+					if (remainingTime >= this.state.crossword.constraints.length * 10000 * 0.75) {
 						await unlock(user, 'crossword-game-time-le-quarter');
 					}
 				}
-				for (const [user, misses] of state.misses) {
-					if (misses >= 20 && !state.contributors.has(user)) {
+				for (const [user, misses] of this.state.misses) {
+					if (misses >= 20 && !this.state.contributors.has(user)) {
 						await unlock(user, 'crossword-misses-ge-20');
 					}
 				}
-				if (state.contributors.size === 1) {
+				if (this.state.contributors.size === 1) {
 					await unlock(message.user, 'crossword-solo');
 				}
 				if (isFirstAnswer) {
@@ -211,145 +327,49 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 					await unlock(message.user, 'crossword-buzzer-beater');
 				}
 			} else {
-				slack.reactions.add({
+				this.slack.reactions.add({
 					name: '+1',
 					channel: message.channel,
 					timestamp: message.ts,
 				});
 
-				const ts = state.thread;
+				const ts = this.state.thread;
+				const channel = this.state.channel;
 				await updatesQueue.add(async () => {
-					const cloudinaryData = await uploadImage(state.board.map((letter, index) => (letter === null ? null : {
+					const cloudinaryData = await uploadImage(this.state.board.map((letter, index) => (letter === null ? null : {
 						color: newIndices.has(index) ? 'red' : 'black',
 						letter,
-					})), state.crossword.boardId);
+					})), this.state.crossword.boardId);
 
-					const seconds = state.crossword.constraints.length * 10;
+					const seconds = this.state.crossword.constraints.length * 10;
 
-					await slack.chat.update({
-						channel: process.env.CHANNEL_SANDBOX,
+					await this.slack.chat.update({
+						channel,
 						text: stripIndent`
 							楽しいクロスワードパズルを始めるよ～
 							マスに入ると思う単語を${seconds}秒以内に *スレッドで* 返信してね!
 						`,
 						ts,
 						attachments: [{
-							title: state.isGrossword ? 'Grossword' : 'Crossword',
+							title: this.state.isGrossword ? 'Grossword' : 'Crossword',
 							image_url: cloudinaryData.secure_url,
-						}, ...state.crossword.descriptions.map(({description, ruby, descriptionId}, index) => {
-							const cells = state.crossword.constraints.find((constraint) => constraint.descriptionId === descriptionId).cells;
+						}, ...this.state.crossword.descriptions.map(({description, ruby, descriptionId}, index) => {
+							const cells = this.state.crossword.constraints.find((constraint) => constraint.descriptionId === descriptionId).cells;
 							return {
-								text: `${descriptionId}. ${cells.map((cell) => state.board[cell] || '◯').join('')}: ${description}`,
+								text: `${descriptionId}. ${cells.map((cell) => this.state.board[cell] || '◯').join('')}: ${description}`,
 								ruby,
-								color: getColor(state.isGrossword, descriptionId),
+								color: getColor(this.state.isGrossword, descriptionId),
 							};
 						}).filter(({ruby}) => (
-							!state.hitWords.includes(ruby)
+							!this.state.hitWords.includes(ruby)
 						))],
 					});
 				});
 			}
-
-			return;
 		}
+	}
+}
 
-		if (message.text.match(/^crossword$/i) || message.text.match(/^grossword$/i)) {
-			if (state.isHolding) {
-				return;
-			}
-
-			const isGrossword = Boolean(message.text.match(/^grossword$/i));
-			const crossword = await (isGrossword ? generateGrossword(message.ts) : generateCrossword(message.ts));
-			if (crossword === null) {
-				await slack.chat.postMessage({
-					channel: process.env.CHANNEL_SANDBOX,
-					text: stripIndent`
-						grosswordのタネがないよ:cry:
-					`,
-					username: 'crossword',
-					icon_emoji: ':capital_abcd:',
-				});
-				return;
-			}
-			state.isGrossword = isGrossword;
-			state.isHolding = true;
-			state.board = Array(400).fill(null);
-			state.hitWords = [];
-			state.timeouts = [];
-			state.users = new Set();
-			state.contributors = new Set();
-			state.crossword = crossword;
-			state.misses = new Map();
-
-			const cloudinaryData: any = await uploadImage([], state.crossword.boardId);
-			const seconds = state.crossword.constraints.length * 10;
-
-			const {ts}: any = await slack.chat.postMessage({
-				channel: process.env.CHANNEL_SANDBOX,
-				text: stripIndent`
-					楽しいクロスワードパズルを始めるよ～
-					マスに入ると思う単語を${seconds}秒以内に *スレッドで* 返信してね!
-				`,
-				username: 'crossword',
-				icon_emoji: ':capital_abcd:',
-				attachments: [{
-					title: state.isGrossword ? 'Grossword' : 'Crossword',
-					image_url: cloudinaryData.secure_url,
-				}, ...state.crossword.descriptions.map(({description, descriptionId}) => {
-					const cells = state.crossword.constraints.find((constraint) => constraint.descriptionId === descriptionId).cells;
-					return {
-						text: `${descriptionId}. ${cells.map((cell) => state.board[cell] || '◯').join('')}: ${description}`,
-						color: getColor(state.isGrossword, descriptionId),
-					};
-				})],
-			});
-
-			state.thread = ts;
-
-			await slack.chat.postMessage({
-				channel: process.env.CHANNEL_SANDBOX,
-				text: 'ここにお願いします！',
-				thread_ts: ts,
-				username: 'crossword',
-				icon_emoji: ':capital_abcd:',
-			});
-
-			state.timeouts.push(setTimeout(async () => {
-				const thread = state.thread;
-				state.thread = null;
-				await slack.chat.postMessage({
-					channel: process.env.CHANNEL_SANDBOX,
-					text: '～～～～～～～～～～おわり～～～～～～～～～～',
-					thread_ts: ts,
-					username: 'crossword',
-					icon_emoji: ':capital_abcd:',
-				});
-				const cloudinaryData: any = await uploadImage(state.crossword.board.map((letter, index) => ({
-					color: state.board[index] === null ? 'gray' : 'black',
-					letter,
-				})), state.crossword.boardId);
-				await slack.chat.postMessage({
-					channel: process.env.CHANNEL_SANDBOX,
-					text: stripIndent`
-						残念、クリアならず:cry:
-					`,
-					username: 'crossword',
-					icon_emoji: ':capital_abcd:',
-					thread_ts: thread,
-					reply_broadcast: true,
-					attachments: [{
-						title: state.isGrossword ? 'Grossword' : 'Crossword',
-						image_url: cloudinaryData.secure_url,
-					}, ...state.crossword.descriptions.map(({word, ruby, description, descriptionId}) => ({
-						text: `${descriptionId}. ${word} (${ruby}): ${description}`,
-						color: state.hitWords.includes(ruby) ? '#FF6F00' : '',
-					}))],
-				});
-				state.isHolding = false;
-			}, seconds * 1000));
-			state.endTime = Date.now() + seconds * 1000;
-
-			return;
-		}
-	});
+export default async function crossword(slackClients: SlackInterface) {
+	new CrosswordBot(slackClients);
 };
