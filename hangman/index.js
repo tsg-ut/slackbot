@@ -6,7 +6,7 @@ const download = require('download');
 const { stripIndents } = require("common-tags");
 const { unlock, increment, set } = require('../achievements');
 const { default: logger } = require('../lib/logger.ts');
-const { getMemberName } = require('../lib/slackUtils');
+const { getMemberName, isPlayground } = require('../lib/slackUtils');
 const axios = require('axios');
 
 const BOT_NAME = "hangmanbot";
@@ -247,7 +247,7 @@ const getChallengerById = (slackid) => {
 
 module.exports = ({ eventClient, webClient: slack }) => {
     const postMessage = (text, slackid, options) => slack.chat.postMessage({
-        channel: process.env.CHANNEL_SANDBOX,
+        channel: slackid !== undefined && state[slackid] !== undefined && state[slackid].channel ? state[slackid].channel : process.env.CHANNEL_SANDBOX,
         text,
         username: BOT_NAME,
         // eslint-disable-next-line camelcase
@@ -287,7 +287,7 @@ module.exports = ({ eventClient, webClient: slack }) => {
     };
 
     eventClient.on('message', async (message) => {
-        if (message.channel !== process.env.CHANNEL_SANDBOX || !!message.subtype || !message.text || message.username === BOT_NAME || !message.user) {
+        if (!isPlayground(message.channel) || !!message.subtype || !message.text || message.username === BOT_NAME || !message.user) {
             return;
         }
 
@@ -316,6 +316,7 @@ module.exports = ({ eventClient, webClient: slack }) => {
                 challenger = {
                     phase: 'waiting',
                     thread: null,
+                    channel: null,
                     diffValue: '',
                     answer: '',
                     openList: [],
@@ -327,6 +328,7 @@ module.exports = ({ eventClient, webClient: slack }) => {
                     [message.user]: {
                         phase: 'waiting',
                         thread: null,
+                        channel: null,
                         diffValue: '',
                         answer: '',
                         openList: [],
@@ -359,6 +361,7 @@ module.exports = ({ eventClient, webClient: slack }) => {
                 [message.user]: {
                     ...state[message.user],
                     phase: 'playing',
+                    channel: message.channel,
                     diffValue: difficultyString,
                     answer: word,
                     definitionText: definitionText,
