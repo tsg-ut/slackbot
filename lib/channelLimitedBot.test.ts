@@ -12,6 +12,22 @@ describe('ChannelLimitedBot', () => {
 		slack = new Slack();
 		process.env.CHANNEL_GAMES = slack.fakeChannel;
 		process.env.HAKATASHI_TOKEN = 'xoxb-hakatashi-token';
+
+		(slack.webClient.chat.getPermalink as jest.Mock).mockResolvedValue({
+			ok: true,
+			permalink: 'https://slack.com/archives/CHANNEL_ID/p1234567890123456',
+		});
+		(slack.webClient.chat.postEphemeral as jest.Mock).mockResolvedValue({
+			ok: true,
+			message_ts: '12345.6789',
+		});
+		(slack.webClient.chat.postMessage as jest.Mock).mockResolvedValue({
+			ok: true,
+			ts: 'progress.123',
+		});
+		(slack.webClient.chat.delete as jest.Mock).mockResolvedValue({
+			ok: true,
+		});
 	});
 
 	it('responds to messages containing the wake word in the allowed channel', async () => {
@@ -38,14 +54,6 @@ describe('ChannelLimitedBot', () => {
 	it('posts ephemeral message and deletes original when wake word is used in disallowed channel (null response)', async () => {
 		const onWakeWord = jest.fn<Promise<string | null>, [GenericMessageEvent, string]>();
 		const disallowedChannel = 'C9876543210';
-
-		(slack.webClient.chat.postEphemeral as jest.Mock).mockResolvedValue({
-			ok: true,
-			message_ts: '12345.6789',
-		});
-		(slack.webClient.chat.delete as jest.Mock).mockResolvedValue({
-			ok: true,
-		});
 
 		class TestBot extends ChannelLimitedBot {
 			protected override wakeWordRegex = /wakeword/;
@@ -85,22 +93,6 @@ describe('ChannelLimitedBot', () => {
 		const disallowedChannel = 'C9876543210';
 		const responseTs = '12345.6789';
 		const progressChannel = 'CPROGRESS';
-
-		(slack.webClient.chat.getPermalink as jest.Mock).mockResolvedValue({
-			ok: true,
-			permalink: 'https://slack.com/archives/CHANNEL_ID/p1234567890123456',
-		});
-		(slack.webClient.chat.postEphemeral as jest.Mock).mockResolvedValue({
-			ok: true,
-			message_ts: '12345.6789',
-		});
-		(slack.webClient.chat.postMessage as jest.Mock).mockResolvedValue({
-			ok: true,
-			ts: 'progress.123',
-		});
-		(slack.webClient.chat.delete as jest.Mock).mockResolvedValue({
-			ok: true,
-		});
 
 		class TestBot extends ChannelLimitedBot {
 			protected override wakeWordRegex = /wakeword/;

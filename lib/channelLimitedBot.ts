@@ -3,7 +3,7 @@ import {extractMessage, isGenericMessage} from './slackUtils';
 import type {GenericMessageEvent, WebClient} from '@slack/web-api';
 import type {MessageEvent} from '@slack/bolt';
 import logger from './logger';
-import { Deferred } from './utils';
+import {Deferred} from './utils';
 
 export class ChannelLimitedBot {
 	protected readonly slack: WebClient;
@@ -17,7 +17,7 @@ export class ChannelLimitedBot {
 	protected readonly username: string = 'slackbot';
 	protected readonly iconEmoji: string = ':robot_face:';
 	protected readonly progressMessageChannel: string | undefined = process.env.CHANNEL_SANDBOX;
-	protected readonly progressMessages: Map<string, Deferred<string>> = new Map(); // gameMessageTs -> Deferred<progressMessageTs>
+	protected readonly progressMessages: Map<string, Deferred<string | null>> = new Map(); // gameMessageTs -> Deferred<progressMessageTs>
 
 	constructor(
 		slackClients: SlackInterface,
@@ -52,7 +52,7 @@ export class ChannelLimitedBot {
 		const channel = this.allowedChannels.includes(message.channel) ? message.channel : this.allowedChannels[0];
 
 		const responseTs = await this.onWakeWord(message, channel);
-		const progressMessageDeferred = new Deferred<string>();
+		const progressMessageDeferred = new Deferred<string | null>();
 		if (responseTs !== null) {
 			this.progressMessages.set(responseTs, progressMessageDeferred);
 		}
@@ -73,8 +73,11 @@ export class ChannelLimitedBot {
 				message_ts: responseTs,
 			});
 
+			this.log.debug(`Response permalink: ${responseUrl}`);
+
 			if (!responseUrl) {
 				this.log.error('Failed to get permalink for response message');
+				progressMessageDeferred.reject(new Error('Failed to get permalink for response message'));
 			} else {
 				if (!isAllowedChannel) {
 					await this.slack.chat.postEphemeral({
@@ -88,7 +91,7 @@ export class ChannelLimitedBot {
 				if (progressMessageTs) {
 					progressMessageDeferred.resolve(progressMessageTs);
 				} else {
-					progressMessageDeferred.reject(new Error('Failed to post progress message'));
+					progressMessageDeferred.resolve(null);
 				}
 			}
 		}
@@ -149,10 +152,12 @@ export class ChannelLimitedBot {
 		this.progressMessages.delete(gameMessageTs);
 		const progressMessageTs = await progressMessageDeferred.promise;
 
-		await this.slack.chat.delete({
-			channel: this.progressMessageChannel,
-			ts: progressMessageTs,
-		});
+		if (progressMessageTs !== null) {
+			await this.slack.chat.delete({
+				channel: this.progressMessageChannel,
+				ts: progressMessageTs,
+			});
+		}
 	}
 
 	protected async onWakeWord(event: GenericMessageEvent, targetChannel: string): Promise<string | null> {
