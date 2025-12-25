@@ -97,8 +97,9 @@ interface Token {
 }
 
 
-const expandEmoji = (text: string): string =>
-  _.flatMap(text.split('\n'), (line) => {
+const expandEmoji = (text: string): string => {
+  let replacementCount = 0;
+  const result = _.flatMap(text.split('\n'), (line) => {
     const [, , tokens] = (line + '\n').split('').reduce<[TokenType, string[], Token[]]>(
       ([parsing, chars, parsed], ch) => {
         const push = () => {
@@ -109,10 +110,9 @@ const expandEmoji = (text: string): string =>
           if (parsing === 'BigEmoji' && !allEmojis.has(content)) {
             parsed.push({
               kind: 'Plain',
-              content: '!' + content + '!',
+              content: `!${content}!`,
             });
-          }
-          else {
+          } else {
             parsed.push({
               kind: parsing,
               content: chars.join(''),
@@ -125,7 +125,7 @@ const expandEmoji = (text: string): string =>
               push();
               return ['Emoji', [], parsed];
             }
-            else if (parsing === 'Emoji') {
+            if (parsing === 'Emoji') {
               push();
               return ['Plain', [], parsed];
             }
@@ -135,7 +135,7 @@ const expandEmoji = (text: string): string =>
               push();
               return ['BigEmoji', [], parsed];
             }
-            else if (parsing === 'BigEmoji') {
+            if (parsing === 'BigEmoji') {
               push();
               return ['Plain', [], parsed];
             }
@@ -143,32 +143,45 @@ const expandEmoji = (text: string): string =>
           case '\n':
             push();
             return ['Plain', [], parsed];
+          default:
+            // do nothing
         }
         chars.push(ch);
         return [parsing, chars, parsed];
       },
-      ['Plain', [], []]
+      ['Plain', [], []],
     );
-    if (tokens[tokens.length - 1].kind !== 'Plain') {
+    if (tokens.length > 0 && tokens[tokens.length - 1].kind !== 'Plain') {
       tokens.push({kind: 'Plain', content: ''});
     }
     return tokens.reduce(
       ([inLine, lines], tok: Token) => {
         if (tok.kind === 'Plain') {
-          const emojiLines = alignEmojis(
-            inLine.map(({kind, content}) =>
-              kind === 'Emoji' ? bigemojify(content) : allEmojis.get(content))
-          );
-          emojiLines[0] += tok.content;
-          lines.push(emojiLines.join('\n'));
+          if (inLine.length > 0) {
+            replacementCount += 1;
+            const emojiLines = alignEmojis(
+              inLine.map(({kind, content}) => (
+                kind === 'Emoji' ? bigemojify(content) : allEmojis.get(content)
+              )),
+            );
+            emojiLines[0] += tok.content;
+            lines.push(emojiLines.join('\n'));
+            return [[], lines];
+          }
+          lines.push(tok.content);
           return [[], lines];
         }
         inLine.push(tok);
         return [inLine, lines];
       },
-      [[], []]
+      [[], []],
     )[1];
   }).join('\n');
+  if (replacementCount === 0) {
+    throw new Error('No emojis found in the message.');
+  }
+  return result;
+};
 
 // }}}
 
