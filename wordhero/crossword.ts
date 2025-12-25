@@ -102,7 +102,9 @@ class CrosswordBot extends ChannelLimitedBot {
 		misses: new Map(),
 	};
 
-	protected override wakeWordRegex = /^(crossword|grossword)$/i;
+	protected override readonly wakeWordRegex = /^(crossword|grossword)$/i;
+	protected override readonly username = 'crossword';
+	protected override readonly iconEmoji = ':capital_abcd:';
 
 	protected override async onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
 		if (this.state.isHolding) {
@@ -112,7 +114,7 @@ class CrosswordBot extends ChannelLimitedBot {
 		const isGrossword = Boolean(message.text.match(/^grossword$/i));
 		const crossword = await (isGrossword ? generateGrossword(message.ts) : generateCrossword(message.ts));
 		if (crossword === null) {
-			const response = await this.slack.chat.postMessage({
+			await this.slack.chat.postMessage({
 				channel,
 				text: stripIndent`
 					grosswordのタネがないよ:cry:
@@ -120,7 +122,7 @@ class CrosswordBot extends ChannelLimitedBot {
 				username: 'crossword',
 				icon_emoji: ':capital_abcd:',
 			});
-			return response.ts ?? null;
+			return null;
 		}
 		this.state.isGrossword = isGrossword;
 		this.state.isHolding = true;
@@ -175,6 +177,7 @@ class CrosswordBot extends ChannelLimitedBot {
 				username: 'crossword',
 				icon_emoji: ':capital_abcd:',
 			});
+			await this.deleteProgressMessage(ts);
 			const cloudinaryData: any = await uploadImage(this.state.crossword.board.map((letter, index) => ({
 				color: this.state.board[index] === null ? 'gray' : 'black',
 				letter,
@@ -275,6 +278,8 @@ class CrosswordBot extends ChannelLimitedBot {
 					channel: message.channel,
 					timestamp: message.ts,
 				});
+
+				await this.deleteProgressMessage(thread);
 
 				const cloudinaryData: any = await uploadImage(this.state.crossword.board.map((letter) => ({
 					color: 'red',

@@ -11,6 +11,23 @@ describe('ChannelLimitedBot', () => {
 		jest.clearAllMocks();
 		slack = new Slack();
 		process.env.CHANNEL_GAMES = slack.fakeChannel;
+		process.env.HAKATASHI_TOKEN = 'xoxb-hakatashi-token';
+
+		(slack.webClient.chat.getPermalink as jest.Mock).mockResolvedValue({
+			ok: true,
+			permalink: 'https://slack.com/archives/CHANNEL_ID/p1234567890123456',
+		});
+		(slack.webClient.chat.postEphemeral as jest.Mock).mockResolvedValue({
+			ok: true,
+			message_ts: '12345.6789',
+		});
+		(slack.webClient.chat.postMessage as jest.Mock).mockResolvedValue({
+			ok: true,
+			ts: 'progress.123',
+		});
+		(slack.webClient.chat.delete as jest.Mock).mockResolvedValue({
+			ok: true,
+		});
 	});
 
 	it('responds to messages containing the wake word in the allowed channel', async () => {
@@ -38,16 +55,11 @@ describe('ChannelLimitedBot', () => {
 		const onWakeWord = jest.fn<Promise<string | null>, [GenericMessageEvent, string]>();
 		const disallowedChannel = 'C9876543210';
 
-		const postEphemeral = jest.mocked(slack.webClient.chat.postEphemeral);
-		postEphemeral.mockResolvedValue({ok: true, message_ts: '12345.6789'});
-
-		const chatDelete = jest.mocked(slack.webClient.chat.delete);
-		chatDelete.mockResolvedValue({ok: true});
-
 		class TestBot extends ChannelLimitedBot {
 			protected override wakeWordRegex = /wakeword/;
 			protected override allowedChannels = [slack.fakeChannel];
 			protected override onWakeWord = onWakeWord;
+			protected override progressMessageChannel: string | undefined = undefined;
 		}
 		new TestBot(slack);
 
@@ -70,6 +82,7 @@ describe('ChannelLimitedBot', () => {
 		});
 
 		expect(slack.webClient.chat.delete).toHaveBeenCalledWith({
+			token: 'xoxb-hakatashi-token',
 			channel: disallowedChannel,
 			ts: slack.fakeTimestamp,
 		});
@@ -79,23 +92,13 @@ describe('ChannelLimitedBot', () => {
 		const onWakeWord = jest.fn<Promise<string | null>, [GenericMessageEvent, string]>();
 		const disallowedChannel = 'C9876543210';
 		const responseTs = '12345.6789';
-
-		const getPermalink = jest.mocked(slack.webClient.chat.getPermalink);
-		getPermalink.mockResolvedValue({
-			ok: true,
-			permalink: 'https://slack.com/archives/CHANNEL_ID/p1234567890123456',
-		});
-
-		const postEphemeral = jest.mocked(slack.webClient.chat.postEphemeral);
-		postEphemeral.mockResolvedValue({ok: true, message_ts: '12345.6789'});
-
-		const chatDelete = jest.mocked(slack.webClient.chat.delete);
-		chatDelete.mockResolvedValue({ok: true});
+		const progressChannel = 'CPROGRESS';
 
 		class TestBot extends ChannelLimitedBot {
 			protected override wakeWordRegex = /wakeword/;
 			protected override allowedChannels = [slack.fakeChannel];
 			protected override onWakeWord = onWakeWord;
+			protected override progressMessageChannel = progressChannel;
 		}
 		new TestBot(slack);
 
@@ -118,7 +121,13 @@ describe('ChannelLimitedBot', () => {
 			text: 'このチャンネルではBOTを実行できません。代わりに<https://slack.com/archives/CHANNEL_ID/p1234567890123456|こちら>で実行しました。',
 		});
 
+		expect(slack.webClient.chat.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+			channel: progressChannel,
+			text: '<https://slack.com/archives/CHANNEL_ID/p1234567890123456|進行中のゲーム>があります！',
+		}));
+
 		expect(slack.webClient.chat.delete).toHaveBeenCalledWith({
+			token: process.env.HAKATASHI_TOKEN,
 			channel: disallowedChannel,
 			ts: slack.fakeTimestamp,
 		});
