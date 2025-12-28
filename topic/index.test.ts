@@ -135,6 +135,7 @@ describe('topic', () => {
 				message: string,
 				reaction: string,
 				reactions: Record<string, string[]>,
+				messageUser?: string,
 			) => {
 				const MESSAGE_TS = '12345';
 
@@ -154,6 +155,7 @@ describe('topic', () => {
 					messages: [{
 						ts: MESSAGE_TS,
 						text: message,
+						user: messageUser,
 					}],
 				});
 
@@ -233,6 +235,28 @@ describe('topic', () => {
 				});
 
 				expect(mockSlack.webClient.conversations.setTopic).not.toBeCalled();
+			});
+
+			it('should not set topic if one of 5 koresuki reactions is from the author', async () => {
+				const mockSlack = new Slack();
+				const MESSAGE_AUTHOR = 'U_AUTHOR';
+
+				await setupTest(mockSlack, 'Current Topic', 'New Topic', 'koresuki', {
+					koresuki: ['user1', 'user2', 'user3', 'user4', MESSAGE_AUTHOR],
+				}, MESSAGE_AUTHOR);
+
+				expect(mockSlack.webClient.conversations.setTopic).not.toBeCalled();
+			});
+
+			it('should set topic if 5 of 6 koresuki reactions are from others', async () => {
+				const mockSlack = new Slack();
+				const MESSAGE_AUTHOR = 'U_AUTHOR';
+
+				await setupTest(mockSlack, 'Current Topic', 'New Topic', 'koresuki', {
+					koresuki: ['user1', 'user2', 'user3', 'user4', 'user5', MESSAGE_AUTHOR],
+				}, MESSAGE_AUTHOR);
+
+				expect(mockSlack.webClient.conversations.setTopic).toBeCalled();
 			});
 		});
 	});
