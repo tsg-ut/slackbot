@@ -777,6 +777,12 @@ export class TwentyQuestions {
 		}
 
 		if (isCorrect) {
+			await this.#slack.chat.postEphemeral({
+				channel: this.#SANDBOX_ID,
+				user: userId,
+				text: `正解！お題は「${this.#state.currentGame.topic}」でした`,
+			});
+
 			await this.#slack.chat.postMessage({
 				channel: this.#SANDBOX_ID,
 				thread_ts: this.#state.currentGame.statusMessageTs ?? undefined,
