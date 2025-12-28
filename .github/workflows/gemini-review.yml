@@ -9,9 +9,25 @@ on:
         type: 'string'
         description: 'Any additional context from the request'
         required: false
+      issue_title:
+        type: 'string'
+        description: 'Title of the issue or pull request'
+        required: true
+      issue_body:
+        type: 'string'
+        description: 'Body of the issue or pull request'
+        required: false
+      pull_request_number:
+        type: 'string'
+        description: 'Pull request or issue number'
+        required: true
+      repository:
+        type: 'string'
+        description: 'Repository in owner/repo format'
+        required: true
 
 concurrency:
-  group: '${{ github.workflow }}-review-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number }}'
+  group: '${{ github.workflow }}-review-${{ github.event_name }}-${{ inputs.pull_request_number }}'
   cancel-in-progress: true
 
 defaults:
@@ -48,10 +64,10 @@ jobs:
         id: 'gemini_pr_review'
         env:
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
-          ISSUE_TITLE: '${{ github.event.pull_request.title || github.event.issue.title }}'
-          ISSUE_BODY: '${{ github.event.pull_request.body || github.event.issue.body }}'
-          PULL_REQUEST_NUMBER: '${{ github.event.pull_request.number || github.event.issue.number }}'
-          REPOSITORY: '${{ github.repository }}'
+          ISSUE_TITLE: '${{ inputs.issue_title }}'
+          ISSUE_BODY: '${{ inputs.issue_body }}'
+          PULL_REQUEST_NUMBER: '${{ inputs.pull_request_number }}'
+          REPOSITORY: '${{ inputs.repository }}'
           ADDITIONAL_CONTEXT: '${{ inputs.additional_context }}'
         with:
           gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'

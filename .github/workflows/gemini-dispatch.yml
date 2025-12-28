@@ -143,6 +143,10 @@ jobs:
       pull-requests: 'write'
     with:
       additional_context: '${{ needs.dispatch.outputs.additional_context }}'
+      issue_title: '${{ github.event.pull_request.title || github.event.issue.title }}'
+      issue_body: '${{ github.event.pull_request.body || github.event.issue.body }}'
+      pull_request_number: '${{ github.event.pull_request.number || github.event.issue.number }}'
+      repository: '${{ github.repository }}'
     secrets: 'inherit'
 
 #   triage:
