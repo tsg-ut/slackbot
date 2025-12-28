@@ -108,12 +108,6 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
-		const reactions = await getReactions(event.item.channel, event.item.ts);
-		const koresukiCount = reactions.koresuki?.length || 0;
-		if (koresukiCount < 5) {
-			return;
-		}
-
 		const res = await conversationsHistory({
 			channel: event.item.channel,
 			latest: event.item.ts,
@@ -133,6 +127,12 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 
 		// スレッド内の発言はconversations.historyで取得できないため正しいメッセージが取得できない場合がある
 		if (event.item.ts !== message?.ts) {
+			return;
+		}
+
+		const reactions = await getReactions(event.item.channel, event.item.ts);
+		const koresukiLikers = reactions.koresuki?.filter((user) => user !== message.user) ?? [];
+		if (koresukiLikers.length < 5) {
 			return;
 		}
 
