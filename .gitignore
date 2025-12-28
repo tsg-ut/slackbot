@@ -74,5 +74,6 @@ tokens.sqlite3
 !.vscode/launch.json
 
 # Gemini CLI
-.gemini/
+.gemini/*
+!.gemini/commands/
 gha-creds-*.json
