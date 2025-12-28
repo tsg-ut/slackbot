@@ -122,9 +122,13 @@ jobs:
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           ISSUE_NUMBER: '${{ github.event.pull_request.number || github.event.issue.number }}'
           MESSAGE: |-
-            こんばんニャア(*゚▲ ゚*)
+            えへ～
 
-            @${{ github.actor }} からのリクエストを受け取ったにゃ！ いま[確認中](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})だから、ちょっと待つにゃしぃ！
+            ありがとう！
+
+            レビューさせてもらうにゃ！
+
+            [🔍️🔍️🔍️️](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           REPOSITORY: '${{ github.repository }}'
         run: |-
           gh issue comment "${ISSUE_NUMBER}" \
