@@ -108,6 +108,11 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
+		const reactions = await getReactions(event.item.channel, event.item.ts);
+		if ((reactions.koresuki?.length ?? 0) < 5) {
+			return;
+		}
+
 		const res = await conversationsHistory({
 			channel: event.item.channel,
 			latest: event.item.ts,
@@ -130,7 +135,6 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			return;
 		}
 
-		const reactions = await getReactions(event.item.channel, event.item.ts);
 		const koresukiLikers = reactions.koresuki?.filter((user) => user !== message.user) ?? [];
 		if (koresukiLikers.length < 5) {
 			return;
