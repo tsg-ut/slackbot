@@ -98,7 +98,7 @@ const checkAudioSpeechCreateModel = (params: SpeechCreateParams) => {
 	throw new Error(`Unsupported model for audio.speech.create: ${params.model}`);
 }
 
-const audioSpeechCreate = async (params: SpeechCreateParams): Promise<Response> => {
+const audioSpeechCreate = async (params: SpeechCreateParams): Promise<Response & {data: ArrayBuffer}> => {
 	await checkUsageLimit('discord');
 	const model = checkAudioSpeechCreateModel(params);
 
@@ -110,6 +110,7 @@ const audioSpeechCreate = async (params: SpeechCreateParams): Promise<Response> 
 	}
 
 	let cost: number | null = null;
+	const data = await response.arrayBuffer();
 
 	if (model === 'gpt-4o-mini-tts') {
 		// The price for the gpt-4o-mini-tts model is calculated against the number of tokens, but
@@ -117,7 +118,6 @@ const audioSpeechCreate = async (params: SpeechCreateParams): Promise<Response> 
 		// For now, we will use the official cost estimation equation provided by OpenAI:
 		// $0.015 / minute
 		// https://community.openai.com/t/how-do-i-calculate-the-usage-cost-when-using-the-gpt-4o-mini-tts-model/1263804
-		const data = await response.arrayBuffer();
 		const duration = await mp3Duration(Buffer.from(data));
 		cost = (duration / 60) * 0.015;
 	} else {
@@ -144,7 +144,10 @@ const audioSpeechCreate = async (params: SpeechCreateParams): Promise<Response> 
 		cost,
 	});
 
-	return response;
+	return {
+		...response,
+		data,
+	};
 };
 
 const checkChatCompletionCreateModel = (params: ChatCompletionCreateParamsNonStreaming): string => {
