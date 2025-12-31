@@ -250,6 +250,8 @@ const achievements: Achievement[] = [
 	reactionAchievementFactory('Boys Do Cry', 'cry', 5),
 	reactionAchievementFactory('心躍る', 'blob-attention', 5),
 	reactionAchievementFactory('ワイルドカード', 'ninnninn', 5),
+	reactionAchievementFactory('そばにいるよ', 'sobadane', 5),
+	reactionAchievementFactory('うどん屋にいるよ', 'udondesu', 5),
 
 	{
 		id: 'reaction-koresuki-5-first-reaction-1',
