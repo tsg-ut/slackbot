@@ -12,7 +12,7 @@ const speech: SynthesizeFunction = async (text: string, voiceType: VoiceType, op
 	});
 
 	return {
-		data: Buffer.from(await mp3.arrayBuffer()),
+		data: Buffer.from(mp3.data),
 	};
 };
 
