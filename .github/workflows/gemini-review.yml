@@ -125,4 +125,4 @@ jobs:
                 ]
               }
             }
-          prompt: '/gemini-review'
+          prompt: '/gemini-pr-review'
