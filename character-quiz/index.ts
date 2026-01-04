@@ -438,6 +438,16 @@ class CharacterQuizBot extends ChannelLimitedBot {
 					);
 				}
 			}
+		}).catch((error: unknown) => {
+			this.log.error('Failed to start character quiz', error);
+			const errorText =
+				error instanceof Error && error.stack !== undefined
+					? error.stack : String(error);
+			this.postMessage({
+				channel,
+				text: `エラー😢\n\`${errorText}\``,
+			});
+			quizMessageDeferred.reject(error);
 		});
 
 		return quizMessageDeferred.promise;

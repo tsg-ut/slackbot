@@ -1,6 +1,6 @@
 import type {SlackInterface} from './slack';
 import {extractMessage, isGenericMessage} from './slackUtils';
-import type {GenericMessageEvent, WebClient} from '@slack/web-api';
+import type {ChatPostMessageArguments, GenericMessageEvent, WebClient} from '@slack/web-api';
 import type {MessageEvent} from '@slack/bolt';
 import logger from './logger';
 import {Deferred} from './utils';
@@ -127,16 +127,22 @@ export class ChannelLimitedBot {
 			return undefined;
 		}
 
-		const progressMessage = await this.slack.chat.postMessage({
+		const progressMessage = await this.postMessage({
 			channel: this.progressMessageChannel,
 			text: `<${gameMessageLink}|進行中のゲーム>があります！`,
-			username: this.username,
-			icon_emoji: this.iconEmoji,
 			unfurl_links: false,
 			unfurl_media: false,
 		});
 
 		return progressMessage.ts;
+	}
+
+	protected postMessage(message: ChatPostMessageArguments) {
+		return this.slack.chat.postMessage({
+			username: this.username,
+			icon_emoji: this.iconEmoji,
+			...message,
+		} as ChatPostMessageArguments);
 	}
 
 	protected async deleteProgressMessage(gameMessageTs: string) {
