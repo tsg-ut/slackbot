@@ -175,6 +175,19 @@ export default class SlackMock extends EventEmitter implements SlackInterface {
 		if (stack.join('.') === "chat.unfurl") {
 			return Promise.resolve({ok: true});
 		}
+		if (stack.join('.') === "chat.getPermalink") {
+			const [options] = args;
+			return Promise.resolve({
+				ok: true,
+				permalink: `https://example.slack.com/archives/${options.channel}/p${options.message_ts.replace('.', '')}`,
+			});
+		}
+		if (stack.join('.') === "chat.delete") {
+			return Promise.resolve({ok: true});
+		}
+		if (stack.join('.') === "chat.postEphemeral") {
+			return Promise.resolve({ok: true, message_ts: this.fakeTimestamp});
+		}
 		// TODO: make returned value customizable
 		return Promise.resolve([]);
 	}

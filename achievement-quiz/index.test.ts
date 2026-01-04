@@ -1,8 +1,7 @@
 import achievementQuiz from './index';
 import Slack from '../lib/slackMock';
-jest.mock('../lib/slackUtils', () => ({
-  isPlayground: () => true,
-}));
+
+jest.mock('../lib/slackUtils');
 
 let slack: Slack;
 

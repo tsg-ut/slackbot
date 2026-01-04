@@ -1,13 +1,14 @@
 import { AteQuizProblem, AteQuiz } from '../atequiz';
 import { SlackInterface } from '../lib/slack';
-import { ChatPostMessageArguments } from '@slack/web-api';
-import { isPlayground } from '../lib/slackUtils';
+import { ChatPostMessageArguments, GenericMessageEvent } from '@slack/web-api';
 import { sample } from 'lodash';
 import { increment, unlock } from '../achievements';
 import achievementsMap, {
   Achievement,
   Difficulty,
 } from '../achievements/achievements';
+import { ChannelLimitedBot } from '../lib/channelLimitedBot';
+import { Deferred } from '../lib/utils';
 
 const timeLimitSec = 2 * 60;
 
@@ -100,39 +101,37 @@ const generateProblem = (
   return problem;
 };
 
-const postOption = {
-  username: '実績当てクイズ',
-  icon_emoji: ':achievement:',
-};
-
 const achievements = Array.from(achievementsMap.values());
 
-export default (slackClients: SlackInterface): void => {
-  const { eventClient } = slackClients;
+class AchievementQuizBot extends ChannelLimitedBot {
+  protected override readonly wakeWordRegex = /^実績当てクイズ$/;
 
-  eventClient.on('message', async (message) => {
-    if (!isPlayground(message.channel)) {
-      return;
-    }
-    if (
-      message.subtype === 'bot_message' ||
-      message.subtype === 'slackbot_response'
-    ) {
-      return;
-    }
-    if (!message.text) {
-      return;
-    }
+  protected override readonly username = '実績当てクイズ';
 
-    // クイズ開始処理
-    if (message.text === '実績当てクイズ') {
+  protected override readonly iconEmoji = ':achievement:';
+
+  protected override onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+    const quizMessageDeferred = new Deferred<string>();
+
+    (async () => {
       const randomAchievement = sample(achievements);
       const problem = generateProblem(
         randomAchievement,
-        message.channel
+        channel
       );
-      const quiz = new AchievementAteQuiz(slackClients, problem, postOption);
-      const result = await quiz.start();
+      const quiz = new AchievementAteQuiz(this.slackClients, problem, {
+        username: this.username,
+        icon_emoji: this.iconEmoji,
+      });
+
+      const result = await quiz.start({
+        mode: 'normal',
+        onStarted(startMessage) {
+          quizMessageDeferred.resolve(startMessage.ts!);
+        },
+      });
+
+      await this.deleteProgressMessage(await quizMessageDeferred.promise);
 
       // 実績解除
       if (result.state === 'solved') {
@@ -151,6 +150,29 @@ export default (slackClients: SlackInterface): void => {
           );
         }
       }
-    }
-  });
-};
+    })().catch((error: unknown) => {
+      this.log.error('Failed to start achievement quiz', error);
+      const errorText =
+        error instanceof Error && error.stack !== undefined
+          ? error.stack : String(error);
+      this.postMessage({
+        channel,
+        text: `エラー😢\n\`${errorText}\``,
+      });
+      quizMessageDeferred.reject(error);
+    });
+
+    return quizMessageDeferred.promise;
+  }
+
+  constructor(
+    protected readonly slackClients: SlackInterface,
+  ) {
+    super(slackClients);
+  }
+}
+
+// eslint-disable-next-line require-jsdoc
+export default function achievementQuiz(slackClients: SlackInterface) {
+  return new AchievementQuizBot(slackClients);
+}
