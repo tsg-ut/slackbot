@@ -399,6 +399,8 @@ class CharacterQuizBot extends ChannelLimitedBot {
 				},
 			});
 
+			await this.deleteProgressMessage(await quizMessageDeferred.promise);
+
 			if (result.state === 'solved') {
 				// Achievements for all quizzes
 				await increment(result.correctAnswerer, 'chara-ate-answer');
