@@ -2,12 +2,13 @@ import type {
 	ImageBlock,
 	MrkdwnElement,
 	ChatPostMessageArguments,
+	GenericMessageEvent,
 } from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import axios from 'axios';
 import cloudinary from 'cloudinary';
 import type {CommonTransformationOptions} from 'cloudinary';
-// @ts-expect-error
+// @ts-expect-error: Missing types
 import {hiraganize} from 'japanese';
 import {random, sample, range} from 'lodash';
 import {increment} from '../achievements';
@@ -17,32 +18,32 @@ import {
 	typicalMessageTextsGenerator,
 	typicalAteQuizHintTexts,
 } from '../atequiz';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 import {SlackInterface} from '../lib/slack';
 import State from '../lib/state';
-import {Loader} from '../lib/utils';
-import {isPlayground} from '../lib/slackUtils';
+import {Deferred, Loader} from '../lib/utils';
 
 const mutex = new Mutex();
 
 interface CharacterData {
-  tweetId: string;
-  mediaId: string;
-  imageUrl: string;
-  characterName: string;
-  workName: string;
-  validAnswers: string[];
-  author: string;
-  rating: string;
-  characterId: string;
+	tweetId: string;
+	mediaId: string;
+	imageUrl: string;
+	characterName: string;
+	workName: string;
+	validAnswers: string[];
+	author: string;
+	rating: string;
+	characterId: string;
 }
 
 interface PersistentState {
-  recentMediaIds: string[];
-  recentCharacterIds: string[];
+	recentMediaIds: string[];
+	recentCharacterIds: string[];
 }
 
 interface CharacterQuizProblem extends AteQuizProblem {
-  correctCharacter: CharacterData;
+	correctCharacter: CharacterData;
 }
 
 class CharacterQuiz extends AteQuiz {
@@ -82,9 +83,9 @@ const loadCharacters = async (author: string) => {
 			const characterNames = characterName.split('、').filter((name) => name !== '');
 			const characterRubys = characterRuby.split('、').filter((name) => name !== '');
 
-			if (characterNames.length === 0 || characterRubys.length === 0) {  
-				return [] as CharacterData[];  
-			}  
+			if (characterNames.length === 0 || characterRubys.length === 0) {
+				return [] as CharacterData[];
+			}
 
 			const names = [...characterNames, ...characterRubys];
 			const namePartsList = names.map((name) => name.split('&').map((nameOne) => nameOne.split(' ')));
@@ -108,7 +109,7 @@ const loadCharacters = async (author: string) => {
 					author,
 					rating: rating ?? '0',
 					characterId: `${namePartsList[0].flat().join('')}\0${normalizedWorkName}`,
-				} as CharacterData
+				} as CharacterData,
 			];
 		})
 		.filter(({rating}) => rating === '0');
@@ -206,11 +207,6 @@ const getHintOptions = (
 			},
 		],
 	};
-};
-
-const postOption = {
-	username: 'namori',
-	icon_emoji: ':namori:',
 };
 
 const generateProblem = async (
@@ -339,99 +335,131 @@ const generateProblem = async (
 	return problem;
 };
 
-export default async (slackClients: SlackInterface) => {
-	const {eventClient} = slackClients;
+class CharacterQuizBot extends ChannelLimitedBot {
+	protected override readonly wakeWordRegex = /^(?:キャラ|なもり|Ixy)当てクイズ$/;
 
+	protected override readonly username = 'namori';
+
+	protected override readonly iconEmoji = ':namori:';
+
+	constructor(
+		protected readonly slackClients: SlackInterface,
+		protected readonly persistentState: PersistentState,
+	) {
+		super(slackClients);
+	}
+
+	protected override onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+		const quizMessageDeferred = new Deferred<string>();
+
+		mutex.runExclusive(async () => {
+			const characters = await (async () => {
+				const namori =
+					message.text === 'キャラ当てクイズ' ||
+					message.text === 'なもり当てクイズ' ? await loaderNamori.load() : [];
+				const ixy =
+					message.text === 'キャラ当てクイズ' ||
+					message.text === 'Ixy当てクイズ' ? await loaderIxy.load() : [];
+
+				return [...namori, ...ixy];
+			})();
+
+			const candidateCharacterIds = characters
+				.filter(
+					(character) => !this.persistentState.recentCharacterIds.includes(
+						character.characterId,
+					),
+				)
+				.map(({characterId}) => characterId);
+			const answerCharacterId = sample(
+				Array.from(new Set(candidateCharacterIds)),
+			);
+
+			const answer = sample(
+				characters.filter(
+					(character) => character.characterId === answerCharacterId,
+				),
+			);
+
+			const problem = await generateProblem(answer, channel);
+			const quiz = new CharacterQuiz(this.slackClients, problem, {
+				username: this.username,
+				icon_emoji: this.iconEmoji,
+			});
+
+			this.persistentState.recentCharacterIds.push(answer.characterId);
+			while (this.persistentState.recentCharacterIds.length > 200) {
+				this.persistentState.recentCharacterIds.shift();
+			}
+
+			const result = await quiz.start({
+				mode: 'normal',
+				onStarted(startMessage) {
+					quizMessageDeferred.resolve(startMessage.ts!);
+				},
+			});
+
+			await this.deleteProgressMessage(await quizMessageDeferred.promise);
+
+			if (result.state === 'solved') {
+				// Achievements for all quizzes
+				await increment(result.correctAnswerer, 'chara-ate-answer');
+				if (result.hintIndex === 0) {
+					await increment(result.correctAnswerer, 'chara-ate-answer-first-hint');
+				}
+				if (result.hintIndex <= 1) {
+					await increment(result.correctAnswerer, 'chara-ate-answer-second-hint');
+				}
+				if (result.hintIndex <= 2) {
+					await increment(result.correctAnswerer, 'chara-ate-answer-third-hint');
+				}
+
+				// for author-specific quizzes
+				await increment(
+					result.correctAnswerer,
+					`${problem.correctCharacter.author}-answer`,
+				);
+				if (result.hintIndex === 0) {
+					await increment(
+						result.correctAnswerer,
+						`${problem.correctCharacter.author}-answer-first-hint`,
+					);
+				}
+				if (result.hintIndex <= 1) {
+					await increment(
+						result.correctAnswerer,
+						`${problem.correctCharacter.author}-answer-second-hint`,
+					);
+				}
+				if (result.hintIndex <= 2) {
+					await increment(
+						result.correctAnswerer,
+						`${problem.correctCharacter.author}-answer-third-hint`,
+					);
+				}
+			}
+		}).catch((error: unknown) => {
+			this.log.error('Failed to start character quiz', error);
+			const errorText =
+				error instanceof Error && error.stack !== undefined
+					? error.stack : String(error);
+			this.postMessage({
+				channel,
+				text: `エラー😢\n\`${errorText}\``,
+			});
+			quizMessageDeferred.reject(error);
+		});
+
+		return quizMessageDeferred.promise;
+	}
+}
+
+// eslint-disable-next-line require-jsdoc
+export default async function characterQuiz(slackClients: SlackInterface) {
 	const persistentState = await State.init<PersistentState>('anime-namori', {
 		recentMediaIds: [],
 		recentCharacterIds: [],
 	});
 
-	eventClient.on('message', (message) => {
-		if (!isPlayground(message.channel)) {
-			return;
-		}
-
-		mutex.runExclusive(async () => {
-			if (
-				message.text &&
-        message.text.match(/^(?:キャラ|なもり|Ixy)当てクイズ$/)
-			) {
-				const characters = await (async () => {
-					const namori =
-            message.text === 'キャラ当てクイズ' ||
-            message.text === 'なもり当てクイズ' ? await loaderNamori.load() : [];
-					const ixy =
-            message.text === 'キャラ当てクイズ' ||
-            message.text === 'Ixy当てクイズ' ? await loaderIxy.load() : [];
-
-					return [...namori, ...ixy];
-				})();
-				const candidateCharacterIds = characters
-					.filter(
-						(character) => !persistentState.recentCharacterIds.includes(
-							character.characterId,
-						),
-					)
-					.map(({characterId}) => characterId);
-				const answerCharacterId = sample(
-					Array.from(new Set(candidateCharacterIds)),
-				);
-
-				const answer = sample(
-					characters.filter(
-						(character) => character.characterId === answerCharacterId,
-					),
-				);
-
-				const problem = await generateProblem(answer, message.channel);
-				const quiz = new CharacterQuiz(slackClients, problem, postOption);
-
-				persistentState.recentCharacterIds.push(answer.characterId);
-				while (persistentState.recentCharacterIds.length > 200) {
-					persistentState.recentCharacterIds.shift();
-				}
-
-				const result = await quiz.start();
-
-				if (result.state === 'solved') {
-					// Achievements for all quizzes
-					await increment(result.correctAnswerer, 'chara-ate-answer');
-					if (result.hintIndex === 0) {
-						await increment(result.correctAnswerer, 'chara-ate-answer-first-hint');
-					}
-					if (result.hintIndex <= 1) {
-						await increment(result.correctAnswerer, 'chara-ate-answer-second-hint');
-					}
-					if (result.hintIndex <= 2) {
-						await increment(result.correctAnswerer, 'chara-ate-answer-third-hint');
-					}
-
-					// for author-specific quizzes
-					await increment(
-						result.correctAnswerer,
-						`${problem.correctCharacter.author}-answer`,
-					);
-					if (result.hintIndex === 0) {
-						await increment(
-							result.correctAnswerer,
-							`${problem.correctCharacter.author}-answer-first-hint`,
-						);
-					}
-					if (result.hintIndex <= 1) {
-						await increment(
-							result.correctAnswerer,
-							`${problem.correctCharacter.author}-answer-second-hint`,
-						);
-					}
-					if (result.hintIndex <= 2) {
-						await increment(
-							result.correctAnswerer,
-							`${problem.correctCharacter.author}-answer-third-hint`,
-						);
-					}
-				}
-			}
-		});
-	});
-};
+	return new CharacterQuizBot(slackClients, persistentState);
+}

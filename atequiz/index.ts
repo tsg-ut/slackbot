@@ -1,4 +1,4 @@
-import { ChatPostMessageArguments, WebClient } from '@slack/web-api';
+import { ChatPostMessageArguments, ChatPostMessageResponse, MessageEvent, WebClient } from '@slack/web-api';
 import type { EventEmitter } from 'events';
 import { SlackInterface } from '../lib/slack';
 import assert from 'assert';
@@ -25,11 +25,15 @@ export interface AteQuizResult {
   hintIndex: number | null;
 }
 
-export interface NormalAteQuizStartOption {
+export interface CommonAteQuizStartOption {
+  onStarted?: (startMessage: ChatPostMessageResponse) => void;
+}
+
+export interface NormalAteQuizStartOption extends CommonAteQuizStartOption {
   mode: 'normal';
 }
 
-export interface SoloAteQuizStartOption {
+export interface SoloAteQuizStartOption extends CommonAteQuizStartOption {
   mode: 'solo';
   player: string;
 }
@@ -87,30 +91,30 @@ export class AteQuiz {
    * @param {any} post the post judged as correct
    * @returns a object that specifies the parameters of a solved message
    */
-  solvedMessageGen(post: any): ChatPostMessageArguments | Promise<ChatPostMessageArguments> {
+  solvedMessageGen(post: MessageEvent): ChatPostMessageArguments | Promise<ChatPostMessageArguments> {
     const message = Object.assign({}, this.problem.solvedMessage);
     message.text = message.text.replaceAll(
       this.replaceKeys.correctAnswerer,
-      post.user as string
+      'user' in post ? post.user : ''
     );
     return message;
   }
 
-  answerMessageGen(_post?: any): ChatPostMessageArguments | null | Promise<ChatPostMessageArguments | null> {
+  answerMessageGen(_post?: MessageEvent): ChatPostMessageArguments | null | Promise<ChatPostMessageArguments | null> {
     if (!this.problem.answerMessage) {
       return null;
     }
     return this.problem.answerMessage;
   }
 
-  incorrectMessageGen(post: any): ChatPostMessageArguments | null {
+  incorrectMessageGen(post: MessageEvent): ChatPostMessageArguments | null {
     if (!this.problem.incorrectMessage) {
       return null;
     }
     const message = Object.assign({}, this.problem.incorrectMessage);
     message.text = message.text.replaceAll(
       this.replaceKeys.correctAnswerer,
-      post.user as string
+      'user' in post ? post.user : ''
     );
     return message;
   }
@@ -205,9 +209,9 @@ export class AteQuiz {
       });
     };
 
-    this.eventClient.on('message', async (message) => {
+    this.eventClient.on('message', async (message: MessageEvent) => {
       const thread_ts = await this.threadTsDeferred.promise;
-      if (message.thread_ts === thread_ts) {
+      if ('thread_ts' in message && message.thread_ts === thread_ts) {
         if (message.subtype === 'bot_message') return;
         if (_option.mode === 'solo' && message.user !== _option.player) return;
         this.mutex.runExclusive(async () => {
@@ -259,6 +263,11 @@ export class AteQuiz {
 
     // Listeners should be added before postMessage is called.
     const response = await postMessage(this.problem.problemMessage);
+
+    if (startOption?.onStarted) {
+      startOption.onStarted(response);
+    }
+
     const thread_ts = response?.message?.thread_ts ?? response.ts;
     this.threadTsDeferred.resolve(thread_ts);
     assert(typeof thread_ts === 'string');
