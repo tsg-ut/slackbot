@@ -111,7 +111,7 @@ class AchievementQuizBot extends ChannelLimitedBot {
   protected override readonly iconEmoji = ':achievement:';
 
   protected override onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
-    const quizMessageDeferred = new Deferred<string>();
+    const quizMessageDeferred = new Deferred<string | null>();
 
     (async () => {
       const randomAchievement = sample(achievements);
@@ -159,7 +159,7 @@ class AchievementQuizBot extends ChannelLimitedBot {
         channel,
         text: `エラー😢\n\`${errorText}\``,
       });
-      quizMessageDeferred.reject(error);
+      quizMessageDeferred.resolve(null);
     });
 
     return quizMessageDeferred.promise;
