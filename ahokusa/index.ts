@@ -232,6 +232,7 @@ class AhokusaBot extends ChannelLimitedBot {
 	protected override readonly wakeWordRegex = /^(あほくさスライドパズル|寿司スライドパズル( [3456])?|千矢スライドパズル|スライドパズル爆破|あ　ほ　く　さ|@ahokusa\b)/;
 	protected override readonly username = 'ahokusa';
 	protected override readonly iconEmoji = ':ahokusa-top-center:';
+	protected override readonly allowedChannels = [process.env.CHANNEL_SANDBOX!, process.env.CHANNEL_GAMES!];
 
 	constructor(slackClients: SlackInterface) {
 		super(slackClients);
