@@ -177,6 +177,8 @@ class AnimeSongQuizBot extends ChannelLimitedBot {
 
 	protected override readonly iconEmoji = ':tv:';
 
+	protected override readonly allowedChannels = [process.env.CHANNEL_SANDBOX!, process.env.CHANNEL_GAMES!];
+
 	private state: QuizState = {
 		answer: null,
 		previousTick: 0,
@@ -376,7 +378,7 @@ class AnimeSongQuizBot extends ChannelLimitedBot {
 					if (this.state.difficulty === 'hard') {
 						await unlock(message.user, 'anime-song-hard-answer');
 					}
-					if (animeInfo && animeInfo.year !== null && animeInfo.year < 2010) {
+					if (animeInfo?.year !== null && animeInfo?.year !== undefined && animeInfo.year < 2010) {
 						await unlock(message.user, 'anime-song-before-2010');
 					}
 

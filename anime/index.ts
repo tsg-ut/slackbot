@@ -316,6 +316,8 @@ class AnimeQuizBot extends ChannelLimitedBot {
 
 	protected override readonly iconEmoji = ':tv:';
 
+	protected override readonly allowedChannels = [process.env.CHANNEL_SANDBOX!, process.env.CHANNEL_GAMES!];
+
 	private state: QuizState = {
 		answer: null,
 		previousTick: 0,
@@ -591,10 +593,10 @@ class AnimeQuizBot extends ChannelLimitedBot {
 					if (this.state.hints.length <= 3) {
 						await unlock(message.user, 'anime-answer-third-hint');
 					}
-					if (animeInfo && animeInfo.year !== null && animeInfo.year < 2010) {
+					if (animeInfo?.year !== null && animeInfo?.year !== undefined && animeInfo.year < 2010) {
 						await unlock(message.user, 'anime-before-2010');
 					}
-					if (animeInfo && animeInfo.year !== null && animeInfo.year < 2000) {
+					if (animeInfo?.year !== null && animeInfo?.year !== undefined && animeInfo.year < 2000) {
 						await unlock(message.user, 'anime-before-2000');
 					}
 
