@@ -229,35 +229,16 @@ class AhokusaBot extends ChannelLimitedBot {
 		channel: null,
 	};
 
-	protected override readonly wakeWordRegex = /^(あほくさスライドパズル|寿司スライドパズル( [3456])?|千矢スライドパズル|スライドパズル爆破|あ　ほ　く　さ|@ahokusa\b)/;
+	protected override readonly wakeWordRegex = /^(あほくさスライドパズル|寿司スライドパズル( [3456])?|千矢スライドパズル|@ahokusa\b)/;
 	protected override readonly username = 'ahokusa';
 	protected override readonly iconEmoji = ':ahokusa-top-center:';
-	protected override readonly allowedChannels = [process.env.CHANNEL_SANDBOX!, process.env.CHANNEL_GAMES!];
-
-	constructor(slackClients: SlackInterface) {
-		super(slackClients);
-		// Listen for all messages to handle in-thread interactions
-		this.eventClient.on('message', this.onThreadMessage.bind(this));
-	}
+	protected override readonly progressMessageChannel: string | undefined = undefined;
 
 	protected override async onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
-		const thread = message.ts!;
 		const {user, text} = message;
 
-		if (text === 'スライドパズル爆破' || text === 'あ　ほ　く　さ') {
-			this.state = {
-				...this.state,
-				board: null,
-				thread: null,
-				channel: null,
-			};
-			await this.slack.reactions.add({
-				name: 'boom',
-				channel,
-				timestamp: message.ts!,
-			});
-			return null;
-		}
+		this.log.info(`Received wake word message: ${text} from user: ${user} in channel: ${message.channel}`);
+		console.trace();
 
 		// Handle @ahokusa commands
 		if (text?.startsWith('@ahokusa')) {
@@ -316,6 +297,13 @@ class AhokusaBot extends ChannelLimitedBot {
 				}
 				const pieces = flatten(board);
 				const lackedPiece = flatten(completeBoard).find((piece) => !pieces.includes(piece))!;
+				const boardText = getBoardString(board);
+				const response = await this.postMessage({
+					channel,
+					text: boardText,
+					username: 'ahokusa',
+					icon_emoji: ':ahokusa-top-center:',
+				});
 				this.state = {
 					board,
 					startBoard: board,
@@ -325,16 +313,9 @@ class AhokusaBot extends ChannelLimitedBot {
 					usedHelp: true,
 					startDate: Date.now(),
 					lackedPiece,
-					thread,
+					thread: response.message?.thread_ts ?? response.ts!,
 					channel,
 				};
-				const boardText = getBoardString(board);
-				const response = await this.postMessage({
-					channel,
-					text: boardText,
-					username: 'ahokusa',
-					icon_emoji: ':ahokusa-top-center:',
-				});
 				return response.ts!;
 			}
 
@@ -362,6 +343,13 @@ class AhokusaBot extends ChannelLimitedBot {
 				}
 				const pieces = flatten(board);
 				const lackedPiece = flatten(completeBoard).find((piece) => !pieces.includes(piece))!;
+				const boardText = getBoardString(board);
+				const response = await this.postMessage({
+					channel,
+					text: boardText,
+					username: 'ahokusa',
+					icon_emoji: ':ahokusa-top-center:',
+				});
 				this.state = {
 					board,
 					startBoard: board,
@@ -371,16 +359,9 @@ class AhokusaBot extends ChannelLimitedBot {
 					usedHelp: true,
 					startDate: Date.now(),
 					lackedPiece,
-					thread,
+					thread: response.message?.thread_ts ?? response.ts!,
 					channel,
 				};
-				const boardText = getBoardString(board);
-				const response = await this.postMessage({
-					channel,
-					text: boardText,
-					username: 'ahokusa',
-					icon_emoji: ':ahokusa-top-center:',
-				});
 				return response.ts!;
 			}
 
@@ -390,7 +371,9 @@ class AhokusaBot extends ChannelLimitedBot {
 				text: ':ha:',
 				username: 'ahokusa',
 				icon_emoji: ':ahokusa-top-center:',
+				thread_ts: message.ts!,
 			});
+
 			return null;
 		}
 
@@ -399,7 +382,7 @@ class AhokusaBot extends ChannelLimitedBot {
 			await this.postMessage({
 				channel,
 				text: `既に${url}で起動中だよ`,
-				thread_ts: thread,
+				thread_ts: message.ts!,
 			});
 			return null;
 		}
@@ -425,6 +408,15 @@ class AhokusaBot extends ChannelLimitedBot {
 		const pieces = flatten(board);
 		const lackedPiece = flatten(completeBoard).find((piece) => !pieces.includes(piece))!;
 
+		const boardText = getBoardString(board);
+		const response = await this.postMessage({
+			channel,
+			text: boardText,
+			username: boardName === 'ahokusa' ? 'ahokusa' : boardName === 'chiya' ? 'chiya' : 'sushi-puzzle',
+			icon_emoji: lackedPiece,
+			...(message.channel === channel ? {thread_ts: message.ts!} : {}),
+		});
+
 		this.state = {
 			board,
 			startBoard: board,
@@ -434,22 +426,24 @@ class AhokusaBot extends ChannelLimitedBot {
 			usedHelp: false,
 			startDate: Date.now(),
 			lackedPiece,
-			thread,
+			thread: response.message?.thread_ts ?? response.ts!,
 			channel,
 		};
 
-		const boardText = getBoardString(board);
-		const response = await this.postMessage({
-			channel,
-			text: boardText,
-			username: boardName === 'ahokusa' ? 'ahokusa' : boardName === 'chiya' ? 'chiya' : 'sushi-puzzle',
-			icon_emoji: lackedPiece,
-		});
+		if (message.channel !== channel) {
+			await this.postMessage({
+				channel,
+				text: 'ヒントコマンド: `@ahokusa ヒント`',
+				thread_ts: response.ts!,
+			});
+		}
 
 		return response.ts!;
 	}
 
-	private async onThreadMessage(event: MessageEvent) {
+	protected override async onMessageEvent(event: MessageEvent) {
+		await super.onMessageEvent(event);
+
 		const message = extractMessage(event);
 
 		if (
@@ -459,6 +453,21 @@ class AhokusaBot extends ChannelLimitedBot {
 			message.bot_id !== undefined ||
 			!isGenericMessage(message)
 		) {
+			return;
+		}
+
+		if (message.text === 'スライドパズル爆破' || message.text === 'あ　ほ　く　さ') {
+			this.state = {
+				...this.state,
+				board: null,
+				thread: null,
+				channel: null,
+			};
+			await this.slack.reactions.add({
+				name: 'boom',
+				channel: message.channel,
+				timestamp: message.ts!,
+			});
 			return;
 		}
 
@@ -512,6 +521,7 @@ class AhokusaBot extends ChannelLimitedBot {
 					thread,
 					`:tada: ${round(time, 2).toFixed(2)}秒` +
 					`${this.state.seen === 0 ? '、一発' : ''}`,
+					{reply_broadcast: true},
 				);
 				await this.deleteProgressMessage(this.state.thread!);
 				this.state.board = null;
@@ -574,6 +584,7 @@ class AhokusaBot extends ChannelLimitedBot {
 					`:tada: ${round(time, 2).toFixed(2)}秒、` +
 					`${this.state.hand}手${minHandInfo}` +
 					`${this.state.seen === 1 ? '、一発' : ''}`,
+					{reply_broadcast: true},
 				);
 				await this.deleteProgressMessage(this.state.thread!);
 				if (!this.state.usedHelp) {
