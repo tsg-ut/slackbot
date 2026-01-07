@@ -1,7 +1,8 @@
 import {promises as fs} from 'fs';
 import path from 'path';
 import {Mutex} from 'async-mutex';
-import levenshtein from 'fast-levenshtein';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const levenshtein = require('fast-levenshtein');
 // @ts-expect-error: Missing types
 import {hiraganize} from 'japanese';
 // @ts-expect-error: Missing types

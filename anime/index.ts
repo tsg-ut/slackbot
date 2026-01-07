@@ -2,7 +2,8 @@ import {Mutex} from 'async-mutex';
 import axios from 'axios';
 import cloudinary from 'cloudinary';
 import {stripIndent} from 'common-tags';
-import levenshtein from 'fast-levenshtein';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const levenshtein = require('fast-levenshtein');
 import {google} from 'googleapis';
 // @ts-expect-error: Missing types
 import {hiraganize} from 'japanese';
@@ -106,7 +107,7 @@ const loadSheet = async (): Promise<AnimeData> => {
 		(year) => year.sort((a, b) => a.rank - b.rank).map(({name}) => name),
 	);
 	const easyAnimes = uniq([
-		...animeInfos.filter(({rank, year}) => rank <= 100 && year !== null && year >= 2005).map(({name}) => name),
+		...animeInfos.filter(({rank, year}: AnimeInfo) => rank <= 100 && year !== null && year >= 2005).map(({name}: AnimeInfo) => name),
 		...flatten(
 			range(2010, 2020).map((year) => (
 				animeByYears[year.toString()].slice(0, 20)
@@ -114,7 +115,7 @@ const loadSheet = async (): Promise<AnimeData> => {
 		),
 	]);
 	const normalAnimes = uniq([
-		...animeInfos.filter(({rank}) => rank <= 150).map(({name}) => name),
+		...animeInfos.filter(({rank}: AnimeInfo) => rank <= 150).map(({name}: AnimeInfo) => name),
 		...flatten(
 			range(2015, 2020).map((year) => (
 				animeByYears[year.toString()]
