@@ -18,15 +18,17 @@ import {sample, sortBy} from 'lodash';
 import emoji from 'node-emoji';
 import type OpenAI from 'openai';
 import {z} from 'zod';
+import type {GenericMessageEvent} from '@slack/web-api';
 import {increment} from '../achievements';
 import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
 import type {AteQuizProblem} from '../atequiz';
 import {judgeAnswer} from '../discord/hayaoshiUtils';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 import logger from '../lib/logger';
 import openai from '../lib/openai';
 import {SlackInterface} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
-import {Loader} from '../lib/utils';
+import {Deferred, Loader} from '../lib/utils';
 import genres from './genres';
 
 const mutex = new Mutex();
@@ -425,146 +427,158 @@ class AutogenQuiz extends AteQuiz {
 	}
 }
 
-export default (slackClients: SlackInterface) => {
-	const {eventClient} = slackClients;
+class AutogenQuizBot extends ChannelLimitedBot {
+	protected override readonly wakeWordRegex = /^(?:ランダムクイズ|(?<genre>.+?)のクイズ)$/u;
 
-	eventClient.on('message', (message) => {
-		if (message.channel !== process.env.CHANNEL_SANDBOX) {
-			return;
-		}
+	protected override readonly username = 'ChatGPT';
+
+	protected override readonly iconEmoji = ':chatgpt:';
+
+	protected override onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+		const quizMessageDeferred = new Deferred<string | null>();
 
 		mutex.runExclusive(async () => {
-			try {
-				let matches: RegExpMatchArray = null;
-				if (
-					message.text &&
-					(
-						message.text === 'ランダムクイズ' ||
-						(matches = (/^(?<genre>.+?)のクイズ$/u).exec(message.text))
-					)
-				) {
-					const genre = matches?.groups?.genre ?? null;
-					const normalizedGenre = genre ? normalizeGenre(genre) : null;
+			const matches = this.wakeWordRegex.exec(message.text);
+			const genre = matches?.groups?.genre ?? null;
+			const normalizedGenre = genre ? normalizeGenre(genre) : null;
 
-					if (normalizedGenre && eaw.length(normalizedGenre) > 24) {
-						await slackClients.webClient.chat.postMessage({
-							channel: message.channel,
-							text: 'トピックは全角12文字以内で指定してください❤',
-							username: 'ChatGPT',
-							icon_emoji: ':chatgpt:',
-						});
-						return;
-					}
+			if (normalizedGenre && eaw.length(normalizedGenre) > 24) {
+				await this.postMessage({
+					channel,
+					text: 'トピックは全角12文字以内で指定してください❤',
+				});
+				quizMessageDeferred.resolve(null);
+				return;
+			}
 
-					await slackClients.webClient.chat.postEphemeral({
-						channel: message.channel,
-						text: normalizedGenre ? `${normalizedGenre}に関するクイズを生成中です...` : 'クイズを生成中です...',
-						username: 'ChatGPT',
-						icon_emoji: ':chatgpt:',
-						user: message.user,
-					});
+			await this.slack.chat.postEphemeral({
+				channel,
+				text: normalizedGenre ? `${normalizedGenre}に関するクイズを生成中です...` : 'クイズを生成中です...',
+				username: this.username,
+				icon_emoji: this.iconEmoji,
+				user: message.user,
+			});
 
-					const generation = await generateQuiz(normalizedGenre);
+			const generation = await generateQuiz(normalizedGenre);
 
-					if (!generation) {
-						await slackClients.webClient.chat.postMessage({
-							channel: message.channel,
-							text: 'クイズの生成に失敗しました😢',
-							username: 'ChatGPT',
-							icon_emoji: ':chatgpt:',
-						});
-						return;
-					}
+			if (!generation) {
+				await this.postMessage({
+					channel,
+					text: 'クイズの生成に失敗しました😢',
+				});
+				quizMessageDeferred.resolve(null);
+				return;
+			}
 
-					let concealedQuestion = generation.generatedQuiz.question;
-					for (const correctAnswer of [generation.generatedQuiz.mainAnswer, ...generation.generatedQuiz.alternativeAnswers]) {
-						concealedQuestion = concealedQuestion.replaceAll(correctAnswer, '◯◯');
-					}
+			let concealedQuestion = generation.generatedQuiz.question;
+			for (const correctAnswer of [generation.generatedQuiz.mainAnswer, ...generation.generatedQuiz.alternativeAnswers]) {
+				concealedQuestion = concealedQuestion.replaceAll(correctAnswer, '◯◯');
+			}
 
-					const quizTextIntro = normalizedGenre === null ? 'クイズを自動生成したよ' : `＊${normalizedGenre}＊に関するクイズを自動生成したよ👍`;
-					const quizText = stripIndent`
-						${quizTextIntro}
+			const quizTextIntro = normalizedGenre === null ? 'クイズを自動生成したよ' : `＊${normalizedGenre}＊に関するクイズを自動生成したよ👍`;
+			const quizText = stripIndent`
+				${quizTextIntro}
 
-						Q. ${concealedQuestion}
-					`;
-					const wikipediaLink = `https://ja.wikipedia.org/wiki/${encodeURIComponent(generation.wikipediaTitle)}`;
+				Q. ${concealedQuestion}
+			`;
+			const wikipediaLink = `https://ja.wikipedia.org/wiki/${encodeURIComponent(generation.wikipediaTitle)}`;
 
-					const quiz = new AutogenQuiz({
-						slack: slackClients,
-						problem: {
-							problemMessage: {
-								channel: message.channel,
-								text: quizText,
-							},
-							immediateMessage: {
-								channel: message.channel,
-								text: '30秒以内に答えてね！',
-							},
-							hintMessages: [],
-							solvedMessage: {
-								channel: message.channel,
-								text: typicalMessageTextsGenerator.solved(` ＊${generation.generatedQuiz.mainAnswer}＊ `),
-							},
-							unsolvedMessage: {
-								channel: message.channel,
-								text: typicalMessageTextsGenerator.unsolved(` ＊${generation.generatedQuiz.mainAnswer}＊ `),
-							},
-							answerMessage: {
-								channel: message.channel,
-								text: stripIndent`
-									ジャンル: ${generation.genre}
-									トピック: ${generation.topic}
-									参考にしたWikipedia記事: <${wikipediaLink}|${generation.wikipediaTitle ?? 'なし'}>
-									問題: ${generation.generatedQuiz.question}
-									正答: ${generation.generatedQuiz.mainAnswer}
-									別解: ${generation.generatedQuiz.alternativeAnswers.join(', ')}
-								`,
-							},
-							correctAnswers: [
-								generation.generatedQuiz.mainAnswer,
-								...generation.generatedQuiz.alternativeAnswers,
-							],
-						},
-						postOptions: {
-							username: 'ChatGPT',
-							icon_emoji: ':chatgpt:',
-						},
-					});
+			const quiz = new AutogenQuiz({
+				slack: this.slackClients,
+				problem: {
+					problemMessage: {
+						channel,
+						text: quizText,
+					},
+					immediateMessage: {
+						channel,
+						text: '30秒以内に答えてね！',
+					},
+					hintMessages: [],
+					solvedMessage: {
+						channel,
+						text: typicalMessageTextsGenerator.solved(` ＊${generation.generatedQuiz.mainAnswer}＊ `),
+					},
+					unsolvedMessage: {
+						channel,
+						text: typicalMessageTextsGenerator.unsolved(` ＊${generation.generatedQuiz.mainAnswer}＊ `),
+					},
+					answerMessage: {
+						channel,
+						text: stripIndent`
+							ジャンル: ${generation.genre}
+							トピック: ${generation.topic}
+							参考にしたWikipedia記事: <${wikipediaLink}|${generation.wikipediaTitle ?? 'なし'}>
+							問題: ${generation.generatedQuiz.question}
+							正答: ${generation.generatedQuiz.mainAnswer}
+							別解: ${generation.generatedQuiz.alternativeAnswers.join(', ')}
+						`,
+					},
+					correctAnswers: [
+						generation.generatedQuiz.mainAnswer,
+						...generation.generatedQuiz.alternativeAnswers,
+					],
+				},
+				postOptions: {
+					username: this.username,
+					icon_emoji: this.iconEmoji,
+				},
+			});
 
-					const result = await quiz.start();
+			const result = await quiz.start({
+				mode: 'normal',
+				onStarted(startMessage) {
+					quizMessageDeferred.resolve(startMessage.ts!);
+				},
+			});
 
-					log.info(`Quiz result: ${inspect(result)}`);
+			await this.deleteProgressMessage(await quizMessageDeferred.promise);
 
-					if (result.state === 'solved') {
-						const normalizedAnswer = normalizeAnswer(generation.generatedQuiz.mainAnswer);
-						await increment(result.correctAnswerer, 'autogen-quiz-answer');
+			log.info(`Quiz result: ${inspect(result)}`);
 
-						const achievementMapping: Record<string, string> = {
-							TSG: 'autogen-quiz-answer-main-answer-tsg',
-							CHATGPT: 'autogen-quiz-answer-main-answer-chatgpt',
-							クイズ: 'autogen-quiz-answer-main-answer-クイズ',
-							コロンビア: 'autogen-quiz-answer-main-answer-コロンビア',
-						};
+			if (result.state === 'solved') {
+				const normalizedAnswer = normalizeAnswer(generation.generatedQuiz.mainAnswer);
+				await increment(result.correctAnswerer, 'autogen-quiz-answer');
 
-						for (const [key, achievementKey] of Object.entries(achievementMapping)) {
-							if (normalizedAnswer === key) {
-								await increment(result.correctAnswerer, achievementKey);
-							}
-						}
-						const memberName = await getMemberName(result.correctAnswerer);
-						if (normalizedAnswer === normalizeAnswer(memberName)) {
-							await increment(result.correctAnswerer, 'autogen-quiz-answer-main-answer-self-name');
-						}
+				const achievementMapping: Record<string, string> = {
+					TSG: 'autogen-quiz-answer-main-answer-tsg',
+					CHATGPT: 'autogen-quiz-answer-main-answer-chatgpt',
+					クイズ: 'autogen-quiz-answer-main-answer-クイズ',
+					コロンビア: 'autogen-quiz-answer-main-answer-コロンビア',
+				};
+
+				for (const [key, achievementKey] of Object.entries(achievementMapping)) {
+					if (normalizedAnswer === key) {
+						await increment(result.correctAnswerer, achievementKey);
 					}
 				}
-			} catch (error) {
-				log.error(error.stack);
-
-				await slackClients.webClient.chat.postMessage({
-					channel: message.channel,
-					text: `[autogen-quiz] エラーが発生しました: ${error.message}`,
-				});
+				const memberName = await getMemberName(result.correctAnswerer);
+				if (normalizedAnswer === normalizeAnswer(memberName)) {
+					await increment(result.correctAnswerer, 'autogen-quiz-answer-main-answer-self-name');
+				}
 			}
+		}).catch((error: unknown) => {
+			this.log.error('Failed to start autogen quiz', error);
+			const errorText =
+				error instanceof Error && error.stack !== undefined
+					? error.stack : String(error);
+			this.postMessage({
+				channel,
+				text: `エラー😢\n\`${errorText}\``,
+			});
+			quizMessageDeferred.resolve(null);
 		});
-	});
-};
+
+		return quizMessageDeferred.promise;
+	}
+
+	constructor(
+		protected readonly slackClients: SlackInterface,
+	) {
+		super(slackClients);
+	}
+}
+
+export default function autogenQuiz(slackClients: SlackInterface) {
+	return new AutogenQuizBot(slackClients);
+}
