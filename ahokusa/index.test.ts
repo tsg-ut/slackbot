@@ -2,6 +2,7 @@ import ahokusa from './index';
 import Slack from '../lib/slackMock';
 
 jest.mock('../achievements');
+jest.mock('../lib/slackUtils');
 
 let slack: Slack;
 
@@ -64,5 +65,13 @@ describe('ahokusa', () => {
 		expect(response.text).toContain(':void:');
 		expect(response.text).toContain('sushi');
 		expect(response.text).toMatch(/^(:[a-z_\d-]+:\n?)+$/);
+	});
+
+	it('responds to 千矢スライドパズル', async () => {
+		const response = await slack.getResponseTo('千矢スライドパズル');
+
+		expect('username' in response && response.username).toBe('chiya');
+		expect(response.text).toContain(':void:');
+		expect(response.text).toContain('chiya');
 	});
 });
