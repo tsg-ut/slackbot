@@ -51,7 +51,7 @@ describe('ahokusa', () => {
 		expect(response.text).toBe(':ha:');
 	});
 
-	it('rejects invalid board initialization', async () => {
+	it('rejects board initialization with too many characters', async () => {
 		const response = await slack.getResponseTo('@ahokusa .#_さくああああああああああああああああああああ');
 
 		expect('username' in response && response.username).toBe('ahokusa');

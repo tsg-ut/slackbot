@@ -238,7 +238,6 @@ class AhokusaBot extends ChannelLimitedBot {
 		const {user, text} = message;
 
 		this.log.info(`Received wake word message: ${text} from user: ${user} in channel: ${message.channel}`);
-		console.trace();
 
 		// Handle @ahokusa commands
 		if (text?.startsWith('@ahokusa')) {
