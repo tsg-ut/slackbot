@@ -1,4 +1,4 @@
-import type { MrkdwnElement, PlainTextElement } from '@slack/web-api';
+import type { MrkdwnElement, PlainTextElement, ThreadBroadcastMessageEvent } from '@slack/web-api';
 import type { Member } from '@slack/web-api/dist/types/response/UsersListResponse';
 import { WebClient } from '@slack/web-api';
 import { eventClient, getTokens } from './slack';
@@ -113,7 +113,8 @@ export const extractMessage = (message: MessageEvent) => {
 		return message;
 	}
 	if (message.subtype === 'thread_broadcast') {
-		return message.root;
+		// bot_id が抜けているので付与する。実際に Slack から来るイベントでは bot_id は存在することがある
+		return message as (ThreadBroadcastMessageEvent & { bot_id?: string });
 	}
 	return null;
 };
