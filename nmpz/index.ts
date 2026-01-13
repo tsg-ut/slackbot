@@ -353,7 +353,7 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
 
       if (mutex.isLocked()) {
         slack.chat.postMessage({
-          message.channel,
+          channel: message.channel,
           text: "今クイズ中だよ:angry:",
           ...messageTs,
           ...postOptions,
@@ -386,7 +386,7 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
       }).catch((error: any): [null, null] => {
         mutex.release();
         slack.chat.postMessage({
-          message.channel,
+          channel: message.channel,
           text: `問題生成中にエラーが発生しました: ${error.message}`,
           ...messageTs,
           ...postOptions,
