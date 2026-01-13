@@ -14,12 +14,12 @@ import logger from "../lib/logger";
 import type { SlackInterface } from "../lib/slack";
 const { Mutex } = require("async-mutex");
 const { AteQuiz } = require("../atequiz/index.ts");
+const { isPlayground } = require('../lib/slackUtils');
 const cloudinary = require("cloudinary");
 
 const mutex = new Mutex();
 
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
-const CHANNEL = process.env.CHANNEL_SANDBOX;
 if (!API_KEY) {
   throw new Error("Google Maps API key is missing from .env file.");
 }
@@ -265,12 +265,13 @@ function problemFormat(
   lng: number,
   img_url: string,
   answer_url: string,
-  thread_ts: string
+  thread_ts: string,
+  channel: string
 ): NmpzAteQuizProblem {
   const emoji = `:flag-${country.country_code}:`;
   const problem: NmpzAteQuizProblem = {
     problemMessage: {
-      channel: CHANNEL,
+      channel,
       thread_ts,
       text: `どこの国でしょう？`,
       blocks: [
@@ -290,17 +291,17 @@ function problemFormat(
     },
     hintMessages: [
       {
-        channel: CHANNEL,
+        channel,
         text: `ヒント: 画像の地域は${country.region}だよ。`,
       },
       {
-        channel: CHANNEL,
+        channel,
         text: `ヒント: 画像の地域は${country.subregion}だよ。`,
       },
     ],
-    immediateMessage: { channel: CHANNEL, text: "" },
+    immediateMessage: { channel, text: "" },
     solvedMessage: {
-      channel: CHANNEL,
+      channel,
       text: `<@[[!user]]> 正解！:tada: 正解地点は <${answer_url}|${coordToStr(lat, lng)}> だよ ${emoji}`,
       reply_broadcast: true,
       thread_ts,
@@ -308,7 +309,7 @@ function problemFormat(
       unfurl_media: false,
     },
     unsolvedMessage: {
-      channel: CHANNEL,
+      channel,
       text: `残念！:cry: 正解は${country.name_official}、正解地点は <${answer_url}|${coordToStr(lat, lng)}> だよ ${emoji}`,
       reply_broadcast: true,
       thread_ts,
@@ -325,17 +326,18 @@ function problemFormat(
 async function prepareProblem(
   slack: any,
   message: any,
-  thread_ts: string
+  thread_ts: string,
+  channel: string
 ) {
   await slack.chat.postEphemeral({
-    channel: CHANNEL,
+    channel,
     text: "問題を生成中...",
     user: message.user,
     ...postOptions,
   });
 
   const [country, lat, lng, img_url, answer_url] = await problemGen();
-  const problem: NmpzAteQuizProblem = problemFormat(country, lat, lng, img_url, answer_url, thread_ts);
+  const problem: NmpzAteQuizProblem = problemFormat(country, lat, lng, img_url, answer_url, thread_ts, channel);
   return problem;
 }
 
@@ -343,12 +345,15 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
   const dbPath = "nmpz/coordinates.db";
   await initDatabase(dbPath);
   eventClient.on("message", async (message) => {
+    if (!isPlayground(message.channel)) {
+			return;
+		}
     if (message.text === "NMPZ") {
       const messageTs = { thread_ts: message.ts };
 
       if (mutex.isLocked()) {
         slack.chat.postMessage({
-          channel: CHANNEL,
+          message.channel,
           text: "今クイズ中だよ:angry:",
           ...messageTs,
           ...postOptions,
@@ -359,7 +364,7 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
         try {
           const arr = await Promise.race([
             (async () => {
-              const problem: NmpzAteQuizProblem = await prepareProblem(slack, message, message.ts);
+              const problem: NmpzAteQuizProblem = await prepareProblem(slack, message, message.ts, message.channel);
               const ateQuiz = new NmpzAteQuiz(eventClient, slack, problem);
               const st = Date.now();
               const res = await ateQuiz.start();
@@ -381,7 +386,7 @@ export default async ({ eventClient, webClient: slack }: SlackInterface) => {
       }).catch((error: any): [null, null] => {
         mutex.release();
         slack.chat.postMessage({
-          channel: CHANNEL,
+          message.channel,
           text: `問題生成中にエラーが発生しました: ${error.message}`,
           ...messageTs,
           ...postOptions,
