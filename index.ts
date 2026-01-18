@@ -99,6 +99,7 @@ const productionBots = [
 	'emoxpand',
 	'ponpe',
 	'anime',
+	'anime/anison',
 	'oogiri',
 	'sorting-riddles',
 	'tsglive',
