@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 const {Mutex} = require('async-mutex');
 const axios = require('axios');
 const cloudinary = require('cloudinary');
@@ -10,8 +9,8 @@ const {get, last, minBy, random, sum, sample, uniq, groupBy, mapValues, range, f
 const {xml2js} = require('xml-js');
 const {unlock, increment} = require('../achievements');
 const {ChannelLimitedBot} = require('../lib/channelLimitedBot.ts');
+const {extractMessage} = require('../lib/slackUtils.ts');
 const {Deferred} = require('../lib/utils.ts');
-/* eslint-enable @typescript-eslint/no-var-requires */
 
 const animesDeferred = new Deferred();
 const mutex = new Mutex();
@@ -281,23 +280,34 @@ class AnimeBot extends ChannelLimitedBot {
 		this.wakeWordRegex = /^アニメ当てクイズ(?<difficulty>easy|normal|hard|extreme)?$/;
 
 		setInterval(() => this.onTick(), 1000);
+	}
 
-		// Handle @anime lookup and answer checking
-		this.eventClient.on('message', async (message) => {
-			if (!this.allowedChannels.includes(message.channel)) {
-				return;
-			}
+	async onMessageEvent(event) {
+		await super.onMessageEvent(event);
 
-			// @anime lookup command
-			if (message.text && message.text.startsWith('@anime') && this.state.answer === null) {
-				await this.handleAnimeLookup(message);
-			}
+		const message = extractMessage(event);
 
-			// Answer checking in thread
-			if (this.state.answer !== null && message.text && message.thread_ts === this.state.thread && message.username !== 'anime') {
-				await this.handleAnswer(message);
-			}
-		});
+		if (
+			message === null ||
+			!message.text ||
+			message.subtype
+		) {
+			return;
+		}
+
+		if (!this.allowedChannels.includes(message.channel)) {
+			return;
+		}
+
+		// @anime lookup command
+		if (message.text.startsWith('@anime') && this.state.answer === null) {
+			await this.handleAnimeLookup(message);
+		}
+
+		// Answer checking in thread
+		if (this.state.answer !== null && message.thread_ts === this.state.thread && message.username !== 'anime') {
+			await this.handleAnswer(message);
+		}
 	}
 
 	onTick() {
@@ -375,7 +385,7 @@ class AnimeBot extends ChannelLimitedBot {
 		mutex.runExclusive(async () => {
 			try {
 				const matches = message.text.match(/^アニメ当てクイズ(?<difficulty>easy|normal|hard|extreme)?$/);
-				const difficulty = matches?.groups?.difficulty || 'normal';
+				const difficulty = (matches && matches.groups && matches.groups.difficulty) || 'normal';
 
 				const {animes, easyAnimes, normalAnimes} = await loadSheet();
 				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
