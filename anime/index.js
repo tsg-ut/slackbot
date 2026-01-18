@@ -278,7 +278,7 @@ class AnimeBot extends ChannelLimitedBot {
 
 		this.username = 'anime';
 		this.iconEmoji = ':tv:';
-		this.wakeWordRegex = /^アニメ当てクイズ(?:easy|normal|hard|extreme)?$/;
+		this.wakeWordRegex = /^アニメ当てクイズ(?<difficulty>easy|normal|hard|extreme)?$/;
 
 		setInterval(() => this.onTick(), 1000);
 
@@ -375,7 +375,7 @@ class AnimeBot extends ChannelLimitedBot {
 		mutex.runExclusive(async () => {
 			try {
 				const matches = message.text.match(/^アニメ当てクイズ(?<difficulty>easy|normal|hard|extreme)?$/);
-				const difficulty = matches.groups.difficulty || 'normal';
+				const difficulty = matches?.groups?.difficulty || 'normal';
 
 				const {animes, easyAnimes, normalAnimes} = await loadSheet();
 				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
