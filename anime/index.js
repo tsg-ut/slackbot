@@ -8,6 +8,8 @@ const {hiraganize} = require('japanese');
 const {get, last, minBy, random, sum, sample, uniq, groupBy, mapValues, range, flatten} = require('lodash');
 const {xml2js} = require('xml-js');
 const {unlock, increment} = require('../achievements');
+const {ChannelLimitedBot} = require('../lib/channelLimitedBot.ts');
+const {extractMessage} = require('../lib/slackUtils.ts');
 const {Deferred} = require('../lib/utils.ts');
 
 const animesDeferred = new Deferred();
@@ -259,40 +261,77 @@ const getHintOptions = (n, difficulty) => {
 	return {};
 };
 
-module.exports = ({eventClient, webClient: slack}) => {
-	const state = {
-		answer: null,
-		previousTick: 0,
-		previousHint: 0,
-		hints: [],
-		thread: null,
-		difficulty: null,
-	};
+class AnimeBot extends ChannelLimitedBot {
+	constructor(slackClients) {
+		super(slackClients);
 
-	const onTick = () => {
+		this.state = {
+			answer: null,
+			previousTick: 0,
+			previousHint: 0,
+			hints: [],
+			thread: null,
+			channel: null,
+			difficulty: null,
+		};
+
+		this.username = 'anime';
+		this.iconEmoji = ':tv:';
+		this.wakeWordRegex = /^アニメ当てクイズ(?<difficulty>easy|normal|hard|extreme)?$/;
+
+		setInterval(() => this.onTick(), 1000);
+	}
+
+	async onMessageEvent(event) {
+		await super.onMessageEvent(event);
+
+		const message = extractMessage(event);
+
+		if (
+			message === null ||
+			!message.text ||
+			message.subtype
+		) {
+			return;
+		}
+
+		if (!this.allowedChannels.includes(message.channel)) {
+			return;
+		}
+
+		// @anime lookup command
+		if (message.text.startsWith('@anime') && this.state.answer === null) {
+			await this.handleAnimeLookup(message);
+		}
+
+		// Answer checking in thread
+		if (this.state.answer !== null && message.thread_ts === this.state.thread && message.username !== 'anime') {
+			await this.handleAnswer(message);
+		}
+	}
+
+	onTick() {
 		mutex.runExclusive(async () => {
 			const now = Date.now();
-			const nextHint = state.previousHint + (state.hints.length === 5 ? 30 : 15) * 1000;
+			const nextHint = this.state.previousHint + (this.state.hints.length === 5 ? 30 : 15) * 1000;
 
-			if (state.answer !== null && nextHint <= now) {
-				state.previousHint = now;
-				if (state.hints.length < 5) {
-					const {publicId, video, filename} = await getRandomThumb(state.answer);
-					const hintText = getHintText(state.hints.length);
+			if (this.state.answer !== null && nextHint <= now) {
+				this.state.previousHint = now;
+				if (this.state.hints.length < 5) {
+					const {publicId, video, filename} = await getRandomThumb(this.state.answer);
+					const hintText = getHintText(this.state.hints.length);
 
-					await slack.chat.postMessage({
-						channel: process.env.CHANNEL_SANDBOX,
+					await this.postMessage({
+						channel: this.state.channel,
 						text: hintText,
-						username: 'anime',
-						icon_emoji: ':tv:',
-						thread_ts: state.thread,
+						thread_ts: this.state.thread,
 						attachments: [{
-							image_url: getUrl(publicId, getHintOptions(state.hints.length, state.difficulty)),
+							image_url: getUrl(publicId, getHintOptions(this.state.hints.length, this.state.difficulty)),
 							fallback: hintText,
 						}],
 					});
 
-					state.hints.push({publicId, video, filename});
+					this.state.hints.push({publicId, video, filename});
 				} else {
 					const anger = sample([
 						'これくらい常識だよね？',
@@ -301,21 +340,17 @@ module.exports = ({eventClient, webClient: slack}) => {
 						'やる気が足りないんじゃない？',
 						'もっと集中して！',
 					]);
-					await slack.chat.postMessage({
-						channel: process.env.CHANNEL_SANDBOX,
-						text: `もう、しっかりして！\n答えは＊${state.answer}＊だよ:anger:\n${anger}`,
-						username: 'anime',
-						icon_emoji: ':tv:',
-						thread_ts: state.thread,
+					await this.postMessage({
+						channel: this.state.channel,
+						text: `もう、しっかりして！\n答えは＊${this.state.answer}＊だよ:anger:\n${anger}`,
+						thread_ts: this.state.thread,
 						reply_broadcast: true,
 					});
-					await slack.chat.postMessage({
-						channel: process.env.CHANNEL_SANDBOX,
+					await this.postMessage({
+						channel: this.state.channel,
 						text: '今回のヒント一覧だよ:anger:',
-						username: 'anime',
-						icon_emoji: ':tv:',
-						thread_ts: state.thread,
-						attachments: state.hints.map((hint) => {
+						thread_ts: this.state.thread,
+						attachments: this.state.hints.map((hint) => {
 							const info = getVideoInfo(hint.video, hint.filename);
 							return {
 								title: info.title,
@@ -325,30 +360,33 @@ module.exports = ({eventClient, webClient: slack}) => {
 							};
 						}),
 					});
-					state.answer = null;
-					state.previousHint = 0;
-					state.hints = [];
-					state.thread = null;
-					state.difficulty = null;
+
+					await this.deleteProgressMessage(this.state.thread);
+
+					this.state.answer = null;
+					this.state.previousHint = 0;
+					this.state.hints = [];
+					this.state.thread = null;
+					this.state.channel = null;
+					this.state.difficulty = null;
 				}
 			}
-			state.previousTick = now;
+			this.state.previousTick = now;
 		});
-	};
+	}
 
-	setInterval(onTick, 1000);
-
-	eventClient.on('message', (message) => {
-		if (message.channel !== process.env.CHANNEL_SANDBOX) {
-			return;
+	onWakeWord(message, channel) {
+		if (this.state.answer !== null) {
+			return Promise.resolve(null);
 		}
 
-		let matches = null;
+		const quizMessageDeferred = new Deferred();
 
-		if (message.text && (matches = message.text.match(/^アニメ当てクイズ(?<difficulty>easy|normal|hard|extreme)?$/)) && state.answer === null) {
-			const difficulty = matches.groups.difficulty || 'normal';
+		mutex.runExclusive(async () => {
+			try {
+				const matches = message.text.match(/^アニメ当てクイズ(?<difficulty>easy|normal|hard|extreme)?$/);
+				const difficulty = (matches && matches.groups && matches.groups.difficulty) || 'normal';
 
-			mutex.runExclusive(async () => {
 				const {animes, easyAnimes, normalAnimes} = await loadSheet();
 				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
 				let answer = null;
@@ -362,82 +400,68 @@ module.exports = ({eventClient, webClient: slack}) => {
 
 				const {publicId, video, filename} = await getRandomThumb(answer);
 
-				const {ts} = await slack.chat.postMessage({
-					channel: process.env.CHANNEL_SANDBOX,
+				const {ts} = await this.postMessage({
+					channel,
 					text: 'このアニメなーんだ',
-					username: 'anime',
-					icon_emoji: ':tv:',
 					attachments: [{
 						image_url: getUrl(publicId, getHintOptions(0, difficulty)),
 						fallback: 'このアニメなーんだ',
 					}],
 				});
 
-				state.thread = ts;
-				state.hints.push({publicId, video, filename});
-				state.previousHint = Date.now();
-				state.difficulty = difficulty;
+				this.state.thread = ts;
+				this.state.channel = channel;
+				this.state.hints.push({publicId, video, filename});
+				this.state.previousHint = Date.now();
+				this.state.difficulty = difficulty;
 
-				await slack.chat.postMessage({
-					channel: process.env.CHANNEL_SANDBOX,
+				await this.postMessage({
+					channel,
 					text: '15秒経過でヒントを出すよ♫',
-					username: 'anime',
-					icon_emoji: ':tv:',
 					thread_ts: ts,
 				});
 
-				state.answer = answer;
-			});
-		}
+				this.state.answer = answer;
+				quizMessageDeferred.resolve(ts);
+			} catch (error) {
+				this.log.error('Failed to start anime quiz', error);
+				const errorText =
+					error instanceof Error && error.stack !== undefined
+						? error.stack : String(error);
+				await this.postMessage({
+					channel,
+					text: `エラー😢\n\`${errorText}\``,
+				});
+				quizMessageDeferred.resolve(null);
+			}
+		});
 
-		if (message.text && message.text.startsWith('@anime') && state.answer === null) {
-			mutex.runExclusive(async () => {
-				if (!animesDeferred.isResolved) {
-					loadSheet();
-				}
-				const {animes, easyAnimes, normalAnimes, animeByYears, animeInfos} = await animesDeferred.promise;
-				const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
+		return quizMessageDeferred.promise;
+	}
 
-				const requestedTitle = hiraganize(message.text.replace('@anime', '').replace(/\P{Letter}/gu, '').toLowerCase());
-				const animeTitle = minBy(animeTitles, (title) => (
-					levenshtein.get(requestedTitle, hiraganize(title.replace(/\P{Letter}/gu, '').toLowerCase()))
-				));
+	async handleAnimeLookup(message) {
+		await mutex.runExclusive(async () => {
+			if (!animesDeferred.isResolved) {
+				loadSheet();
+			}
+			const {animes, easyAnimes, normalAnimes, animeByYears, animeInfos} = await animesDeferred.promise;
+			const animeTitles = uniq(animes.map(({animeTitle}) => animeTitle).filter((title) => title));
 
-				const {publicId, video, filename} = await getRandomThumb(animeTitle);
-				const info = getVideoInfo(video, filename);
-				const animeInfo = animeInfos.find(({name}) => name === animeTitle);
-				if (animeInfo === undefined || animeInfo.year === null) {
-					await slack.chat.postMessage({
-						channel: process.env.CHANNEL_SANDBOX,
-						text: stripIndent`
+			const requestedTitle = hiraganize(message.text.replace('@anime', '').replace(/\P{Letter}/gu, '').toLowerCase());
+			const animeTitle = minBy(animeTitles, (title) => (
+				levenshtein.get(requestedTitle, hiraganize(title.replace(/\P{Letter}/gu, '').toLowerCase()))
+			));
+
+			const {publicId, video, filename} = await getRandomThumb(animeTitle);
+			const info = getVideoInfo(video, filename);
+			const animeInfo = animeInfos.find(({name}) => name === animeTitle);
+			if (animeInfo === undefined || animeInfo.year === null) {
+				await this.postMessage({
+					channel: message.channel,
+					text: stripIndent`
 						＊${animeTitle}＊はこんなアニメだよ！
 						＊出題範囲＊ hard
 					`,
-						username: 'anime',
-						icon_emoji: ':tv:',
-						attachments: [{
-							title: info.title,
-							title_link: info.url,
-							image_url: getUrl(publicId),
-							fallback: info.title,
-						}],
-					});
-					return;
-				}
-				const yearRank = animeByYears[animeInfo.year.toString()].findIndex((name) => name === animeTitle);
-				const yearTotal = animeByYears[animeInfo.year.toString()].length;
-				// eslint-disable-next-line no-nested-ternary
-				const difficulty = (easyAnimes.includes(animeTitle) ? 'easy' : (normalAnimes.includes(animeTitle) ? 'normal' : 'hard'));
-
-				await slack.chat.postMessage({
-					channel: process.env.CHANNEL_SANDBOX,
-					text: stripIndent`
-						＊${animeTitle}＊はこんなアニメだよ！
-						＊総合ランキング＊ ${animeInfo.rank}位 ＊年度別ランキング＊ ${yearRank + 1}/${yearTotal}位
-						＊放送開始日＊ ${animeInfo.date} ＊出題範囲＊ ${difficulty}
-					`,
-					username: 'anime',
-					icon_emoji: ':tv:',
 					attachments: [{
 						title: info.title,
 						title_link: info.url,
@@ -445,79 +469,100 @@ module.exports = ({eventClient, webClient: slack}) => {
 						fallback: info.title,
 					}],
 				});
+				return;
+			}
+			const yearRank = animeByYears[animeInfo.year.toString()].findIndex((name) => name === animeTitle);
+			const yearTotal = animeByYears[animeInfo.year.toString()].length;
+			// eslint-disable-next-line no-nested-ternary
+			const difficulty = (easyAnimes.includes(animeTitle) ? 'easy' : (normalAnimes.includes(animeTitle) ? 'normal' : 'hard'));
+
+			await this.postMessage({
+				channel: message.channel,
+				text: stripIndent`
+					＊${animeTitle}＊はこんなアニメだよ！
+					＊総合ランキング＊ ${animeInfo.rank}位 ＊年度別ランキング＊ ${yearRank + 1}/${yearTotal}位
+					＊放送開始日＊ ${animeInfo.date} ＊出題範囲＊ ${difficulty}
+				`,
+				attachments: [{
+					title: info.title,
+					title_link: info.url,
+					image_url: getUrl(publicId),
+					fallback: info.title,
+				}],
 			});
-		}
+		});
+	}
 
-		if (state.answer !== null && message.text && message.thread_ts === state.thread && message.username !== 'anime') {
-			mutex.runExclusive(async () => {
-				const answer = hiraganize(state.answer.replace(/\P{Letter}/gu, '').toLowerCase());
-				const userAnswer = hiraganize(message.text.replace(/\P{Letter}/gu, '').toLowerCase());
+	async handleAnswer(message) {
+		await mutex.runExclusive(async () => {
+			const answer = hiraganize(this.state.answer.replace(/\P{Letter}/gu, '').toLowerCase());
+			const userAnswer = hiraganize(message.text.replace(/\P{Letter}/gu, '').toLowerCase());
 
-				const distance = levenshtein.get(answer, userAnswer);
+			const distance = levenshtein.get(answer, userAnswer);
 
-				if (distance <= answer.length / 3) {
-					await slack.chat.postMessage({
-						channel: process.env.CHANNEL_SANDBOX,
-						text: `<@${message.user}> 正解:tada:\n答えは＊${state.answer}＊だよ:muscle:`,
-						username: 'anime',
-						icon_emoji: ':tv:',
-						thread_ts: state.thread,
-						reply_broadcast: true,
-					});
-					await slack.chat.postMessage({
-						channel: process.env.CHANNEL_SANDBOX,
-						text: '今回のヒント一覧だよ',
-						username: 'anime',
-						icon_emoji: ':tv:',
-						thread_ts: state.thread,
-						attachments: state.hints.map((hint) => {
-							const info = getVideoInfo(hint.video, hint.filename);
-							return {
-								title: info.title,
-								title_link: info.url,
-								image_url: getUrl(hint.publicId),
-								fallback: info.title,
-							};
-						}),
-					});
+			if (distance <= answer.length / 3) {
+				await this.postMessage({
+					channel: this.state.channel,
+					text: `<@${message.user}> 正解:tada:\n答えは＊${this.state.answer}＊だよ:muscle:`,
+					thread_ts: this.state.thread,
+					reply_broadcast: true,
+				});
+				await this.postMessage({
+					channel: this.state.channel,
+					text: '今回のヒント一覧だよ',
+					thread_ts: this.state.thread,
+					attachments: this.state.hints.map((hint) => {
+						const info = getVideoInfo(hint.video, hint.filename);
+						return {
+							title: info.title,
+							title_link: info.url,
+							image_url: getUrl(hint.publicId),
+							fallback: info.title,
+						};
+					}),
+				});
 
-					const {animeInfos} = await animesDeferred.promise;
-					const animeInfo = animeInfos.find(({name}) => name === state.answer);
-					await increment(message.user, 'anime-answer');
-					if (state.hints.length === 1) {
-						await increment(message.user, 'anime-answer-first-hint');
-						if (state.difficulty === 'extreme') {
-							await unlock(message.user, 'anime-extreme-answer-first-hint');
-						}
+				const {animeInfos} = await animesDeferred.promise;
+				const animeInfo = animeInfos.find(({name}) => name === this.state.answer);
+				await increment(message.user, 'anime-answer');
+				if (this.state.hints.length === 1) {
+					await increment(message.user, 'anime-answer-first-hint');
+					if (this.state.difficulty === 'extreme') {
+						await unlock(message.user, 'anime-extreme-answer-first-hint');
 					}
-					if (state.hints.length <= 2) {
-						await unlock(message.user, 'anime-answer-second-hint');
-					}
-					if (state.hints.length <= 3) {
-						await unlock(message.user, 'anime-answer-third-hint');
-					}
-					if (animeInfo && animeInfo.year < 2010) {
-						await unlock(message.user, 'anime-before-2010');
-					}
-					if (animeInfo && animeInfo.year < 2000) {
-						await unlock(message.user, 'anime-before-2000');
-					}
-
-					state.answer = null;
-					state.previousHint = 0;
-					state.hints = [];
-					state.thread = null;
-					state.difficulty = null;
-				} else {
-					await slack.reactions.add({
-						name: 'no_good',
-						channel: message.channel,
-						timestamp: message.ts,
-					});
 				}
-			});
-		}
-	});
-};
+				if (this.state.hints.length <= 2) {
+					await unlock(message.user, 'anime-answer-second-hint');
+				}
+				if (this.state.hints.length <= 3) {
+					await unlock(message.user, 'anime-answer-third-hint');
+				}
+				if (animeInfo && animeInfo.year < 2010) {
+					await unlock(message.user, 'anime-before-2010');
+				}
+				if (animeInfo && animeInfo.year < 2000) {
+					await unlock(message.user, 'anime-before-2000');
+				}
+
+				await this.deleteProgressMessage(this.state.thread);
+
+				this.state.answer = null;
+				this.state.previousHint = 0;
+				this.state.hints = [];
+				this.state.thread = null;
+				this.state.channel = null;
+				this.state.difficulty = null;
+			} else {
+				await this.slack.reactions.add({
+					name: 'no_good',
+					channel: message.channel,
+					timestamp: message.ts,
+				});
+			}
+		});
+	}
+}
+
+module.exports = (slackClients) => new AnimeBot(slackClients);
 
 module.exports.loadSheet = loadSheet;
