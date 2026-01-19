@@ -22,11 +22,11 @@ import {increment} from '../achievements';
 import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
 import type {AteQuizProblem} from '../atequiz';
 import {judgeAnswer} from '../discord/hayaoshiUtils';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 import logger from '../lib/logger';
 import openai from '../lib/openai';
 import {SlackInterface} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
-import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 import {Loader, Deferred} from '../lib/utils';
 import genres from './genres';
 
@@ -572,12 +572,6 @@ class AutogenQuizBot extends ChannelLimitedBot {
 		});
 
 		return quizMessageDeferred.promise;
-	}
-
-	constructor(
-		private readonly slackClients: SlackInterface,
-	) {
-		super(slackClients);
 	}
 }
 
