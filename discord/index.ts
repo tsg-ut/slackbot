@@ -51,12 +51,13 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 		return connection;
 	};
 
-	let hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users, state.introQuizSongHistory);
+	let hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users);
 	let tts = new TTS(joinVoiceChannelFn, state.ttsDictionary);
 
 	const attachDiscordHandlers = (hayaoshi: Hayaoshi, tts: TTS) => {
 		hayaoshi.on('message', (message: string, channelId: string = process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID) => {
 			const discordTextSandbox = discord.channels.cache.get(channelId) as TextChannel;
+			console.log('[discord] sending hayaoshi message:', message);
 			return discordTextSandbox.send(message);
 		});
 
@@ -83,7 +84,7 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 			tts.destroy();
 			hayaoshi.destroy();
 			await new Promise((resolve) => setTimeout(resolve, 1000));
-			hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users, state.introQuizSongHistory);
+			hayaoshi = new Hayaoshi(joinVoiceChannelFn, state.users);
 			tts = new TTS(joinVoiceChannelFn, state.ttsDictionary);
 			attachDiscordHandlers(hayaoshi, tts);
 

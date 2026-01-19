@@ -601,8 +601,11 @@ export default class Hayaoshi extends EventEmitter {
 				clearTimeout(this.state.answerTimeoutId);
 				const judgement = this.judgeAnswer(message.content.trim());
 				if (judgement === 'correct') {
+					console.log('[hayaoshi] correct answer');
 					this.playSound('correct');
 					this.incrementPoint(message.member.user.id);
+
+					console.log('[hayaoshi] correct answer - incremented point');
 
 					const user = this.users.find(({discord}) => discord === message.member.user.id);
 					if (user) {
@@ -613,6 +616,7 @@ export default class Hayaoshi extends EventEmitter {
 					}
 
 					const answerFileName = path.join(__dirname, `${this.state.quiz.answer.replaceAll('/', '_')}.ogg`);
+					console.log('[hayaoshi] correct answer - prepared answer file');
 
 					this.emit('message', {
 						content: stripIndent`
@@ -625,6 +629,7 @@ export default class Hayaoshi extends EventEmitter {
 						`,
 						files: [answerFileName],
 					});
+					console.log('[hayaoshi] correct answer - sent message');
 
 					await new Promise((resolve) => setTimeout(resolve, 3000));
 
