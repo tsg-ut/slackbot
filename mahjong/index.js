@@ -168,17 +168,6 @@ const 麻雀牌Forサンマ = 麻雀牌.filter((牌) => {
 
 assert.strictEqual(麻雀牌Forサンマ.length, 108);
 
-const saveState = async () => {
-	await promisify(fs.writeFile)(path.join(__dirname, 'current-point.json'), JSON.stringify({
-		points: state.points,
-		wins: state.wins,
-		loses: state.loses,
-		大麻雀Points: state.大麻雀Points,
-		大麻雀Wins: state.大麻雀Wins,
-		大麻雀Loses: state.大麻雀Loses,
-	}));
-};
-
 const uploadImage = async (imageUrl) => {
 	const response = await new Promise((resolve, reject) => {
 		cloudinary.uploader.upload(imageUrl, (error, data) => {
