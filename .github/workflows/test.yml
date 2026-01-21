@@ -27,12 +27,12 @@ jobs:
       - name: Typecheck files not covered by tests
         run: npx tsc --noEmit
         env:
-          NODE_OPTIONS: --max-old-space-size=4096
+          NODE_OPTIONS: --max-old-space-size=8192
 
       - name: Test
         run: npm run test:coverage
         env:
-          NODE_OPTIONS: --trace-warnings --trace-deprecation --trace-exit --trace-uncaught --unhandled-rejections=strict --max-old-space-size=4096
+          NODE_OPTIONS: --trace-warnings --trace-deprecation --trace-exit --trace-uncaught --unhandled-rejections=strict --max-old-space-size=8192
 
       - name: Set up reviewdog
         if: ${{ github.event_name == 'pull_request' }}
