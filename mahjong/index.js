@@ -546,6 +546,8 @@ class MahjongBot extends ChannelLimitedBot {
 		if (
 			message === null ||
 			!message.text ||
+			!message.user ||
+			message.bot_id !== undefined ||
 			message.subtype
 		) {
 			return;
