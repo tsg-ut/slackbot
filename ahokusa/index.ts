@@ -229,7 +229,7 @@ class AhokusaBot extends ChannelLimitedBot {
 		channel: null,
 	};
 
-	protected override readonly wakeWordRegex = /^(あほくさスライドパズル|寿司スライドパズル( [3456])?|千矢スライドパズル|@ahokusa\b)/;
+	protected override readonly wakeWordRegex = /^(あほくさスライドパズル|寿司スライドパズル( [3456])?|千矢スライドパズル|@ahokusa\b[\s\S]*)$/;
 	protected override readonly username = 'ahokusa';
 	protected override readonly iconEmoji = ':ahokusa-top-center:';
 	protected override readonly progressMessageChannel: string | undefined = undefined;

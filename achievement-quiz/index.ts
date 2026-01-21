@@ -164,12 +164,6 @@ class AchievementQuizBot extends ChannelLimitedBot {
 
     return quizMessageDeferred.promise;
   }
-
-  constructor(
-    protected readonly slackClients: SlackInterface,
-  ) {
-    super(slackClients);
-  }
 }
 
 // eslint-disable-next-line require-jsdoc

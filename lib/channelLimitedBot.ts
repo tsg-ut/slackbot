@@ -20,7 +20,7 @@ export class ChannelLimitedBot {
 	protected readonly progressMessages: Map<string, Deferred<string | null>> = new Map(); // gameMessageTs -> Deferred<progressMessageTs>
 
 	constructor(
-		slackClients: SlackInterface,
+		protected readonly slackClients: SlackInterface,
 	) {
 		this.slack = slackClients.webClient;
 		this.eventClient = slackClients.eventClient;
