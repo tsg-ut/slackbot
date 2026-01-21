@@ -505,12 +505,6 @@ class CitySymbolBot extends ChannelLimitedBot {
 
 	protected override readonly iconEmoji = ':cityscape:';
 
-	constructor(
-		protected readonly slackClients: SlackInterface,
-	) {
-		super(slackClients);
-	}
-
 	protected override onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
 		const quizMessageDeferred = new Deferred<string>();
 
