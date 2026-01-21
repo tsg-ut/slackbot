@@ -20,13 +20,13 @@ interface QuestionChar {
 
 interface State {
 	question: QuestionChar[],
-	answer: string,
+	answer: string | null,
 	previousTick: number,
 	previousHint: number,
 	hintCount: number,
 	misses: {[user: string]: number},
-	thread: string,
-	channel: string,
+	thread: string | null,
+	channel: string | null,
 }
 
 const getQuestionChars = (question: string): QuestionChar[] => {
@@ -215,7 +215,7 @@ class HayaoshiBot extends ChannelLimitedBot {
 
 	async handleAnswer(message: any) {
 		await mutex.runExclusive(async () => {
-			if (!{}.hasOwnProperty.call(this.state.misses, message.user)) {
+			if (!Object.prototype.hasOwnProperty.call(this.state.misses, message.user)) {
 				this.state.misses[message.user] = 0;
 			}
 
