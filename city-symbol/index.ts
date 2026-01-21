@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 import qs from 'querystring';
-import type {ChatPostMessageArguments} from '@slack/web-api';
+import type {ChatPostMessageArguments, GenericMessageEvent} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {load as cheerioLoad} from 'cheerio';
 import {stripIndent} from 'common-tags';
@@ -9,10 +9,11 @@ import {sample} from 'lodash';
 import {increment} from '../achievements';
 import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
 import type {AteQuizProblem} from '../atequiz';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 import logger from '../lib/logger';
 import openai from '../lib/openai';
 import {SlackInterface} from '../lib/slack';
-import {Loader} from '../lib/utils';
+import {Deferred, Loader} from '../lib/utils';
 import {type PrefectureKanji, prefectures} from '../room-gacha/prefectures';
 import chakuwikiTitles from './chakuwiki-title-map.json';
 
@@ -497,13 +498,21 @@ class CitySymbolAteQuiz extends AteQuiz {
 	}
 }
 
-export default (slackClients: SlackInterface) => {
-	const {eventClient} = slackClients;
+class CitySymbolBot extends ChannelLimitedBot {
+	protected override readonly wakeWordRegex = /^(?:市?区?町?村?)章当てクイズ\s?(?:\p{sc=Han}+[都道府県])?$/u;
 
-	eventClient.on('message', (message) => {
-		if (message.channel !== process.env.CHANNEL_SANDBOX) {
-			return;
-		}
+	protected override readonly username = '市章当てクイズ';
+
+	protected override readonly iconEmoji = ':cityscape:';
+
+	constructor(
+		protected readonly slackClients: SlackInterface,
+	) {
+		super(slackClients);
+	}
+
+	protected override onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+		const quizMessageDeferred = new Deferred<string>();
 
 		mutex.runExclusive(async () => {
 			try {
@@ -515,12 +524,11 @@ export default (slackClients: SlackInterface) => {
 					const prefectureSpecified = matches?.groups?.pref;
 
 					if (prefectureSpecified && !Object.hasOwn(prefectures, prefectureSpecified)) {
-						await slackClients.webClient.chat.postMessage({
-							channel: message.channel,
+						await this.postMessage({
+							channel,
 							text: `${prefectureSpecified}という都道府県は存在しないよ:angry:`,
-							username: '市章当てクイズ',
-							icon_emoji: ':cityscape:',
 						});
+						quizMessageDeferred.resolve(null);
 						return;
 					}
 
@@ -545,7 +553,7 @@ export default (slackClients: SlackInterface) => {
 
 					const problem = {
 						problemMessage: {
-							channel: message.channel,
+							channel,
 							text: quizText,
 							blocks: [
 								{
@@ -567,18 +575,18 @@ export default (slackClients: SlackInterface) => {
 							return [
 								...(needsPrefHint ? [
 									{
-										channel: message.channel,
+										channel,
 										text: `ヒント: ${city.prefectureName}の市区町村ですよ～`,
 									},
 								] : []),
 								...aiHints.map((hint, index) => ({
-									channel: message.channel,
+									channel,
 									text: `ChatGPTヒント${index + 1}: ${hint}`,
 								})),
 							];
 						},
 						immediateMessage: {
-							channel: message.channel,
+							channel,
 							text: '60秒以内に回答してね！',
 							blocks: [
 								{
@@ -596,11 +604,11 @@ export default (slackClients: SlackInterface) => {
 							],
 						},
 						solvedMessage: {
-							channel: message.channel,
+							channel,
 							text: typicalMessageTextsGenerator.solved(` ＊${city.prefectureName}${city.cityName}＊ `),
 						},
 						unsolvedMessage: {
-							channel: message.channel,
+							channel,
 							text: typicalMessageTextsGenerator.unsolved(` ＊${city.prefectureName}${city.cityName}＊ `),
 						},
 						get answerMessage() {
@@ -614,7 +622,7 @@ export default (slackClients: SlackInterface) => {
 							].join('\n');
 
 							return {
-								channel: message.channel,
+								channel,
 								text: `${answerHeader}\n\n${answerDetails}`,
 								unfurl_links: false,
 								unfurl_media: false,
@@ -690,7 +698,7 @@ export default (slackClients: SlackInterface) => {
 					};
 
 					const quiz = new CitySymbolAteQuiz({
-						slack: slackClients,
+						slack: this.slackClients,
 						problem,
 						postOptions: {
 							username: `市章当てクイズ${prefectureSpecified ? ` (${prefectureSpecified})` : ''}`,
@@ -701,7 +709,14 @@ export default (slackClients: SlackInterface) => {
 						},
 					});
 
-					const result = await quiz.start();
+					const result = await quiz.start({
+						mode: 'normal',
+						onStarted(startMessage) {
+							quizMessageDeferred.resolve(startMessage.ts!);
+						},
+					});
+
+					await this.deleteProgressMessage(await quizMessageDeferred.promise);
 
 					const hintCount = result.hintIndex + (prefectureSpecified ? 1 : 0);
 
@@ -729,11 +744,19 @@ export default (slackClients: SlackInterface) => {
 			} catch (error) {
 				log.error(error.stack);
 
-				await slackClients.webClient.chat.postMessage({
-					channel: message.channel,
+				await this.postMessage({
+					channel,
 					text: `エラーが発生しました: ${error.message}`,
 				});
+				quizMessageDeferred.reject(error);
 			}
+		}).catch((error: unknown) => {
+			log.error('Failed to start city symbol quiz', error);
+			quizMessageDeferred.reject(error);
 		});
-	});
-};
+
+		return quizMessageDeferred.promise;
+	}
+}
+
+export default (slackClients: SlackInterface) => new CitySymbolBot(slackClients);
