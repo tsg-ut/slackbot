@@ -257,8 +257,8 @@ class MahjongBot extends ChannelLimitedBot {
 		return this.slack.chat.postMessage({
 			channel: channel || this.state.channel,
 			text,
-			username: 'mahjong',
-			icon_emoji: ':mahjong:',
+			username: this.username,
+			icon_emoji: this.iconEmoji,
 			...(手牌 === null && attachments === null ? {} : {
 				attachments: attachments || [{
 					image_url: `https://mahjong.hakatashi.com/images/${encodeURIComponent(手牌.join(''))}?${
