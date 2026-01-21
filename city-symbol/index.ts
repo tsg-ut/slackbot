@@ -750,9 +750,6 @@ class CitySymbolBot extends ChannelLimitedBot {
 				});
 				quizMessageDeferred.reject(error);
 			}
-		}).catch((error: unknown) => {
-			log.error('Failed to start city symbol quiz', error);
-			quizMessageDeferred.reject(error);
 		});
 
 		return quizMessageDeferred.promise;
