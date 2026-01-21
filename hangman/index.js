@@ -79,7 +79,12 @@ const openCharacter = async (character, slackid) => {
 // guess the whole string
 const guessAnswer = async (candidate, challenger) => {
 	const succeeded = (challenger.answer === candidate);
-	const {slackid} = getChallengerByTs(challenger.thread);
+	const challengerResult = getChallengerByTs(challenger.thread);
+	if (!challengerResult) {
+		log.error(`Not found the user with thread(${challenger.thread})`);
+		return 'failure';
+	}
+	const {slackid} = challengerResult;
 	if (succeeded) {
 		const countUnique = (iterable) => new Set(iterable).size;
 		const closedChars = challenger.answer.split('').filter((character, index) => !challenger.openList[index]);
@@ -333,7 +338,7 @@ class HangmanBot extends ChannelLimitedBot {
 				const response = await openCharacter(text, slackid);
 				if (response === 'success') {
 					if (!state[slackid].openList.every((x) => x)) {
-						this.postGameStatus(':ok:', slackid);
+						await this.postGameStatus(':ok:', slackid);
 						return;
 					}
 
@@ -357,42 +362,44 @@ class HangmanBot extends ChannelLimitedBot {
 					return;
 				}
 
-				this.postGameStatus(':thinking_face: その手はよくわからないよ :thinking_face:', slackid);
+				await this.postGameStatus(':thinking_face: その手はよくわからないよ :thinking_face:', slackid);
 				return;
 			}
 			const wordMatches = text.match(/^!([a-z]+)/);
 			if (wordMatches) {
-				const {slackid: userId} = getChallengerByTs(message.thread_ts);
-				if (userId === null) {
+				const challengerResult = getChallengerByTs(message.thread_ts);
+				if (challengerResult === null) {
 					log.error(`Not found the user with ts(${message.thread_ts})`);
 					return;
 				}
 
-				if (state[userId].phase !== 'playing') {
+				const {slackid} = challengerResult;
+
+				if (state[slackid].phase !== 'playing') {
 					return;
 				}
-				if (userId !== user) {
+				if (slackid !== user) {
 					return;
 				}
-				const response = await guessAnswer(wordMatches[1], state[userId]);
+				const response = await guessAnswer(wordMatches[1], state[slackid]);
 				if (response === 'success') {
-					await this.postGameResult(':tada: 正解！ :astonished:', userId);
-					await unlockGameAchievements(userId);
-					await this.deleteProgressMessage(state[userId].thread);
-					delete state[userId];
+					await this.postGameResult(':tada: 正解！ :astonished:', slackid);
+					await unlockGameAchievements(slackid);
+					await this.deleteProgressMessage(state[slackid].thread);
+					delete state[slackid];
 					setState(state, state);
 				} else if (response === 'failure') {
-					if (state[userId].triesLeft > 0) {
-						this.postGameStatus(':ng: 失敗です…… :ng:', userId);
+					if (state[slackid].triesLeft > 0) {
+						await this.postGameStatus(':ng: 失敗です…… :ng:', slackid);
 					} else {
-						await this.postGameResult(':cry: ゲームオーバー :pensive:', userId);
-						await resetConsecutiveAchievements(userId);
-						await this.deleteProgressMessage(state[userId].thread);
-						delete state[userId];
+						await this.postGameResult(':cry: ゲームオーバー :pensive:', slackid);
+						await resetConsecutiveAchievements(slackid);
+						await this.deleteProgressMessage(state[slackid].thread);
+						delete state[slackid];
 						setState(state, state);
 					}
 				} else {
-					this.postGameStatus(':thinking_face: その手はよくわからないよ :thinking_face:', userId);
+					await this.postGameStatus(':thinking_face: その手はよくわからないよ :thinking_face:', slackid);
 				}
 			}
 		}
