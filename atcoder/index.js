@@ -1,0 +1,616 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const querystring_1 = __importDefault(require("querystring"));
+const async_mutex_1 = require("async-mutex");
+const axios_1 = __importDefault(require("axios"));
+const common_tags_1 = require("common-tags");
+const lodash_1 = require("lodash");
+const moment_1 = __importDefault(require("moment"));
+const node_schedule_1 = __importDefault(require("node-schedule"));
+// @ts-expect-error
+const primes_and_factors_1 = __importDefault(require("primes-and-factors"));
+const scrape_it_1 = __importDefault(require("scrape-it"));
+const index_js_1 = require("../achievements/index.js");
+const logger_1 = __importDefault(require("../lib/logger"));
+const slackUtils_1 = require("../lib/slackUtils");
+const state_1 = __importDefault(require("../lib/state"));
+const utils_1 = require("./utils");
+const log = logger_1.default.child({ bot: 'atcoder' });
+const mutex = new async_mutex_1.Mutex();
+const getRatingColor = (rating) => {
+    // gray
+    if (rating === null || rating < 400) {
+        return '#808080';
+    }
+    // brown
+    if (rating < 800) {
+        return '#804000';
+    }
+    // green
+    if (rating < 1200) {
+        return '#008000';
+    }
+    // cyan
+    if (rating < 1600) {
+        return '#00C0C0';
+    }
+    // blue
+    if (rating < 2000) {
+        return '#0000FF';
+    }
+    // yellow
+    if (rating < 2400) {
+        return '#C0C000';
+    }
+    // orange
+    if (rating < 2800) {
+        return '#FF8000';
+    }
+    // red
+    if (rating < 3200) {
+        return '#FF0000';
+    }
+    // ???
+    return '#000000';
+};
+const getRatingColorName = (rating) => {
+    if (rating === null || rating < 400) {
+        return '灰';
+    }
+    if (rating < 800) {
+        return '茶';
+    }
+    if (rating < 1200) {
+        return '緑';
+    }
+    if (rating < 1600) {
+        return '水';
+    }
+    if (rating < 2000) {
+        return '青';
+    }
+    if (rating < 2400) {
+        return '黄';
+    }
+    if (rating < 2800) {
+        return '橙';
+    }
+    if (rating < 3200) {
+        return '赤';
+    }
+    return '???';
+};
+const formatTime = (seconds) => (`${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`);
+const formatNumber = (number) => {
+    if (number === 0) {
+        return '0';
+    }
+    if (number > 0) {
+        return `+${number}`;
+    }
+    return number.toString();
+};
+exports.default = async ({ eventClient, webClient: slack }) => {
+    const state = await state_1.default.init('atcoder', {
+        users: [],
+        contests: [],
+    });
+    const updateContests = async () => {
+        log.info('Updating AtCoder contests...');
+        const { data: html } = await axios_1.default.get('https://atcoder.jp/contests/', {
+            headers: {
+                'Accept-Language': 'ja-JP',
+            },
+        });
+        const { contests } = scrape_it_1.default.scrapeHTML(html, {
+            contests: {
+                listItem: 'tbody tr',
+                data: {
+                    date: {
+                        selector: 'td:nth-child(1) time',
+                        convert: (time) => new Date(time).getTime(),
+                    },
+                    title: {
+                        selector: 'td:nth-child(2) a',
+                    },
+                    id: {
+                        selector: 'td:nth-child(2) a',
+                        attr: 'href',
+                        convert: (href) => {
+                            const [, , id = ''] = href.split('/');
+                            return id;
+                        },
+                    },
+                    duration: {
+                        selector: 'td:nth-child(3)',
+                        convert: (text) => {
+                            const [hours = '', minutes = ''] = text.split(':');
+                            return ((parseInt(hours) || 0) * 60 + (parseInt(minutes) || 0)) * 60 * 1000;
+                        },
+                    },
+                },
+            },
+        });
+        log.info(`Fetched ${contests.length} contests`);
+        if (contests.length > 0) {
+            const oldContests = state.contests;
+            const newContests = [];
+            state.contests = contests.filter(({ date }) => !Number.isNaN(date)).map((contest) => {
+                const oldContest = oldContests.find(({ id }) => id === contest.id);
+                if (!oldContest) {
+                    newContests.push(contest);
+                }
+                return {
+                    ...contest,
+                    isPosted: oldContest ? oldContest.isPosted : false,
+                    isPreposted: oldContest ? oldContest.isPreposted : false,
+                    ratedCount: 0,
+                };
+            });
+            for (const contest of newContests) {
+                await postNewContest(contest.id);
+            }
+        }
+    };
+    const postNewContest = (id) => {
+        const contest = state.contests.find((contest) => contest.id === id);
+        log.info(`Posting notification of new contest ${id}...`);
+        slack.chat.postMessage({
+            username: 'atcoder',
+            icon_emoji: ':atcoder:',
+            channel: process.env.CHANNEL_PROCON,
+            text: (0, common_tags_1.stripIndent) `
+				新しいコンテスト *${contest.title}* が追加されたよ！
+				https://atcoder.jp/contests/${contest.id}
+			`,
+        });
+    };
+    const postPreroll = (id) => {
+        const contest = state.contests.find((contest) => contest.id === id);
+        log.info(`Posting preroll of contest ${id}...`);
+        slack.chat.postMessage({
+            username: 'atcoder',
+            icon_emoji: ':atcoder:',
+            channel: process.env.CHANNEL_PROCON,
+            text: (0, common_tags_1.stripIndent) `
+				あと15分で *${contest.title}* が始まるよ！ 準備はいいかな～?
+				https://atcoder.jp/contests/${contest.id}
+			`,
+        });
+    };
+    const postStart = (id) => {
+        const contest = state.contests.find((contest) => contest.id === id);
+        log.info(`Posting start of contest ${id}...`);
+        slack.chat.postMessage({
+            username: 'atcoder',
+            icon_emoji: ':atcoder:',
+            channel: process.env.CHANNEL_PROCON,
+            text: (0, common_tags_1.stripIndent) `
+				*${contest.title}* が始まったよ～:man-running:
+				https://atcoder.jp/contests/${contest.id}
+			`,
+        });
+    };
+    const getStandings = async (id) => {
+        const { data: standings } = await axios_1.default.get(`https://atcoder.jp/contests/${id}/standings/json`, {
+            headers: {
+                Cookie: `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+            },
+        });
+        const userStandings = state.users.map(({ atcoder, slack }) => {
+            const standing = standings.StandingsData.find(({ UserName, UserScreenName }) => UserName === atcoder || UserScreenName === atcoder);
+            return { user: slack, atcoder, standing };
+        }).sort((a, b) => (a.standing ? a.standing.Rank : 1e9) - (b.standing ? b.standing.Rank : 1e9));
+        const tasks = new Map(standings.TaskInfo.map((task) => [task.TaskScreenName, task]));
+        return { userStandings, tasks };
+    };
+    const prepostResult = async (id) => {
+        const contest = state.contests.find((contest) => contest.id === id);
+        const { data: { endTime } } = await (0, scrape_it_1.default)(`https://atcoder.jp/contests/${id}`, {
+            endTime: {
+                selector: '.contest-duration a:last-child time',
+                convert: (time) => new Date(time).getTime(),
+            },
+        });
+        // Check if the contest is postponed
+        if (endTime > contest.date + contest.duration) {
+            contest.duration = endTime - contest.date;
+            return;
+        }
+        log.info(`Preposting result of contest ${id}...`);
+        const { userStandings, tasks } = await getStandings(id);
+        await slack.chat.postMessage({
+            username: 'atcoder',
+            icon_emoji: ':atcoder:',
+            channel: process.env.CHANNEL_PROCON,
+            text: (0, common_tags_1.stripIndent) `
+				*${contest.title}* お疲れさまでした！
+			`,
+            attachments: [
+                ...(await Promise.all(userStandings.filter(({ standing }) => standing).map(async ({ user, atcoder, standing }) => {
+                    const score = standing.TotalResult.Score / 100;
+                    const lastSubmission = formatTime(standing.TotalResult.Elapsed / 1000000000);
+                    return {
+                        color: getRatingColor(standing.Rating),
+                        author_name: `${await (0, slackUtils_1.getMemberName)(user)}: ${standing.Rank}位 (暫定)`,
+                        author_icon: await (0, slackUtils_1.getMemberIcon)(user),
+                        author_link: `https://atcoder.jp/contests/${contest.id}/standings?${querystring_1.default.encode({ watching: atcoder })}`,
+                        text: Object.entries(standing.TaskResults).filter(([, task]) => task.Status === 1).map(([id, task]) => `[ *${tasks.get(id).Assignment}*${task.Penalty ? ` (${task.Penalty})` : ''} ]`).join(' '),
+                        footer: `${score}点 (最終提出: ${lastSubmission})`,
+                    };
+                }))),
+                {
+                    text: '――――――――――――\n※このランキングに掲出して欲しい人は「@atcoder [atcoderユーザー名]」と書き込んでね',
+                    color: '#FB8C00',
+                },
+            ],
+        });
+        contest.isPreposted = true;
+    };
+    const getRatedCount = async (id) => {
+        const { data: results } = await axios_1.default.get(`https://atcoder.jp/contests/${id}/results/json`, {
+            headers: {
+                Cookie: `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+            },
+        });
+        return (0, lodash_1.sumBy)(results, ({ IsRated }) => IsRated ? 1 : 0);
+    };
+    const postResult = async (id) => {
+        const contest = state.contests.find((contest) => contest.id === id);
+        const { data: results } = await axios_1.default.get(`https://atcoder.jp/contests/${id}/results/json`, {
+            headers: {
+                Cookie: `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+            },
+        });
+        if (results.length === 0) {
+            return;
+        }
+        log.info(`Posting result of contest ${id}...`);
+        const resultMap = new Map(state.users.map(({ atcoder, slack }) => {
+            const result = results.find(({ UserName, UserScreenName }) => UserName === atcoder || UserScreenName === atcoder);
+            return [slack, result];
+        }));
+        const { data: standings } = await axios_1.default.get(`https://atcoder.jp/contests/${id}/standings/json`, {
+            headers: {
+                Cookie: `REVEL_SESSION=${process.env.ATCODER_SESSION_ID}`,
+            },
+        });
+        const userStandings = state.users.map(({ atcoder, slack }) => {
+            const standing = standings.StandingsData.find(({ UserName, UserScreenName }) => UserName === atcoder || UserScreenName === atcoder);
+            return { user: slack, atcoder, standing };
+        }).sort((a, b) => (a.standing ? a.standing.Rank : 1e9) - (b.standing ? b.standing.Rank : 1e9));
+        const tasks = new Map(standings.TaskInfo.map((task) => [task.TaskScreenName, task]));
+        const colorUpdates = [];
+        await slack.chat.postMessage({
+            username: 'atcoder',
+            icon_emoji: ':atcoder:',
+            channel: process.env.CHANNEL_PROCON,
+            text: (0, common_tags_1.stripIndent) `
+				*${contest.title}* の順位が確定したよ～:checkered_flag:
+			`,
+            attachments: [
+                ...(await Promise.all(userStandings.filter(({ standing }) => standing).map(async ({ user, atcoder, standing }) => {
+                    const score = standing.TotalResult.Score / 100;
+                    const lastSubmission = formatTime(standing.TotalResult.Elapsed / 1000000000);
+                    const result = resultMap.get(user);
+                    const stats = (result && result.IsRated) ? [
+                        {
+                            title: 'パフォーマンス',
+                            value: result.Performance.toString(),
+                        },
+                        {
+                            title: 'レーティング変動',
+                            value: `${formatNumber(result.NewRating - result.OldRating)} (${result.OldRating} → ${result.NewRating})`,
+                        },
+                    ] : [];
+                    if (result && getRatingColor(result.OldRating) !== getRatingColor(result.NewRating)) {
+                        colorUpdates.push({
+                            user,
+                            newRating: result.NewRating,
+                            oldRating: result.OldRating,
+                        });
+                    }
+                    return {
+                        color: getRatingColor(standing.Rating),
+                        author_name: `${await (0, slackUtils_1.getMemberName)(user)}: ${standing.Rank}位`,
+                        author_icon: await (0, slackUtils_1.getMemberIcon)(user),
+                        author_link: `https://atcoder.jp/contests/${contest.id}/standings?${querystring_1.default.encode({ watching: atcoder })}`,
+                        text: [
+                            Object.entries(standing.TaskResults).filter(([, task]) => task.Status === 1).map(([id, task]) => `[ *${tasks.get(id).Assignment}*${task.Penalty ? ` (${task.Penalty})` : ''} ]`).join(' '),
+                            stats.map(({ title, value }) => `*${title}* ${value}`).join(', '),
+                        ].join('\n'),
+                        footer: `${score}点 (最終提出: ${lastSubmission})`,
+                    };
+                }))),
+                {
+                    text: '――――――――――――\n※このランキングに掲出して欲しい人は「@atcoder [atcoderユーザー名]」と書き込んでね',
+                    color: '#FB8C00',
+                },
+            ],
+        });
+        for (const { user, newRating, oldRating } of colorUpdates) {
+            const verb = newRating > oldRating ? '昇格しました！🎉🎉🎉🎉🎉🎉🎉' : '降格しました⋯😢😢😢😢😢😢😢';
+            await slack.chat.postMessage({
+                username: 'atcoder',
+                icon_emoji: ':atcoder:',
+                channel: process.env.CHANNEL_PROCON,
+                text: (0, common_tags_1.stripIndent) `
+					<@${user}>が${getRatingColorName(newRating)}コーダーに${verb}
+				`,
+            });
+        }
+        const isContestRated = standings.StandingsData.some((standing) => standing.IsRated);
+        contest.isPosted = true;
+        for (const { user, standing } of userStandings) {
+            const result = resultMap.get(user);
+            if (standing) {
+                const rank = standing.Rank.toString();
+                const frequencies = primes_and_factors_1.default.getFrequency(standing.Rank);
+                const isPrime = frequencies.length === 1 && frequencies[0].times === 1 && standing.Rank >= 2;
+                if (isContestRated) {
+                    await (0, index_js_1.increment)(user, 'atcoder-participate');
+                }
+                if (rank.length >= 3 && new Set(rank.split('')).size === 1) {
+                    await (0, index_js_1.unlock)(user, 'atcoder-repdigit');
+                }
+                if (isPrime) {
+                    await (0, index_js_1.unlock)(user, 'atcoder-prime');
+                }
+            }
+            if (result && result.IsRated) {
+                if (result.NewRating - result.OldRating > 0) {
+                    await (0, index_js_1.unlock)(user, 'atcoder-rating-plus');
+                }
+                if (result.NewRating - result.OldRating >= 50) {
+                    await (0, index_js_1.unlock)(user, 'atcoder-rating-plus-50');
+                }
+                if (result.NewRating === result.OldRating) {
+                    await (0, index_js_1.unlock)(user, 'atcoder-rating-plus-minus-zero');
+                }
+                if (result.NewRating - result.OldRating < 0) {
+                    await (0, index_js_1.unlock)(user, 'atcoder-rating-minus');
+                }
+                if (result.NewRating - result.OldRating <= -50) {
+                    await (0, index_js_1.unlock)(user, 'atcoder-rating-minus-50');
+                }
+                if (result.NewRating >= 2400) {
+                    await (0, index_js_1.unlock)(user, 'atcoder-rating-over-2400');
+                }
+                if (Object.values(standing.TaskResults).every((result) => result.Score === 0)) {
+                    await (0, index_js_1.unlock)(user, 'atcoder-no-solve');
+                }
+            }
+            if (isContestRated && standing) {
+                if (standings.TaskInfo.every((task) => (standing.TaskResults[task.TaskScreenName] &&
+                    standing.TaskResults[task.TaskScreenName].Score > 0))) {
+                    await (0, index_js_1.unlock)(user, 'atcoder-all-solve');
+                }
+            }
+        }
+        if (isContestRated && standings.TaskInfo.length > 0 && userStandings.filter(({ standing }) => standing).length >= 10) {
+            const taskName = standings.TaskInfo[0].TaskScreenName;
+            const { user } = (0, lodash_1.minBy)(userStandings.filter(({ standing }) => standing), ({ standing }) => {
+                const taskResult = standing.TaskResults[taskName];
+                if (taskResult && taskResult.Score > 0) {
+                    return taskResult.Elapsed;
+                }
+                return Infinity;
+            });
+            await (0, index_js_1.increment)(user, 'atcoder-fastest');
+        }
+    };
+    const postDaily = async () => {
+        const now = (0, moment_1.default)().utcOffset(9).startOf('day').hours(9);
+        const oneDayLater = now.clone().add(1, 'day');
+        // typical shojin notifications
+        log.info('[atcoder-daily] Fetching result of typical90');
+        const { userStandings } = await getStandings('typical90');
+        const typicalSolves = new Map();
+        for (const { user, standing } of userStandings) {
+            if (standing === undefined) {
+                continue;
+            }
+            const solves = Object.values(standing.TaskResults).filter((result) => result.Status === 1).length;
+            typicalSolves.set(user, solves);
+        }
+        const dataValues = [];
+        let increase = 0;
+        for (const user of state.users) {
+            log.info(`[atcoder-daily] Fetching result of ABS (user = ${user.atcoder})`);
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+            const submissions = await (0, utils_1.crawlSubmissionsByUser)('abs', user.atcoder);
+            const acceptedProblems = new Set();
+            for (const { result, problemId } of submissions) {
+                if (result === 'AC' && problemId !== 'practice_1') {
+                    acceptedProblems.add(problemId);
+                }
+            }
+            const absSolve = acceptedProblems.size;
+            const typicalSolve = typicalSolves.get(user.slack) || 0;
+            const previousAbsSolve = (await (0, index_js_1.get)(user.slack, 'atcoder-abs-solves')) || 0;
+            if (typeof previousAbsSolve !== 'number') {
+                throw new Error(`Invalid type for atcoder-abs-solves: ${typeof previousAbsSolve}`);
+            }
+            const previousTypicalSolves = (await (0, index_js_1.get)(user.slack, 'atcoder-typical-solves')) || 0;
+            if (typeof previousTypicalSolves !== 'number') {
+                throw new Error(`Invalid type for atcoder-typical-solves: ${typeof previousTypicalSolves}`);
+            }
+            const previousTypicalSolve = previousTypicalSolves - previousAbsSolve;
+            (0, index_js_1.set)(user.slack, 'atcoder-abs-solves', absSolve);
+            (0, index_js_1.set)(user.slack, 'atcoder-typical-solves', absSolve + typicalSolve);
+            increase += Math.max(0, absSolve - previousAbsSolve);
+            increase += Math.max(0, typicalSolve - previousTypicalSolve);
+            let username = await (0, slackUtils_1.getMemberName)(user.slack);
+            if (username.length > 12) {
+                username = `${username.slice(0, 10)}...`;
+            }
+            dataValues.push({
+                username,
+                values: [
+                    previousAbsSolve,
+                    absSolve - previousAbsSolve,
+                    previousTypicalSolve,
+                    typicalSolve - previousTypicalSolve,
+                ],
+            });
+        }
+        dataValues.sort((a, b) => (0, lodash_1.sum)(b.values) - (0, lodash_1.sum)(a.values));
+        if (increase === 0) {
+            await slack.chat.postMessage({
+                username: 'atcoder',
+                icon_emoji: ':atcoder:',
+                channel: process.env.CHANNEL_PROCON,
+                text: '今日は誰も精進をしなかったよ:relieved:',
+            });
+        }
+        else {
+            const series1 = dataValues.map(({ values }) => values[0].toString()).join();
+            const series2 = dataValues.map(({ values }) => values[1].toString()).join();
+            const series3 = dataValues.map(({ values }) => values[2].toString()).join();
+            const series4 = dataValues.map(({ values }) => values[3].toString()).join();
+            const labels = dataValues.slice().reverse().map(({ username }) => `@${username}`).join('|');
+            const chartUrl = `https://image-charts.com/chart?${querystring_1.default.encode({
+                chbr: 3,
+                chco: 'fdb45c,ff5500,27c9c2,003fc7',
+                chd: `a:${series1}|${series2}|${series3}|${series4}`,
+                chma: '0,0,10,10',
+                chs: '700x700',
+                cht: 'bhs',
+                chxl: `1:|${labels}`,
+                chxr: '0,0,100',
+                chxt: 'x,y',
+            })}`;
+            await slack.chat.postMessage({
+                username: 'atcoder',
+                icon_emoji: ':atcoder:',
+                channel: process.env.CHANNEL_PROCON,
+                text: 'AtCoder典型問題精進状況 (精選10問 + 典型90問)',
+                blocks: [
+                    {
+                        type: 'image',
+                        title: {
+                            type: 'plain_text',
+                            text: 'AtCoder典型問題精進状況 (精選10問 + 典型90問)',
+                            emoji: true,
+                        },
+                        image_url: chartUrl,
+                        alt_text: 'AtCoder典型問題精進状況 (精選10問 + 典型90問)',
+                    },
+                ],
+            });
+        }
+        // contest notifications
+        const contests = state.contests.filter((contest) => now.valueOf() < contest.date && contest.date <= oneDayLater.valueOf());
+        log.info(`[atcoder-daily] Posting daily notifications of ${contests.length} contests...`);
+        for (const contest of contests) {
+            const date = (0, moment_1.default)(contest.date).utcOffset(9);
+            const hour = (date.hour() < 9 ? date.hour() + 24 : date.hour()).toString().padStart(2, '0');
+            const minute = date.minute().toString().padStart(2, '0');
+            await slack.chat.postMessage({
+                username: 'atcoder',
+                icon_emoji: ':atcoder:',
+                channel: process.env.CHANNEL_PROCON,
+                text: (0, common_tags_1.stripIndent) `
+					本日${hour}:${minute}から＊${contest.title}＊開催です🙋
+					https://atcoder.jp/contests/${contest.id}
+				`,
+            });
+        }
+    };
+    eventClient.on('message', async (message) => {
+        if (message.text && message.subtype === undefined && message.text.startsWith('@atcoder ')) {
+            const text = message.text.replace(/^@atcoder/, '').trim();
+            if (text === 'ユーザー一覧') {
+                await slack.chat.postMessage({
+                    username: 'atcoder',
+                    icon_emoji: ':atcoder:',
+                    channel: message.channel,
+                    text: '',
+                    attachments: await Promise.all(state.users.map(async (user) => ({
+                        author_name: await (0, slackUtils_1.getMemberName)(user.slack),
+                        author_icon: await (0, slackUtils_1.getMemberIcon)(user.slack),
+                        text: `https://atcoder.jp/users/${user.atcoder}`,
+                    }))),
+                });
+            }
+            else if (text.match(/^\w+$/)) {
+                const atcoderId = text;
+                const slackId = message.user;
+                if (atcoderId.length > 0) {
+                    if (state.users.some(({ slack }) => slackId === slack)) {
+                        state.users = state.users.map((user) => user.slack === slackId ? {
+                            slack: slackId,
+                            atcoder: atcoderId,
+                        } : user);
+                    }
+                    else {
+                        state.users.push({ slack: slackId, atcoder: atcoderId });
+                    }
+                    await slack.reactions.add({
+                        name: '+1',
+                        channel: message.channel,
+                        timestamp: message.ts,
+                    });
+                }
+            }
+            else {
+                await slack.chat.postMessage({
+                    username: 'atcoder',
+                    icon_emoji: ':atcoder:',
+                    channel: message.channel,
+                    text: ':wakarazu:',
+                });
+            }
+        }
+    });
+    setInterval(() => {
+        mutex.runExclusive(() => {
+            updateContests();
+        });
+    }, 30 * 60 * 1000);
+    updateContests();
+    let time = Date.now();
+    setInterval(() => {
+        const oldTime = time;
+        const newTime = Date.now();
+        time = newTime;
+        mutex.runExclusive(async () => {
+            for (const contest of state.contests) {
+                const prerollTime = contest.date - 15 * 60 * 1000;
+                const endTime = contest.date + contest.duration;
+                if (oldTime <= prerollTime && prerollTime < newTime) {
+                    await postPreroll(contest.id);
+                }
+                if (oldTime <= contest.date && contest.date < newTime) {
+                    await postStart(contest.id);
+                }
+                if (oldTime <= endTime && endTime < newTime) {
+                    await prepostResult(contest.id);
+                }
+            }
+        });
+    }, 5 * 1000);
+    setInterval(() => {
+        const now = Date.now();
+        mutex.runExclusive(async () => {
+            for (const contest of state.contests) {
+                const endTime = contest.date + contest.duration;
+                if (contest.isPreposted && !contest.isPosted && endTime < now && now < endTime + 60 * 60 * 1000) {
+                    const ratedCount = await getRatedCount(contest.id);
+                    if (ratedCount > 10 && contest.ratedCount === ratedCount) {
+                        await postResult(contest.id);
+                    }
+                    contest.ratedCount = ratedCount;
+                }
+            }
+        });
+    }, 30 * 1000);
+    node_schedule_1.default.scheduleJob('0 9 * * *', () => {
+        mutex.runExclusive(() => {
+            postDaily();
+        });
+    });
+};

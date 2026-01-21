@@ -1,0 +1,58 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+jest.mock('tinyreq');
+const index_1 = __importDefault(require("./index"));
+const slackMock_1 = __importDefault(require("../lib/slackMock"));
+// @ts-expect-error
+const tinyreq_1 = __importDefault(require("tinyreq"));
+const fs_1 = require("fs");
+const common_tags_1 = require("common-tags");
+const assert_1 = __importDefault(require("assert"));
+let slack = null;
+beforeEach(async () => {
+    slack = new slackMock_1.default();
+    process.env.CHANNEL_SANDBOX = slack.fakeChannel;
+    await (0, index_1.default)(slack);
+});
+describe('room-gacha', () => {
+    it('responds to "物件ガチャ" with a prefecture and a city specified', async () => {
+        tinyreq_1.default.impl = jest.fn(async (url, callback) => {
+            const data = await fs_1.promises.readFile(`${__dirname}/search-result.test.html`, 'utf-8');
+            if (callback)
+                callback(null, data);
+            return data;
+        });
+        const response = await slack.getResponseTo('物件ガチャ 東京都 文京区');
+        const blocks = 'blocks' in response ? response.blocks : [];
+        expect('username' in response && response.username).toBe('物件ガチャ');
+        expect(response.icon_emoji).toBe(':house:');
+        expect(response.text).toBe('物件ガチャの結果だよ〜:full_moon_with_face:');
+        const block0 = blocks[0];
+        (0, assert_1.default)(block0.type === 'section');
+        expect(block0.text.text).toBe('*東京都文京区の賃貸住宅[賃貸マンション・アパート]情報* (12,345件) から選んだよ〜 :full_moon_with_face:');
+        const block3 = blocks[3];
+        (0, assert_1.default)(block3.type === 'section');
+        expect(block3.text.text).toBe((0, common_tags_1.stripIndents) `*<https://suumo.jp/chintai/bc_000000000000/|ザ・シェアハウス地下>*
+            *住所*: 東京都文京区本郷７丁目３−１
+            *アクセス*: 本郷三丁目駅（地下鉄丸の内線）より徒歩8分
+            本郷三丁目駅（地下鉄大江戸線）より徒歩6分
+            湯島駅又は根津駅（地下鉄千代田線）より徒歩8分
+            東大前駅（地下鉄南北線）より徒歩1分
+            春日駅（地下鉄三田線）より徒歩10分`);
+        const block4 = blocks[4];
+        (0, assert_1.default)(block4.type === 'section');
+        expect(block4.fields.map((field) => field.text)).toMatchObject([
+            '*家賃*\n123.4万円',
+            '*間取り*\n1R',
+            '*面積*\n54.3m2',
+            '*向き*\n南東',
+            '*築年数*\n築100年',
+        ]);
+        const block5 = blocks[5];
+        (0, assert_1.default)(block5.type === 'image');
+        expect('image_url' in block5 && block5.image_url).toBe('https://img01.suumo.com/front/gazo/fr/bukken/000/000000000000/000000000000_ef.jpg');
+    });
+});

@@ -1,0 +1,365 @@
+"use strict";
+/* eslint-env jest */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const lodash_1 = require("lodash");
+const node_schedule_1 = __importDefault(require("node-schedule"));
+const slackMock_1 = __importDefault(require("../lib/slackMock"));
+const state_1 = __importDefault(require("../lib/state"));
+const utils_1 = require("../lib/utils");
+const index_1 = __importDefault(require("./index"));
+jest.mock('../lib/state');
+jest.mock('../lib/slack');
+jest.mock('../lib/slackUtils');
+jest.mock('node-schedule', () => ({
+    scheduleJob: jest.fn(),
+}));
+describe('auto-archiver', () => {
+    const FAKE_CHANNEL = 'C12345678';
+    const FAKE_CHANNEL2 = 'C23456789';
+    const FAKE_TIMESTAMP = '12345678.123456';
+    const FAKE_USER = 'U12345678';
+    jest.useFakeTimers();
+    const registerScheduleCallback = () => {
+        const scheduleMock = jest.mocked(node_schedule_1.default);
+        const deferred = new utils_1.Deferred();
+        scheduleMock.scheduleJob.mockImplementationOnce((rule, fn) => {
+            expect(rule).toBe('0 9 * * *');
+            deferred.resolve(fn);
+            return {};
+        });
+        return deferred.promise;
+    };
+    it('should record latest message timestamp of each channel', async () => {
+        const slack = new slackMock_1.default();
+        await (0, index_1.default)(slack);
+        slack.eventClient.emit('message', {
+            channel: FAKE_CHANNEL,
+            text: 'test',
+            user: FAKE_USER,
+            ts: FAKE_TIMESTAMP,
+        });
+        const MockedState = state_1.default;
+        const state = MockedState.mocks.get('auto-archiver_channels');
+        expect(state[FAKE_CHANNEL]).toBe(FAKE_TIMESTAMP);
+    });
+    it('should schedule job', async () => {
+        const slack = new slackMock_1.default();
+        await (0, index_1.default)(slack);
+        expect(node_schedule_1.default.scheduleJob).toBeCalled();
+    });
+    it('should not remind to archive if message is posted within 90 days', async () => {
+        const slack = new slackMock_1.default();
+        const listConversations = jest.mocked(slack.webClient.conversations.list);
+        listConversations.mockResolvedValueOnce({
+            channels: [{ id: FAKE_CHANNEL, name: 'random' }],
+            ok: true,
+            response_metadata: {},
+        });
+        const postMessage = jest.mocked(slack.webClient.chat.postMessage);
+        postMessage.mockResolvedValueOnce({
+            ok: true,
+            ts: FAKE_TIMESTAMP,
+        });
+        const callbackFnPromise = registerScheduleCallback();
+        await (0, index_1.default)(slack);
+        const MockedState = state_1.default;
+        const state = MockedState.mocks.get('auto-archiver_channels');
+        state[FAKE_CHANNEL] = (new Date('2024-05-13T00:00:01Z').getTime() / 1000).toString();
+        const callbackFn = await callbackFnPromise;
+        await callbackFn(new Date('2024-08-11T00:00:00Z'));
+        expect(slack.webClient.conversations.list).toBeCalled();
+        expect(slack.webClient.chat.postMessage).not.toBeCalled();
+    });
+    it('should not remind to archive if no message is posted to channel', async () => {
+        const slack = new slackMock_1.default();
+        const listConversations = jest.mocked(slack.webClient.conversations.list);
+        listConversations.mockResolvedValueOnce({
+            channels: [{ id: FAKE_CHANNEL, name: 'random' }],
+            ok: true,
+            response_metadata: {},
+        });
+        const postMessage = jest.mocked(slack.webClient.chat.postMessage);
+        postMessage.mockResolvedValueOnce({
+            ok: true,
+            ts: FAKE_TIMESTAMP,
+        });
+        const callbackFnPromise = registerScheduleCallback();
+        await (0, index_1.default)(slack);
+        const callbackFn = await callbackFnPromise;
+        await callbackFn(new Date('2024-08-11T00:00:00Z'));
+        expect(slack.webClient.conversations.list).toBeCalled();
+        expect(slack.webClient.chat.postMessage).not.toBeCalled();
+    });
+    it('should not remind to archive if channel already has a notice', async () => {
+        const slack = new slackMock_1.default();
+        const listConversations = jest.mocked(slack.webClient.conversations.list);
+        listConversations.mockResolvedValueOnce({
+            channels: [{ id: FAKE_CHANNEL, name: 'random' }],
+            ok: true,
+            response_metadata: {},
+        });
+        const postMessage = jest.mocked(slack.webClient.chat.postMessage);
+        postMessage.mockResolvedValue({
+            ok: true,
+            ts: FAKE_TIMESTAMP,
+        });
+        const callbackFnPromise = registerScheduleCallback();
+        await (0, index_1.default)(slack);
+        const MockedChannelsState = state_1.default;
+        const channelsState = MockedChannelsState.mocks.get('auto-archiver_channels');
+        channelsState[FAKE_CHANNEL] = (new Date('2024-05-12T23:59:59Z').getTime() / 1000).toString();
+        const MockedState = state_1.default;
+        const stateObj = MockedState.mocks.get('auto-archiver_state');
+        stateObj.notices = [{
+                channelId: FAKE_CHANNEL,
+                ts: (new Date('2024-08-10T12:00:00Z').getTime() / 1000).toString(),
+            }];
+        const callbackFn = await callbackFnPromise;
+        // Scheduled function is called:
+        // - after 90 days + 1 second from the last message
+        // - after 12 hours from the notice (< 24 hours)
+        await callbackFn(new Date('2024-08-11T00:00:00Z'));
+        expect(slack.webClient.conversations.list).toBeCalled();
+        expect(slack.webClient.chat.postMessage).not.toBeCalled();
+    });
+    it('should not remind to archive if channel was archived in the same session', async () => {
+        const slack = new slackMock_1.default();
+        const listConversations = jest.mocked(slack.webClient.conversations.list);
+        listConversations.mockResolvedValueOnce({
+            channels: [{ id: FAKE_CHANNEL, name: 'random' }],
+            ok: true,
+            response_metadata: {},
+        });
+        const postMessage = jest.mocked(slack.webClient.chat.postMessage);
+        postMessage.mockResolvedValue({
+            ok: true,
+            ts: FAKE_TIMESTAMP,
+        });
+        const callbackFnPromise = registerScheduleCallback();
+        await (0, index_1.default)(slack);
+        const MockedChannelsState = state_1.default;
+        const channelsState = MockedChannelsState.mocks.get('auto-archiver_channels');
+        channelsState[FAKE_CHANNEL] = (new Date('2024-05-12T23:59:59Z').getTime() / 1000).toString();
+        const MockedState = state_1.default;
+        const stateObj = MockedState.mocks.get('auto-archiver_state');
+        stateObj.notices = [{
+                channelId: FAKE_CHANNEL,
+                ts: (new Date('2024-08-09T12:00:00Z').getTime() / 1000).toString(),
+            }];
+        const callbackFn = await callbackFnPromise;
+        // Scheduled function is called:
+        // - after 90 days + 1 second from the last message
+        // - after 36 hours from the notice (> 24 hours)
+        await callbackFn(new Date('2024-08-11T00:00:00Z'));
+        expect(slack.webClient.conversations.list).toBeCalled();
+        expect(slack.webClient.chat.postMessage).toBeCalledTimes(1);
+        expect(slack.webClient.chat.postMessage).toBeCalledWith({
+            channel: FAKE_CHANNEL,
+            text: '24時間以内に応答がなかったため、チャンネルをアーカイブしました。',
+        });
+    });
+    it('should remind channel to archive if message is posted after 90 days', async () => {
+        const slack = new slackMock_1.default();
+        const listConversations = jest.mocked(slack.webClient.conversations.list);
+        listConversations.mockResolvedValueOnce({
+            channels: [{ id: FAKE_CHANNEL, name: 'random' }],
+            ok: true,
+            response_metadata: {},
+        });
+        const postMessage = jest.mocked(slack.webClient.chat.postMessage);
+        postMessage.mockResolvedValueOnce({
+            ok: true,
+            ts: FAKE_TIMESTAMP,
+        });
+        const callbackFnPromise = registerScheduleCallback();
+        await (0, index_1.default)(slack);
+        const MockedState = state_1.default;
+        const channelsState = MockedState.mocks.get('auto-archiver_channels');
+        channelsState[FAKE_CHANNEL] = (new Date('2024-05-12T23:59:59Z').getTime() / 1000).toString();
+        const callbackFn = await callbackFnPromise;
+        await callbackFn(new Date('2024-08-11T00:00:00Z'));
+        expect(slack.webClient.conversations.list).toBeCalledWith({
+            types: 'public_channel',
+            limit: 1000,
+        });
+        const mockedPostMessage = jest.mocked(slack.webClient.chat.postMessage);
+        expect(mockedPostMessage).toBeCalledTimes(1);
+        expect(mockedPostMessage.mock.calls[0][0].text).toBe([
+            '<!channel> このチャンネルには90日以上BOT以外のメッセージが投稿されていません。',
+            '引き続きこのチャンネルを使用しますか?',
+        ].join('\n'));
+        expect(mockedPostMessage.mock.calls[0][0].channel).toBe(FAKE_CHANNEL);
+        // eslint-disable-next-line no-restricted-syntax
+        const blocks = 'blocks' in mockedPostMessage.mock.calls[0][0] ? mockedPostMessage.mock.calls[0][0].blocks : [];
+        expect(blocks).toHaveLength(3);
+        const state = MockedState.mocks.get('auto-archiver_state');
+        expect(state).not.toBeUndefined();
+        expect(state?.notices).toHaveLength(1);
+        expect(state?.notices[0]).toStrictEqual({
+            channelId: FAKE_CHANNEL,
+            ts: FAKE_TIMESTAMP,
+        });
+    });
+    it('should archive channel if user responded with "stop"', async () => {
+        const FAKE_TOKEN = 'xoxt-1234-5678-91011';
+        process.env.HAKATASHI_TOKEN = FAKE_TOKEN;
+        const slack = new slackMock_1.default();
+        const mockedAction = jest.mocked(slack.messageClient.action);
+        const actionDeferred = new utils_1.Deferred();
+        mockedAction.mockImplementation((options, callbackFn) => {
+            if (typeof options !== 'object' || options instanceof RegExp) {
+                throw new Error('Invalid argument');
+            }
+            if (options.type === 'button' && options.blockId === 'archive_proposal_actions') {
+                callbackFn({
+                    channel: {
+                        id: FAKE_CHANNEL,
+                    },
+                    message: {
+                        ts: FAKE_TIMESTAMP,
+                    },
+                    user: {
+                        id: FAKE_USER,
+                    },
+                    actions: [
+                        {
+                            value: 'stop',
+                            text: {
+                                text: '使用しない',
+                            },
+                        },
+                    ],
+                }, lodash_1.noop).then(() => {
+                    actionDeferred.resolve(null);
+                });
+                return slack.messageClient;
+            }
+            throw new Error('Invalid argument');
+        });
+        const updateMessage = jest.mocked(slack.webClient.chat.update);
+        updateMessage.mockResolvedValueOnce({
+            ok: true,
+            ts: FAKE_TIMESTAMP,
+        });
+        const archiveConversation = jest.mocked(slack.webClient.conversations.archive);
+        archiveConversation.mockResolvedValueOnce({
+            ok: true,
+        });
+        await (0, index_1.default)(slack);
+        await actionDeferred.promise;
+        const mockedUpdateMessage = jest.mocked(slack.webClient.chat.update);
+        expect(mockedUpdateMessage).toBeCalled();
+        expect(mockedUpdateMessage.mock.calls[0][0].text).toBe([
+            '<!channel> このチャンネルには90日以上BOT以外のメッセージが投稿されていません。',
+            '引き続きこのチャンネルを使用しますか?',
+        ].join('\n'));
+        expect(mockedUpdateMessage.mock.calls[0][0].channel).toBe(FAKE_CHANNEL);
+        expect(mockedUpdateMessage.mock.calls[0][0].ts).toBe(FAKE_TIMESTAMP);
+        // eslint-disable-next-line no-restricted-syntax
+        const blocks = 'blocks' in mockedUpdateMessage.mock.calls[0][0] ? mockedUpdateMessage.mock.calls[0][0].blocks : [];
+        expect(blocks).toHaveLength(3);
+        expect(blocks[1].text.text).toBe('<@U12345678>の回答: ＊使用しない＊');
+        expect(slack.webClient.conversations.archive).toBeCalledWith({
+            channel: FAKE_CHANNEL,
+            token: FAKE_TOKEN,
+        });
+    });
+    it('should handle pagination when fetching channels', async () => {
+        const slack = new slackMock_1.default();
+        const listConversations = jest.mocked(slack.webClient.conversations.list);
+        listConversations
+            .mockResolvedValueOnce({
+            channels: [{ id: FAKE_CHANNEL, name: 'channel1' }],
+            ok: true,
+            response_metadata: {
+                next_cursor: 'cursor123',
+            },
+        })
+            .mockResolvedValueOnce({
+            channels: [{ id: FAKE_CHANNEL2, name: 'random' }],
+            ok: true,
+            response_metadata: {},
+        });
+        const callbackFnPromise = registerScheduleCallback();
+        await (0, index_1.default)(slack);
+        const callbackFn = await callbackFnPromise;
+        await callbackFn(new Date('2024-08-11T00:00:01Z'));
+        expect(slack.webClient.conversations.list).toHaveBeenCalledTimes(2);
+        expect(slack.webClient.conversations.list).toHaveBeenNthCalledWith(1, {
+            types: 'public_channel',
+            limit: 1000,
+        });
+        expect(slack.webClient.conversations.list).toHaveBeenNthCalledWith(2, {
+            types: 'public_channel',
+            limit: 1000,
+            cursor: 'cursor123',
+        });
+    });
+    it('should snooze channel if user responded with "continue"', async () => {
+        const FAKE_NOW = new Date('2024-01-01T00:00:00Z');
+        jest.setSystemTime(FAKE_NOW);
+        const slack = new slackMock_1.default();
+        const mockedAction = jest.mocked(slack.messageClient.action);
+        const actionDeferred = new utils_1.Deferred();
+        mockedAction.mockImplementation((options, callbackFn) => {
+            if (typeof options !== 'object' || options instanceof RegExp) {
+                throw new Error('Invalid argument');
+            }
+            if (options.type === 'button' && options.blockId === 'archive_proposal_actions') {
+                callbackFn({
+                    channel: {
+                        id: FAKE_CHANNEL,
+                    },
+                    message: {
+                        ts: FAKE_TIMESTAMP,
+                    },
+                    user: {
+                        id: FAKE_USER,
+                    },
+                    actions: [
+                        {
+                            value: 'continue',
+                            text: {
+                                text: '使用する',
+                            },
+                        },
+                    ],
+                }, lodash_1.noop).then(() => {
+                    actionDeferred.resolve(null);
+                });
+                return slack.messageClient;
+            }
+            throw new Error('Invalid argument');
+        });
+        const updateMessage = jest.mocked(slack.webClient.chat.update);
+        updateMessage.mockResolvedValueOnce({
+            ok: true,
+            ts: FAKE_TIMESTAMP,
+        });
+        await (0, index_1.default)(slack);
+        await actionDeferred.promise;
+        const mockedUpdateMessage = jest.mocked(slack.webClient.chat.update);
+        expect(mockedUpdateMessage).toBeCalled();
+        expect(mockedUpdateMessage.mock.calls[0][0].text).toBe([
+            '<!channel> このチャンネルには90日以上BOT以外のメッセージが投稿されていません。',
+            '引き続きこのチャンネルを使用しますか?',
+        ].join('\n'));
+        expect(mockedUpdateMessage.mock.calls[0][0].channel).toBe(FAKE_CHANNEL);
+        expect(mockedUpdateMessage.mock.calls[0][0].ts).toBe(FAKE_TIMESTAMP);
+        // eslint-disable-next-line no-restricted-syntax
+        const blocks = 'blocks' in mockedUpdateMessage.mock.calls[0][0] ? mockedUpdateMessage.mock.calls[0][0].blocks : [];
+        expect(blocks).toHaveLength(3);
+        expect(blocks[1].text.text).toBe('<@U12345678>の回答: ＊使用する＊');
+        const MockedState = state_1.default;
+        const state = MockedState.mocks.get('auto-archiver_state');
+        expect(state).not.toBeUndefined();
+        expect(state?.snoozes).toHaveLength(1);
+        expect(state?.snoozes[0]).toStrictEqual({
+            channelId: FAKE_CHANNEL,
+            expire: FAKE_NOW.getTime() + 90 * 24 * 60 * 60 * 1000,
+        });
+    });
+});

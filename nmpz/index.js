@@ -1,0 +1,341 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const puppeteer_1 = __importDefault(require("puppeteer"));
+const sqlite3_1 = __importDefault(require("sqlite3"));
+const achievements_1 = require("../achievements");
+const hayaoshi_1 = require("../hayaoshi");
+const logger_1 = __importDefault(require("../lib/logger"));
+const { Mutex } = require("async-mutex");
+const { AteQuiz } = require("../atequiz/index.ts");
+const { isPlayground } = require('../lib/slackUtils');
+const cloudinary = require("cloudinary");
+const mutex = new Mutex();
+const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+if (!API_KEY) {
+    throw new Error("Google Maps API key is missing from .env file.");
+}
+if (!process.env.CLOUDINARY_URL) {
+    throw new Error("Cloudinary URL is missing from .env file.");
+}
+const postOptions = {
+    username: "NMPZ-quiz",
+    icon_emoji: ":rainbolt:",
+};
+const coordToURL = ({ lat, lng, heading, pitch }) => `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}&heading=${heading}&pitch=${pitch}`;
+const coordToStr = (lat, lng) => `${Math.abs(lat).toFixed(4)}${lat >= 0 ? "N" : "S"}, ${Math.abs(lng).toFixed(4)}${lng >= 0 ? "E" : "W"}`;
+let coordinates;
+const initDatabase = async (dbPath) => {
+    coordinates = {
+        db: new sqlite3_1.default.Database(dbPath)
+    };
+};
+const getRandomCoordinate = async () => new Promise((resolve, reject) => {
+    coordinates.db.get("SELECT * FROM coordinates ORDER BY RANDOM() LIMIT 1", (err, row) => {
+        if (err) {
+            reject(err);
+        }
+        else {
+            resolve(row);
+        }
+    });
+});
+const getCountryName = async (country_code) => new Promise((resolve, reject) => {
+    const url = "https://raw.githubusercontent.com/mledoze/countries/master/countries.json";
+    fetch(url)
+        .then((response) => response.json())
+        .then((data) => {
+        const country = data.find((c) => c.cca2 === country_code.toUpperCase());
+        if (!country) {
+            reject(new Error("Country not found"));
+            return;
+        }
+        const region = country.region;
+        const subregion = country.subregion;
+        const name_official = country.translations.jpn.official;
+        const name_common = country.translations.jpn.common;
+        resolve({ country_code, region, subregion, name_official, name_common });
+    })
+        .catch((error) => {
+        reject(error);
+    });
+});
+const generateHTML = ({ lat, lng, heading, pitch }) => `
+  <!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Street View Screenshot</title>
+      <style>
+        #map {
+          height: 100%;
+        }
+        html, body {
+          height: 100%;
+          margin: 0;
+          padding: 0;
+        }
+        #compass {
+          position: absolute;
+          bottom: 30px;
+          left: 30px;
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          background-color: rgba(0, 0, 0, 0.6);
+          z-index: 1000;
+        }
+        .needle {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 30px;
+          height: 90px;
+          background: linear-gradient(to bottom, red 50%, white 50%);
+          clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+        }
+      </style>
+      <script>
+        async function initPano() {
+          const panorama = new google.maps.StreetViewPanorama(
+            document.getElementById("map"), {
+            position: { lat: ${lat}, lng: ${lng} },
+            pov: { heading: ${heading}, pitch: ${pitch} },
+            zoom: 0,
+            addressControl: false,
+            linksControl: false,
+            panControl: false,
+            fullscreenControl: false,
+            zoomControl: false,
+            enableCloseButton: false,
+            showRoadLabels: false
+          });
+          
+          const compassElement = document.getElementById('compass');
+          if (compassElement) {
+            compassElement.style.transform = 'rotate(' + ${-heading} + 'deg)';
+          }
+        }
+        window.initPano = initPano;
+      </script>
+      <script async defer src="https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initPano"></script>
+    </head>
+    <body>
+      <div id="map"></div>
+      <div id="compass">
+        <div class="needle"></div>
+      </div>
+    </body>
+  </html>
+`;
+const saveHTML = async (coord, outputPath = "template.html") => {
+    const htmlContent = generateHTML(coord);
+    const filePath = path_1.default.resolve("nmpz", outputPath);
+    await fs_1.default.promises.writeFile(filePath, htmlContent, "utf8");
+    logger_1.default.info(`HTML file saved at: ${filePath}`);
+};
+async function captureStreetViewScreenshot(coord) {
+    saveHTML(coord);
+    const browser = await puppeteer_1.default.launch({
+        args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox"
+        ],
+        headless: true,
+        defaultViewport: {
+            width: 1920,
+            height: 1080
+        }
+    });
+    const page = await browser.newPage();
+    const url = `file://${process.cwd()}/nmpz/template.html`;
+    try {
+        try {
+            await page.goto(url, { waitUntil: "networkidle0" });
+        }
+        catch (error) {
+            logger_1.default.error("Error loading page:", error);
+        }
+        // upload screenshot to Cloudinary
+        const result = await new Promise((resolve, reject) => {
+            page.screenshot({ fullPage: true, type: "jpeg", quality: 90 }).then((data) => {
+                cloudinary.v2.uploader.upload_stream({ resource_type: "image" }, (error, result) => {
+                    if (error) {
+                        reject(error);
+                    }
+                    else {
+                        resolve(result);
+                    }
+                }).end(data);
+            });
+        });
+        await browser.close();
+        return result.secure_url;
+    }
+    catch (error) {
+        logger_1.default.error("Error capturing screenshot:", error);
+        throw error;
+    }
+}
+class NmpzAteQuiz extends AteQuiz {
+    static option = postOptions;
+    constructor(eventClient, slack, problem) {
+        super({ eventClient: eventClient, webClient: slack }, problem, NmpzAteQuiz.option);
+        this.answeredUsers = new Set();
+    }
+    judge(answer, _user) {
+        const normalizedAnswer = (0, hayaoshi_1.normalize)(answer);
+        const normalizedCorrectAnswers = this.problem.correctAnswers.map(hayaoshi_1.normalize);
+        return normalizedCorrectAnswers.some((normalizedCorrectAnswer) => normalizedAnswer === normalizedCorrectAnswer);
+    }
+    waitSecGen(hintIndex) {
+        return hintIndex <= this.problem.hintMessages.length - 1 ? 30 : 90;
+    }
+}
+async function problemGen() {
+    const row = await getRandomCoordinate();
+    const country_code = row.country_code;
+    logger_1.default.info(row);
+    const country = await getCountryName(country_code);
+    logger_1.default.info(country);
+    const img_url = await captureStreetViewScreenshot(row);
+    logger_1.default.info(img_url);
+    const answer_url = coordToURL(row);
+    return [country, row.lat, row.lng, img_url, answer_url];
+}
+function problemFormat(country, lat, lng, img_url, answer_url, thread_ts, channel) {
+    const emoji = `:flag-${country.country_code}:`;
+    const problem = {
+        problemMessage: {
+            channel,
+            thread_ts,
+            text: `どこの国でしょう？`,
+            blocks: [
+                {
+                    type: "section",
+                    text: {
+                        type: "plain_text",
+                        text: `どこの国でしょう？`,
+                    },
+                },
+                {
+                    type: "image",
+                    image_url: img_url,
+                    alt_text: "Map cannot be displayed.",
+                },
+            ],
+        },
+        hintMessages: [
+            {
+                channel,
+                text: `ヒント: 画像の地域は${country.region}だよ。`,
+            },
+            {
+                channel,
+                text: `ヒント: 画像の地域は${country.subregion}だよ。`,
+            },
+        ],
+        immediateMessage: { channel, text: "" },
+        solvedMessage: {
+            channel,
+            text: `<@[[!user]]> 正解！:tada: 正解地点は <${answer_url}|${coordToStr(lat, lng)}> だよ ${emoji}`,
+            reply_broadcast: true,
+            thread_ts,
+            unfurl_links: false,
+            unfurl_media: false,
+        },
+        unsolvedMessage: {
+            channel,
+            text: `残念！:cry: 正解は${country.name_official}、正解地点は <${answer_url}|${coordToStr(lat, lng)}> だよ ${emoji}`,
+            reply_broadcast: true,
+            thread_ts,
+            unfurl_links: false,
+            unfurl_media: false,
+        },
+        answer: country.name_official,
+        correctAnswers: [country.name_official, country.name_common],
+    };
+    problem.immediateMessage.text = `制限時間: ${problem.hintMessages.length * 30 + 90}秒`;
+    return problem;
+}
+async function prepareProblem(slack, message, thread_ts, channel) {
+    await slack.chat.postEphemeral({
+        channel,
+        text: "問題を生成中...",
+        user: message.user,
+        ...postOptions,
+    });
+    const [country, lat, lng, img_url, answer_url] = await problemGen();
+    const problem = problemFormat(country, lat, lng, img_url, answer_url, thread_ts, channel);
+    return problem;
+}
+exports.default = async ({ eventClient, webClient: slack }) => {
+    const dbPath = "nmpz/coordinates.db";
+    await initDatabase(dbPath);
+    eventClient.on("message", async (message) => {
+        if (!isPlayground(message.channel)) {
+            return;
+        }
+        if (message.text === "NMPZ") {
+            const messageTs = { thread_ts: message.ts };
+            if (mutex.isLocked()) {
+                slack.chat.postMessage({
+                    channel: message.channel,
+                    text: "今クイズ中だよ:angry:",
+                    ...messageTs,
+                    ...postOptions,
+                });
+                return;
+            }
+            const [result, _startTime] = await mutex.runExclusive(async () => {
+                try {
+                    const arr = await Promise.race([
+                        (async () => {
+                            const problem = await prepareProblem(slack, message, message.ts, message.channel);
+                            const ateQuiz = new NmpzAteQuiz(eventClient, slack, problem);
+                            const st = Date.now();
+                            const res = await ateQuiz.start();
+                            return [res, st];
+                        })(),
+                        (async () => {
+                            await new Promise((resolve) => {
+                                return setTimeout(resolve, 600 * 1000);
+                            });
+                            return [null, null, null];
+                        })(),
+                    ]);
+                    return arr;
+                }
+                catch (error) {
+                    logger_1.default.error("Error generating NmpzAteQuiz:", error);
+                    throw error;
+                }
+            }).catch((error) => {
+                mutex.release();
+                slack.chat.postMessage({
+                    channel: message.channel,
+                    text: `問題生成中にエラーが発生しました: ${error.message}`,
+                    ...messageTs,
+                    ...postOptions,
+                });
+                return [null, null];
+            });
+            if (!result)
+                return;
+            if (result.state === "solved") {
+                await (0, achievements_1.increment)(result.correctAnswerer, "nmpz-country-answer");
+                if (result.hintIndex === 0) {
+                    await (0, achievements_1.increment)(result.correctAnswerer, "nmpz-country-no-hint-answer");
+                }
+                if (result.quiz.answer === "タイ王国") {
+                    await (0, achievements_1.increment)(result.correctAnswerer, "nmpz-country-thailand-answer");
+                }
+            }
+        }
+    });
+};

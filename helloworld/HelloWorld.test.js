@@ -1,0 +1,134 @@
+"use strict";
+/* eslint-disable import/imports-first, import/first */
+/* eslint-env jest */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const crypto_1 = __importDefault(require("crypto"));
+const slackMock_1 = __importDefault(require("../lib/slackMock"));
+const state_1 = __importDefault(require("../lib/state"));
+const HelloWorld_1 = require("./HelloWorld");
+jest.mock('../lib/slackUtils');
+jest.mock('../lib/state');
+jest.mock('os', () => ({
+    hostname: jest.fn(() => 'test-hostname'),
+    release: jest.fn(() => 'test-release'),
+}));
+jest.mock('crypto', () => ({
+    randomUUID: jest.fn(() => 'test-uuid'),
+}));
+const MockedState = state_1.default;
+const mockedCrypto = jest.mocked(crypto_1.default);
+describe('helloworld', () => {
+    let slack = null;
+    let helloWorld = null;
+    beforeEach(async () => {
+        jest.clearAllMocks();
+        slack = new slackMock_1.default();
+        process.env.CHANNEL_SANDBOX = slack.fakeChannel;
+        helloWorld = await HelloWorld_1.HelloWorld.create(slack);
+    });
+    it('initializes correctly', () => {
+        expect(mockedCrypto.randomUUID).toHaveBeenCalledTimes(1);
+        expect(mockedCrypto.randomUUID.mock.calls[0]).toHaveLength(0);
+        const state = MockedState.mocks.get('helloworld');
+        expect(state.counter).toBe(0);
+        expect(state.uuid).toBe('test-uuid');
+        expect(state.latestStatusMessage).toBe(null);
+    });
+    it('responds to "Hello"', async () => {
+        const response = await slack.getResponseTo('Hello');
+        expect(response).toEqual({
+            username: 'helloworld [TEST_AUTHORITY]',
+            channel: slack.fakeChannel,
+            text: 'World!',
+        });
+    });
+    it('can post Hello world message', async () => {
+        const postMessage = slack.webClient.chat.postMessage;
+        postMessage.mockResolvedValueOnce({
+            ok: true,
+            ts: slack.fakeTimestamp,
+            channel: slack.fakeChannel,
+        });
+        await helloWorld.postHelloWorld();
+        const state = MockedState.mocks.get('helloworld');
+        expect(state.counter).toBe(0);
+        expect(state.uuid).toBe('test-uuid');
+        expect(state.latestStatusMessage).toEqual({
+            ts: slack.fakeTimestamp,
+            channel: slack.fakeChannel,
+        });
+        const mockedPostMessage = slack.webClient.chat.postMessage;
+        expect(mockedPostMessage).toBeCalledWith({
+            username: 'helloworld [TEST_AUTHORITY]',
+            channel: slack.fakeChannel,
+            text: 'Hello, World!',
+            blocks: [
+                {
+                    type: 'header',
+                    text: {
+                        type: 'plain_text',
+                        text: 'Hello, World!',
+                        emoji: true,
+                    },
+                },
+                {
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: 'おめでとうございます、TSGのSlackbotの開発環境のセットアップが完了しました! :tada::tada::tada:\n以下のボタンをクリックして、Event API が正常に動作しているか確認してください。',
+                    },
+                },
+                {
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: '現在のカウンター: ＊0＊',
+                    },
+                },
+                {
+                    type: 'actions',
+                    elements: [
+                        {
+                            type: 'button',
+                            text: {
+                                type: 'plain_text',
+                                text: '+1',
+                                emoji: true,
+                            },
+                            action_id: 'helloworld_test-uuid_increment_1_button',
+                        },
+                        {
+                            type: 'button',
+                            text: {
+                                type: 'plain_text',
+                                text: '編集する',
+                                emoji: true,
+                            },
+                            action_id: 'helloworld_test-uuid_edit_button',
+                        },
+                    ],
+                },
+                {
+                    type: 'context',
+                    elements: [
+                        {
+                            type: 'plain_text',
+                            text: '⚠この値は再起動後も保存されます。前回このメッセージを投稿してから60分以上経っている場合は、以前のメッセージが削除され再投稿されます。ボタンを押すとエラーが出る場合は、「Slackbotを作ろう」ページの「WebSocketトンネルをセットアップする」などを参考に Event API のセットアップが正常にできているかもう一度確認してください。',
+                            emoji: true,
+                        },
+                    ],
+                },
+                {
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: 'このBOTは、Slackbot開発時のみ使用されるBOTで、本番環境では無効化されています。このBOTはSlackbotの動作確認に使えるほか、新しいBOTを開発する際の雛形として利用することもできます。',
+                    },
+                },
+            ],
+        });
+    });
+});
