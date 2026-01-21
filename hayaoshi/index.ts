@@ -3,6 +3,10 @@ import {Mutex} from 'async-mutex';
 import levenshtein from 'fast-levenshtein';
 import {sample, shuffle, flatten, times, constant} from 'lodash';
 import type {SlackInterface} from '../lib/slack';
+import type {GenericMessageEvent} from '@slack/web-api';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot';
+import {extractMessage} from '../lib/slackUtils';
+import {Deferred} from '../lib/utils';
 import {normalize, getQuiz, getHardQuiz} from './util';
 
 export {Quiz, Data, normalize, getQuiz, getHardQuiz, getItQuiz, getUserQuiz, getAbc2019Quiz} from './util';
@@ -22,6 +26,7 @@ interface State {
 	hintCount: number,
 	misses: {[user: string]: number},
 	thread: string,
+	channel: string,
 }
 
 const getQuestionChars = (question: string): QuestionChar[] => {
@@ -56,31 +61,67 @@ export const isCorrectAnswer = (answerText: string, userAnswerText: string) => {
 	return distance <= answer.length / 3;
 };
 
-export default ({eventClient, webClient: slack}: SlackInterface) => {
-	const state: State = {
-		question: [],
-		answer: null,
-		previousTick: 0,
-		previousHint: 0,
-		hintCount: 0,
-		misses: {},
-		thread: null,
-	};
+class HayaoshiBot extends ChannelLimitedBot {
+	private state: State;
 
-	const onTick = () => {
+	constructor(slackClients: SlackInterface) {
+		super(slackClients);
+
+		this.state = {
+			question: [],
+			answer: null,
+			previousTick: 0,
+			previousHint: 0,
+			hintCount: 0,
+			misses: {},
+			thread: null,
+			channel: null,
+		};
+
+		this.username = 'hayaoshi';
+		this.iconEmoji = ':question:';
+		this.wakeWordRegex = /^早押しクイズ(hard)?$/;
+
+		setInterval(() => this.onTick(), 1000);
+	}
+
+	async onMessageEvent(event: any) {
+		await super.onMessageEvent(event);
+
+		const message = extractMessage(event);
+
+		if (
+			message === null ||
+			!message.text ||
+			message.subtype
+		) {
+			return;
+		}
+
+		if (!this.allowedChannels.includes(message.channel)) {
+			return;
+		}
+
+		// Answer checking in thread
+		if (this.state.answer !== null && message.text && !message.text.match(/^[?？]/) && message.thread_ts === this.state.thread && message.username !== 'hayaoshi') {
+			await this.handleAnswer(message);
+		}
+	}
+
+	onTick() {
 		mutex.runExclusive(async () => {
 			const now = Date.now();
-			const nextHint = state.previousHint + (state.hintCount === 13 ? 15 : 5) * 1000;
+			const nextHint = this.state.previousHint + (this.state.hintCount === 13 ? 15 : 5) * 1000;
 
-			if (state.answer !== null && nextHint <= now) {
-				state.previousHint = now;
+			if (this.state.answer !== null && nextHint <= now) {
+				this.state.previousHint = now;
 
-				if (state.hintCount < 13) {
-					state.hintCount++;
-					await slack.chat.update({
-						channel: process.env.CHANNEL_SANDBOX,
-						text: `問題です！\nQ. ${getQuestionText(state.question, state.hintCount)}\n\n⚠3回間違えると失格です！\n⚠「?」でメッセージを始めるとコメントできます`,
-						ts: state.thread,
+				if (this.state.hintCount < 13) {
+					this.state.hintCount++;
+					await this.slack.chat.update({
+						channel: this.state.channel,
+						text: `問題です！\nQ. ${getQuestionText(this.state.question, this.state.hintCount)}\n\n⚠3回間違えると失格です！\n⚠「?」でメッセージを始めるとコメントできます`,
+						ts: this.state.thread,
 					});
 				} else {
 					const anger = sample([
@@ -91,111 +132,129 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 						'もっと集中して！',
 						'こんなの当たり前だよね？',
 					]);
-					await slack.chat.postMessage({
-						channel: process.env.CHANNEL_SANDBOX,
-						text: `もう、しっかりして！\n\n答えは＊${state.answer}＊だよ:anger:\n${anger}`,
-						username: 'hayaoshi',
-						icon_emoji: ':question:',
-						thread_ts: state.thread,
+					await this.postMessage({
+						channel: this.state.channel,
+						text: `もう、しっかりして！\n\n答えは＊${this.state.answer}＊だよ:anger:\n${anger}`,
+						thread_ts: this.state.thread,
 						reply_broadcast: true,
 					});
-					state.question = [];
-					state.answer = null;
-					state.previousHint = 0;
-					state.hintCount = 0;
-					state.thread = null;
-					state.misses = {};
+
+					await this.deleteProgressMessage(this.state.thread);
+
+					this.state.question = [];
+					this.state.answer = null;
+					this.state.previousHint = 0;
+					this.state.hintCount = 0;
+					this.state.thread = null;
+					this.state.channel = null;
+					this.state.misses = {};
 				}
 			}
 
-			state.previousTick = now;
+			this.state.previousTick = now;
 		});
-	};
+	}
 
-	setInterval(onTick, 1000);
-
-	eventClient.on('message', (message) => {
-		if (message.channel !== process.env.CHANNEL_SANDBOX) {
-			return;
+	onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+		if (this.state.answer !== null) {
+			return Promise.resolve(null);
 		}
 
+		const quizMessageDeferred = new Deferred<string | null>();
+
 		mutex.runExclusive(async () => {
-			if (message.text && (message.text === '早押しクイズ' || message.text === '早押しクイズhard') && state.answer === null) {
-				const quiz = await (message.text === '早押しクイズ' ? getQuiz() : getHardQuiz());
+			try {
+				const isHard = message.text === '早押しクイズhard';
+				const quiz = await (isHard ? getHardQuiz() : getQuiz());
 
 				if (quiz === undefined) {
-					await slack.chat.postMessage({
-						channel: process.env.CHANNEL_SANDBOX,
+					await this.postMessage({
+						channel,
 						text: 'エラー😢',
-						username: 'hayaoshi',
-						icon_emoji: ':question:',
 					});
+					quizMessageDeferred.resolve(null);
 					return;
 				}
 
-				state.question = getQuestionChars(quiz.question);
-				state.answer = quiz.answer.replace(/\(.+?\)/g, '').replace(/（.+?）/g, '');
+				this.state.question = getQuestionChars(quiz.question);
+				this.state.answer = quiz.answer.replace(/\(.+?\)/g, '').replace(/（.+?）/g, '');
 
-				const {ts} = await slack.chat.postMessage({
-					channel: process.env.CHANNEL_SANDBOX,
-					text: `問題です！\nQ. ${getQuestionText(state.question, 1)}\n\n⚠3回間違えると失格です！\n⚠「?」でメッセージを始めるとコメントできます`,
-					username: 'hayaoshi',
-					icon_emoji: ':question:',
+				const {ts} = await this.postMessage({
+					channel,
+					text: `問題です！\nQ. ${getQuestionText(this.state.question, 1)}\n\n⚠3回間違えると失格です！\n⚠「?」でメッセージを始めるとコメントできます`,
 				});
 
-				state.thread = ts as string;
-				state.hintCount = 1;
-				state.previousHint = Date.now();
-				state.misses = {};
+				this.state.thread = ts as string;
+				this.state.channel = channel;
+				this.state.hintCount = 1;
+				this.state.previousHint = Date.now();
+				this.state.misses = {};
 
-				slack.chat.postMessage({
-					channel: process.env.CHANNEL_SANDBOX,
+				await this.postMessage({
+					channel,
 					text: '5秒経過でヒントを出すよ♫',
-					username: 'hayaoshi',
-					icon_emoji: ':question:',
 					thread_ts: ts as string,
 				});
-			}
 
-			if (state.answer !== null && message.text && !message.text.match(/^[?？]/) && message.thread_ts === state.thread && message.username !== 'hayaoshi') {
-				if (!{}.hasOwnProperty.call(state.misses, message.user)) {
-					state.misses[message.user] = 0;
-				}
-
-				if (state.misses[message.user] >= 3) {
-					slack.reactions.add({
-						name: 'no_entry_sign',
-						channel: message.channel,
-						timestamp: message.ts,
-					});
-					return;
-				}
-
-				if (isCorrectAnswer(state.answer, message.text)) {
-					await slack.chat.postMessage({
-						channel: process.env.CHANNEL_SANDBOX,
-						text: `<@${message.user}> 正解🎉\nQ. ＊${getQuestionText(state.question, 13)}＊\n答えは＊${state.answer}＊だよ💪`,
-						username: 'hayaoshi',
-						icon_emoji: ':question:',
-						thread_ts: state.thread,
-						reply_broadcast: true,
-					});
-
-					state.question = [];
-					state.answer = null;
-					state.previousHint = 0;
-					state.hintCount = 0;
-					state.thread = null;
-					state.misses = {};
-				} else {
-					state.misses[message.user]++;
-					slack.reactions.add({
-						name: 'no_good',
-						channel: message.channel,
-						timestamp: message.ts,
-					});
-				}
+				quizMessageDeferred.resolve(ts);
+			} catch (error) {
+				this.log.error('Failed to start hayaoshi quiz', error);
+				const errorText =
+					error instanceof Error && error.stack !== undefined
+						? error.stack : String(error);
+				await this.postMessage({
+					channel,
+					text: `エラー😢\n\`${errorText}\``,
+				});
+				quizMessageDeferred.resolve(null);
 			}
 		});
-	});
-};
+
+		return quizMessageDeferred.promise;
+	}
+
+	async handleAnswer(message: any) {
+		await mutex.runExclusive(async () => {
+			if (!{}.hasOwnProperty.call(this.state.misses, message.user)) {
+				this.state.misses[message.user] = 0;
+			}
+
+			if (this.state.misses[message.user] >= 3) {
+				await this.slack.reactions.add({
+					name: 'no_entry_sign',
+					channel: message.channel,
+					timestamp: message.ts,
+				});
+				return;
+			}
+
+			if (isCorrectAnswer(this.state.answer, message.text)) {
+				await this.postMessage({
+					channel: this.state.channel,
+					text: `<@${message.user}> 正解🎉\nQ. ＊${getQuestionText(this.state.question, 13)}＊\n答えは＊${this.state.answer}＊だよ💪`,
+					thread_ts: this.state.thread,
+					reply_broadcast: true,
+				});
+
+				await this.deleteProgressMessage(this.state.thread);
+
+				this.state.question = [];
+				this.state.answer = null;
+				this.state.previousHint = 0;
+				this.state.hintCount = 0;
+				this.state.thread = null;
+				this.state.channel = null;
+				this.state.misses = {};
+			} else {
+				this.state.misses[message.user]++;
+				await this.slack.reactions.add({
+					name: 'no_good',
+					channel: message.channel,
+					timestamp: message.ts,
+				});
+			}
+		});
+	}
+}
+
+export default (slackClients: SlackInterface) => new HayaoshiBot(slackClients);
