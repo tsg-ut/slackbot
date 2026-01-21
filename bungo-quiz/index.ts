@@ -100,9 +100,9 @@ class BungoQuizBot extends ChannelLimitedBot {
             hintMessages: [
               ...hints.slice(1, -1).map((text, index, arr) => {
                 if (index < arr.length - 1)
-                  return { channel, text: `次のヒントです！\n> ${text}` }
+                  return { channel, text: `次のヒントです！\n> ${text}` };
                 else
-                  return { channel, text: `次のヒントです！作者は${author}ですよ～\n> ${text}` }
+                  return { channel, text: `次のヒントです！作者は${author}ですよ～\n> ${text}` };
               }),
               { channel, text: `最後のヒントです！\n> ${hints[hints.length - 1]}` },
             ],
@@ -154,7 +154,7 @@ class BungoQuizBot extends ChannelLimitedBot {
             problemMessage: { channel, text: `この作品の作者は誰でしょう？\n> ${hints[0]}` },
             hintMessages: [
               ...hints.slice(1, -1).map((text) => {
-                return { channel, text: `次のヒントです！\n> ${text}` }
+                return { channel, text: `次のヒントです！\n> ${text}` };
               }),
               { channel, text: `最後のヒントです！作品名は${title}ですよ～\n> ${hints[hints.length - 1]}` },
             ],
