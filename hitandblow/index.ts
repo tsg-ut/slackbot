@@ -1,10 +1,13 @@
-import { WebClient } from '@slack/web-api';
+import type { GenericMessageEvent } from '@slack/web-api';
+import type { MessageEvent } from '@slack/bolt';
 import { range, shuffle, round } from 'lodash';
 import { stripIndent } from 'common-tags';
 import { unlock } from '../achievements';
-import { isPlayground } from '../lib/slackUtils';
+import { extractMessage } from '../lib/slackUtils';
+import { ChannelLimitedBot } from '../lib/channelLimitedBot';
+import { Deferred } from '../lib/utils';
+import type { SlackInterface } from '../lib/slack';
 import assert from 'assert';
-import type { EventEmitter } from 'events';
 
 interface HitAndBlowHistory {
   call: number[];
@@ -88,223 +91,227 @@ const answerLength2TimeLimit = (answerLength: number) => {
   return answerLength * 3 * 60 * 1000;
 };
 
-export default ({
-  eventClient,
-  webClient: slack,
-}: {
-  eventClient: EventEmitter;
-  webClient: WebClient;
-}) => {
-  const state = new HitAndBlowState();
+class HitAndBlowBot extends ChannelLimitedBot {
+  protected override readonly wakeWordRegex = /^hitandblow( \d+)?$/;
+  protected override readonly username = 'Hit & Blow';
+  protected override readonly iconEmoji = '1234';
+
+  private state = new HitAndBlowState();
+
+  constructor(slackClients: SlackInterface) {
+    super(slackClients);
+  }
 
   // call履歴をpostする関数
-  const postHistory = async (history: HitAndBlowHistory[]) => {
+  private async postHistory(history: HitAndBlowHistory[]) {
     if (history.length === 0) {
-      await slack.chat.postMessage({
+      await this.postMessage({
         text: 'コール履歴: なし',
-        channel: state.channel, // これが呼び出される時点ではchannelはnullにならないはず
-        username: 'Hit & Blow',
-        icon_emoji: '1234',
-        thread_ts: state.thread,
+        channel: this.state.channel, // これが呼び出される時点ではchannelはnullにならないはず
+        thread_ts: this.state.thread,
       });
     } else {
-      await slack.chat.postMessage({
+      await this.postMessage({
         text: stripIndent`
       コール履歴: \`\`\`${history
         .map((hist: HitAndBlowHistory) => generateHistoryString(hist))
         .join('\n')}\`\`\`
       `,
-        channel: state.channel, // これが呼び出される時点ではchannelはnullにならないはず
-        username: 'Hit & Blow',
-        icon_emoji: '1234',
-        thread_ts: state.thread,
+        channel: this.state.channel, // これが呼び出される時点ではchannelはnullにならないはず
+        thread_ts: this.state.thread,
       });
     }
-  };
+  }
 
   // タイムアップ処理
-  const timeUp = async () => {
-    await slack.chat.postMessage({
+  private async timeUp() {
+    await this.postMessage({
       text: '～～～～～～～～～～おわり～～～～～～～～～～',
-      channel: state.channel, // これが呼び出される時点ではchannelはnullにならないはず
-      username: 'Hit & Blow',
-      icon_emoji: '1234',
-      thread_ts: state.thread,
+      channel: this.state.channel, // これが呼び出される時点ではchannelはnullにならないはず
+      thread_ts: this.state.thread,
     });
-    await slack.chat.postMessage({
+    await this.postMessage({
       text: stripIndent`
           正解者は出ませんでした:sob:
-          答えは \`${state.answer
+          答えは \`${this.state.answer
             .map((dig: number) => String(dig))
             .join('')}\` だよ:cry:`,
-      channel: state.channel, // これが呼び出される時点ではchannelはnullにならないはず
-      username: 'Hit & Blow',
-      icon_emoji: '1234',
-      thread_ts: state.thread,
+      channel: this.state.channel, // これが呼び出される時点ではchannelはnullにならないはず
+      thread_ts: this.state.thread,
       reply_broadcast: true,
     });
-    postHistory(state.history);
+    await this.postHistory(this.state.history);
+
+    await this.deleteProgressMessage(this.state.thread);
 
     // 終了処理
-    state.clear();
-  };
+    this.state.clear();
+  }
 
-  eventClient.on('message', async (message) => {
-    if (!isPlayground(message.channel)) {
-      return;
-    }
+  protected override async onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+    const gameMessageDeferred = new Deferred<string | null>();
+
+    (async () => {
+      if (this.state.inGame) {
+        const ongoingUrl = `https://tsg.slack.com/archives/${
+          this.state.channel
+        }/p${this.state.thread.replace('.', '')}`;
+        await this.postMessage({
+          text: `<${ongoingUrl}|進行中のゲーム>があるよ:thinking_face:`,
+          channel,
+        });
+        gameMessageDeferred.resolve(null);
+        return;
+      }
+
+      const rawAnswerLength = message.text.match(/^hitandblow( \d+)?$/)?.[1];
+      const answerLength =
+        rawAnswerLength !== undefined ? parseInt(rawAnswerLength) : 4;
+      if (answerLength <= 0 || 10 < answerLength) {
+        await this.postMessage({
+          text: '桁数は1以上10以下で指定してね:thinking_face:',
+          channel,
+        });
+        gameMessageDeferred.resolve(null);
+      } else {
+        // state を更新してゲームを開始
+        this.state.inGame = true;
+        this.state.answer = shuffle(range(10)).slice(0, answerLength);
+        this.state.channel = channel;
+        const { ts } = await this.postMessage({
+          text: stripIndent`
+            Hit & Blow (${this.state.answer.length}桁) を開始します。
+            スレッドに数字でコールしてね`,
+          channel: this.state.channel,
+        });
+        this.state.thread = ts as string;
+        this.state.startDate = Date.now();
+        const timeLimit = answerLength2TimeLimit(answerLength);
+        this.state.timer = setTimeout(() => this.timeUp(), timeLimit);
+        await this.postMessage({
+          text: `制限時間は${timeLimit / 1000 / 60}分です`,
+          channel: this.state.channel,
+          thread_ts: this.state.thread,
+        });
+
+        // 実績解除
+        unlock(message.user, 'hitandblow-play');
+
+        gameMessageDeferred.resolve(ts);
+      }
+    })().catch((error: unknown) => {
+      this.log.error('Failed to start hitandblow game', error);
+      const errorText =
+        error instanceof Error && error.stack !== undefined
+          ? error.stack : String(error);
+      this.postMessage({
+        channel,
+        text: `エラー😢\n\`${errorText}\``,
+      });
+      gameMessageDeferred.resolve(null);
+    });
+
+    return gameMessageDeferred.promise;
+  }
+
+  protected override async onMessageEvent(event: MessageEvent) {
+    await super.onMessageEvent(event);
+
+    const message = extractMessage(event);
+
     if (
-      message.subtype === 'bot_message' ||
-      message.subtype === 'slackbot_response'
+      message === null ||
+      !message.text ||
+      message.subtype
     ) {
       return;
     }
-    if (!message.text) {
+
+    if (!this.allowedChannels.includes(message.channel)) {
       return;
     }
 
-    // game開始処理
-    if (message.text.match(/^hitandblow( \d+)?$/)) {
-      if (state.inGame) {
-        const ongoingUrl = `https://tsg.slack.com/archives/${
-          state.channel
-        }/p${state.thread.replace('.', '')}`;
-        await slack.chat.postMessage({
-          text: `<${ongoingUrl}|進行中のゲーム>があるよ:thinking_face:`,
-          channel: message.channel as string,
-          username: 'Hit & Blow',
-          icon_emoji: '1234',
-        });
-        return;
-      } else {
-        const rawAnswerLength = message.text.match(/^hitandblow( \d+)?$/)[1];
-        const answerLength =
-          rawAnswerLength !== undefined ? parseInt(rawAnswerLength) : 4;
-        if (answerLength <= 0 || 10 < answerLength) {
-          await slack.chat.postMessage({
-            text: '桁数は1以上10以下で指定してね:thinking_face:',
-            channel: message.channel as string,
-            username: 'Hit & Blow',
-            icon_emoji: '1234',
-          });
-        } else {
-          // state を更新してゲームを開始
-          state.inGame = true;
-          state.answer = shuffle(range(10)).slice(0, answerLength);
-          state.channel = message.channel as string;
-          const { ts } = await slack.chat.postMessage({
-            text: stripIndent`
-            Hit & Blow (${state.answer.length}桁) を開始します。
-            スレッドに数字でコールしてね`,
-            channel: state.channel,
-            username: 'Hit & Blow',
-            icon_emoji: '1234',
-          });
-          state.thread = ts as string;
-          state.startDate = Date.now();
-          const timeLimit = answerLength2TimeLimit(answerLength);
-          state.timer = setTimeout(timeUp, timeLimit);
-          await slack.chat.postMessage({
-            text: `制限時間は${timeLimit / 1000 / 60}分です`,
-            channel: state.channel,
-            username: 'Hit & Blow',
-            icon_emoji: '1234',
-            thread_ts: state.thread,
-          });
-
-          // 実績解除
-          unlock(message.user, 'hitandblow-play');
-        }
-      }
-    }
-
     // ゲーム中のスレッドでのみ反応
-    if (message.thread_ts === state.thread) {
+    if (message.thread_ts === this.state.thread) {
       // call処理
       if (message.text.match(/^\d+$/)) {
-        if (!state.inGame) {
+        if (!this.state.inGame) {
           return;
         }
         const call = [...message.text].map((dig: string) => parseInt(dig));
 
-        if (call.length !== state.answer.length) {
-          await slack.chat.postMessage({
-            text: `桁数が違うよ:thinking_face: (${state.answer.length}桁)`,
-            channel: state.channel,
-            username: 'Hit & Blow',
-            icon_emoji: '1234',
-            thread_ts: state.thread,
+        if (call.length !== this.state.answer.length) {
+          await this.postMessage({
+            text: `桁数が違うよ:thinking_face: (${this.state.answer.length}桁)`,
+            channel: this.state.channel,
+            thread_ts: this.state.thread,
           });
         } else {
           if (!isValidCall(call)) {
-            await slack.chat.postMessage({
+            await this.postMessage({
               text: 'コール中に同じ数字を2個以上含めることはできないよ:thinking_face:',
-              channel: state.channel,
-              username: 'Hit & Blow',
-              icon_emoji: '1234',
-              thread_ts: state.thread,
+              channel: this.state.channel,
+              thread_ts: this.state.thread,
             });
           } else {
             // validなcallの場合
-            const hits = countHit(call, state.answer);
-            const blows = countBlow(call, state.answer);
-            state.history.push({
+            const hits = countHit(call, this.state.answer);
+            const blows = countBlow(call, this.state.answer);
+            this.state.history.push({
               call,
               hitsCount: hits.size,
               blowsCount: blows.size - hits.size,
             });
 
-            await slack.chat.postMessage({
+            await this.postMessage({
               text: `\`${call.map((dig: number) => String(dig)).join('')}\`: ${
                 hits.size
               } Hit ${blows.size - hits.size} Blow`, // ここもgenerateHistoryStringとまとめようと思ったけど、ここ一箇所のために``用の分岐を入れるのもなんか違う気がしてる
-              channel: state.channel,
-              username: 'Hit & Blow',
-              icon_emoji: '1234',
-              thread_ts: state.thread,
+              channel: this.state.channel,
+              thread_ts: this.state.thread,
             });
 
-            if (hits.size === state.answer.length) {
-              const passedTime = Date.now() - state.startDate;
-              await slack.chat.postMessage({
+            if (hits.size === this.state.answer.length) {
+              const passedTime = Date.now() - this.state.startDate;
+              await this.postMessage({
                 text: stripIndent`
                 <@${message.user}> 正解です:tada:
-                答えは \`${state.answer
+                答えは \`${this.state.answer
                   .map((dig: number) => String(dig))
                   .join('')}\` だよ:muscle:
-                手数: ${state.history.length}手
+                手数: ${this.state.history.length}手
                 経過時間: ${round(passedTime / 1000, 3).toFixed(3)}秒`,
-                channel: state.channel,
-                username: 'Hit & Blow',
-                icon_emoji: '1234',
-                thread_ts: state.thread,
+                channel: this.state.channel,
+                thread_ts: this.state.thread,
                 reply_broadcast: true,
               });
-              postHistory(state.history);
+              await this.postHistory(this.state.history);
 
               // 実績解除
               await unlock(message.user, 'hitandblow-clear');
-              if (state.answer.length >= 6) {
+              if (this.state.answer.length >= 6) {
                 await unlock(message.user, 'hitandblow-clear-6digits-or-more');
               }
-              if (state.answer.length === 10) {
+              if (this.state.answer.length === 10) {
                 await unlock(message.user, 'hitandblow-clear-10digits');
               }
-              if (state.answer.length >= 3 && state.history.length === 1) {
+              if (this.state.answer.length >= 3 && this.state.history.length === 1) {
                 await unlock(
                   message.user,
                   'hitandblow-clear-once-3digits-or-more'
                 );
               }
-              if (state.answer.length === 10 && passedTime <= 5 * 60 * 1000) {
+              if (this.state.answer.length === 10 && passedTime <= 5 * 60 * 1000) {
                 await unlock(
                   message.user,
                   'hitandblow-clear-10digits-within-5min'
                 );
               }
 
+              await this.deleteProgressMessage(this.state.thread);
+
               // 終了処理
-              state.clear();
+              this.state.clear();
             }
           }
         }
@@ -313,28 +320,26 @@ export default ({
       // ギブアップ処理
       /*
       if (message.text.match(/^(giveup|ギブアップ)$/)) {
-        await slack.chat.postMessage({
+        await this.postMessage({
           text: stripIndent`
           正解者は出ませんでした:sob:
-          答えは \`${state.answer
+          答えは \`${this.state.answer
             .map((dig: number) => String(dig))
             .join('')}\` だよ:cry:`,
           channel: process.env.CHANNEL_SANDBOX as string,
-          username: 'Hit & Blow',
-          icon_emoji: '1234',
-          thread_ts: state.thread,
+          thread_ts: this.state.thread,
           reply_broadcast: true,
         });
-        postHistory(state.history);
+        await this.postHistory(this.state.history);
 
         // 終了処理
-        state.clear();
+        this.state.clear();
       }
       */
 
       // history処理
       if (message.text.match(/^(history|コール履歴)$/)) {
-        postHistory(state.history);
+        await this.postHistory(this.state.history);
       }
     }
 
@@ -344,26 +349,22 @@ export default ({
       const call1 = [...rawCall1].map((dig: string) => parseInt(dig));
       const call2 = [...rawCall2].map((dig: string) => parseInt(dig));
       if (call1.length !== call2.length) {
-        await slack.chat.postMessage({
+        await this.postMessage({
           text: `桁数が違うので比較できないよ:cry:`,
-          channel: message.channel as string,
-          username: 'Hit & Blow',
-          icon_emoji: '1234',
+          channel: message.channel,
           thread_ts: message.ts,
         });
       } else {
         if (!isValidCall(call1) || !isValidCall(call2)) {
-          await slack.chat.postMessage({
+          await this.postMessage({
             text: 'どちらかのコール中に同じ数字が含まれているよ:cry:',
-            channel: message.channel as string,
-            username: 'Hit & Blow',
-            icon_emoji: '1234',
+            channel: message.channel,
             thread_ts: message.ts,
           });
         } else {
           const hits = countHit(call1, call2);
           const blows = countBlow(call1, call2);
-          await slack.chat.postMessage({
+          await this.postMessage({
             text: stripIndent`
             >>>${call1
               .map((dig) => {
@@ -388,13 +389,15 @@ export default ({
               })
               .join(' ')}
             `,
-            channel: message.channel as string,
-            username: 'Hit & Blow',
-            icon_emoji: '1234',
+            channel: message.channel,
             thread_ts: message.ts,
           });
         }
       }
     }
-  });
-};
+  }
+}
+
+export default function hitandblow(slackClients: SlackInterface) {
+  return new HitAndBlowBot(slackClients);
+}
