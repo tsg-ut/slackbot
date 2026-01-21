@@ -209,17 +209,13 @@ class BungoQuizBot extends ChannelLimitedBot {
           channel,
           text: `エラー😢\n\`${errorText}\`\n--debugInfo--\n${debugInfo.join('\n')}`,
         });
-        quizMessageDeferred.resolve(null);
+        if (!quizMessageDeferred.isResolved) {
+          quizMessageDeferred.resolve(null);
+        }
       }
     });
 
     return quizMessageDeferred.promise;
-  }
-
-  constructor(
-    protected readonly slackClients: SlackInterface,
-  ) {
-    super(slackClients);
   }
 }
 
