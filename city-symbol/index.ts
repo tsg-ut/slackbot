@@ -6,6 +6,7 @@ import {Mutex} from 'async-mutex';
 import {load as cheerioLoad} from 'cheerio';
 import {stripIndent} from 'common-tags';
 import {sample} from 'lodash';
+import {z} from 'zod';
 import {increment} from '../achievements';
 import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
 import type {AteQuizProblem} from '../atequiz';
@@ -16,6 +17,24 @@ import {SlackInterface} from '../lib/slack';
 import {Deferred, Loader} from '../lib/utils';
 import {type PrefectureKanji, prefectures} from '../room-gacha/prefectures';
 import chakuwikiTitles from './chakuwiki-title-map.json';
+
+const MediaWikiRevisionsResponseSchema = z.object({
+	query: z.object({
+		pages: z.record(z.object({
+			revisions: z.array(z.object({
+				'*': z.string(),
+			})).min(1),
+		})),
+	}),
+});
+
+const MediaWikiExtractResponseSchema = z.object({
+	query: z.object({
+		pages: z.record(z.object({
+			extract: z.string(),
+		})),
+	}),
+});
 
 const chakuwikiTitleMap = new Map(Object.entries(chakuwikiTitles));
 
@@ -132,12 +151,9 @@ const getWikipediaSource = async (prefName: string) => {
 
 	const response = await fetch(url);
 	const json = await response.json();
+	const {query: {pages}} = MediaWikiRevisionsResponseSchema.parse(json);
 
-	const pages = json?.query?.pages;
-	const content = pages?.[Object.keys(pages)[0]]?.revisions?.[0]?.['*'];
-	if (!content) {
-		throw new Error('Failed to get wikipedia source');
-	}
+	const content = Object.values(pages)[0].revisions[0]['*'];
 
 	const lines = content.split('\n');
 	const citySymbols: CitySymbol[] = [];
@@ -209,12 +225,9 @@ const getPlaintextWikipedia = async (title: string): Promise<string> => {
 
 	const response = await fetch(url);
 	const json = await response.json();
+	const {query: {pages}} = MediaWikiExtractResponseSchema.parse(json);
 
-	const pages = json?.query?.pages;
-	const content = pages?.[Object.keys(pages)[0]]?.extract;
-	if (!content) {
-		throw new Error('Failed to get wikipedia source');
-	}
+	const content = Object.values(pages)[0].extract;
 
 	return content;
 };
@@ -280,13 +293,14 @@ const getChakuwikiCityDescription = async (city: CitySymbol): Promise<Dictionary
 
 	const response = await fetch(chakuwikiApiUrl);
 	const json = await response.json();
-
-	const pages = json?.query?.pages;
-	const content = pages?.[Object.keys(pages)[0]]?.revisions?.[0]?.['*'];
-	if (!content) {
+	const parseResult = MediaWikiRevisionsResponseSchema.safeParse(json);
+	if (!parseResult.success) {
 		log.warn(`Chakuwiki information for ${city.cityName} not found`);
 		return null;
 	}
+
+	const {query: {pages}} = parseResult.data;
+	const content = Object.values(pages)[0].revisions[0]['*'];
 
 	let isRumorSection = false;
 	let header = null;
@@ -332,12 +346,9 @@ const getCityInformation = async (city: CitySymbol): Promise<CityInformation> =>
 
 	const response = await fetch(url);
 	const json = await response.json();
+	const {query: {pages}} = MediaWikiRevisionsResponseSchema.parse(json);
 
-	const pages = json?.query?.pages;
-	const content = pages?.[Object.keys(pages)[0]]?.revisions?.[0]?.['*'];
-	if (!content) {
-		throw new Error('Failed to get wikipedia source');
-	}
+	const content = Object.values(pages)[0].revisions[0]['*'];
 
 	const placeImage = extractPlaceImage(content);
 
