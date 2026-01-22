@@ -1,11 +1,11 @@
+import type {GenericMessageEvent, MessageEvent} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 // @ts-expect-error: not typed
 import levenshtein from 'fast-levenshtein';
 import {sample, shuffle, flatten, times, constant} from 'lodash';
-import type {SlackInterface} from '../lib/slack';
-import type {GenericMessageEvent} from '@slack/web-api';
 import {ChannelLimitedBot} from '../lib/channelLimitedBot';
-import {extractMessage} from '../lib/slackUtils';
+import type {SlackInterface} from '../lib/slack';
+import {extractMessage, HumanMessageEvent, isHumanMessage} from '../lib/slackUtils';
 import {Deferred} from '../lib/utils';
 import {normalize, getQuiz, getHardQuiz} from './util';
 
@@ -65,8 +65,10 @@ class HayaoshiBot extends ChannelLimitedBot {
 	private state: State;
 
 	protected override readonly username = 'hayaoshi';
+
 	protected override readonly iconEmoji = ':question:';
-	protected override readonly wakeWordRegex = /^早押しクイズ(hard)?$/;
+
+	protected override readonly wakeWordRegex = /^早押しクイズ(?:hard)?$/;
 
 	constructor(slackClients: SlackInterface) {
 		super(slackClients);
@@ -85,26 +87,20 @@ class HayaoshiBot extends ChannelLimitedBot {
 		setInterval(() => this.onTick(), 1000);
 	}
 
-	async onMessageEvent(event: any) {
+	async onMessageEvent(event: MessageEvent) {
 		await super.onMessageEvent(event);
 
 		const message = extractMessage(event);
 
-		if (
-			message === null ||
-			!message.text ||
-			message.subtype ||
-			message.bot_id !== undefined
-		) {
-			return;
-		}
-
-		if (!this.allowedChannels.includes(message.channel)) {
-			return;
-		}
-
 		// Answer checking in thread
-		if (this.state.answer !== null && message.text && !message.text.match(/^[?？]/) && message.thread_ts === this.state.thread) {
+		if (
+			this.allowedChannels.includes(message.channel) &&
+			message.thread_ts === this.state.thread &&
+			isHumanMessage(message) &&
+			this.state.answer !== null &&
+			message.text &&
+			!message.text.match(/^[?？]/)
+		) {
 			await this.handleAnswer(message);
 		}
 	}
@@ -156,7 +152,7 @@ class HayaoshiBot extends ChannelLimitedBot {
 		});
 	}
 
-	onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+	protected override onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
 		if (this.state.answer !== null) {
 			return Promise.resolve(null);
 		}
@@ -185,7 +181,7 @@ class HayaoshiBot extends ChannelLimitedBot {
 					text: `問題です！\nQ. ${getQuestionText(this.state.question, 1)}\n\n⚠3回間違えると失格です！\n⚠「?」でメッセージを始めるとコメントできます`,
 				});
 
-				this.state.thread = ts as string;
+				this.state.thread = ts;
 				this.state.channel = channel;
 				this.state.hintCount = 1;
 				this.state.previousHint = Date.now();
@@ -194,7 +190,7 @@ class HayaoshiBot extends ChannelLimitedBot {
 				await this.postMessage({
 					channel,
 					text: '5秒経過でヒントを出すよ♫',
-					thread_ts: ts as string,
+					thread_ts: ts,
 				});
 
 				quizMessageDeferred.resolve(ts);
@@ -214,7 +210,7 @@ class HayaoshiBot extends ChannelLimitedBot {
 		return quizMessageDeferred.promise;
 	}
 
-	async handleAnswer(message: any) {
+	async handleAnswer(message: HumanMessageEvent) {
 		await mutex.runExclusive(async () => {
 			if (!Object.prototype.hasOwnProperty.call(this.state.misses, message.user)) {
 				this.state.misses[message.user] = 0;
