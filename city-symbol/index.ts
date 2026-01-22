@@ -517,7 +517,7 @@ class CitySymbolBot extends ChannelLimitedBot {
 	protected override readonly iconEmoji = ':cityscape:';
 
 	protected override onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
-		const quizMessageDeferred = new Deferred<string>();
+		const quizMessageDeferred = new Deferred<string | null>();
 
 		mutex.runExclusive(async () => {
 			try {
