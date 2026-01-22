@@ -18,8 +18,11 @@ axios.post = axios;
 
 axios.response = '';
 
+axios.create = jest.fn(() => axios);
+
 axios.default = {
 	defaults: {},
+	create: jest.fn(() => axios),
 };
 
 module.exports = axios;

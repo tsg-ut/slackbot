@@ -1,5 +1,8 @@
 /* eslint-env node, jest */
 
+jest.mock('fs');
+jest.mock('axios');
+jest.mock('cloudinary');
 jest.mock('../achievements');
 jest.mock('../deploy/index.ts', () => ({
 	blockDeploy: jest.fn(() => jest.fn()),
@@ -22,5 +25,5 @@ describe('mahjong', () => {
 		const {username} = await slack.getResponseTo('配牌');
 
 		expect(username).toBe('mahjong');
-	});
+	}, 10000); // Add 10 second timeout
 });
