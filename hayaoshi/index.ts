@@ -64,6 +64,10 @@ export const isCorrectAnswer = (answerText: string, userAnswerText: string) => {
 class HayaoshiBot extends ChannelLimitedBot {
 	private state: State;
 
+	protected override readonly username = 'hayaoshi';
+	protected override readonly iconEmoji = ':question:';
+	protected override readonly wakeWordRegex = /^早押しクイズ(hard)?$/;
+
 	constructor(slackClients: SlackInterface) {
 		super(slackClients);
 
@@ -78,10 +82,6 @@ class HayaoshiBot extends ChannelLimitedBot {
 			channel: null,
 		};
 
-		this.username = 'hayaoshi';
-		this.iconEmoji = ':question:';
-		this.wakeWordRegex = /^早押しクイズ(hard)?$/;
-
 		setInterval(() => this.onTick(), 1000);
 	}
 
@@ -93,7 +93,8 @@ class HayaoshiBot extends ChannelLimitedBot {
 		if (
 			message === null ||
 			!message.text ||
-			message.subtype
+			message.subtype ||
+			message.bot_id !== undefined
 		) {
 			return;
 		}
@@ -103,7 +104,7 @@ class HayaoshiBot extends ChannelLimitedBot {
 		}
 
 		// Answer checking in thread
-		if (this.state.answer !== null && message.text && !message.text.match(/^[?？]/) && message.thread_ts === this.state.thread && message.username !== 'hayaoshi') {
+		if (this.state.answer !== null && message.text && !message.text.match(/^[?？]/) && message.thread_ts === this.state.thread) {
 			await this.handleAnswer(message);
 		}
 	}
