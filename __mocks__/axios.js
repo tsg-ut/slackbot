@@ -18,10 +18,32 @@ axios.post = axios;
 
 axios.response = '';
 
+axios.defaults = {
+	headers: {
+		common: {},
+		delete: {},
+		get: {},
+		head: {},
+		post: {},
+		put: {},
+		patch: {},
+	},
+};
+
 axios.create = jest.fn(() => axios);
 
 axios.default = {
-	defaults: {},
+	defaults: {
+		headers: {
+			common: {},
+			delete: {},
+			get: {},
+			head: {},
+			post: {},
+			put: {},
+			patch: {},
+		},
+	},
 	create: jest.fn(() => axios),
 };
 

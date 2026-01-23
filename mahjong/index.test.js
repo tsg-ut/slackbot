@@ -25,5 +25,5 @@ describe('mahjong', () => {
 		const {username} = await slack.getResponseTo('配牌');
 
 		expect(username).toBe('mahjong');
-	}, 10000); // Add 10 second timeout
+	});
 });
