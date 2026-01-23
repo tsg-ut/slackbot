@@ -105,6 +105,13 @@ export const isGenericMessage = (message: MessageEvent): message is GenericMessa
 	message.subtype === undefined
 );
 
+export type HumanMessageEvent = GenericMessageEvent | ThreadBroadcastMessageEvent;
+
+export const isHumanMessage = (message: MessageEvent): message is HumanMessageEvent => (
+	(message.subtype === undefined || message.subtype === 'thread_broadcast') &&
+	(!('bot_id' in message) || message.bot_id === undefined)
+);
+
 export const extractMessage = (message: MessageEvent) => {
 	if (isGenericMessage(message)) {
 		return message;
