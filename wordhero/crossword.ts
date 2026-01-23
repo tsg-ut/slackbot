@@ -34,6 +34,7 @@ interface State {
 	crossword: Crossword,
 	board: string[],
 	hitWords: string[],
+	solvedDescriptions: Set<string>,
 	timeouts: NodeJS.Timeout[],
 	users: Set<string>,
 	contributors: Set<string>,
@@ -95,6 +96,7 @@ class CrosswordBot extends ChannelLimitedBot {
 		crossword: null,
 		board: [],
 		hitWords: [],
+		solvedDescriptions: new Set(),
 		timeouts: [],
 		users: new Set(),
 		contributors: new Set(),
@@ -128,6 +130,7 @@ class CrosswordBot extends ChannelLimitedBot {
 		this.state.isHolding = true;
 		this.state.board = new Array(400).fill(null);
 		this.state.hitWords = [];
+		this.state.solvedDescriptions = new Set();
 		this.state.timeouts = [];
 		this.state.users = new Set();
 		this.state.contributors = new Set();
@@ -246,6 +249,11 @@ class CrosswordBot extends ChannelLimitedBot {
 
 			for (const description of this.state.crossword.descriptions) {
 				if (word === description.ruby) {
+					// Mark this word as directly guessed
+					if (!this.state.hitWords.includes(word)) {
+						this.state.hitWords.push(word);
+					}
+					
 					for (const letterIndex of this.state.crossword.constraints.find((constraint) => constraint.descriptionId === description.descriptionId).cells) {
 						newIndices.add(letterIndex);
 						this.state.board[letterIndex] = this.state.crossword.board[letterIndex];
@@ -255,10 +263,13 @@ class CrosswordBot extends ChannelLimitedBot {
 
 			const newOpenCells = this.state.board.filter((cell) => cell !== null).length;
 
-			this.state.hitWords = this.state.crossword.descriptions.filter((description) => {
+			// Update which descriptions are fully solved (either directly or through intersections)
+			for (const description of this.state.crossword.descriptions) {
 				const cells = this.state.crossword.constraints.find((constraint) => constraint.descriptionId === description.descriptionId).cells;
-				return cells.every((cell) => this.state.board[cell] !== null);
-			}).map((description) => description.ruby);
+				if (cells.every((cell) => this.state.board[cell] !== null)) {
+					this.state.solvedDescriptions.add(description.descriptionId);
+				}
+			}
 
 			increment(message.user, 'crossword-cells', newOpenCells - oldOpenCells);
 			this.state.contributors.add(message.user);
@@ -362,11 +373,11 @@ class CrosswordBot extends ChannelLimitedBot {
 							const cells = this.state.crossword.constraints.find((constraint) => constraint.descriptionId === descriptionId).cells;
 							return {
 								text: `${descriptionId}. ${cells.map((cell) => this.state.board[cell] || '◯').join('')}: ${description}`,
-								ruby,
+								descriptionId,
 								color: getColor(this.state.isGrossword, descriptionId),
 							};
-						}).filter(({ruby}) => (
-							!this.state.hitWords.includes(ruby)
+						}).filter(({descriptionId}) => (
+							!this.state.solvedDescriptions.has(descriptionId)
 						))],
 					});
 				});
