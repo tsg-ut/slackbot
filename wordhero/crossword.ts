@@ -33,7 +33,6 @@ interface State {
 	isHolding: boolean,
 	crossword: Crossword,
 	board: string[],
-	hitWords: string[],
 	solvedDescriptions: Set<string>,
 	timeouts: NodeJS.Timeout[],
 	users: Set<string>,
@@ -95,7 +94,6 @@ class CrosswordBot extends ChannelLimitedBot {
 		isGrossword: false,
 		crossword: null,
 		board: [],
-		hitWords: [],
 		solvedDescriptions: new Set(),
 		timeouts: [],
 		users: new Set(),
@@ -129,7 +127,6 @@ class CrosswordBot extends ChannelLimitedBot {
 		this.state.isGrossword = isGrossword;
 		this.state.isHolding = true;
 		this.state.board = new Array(400).fill(null);
-		this.state.hitWords = [];
 		this.state.solvedDescriptions = new Set();
 		this.state.timeouts = [];
 		this.state.users = new Set();
@@ -199,7 +196,7 @@ class CrosswordBot extends ChannelLimitedBot {
 					image_url: cloudinaryData.secure_url,
 				}, ...this.state.crossword.descriptions.map(({word, ruby, description, descriptionId}) => ({
 					text: `${descriptionId}. ${word} (${ruby}): ${description}`,
-					color: this.state.hitWords.includes(ruby) ? '#FF6F00' : '',
+					color: this.state.solvedDescriptions.has(descriptionId) ? '#FF6F00' : '',
 				}))],
 			});
 			this.state.isHolding = false;
@@ -229,7 +226,12 @@ class CrosswordBot extends ChannelLimitedBot {
 			const isFirstAnswer = !this.state.users.has(message.user);
 			this.state.users.add(message.user);
 
-			if (!this.state.crossword.words.includes(word) || this.state.hitWords.includes(word)) {
+			// Check if word is not valid, or if all descriptions with this word are already solved
+			const alreadySolved = this.state.crossword.descriptions
+				.filter((desc) => desc.ruby === word)
+				.every((desc) => this.state.solvedDescriptions.has(desc.descriptionId));
+			
+			if (!this.state.crossword.words.includes(word) || alreadySolved) {
 				if (!this.state.misses.has(message.user)) {
 					this.state.misses.set(message.user, 0);
 				}
@@ -249,11 +251,6 @@ class CrosswordBot extends ChannelLimitedBot {
 
 			for (const description of this.state.crossword.descriptions) {
 				if (word === description.ruby) {
-					// Mark this word as directly guessed
-					if (!this.state.hitWords.includes(word)) {
-						this.state.hitWords.push(word);
-					}
-					
 					for (const letterIndex of this.state.crossword.constraints.find((constraint) => constraint.descriptionId === description.descriptionId).cells) {
 						newIndices.add(letterIndex);
 						this.state.board[letterIndex] = this.state.crossword.board[letterIndex];
@@ -309,9 +306,9 @@ class CrosswordBot extends ChannelLimitedBot {
 					attachments: [{
 						title: this.state.isGrossword ? 'Grossword' : 'Crossword',
 						image_url: cloudinaryData.secure_url,
-					}, ...this.state.crossword.descriptions.map(({word, ruby, description}, index) => ({
+					}, ...this.state.crossword.descriptions.map(({word, ruby, description, descriptionId}, index) => ({
 						text: `${index + 1}. ${word} (${ruby}): ${description}`,
-						color: this.state.hitWords.includes(ruby) ? '#FF6F00' : '',
+						color: this.state.solvedDescriptions.has(descriptionId) ? '#FF6F00' : '',
 					}))],
 				});
 
