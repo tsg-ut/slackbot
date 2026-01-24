@@ -176,4 +176,81 @@ describe('playerModal', () => {
 		expect(historyText).toContain('りんご');
 		expect(historyText).toContain('不正解です');
 	});
+
+	it('shows topic when player finished with correct answer', () => {
+		const player: PlayerState = {
+			...basePlayer,
+			questionCount: 10,
+			questions: [
+				{
+					question: '答え: テスト',
+					answer: '正解！',
+					timestamp: Date.now(),
+					isAnswerAttempt: true,
+					isCorrect: true,
+				},
+			],
+			isFinished: true,
+			score: 10,
+		};
+
+		const view = playerModal(baseState, player);
+
+		expectEquals(view.type, 'modal');
+		expect(view.submit).toBeUndefined();
+
+		// 正解済みメッセージが表示されていることを確認
+		const finishedText = view.blocks
+			?.filter((block): block is SectionBlock => block.type === 'section')
+			.map((block) => block.text?.text)
+			.join('\n');
+
+		expect(finishedText).toContain('正解済み');
+		expect(finishedText).toContain('10問で正解');
+		expect(finishedText).toContain('正解: ＊テスト＊');
+	});
+
+	it('shows topic when player finished by using all questions', () => {
+		const player: PlayerState = {
+			...basePlayer,
+			questionCount: 20,
+			questions: Array(20).fill(null).map(() => ({
+				question: 'test',
+				answer: 'はい',
+				timestamp: Date.now(),
+				isAnswerAttempt: false,
+			})),
+			isFinished: true,
+			score: null,
+		};
+
+		const view = playerModal(baseState, player);
+
+		expectEquals(view.type, 'modal');
+		expect(view.submit).toBeUndefined();
+
+		// ゲーム終了メッセージと正解のお題が表示されていることを確認
+		const finishedText = view.blocks
+			?.filter((block): block is SectionBlock => block.type === 'section')
+			.map((block) => block.text?.text)
+			.join('\n');
+
+		expect(finishedText).toContain('ゲーム終了');
+		expect(finishedText).toContain('20問使い切りました');
+		expect(finishedText).toContain('正解: ＊テスト＊');
+	});
+
+	it('does not show submit button when player is finished', () => {
+		const player: PlayerState = {
+			...basePlayer,
+			questionCount: 10,
+			isFinished: true,
+			score: 10,
+		};
+
+		const view = playerModal(baseState, player);
+
+		expectEquals(view.type, 'modal');
+		expect(view.submit).toBeUndefined();
+	});
 });

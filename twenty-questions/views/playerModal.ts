@@ -55,6 +55,16 @@ export default (state: StateObj, player: PlayerState): View => {
 			},
 		});
 
+		if (state.currentGame) {
+			blocks.push({
+				type: 'section',
+				text: {
+					type: 'mrkdwn',
+					text: `正解: ＊${state.currentGame.topic}＊`,
+				},
+			});
+		}
+
 		return {
 			type: 'modal',
 			callback_id: 'twenty_questions_player_modal',
