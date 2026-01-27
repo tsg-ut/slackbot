@@ -205,7 +205,7 @@ function normalizeTimeOfDayText(text: string): string {
 	normalized = hiraganize(normalized);
 	
 	// Remove trailing exclamation marks and similar punctuation
-	normalized = normalized.replace(/[!！:exclamation:|:heavy_exclamation_mark:|:grey_exclamation:|:bangbang:]+$/g, '');
+	normalized = normalized.replace(/(?:!|！|:exclamation:|:heavy_exclamation_mark:|:grey_exclamation:|:bangbang:)+$/g, '');
 	
 	// Handle special emoji patterns for "asa" (from original code)
 	normalized = normalized
