@@ -1,5 +1,7 @@
 import moment from 'moment';
 import wanakana from 'wanakana';
+// @ts-expect-error: Not typed
+import {hiraganize} from 'japanese';
 
 export interface TimeOfDay {
 	pattern: RegExp;
@@ -198,6 +200,9 @@ function normalizeTimeOfDayText(text: string): string {
 	
 	// Convert romaji to kana
 	normalized = wanakana.toKana(normalized);
+	
+	// Convert katakana to hiragana
+	normalized = hiraganize(normalized);
 	
 	// Remove trailing exclamation marks and similar punctuation
 	normalized = normalized.replace(/[!！:exclamation:|:heavy_exclamation_mark:|:grey_exclamation:|:bangbang:]+$/g, '');

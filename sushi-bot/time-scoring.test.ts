@@ -125,6 +125,20 @@ describe('time-scoring', () => {
 				expect(result).not.toBeNull();
 				expect(result?.scoreName).toBe('yoru');
 			});
+
+			it('recognizes "ヨル" in katakana', () => {
+				(moment as any).mockImplementation(() => ({
+					utcOffset: () => ({
+						hour: () => 21,
+						minutes: () => 0,
+						seconds: () => 0,
+					}),
+				}));
+
+				const result = scoreTimeOfDay('ヨル');
+				expect(result).not.toBeNull();
+				expect(result?.scoreName).toBe('yoru');
+			});
 		});
 
 		describe('ひる (hiru)', () => {
