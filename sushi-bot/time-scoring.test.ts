@@ -285,43 +285,43 @@ describe('time-scoring', () => {
 
 	describe('getReactionName', () => {
 		it('returns "108" for score >= 108', () => {
-			expect(getReactionName(108)).toBe('108');
-			expect(getReactionName(110)).toBe('108');
+			expect(getReactionName(108)).toEqual({name: '108', score: 108});
+			expect(getReactionName(110)).toEqual({name: '108', score: 108});
 		});
 
 		it('returns "100" for score >= 100 and < 108', () => {
-			expect(getReactionName(100)).toBe('100');
-			expect(getReactionName(105)).toBe('100');
+			expect(getReactionName(100)).toEqual({name: '100', score: 100});
+			expect(getReactionName(105)).toEqual({name: '100', score: 100});
 		});
 
 		it('returns "95" for score >= 95 and < 100', () => {
-			expect(getReactionName(95)).toBe('95');
-			expect(getReactionName(97)).toBe('95');
+			expect(getReactionName(95)).toEqual({name: '95', score: 95});
+			expect(getReactionName(97)).toEqual({name: '95', score: 95});
 		});
 
 		it('returns "80" for score >= 80 and < 95', () => {
-			expect(getReactionName(80)).toBe('80');
-			expect(getReactionName(90)).toBe('80');
+			expect(getReactionName(80)).toEqual({name: '80', score: 80});
+			expect(getReactionName(90)).toEqual({name: '80', score: 80});
 		});
 
 		it('returns "50" for score >= 50 and < 80', () => {
-			expect(getReactionName(50)).toBe('50');
-			expect(getReactionName(60)).toBe('50');
+			expect(getReactionName(50)).toEqual({name: '50', score: 50});
+			expect(getReactionName(60)).toEqual({name: '50', score: 50});
 		});
 
 		it('returns "20" for score >= 20 and < 50', () => {
-			expect(getReactionName(20)).toBe('20');
-			expect(getReactionName(30)).toBe('20');
+			expect(getReactionName(20)).toEqual({name: '20', score: 20});
+			expect(getReactionName(30)).toEqual({name: '20', score: 20});
 		});
 
 		it('returns "5ten" for score >= 5 and < 20', () => {
-			expect(getReactionName(5)).toBe('5ten');
-			expect(getReactionName(10)).toBe('5ten');
+			expect(getReactionName(5)).toEqual({name: '5ten', score: 5});
+			expect(getReactionName(10)).toEqual({name: '5ten', score: 5});
 		});
 
 		it('returns "0ten" for score < 5', () => {
-			expect(getReactionName(0)).toBe('0ten');
-			expect(getReactionName(4)).toBe('0ten');
+			expect(getReactionName(0)).toEqual({name: '0ten', score: 0});
+			expect(getReactionName(4)).toEqual({name: '0ten', score: 0});
 		});
 	});
 

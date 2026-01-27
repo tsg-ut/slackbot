@@ -3,7 +3,7 @@ import {sortBy} from 'lodash';
 import moment from 'moment';
 import {unlock, increment} from '../achievements';
 import type {SlackInterface} from '../lib/slack';
-import {scoreTimeOfDay, getReactionName, getThresholdScore} from './time-scoring';
+import {scoreTimeOfDay, getReactionName} from './time-scoring';
 
 import State from '../lib/state';
 
@@ -292,22 +292,19 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 		{
 			const result = scoreTimeOfDay(allText);
 			if (result !== null) {
+				const reaction = getReactionName(result.score);
+				
 				if (result.scoreName === 'asa') {
-					const bestScore = getThresholdScore(result.score);
-					const bestName = getReactionName(result.score);
-					
-					if (bestScore > 0) {
+					if (reaction.score > 0) {
 						unlock(user, 'asa');
 					}
-					if (bestScore >= 80) {
+					if (reaction.score >= 80) {
 						unlock(user, 'asa-over80');
 					}
-					slack.reactions.add({name: bestName, channel, timestamp});
-					dailyAsaCounter.max(user, bestScore);
-				} else {
-					const reactionName = getReactionName(result.score);
-					slack.reactions.add({name: reactionName, channel, timestamp});
+					dailyAsaCounter.max(user, reaction.score);
 				}
+				
+				slack.reactions.add({name: reaction.name, channel, timestamp});
 			}
 		}
 

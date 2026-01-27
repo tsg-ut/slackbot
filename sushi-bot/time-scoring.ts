@@ -275,7 +275,7 @@ export function scoreTimeOfDay(text: string): {matched: boolean; scoreName: stri
 	return null;
 }
 
-export function getReactionName(score: number): string {
+export function getReactionName(score: number): {name: string, score: number} {
 	const scoreNames: {[index: string]: number} = {
 		'0ten': 0,
 		'5ten': 5,
@@ -298,29 +298,5 @@ export function getReactionName(score: number): string {
 		}
 	}
 	
-	return bestName;
-}
-
-export function getThresholdScore(score: number): number {
-	const scoreNames: {[index: string]: number} = {
-		'0ten': 0,
-		'5ten': 5,
-		'20': 20,
-		'50': 50,
-		'80': 80,
-		'95': 95,
-		'100': 100,
-		'108': 108,
-	};
-	
-	let bestScore = 0;
-	
-	for (const name in scoreNames) {
-		const threshold = scoreNames[name];
-		if (score >= threshold && threshold > bestScore) {
-			bestScore = threshold;
-		}
-	}
-	
-	return bestScore;
+	return {name: bestName, score: bestScore};
 }
