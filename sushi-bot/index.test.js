@@ -234,7 +234,7 @@ it('reacts to "起床ランキング 確認', () => new Promise((resolve) => {
 	slack.on('chat.postMessage', ({username, channel, text}) => {
 		expect(username).toBe('sushi-bot');
 		expect(channel).toBe("D00000000");
-		expect(text).toContain('あなたの起床点数は85点');
+		expect(text).toContain('あなたの起床点数は80点');
 		expect(text).toContain('現在の順位は');
 		resolve();
 	});
@@ -433,7 +433,7 @@ it('reacts to sushi in an attachment (dynamically added)', async () => {
 	});
 });
 
-it('reacts to "よる！" at 21:00 with a score reaction', () => new Promise((resolve) => {
+it('reacts to "よる！" at 21:00 with :108:', () => new Promise((resolve) => {
 	moment.mockImplementation(() => ({
 		utcOffset: () => ({
 			hour: () => 21,
@@ -443,7 +443,7 @@ it('reacts to "よる！" at 21:00 with a score reaction', () => new Promise((re
 	}));
 
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
-		expect(['95', '100', '108']).toContain(name);
+		expect(name).toBe('108');
 		expect(channel).toBe(slack.fakeChannel);
 		expect(timestamp).toBe(slack.fakeTimestamp);
 		resolve();
@@ -457,7 +457,7 @@ it('reacts to "よる！" at 21:00 with a score reaction', () => new Promise((re
 	});
 }));
 
-it('reacts to "ひる" at 12:00 with a score reaction', () => new Promise((resolve) => {
+it('reacts to "ひる" at 12:00 with :108:', () => new Promise((resolve) => {
 	moment.mockImplementation(() => ({
 		utcOffset: () => ({
 			hour: () => 12,
@@ -467,7 +467,7 @@ it('reacts to "ひる" at 12:00 with a score reaction', () => new Promise((resol
 	}));
 
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
-		expect(['95', '100', '108']).toContain(name);
+		expect(name).toBe('108');
 		expect(channel).toBe(slack.fakeChannel);
 		expect(timestamp).toBe(slack.fakeTimestamp);
 		resolve();
@@ -481,7 +481,7 @@ it('reacts to "ひる" at 12:00 with a score reaction', () => new Promise((resol
 	});
 }));
 
-it('reacts to "ゆうがた！" at 16:30 with a score reaction', () => new Promise((resolve) => {
+it('reacts to "ゆうがた！" at 16:30 with :108:', () => new Promise((resolve) => {
 	moment.mockImplementation(() => ({
 		utcOffset: () => ({
 			hour: () => 16,
@@ -491,7 +491,7 @@ it('reacts to "ゆうがた！" at 16:30 with a score reaction', () => new Promi
 	}));
 
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
-		expect(['80', '95', '100', '108']).toContain(name);
+		expect(name).toBe('108');
 		expect(channel).toBe(slack.fakeChannel);
 		expect(timestamp).toBe(slack.fakeTimestamp);
 		resolve();

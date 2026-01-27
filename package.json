@@ -150,6 +150,7 @@
     "twitter": "^1.7.1",
     "typescript": "^5.8.3",
     "utf-8-validate": "^5.0.9",
+    "wanakana": "^5.3.1",
     "winston": "^3.8.2",
     "winston-syslog": "^2.6.0",
     "xml-js": "^1.6.11",

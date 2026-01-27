@@ -301,4 +301,66 @@ describe('time-scoring', () => {
 			expect(getReactionName(4)).toBe('0ten');
 		});
 	});
+
+	describe('date-crossing time periods', () => {
+		it('scores "やはんごろ" (23:00-01:00) correctly at 23:30', () => {
+			(moment as any).mockImplementation(() => ({
+				utcOffset: () => ({
+					hour: () => 23,
+					minutes: () => 30,
+					seconds: () => 0,
+				}),
+			}));
+
+			const result = scoreTimeOfDay('やはんごろ');
+			expect(result).not.toBeNull();
+			expect(result?.scoreName).toBe('yahangoro');
+			expect(result?.score).toBeGreaterThan(95);
+		});
+
+		it('scores "やはんごろ" (23:00-01:00) correctly at 0:30', () => {
+			(moment as any).mockImplementation(() => ({
+				utcOffset: () => ({
+					hour: () => 0,
+					minutes: () => 30,
+					seconds: () => 0,
+				}),
+			}));
+
+			const result = scoreTimeOfDay('やはんごろ');
+			expect(result).not.toBeNull();
+			expect(result?.scoreName).toBe('yahangoro');
+			expect(result?.score).toBeGreaterThan(95);
+		});
+
+		it('scores "やはん" (23:30-00:30) correctly at 0:00', () => {
+			(moment as any).mockImplementation(() => ({
+				utcOffset: () => ({
+					hour: () => 0,
+					minutes: () => 0,
+					seconds: () => 0,
+				}),
+			}));
+
+			const result = scoreTimeOfDay('やはん');
+			expect(result).not.toBeNull();
+			expect(result?.scoreName).toBe('yahan');
+			expect(result?.score).toBeGreaterThan(95);
+		});
+
+		it('scores "やはんすぎ" (00:00-02:00) correctly at 1:00', () => {
+			(moment as any).mockImplementation(() => ({
+				utcOffset: () => ({
+					hour: () => 1,
+					minutes: () => 0,
+					seconds: () => 0,
+				}),
+			}));
+
+			const result = scoreTimeOfDay('やはんすぎ');
+			expect(result).not.toBeNull();
+			expect(result?.scoreName).toBe('yahansugi');
+			expect(result?.score).toBeGreaterThan(95);
+		});
+	});
 });

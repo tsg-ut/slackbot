@@ -1,4 +1,5 @@
 import moment from 'moment';
+import wanakana from 'wanakana';
 
 export interface TimeOfDay {
 	pattern: RegExp;
@@ -11,7 +12,7 @@ export interface TimeOfDay {
 
 export const timeOfDayDefinitions: TimeOfDay[] = [
 	{
-		pattern: /^み+めい！*$/,
+		pattern: /^(みめい|未明)$/,
 		startHour: 0,
 		startMinute: 0,
 		endHour: 3,
@@ -19,7 +20,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'mimei',
 	},
 	{
-		pattern: /^あ+け+(がた|方)！*$/,
+		pattern: /^(あけがた|明け方)$/,
 		startHour: 3,
 		startMinute: 0,
 		endHour: 6,
@@ -27,7 +28,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'akegata',
 	},
 	{
-		pattern: /^あ+さ！*$/,
+		pattern: /^あ+さ$/,
 		startHour: 6,
 		startMinute: 0,
 		endHour: 9,
@@ -35,7 +36,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'asa',
 	},
 	{
-		pattern: /^ご+ぜん+(ちゅう|中)！*$/,
+		pattern: /^(ごぜんちゅう|午前中)$/,
 		startHour: 0,
 		startMinute: 0,
 		endHour: 12,
@@ -43,7 +44,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'gozenchu',
 	},
 	{
-		pattern: /^(ひる|昼)+(ごろ|頃)！*$/,
+		pattern: /^(ひるごろ|昼頃)$/,
 		startHour: 10,
 		startMinute: 0,
 		endHour: 14,
@@ -51,7 +52,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'hirugoro',
 	},
 	{
-		pattern: /^(ひる|昼)+(まえ|前)！*$/,
+		pattern: /^(ひるまえ|昼前)$/,
 		startHour: 9,
 		startMinute: 0,
 		endHour: 12,
@@ -59,7 +60,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'hirumae',
 	},
 	{
-		pattern: /^(ひる|昼)+(すぎ|過ぎ)！*$/,
+		pattern: /^(ひるすぎ|昼過ぎ)$/,
 		startHour: 12,
 		startMinute: 0,
 		endHour: 15,
@@ -67,7 +68,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'hirusugi',
 	},
 	{
-		pattern: /^(ひる|昼)！*$/,
+		pattern: /^(ひる|昼)$/,
 		startHour: 10,
 		startMinute: 0,
 		endHour: 14,
@@ -75,7 +76,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'hiru',
 	},
 	{
-		pattern: /^ご+ご！*$/,
+		pattern: /^(ごご|午後)$/,
 		startHour: 12,
 		startMinute: 0,
 		endHour: 24,
@@ -83,7 +84,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'gogo',
 	},
 	{
-		pattern: /^(ゆう|夕)+(がた|方)+(まえ|前)！*$/,
+		pattern: /^(ゆうがたまえ|夕方前)$/,
 		startHour: 15,
 		startMinute: 0,
 		endHour: 18,
@@ -91,7 +92,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'yuugatamae',
 	},
 	{
-		pattern: /^(ゆう|夕)+(がた|方)+(すぎ|過ぎ)！*$/,
+		pattern: /^(ゆうがたすぎ|夕方過ぎ)$/,
 		startHour: 18,
 		startMinute: 0,
 		endHour: 21,
@@ -99,7 +100,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'yuugatasugi',
 	},
 	{
-		pattern: /^(ゆう|夕)+(がた|方)！*$/,
+		pattern: /^(ゆうがた|夕方)$/,
 		startHour: 15,
 		startMinute: 0,
 		endHour: 18,
@@ -107,7 +108,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'yuugata',
 	},
 	{
-		pattern: /^(ゆう|夕)+(こく|刻)！*$/,
+		pattern: /^(ゆうこく|夕刻)$/,
 		startHour: 15,
 		startMinute: 0,
 		endHour: 18,
@@ -115,7 +116,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'yuukoku',
 	},
 	{
-		pattern: /^(よる|夜)+(の)?(はじめ|初め)+(ごろ|頃)！*$/,
+		pattern: /^(よるのはじめごろ|夜のはじめ頃|夜の初め頃)$/,
 		startHour: 18,
 		startMinute: 0,
 		endHour: 21,
@@ -123,7 +124,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'yorunohajimegoro',
 	},
 	{
-		pattern: /^(よる|夜)+(おそく|遅く)！*$/,
+		pattern: /^(よるおそく|夜遅く)$/,
 		startHour: 21,
 		startMinute: 0,
 		endHour: 24,
@@ -131,7 +132,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'yoruosoku',
 	},
 	{
-		pattern: /^(よる|夜)+(かん|間)！*$/,
+		pattern: /^(やかん|夜間)$/,
 		startHour: 18,
 		startMinute: 0,
 		endHour: 24,
@@ -139,7 +140,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'yorukan',
 	},
 	{
-		pattern: /^(よる|夜)！*$/,
+		pattern: /^(よる|夜)$/,
 		startHour: 18,
 		startMinute: 0,
 		endHour: 24,
@@ -147,7 +148,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'yoru',
 	},
 	{
-		pattern: /^(やはん|夜半)+(ごろ|頃)！*$/,
+		pattern: /^(やはんごろ|夜半頃)$/,
 		startHour: 23,
 		startMinute: 0,
 		endHour: 1,
@@ -155,7 +156,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'yahangoro',
 	},
 	{
-		pattern: /^(やはん|夜半)+(まえ|前)！*$/,
+		pattern: /^(やはんまえ|夜半前)$/,
 		startHour: 22,
 		startMinute: 0,
 		endHour: 24,
@@ -163,7 +164,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'yahanmae',
 	},
 	{
-		pattern: /^(やはん|夜半)+(すぎ|過ぎ)！*$/,
+		pattern: /^(やはんすぎ|夜半過ぎ)$/,
 		startHour: 0,
 		startMinute: 0,
 		endHour: 2,
@@ -171,7 +172,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'yahansugi',
 	},
 	{
-		pattern: /^(やはん|夜半)！*$/,
+		pattern: /^(やはん|夜半)$/,
 		startHour: 23,
 		startMinute: 30,
 		endHour: 24,
@@ -179,7 +180,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'yahan',
 	},
 	{
-		pattern: /^(にっ?ちゅう|日中)！*$/,
+		pattern: /^(にっちゅう|にちゅう|日中)$/,
 		startHour: 9,
 		startMinute: 0,
 		endHour: 18,
@@ -189,68 +190,25 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 ];
 
 function normalizeTimeOfDayText(text: string): string {
-	return text
-		.replace(/\s/gi, '')
+	// Remove whitespace
+	let normalized = text.replace(/\s/g, '');
+	
+	// NFKC normalization
+	normalized = normalized.normalize('NFKC');
+	
+	// Convert romaji to kana
+	normalized = wanakana.toKana(normalized);
+	
+	// Remove trailing exclamation marks and similar punctuation
+	normalized = normalized.replace(/[!！:exclamation:|:heavy_exclamation_mark:|:grey_exclamation:|:bangbang:]+$/g, '');
+	
+	// Handle special emoji patterns for "asa" (from original code)
+	normalized = normalized
 		.replace(/ｻ|サ|:(ahokusa|hokusai)-bottom-left:/gi, 'さ')
 		.replace(/ｱ|ア|:(ahokusa|hokusai)-top-right:/gi, 'あ')
-		.replace(/朝/gi, 'あさ')
-		.replace(/未明/gi, 'みめい')
-		.replace(/明け方/gi, 'あけがた')
-		.replace(/午前中/gi, 'ごぜんちゅう')
-		.replace(/昼頃/gi, 'ひるごろ')
-		.replace(/昼前/gi, 'ひるまえ')
-		.replace(/昼過ぎ/gi, 'ひるすぎ')
-		.replace(/昼/gi, 'ひる')
-		.replace(/午後/gi, 'ごご')
-		.replace(/夕刻/gi, 'ゆうこく')
-		.replace(/夕方前/gi, 'ゆうがたまえ')
-		.replace(/夕方過ぎ/gi, 'ゆうがたすぎ')
-		.replace(/夕方/gi, 'ゆうがた')
-		.replace(/夜のはじめ頃/gi, 'よるのはじめごろ')
-		.replace(/夜の初め頃/gi, 'よるのはじめごろ')
-		.replace(/夜間/gi, 'よるかん')
-		.replace(/夜遅く/gi, 'よるおそく')
-		.replace(/夜半頃/gi, 'やはんごろ')
-		.replace(/夜半前/gi, 'やはんまえ')
-		.replace(/夜半過ぎ/gi, 'やはんすぎ')
-		.replace(/夜半/gi, 'やはん')
-		.replace(/夜/gi, 'よる')
-		.replace(/日中/gi, 'にっちゅう')
-		.replace(/!|！|:exclamation:|:heavy_exclamation_mark:|:grey_exclamation:|:bangbang:/gi, '！')
-		.replace(/sa/gi, 'さ')
-		.replace(/a/gi, 'あ')
-		.replace(/mi/gi, 'み')
-		.replace(/me/gi, 'め')
-		.replace(/i/gi, 'い')
-		.replace(/ke/gi, 'け')
-		.replace(/ga/gi, 'が')
-		.replace(/ta/gi, 'た')
-		.replace(/go/gi, 'ご')
-		.replace(/ze/gi, 'ぜ')
-		.replace(/n/gi, 'ん')
-		.replace(/chu/gi, 'ちゅう')
-		.replace(/hi/gi, 'ひ')
-		.replace(/ru/gi, 'る')
-		.replace(/ro/gi, 'ろ')
-		.replace(/ma/gi, 'ま')
-		.replace(/e/gi, 'え')
-		.replace(/su/gi, 'す')
-		.replace(/gi/gi, 'ぎ')
-		.replace(/yu/gi, 'ゆ')
-		.replace(/u/gi, 'う')
-		.replace(/ko/gi, 'こ')
-		.replace(/ku/gi, 'く')
-		.replace(/yo/gi, 'よ')
-		.replace(/no/gi, 'の')
-		.replace(/ha/gi, 'は')
-		.replace(/ji/gi, 'じ')
-		.replace(/ka/gi, 'か')
-		.replace(/o/gi, 'お')
-		.replace(/so/gi, 'そ')
-		.replace(/ya/gi, 'や')
-		.replace(/ni/gi, 'に')
-		.replace(/tti/gi, 'っち')
-		.replace(/nti/gi, 'んち');
+		.replace(/朝/gi, 'あさ');
+	
+	return normalized;
 }
 
 function calculateTimeScore(
