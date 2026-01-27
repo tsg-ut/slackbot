@@ -153,7 +153,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		pattern: /^(やはんごろ|夜半頃)$/,
 		startHour: 23,
 		startMinute: 0,
-		endHour: 1,
+		endHour: 25,
 		endMinute: 0,
 		scoreName: 'yahangoro',
 	},
@@ -198,6 +198,12 @@ function normalizeTimeOfDayText(text: string): string {
 	// NFKC normalization
 	normalized = normalized.normalize('NFKC');
 	
+	// Handle special emoji patterns for "asa" (from original code) - BEFORE romaji conversion
+	normalized = normalized
+		.replace(/ｻ|サ|:(ahokusa|hokusai)-bottom-left:/gi, 'さ')
+		.replace(/ｱ|ア|:(ahokusa|hokusai)-top-right:/gi, 'あ')
+		.replace(/朝/gi, 'あさ');
+	
 	// Convert romaji to kana
 	normalized = wanakana.toKana(normalized);
 	
@@ -206,12 +212,6 @@ function normalizeTimeOfDayText(text: string): string {
 	
 	// Remove trailing exclamation marks and similar punctuation
 	normalized = normalized.replace(/(?:!|！|:exclamation:|:heavy_exclamation_mark:|:grey_exclamation:|:bangbang:)+$/g, '');
-	
-	// Handle special emoji patterns for "asa" (from original code)
-	normalized = normalized
-		.replace(/ｻ|サ|:(ahokusa|hokusai)-bottom-left:/gi, 'さ')
-		.replace(/ｱ|ア|:(ahokusa|hokusai)-top-right:/gi, 'あ')
-		.replace(/朝/gi, 'あさ');
 	
 	return normalized;
 }
@@ -239,7 +239,14 @@ function calculateTimeScore(
 		return 0;
 	}
 	
-	const decimalScore = (scoreCurve(decimalHour) / normalizationValue) * 100;
+	// If the time period crosses midnight (endHour >= 24), adjust currentHour
+	let adjustedDecimalHour = decimalHour;
+	if (endHour >= 24 && decimalHour < 12) {
+		// Current time is in the early morning (after midnight), add 24 to treat it as next day
+		adjustedDecimalHour = decimalHour + 24;
+	}
+	
+	const decimalScore = (scoreCurve(adjustedDecimalHour) / normalizationValue) * 100;
 	
 	return decimalScore;
 }
@@ -290,8 +297,7 @@ export function getReactionName(score: number): {name: string, score: number} {
 	let bestScore = 0;
 	let bestName = '0ten';
 	
-	for (const name in scoreNames) {
-		const threshold = scoreNames[name];
+	for (const [name, threshold] of Object.entries(scoreNames)) {
 		if (score >= threshold && threshold > bestScore) {
 			bestScore = threshold;
 			bestName = name;
