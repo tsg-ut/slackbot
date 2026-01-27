@@ -182,7 +182,7 @@ export const timeOfDayDefinitions: TimeOfDay[] = [
 		scoreName: 'yahan',
 	},
 	{
-		pattern: /^(にっちゅう|にちゅう|日中)$/,
+		pattern: /^(にっちゅう|日中)$/,
 		startHour: 9,
 		startMinute: 0,
 		endHour: 18,
@@ -299,4 +299,28 @@ export function getReactionName(score: number): string {
 	}
 	
 	return bestName;
+}
+
+export function getThresholdScore(score: number): number {
+	const scoreNames: {[index: string]: number} = {
+		'0ten': 0,
+		'5ten': 5,
+		'20': 20,
+		'50': 50,
+		'80': 80,
+		'95': 95,
+		'100': 100,
+		'108': 108,
+	};
+	
+	let bestScore = 0;
+	
+	for (const name in scoreNames) {
+		const threshold = scoreNames[name];
+		if (score >= threshold && threshold > bestScore) {
+			bestScore = threshold;
+		}
+	}
+	
+	return bestScore;
 }

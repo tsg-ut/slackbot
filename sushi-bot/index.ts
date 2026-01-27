@@ -3,7 +3,7 @@ import {sortBy} from 'lodash';
 import moment from 'moment';
 import {unlock, increment} from '../achievements';
 import type {SlackInterface} from '../lib/slack';
-import {scoreTimeOfDay, getReactionName} from './time-scoring';
+import {scoreTimeOfDay, getReactionName, getThresholdScore} from './time-scoring';
 
 import State from '../lib/state';
 
@@ -291,43 +291,23 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 
 		{
 			const result = scoreTimeOfDay(allText);
-			if (result?.scoreName === 'asa') {
-				const decimalScore = result.score;
-				const scoreNames: {[index: string]: number} = {
-					'0ten': 0,
-					'5ten': 5,
-					'20': 20,
-					'50': 50,
-					'80': 80,
-					'95': 95,
-					'100': 100,
-					'108': 108,
-				};
-				let bestScore = 0;
-				let bestName = '0ten';
-				for (const name in scoreNames) {
-					const score = scoreNames[name];
-					if (decimalScore >= score && score > bestScore) {
-						bestScore = score;
-						bestName = name;
+			if (result !== null) {
+				if (result.scoreName === 'asa') {
+					const bestScore = getThresholdScore(result.score);
+					const bestName = getReactionName(result.score);
+					
+					if (bestScore > 0) {
+						unlock(user, 'asa');
 					}
+					if (bestScore >= 80) {
+						unlock(user, 'asa-over80');
+					}
+					slack.reactions.add({name: bestName, channel, timestamp});
+					dailyAsaCounter.max(user, bestScore);
+				} else {
+					const reactionName = getReactionName(result.score);
+					slack.reactions.add({name: reactionName, channel, timestamp});
 				}
-				if (bestScore > 0) {
-					unlock(user, 'asa');
-				}
-				if (bestScore >= 80) {
-					unlock(user, 'asa-over80');
-				}
-				slack.reactions.add({name: bestName, channel, timestamp});
-				dailyAsaCounter.max(user, bestScore);
-			}
-		}
-
-		{
-			const result = scoreTimeOfDay(allText);
-			if (result !== null && result.scoreName !== 'asa') {
-				const reactionName = getReactionName(result.score);
-				slack.reactions.add({name: reactionName, channel, timestamp});
 			}
 		}
 
