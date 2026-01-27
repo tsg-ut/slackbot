@@ -432,3 +432,75 @@ it('reacts to sushi in an attachment (dynamically added)', async () => {
 		channel: slack.fakeChannel,
 	});
 });
+
+it('reacts to "よる！" at 21:00 with a score reaction', () => new Promise((resolve) => {
+	moment.mockImplementation(() => ({
+		utcOffset: () => ({
+			hour: () => 21,
+			minutes: () => 0,
+			seconds: () => 0,
+		})
+	}));
+
+	slack.on('reactions.add', ({name, channel, timestamp}) => {
+		expect(['95', '100', '108']).toContain(name);
+		expect(channel).toBe(slack.fakeChannel);
+		expect(timestamp).toBe(slack.fakeTimestamp);
+		resolve();
+	});
+
+	slack.eventClient.emit('message', {
+		channel: slack.fakeChannel,
+		text: 'よる！',
+		user: slack.fakeUser,
+		ts: slack.fakeTimestamp,
+	});
+}));
+
+it('reacts to "ひる" at 12:00 with a score reaction', () => new Promise((resolve) => {
+	moment.mockImplementation(() => ({
+		utcOffset: () => ({
+			hour: () => 12,
+			minutes: () => 0,
+			seconds: () => 0,
+		})
+	}));
+
+	slack.on('reactions.add', ({name, channel, timestamp}) => {
+		expect(['95', '100', '108']).toContain(name);
+		expect(channel).toBe(slack.fakeChannel);
+		expect(timestamp).toBe(slack.fakeTimestamp);
+		resolve();
+	});
+
+	slack.eventClient.emit('message', {
+		channel: slack.fakeChannel,
+		text: 'ひる',
+		user: slack.fakeUser,
+		ts: slack.fakeTimestamp,
+	});
+}));
+
+it('reacts to "ゆうがた！" at 16:30 with a score reaction', () => new Promise((resolve) => {
+	moment.mockImplementation(() => ({
+		utcOffset: () => ({
+			hour: () => 16,
+			minutes: () => 30,
+			seconds: () => 0,
+		})
+	}));
+
+	slack.on('reactions.add', ({name, channel, timestamp}) => {
+		expect(['80', '95', '100', '108']).toContain(name);
+		expect(channel).toBe(slack.fakeChannel);
+		expect(timestamp).toBe(slack.fakeTimestamp);
+		resolve();
+	});
+
+	slack.eventClient.emit('message', {
+		channel: slack.fakeChannel,
+		text: 'ゆうがた！',
+		user: slack.fakeUser,
+		ts: slack.fakeTimestamp,
+	});
+}));
