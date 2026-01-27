@@ -234,7 +234,7 @@ it('reacts to "起床ランキング 確認', () => new Promise((resolve) => {
 	slack.on('chat.postMessage', ({username, channel, text}) => {
 		expect(username).toBe('sushi-bot');
 		expect(channel).toBe("D00000000");
-		expect(text).toContain('あなたの起床点数は80点');
+		expect(text).toContain('あなたの起床点数は85点');
 		expect(text).toContain('現在の順位は');
 		resolve();
 	});

@@ -292,26 +292,9 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 		{
 			const result = scoreTimeOfDay(allText);
 			if (result?.scoreName === 'asa') {
-				const decimalScore = result.score;
-				const scoreNames: {[index: string]: number} = {
-					'0ten': 0,
-					'5ten': 5,
-					'20': 20,
-					'50': 50,
-					'80': 80,
-					'95': 95,
-					'100': 100,
-					'108': 108,
-				};
-				let bestScore = 0;
-				let bestName = '0ten';
-				for (const name in scoreNames) {
-					const score = scoreNames[name];
-					if (decimalScore >= score && score > bestScore) {
-						bestScore = score;
-						bestName = name;
-					}
-				}
+				const bestScore = Math.floor(result.score);
+				const bestName = getReactionName(result.score);
+				
 				if (bestScore > 0) {
 					unlock(user, 'asa');
 				}
