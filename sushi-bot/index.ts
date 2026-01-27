@@ -3,6 +3,7 @@ import {sortBy} from 'lodash';
 import moment from 'moment';
 import {unlock, increment} from '../achievements';
 import type {SlackInterface} from '../lib/slack';
+import {scoreTimeOfDay, getReactionName} from './time-scoring';
 
 import State from '../lib/state';
 
@@ -289,48 +290,21 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 		}
 
 		{
-			const rtext = allText.
-				replace(/\s/gi,'').
-				replace(/ｻ|サ|:(ahokusa|hokusai)-bottom-left:/gi,'さ').
-				replace(/ｱ|ア|:(ahokusa|hokusai)-top-right:/gi,'あ').
-				replace(/朝/gi,'あさ').
-				replace(/!|！|:exclamation:|:heavy_exclamation_mark:|:grey_exclamation:|:bangbang:/gi,'！').
-				replace(/sa/gi,'さ').
-				replace(/a/gi,'あ');
-
-			if(rtext.match(/^あ+さ！*$/)){
-				const now = moment().utcOffset('+0900');
-				const decimal_hour = now.hour() + now.minutes() / 60 + now.seconds() / 3600;
-				// 6時から9時の間で100点以上をとるサインカーブ
-				const score_curve = (t: number) => Math.cos((t - (6 + 9) / 2) / 24 * 2 * Math.PI);
-				const decimal_score = score_curve(decimal_hour) / score_curve(9) * 100 ;
-				const score_names: {[index: string]: number} = {
-					'0ten':  0,
-					'5ten':  5,
-					'20':   20,
-					'50':   50,
-					'80':   80,
-					'95':   95,
-					'100': 100,
-					'108': 108,
-				};
-				let best_score = 0;
-				let best_name = "0ten";
-				for(const name in score_names){
-					const score = score_names[name];
-					if(decimal_score >= score && score > best_score){
-						best_score = score;
-						best_name = name;
+			const result = scoreTimeOfDay(allText);
+			if (result !== null) {
+				const reaction = getReactionName(result.score);
+				
+				if (result.scoreName === 'asa') {
+					if (reaction.score > 0) {
+						unlock(user, 'asa');
 					}
+					if (reaction.score >= 80) {
+						unlock(user, 'asa-over80');
+					}
+					dailyAsaCounter.max(user, reaction.score);
 				}
-				if (best_score > 0) {
-					unlock(user, 'asa');
-				}
-				if (best_score >= 80) {
-					unlock(user, 'asa-over80');
-				}
-				slack.reactions.add({name: best_name, channel, timestamp});
-				dailyAsaCounter.max(user, best_score);
+				
+				slack.reactions.add({name: reaction.name, channel, timestamp});
 			}
 		}
 
