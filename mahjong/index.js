@@ -10,11 +10,14 @@ const {unlock, increment} = require('../achievements');
 const {AteQuiz} = require('../atequiz/index.ts');
 const {blockDeploy} = require('../deploy/index.ts');
 const {Mutex} = require('async-mutex');
+const {ChannelLimitedBot} = require('../lib/channelLimitedBot.ts');
+const {extractMessage} = require('../lib/slackUtils.ts');
+const {Deferred} = require('../lib/utils.ts');
 const calculator = require('./calculator.js');
 
 const mutex = new Mutex();
 
-const savedState = (() => {
+const loadSavedState = () => {
 	try {
 		const defaultSavedState = {
 			points: 25000,
@@ -36,7 +39,7 @@ const savedState = (() => {
 			大麻雀Loses: 0,
 		};
 	}
-})();
+};
 
 const get牌Type = (牌) => {
 	const codePoint = 牌.codePointAt(0);
@@ -141,26 +144,7 @@ const sort = (牌s) => (
 	})
 );
 
-const state = {
-	phase: 'waiting',
-	mode: '四人',
-	手牌: [],
-	壁牌: [],
-	ドラ表示牌s: [],
-	remaining自摸: 0,
-	嶺上牌Count: 4,
-	抜きドラCount: 0,
-	points: savedState.points,
-	リーチTurn: null,
-	wins: savedState.wins,
-	loses: savedState.loses,
-	thread: null,
-	deployUnblock: null,
-	大麻雀: false,
-	大麻雀Points: savedState.大麻雀Points,
-	大麻雀Wins: savedState.大麻雀Wins,
-	大麻雀Loses: savedState.大麻雀Loses,
-};
+
 
 const 麻雀牌 = Array(136).fill(0).map((_, index) => {
 	const 牌 = String.fromCodePoint(0x1F000 + Math.floor(index / 4));
@@ -183,17 +167,6 @@ const 麻雀牌Forサンマ = 麻雀牌.filter((牌) => {
 });
 
 assert.strictEqual(麻雀牌Forサンマ.length, 108);
-
-const saveState = async () => {
-	await promisify(fs.writeFile)(path.join(__dirname, 'current-point.json'), JSON.stringify({
-		points: state.points,
-		wins: state.wins,
-		loses: state.loses,
-		大麻雀Points: state.大麻雀Points,
-		大麻雀Wins: state.大麻雀Wins,
-		大麻雀Loses: state.大麻雀Loses,
-	}));
-};
 
 const uploadImage = async (imageUrl) => {
 	const response = await new Promise((resolve, reject) => {
@@ -237,264 +210,375 @@ class TenpaiAteQuiz extends AteQuiz {
 	}
 }
 
-module.exports = (clients) => {
-	const {eventClient, webClient: slack} = clients;
+class MahjongBot extends ChannelLimitedBot {
+	constructor(slackClients) {
+		super(slackClients);
 
-	eventClient.on('message', async (message) => {
-		const postMessage = (text, {手牌 = null, 王牌 = null, 王牌Status = 'normal', mode = 'thread'} = {}) => (
-			slack.chat.postMessage({
-				channel: message.channel,
-				text,
-				username: 'mahjong',
-				// eslint-disable-next-line camelcase
-				icon_emoji: ':mahjong:',
-				...(手牌 === null ? {} : {
-					attachments: [{
-						// eslint-disable-next-line camelcase
-						image_url: `https://mahjong.hakatashi.com/images/${encodeURIComponent(手牌.join(''))}?${
-							qs.encode({
-								...((王牌 === null) ? {} : {
-									王牌: 王牌.join(''),
-									王牌Status,
-								}),
-								color: state.mode === '四人' ? 'white' : 'black',
-							})
-						}`,
-						fallback: 手牌.join(''),
-					}],
-				}),
-				...(mode === 'initial' ? {} : {thread_ts: state.thread}),
-				...(mode === 'broadcast' ? {reply_broadcast: true} : {}),
-			})
-		);
+		const savedState = loadSavedState();
 
-		const perdon = () => {
-			postMessage(':ha:');
+		this.state = {
+			phase: 'waiting',
+			mode: '四人',
+			手牌: [],
+			壁牌: [],
+			ドラ表示牌s: [],
+			remaining自摸: 0,
+			嶺上牌Count: 4,
+			抜きドラCount: 0,
+			points: savedState.points,
+			リーチTurn: null,
+			wins: savedState.wins,
+			loses: savedState.loses,
+			thread: null,
+			deployUnblock: null,
+			大麻雀: false,
+			大麻雀Points: savedState.大麻雀Points,
+			大麻雀Wins: savedState.大麻雀Wins,
+			大麻雀Loses: savedState.大麻雀Loses,
 		};
 
-		const perdonBroadcast = () => {
-			postMessage(':ha:', {mode: 'broadcast'});
-		};
+		this.username = 'mahjong';
+		this.iconEmoji = ':mahjong:';
+		this.wakeWordRegex = /^(配牌|サンマ|大麻雀|チンイツクイズ(?:hard)?)$/;
+	}
 
-		const generate王牌 = (裏ドラ表示牌s = []) => {
-			const 嶺上牌s = [
-				...Array((state.mode === '四人' ? 4 : 8) - state.嶺上牌Count).fill('\u2003'),
-				...Array(state.嶺上牌Count).fill('🀫'),
-			];
+	saveState() {
+		return promisify(fs.writeFile)(path.join(__dirname, 'current-point.json'), JSON.stringify({
+			points: this.state.points,
+			wins: this.state.wins,
+			loses: this.state.loses,
+			大麻雀Points: this.state.大麻雀Points,
+			大麻雀Wins: this.state.大麻雀Wins,
+			大麻雀Loses: this.state.大麻雀Loses,
+		}));
+	}
 
-			return [
-				...(state.mode === '四人' ? [嶺上牌s[0], 嶺上牌s[2]] : [嶺上牌s[0], 嶺上牌s[2], 嶺上牌s[4], 嶺上牌s[6]]),
-				...state.ドラ表示牌s,
-				...Array((state.mode === '四人' ? 5 : 3) - state.ドラ表示牌s.length).fill('🀫'),
+	postMessage(text, {手牌 = null, 王牌 = null, 王牌Status = 'normal', mode = 'thread', channel = null, attachments = null, reply_broadcast = false} = {}) {
+		return this.slack.chat.postMessage({
+			channel: channel || this.state.channel,
+			text,
+			username: this.username,
+			icon_emoji: this.iconEmoji,
+			...(手牌 === null && attachments === null ? {} : {
+				attachments: attachments || [{
+					image_url: `https://mahjong.hakatashi.com/images/${encodeURIComponent(手牌.join(''))}?${
+						qs.encode({
+							...((王牌 === null) ? {} : {
+								王牌: 王牌.join(''),
+								王牌Status,
+							}),
+							color: this.state.mode === '四人' ? 'white' : 'black',
+						})
+					}`,
+					fallback: 手牌 ? 手牌.join('') : '',
+				}],
+			}),
+			...(mode === 'initial' ? {} : {thread_ts: this.state.thread}),
+			...(mode === 'broadcast' || reply_broadcast ? {reply_broadcast: true} : {}),
+		});
+	}
 
-				...(state.mode === '四人' ? [嶺上牌s[1], 嶺上牌s[3]] : [嶺上牌s[1], 嶺上牌s[3], 嶺上牌s[5], 嶺上牌s[7]]),
-				...裏ドラ表示牌s,
-				...Array((state.mode === '四人' ? 5 : 3) - 裏ドラ表示牌s.length).fill('🀫'),
-			];
-		};
+	generate王牌(裏ドラ表示牌s = []) {
+		const 嶺上牌s = [
+			...Array((this.state.mode === '四人' ? 4 : 8) - this.state.嶺上牌Count).fill('\u2003'),
+			...Array(this.state.嶺上牌Count).fill('🀫'),
+		];
 
-		const checkPoints = async () => {
-			if (state.points < 0) {
-				state.loses++;
-				state.points = 25000;
-				await saveState();
-				postMessage(source`
-					ハコ割れしました。点数をリセットします。
-					通算成績: ${state.wins}勝${state.loses}敗
-				`, {
-					mode: 'broadcast',
-				});
-			} else if (state.points > 50000) {
-				state.wins++;
-				state.points = 25000;
-				await saveState();
-				postMessage(source`
-					勝利しました。点数をリセットします。
-					通算成績: ${state.wins}勝${state.loses}敗
-				`, {
-					mode: 'broadcast',
-				});
-			}
-			if (state.大麻雀Points < 0) {
-				state.大麻雀Loses++;
-				state.大麻雀Points = 350000;
-				await saveState();
-				postMessage(source`
-					*大麻雀 役満縛り*
+		return [
+			...(this.state.mode === '四人' ? [嶺上牌s[0], 嶺上牌s[2]] : [嶺上牌s[0], 嶺上牌s[2], 嶺上牌s[4], 嶺上牌s[6]]),
+			...this.state.ドラ表示牌s,
+			...Array((this.state.mode === '四人' ? 5 : 3) - this.state.ドラ表示牌s.length).fill('🀫'),
 
-					ハコ割れしました。点数をリセットします。
-					通算成績: ${state.大麻雀Wins}勝${state.大麻雀Loses}敗
-				`, {
-					mode: 'broadcast',
-				});
-			} else if (state.大麻雀Points > 600000) {
-				state.大麻雀Wins++;
-				state.大麻雀Points = 350000;
-				await saveState();
-				postMessage(source`
-					*大麻雀 役満縛り*
+			...(this.state.mode === '四人' ? [嶺上牌s[1], 嶺上牌s[3]] : [嶺上牌s[1], 嶺上牌s[3], 嶺上牌s[5], 嶺上牌s[7]]),
+			...裏ドラ表示牌s,
+			...Array((this.state.mode === '四人' ? 5 : 3) - 裏ドラ表示牌s.length).fill('🀫'),
+		];
+	}
 
-					勝利しました。点数をリセットします。
-					通算成績: ${state.大麻雀Wins}勝${state.大麻雀Loses}敗
-				`, {
-					mode: 'broadcast',
-				});
-			}
-		};
-
-		if (message.channel !== process.env.CHANNEL_SANDBOX) {
-			return;
-		}
-
-		if (message.subtype === 'bot_message') {
-			return;
-		}
-
-		if (!message.text) {
-			return;
-		}
-
-		const text = message.text.trim();
-
-		if (text === '配牌') {
-			if (state.phase !== 'waiting') {
-				perdonBroadcast();
-				return;
-			}
-
-			state.deployUnblock = await blockDeploy('mahjong');
-			state.phase = 'gaming';
-			state.mode = '四人';
-			state.抜きドラCount = 0;
-			state.嶺上牌Count = 4;
-			const shuffled牌s = shuffle(麻雀牌);
-			state.手牌 = sort(shuffled牌s.slice(0, 14));
-			state.ドラ表示牌s = shuffled牌s.slice(14, 15);
-			state.壁牌 = shuffled牌s.slice(15);
-			state.remaining自摸 = 17;
-			state.points -= 1500;
-			state.大麻雀 = false;
-			await saveState();
-
-			const {ts} = await postMessage(source`
-				場代 -1500点
-				現在の得点: ${state.points}点
-
-				残り${state.remaining自摸}牌
-
-				コマンドをスレッドで打ち込んでください。
+	async checkPoints() {
+		if (this.state.points < 0) {
+			this.state.loses++;
+			this.state.points = 25000;
+			await this.saveState();
+			this.postMessage(source`
+				ハコ割れしました。点数をリセットします。
+				通算成績: ${this.state.wins}勝${this.state.loses}敗
 			`, {
-				手牌: state.手牌,
-				王牌: generate王牌(),
-				mode: 'initial',
+				mode: 'broadcast',
 			});
-
-			state.thread = ts;
-			await saveState();
-
-			return;
-		}
-
-		if (text === 'サンマ') {
-			if (state.phase !== 'waiting') {
-				perdonBroadcast();
-				return;
-			}
-
-			state.deployUnblock = await blockDeploy('mahjong');
-			state.phase = 'gaming';
-			state.mode = '三人';
-			state.抜きドラCount = 0;
-			state.嶺上牌Count = 8;
-			const shuffled牌s = shuffle(麻雀牌Forサンマ);
-			state.手牌 = sort(shuffled牌s.slice(0, 14));
-			state.ドラ表示牌s = shuffled牌s.slice(14, 15);
-			state.壁牌 = shuffled牌s.slice(15);
-			state.remaining自摸 = 17;
-			state.points -= 6000;
-			state.大麻雀 = false;
-			await saveState();
-
-			const {ts} = await postMessage(source`
-				場代 -6000点
-				現在の得点: ${state.points}点
-
-				残り${state.remaining自摸}牌
-
-				コマンドをスレッドで打ち込んでください。
+		} else if (this.state.points > 50000) {
+			this.state.wins++;
+			this.state.points = 25000;
+			await this.saveState();
+			this.postMessage(source`
+				勝利しました。点数をリセットします。
+				通算成績: ${this.state.wins}勝${this.state.loses}敗
 			`, {
-				手牌: state.手牌,
-				王牌: generate王牌(),
-				mode: 'initial',
+				mode: 'broadcast',
 			});
-
-			state.thread = ts;
-			await saveState();
-
-			return;
 		}
-
-		if (text === '大麻雀') {
-			if (state.phase !== 'waiting') {
-				perdonBroadcast();
-				return;
-			}
-
-			state.deployUnblock = await blockDeploy('mahjong');
-			state.phase = 'gaming';
-			state.mode = '三人';
-			state.抜きドラCount = 0;
-			state.嶺上牌Count = 8;
-			const shuffled牌s = shuffle(麻雀牌Forサンマ);
-			state.手牌 = sort(shuffled牌s.slice(0, 14));
-			state.ドラ表示牌s = shuffled牌s.slice(14, 15);
-			state.壁牌 = shuffled牌s.slice(15);
-			state.remaining自摸 = 20;
-			state.大麻雀Points -= 6000;
-			state.大麻雀 = true;
-			await saveState();
-
-			const {ts} = await postMessage(source`
+		if (this.state.大麻雀Points < 0) {
+			this.state.大麻雀Loses++;
+			this.state.大麻雀Points = 350000;
+			await this.saveState();
+			this.postMessage(source`
 				*大麻雀 役満縛り*
 
-				場代 -6000点
-				現在の得点: ${state.大麻雀Points}点
-
-				残り${state.remaining自摸}牌
-
-				コマンドをスレッドで打ち込んでください。
+				ハコ割れしました。点数をリセットします。
+				通算成績: ${this.state.大麻雀Wins}勝${this.state.大麻雀Loses}敗
 			`, {
-				手牌: state.手牌,
-				王牌: generate王牌(),
-				mode: 'initial',
+				mode: 'broadcast',
+			});
+		} else if (this.state.大麻雀Points > 600000) {
+			this.state.大麻雀Wins++;
+			this.state.大麻雀Points = 350000;
+			await this.saveState();
+			this.postMessage(source`
+				*大麻雀 役満縛り*
+
+				勝利しました。点数をリセットします。
+				通算成績: ${this.state.大麻雀Wins}勝${this.state.大麻雀Loses}敗
+			`, {
+				mode: 'broadcast',
+			});
+		}
+	}
+
+	onWakeWord(message, channel) {
+		const text = message.text.trim();
+
+		if (text === '配牌' || text === 'サンマ' || text === '大麻雀') {
+			if (this.state.phase !== 'waiting') {
+				return Promise.resolve(null);
+			}
+
+			const gameMessageDeferred = new Deferred();
+
+			mutex.runExclusive(async () => {
+				try {
+					this.state.deployUnblock = await blockDeploy('mahjong');
+					this.state.phase = 'gaming';
+					this.state.抜きドラCount = 0;
+					this.state.大麻雀 = text === '大麻雀';
+
+					if (text === '配牌') {
+						this.state.mode = '四人';
+						this.state.嶺上牌Count = 4;
+						const shuffled牌s = shuffle(麻雀牌);
+						this.state.手牌 = sort(shuffled牌s.slice(0, 14));
+						this.state.ドラ表示牌s = shuffled牌s.slice(14, 15);
+						this.state.壁牌 = shuffled牌s.slice(15);
+						this.state.remaining自摸 = 17;
+						this.state.points -= 1500;
+					} else {
+						this.state.mode = '三人';
+						this.state.嶺上牌Count = 8;
+						const shuffled牌s = shuffle(麻雀牌Forサンマ);
+						this.state.手牌 = sort(shuffled牌s.slice(0, 14));
+						this.state.ドラ表示牌s = shuffled牌s.slice(14, 15);
+						this.state.壁牌 = shuffled牌s.slice(15);
+						this.state.remaining自摸 = text === '大麻雀' ? 20 : 17;
+
+						if (text === '大麻雀') {
+							this.state.大麻雀Points -= 6000;
+						} else {
+							this.state.points -= 6000;
+						}
+					}
+
+					await this.saveState();
+
+					const pointsText = text === '大麻雀' 
+						? `*大麻雀 役満縛り*\n\n場代 -6000点\n現在の得点: ${this.state.大麻雀Points}点`
+						: text === 'サンマ'
+							? `場代 -6000点\n現在の得点: ${this.state.points}点`
+							: `場代 -1500点\n現在の得点: ${this.state.points}点`;
+
+					const {ts} = await this.postMessage(source`
+						${pointsText}
+
+						残り${this.state.remaining自摸}牌
+
+						コマンドをスレッドで打ち込んでください。
+					`, {
+						手牌: this.state.手牌,
+						王牌: this.generate王牌(),
+						mode: 'initial',
+						channel,
+					});
+
+					this.state.thread = ts;
+					this.state.channel = channel;
+					await this.saveState();
+					gameMessageDeferred.resolve(ts);
+				} catch (error) {
+					this.log.error('Failed to start mahjong game', error);
+					gameMessageDeferred.resolve(null);
+				}
 			});
 
-			state.thread = ts;
-			await saveState();
+			return gameMessageDeferred.promise;
+		}
 
+		if (text === 'チンイツクイズ' || text === 'チンイツクイズhard') {
+			if (mutex.isLocked()) {
+				return Promise.resolve(null);
+			}
+
+			const quizMessageDeferred = new Deferred();
+
+			mutex.runExclusive(async () => {
+				try {
+					const isHardMode = text === 'チンイツクイズhard';
+					const [min待ち牌, max待ち牌] = [
+						[0, 0],
+						[1, 1],
+						[2, 2],
+						[3, 5],
+						[3, 5],
+						[4, 5],
+						[4, 5],
+						[5, 9],
+						[5, 9],
+						[6, 9],
+					][random(0, 9)];
+					const {牌s, answer} = this.getQuiz([min待ち牌, max待ち牌], isHardMode);
+					const problem = {
+						problemMessage: {
+							channel,
+							text: '待ちは何でしょう？ (回答例: `45` `258 3` `ノーテン`)\n⚠️回答は1人1回までです!',
+							attachments: [{
+								image_url: await uploadImage(`https://mahjong.hakatashi.com/images/${encodeURIComponent(牌s.join(''))}`),
+								fallback: 牌s.join(''),
+							}],
+						},
+						hintMessages: [],
+						immediateMessage: {channel, text: '制限時間: 60秒'},
+						solvedMessage: {
+							channel,
+							text: `<@[[!user]]> 正解:tada:\n答えは \`${answer}\` だよ:muscle:`,
+							reply_broadcast: true,
+						},
+						unsolvedMessage: {
+							channel,
+							text: `もう、しっかりして！\n答えは \`${answer}\` だよ:anger:`,
+							reply_broadcast: true,
+						},
+						answerMessage: {channel, text: `答え: \`${answer}\``},
+						correctAnswers: [answer],
+					};
+
+					const ateQuiz = new TenpaiAteQuiz(
+						{eventClient: this.eventClient, webClient: this.slack},
+						problem,
+						{username: 'mahjong', icon_emoji: ':mahjong:'},
+					);
+
+					const result = await ateQuiz.start();
+
+					if (result.state === 'solved') {
+						await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-answer');
+						if (isHardMode) {
+							await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-hard-answer');
+						}
+						if (answer === 'ノーテン') {
+							await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-noten');
+						} else {
+							await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-men', answer.length);
+							if (answer.length === 1) {
+								await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-1men');
+							}
+							if (answer.length >= 5) {
+								await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-tamen');
+							}
+							if (answer.length === 9) {
+								await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-9men');
+							}
+						}
+					}
+
+					await this.deleteProgressMessage(result.problemMessage.ts);
+					quizMessageDeferred.resolve(result.problemMessage.ts);
+				} catch (error) {
+					this.log.error('Failed to start chinitsu quiz', error);
+					quizMessageDeferred.resolve(null);
+				}
+			});
+
+			return quizMessageDeferred.promise;
+		}
+
+		return Promise.resolve(null);
+	}
+
+	getQuiz([min待ち牌, max待ち牌], isHardMode) {
+		while (true) {
+			const 牌Numbers = Array.from(Array(9).keys()).flatMap((i) => [i + 1, i + 1, i + 1, i + 1]);
+			const sampled牌Numbers = sampleSize(牌Numbers, 13);
+			const color = sample(['m', 'p', 's']);
+			const 牌s = sampled牌Numbers.map((n) => (
+				String.fromCodePoint(0x1F000 + calculator.paiIndices.indexOf(`${n}${color}`))
+			));
+			if (!isHardMode) {
+				sort(牌s);
+			}
+			const 聴牌s = Array.from(new Set(麻雀牌)).filter((牌) => {
+				if (牌s.filter((s) => s === 牌).length === 4) {
+					return false;
+				}
+				const {agari} = calculator.agari([...牌s, 牌], {isRiichi: true});
+				return agari.isAgari;
+			}).map((牌) => (
+				calculator.paiIndices[牌.codePointAt(0) - 0x1F000][0]
+			));
+			const answer = 聴牌s.length === 0 ? 'ノーテン' : Array.from(new Set(聴牌s)).join('');
+			if (聴牌s.length >= min待ち牌 && 聴牌s.length <= max待ち牌) {
+				return {answer, 牌s, numbers: sampled牌Numbers};
+			}
+		}
+	}
+
+	async onMessageEvent(event) {
+		await super.onMessageEvent(event);
+
+		const message = extractMessage(event);
+
+		if (
+			message === null ||
+			!message.text ||
+			!message.user ||
+			message.bot_id !== undefined ||
+			message.subtype
+		) {
 			return;
 		}
 
-		if (message.thread_ts && state.thread === message.thread_ts) {
+		if (!this.allowedChannels.includes(message.channel)) {
+			return;
+		}
+
+		if (message.thread_ts && this.state.thread === message.thread_ts) {
+			const text = message.text.trim();
+
 			if (['カン', 'ポン', 'チー', 'ロン'].includes(text)) {
 				if (text === 'カン') {
 					await unlock(message.user, 'mahjong-invalid-kan');
 				}
-				perdon();
+				this.postMessage(':ha:');
 				return;
 			}
 
 			if (text === '残り牌') {
-				if (state.phase !== 'gaming') {
-					perdon();
+				if (this.state.phase !== 'gaming') {
+					this.postMessage(':ha:');
 					return;
 				}
 
 				const 残り牌List = new Array(34).fill(0);
-				for (const 牌 of state.壁牌) {
+				for (const 牌 of this.state.壁牌) {
 					残り牌List[牌.codePointAt(0) - 0x1F000]++;
 				}
-				postMessage(source`
+				this.postMessage(source`
 					萬子: ${chunk(残り牌List.slice(7, 16), 3).map((numbers) => numbers.join('')).join(' ')}
 					筒子: ${chunk(残り牌List.slice(25, 34), 3).map((numbers) => numbers.join('')).join(' ')}
 					索子: ${chunk(残り牌List.slice(16, 25), 3).map((numbers) => numbers.join('')).join(' ')}
@@ -504,13 +588,12 @@ module.exports = (clients) => {
 			}
 
 			if (text === '手牌') {
-				if (state.phase !== 'gaming') {
-					perdon();
+				if (this.state.phase !== 'gaming') {
+					this.postMessage(':ha:');
 					return;
 				}
 
-				// 12r588m239p467s東白白 のように表記
-				const sorted手牌 = sort(state.手牌);
+				const sorted手牌 = sort(this.state.手牌);
 				const categorized手牌Array = 牌Orders.map((牌Type) => sorted手牌.filter((牌) => get牌Type(牌) === 牌Type));
 				const convertedIntoNumerals手牌Array = categorized手牌Array.map((val) => val.map((牌) => 牌ToShortString(牌)).join(''));
 
@@ -524,9 +607,9 @@ module.exports = (clients) => {
 						})
 						.join('');
 
-				postMessage(source`
+				this.postMessage(source`
 					${convertedIntoNumerals手牌}
-					ドラ表示牌: ${state.ドラ表示牌s.map((牌) => 牌ToName(牌)).join(' ')}
+					ドラ表示牌: ${this.state.ドラ表示牌s.map((牌) => 牌ToName(牌)).join(' ')}
 				`);
 				return;
 			}
@@ -534,219 +617,222 @@ module.exports = (clients) => {
 			if (text.startsWith('打') || text.startsWith('d') || text === 'ツモ切り') {
 				const instruction = normalize打牌Command(text);
 
-				if (state.phase !== 'gaming') {
-					perdon();
+				if (this.state.phase !== 'gaming') {
+					this.postMessage(':ha:');
 					return;
 				}
 
 				if (instruction === 'ツモ切り') {
-					if (state.mode === '四人' && state.手牌[state.手牌.length - 1] === '🀟') {
+					if (this.state.mode === '四人' && this.state.手牌[this.state.手牌.length - 1] === '🀟') {
 						await unlock(message.user, 'mahjong-ikeda');
 					}
 
-					state.手牌 = state.手牌.slice(0, -1);
+					this.state.手牌 = this.state.手牌.slice(0, -1);
 				} else {
 					const 牌Name = instruction.slice(1);
 					if (!牌Names.includes(牌Name)) {
-						perdon();
+						this.postMessage(':ha:');
 						return;
 					}
 
 					const 打牌 = nameTo牌(牌Name);
 
-					if (!state.手牌.includes(打牌)) {
-						perdon();
+					if (!this.state.手牌.includes(打牌)) {
+						this.postMessage(':ha:');
 						return;
 					}
 
-					state.手牌.splice(state.手牌.indexOf(打牌), 1);
+					this.state.手牌.splice(this.state.手牌.indexOf(打牌), 1);
 
-					if (state.mode === '四人' && 打牌 === '🀟') {
+					if (this.state.mode === '四人' && 打牌 === '🀟') {
 						await unlock(message.user, 'mahjong-ikeda');
 					}
 				}
 
-				if (state.remaining自摸 === 0) {
-					state.deployUnblock();
-					state.phase = 'waiting';
-					const isTenpai = calculator.tenpai(state.手牌);
+				if (this.state.remaining自摸 === 0) {
+					this.state.deployUnblock();
+					this.state.phase = 'waiting';
+					const isTenpai = calculator.tenpai(this.state.手牌);
 					if (isTenpai) {
-						postMessage(source`
-							${state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}聴牌 0点
-							現在の得点: ${state.大麻雀 ? state.大麻雀Points : state.points}点
+						this.postMessage(source`
+							${this.state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}聴牌 0点
+							現在の得点: ${this.state.大麻雀 ? this.state.大麻雀Points : this.state.points}点
 						`, {
 							mode: 'broadcast',
 						});
 					} else {
-						if (state.大麻雀) {
-							state.大麻雀Points -= 3000;
+						if (this.state.大麻雀) {
+							this.state.大麻雀Points -= 3000;
 						} else {
-							state.points -= 3000;
+							this.state.points -= 3000;
 						}
 
-						await saveState();
-						postMessage(source`
-							${state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}不聴罰符 -3000点
-							現在の得点: ${state.大麻雀 ? state.大麻雀Points : state.points}点
+						await this.saveState();
+						this.postMessage(source`
+							${this.state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}不聴罰符 -3000点
+							現在の得点: ${this.state.大麻雀 ? this.state.大麻雀Points : this.state.points}点
 						`, {
 							mode: 'broadcast',
 						});
 					}
 
-					state.thread = null;
-					await saveState();
+					await this.deleteProgressMessage(this.state.thread);
 
-					await checkPoints();
+					this.state.thread = null;
+					await this.saveState();
+
+					await this.checkPoints();
 					return;
 				}
 
-				state.手牌 = sort(state.手牌).concat([state.壁牌[0]]);
-				state.壁牌 = state.壁牌.slice(1);
-				state.remaining自摸--;
+				this.state.手牌 = sort(this.state.手牌).concat([this.state.壁牌[0]]);
+				this.state.壁牌 = this.state.壁牌.slice(1);
+				this.state.remaining自摸--;
 
-				postMessage(source`
-					摸${牌ToName(state.手牌[state.手牌.length - 1])} 残り${state.remaining自摸}牌
+				this.postMessage(source`
+					摸${牌ToName(this.state.手牌[this.state.手牌.length - 1])} 残り${this.state.remaining自摸}牌
 				`, {
-					手牌: state.手牌,
-					王牌: generate王牌(),
+					手牌: this.state.手牌,
+					王牌: this.generate王牌(),
 				});
 			}
 
 			if (text === 'ペー' || text === 'ぺー' || text === 'p') {
-				if (state.phase !== 'gaming' || state.mode !== '三人') {
-					perdon();
+				if (this.state.phase !== 'gaming' || this.state.mode !== '三人') {
+					this.postMessage(':ha:');
 					return;
 				}
 
-				if (!state.手牌.includes('🀃')) {
-					perdon();
+				if (!this.state.手牌.includes('🀃')) {
+					this.postMessage(':ha:');
 					return;
 				}
 
-				const 北Index = state.手牌.indexOf('🀃');
-				state.手牌.splice(北Index, 1);
+				const 北Index = this.state.手牌.indexOf('🀃');
+				this.state.手牌.splice(北Index, 1);
 
-				state.抜きドラCount++;
-				state.嶺上牌Count--;
-				state.手牌 = sort(state.手牌).concat([state.壁牌[0]]);
-				state.壁牌 = state.壁牌.slice(1);
+				this.state.抜きドラCount++;
+				this.state.嶺上牌Count--;
+				this.state.手牌 = sort(this.state.手牌).concat([this.state.壁牌[0]]);
+				this.state.壁牌 = this.state.壁牌.slice(1);
 
-				postMessage(source`
-					抜きドラ ${state.抜きドラCount}牌 残り${state.remaining自摸}牌
+				this.postMessage(source`
+					抜きドラ ${this.state.抜きドラCount}牌 残り${this.state.remaining自摸}牌
 				`, {
-					手牌: state.手牌,
-					王牌: generate王牌(),
+					手牌: this.state.手牌,
+					王牌: this.generate王牌(),
 				});
 				return;
 			}
 
 			if (text.startsWith('リーチ ') || text.startsWith('r')) {
-				if (state.phase !== 'gaming') {
-					perdon();
+				if (this.state.phase !== 'gaming') {
+					this.postMessage(':ha:');
 					return;
 				}
 
 				const rawInstruction = text.slice(text.startsWith('リーチ ') ? 'リーチ '.length : 'r'.length);
 
 				if (!(rawInstruction.startsWith('打') || rawInstruction.startsWith('d') || rawInstruction === 'ツモ切り')) {
-					perdon();
+					this.postMessage(':ha:');
 					return;
 				}
 				const instruction = normalize打牌Command(rawInstruction);
 
 				let new手牌 = null;
 				if (instruction === 'ツモ切り') {
-					new手牌 = state.手牌.slice(0, -1);
+					new手牌 = this.state.手牌.slice(0, -1);
 				} else {
 					const 牌Name = instruction.slice(1);
 					if (!牌Names.includes(牌Name)) {
-						perdon();
+						this.postMessage(':ha:');
 						return;
 					}
 
 					const 打牌 = nameTo牌(牌Name);
 
-					if (!state.手牌.includes(打牌)) {
-						perdon();
+					if (!this.state.手牌.includes(打牌)) {
+						this.postMessage(':ha:');
 						return;
 					}
 
-					new手牌 = state.手牌.slice();
+					new手牌 = this.state.手牌.slice();
 					new手牌.splice(new手牌.indexOf(打牌), 1);
 				}
 
-				state.手牌 = sort(new手牌);
-				state.phase = 'リーチ';
-				state.リーチTurn = state.remaining自摸;
+				this.state.手牌 = sort(new手牌);
+				this.state.phase = 'リーチ';
+				this.state.リーチTurn = this.state.remaining自摸;
 
-				// TODO: フリテン
-				while (state.remaining自摸 > 0) {
-					state.remaining自摸--;
+				while (this.state.remaining自摸 > 0) {
+					this.state.remaining自摸--;
 
-					const 河牌Count = state.mode === '三人' ? 3 : 4;
-					const 河牌s = state.壁牌.slice(0, 河牌Count);
-					state.壁牌 = state.壁牌.slice(河牌Count);
+					const 河牌Count = this.state.mode === '三人' ? 3 : 4;
+					const 河牌s = this.state.壁牌.slice(0, 河牌Count);
+					this.state.壁牌 = this.state.壁牌.slice(河牌Count);
 
 					const 当たり牌Index = 河牌s.findIndex((牌) => {
-						const {agari} = calculator.agari(state.手牌.concat([牌]), {isRiichi: false});
+						const {agari} = calculator.agari(this.state.手牌.concat([牌]), {isRiichi: false});
 						return agari.isAgari;
 					});
 
 					if (当たり牌Index !== -1) {
-						const 裏ドラ表示牌s = state.壁牌.slice(0, state.ドラ表示牌s.length);
-						state.壁牌 = state.壁牌.slice(state.ドラ表示牌s.length);
+						const 裏ドラ表示牌s = this.state.壁牌.slice(0, this.state.ドラ表示牌s.length);
+						this.state.壁牌 = this.state.壁牌.slice(this.state.ドラ表示牌s.length);
 
-						const ドラs = [...state.ドラ表示牌s, ...裏ドラ表示牌s];
-						const 抜きドラ = state.抜きドラCount * (ドラs.filter((ドラ) => ドラ === '🀂').length + 1);
+						const ドラs = [...this.state.ドラ表示牌s, ...裏ドラ表示牌s];
+						const 抜きドラ = this.state.抜きドラCount * (ドラs.filter((ドラ) => ドラ === '🀂').length + 1);
 
-						const {agari, 役s} = calculator.agari(state.手牌.concat([河牌s[当たり牌Index]]), {
-							doraHyouji: state.ドラ表示牌s.map((ドラ表示牌) => (state.mode === '三人' && ドラ表示牌 === '🀇') ? '🀎' : ドラ表示牌),
-							uraDoraHyouji: 裏ドラ表示牌s.map((ドラ表示牌) => (state.mode === '三人' && ドラ表示牌 === '🀇') ? '🀎' : ドラ表示牌),
-							isHaitei: state.remaining自摸 === 0 && 当たり牌Index === 河牌Count - 1,
+						const {agari, 役s} = calculator.agari(this.state.手牌.concat([河牌s[当たり牌Index]]), {
+							doraHyouji: this.state.ドラ表示牌s.map((ドラ表示牌) => (this.state.mode === '三人' && ドラ表示牌 === '🀇') ? '🀎' : ドラ表示牌),
+							uraDoraHyouji: 裏ドラ表示牌s.map((ドラ表示牌) => (this.state.mode === '三人' && ドラ表示牌 === '🀇') ? '🀎' : ドラ表示牌),
+							isHaitei: this.state.remaining自摸 === 0 && 当たり牌Index === 河牌Count - 1,
 							isVirgin: false,
 							isRiichi: true,
-							isDoubleRiichi: state.リーチTurn === (state.大麻雀 ? 20 : 17),
-							isIppatsu: state.リーチTurn - state.remaining自摸 === 1,
+							isDoubleRiichi: this.state.リーチTurn === (this.state.大麻雀 ? 20 : 17),
+							isIppatsu: this.state.リーチTurn - this.state.remaining自摸 === 1,
 							isRon: 当たり牌Index !== 河牌Count - 1,
 							additionalDora: 抜きドラ,
 						});
 
 						let is錯和 = false;
 
-						if (state.大麻雀) {
+						if (this.state.大麻雀) {
 							if (agari.delta[0] < 48000) {
 								is錯和 = true;
 								agari.delta[0] = -12000;
 							}
-							state.大麻雀Points += agari.delta[0];
+							this.state.大麻雀Points += agari.delta[0];
 						} else {
-							state.points += agari.delta[0];
+							this.state.points += agari.delta[0];
 						}
 
-						await saveState();
-						postMessage(source`
-							${state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}河${河牌s.slice(0, Math.min(当たり牌Index + 1, 河牌Count - 1)).map(牌ToName).join('・')}${当たり牌Index === 河牌Count - 1 ? ` 摸${牌ToName(河牌s[河牌s.length - 1])}` : ''}
+						await this.saveState();
+						this.postMessage(source`
+							${this.state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}河${河牌s.slice(0, Math.min(当たり牌Index + 1, 河牌Count - 1)).map(牌ToName).join('・')}${当たり牌Index === 河牌Count - 1 ? ` 摸${牌ToName(河牌s[河牌s.length - 1])}` : ''}
 							${当たり牌Index === 河牌Count - 1 ? 'ツモ!!!' : 'ロン!!!'}
 
 							${役s.join('・')}
 
 							${is錯和 ? '錯和 ' : ''}${agari.delta[0]}点
-							現在の得点: ${state.大麻雀 ? state.大麻雀Points : state.points}点
+							現在の得点: ${this.state.大麻雀 ? this.state.大麻雀Points : this.state.points}点
 						`, {
-							手牌: state.手牌.concat([河牌s[当たり牌Index]]),
-							王牌: generate王牌(裏ドラ表示牌s),
+							手牌: this.state.手牌.concat([河牌s[当たり牌Index]]),
+							王牌: this.generate王牌(裏ドラ表示牌s),
 							王牌Status: 'open',
 							mode: 'broadcast',
 						});
 
-						state.thread = null;
-						await saveState();
-						await checkPoints();
+						await this.deleteProgressMessage(this.state.thread);
 
-						state.deployUnblock();
-						state.phase = 'waiting';
+						this.state.thread = null;
+						await this.saveState();
+						await this.checkPoints();
 
-						if (state.mode === '四人' && !state.大麻雀) {
+						this.state.deployUnblock();
+						this.state.phase = 'waiting';
+
+						if (this.state.mode === '四人' && !this.state.大麻雀) {
 							await unlock(message.user, 'mahjong');
 							if (役s.includes('七対子')) {
 								await unlock(message.user, 'mahjong-七対子');
@@ -773,13 +859,13 @@ module.exports = (clients) => {
 							const 待ち牌s = Array(34).fill(0).map((_, index) => (
 								String.fromCodePoint(0x1F000 + index)
 							)).filter((牌) => {
-								const result = calculator.agari(state.手牌.concat([牌]), {isRiichi: false});
+								const result = calculator.agari(this.state.手牌.concat([牌]), {isRiichi: false});
 								return result.agari.isAgari;
 							});
 							if (待ち牌s.length === 1 && 待ち牌s[0] === '🀂') {
 								await unlock(message.user, 'mahjong-西単騎');
 							}
-							if (待ち牌s.includes('🀐') && 待ち牌s.includes('🀓') && state.リーチTurn >= 11) {
+							if (待ち牌s.includes('🀐') && 待ち牌s.includes('🀓') && this.state.リーチTurn >= 11) {
 								await unlock(message.user, 'mahjong-一四索');
 							}
 						}
@@ -787,11 +873,11 @@ module.exports = (clients) => {
 						return;
 					}
 
-					postMessage(source`
-						河${河牌s.slice(0, 河牌Count - 1).map(牌ToName).join('・')} 摸${牌ToName(河牌s[河牌s.length - 1])} 残り${state.remaining自摸}牌
+					this.postMessage(source`
+						河${河牌s.slice(0, 河牌Count - 1).map(牌ToName).join('・')} 摸${牌ToName(河牌s[河牌s.length - 1])} 残り${this.state.remaining自摸}牌
 					`, {
-						手牌: state.手牌.concat([河牌s[河牌s.length - 1]]),
-						王牌: generate王牌(),
+						手牌: this.state.手牌.concat([河牌s[河牌s.length - 1]]),
+						王牌: this.generate王牌(),
 					});
 
 					await new Promise((resolve) => {
@@ -799,218 +885,122 @@ module.exports = (clients) => {
 					});
 				}
 
-				state.deployUnblock();
-				state.phase = 'waiting';
-				const isTenpai = calculator.tenpai(state.手牌);
+				this.state.deployUnblock();
+				this.state.phase = 'waiting';
+				const isTenpai = calculator.tenpai(this.state.手牌);
 				if (isTenpai) {
-					if (state.大麻雀) {
-						state.大麻雀Points -= 1000;
+					if (this.state.大麻雀) {
+						this.state.大麻雀Points -= 1000;
 					} else {
-						state.points -= 1000;
+						this.state.points -= 1000;
 					}
 
-					await saveState();
-					postMessage(source`
-						${state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}流局 供託点 -1000点
-						現在の得点: ${state.大麻雀 ? state.大麻雀Points : state.points}点
+					await this.saveState();
+					this.postMessage(source`
+						${this.state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}流局 供託点 -1000点
+						現在の得点: ${this.state.大麻雀 ? this.state.大麻雀Points : this.state.points}点
 					`, {
 						mode: 'broadcast',
 					});
 				} else {
-					if (state.大麻雀) {
-						state.大麻雀Points -= 12000;
+					if (this.state.大麻雀) {
+						this.state.大麻雀Points -= 12000;
 					} else {
-						state.points -= 12000;
+						this.state.points -= 12000;
 					}
 
-					await saveState();
-					postMessage(source`
-						${state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}流局 不聴立直 -12000点
-						現在の得点: ${state.大麻雀 ? state.大麻雀Points : state.points}点
+					await this.saveState();
+					this.postMessage(source`
+						${this.state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}流局 不聴立直 -12000点
+						現在の得点: ${this.state.大麻雀 ? this.state.大麻雀Points : this.state.points}点
 					`, {
 						mode: 'broadcast',
 					});
-					if (state.mode === '四人' && !state.大麻雀) {
+					if (this.state.mode === '四人' && !this.state.大麻雀) {
 						await unlock(message.user, 'mahjong-不聴立直');
 					}
 				}
 
-				state.thread = null;
-				await saveState();
+				await this.deleteProgressMessage(this.state.thread);
 
-				await checkPoints();
+				this.state.thread = null;
+				await this.saveState();
+
+				await this.checkPoints();
 
 				return;
 			}
 
 			if (text === 'ツモ') {
-				if (state.phase !== 'gaming') {
-					perdon();
+				if (this.state.phase !== 'gaming') {
+					this.postMessage(':ha:');
 					return;
 				}
 
-				const {agari, 役s} = calculator.agari(state.手牌, {
-					doraHyouji: state.ドラ表示牌s,
-					isHaitei: state.remaining自摸 === 0,
-					isVirgin: state.remaining自摸 === (state.大麻雀 ? 20 : 17),
-					additionalDora: state.抜きドラCount,
+				const {agari, 役s} = calculator.agari(this.state.手牌, {
+					doraHyouji: this.state.ドラ表示牌s,
+					isHaitei: this.state.remaining自摸 === 0,
+					isVirgin: this.state.remaining自摸 === (this.state.大麻雀 ? 20 : 17),
+					additionalDora: this.state.抜きドラCount,
 				});
 
-				state.deployUnblock();
-				state.phase = 'waiting';
+				this.state.deployUnblock();
+				this.state.phase = 'waiting';
 
 				if (!agari.isAgari) {
-					if (state.大麻雀) {
-						state.大麻雀Points -= 12000;
+					if (this.state.大麻雀) {
+						this.state.大麻雀Points -= 12000;
 					} else {
-						state.points -= 12000;
+						this.state.points -= 12000;
 					}
-					await saveState();
-					postMessage(source`
-						${state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}錯和 -12000点
-						現在の得点: ${state.大麻雀 ? state.大麻雀Points : state.points}点
+					await this.saveState();
+					this.postMessage(source`
+						${this.state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}錯和 -12000点
+						現在の得点: ${this.state.大麻雀 ? this.state.大麻雀Points : this.state.points}点
 					`, {
 						mode: 'broadcast',
 					});
-					state.thread = null;
-					await saveState();
-					await checkPoints();
+
+					await this.deleteProgressMessage(this.state.thread);
+
+					this.state.thread = null;
+					await this.saveState();
+					await this.checkPoints();
 					return;
 				}
 
 				let is錯和 = false;
 
-				if (state.大麻雀) {
+				if (this.state.大麻雀) {
 					if (agari.delta[0] < 48000) {
 						is錯和 = true;
 						agari.delta[0] = -12000;
 					}
-					state.大麻雀Points += agari.delta[0];
+					this.state.大麻雀Points += agari.delta[0];
 				} else {
-					state.points += agari.delta[0];
+					this.state.points += agari.delta[0];
 				}
 
-				await saveState();
-				postMessage(source`
-					${state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}ツモ!!!
+				await this.saveState();
+				this.postMessage(source`
+					${this.state.大麻雀 ? '*大麻雀 役満縛り*\n\n' : ''}ツモ!!!
 
 					${役s.join('・')}
 
 					${is錯和 ? '錯和 ' : ''}${agari.delta[0]}点
-					現在の得点: ${state.大麻雀 ? state.大麻雀Points : state.points}点
+					現在の得点: ${this.state.大麻雀 ? this.state.大麻雀Points : this.state.points}点
 				`, {
 					mode: 'broadcast',
 				});
-				state.thread = null;
-				await saveState();
-				await checkPoints();
+
+				await this.deleteProgressMessage(this.state.thread);
+
+				this.state.thread = null;
+				await this.saveState();
+				await this.checkPoints();
 			}
 		}
+	}
+}
 
-		const getQuiz = ([min待ち牌, max待ち牌], isHardMode) => {
-			while (true) {
-				const 牌Numbers = Array.from(Array(9).keys()).flatMap((i) => [i + 1, i + 1, i + 1, i + 1]);
-				const sampled牌Numbers = sampleSize(牌Numbers, 13);
-				const color = sample(['m', 'p', 's']);
-				const 牌s = sampled牌Numbers.map((n) => (
-					String.fromCodePoint(0x1F000 + calculator.paiIndices.indexOf(`${n}${color}`))
-				));
-				if (!isHardMode) {
-					sort(牌s);
-				}
-				const 聴牌s = Array.from(new Set(麻雀牌)).filter((牌) => {
-					// 5枚使いはNG
-					if (牌s.filter((s) => s === 牌).length === 4) {
-						return false;
-					}
-					const {agari} = calculator.agari([...牌s, 牌], {isRiichi: true});
-					return agari.isAgari;
-				}).map((牌) => (
-					calculator.paiIndices[牌.codePointAt(0) - 0x1F000][0]
-				));
-				const answer = 聴牌s.length === 0 ? 'ノーテン' : Array.from(new Set(聴牌s)).join('');
-				if (聴牌s.length >= min待ち牌 && 聴牌s.length <= max待ち牌) {
-					return {answer, 牌s, numbers: sampled牌Numbers};
-				}
-			}
-		};
-
-		if (text === 'チンイツクイズ' || text === 'チンイツクイズhard') {
-			if (mutex.isLocked()) {
-				postMessage('今クイズ中だよ😠', {mode: 'initial'});
-				return;
-			}
-
-			const isHardMode = text === 'チンイツクイズhard';
-			const channel = process.env.CHANNEL_SANDBOX;
-			const [min待ち牌, max待ち牌] = [
-				[0, 0],
-				[1, 1],
-				[2, 2],
-				[3, 5],
-				[3, 5],
-				[4, 5],
-				[4, 5],
-				[5, 9],
-				[5, 9],
-				[6, 9],
-			][random(0, 9)];
-			const {牌s, answer} = getQuiz([min待ち牌, max待ち牌], isHardMode);
-			const problem = {
-				problemMessage: {
-					channel,
-					text: '待ちは何でしょう？ (回答例: `45` `258 3` `ノーテン`)\n⚠️回答は1人1回までです!',
-					attachments: [{
-						image_url: await uploadImage(`https://mahjong.hakatashi.com/images/${encodeURIComponent(牌s.join(''))}`),
-						fallback: 牌s.join(''),
-					}],
-				},
-				hintMessages: [],
-				immediateMessage: {channel, text: '制限時間: 60秒'},
-				solvedMessage: {
-					channel,
-					text: `<@[[!user]]> 正解:tada:\n答えは \`${answer}\` だよ:muscle:`,
-					reply_broadcast: true,
-				},
-				unsolvedMessage: {
-					channel,
-					text: `もう、しっかりして！\n答えは \`${answer}\` だよ:anger:`,
-					reply_broadcast: true,
-				},
-				answerMessage: {channel, text: `答え: \`${answer}\``},
-				correctAnswers: [answer],
-			};
-
-			const ateQuiz = new TenpaiAteQuiz(
-				{eventClient, webClient: slack},
-				problem,
-				{username: 'mahjong', icon_emoji: ':mahjong:'},
-			);
-
-			const result = await mutex.runExclusive(async () => {
-				return ateQuiz.start();
-			});
-
-			if (result.state === 'solved') {
-				await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-answer');
-				if (isHardMode) {
-					await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-hard-answer');
-				}
-				if (answer === 'ノーテン') {
-					await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-noten');
-				} else {
-					await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-men', answer.length);
-					if (answer.length === 1) {
-						await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-1men');
-					}
-					if (answer.length >= 5) {
-						await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-tamen');
-					}
-					if (answer.length === 9) {
-						await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-9men');
-					}
-				}
-			}
-		}
-	});
-};
+module.exports = (slackClients) => new MahjongBot(slackClients);
