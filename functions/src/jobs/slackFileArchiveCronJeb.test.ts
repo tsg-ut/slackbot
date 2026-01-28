@@ -1,16 +1,12 @@
 
 import firebaseFunctionsTest from 'firebase-functions-test';
 
+// Set environment variables for the test
+process.env.SLACK_TOKEN = 'xoxb-slacktoken';
+process.env.AWS_SECRET_ACCESS_KEY = 'SECRET-ACCESS-KEY';
+process.env.AWS_ACCESS_KEY_ID = 'ACCESS-KEY-ID';
+
 const test = firebaseFunctionsTest();
-test.mockConfig({
-	slack: {
-		token: 'xoxb-slacktoken',
-	},
-	aws: {
-		secret_access_key: 'SECRET-ACCESS-KEY',
-		access_key_id: 'ACCESS-KEY-ID',
-	},
-});
 
 const filesListMock = jest.fn();
 

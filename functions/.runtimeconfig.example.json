@@ -1,4 +1,5 @@
 {
+  "_comment": "DEPRECATED: This file is deprecated. Use .env file instead. See .env.example for the new format.",
   "slack": {
     "token": "xoxb-xxxxxxxxxx-xxxxxxxxxx-xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
   },
