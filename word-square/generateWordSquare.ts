@@ -5,6 +5,8 @@ import path from 'path';
 export interface WordSquareClue {
 	word: string;
 	definition: string;
+	definitionCensored: string;
+	probabilityOrder: number | null;
 	index: number;
 }
 
@@ -27,6 +29,13 @@ const loadStage = async (symmetric: boolean) => {
 	return stage ?? null;
 };
 
+interface DefinitionRow {
+	word: string;
+	definition: string;
+	definition_censored: string;
+	probability_order: number | null;
+}
+
 const loadDefinitions = async (words: string[]) => {
 	const db = await sqlite.open({
 		filename: path.join(__dirname, 'definitions.sqlite3'),
@@ -34,16 +43,16 @@ const loadDefinitions = async (words: string[]) => {
 	});
 	const uniqueWords = Array.from(new Set(words));
 	if (uniqueWords.length === 0) {
-		return new Map<string, string>();
+		return new Map<string, DefinitionRow>();
 	}
 	const placeholders = uniqueWords.map(() => '?').join(',');
-	const rows = await db.all<Array<{word: string; definition: string}>>(
-		`SELECT word, definition FROM definitions WHERE word IN (${placeholders})`,
+	const rows = await db.all<DefinitionRow[]>(
+		`SELECT word, definition, definition_censored, probability_order FROM definitions WHERE word IN (${placeholders})`,
 		uniqueWords,
 	);
-	const definitions = new Map<string, string>();
+	const definitions = new Map<string, DefinitionRow>();
 	for (const row of rows) {
-		definitions.set(row.word, row.definition);
+		definitions.set(row.word, row);
 	}
 	return definitions;
 };
@@ -62,18 +71,20 @@ const generateWordSquare = async (symmetric: boolean = false): Promise<WordSquar
 	}
 
 	const definitions = await loadDefinitions([...rows, ...cols]);
+	const toClue = (word: string, index: number): WordSquareClue => {
+		const def = definitions.get(word);
+		return {
+			word,
+			definition: def?.definition ?? '(no definition)',
+			definitionCensored: def?.definition_censored ?? '(no definition)',
+			probabilityOrder: def?.probability_order ?? null,
+			index,
+		};
+	};
 	return {
 		board,
-		rows: rows.map((word, index) => ({
-			word,
-			definition: definitions.get(word) ?? '(no definition)',
-			index,
-		})),
-		cols: cols.map((word, index) => ({
-			word,
-			definition: definitions.get(word) ?? '(no definition)',
-			index,
-		})),
+		rows: rows.map((word, index) => toClue(word, index)),
+		cols: cols.map((word, index) => toClue(word, index)),
 	};
 };
 

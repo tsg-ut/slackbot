@@ -6,12 +6,43 @@ import Queue from 'p-queue';
 import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 import {extractMessage, isHumanMessage} from '../lib/slackUtils';
 import generateWordSquare from './generateWordSquare';
-import {renderWordSquare} from './render';
+import {renderWordSquare, type RenderMode} from './render';
+
+export const CIRCLED_NUMBERS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', '⑫', '⑬', '⑭'];
 
 const updatesQueue = new Queue({concurrency: 1});
 
-const uploadImage = async (board: (string | null)[]) => {
-	const imageData = await renderWordSquare(board);
+export const computeLabels = (rows: {word: string; index: number}[], cols: {word: string; index: number}[]) => {
+	const rowLabels = new Map<number, string>();
+	const colLabels = new Map<number, string>();
+	const wordToLabel = new Map<string, string>();
+	let nextLabel = 0;
+
+	for (const row of rows) {
+		if (wordToLabel.has(row.word)) {
+			rowLabels.set(row.index, wordToLabel.get(row.word)!);
+		} else {
+			const label = CIRCLED_NUMBERS[nextLabel++];
+			wordToLabel.set(row.word, label);
+			rowLabels.set(row.index, label);
+		}
+	}
+
+	for (const col of cols) {
+		if (wordToLabel.has(col.word)) {
+			colLabels.set(col.index, wordToLabel.get(col.word)!);
+		} else {
+			const label = CIRCLED_NUMBERS[nextLabel++];
+			wordToLabel.set(col.word, label);
+			colLabels.set(col.index, label);
+		}
+	}
+
+	return {rowLabels, colLabels};
+};
+
+const uploadImage = async (board: (string | null)[], rowLabels: Map<number, string>, colLabels: Map<number, string>, mode: RenderMode = 'normal', answered: boolean[] = [], highlighted: Set<number> = new Set(), prerevealed: Set<number> = new Set()) => {
+	const imageData = await renderWordSquare(board, rowLabels, colLabels, mode, answered, highlighted, prerevealed);
 	const cloudinaryData: any = await new Promise((resolve, reject) => {
 		cloudinary.v2.uploader
 			.upload_stream({resource_type: 'image'}, (error, response) => {
@@ -36,6 +67,9 @@ interface State {
 	solvedCols: Set<number>;
 	timeouts: NodeJS.Timeout[];
 	endTime: number;
+	rowLabels: Map<number, string>;
+	colLabels: Map<number, string>;
+	prerevealedCells: Set<number>;
 }
 
 class WordSquareBot extends ChannelLimitedBot {
@@ -49,9 +83,12 @@ class WordSquareBot extends ChannelLimitedBot {
 		solvedCols: new Set(),
 		timeouts: [],
 		endTime: 0,
+		rowLabels: new Map(),
+		colLabels: new Map(),
+		prerevealedCells: new Set(),
 	};
 
-	protected override readonly wakeWordRegex = /^word\s*square(\s+symmetric)?$/i;
+	protected override readonly wakeWordRegex = /^word\s*square(\s+symmetric)?(\s+hard)?$/i;
 	protected override readonly username = 'word-square';
 	protected override readonly iconEmoji = ':capital_abcd:';
 
@@ -61,6 +98,7 @@ class WordSquareBot extends ChannelLimitedBot {
 		}
 
 		const symmetric = /symmetric/i.test(message.text ?? '');
+		const hard = /hard/i.test(message.text ?? '');
 		const puzzle = await generateWordSquare(symmetric);
 		if (!puzzle) {
 			await this.postMessage({
@@ -77,13 +115,31 @@ class WordSquareBot extends ChannelLimitedBot {
 		this.state.solvedCols = new Set();
 		this.state.timeouts = [];
 
-		const cloudinaryData: any = await uploadImage(this.state.board);
+		this.state.prerevealedCells = new Set();
+		if (!hard) {
+			const indices = Array.from({length: 49}, (_, i) => i);
+			for (let i = indices.length - 1; i > 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1));
+				[indices[i], indices[j]] = [indices[j], indices[i]];
+			}
+			for (const idx of indices.slice(0, 5)) {
+				this.state.board[idx] = puzzle.board[idx];
+				this.state.prerevealedCells.add(idx);
+			}
+		}
+
+		const {rowLabels, colLabels} = computeLabels(puzzle.rows, puzzle.cols);
+		this.state.rowLabels = rowLabels;
+		this.state.colLabels = colLabels;
+
+		const cloudinaryData: any = await uploadImage(this.state.board, this.state.rowLabels, this.state.colLabels, 'normal', [], new Set(), this.state.prerevealedCells);
 		const seconds = (puzzle.rows.length + puzzle.cols.length) * 10;
 
+		const difficultyLabel = hard ? ':fire: *Hard Mode*! No letters revealed!' : ':sparkles: *Normal Mode*! 5 letters revealed!';
 		const {ts}: any = await this.postMessage({
 			channel,
 			text: stripIndent`
-				Let's play Word Square!
+				Let's play Word Square! ${difficultyLabel}
 				Reply *in thread* with any 7-letter word you think fits a row or column.
 				You have ${seconds} seconds.
 			`,
@@ -154,22 +210,29 @@ class WordSquareBot extends ChannelLimitedBot {
 			}
 
 			const solvedLabels: string[] = [];
+			const newIndices = new Set<number>();
 			for (const rowIndex of rowMatches) {
 				this.state.solvedRows.add(rowIndex);
 				for (let x = 0; x < 7; x++) {
 					const index = rowIndex * 7 + x;
+					if (this.state.board[index] === null) {
+						newIndices.add(index);
+					}
 					this.state.board[index] = this.state.puzzle.board[index];
 				}
-				solvedLabels.push(`R${rowIndex + 1}`);
+				solvedLabels.push(this.state.rowLabels.get(rowIndex) ?? '?');
 			}
 
 			for (const colIndex of colMatches) {
 				this.state.solvedCols.add(colIndex);
 				for (let y = 0; y < 7; y++) {
 					const index = y * 7 + colIndex;
+					if (this.state.board[index] === null) {
+						newIndices.add(index);
+					}
 					this.state.board[index] = this.state.puzzle.board[index];
 				}
-				solvedLabels.push(`C${colIndex + 1}`);
+				solvedLabels.push(this.state.colLabels.get(colIndex) ?? '?');
 			}
 
 			// Auto-mark rows/columns as solved when all their cells are filled
@@ -196,12 +259,12 @@ class WordSquareBot extends ChannelLimitedBot {
 				return;
 			}
 
-			const cloudinaryData: any = await uploadImage(this.state.board);
+			const cloudinaryData: any = await uploadImage(this.state.board, this.state.rowLabels, this.state.colLabels, 'normal', [], newIndices, this.state.prerevealedCells);
 			await this.slack.chat.update({
 				channel: this.state.channel,
 				ts: this.state.thread,
 				text: stripIndent`
-					Keep going!
+					Keep going! :muscle:
 					Reply *in thread* with any 7-letter word you think fits a row or column.
 				`,
 				attachments: this.buildAttachments(cloudinaryData.secure_url),
@@ -210,15 +273,38 @@ class WordSquareBot extends ChannelLimitedBot {
 	}
 
 	private buildAttachments(imageUrl: string, revealAll: boolean = false) {
-		const rowsText = this.state.puzzle?.rows.map((row) => {
-			const word = revealAll ? row.word : this.getRowMask(row.index);
-			return `R${row.index + 1}. ${word}: ${row.definition}`;
-		}).join('\n') ?? '';
+		const seenLabels = new Set<string>();
+		const clueLines: string[] = [];
 
-		const colsText = this.state.puzzle?.cols.map((col) => {
+		for (const row of this.state.puzzle?.rows ?? []) {
+			const label = this.state.rowLabels.get(row.index) ?? '?';
+			if (seenLabels.has(label)) {
+				continue;
+			}
+			seenLabels.add(label);
+			const word = revealAll ? row.word : this.getRowMask(row.index);
+			if (!revealAll && !word.includes('_')) {
+				continue;
+			}
+			const definition = revealAll ? row.definition : row.definitionCensored;
+			const prob = row.probabilityOrder !== null ? ` (${row.probabilityOrder})` : '';
+			clueLines.push(`${label} \`${word}\`${prob} : ${definition}`);
+		}
+
+		for (const col of this.state.puzzle?.cols ?? []) {
+			const label = this.state.colLabels.get(col.index) ?? '?';
+			if (seenLabels.has(label)) {
+				continue;
+			}
+			seenLabels.add(label);
 			const word = revealAll ? col.word : this.getColMask(col.index);
-			return `C${col.index + 1}. ${word}: ${col.definition}`;
-		}).join('\n') ?? '';
+			if (!revealAll && !word.includes('_')) {
+				continue;
+			}
+			const definition = revealAll ? col.definition : col.definitionCensored;
+			const prob = col.probabilityOrder !== null ? ` (${col.probabilityOrder})` : '';
+			clueLines.push(`${label} \`${word}\`${prob} : ${definition}`);
+		}
 
 		return [
 			{
@@ -226,12 +312,8 @@ class WordSquareBot extends ChannelLimitedBot {
 				image_url: imageUrl,
 			},
 			{
-				title: 'Rows',
-				text: rowsText,
-			},
-			{
-				title: 'Columns',
-				text: colsText,
+				title: 'Clues',
+				text: clueLines.join('\n'),
 			},
 		];
 	}
@@ -290,13 +372,15 @@ class WordSquareBot extends ChannelLimitedBot {
 		this.state.thread = null;
 		this.state.channel = null;
 
-		const cloudinaryData: any = await uploadImage(puzzle.board);
+		const mode: RenderMode = success ? 'success' : 'gameover';
+		const answered = this.state.board.map((cell) => cell !== null);
+		const cloudinaryData: any = await uploadImage(puzzle.board, this.state.rowLabels, this.state.colLabels, mode, answered, new Set(), this.state.prerevealedCells);
 
 		await this.postMessage({
 			channel,
 			thread_ts: thread,
 			reply_broadcast: true,
-			text: success ? 'Solved! Great work.' : 'Time is up!',
+			text: success ? 'Solved! :tada:' : 'Time is up! :sob:',
 			attachments: this.buildAttachments(cloudinaryData.secure_url, true),
 		});
 

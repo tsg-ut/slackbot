@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import re
 import sqlite3
 import sys
 from typing import Iterable, List, Set
@@ -56,6 +57,10 @@ def chunked(items: List[str], size: int) -> Iterable[List[str]]:
 		yield items[i:i + size]
 
 
+def censor_definition(definition: str) -> str:
+	return re.sub(r'(?<!-)\b[A-Z]{2,}\b', lambda m: '?' * len(m.group()), definition)
+
+
 def main() -> int:
 	args = parse_args()
 	stages_path = os.path.expanduser(args.stages)
@@ -88,11 +93,17 @@ def main() -> int:
 	out_conn.execute(
 		'CREATE TABLE IF NOT EXISTS definitions ('
 		'word TEXT PRIMARY KEY,'
-		'definition TEXT NOT NULL'
+		'definition TEXT NOT NULL,'
+		'definition_censored TEXT NOT NULL,'
+		'probability_order INTEGER'
 		')'
 	)
 
-	insert_sql = 'INSERT OR REPLACE INTO definitions (word, definition) VALUES (?, ?)'
+	insert_sql = (
+		'INSERT OR REPLACE INTO definitions'
+		' (word, definition, definition_censored, probability_order)'
+		' VALUES (?, ?, ?, ?)'
+	)
 
 	found_total = 0
 	missing_total = 0
@@ -101,11 +112,18 @@ def main() -> int:
 		cur = lex_conn.cursor()
 		for chunk in chunked(sorted(words), batch_size):
 			placeholders = ','.join('?' for _ in chunk)
-			query = f'SELECT word, definition FROM words WHERE word IN ({placeholders})'
+			query = (
+				f'SELECT word, definition, probability_order0'
+				f' FROM words WHERE word IN ({placeholders})'
+			)
 			cur.execute(query, chunk)
 			rows = cur.fetchall()
 			if rows:
-				out_conn.executemany(insert_sql, rows)
+				out_rows = [
+					(word, defn, censor_definition(defn), prob)
+					for word, defn, prob in rows
+				]
+				out_conn.executemany(insert_sql, out_rows)
 				found_words = {row[0] for row in rows}
 				found_total += len(found_words)
 				missing_total += len(chunk) - len(found_words)
