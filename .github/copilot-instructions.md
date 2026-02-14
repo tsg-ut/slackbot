@@ -1,6 +1,6 @@
 # AI assistant instructions for GitHub Copilot
 
-Apply the [general AI assistant instructions](../AGENT.md) to all code you generate.
+Apply the [general AI assistant instructions](../AGENTS.md) to all code you generate.
 
 ## Special Instructions for GitHub Copilot
 
