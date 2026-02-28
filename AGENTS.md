@@ -103,7 +103,7 @@ Launch the following two commands simultaneously in the background when debuggin
 #### 1. Ngrok
 
 ```bash
-ngrok http --domain=<NGROK_DOMAIN> <PORT> > /tmp/ngrok.log 2>&1 &
+ngrok http --domain=<NGROK_DOMAIN> <PORT> > .logs/ngrok.log 2>&1 &
 ```
 
 Required to forward Slack Events API requests to localhost.
@@ -111,17 +111,17 @@ Required to forward Slack Events API requests to localhost.
 #### 2. Application
 
 ```bash
-npm run dev -- --only <bot-id> > /tmp/<bot-id>.log 2>&1 &
+npm run dev -- --only <bot-id> > .logs/<bot-id>.log 2>&1 &
 ```
 
 - The `--only` flag is mandatory. Omitting it starts all plugins simultaneously, making the app extremely slow.
 - `<bot-id>` matches the plugin's directory name (e.g., `sushi-bot`).
-- Redirect logs to `/tmp/<bot-id>.log` for background monitoring.
+- Redirect logs to `.logs/<bot-id>.log` for background monitoring.
 
 Confirm startup by checking the log:
 
 ```bash
-tail -f /tmp/<bot-id>.log
+tail -f .logs/<bot-id>.log
 ```
 
 The app is ready when `Server launched at http://0.0.0.0:<PORT>` appears.
@@ -152,6 +152,17 @@ kill <ngrok-pid> <app-pid>
 ```
 
 Note the PIDs when launching (they are printed after the `&` command) and use them to stop only the intended processes.
+
+### Hot Reload with ts-node-dev
+
+`npm run dev` uses `ts-node-dev`, which **automatically detects file changes and restarts the server** without any manual intervention. When a `.ts` file is saved, the output looks like:
+
+```
+[INFO] Restarting: /path/to/changed-file.ts has been modified
+[INFO] Server launched at http://0.0.0.0:<PORT>
+```
+
+This means you can edit plugin code and immediately test it in Slack without manually restarting the process. Wait for the `Server launched` line before sending test messages.
 
 ### Notes
 
