@@ -90,6 +90,74 @@ is not necessary because the code is self-explanatory. Instead, you must just re
 - Run specific plugin only: `npm run dev -- --only [bot-id]`
 - Production mode: `npm start`
 
+## Local Debugging
+
+> **Note:** Local debugging requires `CLAUDE.local.md` to exist in the project root. If it does not exist, local debugging is not configured and these instructions cannot be followed. Copy `CLAUDE.local.md.example` to `CLAUDE.local.md` and ask user to fill in the appropriate environment values before proceeding.
+
+See `CLAUDE.local.md` for environment-specific values (ngrok domain, port, channel IDs, etc.).
+
+### Starting the Environment
+
+Launch the following two commands simultaneously in the background when debugging.
+
+#### 1. Ngrok
+
+```bash
+ngrok http --domain=<NGROK_DOMAIN> <PORT> > /tmp/ngrok.log 2>&1 &
+```
+
+Required to forward Slack Events API requests to localhost.
+
+#### 2. Application
+
+```bash
+npm run dev -- --only <bot-id> > /tmp/<bot-id>.log 2>&1 &
+```
+
+- The `--only` flag is mandatory. Omitting it starts all plugins simultaneously, making the app extremely slow.
+- `<bot-id>` matches the plugin's directory name (e.g., `sushi-bot`).
+- Redirect logs to `/tmp/<bot-id>.log` for background monitoring.
+
+Confirm startup by checking the log:
+
+```bash
+tail -f /tmp/<bot-id>.log
+```
+
+The app is ready when `Server launched at http://0.0.0.0:<PORT>` appears.
+
+### Interacting with the Slack Workspace
+
+Use the MCP tools from `plugin:slack:slack` to interact with the development Slack workspace.
+
+#### If MCP Tools Are Not Available
+
+If the `plugin:slack:slack` MCP tools cannot be found, the likely causes are:
+
+1. Authentication for the `plugin:slack:slack` plugin has not been completed.
+2. The `plugin:slack:slack` plugin has not been set up properly.
+
+Wait about 10 seconds and check again. If the tools are still unavailable, ask the user to install the `plugin:slack:slack` plugin in Claude Code.
+
+- Send messages: `slack_send_message`
+- Search channels: `slack_search_channels`
+- Search messages: `slack_search_public`
+
+### Stopping the Environment
+
+After debugging is complete, stop the background processes by PID obtained at startup:
+
+```bash
+kill <ngrok-pid> <app-pid>
+```
+
+Note the PIDs when launching (they are printed after the `&` command) and use them to stop only the intended processes.
+
+### Notes
+
+- After startup, it may take a few seconds before the first Slack event arrives.
+- `already_reacted` errors are expected when a reaction has already been added to a message.
+
 ## Key Guidelines
 
 1. Follow JavaScript/TypeScript best practices and idiomatic patterns

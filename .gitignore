@@ -77,3 +77,6 @@ tokens.sqlite3
 .gemini/*
 !.gemini/commands/
 gha-creds-*.json
+
+# Local Claude instructions (environment-specific)
+CLAUDE.local.md
