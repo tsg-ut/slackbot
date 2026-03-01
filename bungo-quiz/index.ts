@@ -3,14 +3,15 @@ import axios from 'axios';
 import { load as cheerioLoad } from 'cheerio';
 import { sample, random } from 'lodash';
 import type { SlackInterface } from '../lib/slack';
+import type { GenericMessageEvent } from '@slack/web-api';
 import { AteQuizProblem, AteQuiz, typicalMessageTextsGenerator } from '../atequiz';
 import { isCorrectAnswer } from '../hayaoshi';
 import { unlock, increment } from '../achievements';
+import { ChannelLimitedBot } from '../lib/channelLimitedBot';
+import { Deferred } from '../lib/utils';
 
 const mutex = new Mutex();
 const decoder = new TextDecoder('shift-jis');
-const commonOption = { username: "bungo", icon_emoji: ':black_nib:' };
-const channel = process.env.CHANNEL_SANDBOX;
 const initialHintTextLength = 20;
 const normalHintTextLength = 50;
 const normalHintTimes = 3;
@@ -75,16 +76,20 @@ const fetchCorpus = async (cardURL: string) => {
 };
 
 
-export default ({ eventClient, webClient: slack }: SlackInterface) => {
-  eventClient.on('message', (message) => {
-    if (message.channel !== process.env.CHANNEL_SANDBOX) {
-      return;
-    }
+class BungoQuizBot extends ChannelLimitedBot {
+  protected override readonly wakeWordRegex = /^(?:文豪クイズ|文豪当てクイズ)$/;
+
+  protected override readonly username = 'bungo';
+
+  protected override readonly iconEmoji = ':black_nib:';
+
+  protected override onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+    const quizMessageDeferred = new Deferred<string | null>();
 
     mutex.runExclusive(async () => {
       const debugInfo = [];
       try {
-        if (message.text && (message.text === '文豪クイズ')) {
+        if (message.text === '文豪クイズ') {
           const { cards, year, month } = await fetchCards();
           debugInfo.push(`ranking: ${year}/${month}`);
           const cardURL = sample(cards);
@@ -95,9 +100,9 @@ export default ({ eventClient, webClient: slack }: SlackInterface) => {
             hintMessages: [
               ...hints.slice(1, -1).map((text, index, arr) => {
                 if (index < arr.length - 1)
-                  return { channel, text: `次のヒントです！\n> ${text}` }
+                  return { channel, text: `次のヒントです！\n> ${text}` };
                 else
-                  return { channel, text: `次のヒントです！作者は${author}ですよ～\n> ${text}` }
+                  return { channel, text: `次のヒントです！作者は${author}ですよ～\n> ${text}` };
               }),
               { channel, text: `最後のヒントです！\n> ${hints[hints.length - 1]}` },
             ],
@@ -115,11 +120,22 @@ export default ({ eventClient, webClient: slack }: SlackInterface) => {
           };
 
           const quiz = new AteQuiz(
-            { eventClient, webClient: slack } as SlackInterface,
+            this.slackClients,
             problem,
-            commonOption,
+            {
+              username: this.username,
+              icon_emoji: this.iconEmoji,
+            },
           );
-          const result = await quiz.start();
+          const result = await quiz.start({
+            mode: 'normal',
+            onStarted(startMessage) {
+              quizMessageDeferred.resolve(startMessage.ts!);
+            },
+          });
+
+          await this.deleteProgressMessage(await quizMessageDeferred.promise);
+
           if (result.state === 'solved') {
             await increment(result.correctAnswerer, 'bungo-answer');
             if (result.hintIndex === 0) {
@@ -128,7 +144,7 @@ export default ({ eventClient, webClient: slack }: SlackInterface) => {
           }
         }
 
-        if (message.text && (message.text === '文豪当てクイズ')) {
+        if (message.text === '文豪当てクイズ') {
           const { cards, year, month } = await fetchCards();
           debugInfo.push(`ranking: ${year}/${month}`);
           const cardURL = sample(cards);
@@ -137,8 +153,8 @@ export default ({ eventClient, webClient: slack }: SlackInterface) => {
           const problem: AteQuizProblem = {
             problemMessage: { channel, text: `この作品の作者は誰でしょう？\n> ${hints[0]}` },
             hintMessages: [
-              ...hints.slice(1, -1).map((text, index, arr) => {
-                return { channel, text: `次のヒントです！\n> ${text}` }
+              ...hints.slice(1, -1).map((text) => {
+                return { channel, text: `次のヒントです！\n> ${text}` };
               }),
               { channel, text: `最後のヒントです！作品名は${title}ですよ～\n> ${hints[hints.length - 1]}` },
             ],
@@ -156,16 +172,27 @@ export default ({ eventClient, webClient: slack }: SlackInterface) => {
           };
 
           const quiz = new AteQuiz(
-            { eventClient, webClient: slack } as SlackInterface,
+            this.slackClients,
             problem,
-            commonOption,
+            {
+              username: this.username,
+              icon_emoji: this.iconEmoji,
+            },
           );
           quiz.judge = (answer: string) => {
             return quiz.problem.correctAnswers.some(
               correctAnswer => isCorrectAnswer(correctAnswer, answer)
             );
           };
-          const result = await quiz.start();
+          const result = await quiz.start({
+            mode: 'normal',
+            onStarted(startMessage) {
+              quizMessageDeferred.resolve(startMessage.ts!);
+            },
+          });
+
+          await this.deleteProgressMessage(await quizMessageDeferred.promise);
+
           if (result.state === 'solved') {
             await increment(result.correctAnswerer, 'bungo-answer');
             if (result.hintIndex === 0) {
@@ -174,12 +201,25 @@ export default ({ eventClient, webClient: slack }: SlackInterface) => {
           }
         }
       } catch (error) {
-        await slack.chat.postMessage({
-          channel: process.env.CHANNEL_SANDBOX,
-          text: `エラー😢\n${error.toString()}\n--debugInfo--\n${debugInfo.join('\n')}`,
-          ...commonOption,
+        this.log.error('Failed to start bungo quiz', error);
+        const errorText =
+          error instanceof Error && error.stack !== undefined
+            ? error.stack : String(error);
+        await this.postMessage({
+          channel,
+          text: `エラー😢\n\`${errorText}\`\n--debugInfo--\n${debugInfo.join('\n')}`,
         });
+        if (!quizMessageDeferred.isResolved) {
+          quizMessageDeferred.resolve(null);
+        }
       }
     });
-  });
-};
+
+    return quizMessageDeferred.promise;
+  }
+}
+
+// eslint-disable-next-line require-jsdoc
+export default function bungoQuiz(slackClients: SlackInterface) {
+  return new BungoQuizBot(slackClients);
+}
