@@ -414,9 +414,10 @@ class KirafanQuizBot extends ChannelLimitedBot {
     (async () => {
       const isEasy = this.isEasyMode(message.text);
       
+      const cards = await getKirafanCards();
       const randomKirafanCard = isEasy
-        ? sample((await getKirafanCards()).filter(card => card.rare === 2))
-        : sample(await getKirafanCards());
+        ? sample(cards.filter(card => card.rare === 2))
+        : sample(cards);
 
       const problem = await generateProblem(randomKirafanCard, channel);
       const quiz = new KirafanAteQuiz(this.slackClients, problem, {
