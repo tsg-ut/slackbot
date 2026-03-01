@@ -1,6 +1,8 @@
 # Logs
 logs
 *.log
+.logs/*
+!.logs/.gitkeep
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -77,3 +79,6 @@ tokens.sqlite3
 .gemini/*
 !.gemini/commands/
 gha-creds-*.json
+
+# Local Claude instructions
+CLAUDE.local.md

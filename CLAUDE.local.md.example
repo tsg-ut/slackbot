@@ -1,0 +1,16 @@
+# Local Environment Settings
+
+## Ngrok
+
+- Domain: `<your-ngrok-domain>.ngrok-free.app`
+- Port: `21864`
+
+## Slack Workspace
+
+- Workspace: `<your-workspace>.slack.com`
+
+## Key Channel IDs
+
+| Environment Variable | Channel ID | Purpose |
+|----------------------|------------|---------|
+| `CHANNEL_SANDBOX` | `<channel-id>` | Sandbox channel (best for testing) |
