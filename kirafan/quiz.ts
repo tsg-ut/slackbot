@@ -403,66 +403,15 @@ class KirafanQuizBot extends ChannelLimitedBot {
 
   protected override readonly iconEmoji = ':claire_kirarafantasia:';
 
+  private isEasyMode(text: string): boolean {
+    const match = text.match(this.wakeWordRegex);
+    return match !== null && match[1] !== undefined;
+  }
+
   protected override onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
     const quizMessageDeferred = new Deferred<string | null>();
 
-    (async () => {
-      const isEasyMode = message.text.match(/^きらファン当てクイズ\s?(easy|[☆★]3)$/);
-      
-      const randomKirafanCard = isEasyMode
-        ? sample((await getKirafanCards()).filter(card => card.rare === 2))
-        : sample(await getKirafanCards());
-
-      const problem = await generateProblem(randomKirafanCard, channel);
-      const quiz = new KirafanAteQuiz(this.slackClients, problem, {
-        icon_emoji: this.iconEmoji,
-        username: isEasyMode ? 'クレア（やさしい）' : this.username,
-      });
-
-      const result = await quiz.start({
-        mode: 'normal',
-        onStarted(startMessage) {
-          quizMessageDeferred.resolve(startMessage.ts!);
-        },
-      });
-
-      await this.deleteProgressMessage(await quizMessageDeferred.promise);
-
-      if (result.state === 'solved') {
-        if (isEasyMode) {
-          await increment(result.correctAnswerer, 'kirafan-easy-answer');
-          if (result.hintIndex === 0) {
-            await increment(
-              result.correctAnswerer,
-              'kirafan-easy-answer-first-hint'
-            );
-          }
-          if (result.hintIndex <= 1) {
-            await increment(
-              result.correctAnswerer,
-              'kirafan-easy-answer-second-hint'
-            );
-          }
-          if (result.hintIndex <= 2) {
-            await increment(
-              result.correctAnswerer,
-              'kirafan-easy-answer-third-hint'
-            );
-          }
-        } else {
-          await increment(result.correctAnswerer, 'kirafan-answer');
-          if (result.hintIndex === 0) {
-            await increment(result.correctAnswerer, 'kirafan-answer-first-hint');
-          }
-          if (result.hintIndex <= 1) {
-            await increment(result.correctAnswerer, 'kirafan-answer-second-hint');
-          }
-          if (result.hintIndex <= 2) {
-            await increment(result.correctAnswerer, 'kirafan-answer-third-hint');
-          }
-        }
-      }
-    })().catch((error: unknown) => {
+    this.startQuiz(message, channel, quizMessageDeferred).catch((error: unknown) => {
       this.log.error('Failed to start kirafan quiz', error);
       const errorText =
         error instanceof Error && error.stack !== undefined
@@ -475,6 +424,75 @@ class KirafanQuizBot extends ChannelLimitedBot {
     });
 
     return quizMessageDeferred.promise;
+  }
+
+  private async startQuiz(
+    message: GenericMessageEvent,
+    channel: string,
+    quizMessageDeferred: Deferred<string | null>
+  ): Promise<void> {
+    const isEasy = this.isEasyMode(message.text);
+    
+    const randomKirafanCard = isEasy
+      ? sample((await getKirafanCards()).filter(card => card.rare === 2))
+      : sample(await getKirafanCards());
+
+    const problem = await generateProblem(randomKirafanCard, channel);
+    const quiz = new KirafanAteQuiz(this.slackClients, problem, {
+      icon_emoji: this.iconEmoji,
+      username: isEasy ? 'クレア（やさしい）' : this.username,
+    });
+
+    const result = await quiz.start({
+      mode: 'normal',
+      onStarted(startMessage) {
+        quizMessageDeferred.resolve(startMessage.ts!);
+      },
+    });
+
+    await this.deleteProgressMessage(await quizMessageDeferred.promise);
+
+    if (result.state === 'solved') {
+      await this.handleAchievements(result, isEasy);
+    }
+  }
+
+  private async handleAchievements(
+    result: { correctAnswerer: string; hintIndex: number },
+    isEasy: boolean
+  ): Promise<void> {
+    if (isEasy) {
+      await increment(result.correctAnswerer, 'kirafan-easy-answer');
+      if (result.hintIndex === 0) {
+        await increment(
+          result.correctAnswerer,
+          'kirafan-easy-answer-first-hint'
+        );
+      }
+      if (result.hintIndex <= 1) {
+        await increment(
+          result.correctAnswerer,
+          'kirafan-easy-answer-second-hint'
+        );
+      }
+      if (result.hintIndex <= 2) {
+        await increment(
+          result.correctAnswerer,
+          'kirafan-easy-answer-third-hint'
+        );
+      }
+    } else {
+      await increment(result.correctAnswerer, 'kirafan-answer');
+      if (result.hintIndex === 0) {
+        await increment(result.correctAnswerer, 'kirafan-answer-first-hint');
+      }
+      if (result.hintIndex <= 1) {
+        await increment(result.correctAnswerer, 'kirafan-answer-second-hint');
+      }
+      if (result.hintIndex <= 2) {
+        await increment(result.correctAnswerer, 'kirafan-answer-third-hint');
+      }
+    }
   }
 }
 

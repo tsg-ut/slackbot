@@ -77,4 +77,3 @@ tokens.sqlite3
 .gemini/*
 !.gemini/commands/
 gha-creds-*.json
-*.tsbuildinfo
