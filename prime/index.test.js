@@ -1,16 +1,18 @@
 /* eslint-env node, jest */
 
 jest.mock('../achievements');
+jest.mock('../lib/slackUtils');
 
 const {default: Slack} = require('../lib/slackMock.ts');
-const shogi = require('./index.js');
+const prime = require('./index.js');
 
 let slack = null;
 
 beforeEach(() => {
 	slack = new Slack();
 	process.env.CHANNEL_SANDBOX = slack.fakeChannel;
-	shogi(slack);
+	process.env.CHANNEL_GAMES = slack.fakeChannel;
+	prime(slack);
 });
 
 describe('shogi', () => {
