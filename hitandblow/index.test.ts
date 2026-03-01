@@ -1,9 +1,8 @@
 import { stripIndent } from 'common-tags';
 import hitandblow from './';
 import Slack from '../lib/slackMock';
-jest.mock('../lib/slackUtils', () => ({
-  isPlayground: () => true,
-}));
+
+jest.mock('../lib/slackUtils');
 
 let slack: Slack;
 
