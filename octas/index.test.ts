@@ -1,4 +1,5 @@
 jest.mock('cloudinary');
+jest.mock('../lib/slackUtils');
 
 import octas from './index';
 import Slack from '../lib/slackMock';
@@ -8,6 +9,7 @@ let slack: Slack = null;
 beforeEach(async () => {
     slack = new Slack();
     process.env.CHANNEL_SANDBOX = slack.fakeChannel;
+    process.env.CHANNEL_GAMES = slack.fakeChannel;
     await octas(slack);
 });
 
