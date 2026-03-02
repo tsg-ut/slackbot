@@ -158,6 +158,8 @@ const argv = yargs
 	.choices('only', allBots)
 	.default('only', productionBots)
 	.default('startup', 'ｼｭｯｼｭｯ (起動音)')
+	.boolean('color')
+	.default('color', true)
 	.argv;
 
 const plugins = uniq(argv.only);
@@ -201,7 +203,7 @@ eventClient.on('error', (error) => {
 				data = parsedBody?.payload ? JSON.parse(parsedBody.payload.toString()) : parsedBody;
 			}
 
-			const inspectedBody = inspect(type === 'Event' ? data?.event : data, { colors: true })
+			const inspectedBody = inspect(type === 'Event' ? data?.event : data, { colors: argv.color })
 			log.info(header + inspectedBody);
 
 			// @ts-expect-error

@@ -103,7 +103,7 @@ Launch the following two commands simultaneously in the background when debuggin
 #### 1. Ngrok
 
 ```bash
-ngrok http --domain=<NGROK_DOMAIN> <PORT> > .logs/ngrok.log 2>&1 & echo "Ngrok PID: $!"
+ngrok http --log .logs/ngrok.log --log-format logfmt --url <NGROK_DOMAIN> <PORT> 2>&1 & echo "Ngrok PID: $!"
 ```
 
 Required to forward Slack Events API requests to localhost.
@@ -111,7 +111,7 @@ Required to forward Slack Events API requests to localhost.
 #### 2. Application
 
 ```bash
-npm run dev -- --only <bot-id> > .logs/<bot-id>.log 2>&1 & echo "App PID: $!"
+npm run dev -- --no-color --only <bot-id> > .logs/<bot-id>.log 2>&1 & echo "App PID: $!"
 ```
 
 - The `--only` flag is mandatory. Omitting it starts all plugins simultaneously, making the app extremely slow.

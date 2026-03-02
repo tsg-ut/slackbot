@@ -6,6 +6,8 @@ import type {FastifyLogFn} from 'fastify';
 // @ts-expect-error
 import {serializers} from 'fastify/lib/logger';
 
+const noColor = process.argv.includes('--no-color');
+
 const logger = winston.createLogger({
 	level: 'info',
 	levels: {
@@ -34,14 +36,18 @@ const logger = winston.createLogger({
 						info.level = info.level.toUpperCase();
 						return info;
 					})(),
-					winston.format.colorize(),
+					...(noColor ? [] : [winston.format.colorize()]),
 					winston.format.printf(({level, message, timestamp, bot}) => {
 						const time = new Date(timestamp);
 						const hh = time.getHours().toString().padStart(2, '0');
 						const mm = time.getMinutes().toString().padStart(2, '0');
 						const ss = time.getSeconds().toString().padStart(2, '0');
-						const timeString = `\x1b[90m${hh}:${mm}:${ss}\x1b[0m`;
-						const botString = bot ? ` \x1b[35m(${bot})\x1b[0m` : '';
+						const timeString = noColor
+							? `${hh}:${mm}:${ss}`
+							: `\x1b[90m${hh}:${mm}:${ss}\x1b[0m`;
+						const botString = bot
+							? (noColor ? ` (${bot})` : ` \x1b[35m(${bot})\x1b[0m`)
+							: '';
 
 						if (typeof message?.res === 'object') {
 							message.res = serializers.res(message.res);
@@ -50,10 +56,12 @@ const logger = winston.createLogger({
 						if (typeof message?.req === 'object') {
 							const method = message.req?.method ?? '';
 							const url = message.req?.url ?? '';
-							return `[${level}] ${timeString}${botString} \x1b[36m${method}\x1b[0m \x1b[35m${url}\x1b[0m`;
+							return noColor
+								? `[${level}] ${timeString}${botString} ${method} ${url}`
+								: `[${level}] ${timeString}${botString} \x1b[36m${method}\x1b[0m \x1b[35m${url}\x1b[0m`;
 						}
-						
-						const prettyMessage = typeof message === 'string' ? message : inspect(message, {colors: true});
+
+						const prettyMessage = typeof message === 'string' ? message : inspect(message, {colors: !noColor});
 						return `[${level}] ${timeString}${botString} ${prettyMessage}`;
 					}),
 				),
