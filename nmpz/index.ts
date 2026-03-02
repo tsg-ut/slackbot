@@ -72,7 +72,7 @@ const getCountryName = async (country_code: string): Promise<Country> => new Pro
   const url = "https://raw.githubusercontent.com/mledoze/countries/master/countries.json";
   fetch(url)
     .then((response) => response.json())
-    .then((data) => {
+    .then((data: any[]) => {
       const country = data.find((c: any) => c.cca2 === country_code.toUpperCase());
       if (!country) {
         reject(new Error("Country not found"));
