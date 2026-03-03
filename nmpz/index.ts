@@ -1,23 +1,20 @@
 import {
   ChatPostMessageArguments,
-  WebClient,
+  GenericMessageEvent,
 } from "@slack/web-api";
-import { EventEmitter } from 'events';
 import fs from "fs";
 import path from "path";
 import puppeteer from "puppeteer";
 import sqlite3 from "sqlite3";
 import { increment } from '../achievements';
-import { AteQuizProblem } from "../atequiz";
+import { AteQuiz, AteQuizProblem } from "../atequiz";
 import { normalize } from "../hayaoshi";
+import { ChannelLimitedBot } from '../lib/channelLimitedBot';
 import logger from "../lib/logger";
 import type { SlackInterface } from "../lib/slack";
+import { Deferred } from '../lib/utils';
 const { Mutex } = require("async-mutex");
-const { AteQuiz } = require("../atequiz/index.ts");
-const { isPlayground } = require('../lib/slackUtils');
 const cloudinary = require("cloudinary");
-
-const mutex = new Mutex();
 
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 if (!API_KEY) {
@@ -75,7 +72,7 @@ const getCountryName = async (country_code: string): Promise<Country> => new Pro
   const url = "https://raw.githubusercontent.com/mledoze/countries/master/countries.json";
   fetch(url)
     .then((response) => response.json())
-    .then((data) => {
+    .then((data: any[]) => {
       const country = data.find((c: any) => c.cca2 === country_code.toUpperCase());
       if (!country) {
         reject(new Error("Country not found"));
@@ -219,20 +216,6 @@ interface NmpzAteQuizProblem extends AteQuizProblem {
 }
 
 class NmpzAteQuiz extends AteQuiz {
-  static option?: Partial<ChatPostMessageArguments> = postOptions;
-  constructor(
-    eventClient: EventEmitter,
-    slack: WebClient,
-    problem: NmpzAteQuizProblem
-  ) {
-    super(
-      { eventClient: eventClient, webClient: slack },
-      problem,
-      NmpzAteQuiz.option
-    );
-    this.answeredUsers = new Set();
-  }
-
   judge(answer: string, _user: string) {
     const normalizedAnswer = normalize(answer);
     const normalizedCorrectAnswers = this.problem.correctAnswers.map(normalize);
@@ -341,69 +324,74 @@ async function prepareProblem(
   return problem;
 }
 
-export default async ({ eventClient, webClient: slack }: SlackInterface) => {
-  const dbPath = "nmpz/coordinates.db";
-  await initDatabase(dbPath);
-  eventClient.on("message", async (message) => {
-    if (!isPlayground(message.channel)) {
-			return;
-		}
-    if (message.text === "NMPZ") {
-      const messageTs = { thread_ts: message.ts };
+const mutex = new Mutex();
 
-      if (mutex.isLocked()) {
-        slack.chat.postMessage({
-          channel: message.channel,
-          text: "今クイズ中だよ:angry:",
-          ...messageTs,
-          ...postOptions,
-        });
-        return;
-      }
-      const [result, _startTime] = await mutex.runExclusive(async () => {
-        try {
-          const arr = await Promise.race([
-            (async () => {
-              const problem: NmpzAteQuizProblem = await prepareProblem(slack, message, message.ts, message.channel);
-              const ateQuiz = new NmpzAteQuiz(eventClient, slack, problem);
-              const st = Date.now();
-              const res = await ateQuiz.start();
+class NmpzBot extends ChannelLimitedBot {
+  protected override readonly wakeWordRegex = /^NMPZ$/;
 
-              return [res, st];
-            })(),
-            (async () => {
-              await new Promise((resolve) => {
-                return setTimeout(resolve, 600 * 1000);
-              });
-              return [null, null, null] as any[];
-            })(),
-          ]);
-          return arr;
-        } catch (error) {
-          logger.error("Error generating NmpzAteQuiz:", error);
-          throw error;
-        }
-      }).catch((error: any): [null, null] => {
-        mutex.release();
-        slack.chat.postMessage({
-          channel: message.channel,
-          text: `問題生成中にエラーが発生しました: ${error.message}`,
-          ...messageTs,
-          ...postOptions,
-        });
-        return [null, null];
+  protected override readonly username = 'NMPZ-quiz';
+
+  protected override readonly iconEmoji = ':rainbolt:';
+
+  protected override onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+    const quizMessageDeferred = new Deferred<string | null>();
+
+    if (mutex.isLocked()) {
+      this.postMessage({
+        channel,
+        text: '今クイズ中だよ:angry:',
+        thread_ts: message.ts,
       });
-      if (!result) return;
-
-      if (result.state === "solved") {
-        await increment(result.correctAnswerer, "nmpz-country-answer");
-        if (result.hintIndex === 0) {
-          await increment(result.correctAnswerer, "nmpz-country-no-hint-answer");
-        }
-        if (result.quiz.answer === "タイ王国") {
-          await increment(result.correctAnswerer, "nmpz-country-thailand-answer");
-        }
-      }
+      return Promise.resolve(null);
     }
-  });
-};
+
+    mutex.runExclusive(async () => {
+      try {
+        const result = await Promise.race([
+          (async () => {
+            const problem: NmpzAteQuizProblem = await prepareProblem(this.slack, message, message.ts, channel);
+            const ateQuiz = new NmpzAteQuiz(this.slackClients, problem, {
+              username: this.username,
+              icon_emoji: this.iconEmoji,
+            });
+            return ateQuiz.start({
+              mode: 'normal',
+              onStarted(startMessage) {
+                quizMessageDeferred.resolve(startMessage.ts!);
+              },
+            });
+          })(),
+          new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('タイムアウト: クイズが600秒以内に終了しませんでした')), 600 * 1000);
+          }),
+        ]);
+
+        await this.deleteProgressMessage(await quizMessageDeferred.promise);
+
+        if (result.state === 'solved') {
+          await increment(result.correctAnswerer, 'nmpz-country-answer');
+          if (result.hintIndex === 0) {
+            await increment(result.correctAnswerer, 'nmpz-country-no-hint-answer');
+          }
+          if ((result.quiz as NmpzAteQuizProblem).answer === 'タイ王国') {
+            await increment(result.correctAnswerer, 'nmpz-country-thailand-answer');
+          }
+        }
+      } catch (error: any) {
+        this.log.error('Failed to start NMPZ quiz', error);
+        this.postMessage({
+          channel,
+          text: `問題生成中にエラーが発生しました: ${error.message}`,
+        });
+        quizMessageDeferred.resolve(null);
+      }
+    });
+
+    return quizMessageDeferred.promise;
+  }
+}
+
+export default async function nmpz(slackClients: SlackInterface) {
+  await initDatabase('nmpz/coordinates.db');
+  return new NmpzBot(slackClients);
+}
