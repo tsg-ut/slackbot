@@ -153,6 +153,18 @@ kill <ngrok-pid> <app-pid>
 
 Note the PIDs when launching (they are printed after the `&` command) and use them to stop only the intended processes.
 
+**After stopping, always verify that the processes are actually terminated** before reporting success. On Cygwin/Windows environments, `pkill` may silently fail to kill native Windows processes. Use the following commands to confirm:
+
+```bash
+# Confirm no matching processes remain
+ps aux | grep -E "ts-node|ngrok" | grep -v grep
+
+# Confirm the port is no longer listening
+netstat -ano | grep ":<PORT>" | grep "LISTENING"
+```
+
+Both commands should return empty output. If processes remain, find the PID with `ps aux` and kill them explicitly with `kill <PID>`.
+
 ### Hot Reload with ts-node-dev
 
 `npm run dev` uses `ts-node-dev`, which **automatically detects file changes and restarts the server** without any manual intervention. When a `.ts` file is saved, the output looks like:

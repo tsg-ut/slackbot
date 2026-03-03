@@ -5,16 +5,18 @@ import puppeteer from "puppeteer";
 import { AteQuizProblem, AteQuizResult } from "../atequiz";
 import {
   ChatPostMessageArguments,
+  GenericMessageEvent,
   WebClient,
 } from "@slack/web-api";
 import { increment } from "../achievements";
+import { ChannelLimitedBot } from "../lib/channelLimitedBot";
+import { Deferred } from "../lib/utils";
 import { EventEmitter } from 'events';
 const { Mutex } = require("async-mutex");
 const { AteQuiz } = require("../atequiz/index.ts");
 const cloudinary = require("cloudinary");
 
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
-const CHANNEL = process.env.CHANNEL_SANDBOX;
 const mutex = new Mutex();
 
 const img_size = 1000;
@@ -174,7 +176,6 @@ const mesHelp = {
       },
     },
   ],
-  channel: CHANNEL,
 };
 
 function countriesListMessageGen(aliases: Record<string, string[]>): any {
@@ -212,7 +213,6 @@ function countriesListMessageGen(aliases: Record<string, string[]>): any {
         return { type: "section", text: { type: "mrkdwn", text: text } };
       }),
     ],
-    channel: CHANNEL,
   };
   return mesCountries;
 }
@@ -582,13 +582,14 @@ function problemFormat(
   img_url: string,
   latitude: number,
   longitude: number,
-  thread_ts: string
+  thread_ts: string,
+  channel: string
 ) {
   const answer = latLngFormat(latitude, longitude);
 
   const problem: CoordAteQuizProblem = {
     problemMessage: {
-      channel: CHANNEL,
+      channel,
       thread_ts,
       text: `緯度と経度を当ててね。サイズは${distFormat(size)}四方だよ。`,
       blocks: [
@@ -608,13 +609,13 @@ function problemFormat(
     },
     hintMessages: [
       {
-        channel: CHANNEL,
+        channel,
         text: `画像の中心点は${country.properties.NAME_JA}にあるよ:triangular_flag_on_post:`,
       },
     ],
-    immediateMessage: { channel: CHANNEL, text: "制限時間: 300秒" },
+    immediateMessage: { channel, text: "制限時間: 300秒" },
     solvedMessage: {
-      channel: CHANNEL,
+      channel,
       text: ``,
       reply_broadcast: true,
       thread_ts,
@@ -622,13 +623,13 @@ function problemFormat(
       unfurl_media: false,
     },
     incorrectMessage: {
-      channel: CHANNEL,
+      channel,
       text: ``,
       unfurl_links: false,
       unfurl_media: false,
     },
     unsolvedMessage: {
-      channel: CHANNEL,
+      channel,
       text: `もう、しっかりして！\n中心点の座標は <https://maps.google.co.jp/maps?ll=${latitude},${longitude}&q=${latitude},${longitude}&&t=k|${answer}> だよ:anger:`,
       reply_broadcast: true,
       thread_ts,
@@ -636,8 +637,8 @@ function problemFormat(
       unfurl_media: false,
     },
     answer: [latitude, longitude],
-    zoom: zoom,
-    size: size,
+    zoom,
+    size,
     correctAnswers: [] as string[],
   };
   return problem;
@@ -647,11 +648,12 @@ async function prepareProblem(
   slack: any,
   message: any,
   aliases: Record<string, string[]>,
-  world: any,
-  thread_ts: string
+  world: Turf.FeatureCollection<Turf.MultiPolygon>,
+  thread_ts: string,
+  channel: string
 ) {
   await slack.chat.postEphemeral({
-    channel: CHANNEL,
+    channel,
     text: "問題を生成中...",
     user: message.user,
     ...postOptions,
@@ -664,7 +666,7 @@ async function prepareProblem(
   if (errorText.length > 0) {
     await slack.chat.postMessage({
       text: errorText,
-      channel: CHANNEL,
+      channel,
       ...postOptions,
     });
     return;
@@ -686,106 +688,125 @@ async function prepareProblem(
     img_url,
     latitude,
     longitude,
-    thread_ts
+    thread_ts,
+    channel
   );
   return problem;
 }
 
-export default async ({ eventClient, webClient: slack }: SlackInterface) => {
+class MapGuessr extends ChannelLimitedBot {
+  protected override readonly wakeWordRegex = /^座標[当あ]て/;
+
+  protected override readonly username = 'coord-quiz';
+
+  protected override readonly iconEmoji = ':globe_with_meridians:';
+
+  private readonly aliases: Record<string, string[]>;
+
+  private readonly world: Turf.FeatureCollection<Turf.MultiPolygon>;
+
+  constructor(slackClients: SlackInterface, aliases: Record<string, string[]>, world: Turf.FeatureCollection<Turf.MultiPolygon>) {
+    super(slackClients);
+    this.aliases = aliases;
+    this.world = world;
+  }
+
+  protected override onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+    if (message.text.includes('help')) {
+      this.postMessage({
+        ...mesHelp,
+        channel,
+        thread_ts: message.ts,
+      });
+      return Promise.resolve(null);
+    }
+
+    if (message.text.includes('countries')) {
+      this.postMessage({
+        ...countriesListMessageGen(this.aliases),
+        channel,
+        thread_ts: message.ts,
+      });
+      return Promise.resolve(null);
+    }
+
+    if (mutex.isLocked()) {
+      this.postMessage({
+        channel,
+        text: '今クイズ中だよ:angry:',
+        thread_ts: message.ts,
+      });
+      return Promise.resolve(null);
+    }
+
+    const quizMessageDeferred = new Deferred<string | null>();
+
+    mutex.runExclusive(async () => {
+      try {
+        const problem: CoordAteQuizProblem = await prepareProblem(
+          this.slack,
+          message,
+          this.aliases,
+          this.world,
+          message.ts,
+          channel,
+        );
+
+        if (!problem) {
+          quizMessageDeferred.resolve(null);
+          return;
+        }
+
+        const ateQuiz = new CoordAteQuiz(this.eventClient, this.slack, problem);
+        const startTime = Date.now();
+        const result = await ateQuiz.start({
+          mode: 'normal',
+          onStarted(startMessage: any) {
+            quizMessageDeferred.resolve(startMessage.ts!);
+          },
+        });
+
+        await this.deleteProgressMessage(await quizMessageDeferred.promise);
+
+        const endTime = Date.now();
+
+        if (result.state === 'solved') {
+          await increment(result.correctAnswerer, 'coord-quiz-easy-answer');
+          if (problem.size < 20.00001) {
+            await increment(result.correctAnswerer, 'coord-quiz-professional-answer');
+          }
+          if (problem.size <= 100.00001) {
+            await increment(result.correctAnswerer, 'coord-quiz-hard-answer');
+          }
+          if (problem.size <= 500.00001) {
+            await increment(result.correctAnswerer, 'coord-quiz-medium-answer');
+          }
+          if (endTime - startTime <= 30000) {
+            await increment(result.correctAnswerer, 'coord-quiz-30sec-answer');
+          }
+        }
+      } catch (error: unknown) {
+        this.log.error('Failed to start map-guessr quiz', error);
+        const errorText = error instanceof Error && error.stack !== undefined
+          ? error.stack : String(error);
+        this.postMessage({
+          channel,
+          text: `エラー😢\n\`${errorText}\``,
+        });
+        quizMessageDeferred.resolve(null);
+      }
+    });
+
+    return quizMessageDeferred.promise;
+  }
+}
+
+export default async (slackClients: SlackInterface) => {
   const aliases = (await fs.readJson(
     __dirname + "/country_names.json"
   )) as Record<string, string[]>;
 
   const world = await fs.readJson(__dirname + "/countries.geojson");
-  eventClient.on("message", async (message) => {
-    if (
-      message.channel !== CHANNEL ||
-      message.thread_ts ||
-      !(
-        message.text?.startsWith("座標当て") ||
-        message.text?.startsWith("座標あて")
-      )
-    ) {
-      return;
-    }
-    const messageTs = { thread_ts: message.ts };
 
-    if (message.text.includes("help")) {
-      await slack.chat.postMessage({
-        ...mesHelp,
-        ...postOptions,
-        ...messageTs,
-      });
-      return;
-    }
-
-    if (message.text.includes("countries")) {
-      await slack.chat.postMessage({
-        ...countriesListMessageGen(aliases),
-        ...postOptions,
-        ...messageTs,
-      });
-      return;
-    }
-
-    if (mutex.isLocked()) {
-      slack.chat.postMessage({
-        channel: CHANNEL,
-        text: "今クイズ中だよ:angry:",
-        ...messageTs,
-        ...postOptions,
-      });
-      return;
-    }
-
-    const [result, startTime, size] = await mutex.runExclusive(async () => {
-      const arr = await Promise.race([
-        (async () => {
-          const problem: CoordAteQuizProblem = await prepareProblem(
-            slack,
-            message,
-            aliases,
-            world,
-            message.ts
-          );
-
-          const ateQuiz = new CoordAteQuiz(eventClient, slack, problem);
-          const st = Date.now();
-          const res = await ateQuiz.start();
-
-          return [res, st, problem.size];
-        })(),
-        (async () => {
-          await new Promise((resolve) => {
-            return setTimeout(resolve, 600 * 1000);
-          });
-          return [null, null, null] as any[];
-        })(),
-      ]);
-      return arr;
-    });
-
-    const endTime = Date.now();
-
-    if (!result) return;
-
-    if (result.state === "solved") {
-      await increment(result.correctAnswerer, "coord-quiz-easy-answer");
-      if (size < 20.00001) {
-        await increment(
-          result.correctAnswerer,
-          "coord-quiz-professional-answer"
-        );
-      }
-      if (size <= 100.00001) {
-        await increment(result.correctAnswerer, "coord-quiz-hard-answer");
-      }
-      if (size <= 500.00001) {
-        await increment(result.correctAnswerer, "coord-quiz-medium-answer");
-      }
-      if (endTime - startTime <= 30000) {
-        await increment(result.correctAnswerer, "coord-quiz-30sec-answer");
-      }
-    }
-  });
+  return new MapGuessr(slackClients, aliases, world);
 };
