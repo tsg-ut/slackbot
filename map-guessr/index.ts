@@ -589,7 +589,7 @@ function problemFormat(
 
   const problem: CoordAteQuizProblem = {
     problemMessage: {
-      channel: channel,
+      channel,
       thread_ts,
       text: `緯度と経度を当ててね。サイズは${distFormat(size)}四方だよ。`,
       blocks: [
@@ -609,13 +609,13 @@ function problemFormat(
     },
     hintMessages: [
       {
-        channel: channel,
+        channel,
         text: `画像の中心点は${country.properties.NAME_JA}にあるよ:triangular_flag_on_post:`,
       },
     ],
-    immediateMessage: { channel: channel, text: "制限時間: 300秒" },
+    immediateMessage: { channel, text: "制限時間: 300秒" },
     solvedMessage: {
-      channel: channel,
+      channel,
       text: ``,
       reply_broadcast: true,
       thread_ts,
@@ -623,13 +623,13 @@ function problemFormat(
       unfurl_media: false,
     },
     incorrectMessage: {
-      channel: channel,
+      channel,
       text: ``,
       unfurl_links: false,
       unfurl_media: false,
     },
     unsolvedMessage: {
-      channel: channel,
+      channel,
       text: `もう、しっかりして！\n中心点の座標は <https://maps.google.co.jp/maps?ll=${latitude},${longitude}&q=${latitude},${longitude}&&t=k|${answer}> だよ:anger:`,
       reply_broadcast: true,
       thread_ts,
@@ -637,8 +637,8 @@ function problemFormat(
       unfurl_media: false,
     },
     answer: [latitude, longitude],
-    zoom: zoom,
-    size: size,
+    zoom,
+    size,
     correctAnswers: [] as string[],
   };
   return problem;
@@ -648,12 +648,12 @@ async function prepareProblem(
   slack: any,
   message: any,
   aliases: Record<string, string[]>,
-  world: any,
+  world: Turf.FeatureCollection<Turf.MultiPolygon>,
   thread_ts: string,
   channel: string
 ) {
   await slack.chat.postEphemeral({
-    channel: channel,
+    channel,
     text: "問題を生成中...",
     user: message.user,
     ...postOptions,
@@ -666,7 +666,7 @@ async function prepareProblem(
   if (errorText.length > 0) {
     await slack.chat.postMessage({
       text: errorText,
-      channel: channel,
+      channel,
       ...postOptions,
     });
     return;
@@ -703,9 +703,9 @@ class MapGuessr extends ChannelLimitedBot {
 
   private readonly aliases: Record<string, string[]>;
 
-  private readonly world: any;
+  private readonly world: Turf.FeatureCollection<Turf.MultiPolygon>;
 
-  constructor(slackClients: SlackInterface, aliases: Record<string, string[]>, world: any) {
+  constructor(slackClients: SlackInterface, aliases: Record<string, string[]>, world: Turf.FeatureCollection<Turf.MultiPolygon>) {
     super(slackClients);
     this.aliases = aliases;
     this.world = world;
