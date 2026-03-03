@@ -216,14 +216,6 @@ interface NmpzAteQuizProblem extends AteQuizProblem {
 }
 
 class NmpzAteQuiz extends AteQuiz {
-  constructor(
-    slackClients: SlackInterface,
-    problem: NmpzAteQuizProblem,
-    option?: Partial<ChatPostMessageArguments>,
-  ) {
-    super(slackClients, problem, option);
-  }
-
   judge(answer: string, _user: string) {
     const normalizedAnswer = normalize(answer);
     const normalizedCorrectAnswers = this.problem.correctAnswers.map(normalize);
@@ -350,8 +342,7 @@ class NmpzBot extends ChannelLimitedBot {
         text: '今クイズ中だよ:angry:',
         thread_ts: message.ts,
       });
-      quizMessageDeferred.resolve(null);
-      return quizMessageDeferred.promise;
+      return Promise.resolve(null);
     }
 
     mutex.runExclusive(async () => {
@@ -361,12 +352,17 @@ class NmpzBot extends ChannelLimitedBot {
         icon_emoji: this.iconEmoji,
       });
 
-      const result = await ateQuiz.start({
-        mode: 'normal',
-        onStarted(startMessage) {
-          quizMessageDeferred.resolve(startMessage.ts!);
-        },
-      });
+      const result = await Promise.race([
+        ateQuiz.start({
+          mode: 'normal',
+          onStarted(startMessage) {
+            quizMessageDeferred.resolve(startMessage.ts!);
+          },
+        }),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('タイムアウト: クイズが600秒以内に終了しませんでした')), 600 * 1000);
+        }),
+      ]);
 
       await this.deleteProgressMessage(await quizMessageDeferred.promise);
 
