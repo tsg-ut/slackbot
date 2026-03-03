@@ -346,42 +346,45 @@ class NmpzBot extends ChannelLimitedBot {
     }
 
     mutex.runExclusive(async () => {
-      const problem: NmpzAteQuizProblem = await prepareProblem(this.slack, message, message.ts, channel);
-      const ateQuiz = new NmpzAteQuiz(this.slackClients, problem, {
-        username: this.username,
-        icon_emoji: this.iconEmoji,
-      });
+      try {
+        const result = await Promise.race([
+          (async () => {
+            const problem: NmpzAteQuizProblem = await prepareProblem(this.slack, message, message.ts, channel);
+            const ateQuiz = new NmpzAteQuiz(this.slackClients, problem, {
+              username: this.username,
+              icon_emoji: this.iconEmoji,
+            });
+            return ateQuiz.start({
+              mode: 'normal',
+              onStarted(startMessage) {
+                quizMessageDeferred.resolve(startMessage.ts!);
+              },
+            });
+          })(),
+          new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('タイムアウト: クイズが600秒以内に終了しませんでした')), 600 * 1000);
+          }),
+        ]);
 
-      const result = await Promise.race([
-        ateQuiz.start({
-          mode: 'normal',
-          onStarted(startMessage) {
-            quizMessageDeferred.resolve(startMessage.ts!);
-          },
-        }),
-        new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('タイムアウト: クイズが600秒以内に終了しませんでした')), 600 * 1000);
-        }),
-      ]);
+        await this.deleteProgressMessage(await quizMessageDeferred.promise);
 
-      await this.deleteProgressMessage(await quizMessageDeferred.promise);
-
-      if (result.state === 'solved') {
-        await increment(result.correctAnswerer, 'nmpz-country-answer');
-        if (result.hintIndex === 0) {
-          await increment(result.correctAnswerer, 'nmpz-country-no-hint-answer');
+        if (result.state === 'solved') {
+          await increment(result.correctAnswerer, 'nmpz-country-answer');
+          if (result.hintIndex === 0) {
+            await increment(result.correctAnswerer, 'nmpz-country-no-hint-answer');
+          }
+          if ((result.quiz as NmpzAteQuizProblem).answer === 'タイ王国') {
+            await increment(result.correctAnswerer, 'nmpz-country-thailand-answer');
+          }
         }
-        if ((result.quiz as NmpzAteQuizProblem).answer === 'タイ王国') {
-          await increment(result.correctAnswerer, 'nmpz-country-thailand-answer');
-        }
+      } catch (error: any) {
+        this.log.error('Failed to start NMPZ quiz', error);
+        this.postMessage({
+          channel,
+          text: `問題生成中にエラーが発生しました: ${error.message}`,
+        });
+        quizMessageDeferred.resolve(null);
       }
-    }).catch((error: any) => {
-      this.log.error('Failed to start NMPZ quiz', error);
-      this.postMessage({
-        channel,
-        text: `問題生成中にエラーが発生しました: ${error.message}`,
-      });
-      quizMessageDeferred.resolve(null);
     });
 
     return quizMessageDeferred.promise;
