@@ -4,13 +4,14 @@ import { SlackInterface } from '../lib/slack';
 import sharp, { OverlayOptions } from 'sharp';
 import axios from 'axios';
 import { random, sample } from 'lodash';
-import { ChatPostMessageArguments } from '@slack/web-api';
+import { ChatPostMessageArguments, GenericMessageEvent } from '@slack/web-api';
 import cloudinary, { UploadApiResponse } from 'cloudinary';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error
 import { hiraganize } from 'japanese';
 import { increment } from '../achievements';
-import { isPlayground } from '../lib/slackUtils';
+import { ChannelLimitedBot } from '../lib/channelLimitedBot';
+import { Deferred } from '../lib/utils';
 
 interface KirafanAteQuizProblem extends AteQuizProblem {
   correctAnswerCard: KirafanCard;
@@ -395,81 +396,95 @@ const generateProblem = async (
   return problem;
 };
 
-const postOption = {
-  icon_emoji: ':claire_kirarafantasia:',
-  username: 'クレア',
-};
+class KirafanQuizBot extends ChannelLimitedBot {
+  protected override readonly wakeWordRegex = /^きらファン当てクイズ(\s?(easy|[☆★]3))?$/;
 
-const postOptionEasy = {
-  icon_emoji: ':claire_kirarafantasia:',
-  username: 'クレア（やさしい）',
-};
+  protected override readonly username = 'クレア';
 
-export default (slackClients: SlackInterface): void => {
-  const { eventClient } = slackClients;
+  protected override readonly iconEmoji = ':claire_kirarafantasia:';
 
-  eventClient.on('message', async message => {
-    if (!isPlayground(message.channel)) {
-      return;
-    }
-    if (
-      message.subtype === 'bot_message' ||
-      message.subtype === 'slackbot_response'
-    ) {
-      return;
-    }
-    if (!message.text) {
-      return;
-    }
+  private isEasyMode(text: string): boolean {
+    const match = text.match(this.wakeWordRegex);
+    return match !== null && match[1] !== undefined;
+  }
 
-    // クイズ開始処理
-    if (message.text.match(/^きらファン当てクイズ$/)) {
-      const randomKirafanCard = sample(await getKirafanCards());
-      const problem = await generateProblem(randomKirafanCard, message.channel);
-      const quiz = new KirafanAteQuiz(slackClients, problem, postOption);
-      const result = await quiz.start();
+  protected override onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+    const quizMessageDeferred = new Deferred<string | null>();
+
+    (async () => {
+      const isEasy = this.isEasyMode(message.text);
+      
+      const cards = await getKirafanCards();
+      const randomKirafanCard = isEasy
+        ? sample(cards.filter(card => card.rare === 2))
+        : sample(cards);
+
+      const problem = await generateProblem(randomKirafanCard, channel);
+      const quiz = new KirafanAteQuiz(this.slackClients, problem, {
+        icon_emoji: this.iconEmoji,
+        username: isEasy ? 'クレア（やさしい）' : this.username,
+      });
+
+      const result = await quiz.start({
+        mode: 'normal',
+        onStarted(startMessage) {
+          quizMessageDeferred.resolve(startMessage.ts!);
+        },
+      });
+
+      await this.deleteProgressMessage(await quizMessageDeferred.promise);
+
       if (result.state === 'solved') {
-        await increment(result.correctAnswerer, 'kirafan-answer');
-        if (result.hintIndex === 0) {
-          await increment(result.correctAnswerer, 'kirafan-answer-first-hint');
-        }
-        if (result.hintIndex <= 1) {
-          await increment(result.correctAnswerer, 'kirafan-answer-second-hint');
-        }
-        if (result.hintIndex <= 2) {
-          await increment(result.correctAnswerer, 'kirafan-answer-third-hint');
+        if (isEasy) {
+          await increment(result.correctAnswerer, 'kirafan-easy-answer');
+          if (result.hintIndex === 0) {
+            await increment(
+              result.correctAnswerer,
+              'kirafan-easy-answer-first-hint'
+            );
+          }
+          if (result.hintIndex <= 1) {
+            await increment(
+              result.correctAnswerer,
+              'kirafan-easy-answer-second-hint'
+            );
+          }
+          if (result.hintIndex <= 2) {
+            await increment(
+              result.correctAnswerer,
+              'kirafan-easy-answer-third-hint'
+            );
+          }
+        } else {
+          await increment(result.correctAnswerer, 'kirafan-answer');
+          if (result.hintIndex === 0) {
+            await increment(result.correctAnswerer, 'kirafan-answer-first-hint');
+          }
+          if (result.hintIndex <= 1) {
+            await increment(result.correctAnswerer, 'kirafan-answer-second-hint');
+          }
+          if (result.hintIndex <= 2) {
+            await increment(result.correctAnswerer, 'kirafan-answer-third-hint');
+          }
         }
       }
-    }
+    })().catch((error: unknown) => {
+      this.log.error('Failed to start kirafan quiz', error);
+      const errorText =
+        error instanceof Error && error.stack !== undefined
+          ? error.stack : String(error);
+      this.postMessage({
+        channel,
+        text: `エラー😢\n\`${errorText}\``,
+      });
+      quizMessageDeferred.resolve(null);
+    });
 
-    if (message.text.match(/^きらファン当てクイズ\s?(easy|[☆★]3)$/)) {
-      const randomKirafanCard = sample(
-        (await getKirafanCards()).filter(card => card.rare === 2)
-      );
-      const problem = await generateProblem(randomKirafanCard, message.channel);
-      const quiz = new KirafanAteQuiz(slackClients, problem, postOptionEasy);
-      const result = await quiz.start();
-      if (result.state === 'solved') {
-        await increment(result.correctAnswerer, 'kirafan-easy-answer');
-        if (result.hintIndex === 0) {
-          await increment(
-            result.correctAnswerer,
-            'kirafan-easy-answer-first-hint'
-          );
-        }
-        if (result.hintIndex <= 1) {
-          await increment(
-            result.correctAnswerer,
-            'kirafan-easy-answer-second-hint'
-          );
-        }
-        if (result.hintIndex <= 2) {
-          await increment(
-            result.correctAnswerer,
-            'kirafan-easy-answer-third-hint'
-          );
-        }
-      }
-    }
-  });
-};
+    return quizMessageDeferred.promise;
+  }
+}
+
+// eslint-disable-next-line require-jsdoc
+export default function kirafanQuiz(slackClients: SlackInterface) {
+  return new KirafanQuizBot(slackClients);
+}
