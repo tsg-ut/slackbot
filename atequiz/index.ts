@@ -212,7 +212,7 @@ export class AteQuiz {
     this.eventClient.on('message', async (message: MessageEvent) => {
       const thread_ts = await this.threadTsDeferred.promise;
       if ('thread_ts' in message && message.thread_ts === thread_ts) {
-        if (message.subtype === 'bot_message') return;
+        if ('bot_id' in message && message.bot_id) return;
         if (_option.mode === 'solo' && message.user !== _option.player) return;
         this.mutex.runExclusive(async () => {
           if (this.state === 'solving') {
