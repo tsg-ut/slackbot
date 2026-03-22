@@ -111,6 +111,9 @@ interface ContestEntry {
 	duration: number,
 }
 
+const SILENT_CONTEST_PREFIXES = ['awc', 'adt_'];
+const SILENT_START_CONTEST_PREFIXES = ['adt_'];
+
 export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const state = await State.init<StateObj>('atcoder', {
 		users: [],
@@ -172,7 +175,9 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			});
 
 			for (const contest of newContests) {
-				await postNewContest(contest.id);
+				if (!SILENT_CONTEST_PREFIXES.some((prefix) => contest.id.startsWith(prefix))) {
+					await postNewContest(contest.id);
+				}
 			}
 		}
 	};
@@ -238,6 +243,10 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		return {userStandings, tasks};
 	};
 
+	const hasParticipants = (userStandings: {standing: unknown}[]) => (
+		userStandings.some(({standing}) => standing !== undefined)
+	);
+
 	const prepostResult = async (id: string) => {
 		const contest = state.contests.find((contest) => contest.id === id);
 
@@ -256,6 +265,11 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		log.info(`Preposting result of contest ${id}...`);
 
 		const {userStandings, tasks} = await getStandings(id);
+
+		if (!hasParticipants(userStandings)) {
+			contest.isPreposted = true;
+			return;
+		}
 
 		await slack.chat.postMessage({
 			username: 'atcoder',
@@ -327,6 +341,11 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		}).sort((a, b) => (a.standing ? a.standing.Rank : 1e9) - (b.standing ? b.standing.Rank : 1e9));
 
 		const tasks = new Map(standings.TaskInfo.map((task) => [task.TaskScreenName, task]));
+
+		if (!hasParticipants(userStandings)) {
+			contest.isPosted = true;
+			return;
+		}
 
 		const colorUpdates: {user: string, oldRating: number, newRating: number}[] = [];
 
@@ -661,10 +680,14 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 				const prerollTime = contest.date - 15 * 60 * 1000;
 				const endTime = contest.date + contest.duration;
 				if (oldTime <= prerollTime && prerollTime < newTime) {
-					await postPreroll(contest.id);
+					if (!SILENT_START_CONTEST_PREFIXES.some((prefix) => contest.id.startsWith(prefix))) {
+						await postPreroll(contest.id);
+					}
 				}
 				if (oldTime <= contest.date && contest.date < newTime) {
-					await postStart(contest.id);
+					if (!SILENT_START_CONTEST_PREFIXES.some((prefix) => contest.id.startsWith(prefix))) {
+						await postStart(contest.id);
+					}
 				}
 				if (oldTime <= endTime && endTime < newTime) {
 					await prepostResult(contest.id);
