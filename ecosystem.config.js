@@ -6,5 +6,7 @@ module.exports = {
 		script: 'index.ts',
 		watch: false,
 		min_uptime: '60s',
+		time: true,
+		log_date_format: 'YYYY-MM-DD HH:mm Z',
 	}],
 };
