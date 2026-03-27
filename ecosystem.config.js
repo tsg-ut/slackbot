@@ -7,6 +7,6 @@ module.exports = {
 		watch: false,
 		min_uptime: '60s',
 		time: true,
-		log_date_format: 'YYYY-MM-DD HH:mm Z',
+		log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
 	}],
 };
