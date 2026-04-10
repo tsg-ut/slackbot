@@ -1,4 +1,4 @@
-import { AteQuiz, AteQuizProblem } from '../atequiz';
+import { AteQuiz, AteQuizProblem, AteQuizStartOption } from '../atequiz';
 import { round } from 'lodash';
 import cloudinary from 'cloudinary';
 import type { GenericMessageEvent } from '@slack/bolt';
@@ -116,9 +116,9 @@ export default class SinglePlayRicochetRobot extends AteQuiz {
 		return Infinity;
 	}
 
-	start() {
+	start(startOption?: AteQuizStartOption) {
 		this.startTime = Date.now();
-		return super.start();
+		return super.start(startOption);
 	}
 
 	postMessage(message: {text: string, blocks?: KnownBlock[]}) {
