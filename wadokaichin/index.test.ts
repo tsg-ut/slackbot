@@ -30,6 +30,7 @@ jest.mock('lodash',() => {
   }
 });
 
+jest.mock('../lib/slackUtils');
 import wadokaichin from "./index";
 
 jest.useFakeTimers();
