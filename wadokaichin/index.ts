@@ -7,9 +7,10 @@ import type {SlackInterface} from '../lib/slack';
 import {download} from '../lib/download';
 import {parse as csv_parse} from 'csv-parse';
 import {AteQuiz,AteQuizProblem} from '../atequiz';
-import type { ChatPostMessageArguments } from '@slack/web-api';
+import type { ChatPostMessageArguments, GenericMessageEvent } from '@slack/web-api';
 import { stripIndent } from 'common-tags';
-import {Loader} from '../lib/utils';
+import {Loader,Deferred} from '../lib/utils';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 
 /*
 Future works
@@ -113,9 +114,8 @@ async function SolveProblem(jukugo: jukugoDict, problem: Problem) : Promise<stri
 
 async function generateProblem(jukugo:jukugoDict) : Promise<Problem> {
   const kanjis = await kanjisLoader.load();
-  let lcnt = 0;
   let problem : WadoProblem = null;
-  while(true){
+  for (let i = 0; i < 100; i++) {
     const c = sample(kanjis);
     const j0 = jukugo[0].get(c);
     const j1 = jukugo[1].get(c);
@@ -126,8 +126,9 @@ async function generateProblem(jukugo:jukugoDict) : Promise<Problem> {
       ];
       break;
     }
-    lcnt += 1;
-    if(lcnt > 100)break;
+  }
+  if (problem === null) {
+    throw new Error('和同開珎の問題が作れなかったにゃ〜！');
   }
 
   // フォントがどうしてもずれる
@@ -189,28 +190,25 @@ class WadoQuiz extends AteQuiz {
   }
 }
 
-export default (slackClients: SlackInterface) => {
-  const {eventClient,webClient} = slackClients;
+class WadoKaichinBot extends ChannelLimitedBot {
+  protected override readonly wakeWordRegex = /^(?:和同開珎|和同|開珎|わどう)$/;
+  protected override readonly username = '和同開珎';
+  protected override readonly iconEmoji = ':coin:';
 
-  const channel = process.env.CHANNEL_SANDBOX;
-  eventClient.on('message', (message) => {
-    if (message.channel !== channel) {
-      return;
+  protected override async onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+    if(mutex.isLocked()) {
+      await this.slack.reactions.add({
+        name: "running",
+        channel: message.channel,
+        timestamp: message.ts,
+      });
+      return null;
     }
-    if (message.text && (
-          message.text === '和同開珎' ||
-          message.text === '和同' ||
-          message.text === '開珎' ||
-          message.text === 'わどう')) {
-      if(mutex.isLocked()) {
-        webClient.reactions.add({
-          name: "running",
-          channel: message.channel,
-          timestamp: message.ts,
-        });
-        return;
-      }
-      mutex.runExclusive(async () => {
+
+    const quizMessageDeferred = new Deferred<string>();
+
+    mutex.runExclusive(async () => {
+      try {
         const data = await generateProblem(await jukugoLoader.load());
         const problem : AteQuizProblem = {
           problemMessage: {
@@ -231,17 +229,39 @@ export default (slackClients: SlackInterface) => {
           correctAnswers: [...data.acceptAnswerMap.keys()]
         };
         const quiz = new WadoQuiz(
-          slackClients,
+          this.slackClients,
           problem,
           data,
           channel,
-          {username: '和同開珎', icon_emoji: ':coin:'},
+          {username: this.username, icon_emoji: this.iconEmoji},
         );
-        const result = await quiz.start();
+        const result = await quiz.start({
+          mode: 'normal',
+          onStarted(startMessage) {
+            quizMessageDeferred.resolve(startMessage.ts!);
+          },
+        });
+
+        await this.deleteProgressMessage(await quizMessageDeferred.promise);
+
         if (result.state === 'solved') {
           // TODO: add achievenemts
         }
-      });
-    }
-  });
-};
+      } catch (error) {
+        this.log.error('Failed to start wadokaichin quiz', error);
+        const errorText =
+          error instanceof Error && error.stack !== undefined
+            ? error.stack : String(error);
+        await this.postMessage({
+          channel,
+          text: `エラー😢\n\`${errorText}\``,
+        });
+        quizMessageDeferred.reject(error);
+      }
+    });
+
+    return quizMessageDeferred.promise;
+  }
+}
+
+export default (slackClients: SlackInterface) => new WadoKaichinBot(slackClients);
