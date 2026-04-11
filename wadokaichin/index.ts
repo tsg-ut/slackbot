@@ -114,9 +114,8 @@ async function SolveProblem(jukugo: jukugoDict, problem: Problem) : Promise<stri
 
 async function generateProblem(jukugo:jukugoDict) : Promise<Problem> {
   const kanjis = await kanjisLoader.load();
-  let lcnt = 0;
   let problem : WadoProblem = null;
-  while(true){
+  for (let i = 0; i < 100; i++) {
     const c = sample(kanjis);
     const j0 = jukugo[0].get(c);
     const j1 = jukugo[1].get(c);
@@ -127,8 +126,9 @@ async function generateProblem(jukugo:jukugoDict) : Promise<Problem> {
       ];
       break;
     }
-    lcnt += 1;
-    if(lcnt > 100)break;
+  }
+  if (problem === null) {
+    throw new Error('和同開珎の問題が作れなかったにゃ〜！');
   }
 
   // フォントがどうしてもずれる
