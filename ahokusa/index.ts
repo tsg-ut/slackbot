@@ -449,7 +449,7 @@ class AhokusaBot extends ChannelLimitedBot {
 			message === null ||
 			!message.text ||
 			!message.user ||
-			message.bot_id !== undefined ||
+			('bot_id' in message && message.bot_id !== undefined) ||
 			!isGenericMessage(message)
 		) {
 			return;

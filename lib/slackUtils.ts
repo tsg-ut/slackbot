@@ -116,6 +116,9 @@ export const extractMessage = (message: MessageEvent) => {
 	if (isGenericMessage(message)) {
 		return message;
 	}
+	if (message.subtype === 'file_share') {
+		return message;
+	}
 	if (message.subtype === 'bot_message') {
 		return message;
 	}
