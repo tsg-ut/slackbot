@@ -565,7 +565,8 @@ export default async ({eventClient, webClient: slack, messageClient}: SlackInter
 			});
 		}
 
-		if (message.bot_id === undefined) {
+		// eslint-disable-next-line no-restricted-syntax
+		if (!('bot_id' in message) || message.bot_id === undefined) {
 			const weatherMatchResult = message.text?.match?.(weatherRegex);
 			if (weatherMatchResult) {
 				const {groups: {pointName, weatherType}} = weatherMatchResult;

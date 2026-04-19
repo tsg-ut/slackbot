@@ -57,10 +57,10 @@ export default async ({eventClient, webClient: slack, messageClient: slackIntera
 
 		if (
 			message === null ||
-			!message.text ||
-			!message.user ||
-			message.bot_id !== undefined ||
-			message.subtype !== undefined
+			message.subtype === 'bot_message' ||
+			// eslint-disable-next-line no-restricted-syntax
+			'bot_id' in message ||
+			!message.user
 		) {
 			return;
 		}
