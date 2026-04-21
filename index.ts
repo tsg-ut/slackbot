@@ -90,6 +90,7 @@ const productionBots = [
 	'mail-hook',
 	'wordhero',
 	'wordhero/crossword',
+	'word-square',
 	'oauth',
 	'tunnel',
 	'voiperrobot',
