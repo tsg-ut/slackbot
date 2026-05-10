@@ -97,8 +97,6 @@ export const listUpcomingEvents = async (
 		nextPageToken = response.data.nextPageToken ?? undefined;
 	} while (nextPageToken);
 
-	console.log(allEvents);
-
 	// Exclude events matching all of the following conditions:
 	// - starts at 0:00 and ends at 0:00
 	// - starts after 24 hours before timeMax

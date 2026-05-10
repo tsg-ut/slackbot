@@ -2,6 +2,9 @@ import type {KnownBlock, SectionBlock} from '@slack/bolt';
 import dayjs from '../../lib/dayjs';
 import type {CalendarEvent} from '../types';
 
+const MAX_DESCRIPTION_LENGTH = 200;
+const MAX_SUBTITLE_LENGTH = 150;
+
 const incrementDate = (dateString: string, count: number) => {
 	const date = new Date(dateString);
 	date.setDate(date.getDate() + count);
@@ -42,15 +45,15 @@ const buildEventDetailBlocks = (event: CalendarEvent): KnownBlock[] => {
 	}
 
 	const normalizedDescription = event.description?.replaceAll('<br>', '\n') ?? '';
-	const hasMore = normalizedDescription.length > 199;
-	const description = hasMore ? `${normalizedDescription.slice(0, 199)}⋯` : normalizedDescription;
+	const hasMore = normalizedDescription.length > MAX_DESCRIPTION_LENGTH - 1;
+	const description = hasMore ? `${normalizedDescription.slice(0, MAX_DESCRIPTION_LENGTH - 1)}⋯` : normalizedDescription;
 
 	let subtitle = formatEventTime(event, true);
 	if (event.location) {
 		subtitle += ` / ${event.location}`;
 	}
-	if (subtitle.length > 149) {
-		subtitle = `${subtitle.slice(0, 149)}⋯`;
+	if (subtitle.length > MAX_SUBTITLE_LENGTH - 1) {
+		subtitle = `${subtitle.slice(0, MAX_SUBTITLE_LENGTH - 1)}⋯`;
 	}
 
 	blocks.push({
