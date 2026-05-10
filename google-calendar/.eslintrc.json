@@ -1,0 +1,14 @@
+{
+    "extends": "@hakatashi/eslint-config/typescript",
+    "rules": {
+        "no-restricted-syntax": "off",
+        "no-use-before-define": "off",
+        "camelcase": "off",
+        "require-atomic-updates": "off",
+        "import/extensions": "off",
+        "import/default": "off",
+        "import/no-named-as-default-member": "off",
+        "import/prefer-default-export": "off",
+        "no-undef-init": "off"
+    }
+}
