@@ -143,6 +143,7 @@ const productionBots = [
 	'nmpz',
 	'autogen-quiz',
 	'twenty-questions',
+	'google-calendar',
 ];
 
 const developmentBots = [
