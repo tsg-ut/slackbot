@@ -157,6 +157,14 @@ const truncate = (text: string, maxLength: number): string => (
 	text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text
 );
 
+// Prevent writing the Discord event URL back as the Discord event's own location field.
+const resolveDiscordLocation = (location: string | null | undefined): string => {
+	if (!location || /^https:\/\/discord\.com\/events\//.test(location)) {
+		return 'Google Calendar';
+	}
+	return location;
+};
+
 const buildDescription = (
 	rawDescription: string | null | undefined,
 	htmlLink: string | null | undefined,
@@ -283,7 +291,7 @@ export const syncToDiscord = async (
 			scheduledEndTime: actualEnd,
 			description: buildDescription(description, baseEvent?.htmlLink ?? firstInstance.htmlLink),
 			entityType: GuildScheduledEventEntityType.External as const,
-			entityMetadata: {location: location ?? 'Google Calendar'},
+			entityMetadata: {location: resolveDiscordLocation(location)},
 			privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly as const,
 			recurrenceRule,
 		};
@@ -307,7 +315,7 @@ export const syncToDiscord = async (
 						description: buildDescription(description, baseEvent?.htmlLink ?? firstInstance.htmlLink),
 						privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly as const,
 						recurrenceRule,
-						...(discordEvent.channelId ? {} : {entityMetadata: {location: location ?? 'Google Calendar'}}),
+						...(discordEvent.channelId ? {} : {entityMetadata: {location: resolveDiscordLocation(location)}}),
 					});
 					log.info(`Updated Discord recurring event "${summary}" (id=${existingDiscordEventId})`);
 					if (isDiscordLocation) {
@@ -400,7 +408,7 @@ export const syncToDiscord = async (
 			scheduledEndTime: actualEnd,
 			description: buildDescription(event.description, event.htmlLink),
 			entityType: GuildScheduledEventEntityType.External as const,
-			entityMetadata: {location: event.location ?? 'Google Calendar'},
+			entityMetadata: {location: resolveDiscordLocation(event.location)},
 			privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly as const,
 		};
 
@@ -422,7 +430,7 @@ export const syncToDiscord = async (
 						scheduledEndTime: actualEnd,
 						description: buildDescription(event.description, event.htmlLink),
 						privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly as const,
-						...(discordEvent.channelId ? {} : {entityMetadata: {location: event.location ?? 'Google Calendar'}}),
+						...(discordEvent.channelId ? {} : {entityMetadata: {location: resolveDiscordLocation(event.location)}}),
 					});
 					log.info(`Updated Discord event "${event.summary}" (id=${existingDiscordEventId})`);
 					if (isDiscordLocation) {
