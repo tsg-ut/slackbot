@@ -75,7 +75,7 @@ export default (channelId: string): View => ({
 			label: {type: 'plain_text', text: 'N分前通知'},
 			hint: {
 				type: 'plain_text',
-				text: 'イベント開始のN分前に通知を送ります。空白の場合は無効です。',
+				text: 'イベント開始のN分前に通知を送ります。空白の場合は無効です。終日イベントには通知されません。',
 			},
 		},
 		{

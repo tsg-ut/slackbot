@@ -126,18 +126,31 @@ export class GoogleCalendar {
 
 		const discordSyncCalendarId = process.env.GCAL_DISCORD_SYNC_CALENDAR_ID;
 		if (discordSyncCalendarId) {
-			scheduleJob('0 * * * *', () => {
+			setInterval(() => {
 				log.debug('Discord event sync triggered');
 				mutex.runExclusive(() => syncToDiscord(
 					discordSyncCalendarId,
 					this.#state.discordEventMap,
 					this.#state.discordRecurringEventMap,
 				));
-			});
+			}, 60 * 60 * 1000);
 			log.info(`Discord event sync enabled for calendar ${discordSyncCalendarId}`);
 		} else {
 			log.info('GCAL_DISCORD_SYNC_CALENDAR_ID not set, Discord event sync disabled');
 		}
+	}
+
+	async syncDiscordNow(): Promise<void> {
+		const discordSyncCalendarId = process.env.GCAL_DISCORD_SYNC_CALENDAR_ID;
+		if (!discordSyncCalendarId) {
+			log.warn('GCAL_DISCORD_SYNC_CALENDAR_ID not set, skipping Discord sync');
+			return;
+		}
+		await mutex.runExclusive(() => syncToDiscord(
+			discordSyncCalendarId,
+			this.#state.discordEventMap,
+			this.#state.discordRecurringEventMap,
+		));
 	}
 
 	async showSettingsModal(channelId: string, triggerId: string) {
