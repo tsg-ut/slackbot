@@ -21,4 +21,6 @@ export interface StateObj {
 	sentNotifications: string[];
 	lastDailySummary: {[subscriptionId: string]: string};
 	lastWeeklySummary: {[subscriptionId: string]: string};
+	discordEventMap: {[googleEventId: string]: string};
+	discordRecurringEventMap: {[recurringEventId: string]: string};
 }

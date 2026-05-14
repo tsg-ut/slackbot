@@ -3,12 +3,32 @@ import {google, calendar_v3} from 'googleapis';
 import dayjs from '../lib/dayjs';
 import type {CalendarEvent} from './types';
 
+const sanitizeHtml = (html: string): string => (
+	html
+		.replace(/<br\s*\/?>/gi, '\n')
+		.replace(/<[^>]+>/g, '')
+		.replace(/&amp;/g, '&')
+		.replace(/&lt;/g, '<')
+		.replace(/&gt;/g, '>')
+		.replace(/&nbsp;/g, ' ')
+		.replace(/&quot;/g, '"')
+		.replace(/&#39;/g, '\'')
+		.replace(/&#\d+;/g, (match) => String.fromCharCode(parseInt(match.slice(2, -1))))
+);
+
+const normalizeEvent = (event: CalendarEvent): CalendarEvent => {
+	if (!event.description) {
+		return event;
+	}
+	return {...event, description: sanitizeHtml(event.description)};
+};
+
 let calendarInstance: calendar_v3.Calendar | null = null;
 
 const getCalendar = (): calendar_v3.Calendar => {
 	if (calendarInstance === null) {
 		const auth = new google.auth.GoogleAuth({
-			scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
+			scopes: ['https://www.googleapis.com/auth/calendar.events'],
 		});
 		calendarInstance = google.calendar({version: 'v3', auth});
 	}
@@ -35,6 +55,11 @@ export interface CalendarInfo {
 export const getCalendarInfo = async (calendarId: string): Promise<CalendarInfo> => {
 	const response = await getCalendar().calendars.get({calendarId});
 	return {summary: response.data.summary ?? calendarId};
+};
+
+export const getCalendarEvent = async (calendarId: string, eventId: string): Promise<CalendarEvent> => {
+	const response = await getCalendar().events.get({calendarId, eventId});
+	return normalizeEvent(response.data);
 };
 
 export interface SyncResult {
@@ -65,7 +90,7 @@ export const syncCalendarEvents = async (
 			...baseParams,
 			...(nextPageToken ? {pageToken: nextPageToken} : {}),
 		});
-		allEvents.push(...(response.data.items ?? []));
+		allEvents.push(...(response.data.items ?? []).map(normalizeEvent));
 		nextPageToken = response.data.nextPageToken ?? undefined;
 		if (response.data.nextSyncToken) {
 			nextSyncToken = response.data.nextSyncToken;
@@ -73,6 +98,14 @@ export const syncCalendarEvents = async (
 	} while (nextPageToken);
 
 	return {events: allEvents, nextSyncToken};
+};
+
+export const updateCalendarEventLocation = async (
+	calendarId: string,
+	eventId: string,
+	location: string,
+): Promise<void> => {
+	await getCalendar().events.patch({calendarId, eventId, requestBody: {location}});
 };
 
 export const listUpcomingEvents = async (
@@ -93,7 +126,7 @@ export const listUpcomingEvents = async (
 			orderBy: 'startTime',
 			...(nextPageToken ? {pageToken: nextPageToken} : {}),
 		});
-		allEvents.push(...(response.data.items ?? []));
+		allEvents.push(...(response.data.items ?? []).map(normalizeEvent));
 		nextPageToken = response.data.nextPageToken ?? undefined;
 	} while (nextPageToken);
 

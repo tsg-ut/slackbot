@@ -44,9 +44,9 @@ const buildEventDetailBlocks = (event: CalendarEvent): KnownBlock[] => {
 		placeUrl = `https://www.google.com/maps/search/?api=1&query=${encodedLocation}`;
 	}
 
-	const normalizedDescription = event.description?.replaceAll('<br>', '\n') ?? '';
-	const hasMore = normalizedDescription.length > MAX_DESCRIPTION_LENGTH - 1;
-	const description = hasMore ? `${normalizedDescription.slice(0, MAX_DESCRIPTION_LENGTH - 1)}⋯` : normalizedDescription;
+	const rawDescription = event.description ?? '';
+	const hasMore = rawDescription.length > MAX_DESCRIPTION_LENGTH - 1;
+	const description = hasMore ? `${rawDescription.slice(0, MAX_DESCRIPTION_LENGTH - 1)}⋯` : rawDescription;
 
 	let subtitle = formatEventTime(event, true);
 	if (event.location) {

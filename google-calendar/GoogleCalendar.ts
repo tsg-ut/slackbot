@@ -14,6 +14,7 @@ import {
 	listUpcomingEvents,
 	syncCalendarEvents,
 } from './calendarClient';
+import {syncToDiscord} from './discordSync';
 import type {StateObj, Subscription} from './types';
 import addSubscriptionModal from './views/addSubscriptionModal';
 import type {EventMessage} from './views/eventMessages';
@@ -71,6 +72,8 @@ export class GoogleCalendar {
 			sentNotifications: [],
 			lastDailySummary: {},
 			lastWeeklySummary: {},
+			discordEventMap: {},
+			discordRecurringEventMap: {},
 		});
 		log.debug(`Loaded state with ${state.subscriptions.length} subscription(s)`);
 		return new GoogleCalendar(slack, state);
@@ -120,6 +123,34 @@ export class GoogleCalendar {
 			log.debug('Scheduled summary check triggered');
 			mutex.runExclusive(() => this.checkScheduledSummaries());
 		});
+
+		const discordSyncCalendarId = process.env.GCAL_DISCORD_SYNC_CALENDAR_ID;
+		if (discordSyncCalendarId) {
+			setInterval(() => {
+				log.debug('Discord event sync triggered');
+				mutex.runExclusive(() => syncToDiscord(
+					discordSyncCalendarId,
+					this.#state.discordEventMap,
+					this.#state.discordRecurringEventMap,
+				));
+			}, 60 * 60 * 1000);
+			log.info(`Discord event sync enabled for calendar ${discordSyncCalendarId}`);
+		} else {
+			log.info('GCAL_DISCORD_SYNC_CALENDAR_ID not set, Discord event sync disabled');
+		}
+	}
+
+	async syncDiscordNow(): Promise<void> {
+		const discordSyncCalendarId = process.env.GCAL_DISCORD_SYNC_CALENDAR_ID;
+		if (!discordSyncCalendarId) {
+			log.warn('GCAL_DISCORD_SYNC_CALENDAR_ID not set, skipping Discord sync');
+			return;
+		}
+		await mutex.runExclusive(() => syncToDiscord(
+			discordSyncCalendarId,
+			this.#state.discordEventMap,
+			this.#state.discordRecurringEventMap,
+		));
 	}
 
 	async showSettingsModal(channelId: string, triggerId: string) {
