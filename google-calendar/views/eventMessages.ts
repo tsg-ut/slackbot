@@ -68,11 +68,13 @@ const buildEventDetailBlocks = (event: CalendarEvent): KnownBlock[] => {
 			text: subtitle,
 			verbatim: false,
 		},
-		body: {
-			type: 'mrkdwn',
-			text: description,
-			verbatim: false,
-		},
+		...(description && {
+			body: {
+				type: 'mrkdwn',
+				text: description,
+				verbatim: false,
+			},
+		}),
 		actions: [
 			...(placeUrl ? [
 				{
