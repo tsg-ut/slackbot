@@ -524,6 +524,20 @@ const achievements: Achievement[] = [
 		category: 'sushi-bot',
 	},
 	{
+		id: 'asa-over100',
+		difficulty: 'medium',
+		title: '生活リズムゲームパーフェクトクリア',
+		condition: 'あさ宣言で100点以上の得点を獲得する',
+		category: 'sushi-bot',
+	},
+	{
+		id: 'asa-over108',
+		difficulty: 'hard',
+		title: '生活リズムゲームグリッチクリア',
+		condition: 'あさ宣言で108点以上の得点を獲得する',
+		category: 'sushi-bot',
+	},
+	{
 		id: 'asa-master',
 		difficulty: 'hard',
 		title: '布団時代の終焉を告げる者',
@@ -609,6 +623,13 @@ const achievements: Achievement[] = [
 		category: 'sushi-bot',
 		counter: 'exercise-cumulative',
 		value: 365,
+	},
+	{
+		id: 'sushi-bot-all-time-zones-100',
+		difficulty: 'hard',
+		title: '生活ユーティリティープレイヤー',
+		condition: '全ての時間帯で100点以上の得点を獲得する',
+		category: 'sushi-bot',
 	},
 
 	// dajare
