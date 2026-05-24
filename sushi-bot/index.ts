@@ -1,9 +1,9 @@
 import schedule from 'node-schedule';
 import {sortBy} from 'lodash';
 import moment from 'moment';
-import {unlock, increment} from '../achievements';
+import {unlock, increment, get, set} from '../achievements';
 import type {SlackInterface} from '../lib/slack';
-import {scoreTimeOfDay, getReactionName} from './time-scoring';
+import {scoreTimeOfDay, getReactionName, timeOfDayDefinitions} from './time-scoring';
 
 import State from '../lib/state';
 
@@ -293,7 +293,7 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 			const result = scoreTimeOfDay(allText);
 			if (result !== null) {
 				const reaction = getReactionName(result.score);
-				
+
 				if (result.scoreName === 'asa') {
 					if (reaction.score > 0) {
 						unlock(user, 'asa');
@@ -301,9 +301,28 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 					if (reaction.score >= 80) {
 						unlock(user, 'asa-over80');
 					}
+					if (reaction.score >= 100) {
+						increment(user, 'asa-over100');
+					}
+					if (reaction.score >= 108) {
+						increment(user, 'asa-over108');
+					}
 					dailyAsaCounter.max(user, reaction.score);
 				}
-				
+
+				if (result.score >= 100 && channel.startsWith('C')) {
+					const clearedZones = await get(user, 'sushi-bot-time-zone-cleared');
+					const clearedArray = Array.isArray(clearedZones) ? clearedZones as string[] : [];
+					if (!clearedArray.includes(result.scoreName)) {
+						const newClearedZones = [...clearedArray, result.scoreName];
+						await set(user, 'sushi-bot-time-zone-cleared', newClearedZones);
+						const allScoreNames = timeOfDayDefinitions.map((d) => d.scoreName);
+						if (allScoreNames.every((name) => newClearedZones.includes(name))) {
+							unlock(user, 'sushi-bot-all-time-zones-100');
+						}
+					}
+				}
+
 				slack.reactions.add({name: reaction.name, channel, timestamp});
 			}
 		}

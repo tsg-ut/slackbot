@@ -45,6 +45,40 @@ export const server = ({webClient, eventClient, messageClient}: SlackInterface) 
 - `lib/`: Core utilities (state management, logging, etc.)
 - `functions/`: Firebase functions package
 
+### Achievement System
+
+This Slackbot has a shared achievement system across the entire project. When a user achieves something noteworthy in relation to a bot, that bot's implementation can unlock an achievement for them. Achievements unlocked by each user are managed and persisted in a shared Firestore-backed database. Users can also view their earned achievements on the external site at https://achievements.tsg.ne.jp/.
+
+Achievements are defined in `achievements/achievements.ts` and managed by `achievements/index_production.ts`, which persists data to Firestore.
+
+**Defining an achievement** — add an entry to the array in `achievements.ts`:
+
+```typescript
+{
+  id: 'my-achievement',       // unique identifier
+  difficulty: 'hard',         // baby | easy | medium | hard | professional
+  title: '実績タイトル',
+  condition: '解除条件の説明',
+  category: 'my-bot',
+  // Optional: auto-unlock when a counter reaches a value
+  counter: 'my-counter-name',
+  value: 100,
+}
+```
+
+**Exported functions** — import from `../achievements`:
+
+| Function | Description |
+|---|---|
+| `increment(user, counterName, value?)` | Increment a named counter; auto-unlocks achievements whose `counter` + `value` match |
+| `get(user, key)` | Read arbitrary per-user data (returns `unknown`) |
+| `set(user, key, value)` | Write arbitrary per-user data |
+| `unlock(user, achievementId)` | ⚠ Discouraged. Directly unlock an achievement without going through a counter |
+
+Since each achievement's `value` is visible on the achievements site mentioned above, it is important that every achievement has an associated `counter`. The preferred way to unlock an achievement is via `increment`: define a `counter` and `value` on the achievement, then call `increment(user, counterName)` at the appropriate point. Even for one-time achievements, avoid using `unlock` and instead define the achievement with `value: 1` and call `increment`. Use `unlock` only when the counter value would carry no meaningful interpretation for the achievement.
+
+`get`/`set` store data in the Firestore `users` collection and are suitable for tracking collection-style progress (e.g., arrays of completed items). Always check the type of values returned by `get` before use.
+
 ## Development Guidelines
 
 ### Code Standards
@@ -169,9 +203,3 @@ This means you can edit plugin code and immediately test it in Slack without man
 - After startup, it may take a few seconds before the first Slack event arrives.
 - `already_reacted` errors are expected when a reaction has already been added to a message.
 
-## Key Guidelines
-
-1. Follow JavaScript/TypeScript best practices and idiomatic patterns
-2. Maintain existing code structure and organization
-3. Write unit tests for new functionality.
-4. Avoid unnecessary comments; focus on explaining complex logic
