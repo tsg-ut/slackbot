@@ -302,10 +302,10 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 						unlock(user, 'asa-over80');
 					}
 					if (reaction.score >= 100) {
-						unlock(user, 'asa-over100');
+						increment(user, 'asa-over100');
 					}
 					if (reaction.score >= 108) {
-						unlock(user, 'asa-over108');
+						increment(user, 'asa-over108');
 					}
 					dailyAsaCounter.max(user, reaction.score);
 				}
