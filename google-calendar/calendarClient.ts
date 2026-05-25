@@ -3,6 +3,8 @@ import {google, calendar_v3} from 'googleapis';
 import dayjs from '../lib/dayjs';
 import type {CalendarEvent} from './types';
 
+const TIMEZONE = 'Asia/Tokyo';
+
 const sanitizeHtml = (html: string): string => (
 	html
 		.replace(/<br\s*\/?>/gi, '\n')
@@ -136,8 +138,8 @@ export const listUpcomingEvents = async (
 	const filteredEvents = allEvents.filter((event) => {
 		// Events with dateTime
 		if (event.start?.dateTime && event.end?.dateTime) {
-			const startDateTime = dayjs(event.start.dateTime).tz('Asia/Tokyo');
-			const endDateTime = dayjs(event.end.dateTime).tz('Asia/Tokyo');
+			const startDateTime = dayjs(event.start.dateTime).tz(TIMEZONE);
+			const endDateTime = dayjs(event.end.dateTime).tz(TIMEZONE);
 			if (
 				startDateTime.hour() === 0 &&
 				startDateTime.minute() === 0 &&
@@ -151,7 +153,7 @@ export const listUpcomingEvents = async (
 
 		// All-day events
 		if (event.start?.date && event.end?.date && !event.start.dateTime && !event.end.dateTime) {
-			const startDate = dayjs(event.start.date).tz('Asia/Tokyo');
+			const startDate = dayjs(event.start.date).tz(TIMEZONE);
 			if (
 				startDate.isAfter(timeMax.getTime() - 24 * 60 * 60 * 1000)
 			) {
