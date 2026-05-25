@@ -159,7 +159,7 @@ const truncate = (text: string, maxLength: number): string => (
 
 // Prevent writing the Discord event URL back as the Discord event's own location field.
 const resolveDiscordLocation = (location: string | null | undefined): string => {
-	if (!location || /^https:\/\/discord\.com\/events\//.test(location)) {
+	if (!location || (/^https:\/\/discord\.com\/events\//).test(location)) {
 		return 'Google Calendar';
 	}
 	return location;
