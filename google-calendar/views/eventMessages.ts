@@ -4,6 +4,7 @@ import type {CalendarEvent} from '../types';
 
 const MAX_DESCRIPTION_LENGTH = 200;
 const MAX_SUBTITLE_LENGTH = 150;
+const TIMEZONE = 'Asia/Tokyo';
 
 const incrementDate = (dateString: string, count: number) => {
 	const date = new Date(dateString);
@@ -14,19 +15,23 @@ const incrementDate = (dateString: string, count: number) => {
 const formatEventTime = (event: CalendarEvent, includeDate: boolean): string => {
 	if (event.start?.dateTime) {
 		const startTs = Math.floor(new Date(event.start.dateTime).getTime() / 1000);
+		const localStartTime = dayjs(event.start.dateTime).tz(TIMEZONE).format('HH:mm');
+		const startString = `<!date^${startTs}^${includeDate ? '{date_short_pretty} {time}' : '{time}'}|${localStartTime}>`;
 		if (event.end?.dateTime) {
 			const endTs = Math.floor(new Date(event.end.dateTime).getTime() / 1000);
-			return `<!date^${startTs}^${includeDate ? '{date_short_pretty} {time}' : '{time}'}|${event.start.dateTime}> 〜 <!date^${endTs}^{time}|${event.end.dateTime}>`;
+			const localEndTime = dayjs(event.end.dateTime).tz(TIMEZONE).format('HH:mm');
+			const endString = `<!date^${endTs}^{time}|${localEndTime}>`;
+			return `${startString} 〜 ${endString}`;
 		}
-		return `<!date^${startTs}^${includeDate ? '{date_short_pretty} {time}' : '{time}'}|${event.start.dateTime}>`;
+		return startString;
 	}
 	if (event.start?.date && event.end?.date) {
-		const startDate = dayjs(event.start.date).tz('Asia/Tokyo').format('M月D日');
-		const endDate = dayjs(event.end.date).tz('Asia/Tokyo').add(-1, 'day').format('M月D日');
+		const startDate = dayjs(event.start.date).tz(TIMEZONE).format('M月D日');
+		const endDate = dayjs(event.end.date).tz(TIMEZONE).add(-1, 'day').format('M月D日');
 		return `${startDate} 〜 ${endDate}`;
 	}
 	if (event.start?.date) {
-		const startDate = dayjs(event.start.date).tz('Asia/Tokyo').format('M月D日');
+		const startDate = dayjs(event.start.date).tz(TIMEZONE).format('M月D日');
 		return `${startDate} (終日)`;
 	}
 	return '(日時未設定)';
@@ -133,25 +138,27 @@ export const eventDeletedMessage = (event: CalendarEvent): EventMessage => ({
 });
 
 export const eventStartMessage = (event: CalendarEvent): EventMessage => ({
-	text: `🔔予定が始まるよ～: ${event.summary ?? '(タイトルなし)'}`,
+	text: `🔔 ${event.summary ?? '予定'}が始まるよ～`,
 	blocks: [
 		{
 			type: 'section',
-			text: {type: 'plain_text', text: '🔔予定が始まるよ～', emoji: true},
+			text: {
+				type: 'mrkdwn',
+				text: `🔔 ${event.summary ? `＊${event.summary}＊` : '予定'}が始まるよ～`,
+			},
 		},
 		...buildEventDetailBlocks(event),
 	],
 });
 
 export const eventBeforeMessage = (event: CalendarEvent, minutes: number): EventMessage => ({
-	text: `⏰ ${minutes}分後に予定が始まるよ～: ${event.summary ?? '(タイトルなし)'}`,
+	text: `⏰ ${minutes}分後に${event.summary ?? '予定'}が始まるよ～`,
 	blocks: [
 		{
 			type: 'section',
 			text: {
-				type: 'plain_text',
-				text: `⏰ ${minutes}分後に予定が始まるよ～`,
-				emoji: true,
+				type: 'mrkdwn',
+				text: `⏰ ${minutes}分後に${event.summary ? `＊${event.summary}＊` : '予定'}が始まるよ～`,
 			},
 		},
 		...buildEventDetailBlocks(event),
