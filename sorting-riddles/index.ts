@@ -3,7 +3,7 @@ import type { SlackInterface } from '../lib/slack';
 import axios from 'axios';
 import { stripIndent } from 'common-tags';
 import sample from 'lodash/sample';
-import { getPageTitle, getWordUrl } from '../tahoiya/lib';
+import {getPageTitle, getWordUrl} from '../tahoiya/utils';
 import { getCandidateWords } from '../lib/candidateWords';
 import { unlock, increment } from '../achievements';
 
@@ -101,7 +101,7 @@ export default async ({ eventClient, webClient }: SlackInterface) => {
 
 			const [title, answer, source, _meaning, id] = sample(found);
 			const sorted = getSortedString(answer);
-			const wordUrl = getWordUrl(title, source, id);
+			const wordUrl = getWordUrl(title, source as import('../tahoiya/types').DictionarySource, id);
 
 			const { ts: thread } = await webClient.chat.postMessage({
 				channel: process.env.CHANNEL_SANDBOX,

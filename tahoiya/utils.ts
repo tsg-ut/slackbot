@@ -14,6 +14,17 @@ export const SOURCE_LABELS: Record<DictionarySource, string> = {
 	nicopedia: 'ニコニコ大百科',
 };
 
+export const getPageTitle = (url: string): string => {
+	const urlTitle = decodeURIComponent(url.match(/([^/]+)$/)![1]);
+	if (url.startsWith('https://ja.wikipedia.org')) return `${urlTitle} - Wikipedia`;
+	if (url.startsWith('https://ja.wiktionary.org')) return `${urlTitle} - ウィクショナリー日本語版`;
+	if (url.startsWith('http://yougo.ascii.jp')) return `${urlTitle} - 意味・説明・解説 : ASCII.jpデジタル用語辞典`;
+	if (url.startsWith('http://www.sophia-it.com')) return `${urlTitle} - IT用語辞典バイナリ`;
+	if (url.startsWith('http://e-words.jp')) return `${url.replace(/\.html$/, '').match(/([^/]+)$/)![1]} - IT用語辞典`;
+	if (url.startsWith('http://dic-it.fideli.com/')) return 'フィデリ IT用語辞典';
+	return `${urlTitle} - ニコニコ大百科`;
+};
+
 export const getWordUrl = (word: string, source: DictionarySource, id?: string): string => {
 	if (source === 'wikipedia') {
 		return `https://ja.wikipedia.org/wiki/${encodeURIComponent(word)}`;
