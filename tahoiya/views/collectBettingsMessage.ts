@@ -1,0 +1,80 @@
+import type {KnownBlock} from '@slack/web-api';
+import type {DailyGameState, NormalGameState, Theme} from '../types';
+
+const formatTime = (ts: number): string => {
+	const d = new Date(ts);
+	const h = d.getHours().toString().padStart(2, '0');
+	const m = d.getMinutes().toString().padStart(2, '0');
+	const s = d.getSeconds().toString().padStart(2, '0');
+	return `${h}:${m}:${s}`;
+};
+
+const themeRuby = (theme: Theme): string => {
+	if (theme.type === 'dictionary') {
+		return theme.ruby;
+	}
+	return theme.question;
+};
+
+export default (
+	game: NormalGameState | DailyGameState,
+	gameType: 'normal' | 'daily',
+	disabled = false,
+): KnownBlock[] => {
+	const theme = game.theme!;
+	const remainingMs = Math.max(0, game.endPhaseAt - Date.now());
+	const remainingMins = Math.ceil(remainingMs / 60000);
+
+	const meaningLines = game.shuffledMeanings
+		.map((m, i) => `${i + 1}. ${m.text}`)
+		.join('\n');
+
+	const bettingUsers = Object.keys(game.bettings).filter((u) => u.startsWith('U'));
+	const bettingText = bettingUsers.length > 0
+		? `投票済み: ${bettingUsers.map((u) => `<@${u}>`).join(' ')} (${bettingUsers.length}人)`
+		: 'まだ誰も投票していません';
+
+	const deadlineText = disabled
+		? `投票締切: ${formatTime(game.endPhaseAt)}`
+		: `投票期限: *${formatTime(game.endPhaseAt)}* まで (残り約${remainingMins}分)`;
+
+	const blocks: KnownBlock[] = [
+		{
+			type: 'header',
+			text: {type: 'plain_text', text: `たほいや 投票フェーズ: ${themeRuby(theme)}`, emoji: true},
+		},
+		{
+			type: 'section',
+			text: {
+				type: 'mrkdwn',
+				text: `${deadlineText}\n\n${meaningLines}`,
+			},
+		},
+	];
+
+	if (!disabled) {
+		blocks.push({
+			type: 'actions',
+			elements: [
+				{
+					type: 'button',
+					text: {type: 'plain_text', text: '投票する', emoji: true},
+					action_id: gameType === 'normal' ? 'tahoiya_normal_bet_button' : 'tahoiya_daily_bet_button',
+					style: 'primary',
+				},
+			],
+		});
+	} else {
+		blocks.push({
+			type: 'section',
+			text: {type: 'mrkdwn', text: '（投票受付終了）'},
+		});
+	}
+
+	blocks.push({
+		type: 'context',
+		elements: [{type: 'mrkdwn', text: bettingText}],
+	});
+
+	return blocks;
+};
