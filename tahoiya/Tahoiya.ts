@@ -10,18 +10,18 @@ import {scheduleJob} from 'node-schedule';
 import rouge from 'rouge';
 import {increment} from '../achievements';
 import {getCandidateWords} from '../lib/candidateWords';
-import type {WordEntry} from '../lib/candidateWords';
 import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 import {db} from '../lib/firestore';
-import logger from '../lib/logger';
+import State from '../lib/state';
 import type {SlackInterface} from '../lib/slack';
 import {getAIBotMeaning} from './aibot';
 import type {AIBotModel} from './aibot';
 import {calculateRatingDeltas} from './rating';
-import {
+import type {
 	DailyGameState,
 	NormalGameState,
 	TahoiyaState,
+	DictionarySource,
 	DictionaryTheme,
 	ShuffledMeaning,
 	Betting,
@@ -29,6 +29,7 @@ import {
 	GameRecord,
 	StoredTheme,
 	PlayerResult,
+	WordEntry,
 } from './types';
 import {getMeaning, getWordUrl, normalizeMeaning, SOURCE_LABELS} from './utils';
 import bettingModal from './views/bettingModal';
@@ -44,13 +45,13 @@ import {
 import resultsMessage from './views/resultsMessage';
 import submitMeaningModal from './views/submitMeaningModal';
 
-const log = logger.child({bot: 'tahoiya'});
 const mutex = new Mutex();
 
 const TIME_COLLECT_MEANING_NORMAL = 3 * 60 * 1000;
 const TIME_COLLECT_BETTING_NORMAL = 3 * 60 * 1000;
 const TIME_COLLECT_BETTING_DAILY = 60 * 60 * 1000;
 const DUMMY_SIZE_BASE = 4;
+const DAILY_TAHOIYA_MINIMUM_PARTICIPANTS = 3;
 
 const AI_BOT_MODELS: AIBotModel[] = ['tahoiyabot-01', 'tahoiyabot-02'];
 
@@ -78,7 +79,7 @@ export class Tahoiya extends ChannelLimitedBot {
 	}
 
 	async #initialize() {
-		this.#state = await (await import('../lib/state')).default.init<TahoiyaState>('tahoiya', {
+		this.#state = await State.init<TahoiyaState>('tahoiya', {
 			normalGame: null,
 			dailyGame: null,
 			ratings: {},
@@ -88,7 +89,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			authorHistory: [],
 		});
 
-		this.#candidateWords = await getCandidateWords();
+		this.#candidateWords = (await getCandidateWords()) as WordEntry[];
 
 		this.#registerInteractions();
 
@@ -117,7 +118,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			await mutex.runExclusive(() => this.#selectNextDailyTheme());
 		}
 
-		log.info('Tahoiya initialized');
+		this.log.info('Tahoiya initialized');
 	}
 
 	protected override onWakeWord(event: GenericMessageEvent, targetChannel: string): Promise<string | null> {
@@ -126,7 +127,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			return mutex.runExclusive(() => this.#startNormalGame(event.user!, targetChannel));
 		}
 		if (text === 'デイリーたほいや') {
-			return mutex.runExclusive(() => this.#showDailyStatus(targetChannel));
+			return mutex.runExclusive(() => this.#showDailyStatus(targetChannel, null));
 		}
 		return Promise.resolve(null);
 	}
@@ -136,43 +137,43 @@ export class Tahoiya extends ChannelLimitedBot {
 		this.messageClient.action({type: 'button', actionId: /^tahoiya_select_theme_/}, (payload: BlockButtonAction) => {
 			const ruby = payload.actions?.[0]?.value;
 			if (ruby) {
-				mutex.runExclusive(() => this.#selectTheme(ruby, payload.user.id)).catch((err) => log.error(err));
+				mutex.runExclusive(() => this.#selectTheme(ruby, payload.user.id)).catch((err) => this.log.error(err));
 			}
 		});
 
 		// Normal game: submit meaning button
 		this.messageClient.action({type: 'button', actionId: 'tahoiya_normal_submit_meaning_button'}, (payload: BlockButtonAction) => {
-			mutex.runExclusive(() => this.#openSubmitMeaningModal(payload.trigger_id, 'normal', payload.user.id)).catch((err) => log.error(err));
+			mutex.runExclusive(() => this.#openSubmitMeaningModal(payload.trigger_id, 'normal', payload.user.id)).catch((err) => this.log.error(err));
 		});
 
 		// Daily game: submit meaning button
 		this.messageClient.action({type: 'button', actionId: 'tahoiya_daily_submit_meaning_button'}, (payload: BlockButtonAction) => {
-			mutex.runExclusive(() => this.#openSubmitMeaningModal(payload.trigger_id, 'daily', payload.user.id)).catch((err) => log.error(err));
+			mutex.runExclusive(() => this.#openSubmitMeaningModal(payload.trigger_id, 'daily', payload.user.id)).catch((err) => this.log.error(err));
 		});
 
 		// Register theme button → open mode select modal (step 1)
 		this.messageClient.action({type: 'button', actionId: 'tahoiya_register_theme_button'}, (payload: BlockButtonAction) => {
-			this.slack.views.open({trigger_id: payload.trigger_id, view: registerThemeModeSelectModal()}).catch((err) => log.error(err));
+			this.slack.views.open({trigger_id: payload.trigger_id, view: registerThemeModeSelectModal()}).catch((err) => this.log.error(err));
 		});
 
 		// Mode select: dictionary (step 2a)
 		this.messageClient.action({type: 'button', actionId: 'tahoiya_theme_mode_dict'}, (payload: BlockButtonAction) => {
-			this.slack.views.push({trigger_id: payload.trigger_id, view: registerThemeDictModal()}).catch((err) => log.error(err));
+			this.slack.views.push({trigger_id: payload.trigger_id, view: registerThemeDictModal()}).catch((err) => this.log.error(err));
 		});
 
 		// Mode select: arbitrary (step 2b)
 		this.messageClient.action({type: 'button', actionId: 'tahoiya_theme_mode_arbitrary'}, (payload: BlockButtonAction) => {
-			this.slack.views.push({trigger_id: payload.trigger_id, view: registerThemeArbitraryModal()}).catch((err) => log.error(err));
+			this.slack.views.push({trigger_id: payload.trigger_id, view: registerThemeArbitraryModal()}).catch((err) => this.log.error(err));
 		});
 
 		// Normal bet button
 		this.messageClient.action({type: 'button', actionId: 'tahoiya_normal_bet_button'}, (payload: BlockButtonAction) => {
-			mutex.runExclusive(() => this.#openBetModal(payload.trigger_id, 'normal', payload.user.id)).catch((err) => log.error(err));
+			mutex.runExclusive(() => this.#openBetModal(payload.trigger_id, 'normal', payload.user.id)).catch((err) => this.log.error(err));
 		});
 
 		// Daily bet button
 		this.messageClient.action({type: 'button', actionId: 'tahoiya_daily_bet_button'}, (payload: BlockButtonAction) => {
-			mutex.runExclusive(() => this.#openBetModal(payload.trigger_id, 'daily', payload.user.id)).catch((err) => log.error(err));
+			mutex.runExclusive(() => this.#openBetModal(payload.trigger_id, 'daily', payload.user.id)).catch((err) => this.log.error(err));
 		});
 
 		// Submit meaning: normal
@@ -181,7 +182,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			const meaning = values?.meaning?.value?.trim();
 			const userId = payload.user.id;
 			if (meaning) {
-				mutex.runExclusive(() => this.#submitMeaning('normal', userId, meaning)).catch((err) => log.error(err));
+				mutex.runExclusive(() => this.#submitMeaning('normal', userId, meaning)).catch((err) => this.log.error(err));
 			}
 		});
 
@@ -191,7 +192,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			const meaning = values?.meaning?.value?.trim();
 			const userId = payload.user.id;
 			if (meaning) {
-				mutex.runExclusive(() => this.#submitMeaning('daily', userId, meaning)).catch((err) => log.error(err));
+				mutex.runExclusive(() => this.#submitMeaning('daily', userId, meaning)).catch((err) => this.log.error(err));
 			}
 		});
 
@@ -202,7 +203,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			const coins = parseInt(values?.coins?.value ?? '1');
 			const userId = payload.user.id;
 			if (meaningIndex >= 0) {
-				mutex.runExclusive(() => this.#submitBetting('normal', userId, {meaningIndex, coins})).catch((err) => log.error(err));
+				mutex.runExclusive(() => this.#submitBetting('normal', userId, {meaningIndex, coins})).catch((err) => this.log.error(err));
 			}
 		});
 
@@ -213,13 +214,13 @@ export class Tahoiya extends ChannelLimitedBot {
 			const coins = parseInt(values?.coins?.value ?? '1');
 			const userId = payload.user.id;
 			if (meaningIndex >= 0) {
-				mutex.runExclusive(() => this.#submitBetting('daily', userId, {meaningIndex, coins})).catch((err) => log.error(err));
+				mutex.runExclusive(() => this.#submitBetting('daily', userId, {meaningIndex, coins})).catch((err) => this.log.error(err));
 			}
 		});
 
 		// Register theme: dictionary form submit
 		this.messageClient.viewSubmission('tahoiya_register_theme_dict_modal', (payload: ViewSubmitAction) => {
-			const values = Object.assign({}, ...Object.values(payload.view.state.values ?? {})) as Record<string, {value?: string; selected_option?: {value: string}}>;
+			const values = Object.assign({}, ...Object.values(payload.view.state.values ?? {})) as Record<string, {value?: string}>;
 			const userId = payload.user.id;
 			return mutex.runExclusive(() => this.#registerDictTheme(userId, values));
 		});
@@ -233,34 +234,42 @@ export class Tahoiya extends ChannelLimitedBot {
 	}
 
 	async #startNormalGame(userId: string, channel: string): Promise<string | null> {
-		if (this.#state.normalGame !== null) {
-			await this.slack.chat.postEphemeral({
-				channel,
-				user: userId,
-				text: '通常たほいやは現在進行中です。',
-			});
-			return null;
+		if (this.#state.normalGame?.phase !== 'select_theme') {
+			if (this.#state.normalGame !== null) {
+				await this.slack.chat.postEphemeral({
+					channel,
+					user: userId,
+					text: '通常たほいやは現在進行中です。',
+				});
+				return null;
+			}
+
+			const now = Date.now();
+
+			this.#state.normalGame = {
+				phase: 'select_theme',
+				startedBy: userId,
+				candidates: [],
+				theme: null,
+				meanings: {},
+				shuffledMeanings: [],
+				bettings: {},
+				endPhaseAt: now,
+				gameMessageTs: null,
+				bettingMessageTs: null,
+				startedAt: now,
+			};
 		}
 
-		const candidates = sampleSize(this.#candidateWords, 10);
-		const now = Date.now();
+		this.#state.normalGame.candidates = sampleSize(this.#candidateWords, 10);
 
-		this.#state.normalGame = {
-			phase: 'select_theme',
-			startedBy: userId,
-			candidates,
-			theme: null,
-			meanings: {},
-			shuffledMeanings: [],
-			bettings: {},
-			endPhaseAt: now,
-			gameMessageTs: null,
-			bettingMessageTs: null,
-			startedAt: now,
-		};
-
-		const result = await this.#postMessage({channel, text: 'たほいや開始！', blocks: candidatesMessage(candidates)});
+		const result = await this.#postMessage({
+			channel,
+			text: 'たほいや開始！',
+			blocks: candidatesMessage(this.#state.normalGame.candidates),
+		});
 		this.#state.normalGame.gameMessageTs = result.ts ?? null;
+
 		return result.ts ?? null;
 	}
 
@@ -283,7 +292,7 @@ export class Tahoiya extends ChannelLimitedBot {
 		try {
 			meaning = await getMeaning(candidate);
 		} catch (err) {
-			log.error('getMeaning failed:', err);
+			this.log.error('getMeaning failed:', err);
 		}
 
 		if (!meaning) {
@@ -295,7 +304,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			return;
 		}
 
-		const source = candidate[2] as import('./types').DictionarySource;
+		const source = candidate[2] as DictionarySource;
 		const theme: DictionaryTheme = {
 			type: 'dictionary',
 			word: candidate[0],
@@ -322,7 +331,9 @@ export class Tahoiya extends ChannelLimitedBot {
 
 		// AI bots in background
 		for (const modelId of AI_BOT_MODELS) {
+			this.log.info(`Requesting AI bot (${modelId}) for meaning of "${theme.ruby}"...`);
 			getAIBotMeaning(candidate[1], modelId).then((aiResult) => {
+				this.log.info(`AI bot (${modelId}) responded: ${aiResult?.result ? aiResult.result : 'no result'}`);
 				if (!aiResult?.result) {
 					return;
 				}
@@ -344,7 +355,7 @@ export class Tahoiya extends ChannelLimitedBot {
 					await this.#updateNormalGameMessage();
 					await this.#postThread('normal', {text: `${modelId} が意味を登録したよ :robot_face:`});
 				});
-			}).catch((err) => log.error('AI bot error:', err));
+			}).catch((err) => this.log.error('AI bot error:', err));
 		}
 	}
 
@@ -420,7 +431,7 @@ export class Tahoiya extends ChannelLimitedBot {
 		const themes = await this.#fetchAvailableThemes();
 
 		if (themes.length === 0) {
-			log.warn('No daily themes available');
+			this.log.warn('No daily themes available');
 			return;
 		}
 
@@ -466,7 +477,7 @@ export class Tahoiya extends ChannelLimitedBot {
 						this.#state.dailyGame.meanings[modelId] = normalizeMeaning(aiResult.result);
 						return Promise.resolve();
 					});
-				}).catch((err) => log.error('AI bot error (daily):', err));
+				}).catch((err) => this.log.error('AI bot error (daily):', err));
 			}
 		}
 	}
@@ -474,15 +485,19 @@ export class Tahoiya extends ChannelLimitedBot {
 	async #triggerDailyBetting() {
 		const game = this.#state.dailyGame;
 		if (!game || game.phase !== 'collect_meanings') {
-			log.info('Daily betting trigger skipped');
+			await this.#showDailyStatus(
+				this.allowedChannels[0],
+				'お題ストックが不足しているため、デイリーたほいやはスキップされました😢',
+			);
 			return;
 		}
 
 		const humanCount = Object.keys(game.meanings).filter((u) => u.startsWith('U')).length;
-		if (humanCount < 3) {
-			await this.#postMessage({
-				text: `デイリーたほいや: 参加者が${humanCount}人しかいないため今日は開催をスキップします。`,
-			});
+		if (humanCount < DAILY_TAHOIYA_MINIMUM_PARTICIPANTS) {
+			await this.#showDailyStatus(
+				this.allowedChannels[0],
+				`参加者が${DAILY_TAHOIYA_MINIMUM_PARTICIPANTS}人未満のため、デイリーたほいやはスキップされました😢`,
+			);
 			return;
 		}
 
@@ -595,7 +610,7 @@ export class Tahoiya extends ChannelLimitedBot {
 		await this.slack.views.open({
 			trigger_id: triggerId,
 			view: submitMeaningModal(game.theme, gameType),
-		}).catch((err) => log.error('failed to open modal:', err));
+		}).catch((err) => this.log.error('failed to open modal:', err));
 	}
 
 	async #openBetModal(triggerId: string, gameType: 'normal' | 'daily', userId: string) {
@@ -609,10 +624,11 @@ export class Tahoiya extends ChannelLimitedBot {
 			return;
 		}
 
+		const humanCount = Object.keys(game.meanings).filter((u) => u.startsWith('U')).length;
 		await this.slack.views.open({
 			trigger_id: triggerId,
-			view: bettingModal(game.shuffledMeanings, gameType),
-		}).catch((err) => log.error('failed to open modal:', err));
+			view: bettingModal(game.shuffledMeanings, gameType, userId, humanCount),
+		}).catch((err) => this.log.error('failed to open modal:', err));
 	}
 
 	async #submitMeaning(gameType: 'normal' | 'daily', userId: string, meaning: string) {
@@ -654,9 +670,20 @@ export class Tahoiya extends ChannelLimitedBot {
 			return;
 		}
 
-		const maxCoins = Math.min(5, game.shuffledMeanings.filter((m) => !m.isCorrect).length);
-		const clampedCoins = Math.min(Math.max(1, betting.coins), maxCoins);
 		const clampedIndex = Math.max(0, Math.min(betting.meaningIndex, game.shuffledMeanings.length - 1));
+
+		if (game.shuffledMeanings[clampedIndex]?.userId === userId) {
+			await this.slack.chat.postEphemeral({
+				channel: this.allowedChannels[0],
+				user: userId,
+				text: '自分が提出した意味には投票できません。',
+			});
+			return;
+		}
+
+		const humanCount = Object.keys(game.meanings).filter((u) => u.startsWith('U')).length;
+		const maxCoins = Math.max(1, Math.min(5, humanCount));
+		const clampedCoins = Math.min(Math.max(1, betting.coins), maxCoins);
 
 		game.bettings[userId] = {meaningIndex: clampedIndex, coins: clampedCoins};
 
@@ -682,12 +709,12 @@ export class Tahoiya extends ChannelLimitedBot {
 
 	async #registerDictTheme(
 		userId: string,
-		values: Record<string, {value?: string; selected_option?: {value: string}}>,
+		values: Record<string, {value?: string}>,
 	): Promise<{response_action: string; errors?: Record<string, string>} | void> {
 		const word = values?.word?.value?.trim() ?? '';
 		const ruby = values?.ruby?.value?.trim() ?? '';
 		const meaning = values?.meaning?.value?.trim() ?? '';
-		const source = (values?.source?.selected_option?.value ?? '') as import('./types').DictionarySource;
+		const source = values?.source?.value?.trim() ?? '';
 		const url = values?.url?.value?.trim() ?? '';
 
 		const errors: Record<string, string> = {};
@@ -703,7 +730,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			errors.meaning_input = '意味を入力してください';
 		}
 		if (!source) {
-			errors.source_input = '出典を選択してください';
+			errors.source_input = '出典を入力してください';
 		}
 		if (!url) {
 			errors.url_input = 'URLを入力してください';
@@ -727,14 +754,14 @@ export class Tahoiya extends ChannelLimitedBot {
 				ruby,
 				meaning,
 				source,
-				sourceString: SOURCE_LABELS[source] ?? source,
+				sourceString: source,
 				sourceUrl: url,
 			},
 		};
 
 		await this.#saveTheme(stored);
 		await increment(userId, 'dailyTahoiyaTheme');
-		await this.#postMessage({text: `<@${userId}> がデイリーたほいやの辞書お題を登録しました！`});
+		await this.#postMessage({text: `<@${userId}> がデイリーたほいやのお題を登録しました！`});
 		return undefined;
 	}
 
@@ -775,20 +802,20 @@ export class Tahoiya extends ChannelLimitedBot {
 		await this.#saveTheme(stored);
 		await increment(userId, 'dailyTahoiyaTheme');
 		await increment(userId, 'tahoiyaArbitraryTheme');
-		await this.#postMessage({text: `<@${userId}> がデイリーたほいやの任意お題を登録しました！`});
+		await this.#postMessage({text: `<@${userId}> がデイリーたほいやのお題を登録しました！`});
 		return undefined;
 	}
 
-	async #showDailyStatus(channel: string): Promise<string | null> {
+	async #showDailyStatus(channel: string, skipNotice: string | null): Promise<string | null> {
 		const themeCount = await this.#countAvailableThemes();
-		const blocks = dailyStatusMessage(this.#state.dailyGame, themeCount);
+		const blocks = dailyStatusMessage(this.#state.dailyGame, themeCount, skipNotice);
 
 		if (this.#state.dailyStatusMessageTs) {
 			await this.slack.chat.delete({
 				channel,
 				ts: this.#state.dailyStatusMessageTs,
 			}).catch(() => {
-				// ignore
+				this.log.error('failed to delete old daily status message, ignoring');
 			});
 		}
 
@@ -817,7 +844,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			ts: game.gameMessageTs,
 			text: 'たほいや',
 			blocks,
-		}).catch((err) => log.error('failed to update normal game message:', err));
+		}).catch((err) => this.log.error('failed to update normal game message:', err));
 	}
 
 	async #updateBettingMessage(gameType: 'normal' | 'daily') {
@@ -831,7 +858,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			ts: game.bettingMessageTs,
 			text: 'たほいや 投票フェーズ',
 			blocks: collectBettingsMessage(game, gameType),
-		}).catch((err) => log.error('failed to update betting message:', err));
+		}).catch((err) => this.log.error('failed to update betting message:', err));
 	}
 
 	async #disableBettingMessage(gameType: 'normal' | 'daily') {
@@ -845,7 +872,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			ts: game.bettingMessageTs,
 			text: 'たほいや 投票フェーズ（終了）',
 			blocks: collectBettingsMessage(game, gameType, true),
-		}).catch((err) => log.error('failed to disable betting message:', err));
+		}).catch((err) => this.log.error('failed to disable betting message:', err));
 	}
 
 	async #updateDailyStatusMessage() {
@@ -857,14 +884,14 @@ export class Tahoiya extends ChannelLimitedBot {
 		const game = this.#state.dailyGame;
 		const blocks: KnownBlock[] = game?.phase === 'collect_bettings'
 			? collectBettingsMessage(game, 'daily')
-			: dailyStatusMessage(game, themeCount);
+			: dailyStatusMessage(game, themeCount, null);
 
 		await this.slack.chat.update({
 			channel: this.allowedChannels[0],
 			ts: this.#state.dailyStatusMessageTs,
 			text: 'デイリーたほいや',
 			blocks,
-		}).catch((err) => log.error('failed to update daily status message:', err));
+		}).catch((err) => this.log.error('failed to update daily status message:', err));
 	}
 
 	// Post in thread of the game message
@@ -1141,7 +1168,7 @@ export class Tahoiya extends ChannelLimitedBot {
 				await db.collection('tahoiya_games').add(record);
 			}
 		} catch (err) {
-			log.error('failed to save game record:', err);
+			this.log.error('failed to save game record:', err);
 		}
 	}
 
@@ -1169,7 +1196,7 @@ export class Tahoiya extends ChannelLimitedBot {
 
 			return shuffle(themes).slice(0, 1);
 		} catch (err) {
-			log.error('failed to fetch themes:', err);
+			this.log.error('failed to fetch themes:', err);
 			return [];
 		}
 	}
@@ -1192,7 +1219,7 @@ export class Tahoiya extends ChannelLimitedBot {
 				await db.collection('tahoiya_themes').doc(themeId).update({used: true, usedAt: Date.now()});
 			}
 		} catch (err) {
-			log.error('failed to mark theme used:', err);
+			this.log.error('failed to mark theme used:', err);
 		}
 	}
 
@@ -1201,10 +1228,10 @@ export class Tahoiya extends ChannelLimitedBot {
 			if (db) {
 				await db.collection('tahoiya_themes').doc(theme.id).set(theme);
 			} else {
-				log.info('Dev mode: theme not saved to Firestore:', theme.theme.type);
+				this.log.info('Dev mode: theme not saved to Firestore:', theme.theme.type);
 			}
 		} catch (err) {
-			log.error('failed to save theme:', err);
+			this.log.error('failed to save theme:', err);
 		}
 	}
 
@@ -1220,6 +1247,8 @@ export class Tahoiya extends ChannelLimitedBot {
 			username: this.username,
 			icon_emoji: this.iconEmoji,
 			text: options.text,
+			unfurl_links: false,
+			unfurl_media: false,
 			...(options.blocks ? {blocks: options.blocks} : {}),
 			...(options.threadTs ? {thread_ts: options.threadTs} : {}),
 			...(options.broadcast ? {reply_broadcast: true as const} : {}),

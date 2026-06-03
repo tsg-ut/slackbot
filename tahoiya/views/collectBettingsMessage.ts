@@ -35,13 +35,17 @@ export default (
 		: 'まだ誰も投票していません';
 
 	const deadlineText = disabled
-		? `投票締切: ${formatTime(game.endPhaseAt)}`
+		? `投票期限: ${formatTime(game.endPhaseAt)}`
 		: `投票期限: *${formatTime(game.endPhaseAt)}* まで (残り約${remainingMins}分)`;
 
 	const blocks: KnownBlock[] = [
 		{
 			type: 'header',
-			text: {type: 'plain_text', text: `たほいや 投票フェーズ: ${themeRuby(theme)}`, emoji: true},
+			text: {
+				type: 'plain_text',
+				text: `たほいや 投票フェーズ\n「${themeRuby(theme)}」の正しい意味はどれでしょう？`,
+				emoji: true,
+			},
 		},
 		{
 			type: 'section',
@@ -67,7 +71,7 @@ export default (
 	} else {
 		blocks.push({
 			type: 'section',
-			text: {type: 'mrkdwn', text: '（投票受付終了）'},
+			text: {type: 'mrkdwn', text: '（ゲーム終了）'},
 		});
 	}
 

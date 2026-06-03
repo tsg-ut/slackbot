@@ -88,18 +88,9 @@ export const registerThemeDictModal = (): View => ({
 			block_id: 'source_input',
 			label: {type: 'plain_text', text: '出典'},
 			element: {
-				type: 'static_select',
+				type: 'plain_text_input',
 				action_id: 'source',
-				placeholder: {type: 'plain_text', text: '出典を選択'},
-				options: [
-					{text: {type: 'plain_text', text: 'Wikipedia'}, value: 'wikipedia'},
-					{text: {type: 'plain_text', text: 'ウィクショナリー'}, value: 'wiktionary'},
-					{text: {type: 'plain_text', text: 'ASCII.jp デジタル用語辞典'}, value: 'ascii'},
-					{text: {type: 'plain_text', text: 'IT用語辞典バイナリ'}, value: 'binary'},
-					{text: {type: 'plain_text', text: 'e-Words IT用語辞典'}, value: 'ewords'},
-					{text: {type: 'plain_text', text: 'フィデリ IT用語辞典'}, value: 'fideli'},
-					{text: {type: 'plain_text', text: 'ニコニコ大百科'}, value: 'nicopedia'},
-				],
+				placeholder: {type: 'plain_text', text: '例: 広辞苑、Wikipedia など'},
 			},
 		},
 		{

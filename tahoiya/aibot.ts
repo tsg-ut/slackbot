@@ -115,6 +115,10 @@ const executeModel = async (rawInput: string, modelName: AIBotModel): Promise<AI
 			},
 		});
 
+		if (container === null) {
+			throw new Error('Failed to create Docker container');
+		}
+
 		const stream = await container.attach({stream: true, stdout: true, stderr: true});
 		docker.modem.demuxStream(stream, stdoutWriter, stderrWriter);
 		stream.on('end', () => {
@@ -132,12 +136,16 @@ const executeModel = async (rawInput: string, modelName: AIBotModel): Promise<AI
 	let stdout: Buffer | null = null;
 
 	try {
-		[stdout] = await Promise.race([
+		const result = await Promise.race([
 			runner,
 			new Promise<never>((_, reject) => {
 				setTimeout(() => reject(new TimeoutError()), 60000);
 			}),
 		]);
+		console.log(`AI bot (${modelName}) stdout: ${result[0].toString()}`);
+		console.log(`AI bot (${modelName}) stderr: ${result[1].toString()}`);
+		console.log(result[2]);
+		stdout = result[0];
 	} finally {
 		if (container !== null) {
 			await container.stop().catch((error: {statusCode?: number}) => {
@@ -170,4 +178,6 @@ const executeModel = async (rawInput: string, modelName: AIBotModel): Promise<AI
 	};
 };
 
-export const getAIBotMeaning = (rawInput: string, modelName: AIBotModel): Promise<AIBotResult | null> => queue.add(() => executeModel(rawInput, modelName)) as Promise<AIBotResult | null>;
+export const getAIBotMeaning = (rawInput: string, modelName: AIBotModel): Promise<AIBotResult | null> => (
+	queue.add(() => executeModel(rawInput, modelName))
+);

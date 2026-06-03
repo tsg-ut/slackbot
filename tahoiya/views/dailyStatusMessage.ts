@@ -18,7 +18,7 @@ const phaseLabel = (game: DailyGameState): string => {
 	return `意味提出者: ${meaningCount}人`;
 };
 
-export default (game: DailyGameState | null, themeStockCount = 0): KnownBlock[] => {
+export default (game: DailyGameState | null, themeStockCount: number, skipNotice: string | null): KnownBlock[] => {
 	const blocks: KnownBlock[] = [
 		{
 			type: 'header',
@@ -26,10 +26,28 @@ export default (game: DailyGameState | null, themeStockCount = 0): KnownBlock[] 
 		},
 	];
 
+	if (skipNotice !== null) {
+		blocks.push(
+			{
+				type: 'section',
+				text: {
+					type: 'mrkdwn',
+					text: skipNotice,
+				},
+			},
+			{
+				type: 'divider',
+			},
+		);
+	}
+
 	if (game === null) {
 		blocks.push({
 			type: 'section',
-			text: {type: 'mrkdwn', text: '本日のお題はまだ決まっていません。お題を登録して参加しましょう！'},
+			text: {
+				type: 'mrkdwn',
+				text: '現在、デイリーたほいやは開催されていません。',
+			},
 		});
 	} else {
 		blocks.push({
@@ -40,16 +58,6 @@ export default (game: DailyGameState | null, themeStockCount = 0): KnownBlock[] 
 			},
 		});
 	}
-
-	blocks.push({
-		type: 'context',
-		elements: [{
-			type: 'mrkdwn',
-			text: `お題ストック: ${themeStockCount}件`,
-		}],
-	});
-
-	blocks.push({type: 'divider'});
 
 	const actionElements: {type: 'button'; text: {type: 'plain_text'; text: string; emoji: boolean}; action_id: string; style?: 'primary' | 'danger'}[] = [];
 
@@ -80,6 +88,14 @@ export default (game: DailyGameState | null, themeStockCount = 0): KnownBlock[] 
 	blocks.push({
 		type: 'actions',
 		elements: actionElements,
+	});
+
+	blocks.push({
+		type: 'context',
+		elements: [{
+			type: 'mrkdwn',
+			text: `お題ストック: ${themeStockCount}件`,
+		}],
 	});
 
 	return blocks;

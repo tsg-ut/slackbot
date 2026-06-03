@@ -5,7 +5,7 @@ import type {MessageEvent} from '@slack/bolt';
 import logger from './logger';
 import {Deferred} from './utils';
 
-export class ChannelLimitedBot {
+export abstract class ChannelLimitedBot {
 	protected readonly slack: WebClient;
 	protected readonly eventClient: SlackInterface['eventClient'];
 	protected readonly messageClient: SlackInterface['messageClient'];
@@ -166,8 +166,5 @@ export class ChannelLimitedBot {
 		}
 	}
 
-	protected async onWakeWord(event: GenericMessageEvent, targetChannel: string): Promise<string | null> {
-		// Should be overridden
-		return null;
-	}
+	protected abstract onWakeWord(event: GenericMessageEvent, targetChannel: string): Promise<string | null>;
 }

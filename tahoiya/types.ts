@@ -1,5 +1,7 @@
 import type {WordEntry} from '../lib/candidateWords';
 
+export {WordEntry} from '../lib/candidateWords';
+
 export type ThemeType = 'dictionary' | 'arbitrary';
 
 export type DictionarySource = 'wikipedia' | 'wiktionary' | 'ascii' | 'binary' | 'ewords' | 'fideli' | 'nicopedia';
@@ -9,7 +11,7 @@ export interface DictionaryTheme {
 	word: string;
 	ruby: string;
 	meaning: string;
-	source: DictionarySource;
+	source: string;
 	sourceString: string;
 	sourceUrl: string;
 }

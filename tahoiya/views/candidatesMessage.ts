@@ -6,7 +6,7 @@ export default (candidates: WordEntry[]): KnownBlock[] => {
 		type: 'button',
 		text: {
 			type: 'plain_text',
-			text: `${word[1]}（${word[0]}）`,
+			text: word[1],
 			emoji: true,
 		},
 		action_id: `tahoiya_select_theme_${word[1]}`,
@@ -19,10 +19,6 @@ export default (candidates: WordEntry[]): KnownBlock[] => {
 	}
 
 	const blocks: KnownBlock[] = [
-		{
-			type: 'header',
-			text: {type: 'plain_text', text: 'たほいや', emoji: true},
-		},
 		{
 			type: 'section',
 			text: {type: 'mrkdwn', text: 'お題を選んでください（押したらゲーム開始）'},

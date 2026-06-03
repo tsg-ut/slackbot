@@ -30,7 +30,7 @@ const dummyAttribution = (m: ShuffledMeaning): string => {
 	const [word, , source, , id] = m.dummyWord;
 	const url = getWordUrl(word, source as any, id);
 	const label = SOURCE_LABELS[source as keyof typeof SOURCE_LABELS] ?? source;
-	return `（ダミー: <${url}|${word} - ${label}>）`;
+	return `（<${url}|${word} - ${label}>）`;
 };
 
 const formatDelta = (delta: number): string => {
@@ -66,7 +66,7 @@ export default (
 			.join(' ');
 
 		let typeIcon = '👤';
-		let attribution = `（<@${m.userId}>の意味）`;
+		let attribution = `（<@${m.userId}>）`;
 		if (m.isCorrect) {
 			typeIcon = '✅';
 			attribution = '（正解）';
@@ -75,39 +75,41 @@ export default (
 			attribution = dummyAttribution(m);
 		}
 
-		return `${i + 1}. ${typeIcon} ${m.text} ${attribution}\n   → ${bettersForThis || 'ベットなし'}`;
+		return `${i + 1}. ${typeIcon} ${m.text} ${attribution}\n   → ${bettersForThis || 'BETなし'}`;
 	}).join('\n\n');
 
 	const ratingText = ratingChanges.length > 0
 		? ratingChanges
-			.map((r) => `<@${r.userId}>: ${Math.round(r.oldRating)} → ${Math.round(r.newRating)} (${formatDelta(r.delta)})`)
+			.map(({userId, oldRating, newRating, delta}) => (
+				`<@${userId}>: ${Math.round(oldRating)} → ${Math.round(newRating)} (${formatDelta(delta)})`
+			))
 			.join('\n')
 		: null;
 
 	const blocks: KnownBlock[] = [
 		{
 			type: 'header',
-			text: {type: 'plain_text', text: 'たほいや 結果発表！', emoji: true},
+			text: {type: 'plain_text', text: '結果発表～', emoji: true},
 		},
 		{
 			type: 'section',
 			text: {
 				type: 'mrkdwn',
-				text: `正解: ${themeTitle(theme)} = *${themeAnswer(theme)}*\n出典: ${themeSource(theme)}`,
+				text: `${themeTitle(theme)}\n意味: *${themeAnswer(theme)}*\n出典: ${themeSource(theme)}`,
 			},
 		},
 		{
 			type: 'section',
 			text: {
 				type: 'mrkdwn',
-				text: `:tada: 正解者: ${correctText}\n:disappointed: 外した人: ${incorrectText}`,
+				text: `:tada: 正解者: ${correctText}\n:disappointed: 不正解者: ${incorrectText}`,
 			},
 		},
 		{
 			type: 'section',
 			text: {
 				type: 'mrkdwn',
-				text: `*意味の内訳:*\n${meaningDetails}`,
+				text: meaningDetails,
 			},
 		},
 	];

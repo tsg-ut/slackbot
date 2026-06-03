@@ -19,9 +19,9 @@ const themeRuby = (theme: Theme): string => {
 
 const themePrompt = (theme: Theme): string => {
 	if (theme.type === 'dictionary') {
-		return `「*${theme.ruby}*」の意味を考えてください`;
+		return `「＊${theme.ruby}＊」の意味を考えてください`;
 	}
-	return `「*${theme.question}*」の答えを考えてください`;
+	return `「＊${theme.question}＊」を考えてください`;
 };
 
 export default (
@@ -41,7 +41,11 @@ export default (
 	const blocks: KnownBlock[] = [
 		{
 			type: 'header',
-			text: {type: 'plain_text', text: `たほいや: ${themeRuby(theme)}`, emoji: true},
+			text: {
+				type: 'plain_text',
+				text: '楽しい「たほいや」を始めるよ～',
+				emoji: true,
+			},
 		},
 		{
 			type: 'section',
@@ -56,7 +60,7 @@ export default (
 				{
 					type: 'mrkdwn',
 					text: disabled
-						? `提出締切: ${formatTime(game.endPhaseAt)} | 登録済み: ${submittedText}`
+						? `提出期限: ${formatTime(game.endPhaseAt)} | 登録済み: ${submittedText}`
 						: `提出期限: *${formatTime(game.endPhaseAt)}* まで (残り約${remainingMins}分) | 登録済み: ${submittedText}`,
 				},
 			],
