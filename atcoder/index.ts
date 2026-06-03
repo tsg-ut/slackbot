@@ -15,7 +15,7 @@ import {getMemberIcon, getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
 // eslint-disable-next-line no-unused-vars
 import type {Results, Standings} from './types';
-import {crawlSubmissionsByUser} from './utils';
+import {fetchUserACsInContest} from './utils';
 
 const log = logger.child({bot: 'atcoder'});
 const mutex = new Mutex();
@@ -484,36 +484,24 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		const oneDayLater = now.clone().add(1, 'day');
 
 		// typical shojin notifications
-		log.info('[atcoder-daily] Fetching result of typical90');
-		const {userStandings} = await getStandings('typical90');
-		const typicalSolves = new Map<string, number>();
-
-		for (const {user, standing} of userStandings) {
-			if (standing === undefined) {
-				continue;
-			}
-			const solves = Object.values(standing.TaskResults).filter((result) => result.Status === 1).length;
-			typicalSolves.set(user, solves);
-		}
-
 		const dataValues = [];
 		let increase = 0;
 
 		for (const user of state.users) {
-			log.info(`[atcoder-daily] Fetching result of ABS (user = ${user.atcoder})`);
+			log.info(`[atcoder-daily] Fetching solves for user ${user.atcoder}`);
 
-			await new Promise((resolve) => setTimeout(resolve, 3000));
-			const submissions = await crawlSubmissionsByUser('abs', user.atcoder);
-			const acceptedProblems = new Set<string>();
+			await new Promise<void>((resolve) => {
+				setTimeout(resolve, 1000);
+			});
+			const absACs = await fetchUserACsInContest(user.atcoder, 'abs');
+			absACs.delete('practice_1');
+			const absSolve = absACs.size;
 
-			for (const {result, problemId} of submissions) {
-				if (result === 'AC' && problemId !== 'practice_1') {
-					acceptedProblems.add(problemId);
-				}
-			}
-
-			const absSolve = acceptedProblems.size;
-			const typicalSolve = typicalSolves.get(user.slack) || 0;
+			await new Promise<void>((resolve) => {
+				setTimeout(resolve, 1000);
+			});
+			const typicalACs = await fetchUserACsInContest(user.atcoder, 'typical90');
+			const typicalSolve = typicalACs.size;
 
 			const previousAbsSolve = (await get(user.slack, 'atcoder-abs-solves')) || 0;
 			if (typeof previousAbsSolve !== 'number') {

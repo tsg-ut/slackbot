@@ -1,101 +1,81 @@
-import {last} from 'lodash';
-import scrapeIt from 'scrape-it';
+import path from 'path';
+import axios from 'axios';
+import nodePersist from 'node-persist';
 
-interface Submission {
-	time: Date,
-	problemId: string,
-	problemName: string,
-	userId: string,
-	languageId: number,
+interface AtCoderProblemsSubmission {
+	id: number,
+	epoch_second: number,
+	problem_id: string,
+	contest_id: string,
+	user_id: string,
 	language: string,
-	point: number
+	point: number,
 	length: number,
 	result: string,
-	executionTime: number,
-	memoryUsage: number,
-	id: number,
+	execution_time: number,
 }
 
-interface SubmissionsData {
-	maxPage: number,
-	submissions: Submission[],
+interface UserSubmissionCache {
+	lastFetchedSecond: number,
+	acsByContest: {[contestId: string]: string[]},
 }
 
-export const crawlSubmissionsByUser = async (contestId: string, user: string) => {
-	let page = 1;
-	const submissionsMap: Map<number, Submission> = new Map();
+let storagePromise: Promise<nodePersist.LocalStorage> | null = null;
 
-	while (page < 100) {
-		const url = `https://atcoder.jp/contests/${contestId}/submissions?f.User=${user}&page=${page}`;
-		const {data} = await scrapeIt<SubmissionsData>(url, {
-			maxPage: {
-				selector: 'div:last-child > .pagination > li:last-child',
-				convert: (text) => parseInt(text),
-			},
-			submissions: {
-				listItem: '.panel-submission .table tbody > tr',
-				data: {
-					time: {
-						selector: 'td:nth-child(1)',
-						convert: (d) => new Date(d),
-					},
-					problemId: {
-						selector: 'td:nth-child(2) > a',
-						attr: 'href',
-						convert: (text) => last(text.split('/')),
-					},
-					problemName: {
-						selector: 'td:nth-child(2)',
-					},
-					userId: {
-						selector: 'td:nth-child(3)',
-					},
-					languageId: {
-						selector: 'td:nth-child(4) > a',
-						attr: 'href',
-						convert: (u) => parseInt(new URL(u, url).searchParams.get('f.Language')),
-					},
-					language: {
-						selector: 'td:nth-child(4)',
-					},
-					point: {
-						selector: 'td:nth-child(5)',
-						convert: (text) => parseInt(text),
-					},
-					length: {
-						selector: 'td:nth-child(6)',
-						convert: (text) => parseInt(text),
-					},
-					result: {
-						selector: 'td:nth-child(7)',
-					},
-					executionTime: {
-						selector: 'td:nth-child(8)',
-						convert: (text) => parseInt(text),
-					},
-					memoryUsage: {
-						selector: 'td:nth-child(9)',
-						convert: (text) => parseInt(text),
-					},
-					id: {
-						selector: 'td:last-child > a',
-						attr: 'href',
-						convert: (text) => parseInt(last(text.split('/'))),
-					},
-				},
-			},
+const getStorage = (): Promise<nodePersist.LocalStorage> => {
+	if (!storagePromise) {
+		const storage = nodePersist.create({
+			dir: path.resolve(__dirname, '__state__'),
 		});
+		storagePromise = storage.init().then(() => storage);
+	}
+	return storagePromise;
+};
 
-		for (const submission of data.submissions) {
-			submissionsMap.set(submission.id, submission);
+export const fetchUserACsInContest = async (userId: string, contestId: string): Promise<Set<string>> => {
+	const storage = await getStorage();
+
+	const cacheKey = `submissions-${userId}`;
+	const cached: UserSubmissionCache = (await storage.getItem(cacheKey)) ?? {
+		lastFetchedSecond: 0,
+		acsByContest: {},
+	};
+
+	let fromSecond = cached.lastFetchedSecond > 0 ? cached.lastFetchedSecond + 1 : 0;
+	let maxEpochSecond = cached.lastFetchedSecond;
+
+	while (true) {
+		const {data} = await axios.get<AtCoderProblemsSubmission[]>(
+			'https://kenkoooo.com/atcoder/atcoder-api/v3/user/submissions',
+			{params: {user: userId, from_second: fromSecond}},
+		);
+
+		for (const sub of data) {
+			if (sub.epoch_second > maxEpochSecond) {
+				maxEpochSecond = sub.epoch_second;
+			}
+			if (sub.result === 'AC') {
+				if (!cached.acsByContest[sub.contest_id]) {
+					cached.acsByContest[sub.contest_id] = [];
+				}
+				if (!cached.acsByContest[sub.contest_id].includes(sub.problem_id)) {
+					cached.acsByContest[sub.contest_id].push(sub.problem_id);
+				}
+			}
 		}
 
-		if (data.submissions.length === 0 || data.maxPage === page) {
+		if (data.length < 500) {
 			break;
 		}
 
-		page++;
+		fromSecond = Math.max(...data.map((s) => s.epoch_second)) + 1;
+		await new Promise<void>((resolve) => {
+			setTimeout(resolve, 1000);
+		});
 	}
 
-	return Array.from(submissionsMap.values()).sort((a, b) => a.time.getTime() - b.time.getTime());
+	cached.lastFetchedSecond = maxEpochSecond;
+	await storage.setItem(cacheKey, cached);
+
+	return new Set(cached.acsByContest[contestId] ?? []);
 };
