@@ -42,11 +42,6 @@ export interface ShuffledMeaning {
 	dummyWord?: WordEntry;
 }
 
-export interface Betting {
-	meaningIndex: number;
-	coins: number;
-}
-
 export type NormalGamePhase = 'select_theme' | 'collect_meanings' | 'collect_bettings';
 export type DailyGamePhase = 'collect_meanings' | 'collect_bettings';
 
@@ -57,7 +52,7 @@ export interface NormalGameState {
 	theme: Theme | null;
 	meanings: Record<string, string>;
 	shuffledMeanings: ShuffledMeaning[];
-	bettings: Record<string, Betting>;
+	votes: Record<string, number>;
 	endPhaseAt: number;
 	gameMessageTs: string | null;
 	bettingMessageTs: string | null;
@@ -71,7 +66,7 @@ export interface DailyGameState {
 	theme: Theme;
 	meanings: Record<string, string>;
 	shuffledMeanings: ShuffledMeaning[];
-	bettings: Record<string, Betting>;
+	votes: Record<string, number>;
 	endPhaseAt: number;
 	gameMessageTs: string | null;
 	bettingMessageTs: string | null;
@@ -83,14 +78,14 @@ export interface TahoiyaState {
 	dailyGame: DailyGameState | null;
 	ratings: Record<string, number>;
 	gamesPlayed: Record<string, number>;
-	lastGameCoins: Record<string, number>;
+	lastGameScore: Record<string, number>;
 	dailyStatusMessageTs: string | null;
 	authorHistory: string[];
 }
 
 export interface PlayerResult {
 	userId: string;
-	coins: number;
+	score: number;
 	isCorrect: boolean;
 	deceived: string[];
 }
@@ -120,5 +115,5 @@ export interface GameRecordMeaning {
 	type: 'correct' | 'user' | 'dummy';
 	user?: string;
 	source?: string;
-	betters: {user: string; coins: number}[];
+	voters: {user: string}[];
 }

@@ -24,7 +24,6 @@ import type {
 	DictionarySource,
 	DictionaryTheme,
 	ShuffledMeaning,
-	Betting,
 	RatingChange,
 	GameRecord,
 	StoredTheme,
@@ -84,7 +83,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			dailyGame: null,
 			ratings: {},
 			gamesPlayed: {},
-			lastGameCoins: {},
+			lastGameScore: {},
 			dailyStatusMessageTs: null,
 			authorHistory: [],
 		});
@@ -196,25 +195,23 @@ export class Tahoiya extends ChannelLimitedBot {
 			}
 		});
 
-		// Submit bet: normal
+		// Submit vote: normal
 		this.messageClient.viewSubmission('tahoiya_normal_bet_modal', (payload: ViewSubmitAction) => {
-			const values = Object.assign({}, ...Object.values(payload.view.state.values ?? {})) as Record<string, {selected_option?: {value: string}; value?: string}>;
+			const values = Object.assign({}, ...Object.values(payload.view.state.values ?? {})) as Record<string, {selected_option?: {value: string}}>;
 			const meaningIndex = parseInt(values?.meaning_index?.selected_option?.value ?? '-1');
-			const coins = parseInt(values?.coins?.value ?? '1');
 			const userId = payload.user.id;
 			if (meaningIndex >= 0) {
-				mutex.runExclusive(() => this.#submitBetting('normal', userId, {meaningIndex, coins})).catch((err) => this.log.error(err));
+				mutex.runExclusive(() => this.#submitVote('normal', userId, meaningIndex)).catch((err) => this.log.error(err));
 			}
 		});
 
-		// Submit bet: daily
+		// Submit vote: daily
 		this.messageClient.viewSubmission('tahoiya_daily_bet_modal', (payload: ViewSubmitAction) => {
-			const values = Object.assign({}, ...Object.values(payload.view.state.values ?? {})) as Record<string, {selected_option?: {value: string}; value?: string}>;
+			const values = Object.assign({}, ...Object.values(payload.view.state.values ?? {})) as Record<string, {selected_option?: {value: string}}>;
 			const meaningIndex = parseInt(values?.meaning_index?.selected_option?.value ?? '-1');
-			const coins = parseInt(values?.coins?.value ?? '1');
 			const userId = payload.user.id;
 			if (meaningIndex >= 0) {
-				mutex.runExclusive(() => this.#submitBetting('daily', userId, {meaningIndex, coins})).catch((err) => this.log.error(err));
+				mutex.runExclusive(() => this.#submitVote('daily', userId, meaningIndex)).catch((err) => this.log.error(err));
 			}
 		});
 
@@ -253,7 +250,7 @@ export class Tahoiya extends ChannelLimitedBot {
 				theme: null,
 				meanings: {},
 				shuffledMeanings: [],
-				bettings: {},
+				votes: {},
 				endPhaseAt: now,
 				gameMessageTs: null,
 				bettingMessageTs: null,
@@ -332,6 +329,7 @@ export class Tahoiya extends ChannelLimitedBot {
 		// AI bots in background
 		for (const modelId of AI_BOT_MODELS) {
 			this.log.info(`Requesting AI bot (${modelId}) for meaning of "${theme.ruby}"...`);
+
 			getAIBotMeaning(candidate[1], modelId).then((aiResult) => {
 				this.log.info(`AI bot (${modelId}) responded: ${aiResult?.result ? aiResult.result : 'no result'}`);
 				if (!aiResult?.result) {
@@ -444,7 +442,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			theme: theme.theme,
 			meanings: {},
 			shuffledMeanings: [],
-			bettings: {},
+			votes: {},
 			endPhaseAt: Date.now(),
 			gameMessageTs: this.#state.dailyStatusMessageTs,
 			bettingMessageTs: null,
@@ -557,14 +555,14 @@ export class Tahoiya extends ChannelLimitedBot {
 
 		const humanParticipants = Object.keys(game.meanings).filter((u) => u.startsWith('U'));
 		const correctMeaningIndex = game.shuffledMeanings.findIndex((m) => m.isCorrect);
-		const correctBetters = Object.entries(game.bettings).filter(([, b]) => b.meaningIndex === correctMeaningIndex);
-		const humanCorrectCount = correctBetters.filter(([u]) => u.startsWith('U')).length;
+		const correctVoters = Object.entries(game.votes).filter(([, idx]) => idx === correctMeaningIndex);
+		const humanCorrectCount = correctVoters.filter(([u]) => u.startsWith('U')).length;
 		const humanWrongCount = humanParticipants.length - humanCorrectCount;
 
 		const results = this.#calculateResults(game);
 		results.push({
 			userId: game.themeAuthor,
-			coins: humanWrongCount - humanCorrectCount,
+			score: humanWrongCount - humanCorrectCount,
 			isCorrect: false,
 			deceived: [],
 		});
@@ -624,10 +622,9 @@ export class Tahoiya extends ChannelLimitedBot {
 			return;
 		}
 
-		const humanCount = Object.keys(game.meanings).filter((u) => u.startsWith('U')).length;
 		await this.slack.views.open({
 			trigger_id: triggerId,
-			view: bettingModal(game.shuffledMeanings, gameType, userId, humanCount),
+			view: bettingModal(game.shuffledMeanings, gameType, userId),
 		}).catch((err) => this.log.error('failed to open modal:', err));
 	}
 
@@ -655,11 +652,11 @@ export class Tahoiya extends ChannelLimitedBot {
 		}
 
 		if (userId.startsWith('U')) {
-			await this.#postThread(gameType, {text: `<@${userId}> が意味を登録しました！`});
+			await this.#postThread(gameType, {text: `<@${userId}> が意味を登録したよ👍️`});
 		}
 	}
 
-	async #submitBetting(gameType: 'normal' | 'daily', userId: string, betting: Betting) {
+	async #submitVote(gameType: 'normal' | 'daily', userId: string, meaningIndex: number) {
 		const game = gameType === 'normal' ? this.#state.normalGame : this.#state.dailyGame;
 		if (!game || game.phase !== 'collect_bettings') {
 			await this.slack.chat.postEphemeral({
@@ -670,7 +667,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			return;
 		}
 
-		const clampedIndex = Math.max(0, Math.min(betting.meaningIndex, game.shuffledMeanings.length - 1));
+		const clampedIndex = Math.max(0, Math.min(meaningIndex, game.shuffledMeanings.length - 1));
 
 		if (game.shuffledMeanings[clampedIndex]?.userId === userId) {
 			await this.slack.chat.postEphemeral({
@@ -681,11 +678,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			return;
 		}
 
-		const humanCount = Object.keys(game.meanings).filter((u) => u.startsWith('U')).length;
-		const maxCoins = Math.max(1, Math.min(5, humanCount));
-		const clampedCoins = Math.min(Math.max(1, betting.coins), maxCoins);
-
-		game.bettings[userId] = {meaningIndex: clampedIndex, coins: clampedCoins};
+		game.votes[userId] = clampedIndex;
 
 		if (gameType === 'normal') {
 			await this.#updateBettingMessage('normal');
@@ -696,8 +689,8 @@ export class Tahoiya extends ChannelLimitedBot {
 		// Check if all human participants voted (normal game only)
 		if (gameType === 'normal') {
 			const humanMeaningUsers = Object.keys(game.meanings).filter((u) => u.startsWith('U'));
-			const humanBetUsers = Object.keys(game.bettings).filter((u) => u.startsWith('U'));
-			if (humanMeaningUsers.length > 0 && humanMeaningUsers.every((u) => humanBetUsers.includes(u))) {
+			const humanVoteUsers = Object.keys(game.votes).filter((u) => u.startsWith('U'));
+			if (humanMeaningUsers.length > 0 && humanMeaningUsers.every((u) => humanVoteUsers.includes(u))) {
 				if (this.#normalBettingTimeout) {
 					clearTimeout(this.#normalBettingTimeout);
 					this.#normalBettingTimeout = null;
@@ -986,29 +979,30 @@ export class Tahoiya extends ChannelLimitedBot {
 			})) + Math.random() * 1e-10);
 
 			if (betTarget) {
-				game.bettings[botId] = {meaningIndex: betTarget.idx, coins: 1};
+				game.votes[botId] = betTarget.idx;
 			}
 		}
 	}
 
 	#calculateResults(game: NormalGameState | DailyGameState): PlayerResult[] {
 		const correctMeaningIndex = game.shuffledMeanings.findIndex((m) => m.isCorrect);
-		const coinMap: Record<string, number> = {};
+		const scoreMap: Record<string, number> = {};
 		const deceived: Record<string, string[]> = {};
 
 		for (const userId of Object.keys(game.meanings)) {
-			coinMap[userId] = 0;
+			scoreMap[userId] = 0;
 		}
 
-		for (const [userId, betting] of Object.entries(game.bettings)) {
-			const isCorrect = betting.meaningIndex === correctMeaningIndex;
+		for (const [userId, voteIndex] of Object.entries(game.votes)) {
+			const isCorrect = voteIndex === correctMeaningIndex;
 			if (isCorrect) {
-				coinMap[userId] = (coinMap[userId] ?? 0) + betting.coins;
+				// +2 for guessing the correct meaning
+				scoreMap[userId] = (scoreMap[userId] ?? 0) + 2;
 			} else {
-				coinMap[userId] = (coinMap[userId] ?? 0) - betting.coins;
-				const misdirectedUserId = game.shuffledMeanings[betting.meaningIndex]?.userId;
+				const misdirectedUserId = game.shuffledMeanings[voteIndex]?.userId;
 				if (misdirectedUserId) {
-					coinMap[misdirectedUserId] = (coinMap[misdirectedUserId] ?? 0) + betting.coins;
+					// +1 for each player fooled by your fake meaning
+					scoreMap[misdirectedUserId] = (scoreMap[misdirectedUserId] ?? 0) + 1;
 					if (!deceived[misdirectedUserId]) {
 						deceived[misdirectedUserId] = [];
 					}
@@ -1017,10 +1011,10 @@ export class Tahoiya extends ChannelLimitedBot {
 			}
 		}
 
-		return Object.keys(coinMap).map((userId) => ({
+		return Object.keys(scoreMap).map((userId) => ({
 			userId,
-			coins: coinMap[userId] ?? 0,
-			isCorrect: game.bettings[userId]?.meaningIndex === correctMeaningIndex,
+			score: scoreMap[userId] ?? 0,
+			isCorrect: game.votes[userId] === correctMeaningIndex,
 			deceived: deceived[userId] ?? [],
 		}));
 	}
@@ -1032,7 +1026,7 @@ export class Tahoiya extends ChannelLimitedBot {
 		}
 
 		const deltas = calculateRatingDeltas(
-			humanResults.map((r) => ({userId: r.userId, coins: r.coins})),
+			humanResults.map((r) => ({userId: r.userId, score: r.score})),
 			this.#state.ratings,
 		);
 
@@ -1055,7 +1049,7 @@ export class Tahoiya extends ChannelLimitedBot {
 		const blocks = resultsMessage(
 			game.theme!,
 			game.shuffledMeanings,
-			game.bettings,
+			game.votes,
 			ratingChanges.filter((r) => r.userId.startsWith('U')),
 			correctMeaningIndex,
 		);
@@ -1071,25 +1065,25 @@ export class Tahoiya extends ChannelLimitedBot {
 		const humanCount = Object.keys(game.meanings).filter((u) => u.startsWith('U')).length;
 		const humanResults = results.filter((r) => r.userId.startsWith('U'));
 
-		const sorted = [...humanResults].sort((a, b) => b.coins - a.coins);
+		const sorted = [...humanResults].sort((a, b) => b.score - a.score);
 		const firstPlace = sorted[0]?.userId;
 		if (firstPlace) {
 			await increment(firstPlace, 'tahoiyaFirstPlace');
 		}
 
 		for (const result of humanResults) {
-			const {userId, coins, isCorrect, deceived} = result;
+			const {userId, score, isCorrect, deceived} = result;
 
-			if (coins >= 6) {
+			if (score >= 6) {
 				await increment(userId, 'tahoiyaOver6');
 			}
-			if (coins >= 10) {
+			if (score >= 10) {
 				await increment(userId, 'tahoiyaOver10');
 			}
 			if (humanCount >= 3 && isCorrect) {
 				await increment(userId, 'tahoiyaWin');
 			}
-			if (!isCorrect && coins > 0) {
+			if (!isCorrect && score > 0) {
 				await increment(userId, 'tahoiyaPositiveWithoutWin');
 			}
 			if (deceived.length >= 1) {
@@ -1098,31 +1092,31 @@ export class Tahoiya extends ChannelLimitedBot {
 			if (deceived.length >= 3) {
 				await increment(userId, 'tahoiyaDeceive3Once');
 			}
+			if (deceived.length >= 5) {
+				await increment(userId, 'tahoiya5Bet');
+			}
 			await Promise.all(deceived.map(() => increment(userId, 'tahoiyaDeceive')));
 
-			const prev = this.#state.lastGameCoins[userId];
-			if (prev !== undefined && prev - coins >= 10) {
+			const prev = this.#state.lastGameScore[userId];
+			if (prev !== undefined && prev - score >= 5) {
 				await increment(userId, 'tahoiyaDown10');
 			}
-			this.#state.lastGameCoins[userId] = coins;
+			this.#state.lastGameScore[userId] = score;
 		}
 
-		for (const [userId, betting] of Object.entries(game.bettings)) {
+		for (const [userId, voteIndex] of Object.entries(game.votes)) {
 			if (!userId.startsWith('U')) {
 				continue;
 			}
-			const chosen = game.shuffledMeanings[betting.meaningIndex];
+			const chosen = game.shuffledMeanings[voteIndex];
 			if (chosen?.userId?.startsWith('tahoiyabot')) {
 				await increment(userId, 'tahoiyaSingularity');
 			}
 			if (chosen?.userId?.startsWith('U')) {
-				const otherBetting = game.bettings[chosen.userId];
-				if (otherBetting && game.shuffledMeanings[otherBetting.meaningIndex]?.userId === userId) {
+				const otherVoteIndex = game.votes[chosen.userId];
+				if (otherVoteIndex !== undefined && game.shuffledMeanings[otherVoteIndex]?.userId === userId) {
 					await increment(userId, 'tahoiyaDeceiveEachOther');
 				}
-			}
-			if (betting.coins >= 5) {
-				await increment(userId, 'tahoiya5Bet');
 			}
 		}
 
@@ -1154,9 +1148,9 @@ export class Tahoiya extends ChannelLimitedBot {
 				type: m.isCorrect ? 'correct' : m.isDummy ? 'dummy' : 'user',
 				...(m.userId && !m.isDummy ? {user: m.userId} : {}),
 				...(m.isDummy && m.dummyWord ? {source: m.dummyWord[2]} : {}),
-				betters: Object.entries(game.bettings)
-					.filter(([, b]) => b.meaningIndex === i)
-					.map(([user, b]) => ({user, coins: b.coins})),
+				voters: Object.entries(game.votes)
+					.filter(([, voteIndex]) => voteIndex === i)
+					.map(([user]) => ({user})),
 			})),
 			comments: [],
 			author: gameType === 'daily' ? (game as DailyGameState).themeAuthor : null,

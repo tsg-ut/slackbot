@@ -2,7 +2,7 @@ import {clamp, minBy, maxBy, mean} from 'lodash';
 
 export interface GameScore {
 	userId: string;
-	coins: number;
+	score: number;
 }
 
 export interface RatingDelta {
@@ -21,18 +21,17 @@ export const calculateRatingDeltas = (
 	}
 
 	const N = scores.length;
-	const minCoins = minBy(scores, (s) => s.coins)!.coins;
-	const maxCoins = maxBy(scores, (s) => s.coins)!.coins;
+	const minScore = minBy(scores, (s) => s.score)!.score;
+	const maxScore = maxBy(scores, (s) => s.score)!.score;
 
-	// Sort by coins descending to determine ranks
-	const sorted = [...scores].sort((a, b) => b.coins - a.coins);
+	const sorted = [...scores].sort((a, b) => b.score - a.score);
 
 	const getRank = (userId: string): number => {
 		const idx = sorted.findIndex((s) => s.userId === userId);
 		// Handle ties: average rank of tied group
-		const coin = sorted[idx].coins;
+		const sc = sorted[idx].score;
 		const tiedIndices = sorted
-			.map((s, i) => (s.coins === coin ? i : -1))
+			.map((s, i) => (s.score === sc ? i : -1))
 			.filter((i) => i >= 0);
 		return mean(tiedIndices) + 1; // 1-indexed
 	};
@@ -42,9 +41,9 @@ export const calculateRatingDeltas = (
 		const rank = getRank(score.userId);
 
 		const rankScore = (N - rank) / Math.max(N - 1, 1);
-		const coinScore = (score.coins - minCoins) / Math.max(maxCoins - minCoins, 1);
+		const scoreScore = (score.score - minScore) / Math.max(maxScore - minScore, 1);
 
-		const performance = 0.6 * rankScore + 0.4 * coinScore;
+		const performance = 0.6 * rankScore + 0.4 * scoreScore;
 		const K = Math.max(10, 80 * (1 - currentRating / 1000));
 		const rawDelta = K * (performance - 0.5) * 2;
 		const newRating = clamp(currentRating + rawDelta, 0, 1000);

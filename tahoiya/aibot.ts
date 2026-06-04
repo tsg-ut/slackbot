@@ -7,9 +7,11 @@ import download from 'download';
 // @ts-expect-error: untyped
 import {hiraganize} from 'japanese';
 import Queue from 'p-queue';
+import logger from '../lib/logger';
 
 const docker = new Docker();
 const queue = new Queue({concurrency: 1});
+const log = logger.child({bot: 'tahoiya/aibot'});
 
 const downloadBracketsPromise = download('https://www.unicode.org/Public/UCD/latest/ucd/BidiBrackets.txt');
 
@@ -142,9 +144,8 @@ const executeModel = async (rawInput: string, modelName: AIBotModel): Promise<AI
 				setTimeout(() => reject(new TimeoutError()), 60000);
 			}),
 		]);
-		console.log(`AI bot (${modelName}) stdout: ${result[0].toString()}`);
-		console.log(`AI bot (${modelName}) stderr: ${result[1].toString()}`);
-		console.log(result[2]);
+		log.debug(`AI bot (${modelName}) stdout: ${result[0].toString()}`);
+		log.debug(`AI bot (${modelName}) stderr: ${result[1].toString()}`);
 		stdout = result[0];
 	} finally {
 		if (container !== null) {

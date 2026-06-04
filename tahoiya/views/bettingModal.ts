@@ -1,12 +1,10 @@
 import type {View} from '@slack/web-api';
 import type {ShuffledMeaning} from '../types';
 
-export default (shuffledMeanings: ShuffledMeaning[], gameType: 'normal' | 'daily', userId: string, humanCount: number): View => {
+export default (shuffledMeanings: ShuffledMeaning[], gameType: 'normal' | 'daily', userId: string): View => {
 	const votableMeanings = shuffledMeanings
 		.map((m, i) => ({m, i}))
 		.filter(({m}) => m.userId !== userId);
-
-	const maxCoins = Math.max(1, Math.min(5, humanCount));
 
 	return {
 		type: 'modal',
@@ -29,19 +27,6 @@ export default (shuffledMeanings: ShuffledMeaning[], gameType: 'normal' | 'daily
 						},
 						value: String(i),
 					})),
-				},
-			},
-			{
-				type: 'input',
-				block_id: 'coins_input',
-				label: {type: 'plain_text', text: `BET枚数（1〜${maxCoins}枚）`},
-				element: {
-					type: 'number_input',
-					action_id: 'coins',
-					is_decimal_allowed: false,
-					min_value: '1',
-					max_value: String(maxCoins),
-					placeholder: {type: 'plain_text', text: '枚数を入力'},
 				},
 			},
 		],

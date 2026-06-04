@@ -7,9 +7,9 @@ describe('calculateRatingDeltas', () => {
 
 	it('gives positive delta to winner with low rating', () => {
 		const scores = [
-			{userId: 'U1', coins: 5},
-			{userId: 'U2', coins: 2},
-			{userId: 'U3', coins: -1},
+			{userId: 'U1', score: 5},
+			{userId: 'U2', score: 2},
+			{userId: 'U3', score: -1},
 		];
 		const ratings = {U1: 0, U2: 0, U3: 0};
 		const deltas = calculateRatingDeltas(scores, ratings);
@@ -23,8 +23,8 @@ describe('calculateRatingDeltas', () => {
 	});
 
 	it('gives smaller delta at high rating', () => {
-		const lowRatingScores = [{userId: 'U1', coins: 5}, {userId: 'U2', coins: 0}];
-		const highRatingScores = [{userId: 'U3', coins: 5}, {userId: 'U4', coins: 0}];
+		const lowRatingScores = [{userId: 'U1', score: 5}, {userId: 'U2', score: 0}];
+		const highRatingScores = [{userId: 'U3', score: 5}, {userId: 'U4', score: 0}];
 
 		const lowDeltas = calculateRatingDeltas(lowRatingScores, {U1: 100, U2: 100});
 		const highDeltas = calculateRatingDeltas(highRatingScores, {U3: 850, U4: 850});
@@ -36,7 +36,7 @@ describe('calculateRatingDeltas', () => {
 	});
 
 	it('clamps rating to 0 minimum', () => {
-		const scores = [{userId: 'U1', coins: -10}, {userId: 'U2', coins: 10}];
+		const scores = [{userId: 'U1', score: -10}, {userId: 'U2', score: 10}];
 		const ratings = {U1: 0, U2: 500};
 		const deltas = calculateRatingDeltas(scores, ratings);
 
@@ -45,7 +45,7 @@ describe('calculateRatingDeltas', () => {
 	});
 
 	it('clamps rating to 1000 maximum', () => {
-		const scores = [{userId: 'U1', coins: 100}, {userId: 'U2', coins: -100}];
+		const scores = [{userId: 'U1', score: 100}, {userId: 'U2', score: -100}];
 		const ratings = {U1: 999, U2: 0};
 		const deltas = calculateRatingDeltas(scores, ratings);
 
@@ -55,9 +55,9 @@ describe('calculateRatingDeltas', () => {
 
 	it('handles tie in ranking with average rank', () => {
 		const scores = [
-			{userId: 'U1', coins: 5},
-			{userId: 'U2', coins: 5},
-			{userId: 'U3', coins: 0},
+			{userId: 'U1', score: 5},
+			{userId: 'U2', score: 5},
+			{userId: 'U3', score: 0},
 		];
 		const ratings = {U1: 200, U2: 200, U3: 200};
 		const deltas = calculateRatingDeltas(scores, ratings);
@@ -69,7 +69,7 @@ describe('calculateRatingDeltas', () => {
 	});
 
 	it('uses 0 as default rating for unknown users', () => {
-		const scores = [{userId: 'unknown', coins: 5}, {userId: 'U2', coins: 0}];
+		const scores = [{userId: 'unknown', score: 5}, {userId: 'U2', score: 0}];
 		const deltas = calculateRatingDeltas(scores, {});
 
 		const unknown = deltas.find((d) => d.userId === 'unknown')!;

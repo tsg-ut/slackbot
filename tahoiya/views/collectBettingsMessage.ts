@@ -29,7 +29,7 @@ export default (
 		.map((m, i) => `${i + 1}. ${m.text}`)
 		.join('\n');
 
-	const bettingUsers = Object.keys(game.bettings).filter((u) => u.startsWith('U'));
+	const bettingUsers = Object.keys(game.votes).filter((u) => u.startsWith('U'));
 	const bettingText = bettingUsers.length > 0
 		? `投票済み: ${bettingUsers.map((u) => `<@${u}>`).join(' ')} (${bettingUsers.length}人)`
 		: 'まだ誰も投票していません';

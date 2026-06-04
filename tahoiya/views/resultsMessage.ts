@@ -1,10 +1,10 @@
 import type {KnownBlock} from '@slack/web-api';
-import type {Betting, RatingChange, ShuffledMeaning, Theme} from '../types';
+import type {RatingChange, ShuffledMeaning, Theme} from '../types';
 import {getWordUrl, SOURCE_LABELS} from '../utils';
 
 const themeTitle = (theme: Theme): string => {
 	if (theme.type === 'dictionary') {
-		return `「${theme.word}」（${theme.ruby}）`;
+		return `${theme.word} （${theme.ruby}）`;
 	}
 	return `「${theme.question}」`;
 };
@@ -25,7 +25,7 @@ const themeSource = (theme: Theme): string => {
 
 const dummyAttribution = (m: ShuffledMeaning): string => {
 	if (!m.dummyWord) {
-		return '（ダミー）';
+		return `（${m.userId}）`;
 	}
 	const [word, , source, , id] = m.dummyWord;
 	const url = getWordUrl(word, source as any, id);
@@ -41,28 +41,24 @@ const formatDelta = (delta: number): string => {
 export default (
 	theme: Theme,
 	shuffledMeanings: ShuffledMeaning[],
-	bettings: Record<string, Betting>,
+	votes: Record<string, number>,
 	ratingChanges: RatingChange[],
 	correctMeaningIndex: number,
 ): KnownBlock[] => {
-	const correctBetters = Object.entries(bettings).filter(
-		([, b]) => b.meaningIndex === correctMeaningIndex,
-	);
-	const incorrectBetters = Object.entries(bettings).filter(
-		([, b]) => b.meaningIndex !== correctMeaningIndex,
-	);
+	const correctVoters = Object.entries(votes).filter(([, idx]) => idx === correctMeaningIndex);
+	const incorrectVoters = Object.entries(votes).filter(([, idx]) => idx !== correctMeaningIndex);
 
-	const correctText = correctBetters.filter(([u]) => u.startsWith('U')).length > 0
-		? correctBetters.filter(([u]) => u.startsWith('U')).map(([u]) => `<@${u}>`).join(' ')
+	const correctText = correctVoters.filter(([u]) => u.startsWith('U')).length > 0
+		? correctVoters.filter(([u]) => u.startsWith('U')).map(([u]) => `<@${u}>`).join(' ')
 		: 'なし';
-	const incorrectText = incorrectBetters.filter(([u]) => u.startsWith('U')).length > 0
-		? incorrectBetters.filter(([u]) => u.startsWith('U')).map(([u]) => `<@${u}>`).join(' ')
+	const incorrectText = incorrectVoters.filter(([u]) => u.startsWith('U')).length > 0
+		? incorrectVoters.filter(([u]) => u.startsWith('U')).map(([u]) => `<@${u}>`).join(' ')
 		: 'なし';
 
 	const meaningDetails = shuffledMeanings.map((m, i) => {
-		const bettersForThis = Object.entries(bettings)
-			.filter(([, b]) => b.meaningIndex === i)
-			.map(([u, b]) => `<@${u}>(${b.coins}枚)`)
+		const votersForThis = Object.entries(votes)
+			.filter(([, idx]) => idx === i)
+			.map(([u]) => `<@${u}>`)
 			.join(' ');
 
 		let typeIcon = '👤';
@@ -75,7 +71,7 @@ export default (
 			attribution = dummyAttribution(m);
 		}
 
-		return `${i + 1}. ${typeIcon} ${m.text} ${attribution}\n   → ${bettersForThis || 'BETなし'}`;
+		return `${i + 1}. ${typeIcon} ${m.text} ${attribution}\n   → ${votersForThis || '投票なし'}`;
 	}).join('\n\n');
 
 	const ratingText = ratingChanges.length > 0
@@ -95,7 +91,11 @@ export default (
 			type: 'section',
 			text: {
 				type: 'mrkdwn',
-				text: `${themeTitle(theme)}\n意味: *${themeAnswer(theme)}*\n出典: ${themeSource(theme)}`,
+				text: [
+					themeTitle(theme),
+					`${theme.type === 'dictionary' ? '正しい意味' : '正解'}: *${themeAnswer(theme)}*`,
+					`出典: ${themeSource(theme)}`,
+				].join('\n'),
 			},
 		},
 		{
