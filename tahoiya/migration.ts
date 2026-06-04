@@ -88,18 +88,18 @@ async function migrateStateRatings() {
 
 // Achievement ID → counter name mapping (for achievements that previously used unlock())
 const achievementCounterMap: Record<string, string> = {
-	tahoiya: 'tahoiyaParticipateFirst',
-	'daily-tahoiya-theme': 'dailyTahoiyaTheme',
-	'tahoiya-over6': 'tahoiyaOver6',
-	'tahoiya-over10': 'tahoiyaOver10',
-	'tahoiya-down10': 'tahoiyaDown10',
-	'tahoiya-deceive': 'tahoiyaDeceiveOnce',
-	'tahoiya-deceive3': 'tahoiyaDeceive3Once',
-	'tahoiya-5bet': 'tahoiya5Bet',
-	'tahoiya-singularity': 'tahoiyaSingularity',
-	'tahoiya-positive-coins-without-win': 'tahoiyaPositiveWithoutWin',
-	'tahoiya-deceive-each-other': 'tahoiyaDeceiveEachOther',
-	'tahoiya-firstplace': 'tahoiyaFirstPlace',
+	tahoiya: 'tahoiya-participate',
+	'daily-tahoiya-theme': 'daily-tahoiya-theme',
+	'tahoiya-over6': 'tahoiya-over-6',
+	'tahoiya-over10': 'tahoiya-over-10',
+	'tahoiya-down10': 'tahoiya-down-10',
+	'tahoiya-deceive': 'tahoiya-deceive-once',
+	'tahoiya-deceive3': 'tahoiya-deceive-3-once',
+	'tahoiya-5bet': 'tahoiya-5-bet',
+	'tahoiya-singularity': 'tahoiya-singularity',
+	'tahoiya-positive-coins-without-win': 'tahoiya-positive-without-win',
+	'tahoiya-deceive-each-other': 'tahoiya-deceive-each-other',
+	'tahoiya-firstplace': 'tahoiya-first-place',
 };
 
 async function migrateAchievementCounters() {

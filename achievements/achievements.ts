@@ -757,7 +757,7 @@ const achievements: Achievement[] = [
 		title: '千里の道も一歩から',
 		condition: 'たほいやに参加する',
 		category: 'tahoiya',
-		counter: 'tahoiyaParticipateFirst',
+		counter: 'tahoiya-participate',
 		value: 1,
 	},
 	{
@@ -766,7 +766,7 @@ const achievements: Achievement[] = [
 		title: '大智は愚の如し',
 		condition: 'デイリーたほいやにお題を登録する',
 		category: 'tahoiya',
-		counter: 'dailyTahoiyaTheme',
+		counter: 'daily-tahoiya-theme',
 		value: 1,
 	},
 	{
@@ -775,7 +775,7 @@ const achievements: Achievement[] = [
 		title: '見立ての名人',
 		condition: 'デイリーたほいやに任意たほいやのお題を登録する',
 		category: 'tahoiya',
-		counter: 'tahoiyaArbitraryTheme',
+		counter: 'tahoiya-arbitrary-theme',
 		value: 1,
 	},
 	{
@@ -784,7 +784,7 @@ const achievements: Achievement[] = [
 		title: '坊主丸儲け',
 		condition: 'たほいやで一度にプラス6点以上獲得する',
 		category: 'tahoiya',
-		counter: 'tahoiyaOver6',
+		counter: 'tahoiya-over-6',
 		value: 1,
 	},
 	{
@@ -793,7 +793,7 @@ const achievements: Achievement[] = [
 		title: '一攫千金',
 		condition: 'たほいやで一度にプラス10点以上獲得する',
 		category: 'tahoiya',
-		counter: 'tahoiyaOver10',
+		counter: 'tahoiya-over-10',
 		value: 1,
 	},
 	{
@@ -802,7 +802,7 @@ const achievements: Achievement[] = [
 		title: '悪銭身につかず',
 		condition: 'たほいやで前回より5点以上低い点数を獲得する',
 		category: 'tahoiya',
-		counter: 'tahoiyaDown10',
+		counter: 'tahoiya-down-10',
 		value: 1,
 	},
 	{
@@ -811,7 +811,7 @@ const achievements: Achievement[] = [
 		title: '笑中に刀あり',
 		condition: 'たほいやで他の人をひっかける',
 		category: 'tahoiya',
-		counter: 'tahoiyaDeceiveOnce',
+		counter: 'tahoiya-deceive-once',
 		value: 1,
 	},
 	{
@@ -820,7 +820,7 @@ const achievements: Achievement[] = [
 		title: '麦飯で鯉を釣る',
 		condition: 'たほいやで1度に3人以上をひっかける',
 		category: 'tahoiya',
-		counter: 'tahoiyaDeceive3Once',
+		counter: 'tahoiya-deceive-3-once',
 		value: 1,
 	},
 	{
@@ -829,7 +829,7 @@ const achievements: Achievement[] = [
 		title: '乾坤一擲',
 		condition: 'たほいやで1度に5人以上を騙す',
 		category: 'tahoiya',
-		counter: 'tahoiya5Bet',
+		counter: 'tahoiya-5-bet',
 		value: 1,
 	},
 	{
@@ -838,7 +838,7 @@ const achievements: Achievement[] = [
 		title: 'シンギュラリティ',
 		condition: 'たほいやでAIに振り込んでしまう',
 		category: 'tahoiya',
-		counter: 'tahoiyaSingularity',
+		counter: 'tahoiya-singularity',
 		value: 1,
 	},
 	{
@@ -847,7 +847,7 @@ const achievements: Achievement[] = [
 		title: '負けるが勝ち',
 		condition: 'たほいやで正解せずに正の得点を獲得する',
 		category: 'tahoiya',
-		counter: 'tahoiyaPositiveWithoutWin',
+		counter: 'tahoiya-positive-without-win',
 		value: 1,
 	},
 	{
@@ -856,7 +856,7 @@ const achievements: Achievement[] = [
 		title: '鷸蚌の争い',
 		condition: 'たほいやでお互いの登録した意味に振り込み合う (BOTを除く)',
 		category: 'tahoiya',
-		counter: 'tahoiyaDeceiveEachOther',
+		counter: 'tahoiya-deceive-each-other',
 		value: 1,
 	},
 	{
@@ -865,7 +865,7 @@ const achievements: Achievement[] = [
 		title: '歩く百科事典',
 		condition: 'たほいやのランキングで1位になる',
 		category: 'tahoiya',
-		counter: 'tahoiyaFirstPlace',
+		counter: 'tahoiya-first-place',
 		value: 1,
 	},
 	{
@@ -874,7 +874,7 @@ const achievements: Achievement[] = [
 		title: '半人前の辞書',
 		condition: 'たほいやレーティングで500に到達する',
 		category: 'tahoiya',
-		counter: 'tahoiyaRating500',
+		counter: 'tahoiya-rating-500',
 		value: 1,
 	},
 	{
@@ -883,7 +883,7 @@ const achievements: Achievement[] = [
 		title: '言葉の魔術師',
 		condition: 'たほいやレーティングで800に到達する',
 		category: 'tahoiya',
-		counter: 'tahoiyaRating800',
+		counter: 'tahoiya-rating-800',
 		value: 1,
 	},
 	{
@@ -892,7 +892,7 @@ const achievements: Achievement[] = [
 		title: '勝てば官軍',
 		condition: 'たほいやで延べ10勝する (BOT以外の参加者が3人以上の場合に限る)',
 		category: 'tahoiya',
-		counter: 'tahoiyaWin',
+		counter: 'tahoiya-win',
 		value: 10,
 	},
 	{
@@ -901,7 +901,7 @@ const achievements: Achievement[] = [
 		title: '百戦殆うからず',
 		condition: 'たほいやで延べ100勝する (BOT以外の参加者が3人以上の場合に限る)',
 		category: 'tahoiya',
-		counter: 'tahoiyaWin',
+		counter: 'tahoiya-win',
 		value: 100,
 	},
 	{
@@ -910,7 +910,7 @@ const achievements: Achievement[] = [
 		title: '狐七化け、狸は八化け',
 		condition: 'たほいやで延べ8人をひっかける',
 		category: 'tahoiya',
-		counter: 'tahoiyaDeceive',
+		counter: 'tahoiya-deceive',
 		value: 8,
 	},
 	{
@@ -919,7 +919,7 @@ const achievements: Achievement[] = [
 		title: '三百代言',
 		condition: 'たほいやで延べ300人をひっかける',
 		category: 'tahoiya',
-		counter: 'tahoiyaDeceive',
+		counter: 'tahoiya-deceive',
 		value: 300,
 	},
 	{
@@ -928,7 +928,7 @@ const achievements: Achievement[] = [
 		title: '芸は道によって賢し',
 		condition: 'たほいやに10回参加する (BOT以外の参加者が3人以上の場合に限る)',
 		category: 'tahoiya',
-		counter: 'tahoiyaParticipate',
+		counter: 'tahoiya-participate',
 		value: 10,
 	},
 	{
@@ -937,7 +937,7 @@ const achievements: Achievement[] = [
 		title: '松笠より年嵩',
 		condition: 'たほいやに50回参加する (BOT以外の参加者が3人以上の場合に限る)',
 		category: 'tahoiya',
-		counter: 'tahoiyaParticipate',
+		counter: 'tahoiya-participate',
 		value: 50,
 	},
 	{
@@ -946,7 +946,7 @@ const achievements: Achievement[] = [
 		title: '海千山千',
 		condition: 'たほいやに300回参加する (BOT以外の参加者が3人以上の場合に限る)',
 		category: 'tahoiya',
-		counter: 'tahoiyaParticipate',
+		counter: 'tahoiya-participate',
 		value: 300,
 	},
 

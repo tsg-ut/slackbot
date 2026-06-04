@@ -391,8 +391,7 @@ export class Tahoiya extends ChannelLimitedBot {
 
 		if (humanParticipants.length >= 3) {
 			for (const u of humanParticipants) {
-				await increment(u, 'tahoiyaParticipate');
-				await increment(u, 'tahoiyaParticipateFirst');
+				await increment(u, 'tahoiya-participate');
 			}
 		}
 
@@ -530,8 +529,7 @@ export class Tahoiya extends ChannelLimitedBot {
 
 		if (humanCount >= 3) {
 			for (const u of humanParticipants) {
-				await increment(u, 'tahoiyaParticipate');
-				await increment(u, 'tahoiyaParticipateFirst');
+				await increment(u, 'tahoiya-participate');
 			}
 		}
 
@@ -753,7 +751,7 @@ export class Tahoiya extends ChannelLimitedBot {
 		};
 
 		await this.#saveTheme(stored);
-		await increment(userId, 'dailyTahoiyaTheme');
+		await increment(userId, 'daily-tahoiya-theme');
 		await this.#postMessage({text: `<@${userId}> がデイリーたほいやのお題を登録しました！`});
 		return undefined;
 	}
@@ -793,8 +791,8 @@ export class Tahoiya extends ChannelLimitedBot {
 		};
 
 		await this.#saveTheme(stored);
-		await increment(userId, 'dailyTahoiyaTheme');
-		await increment(userId, 'tahoiyaArbitraryTheme');
+		await increment(userId, 'daily-tahoiya-theme');
+		await increment(userId, 'tahoiya-arbitrary-theme');
 		await this.#postMessage({text: `<@${userId}> がデイリーたほいやのお題を登録しました！`});
 		return undefined;
 	}
@@ -1068,38 +1066,38 @@ export class Tahoiya extends ChannelLimitedBot {
 		const sorted = [...humanResults].sort((a, b) => b.score - a.score);
 		const firstPlace = sorted[0]?.userId;
 		if (firstPlace) {
-			await increment(firstPlace, 'tahoiyaFirstPlace');
+			await increment(firstPlace, 'tahoiya-first-place');
 		}
 
 		for (const result of humanResults) {
 			const {userId, score, isCorrect, deceived} = result;
 
 			if (score >= 6) {
-				await increment(userId, 'tahoiyaOver6');
+				await increment(userId, 'tahoiya-over-6');
 			}
 			if (score >= 10) {
-				await increment(userId, 'tahoiyaOver10');
+				await increment(userId, 'tahoiya-over-10');
 			}
 			if (humanCount >= 3 && isCorrect) {
-				await increment(userId, 'tahoiyaWin');
+				await increment(userId, 'tahoiya-win');
 			}
 			if (!isCorrect && score > 0) {
-				await increment(userId, 'tahoiyaPositiveWithoutWin');
+				await increment(userId, 'tahoiya-positive-without-win');
 			}
 			if (deceived.length >= 1) {
-				await increment(userId, 'tahoiyaDeceiveOnce');
+				await increment(userId, 'tahoiya-deceive-once');
 			}
 			if (deceived.length >= 3) {
-				await increment(userId, 'tahoiyaDeceive3Once');
+				await increment(userId, 'tahoiya-deceive-3-once');
 			}
 			if (deceived.length >= 5) {
-				await increment(userId, 'tahoiya5Bet');
+				await increment(userId, 'tahoiya-5-bet');
 			}
-			await Promise.all(deceived.map(() => increment(userId, 'tahoiyaDeceive')));
+			await Promise.all(deceived.map(() => increment(userId, 'tahoiya-deceive')));
 
 			const prev = this.#state.lastGameScore[userId];
 			if (prev !== undefined && prev - score >= 5) {
-				await increment(userId, 'tahoiyaDown10');
+				await increment(userId, 'tahoiya-down-10');
 			}
 			this.#state.lastGameScore[userId] = score;
 		}
@@ -1110,12 +1108,12 @@ export class Tahoiya extends ChannelLimitedBot {
 			}
 			const chosen = game.shuffledMeanings[voteIndex];
 			if (chosen?.userId?.startsWith('tahoiyabot')) {
-				await increment(userId, 'tahoiyaSingularity');
+				await increment(userId, 'tahoiya-singularity');
 			}
 			if (chosen?.userId?.startsWith('U')) {
 				const otherVoteIndex = game.votes[chosen.userId];
 				if (otherVoteIndex !== undefined && game.shuffledMeanings[otherVoteIndex]?.userId === userId) {
-					await increment(userId, 'tahoiyaDeceiveEachOther');
+					await increment(userId, 'tahoiya-deceive-each-other');
 				}
 			}
 		}
@@ -1125,10 +1123,10 @@ export class Tahoiya extends ChannelLimitedBot {
 				continue;
 			}
 			if (change.oldRating < 500 && change.newRating >= 500) {
-				await increment(change.userId, 'tahoiyaRating500');
+				await increment(change.userId, 'tahoiya-rating-500');
 			}
 			if (change.oldRating < 800 && change.newRating >= 800) {
-				await increment(change.userId, 'tahoiyaRating800');
+				await increment(change.userId, 'tahoiya-rating-800');
 			}
 		}
 	}
