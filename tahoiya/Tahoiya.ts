@@ -43,6 +43,7 @@ import {
 } from './views/registerThemeModal';
 import resultsMessage from './views/resultsMessage';
 import submitMeaningModal from './views/submitMeaningModal';
+import {stripIndent} from 'common-tags';
 
 const mutex = new Mutex();
 
@@ -70,6 +71,9 @@ export class Tahoiya extends ChannelLimitedBot {
 	#normalBettingTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	#dailyBettingTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	// In-memory theme store for dev mode (when Firestore is unavailable)
+	#devThemes: Map<string, StoredTheme> = new Map();
 
 	static async create(slack: SlackInterface) {
 		const instance = new Tahoiya(slack);
@@ -217,14 +221,14 @@ export class Tahoiya extends ChannelLimitedBot {
 
 		// Register theme: dictionary form submit
 		this.messageClient.viewSubmission('tahoiya_register_theme_dict_modal', (payload: ViewSubmitAction) => {
-			const values = Object.assign({}, ...Object.values(payload.view.state.values ?? {})) as Record<string, {value?: string}>;
+			const values = Object.assign({}, ...Object.values(payload.view.state.values ?? {})) as Record<string, {value?: string; selected_options?: {value: string}[]}>;
 			const userId = payload.user.id;
 			return mutex.runExclusive(() => this.#registerDictTheme(userId, values));
 		});
 
 		// Register theme: arbitrary form submit
 		this.messageClient.viewSubmission('tahoiya_register_theme_arbitrary_modal', (payload: ViewSubmitAction) => {
-			const values = Object.assign({}, ...Object.values(payload.view.state.values ?? {})) as Record<string, {value?: string}>;
+			const values = Object.assign({}, ...Object.values(payload.view.state.values ?? {})) as Record<string, {value?: string; selected_options?: {value: string}[]}>;
 			const userId = payload.user.id;
 			return mutex.runExclusive(() => this.#registerArbitraryTheme(userId, values));
 		});
@@ -380,9 +384,13 @@ export class Tahoiya extends ChannelLimitedBot {
 		// Post new betting message with mentions, broadcast to channel
 		const humanParticipants = Object.keys(game.meanings).filter((u) => u.startsWith('U'));
 		const mentions = humanParticipants.map((u) => `<@${u}>`).join(' ');
+		const mentionBlock: KnownBlock[] = mentions ? [{
+			type: 'section',
+			text: {type: 'mrkdwn', text: mentions},
+		}] : [];
 		const bettingResult = await this.#postThread('normal', {
 			text: `たほいや投票フェーズ開始！${mentions ? `\n${mentions} 投票してください！` : ''}`,
-			blocks: collectBettingsMessage(this.#state.normalGame, 'normal'),
+			blocks: [...mentionBlock, ...collectBettingsMessage(this.#state.normalGame, 'normal')],
 			broadcast: true,
 		});
 		this.#state.normalGame.bettingMessageTs = bettingResult?.ts ?? null;
@@ -424,11 +432,15 @@ export class Tahoiya extends ChannelLimitedBot {
 		this.#state.normalGame = null;
 	}
 
-	async #selectNextDailyTheme() {
+	async #selectNextDailyTheme(announce = false) {
 		const themes = await this.#fetchAvailableThemes();
 
 		if (themes.length === 0) {
 			this.log.warn('No daily themes available');
+			await this.#postThread('daily', {
+				text: '次のデイリーたほいやのお題が見つかりませんでした。お題を募集しています！',
+				broadcast: true,
+			});
 			return;
 		}
 
@@ -450,7 +462,22 @@ export class Tahoiya extends ChannelLimitedBot {
 
 		await this.#updateDailyStatusMessage();
 
-		// AI bots
+		if (announce) {
+			const themeLabel = theme.theme.type === 'dictionary'
+				? `「${theme.theme.ruby}」`
+				: `「${theme.theme.question}」`;
+			await this.#postThread('daily', {
+				text: stripIndent`
+					明日のデイリーたほいやのお題はこれ！
+					お題: ${themeLabel} (出題者: <@${theme.submittedBy}>)
+
+					明日の21時までに、「意味を登録する」ボタンから意味を登録してね :writing_hand:
+				`,
+				broadcast: true,
+			});
+		}
+
+		// AI bots submit meanings for dictionary themes in the background
 		if (theme.theme.type === 'dictionary') {
 			for (const modelId of AI_BOT_MODELS) {
 				getAIBotMeaning(theme.theme.ruby, modelId).then((aiResult) => {
@@ -518,14 +545,18 @@ export class Tahoiya extends ChannelLimitedBot {
 			? `「${game.theme.ruby}」`
 			: `「${game.theme.question}」`;
 
+		const mentionBlock: KnownBlock[] = mentions ? [{
+			type: 'section',
+			text: {type: 'mrkdwn', text: `${mentions} 60分以内に投票してください！`},
+		}] : [];
 		const bettingResult = await this.#postThread('daily', {
 			text: `デイリーたほいや ${themeLabel} の投票フェーズが始まりました！\n${mentions} 60分以内に投票してください！`,
-			blocks: collectBettingsMessage(this.#state.dailyGame, 'daily'),
+			blocks: [...mentionBlock, ...collectBettingsMessage(this.#state.dailyGame, 'daily')],
 			broadcast: true,
 		});
 		this.#state.dailyGame.bettingMessageTs = bettingResult?.ts ?? null;
 
-		await this.#doAIBets('daily');
+		this.#doAIBets('daily');
 
 		if (humanCount >= 3) {
 			for (const u of humanParticipants) {
@@ -551,16 +582,15 @@ export class Tahoiya extends ChannelLimitedBot {
 
 		await this.#disableBettingMessage('daily');
 
-		const humanParticipants = Object.keys(game.meanings).filter((u) => u.startsWith('U'));
 		const correctMeaningIndex = game.shuffledMeanings.findIndex((m) => m.isCorrect);
-		const correctVoters = Object.entries(game.votes).filter(([, idx]) => idx === correctMeaningIndex);
-		const humanCorrectCount = correctVoters.filter(([u]) => u.startsWith('U')).length;
-		const humanWrongCount = humanParticipants.length - humanCorrectCount;
+		const humanVoters = Object.entries(game.votes).filter(([u]) => u.startsWith('U'));
+		const humanCorrectCount = humanVoters.filter(([, idx]) => idx === correctMeaningIndex).length;
+		const humanWrongCount = humanVoters.length - humanCorrectCount;
 
 		const results = this.#calculateResults(game);
 		results.push({
 			userId: game.themeAuthor,
-			score: humanWrongCount - humanCorrectCount,
+			score: humanWrongCount,
 			isCorrect: false,
 			deceived: [],
 		});
@@ -580,7 +610,7 @@ export class Tahoiya extends ChannelLimitedBot {
 
 		this.#state.dailyGame = null;
 
-		await this.#selectNextDailyTheme();
+		await this.#selectNextDailyTheme(true);
 	}
 
 	async #openSubmitMeaningModal(triggerId: string, gameType: 'normal' | 'daily', userId: string) {
@@ -603,9 +633,10 @@ export class Tahoiya extends ChannelLimitedBot {
 			return;
 		}
 
+		const existingMeaning = game.meanings[userId];
 		await this.slack.views.open({
 			trigger_id: triggerId,
-			view: submitMeaningModal(game.theme, gameType),
+			view: submitMeaningModal(game.theme, gameType, existingMeaning),
 		}).catch((err) => this.log.error('failed to open modal:', err));
 	}
 
@@ -616,6 +647,15 @@ export class Tahoiya extends ChannelLimitedBot {
 				channel: this.allowedChannels[0],
 				user: userId,
 				text: '現在は投票フェーズではありません。',
+			});
+			return;
+		}
+
+		if (gameType === 'daily' && this.#state.dailyGame?.themeAuthor === userId) {
+			await this.slack.chat.postEphemeral({
+				channel: this.allowedChannels[0],
+				user: userId,
+				text: 'お題を出題したため、このゲームの投票には参加できません。',
 			});
 			return;
 		}
@@ -665,6 +705,10 @@ export class Tahoiya extends ChannelLimitedBot {
 			return;
 		}
 
+		if (gameType === 'daily' && this.#state.dailyGame?.themeAuthor === userId) {
+			return;
+		}
+
 		const clampedIndex = Math.max(0, Math.min(meaningIndex, game.shuffledMeanings.length - 1));
 
 		if (game.shuffledMeanings[clampedIndex]?.userId === userId) {
@@ -700,7 +744,7 @@ export class Tahoiya extends ChannelLimitedBot {
 
 	async #registerDictTheme(
 		userId: string,
-		values: Record<string, {value?: string}>,
+		values: Record<string, {value?: string; selected_options?: {value: string}[]}>,
 	): Promise<{response_action: string; errors?: Record<string, string>} | void> {
 		const word = values?.word?.value?.trim() ?? '';
 		const ruby = values?.ruby?.value?.trim() ?? '';
@@ -709,6 +753,9 @@ export class Tahoiya extends ChannelLimitedBot {
 		const url = values?.url?.value?.trim() ?? '';
 
 		const errors: Record<string, string> = {};
+		if (!values?.regulation_confirmed?.selected_options?.some((o) => o.value === 'confirmed')) {
+			errors.regulation_input = 'レギュレーションを確認してください';
+		}
 		if (!word) {
 			errors.word_input = '単語を入力してください';
 		}
@@ -753,18 +800,24 @@ export class Tahoiya extends ChannelLimitedBot {
 		await this.#saveTheme(stored);
 		await increment(userId, 'daily-tahoiya-theme');
 		await this.#postMessage({text: `<@${userId}> がデイリーたほいやのお題を登録しました！`});
+		if (this.#state.dailyGame === null) {
+			await this.#selectNextDailyTheme(true);
+		}
 		return undefined;
 	}
 
 	async #registerArbitraryTheme(
 		userId: string,
-		values: Record<string, {value?: string}>,
+		values: Record<string, {value?: string; selected_options?: {value: string}[]}>,
 	): Promise<{response_action: string; errors?: Record<string, string>} | void> {
 		const question = values?.question?.value?.trim() ?? '';
 		const answer = values?.answer?.value?.trim() ?? '';
 		const url = values?.url?.value?.trim() ?? '';
 
 		const errors: Record<string, string> = {};
+		if (!values?.regulation_confirmed?.selected_options?.some((o) => o.value === 'confirmed')) {
+			errors.regulation_input = 'レギュレーションを確認してください';
+		}
 		if (!question) {
 			errors.question_input = 'お題文を入力してください';
 		}
@@ -794,6 +847,9 @@ export class Tahoiya extends ChannelLimitedBot {
 		await increment(userId, 'daily-tahoiya-theme');
 		await increment(userId, 'tahoiya-arbitrary-theme');
 		await this.#postMessage({text: `<@${userId}> がデイリーたほいやのお題を登録しました！`});
+		if (this.#state.dailyGame === null) {
+			await this.#selectNextDailyTheme(true);
+		}
 		return undefined;
 	}
 
@@ -810,7 +866,11 @@ export class Tahoiya extends ChannelLimitedBot {
 			});
 		}
 
-		const result = await this.#postMessage({channel, text: 'デイリーたほいや', blocks});
+		const result = await this.#postThread('daily', {
+			text: 'デイリーたほいや',
+			blocks,
+			broadcast: true,
+		});
 		this.#state.dailyStatusMessageTs = result.ts ?? null;
 
 		if (this.#state.dailyGame) {
@@ -912,7 +972,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			.filter(([u]) => u.startsWith('tahoiyabot'))
 			.map(([userId, text]) => ({text, userId, isDummy: true, isCorrect: false}));
 
-		const dummySize = Math.max(1, DUMMY_SIZE_BASE - Object.keys(game.meanings).length);
+		const dummySize = theme.type === 'arbitrary' ? 0 : Math.max(1, DUMMY_SIZE_BASE - Object.keys(game.meanings).length);
 
 		let ambiguateDummy: WordEntry | null = null;
 		if ('candidates' in game && theme.type === 'dictionary') {
@@ -991,11 +1051,19 @@ export class Tahoiya extends ChannelLimitedBot {
 			scoreMap[userId] = 0;
 		}
 
+		// Also include voters who didn't register a meaning
+		for (const userId of Object.keys(game.votes)) {
+			if (!(userId in scoreMap)) {
+				scoreMap[userId] = 0;
+			}
+		}
+
 		for (const [userId, voteIndex] of Object.entries(game.votes)) {
 			const isCorrect = voteIndex === correctMeaningIndex;
 			if (isCorrect) {
-				// +2 for guessing the correct meaning
-				scoreMap[userId] = (scoreMap[userId] ?? 0) + 2;
+				// Registered users get +2, non-registered voters get +1
+				const hasRegistered = userId in game.meanings;
+				scoreMap[userId] = (scoreMap[userId] ?? 0) + (hasRegistered ? 2 : 1);
 			} else {
 				const misdirectedUserId = game.shuffledMeanings[voteIndex]?.userId;
 				if (misdirectedUserId) {
@@ -1038,11 +1106,12 @@ export class Tahoiya extends ChannelLimitedBot {
 
 	async #postResultsMessage(
 		game: NormalGameState | DailyGameState,
-		_results: PlayerResult[],
+		results: PlayerResult[],
 		ratingChanges: RatingChange[],
 		gameType: 'normal' | 'daily',
 	) {
 		const correctMeaningIndex = game.shuffledMeanings.findIndex((m) => m.isCorrect);
+		const playerScores = Object.fromEntries(results.map((r) => [r.userId, r.score]));
 
 		const blocks = resultsMessage(
 			game.theme!,
@@ -1050,6 +1119,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			game.votes,
 			ratingChanges.filter((r) => r.userId.startsWith('U')),
 			correctMeaningIndex,
+			playerScores,
 		);
 
 		await this.#postThread(gameType, {text: 'たほいや結果発表！', blocks, broadcast: true});
@@ -1165,11 +1235,14 @@ export class Tahoiya extends ChannelLimitedBot {
 	}
 
 	async #fetchAvailableThemes(): Promise<StoredTheme[]> {
-		try {
-			if (!db) {
-				return [];
-			}
+		if (!db) {
+			const available = [...this.#devThemes.values()].filter((t) => !t.used);
+			const excluded = this.#state.authorHistory;
+			const filtered = available.filter((t) => !excluded.includes(t.submittedBy));
+			return shuffle(filtered.length > 0 ? filtered : available).slice(0, 1);
+		}
 
+		try {
 			const excluded = this.#state.authorHistory;
 			const snapshot = await db.collection('tahoiya_themes')
 				.where('used', '==', false)
@@ -1194,10 +1267,11 @@ export class Tahoiya extends ChannelLimitedBot {
 	}
 
 	async #countAvailableThemes(): Promise<number> {
+		if (!db) {
+			return [...this.#devThemes.values()].filter((t) => !t.used).length;
+		}
+
 		try {
-			if (!db) {
-				return 0;
-			}
 			const snapshot = await db.collection('tahoiya_themes').where('used', '==', false).count().get();
 			return snapshot.data().count;
 		} catch {
@@ -1206,22 +1280,30 @@ export class Tahoiya extends ChannelLimitedBot {
 	}
 
 	async #markThemeUsed(themeId: string) {
-		try {
-			if (db) {
-				await db.collection('tahoiya_themes').doc(themeId).update({used: true, usedAt: Date.now()});
+		if (!db) {
+			const theme = this.#devThemes.get(themeId);
+			if (theme) {
+				this.#devThemes.set(themeId, {...theme, used: true, usedAt: Date.now()});
 			}
+			return;
+		}
+
+		try {
+			await db.collection('tahoiya_themes').doc(themeId).update({used: true, usedAt: Date.now()});
 		} catch (err) {
 			this.log.error('failed to mark theme used:', err);
 		}
 	}
 
 	async #saveTheme(theme: StoredTheme) {
+		if (!db) {
+			this.#devThemes.set(theme.id, theme);
+			this.log.info('Dev mode: theme saved in-memory:', theme.theme.type);
+			return;
+		}
+
 		try {
-			if (db) {
-				await db.collection('tahoiya_themes').doc(theme.id).set(theme);
-			} else {
-				this.log.info('Dev mode: theme not saved to Firestore:', theme.theme.type);
-			}
+			await db.collection('tahoiya_themes').doc(theme.id).set(theme);
 		} catch (err) {
 			this.log.error('failed to save theme:', err);
 		}

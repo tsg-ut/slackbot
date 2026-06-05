@@ -13,7 +13,7 @@ export const registerThemeModeSelectModal = (): View => ({
 			type: 'section',
 			text: {
 				type: 'mrkdwn',
-				text: `デイリーたほいやのお題を登録します。\nレギュレーション: <${REGULATION_URL}|デイリーたほいや>\n\n登録するお題のモードを選択してください。`,
+				text: `デイリーたほいやのお題を登録します。\n登録前に、必ず<${REGULATION_URL}|デイリーたほいやのレギュレーション>を確認してください。\n\n登録するお題のモードを選択してください。`,
 			},
 		},
 		{
@@ -103,6 +103,21 @@ export const registerThemeDictModal = (): View => ({
 				placeholder: {type: 'plain_text', text: 'https://...'},
 			},
 		},
+		{
+			type: 'input',
+			block_id: 'regulation_input',
+			label: {type: 'plain_text', text: 'レギュレーション確認'},
+			element: {
+				type: 'checkboxes',
+				action_id: 'regulation_confirmed',
+				options: [
+					{
+						text: {type: 'plain_text', text: `<${REGULATION_URL}|デイリーたほいやのレギュレーション>を確認しました`, emoji: true},
+						value: 'confirmed',
+					},
+				],
+			},
+		},
 	],
 });
 
@@ -142,6 +157,21 @@ export const registerThemeArbitraryModal = (): View => ({
 				type: 'plain_text_input',
 				action_id: 'url',
 				placeholder: {type: 'plain_text', text: 'https://...'},
+			},
+		},
+		{
+			type: 'input',
+			block_id: 'regulation_input',
+			label: {type: 'plain_text', text: 'レギュレーション確認'},
+			element: {
+				type: 'checkboxes',
+				action_id: 'regulation_confirmed',
+				options: [
+					{
+						text: {type: 'plain_text', text: `<${REGULATION_URL}|デイリーたほいやのレギュレーション>を確認しました`, emoji: true},
+						value: 'confirmed',
+					},
+				],
 			},
 		},
 	],

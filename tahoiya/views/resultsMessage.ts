@@ -44,6 +44,7 @@ export default (
 	votes: Record<string, number>,
 	ratingChanges: RatingChange[],
 	correctMeaningIndex: number,
+	playerScores: Record<string, number>,
 ): KnownBlock[] => {
 	const correctVoters = Object.entries(votes).filter(([, idx]) => idx === correctMeaningIndex);
 	const incorrectVoters = Object.entries(votes).filter(([, idx]) => idx !== correctMeaningIndex);
@@ -74,12 +75,20 @@ export default (
 		return `${i + 1}. ${typeIcon} ${m.text} ${attribution}\n   → ${votersForThis || '投票なし'}`;
 	}).join('\n\n');
 
-	const ratingText = ratingChanges.length > 0
-		? ratingChanges
-			.map(({userId, oldRating, newRating, delta}) => (
-				`<@${userId}>: ${Math.round(oldRating)} → ${Math.round(newRating)} (${formatDelta(delta)})`
-			))
-			.join('\n')
+	const sortedPlayers = Object.entries(playerScores)
+		.filter(([u]) => u.startsWith('U'))
+		.sort(([, a], [, b]) => b - a);
+
+	const ratingByUser = new Map(ratingChanges.map((r) => [r.userId, r]));
+
+	const playerText = sortedPlayers.length > 0
+		? sortedPlayers.map(([userId, score]) => {
+			const rating = ratingByUser.get(userId);
+			const ratingText = rating
+				? ` | ${Math.round(rating.oldRating)} → ${Math.round(rating.newRating)} (${formatDelta(rating.delta)})`
+				: '';
+			return `<@${userId}>: ${score}点${ratingText}`;
+		}).join('\n')
 		: null;
 
 	const blocks: KnownBlock[] = [
@@ -114,12 +123,12 @@ export default (
 		},
 	];
 
-	if (ratingText) {
+	if (playerText) {
 		blocks.push({
 			type: 'section',
 			text: {
 				type: 'mrkdwn',
-				text: `*レーティング変動:*\n${ratingText}`,
+				text: `*スコア・レーティング変動:*\n${playerText}`,
 			},
 		});
 	}

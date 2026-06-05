@@ -19,12 +19,7 @@ const phaseLabel = (game: DailyGameState): string => {
 };
 
 export default (game: DailyGameState | null, themeStockCount: number, skipNotice: string | null): KnownBlock[] => {
-	const blocks: KnownBlock[] = [
-		{
-			type: 'header',
-			text: {type: 'plain_text', text: 'デイリーたほいや', emoji: true},
-		},
-	];
+	const blocks: KnownBlock[] = [];
 
 	if (skipNotice !== null) {
 		blocks.push(

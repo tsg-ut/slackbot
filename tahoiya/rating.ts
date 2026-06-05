@@ -44,8 +44,10 @@ export const calculateRatingDeltas = (
 		const scoreScore = (score.score - minScore) / Math.max(maxScore - minScore, 1);
 
 		const performance = 0.6 * rankScore + 0.4 * scoreScore;
-		const K = Math.max(10, 80 * (1 - currentRating / 1000));
-		const rawDelta = K * (performance - 0.5) * 2;
+		const baseK = Math.max(10, 80 * (1 - currentRating / 1000));
+		// Scale K by participant count: sqrt(N/5) so 5 players = baseline, more = stronger changes
+		const participantScale = Math.sqrt(N / 5);
+		const rawDelta = baseK * participantScale * (performance - 0.5) * 2;
 		const newRating = clamp(currentRating + rawDelta, 0, 1000);
 
 		return {

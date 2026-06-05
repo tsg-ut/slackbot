@@ -9,9 +9,9 @@ const formatTime = (ts: number): string => {
 	return `${h}:${m}:${s}`;
 };
 
-const themeRuby = (theme: Theme): string => {
+const themeQuestion = (theme: Theme): string => {
 	if (theme.type === 'dictionary') {
-		return theme.ruby;
+		return `「${theme.ruby}」の正しい意味はどれでしょう？`;
 	}
 	return theme.question;
 };
@@ -43,7 +43,7 @@ export default (
 			type: 'header',
 			text: {
 				type: 'plain_text',
-				text: `たほいや 投票フェーズ\n「${themeRuby(theme)}」の正しい意味はどれでしょう？`,
+				text: `たほいや 投票フェーズ\n${themeQuestion(theme)}`,
 				emoji: true,
 			},
 		},
