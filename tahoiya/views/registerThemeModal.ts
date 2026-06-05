@@ -112,7 +112,7 @@ export const registerThemeDictModal = (): View => ({
 				action_id: 'regulation_confirmed',
 				options: [
 					{
-						text: {type: 'plain_text', text: `<${REGULATION_URL}|デイリーたほいやのレギュレーション>を確認しました`, emoji: true},
+						text: {type: 'plain_text', text: 'デイリーたほいやのレギュレーションを確認しました', emoji: true},
 						value: 'confirmed',
 					},
 				],
@@ -168,7 +168,7 @@ export const registerThemeArbitraryModal = (): View => ({
 				action_id: 'regulation_confirmed',
 				options: [
 					{
-						text: {type: 'plain_text', text: `<${REGULATION_URL}|デイリーたほいやのレギュレーション>を確認しました`, emoji: true},
+						text: {type: 'plain_text', text: 'デイリーたほいやのレギュレーションを確認しました', emoji: true},
 						value: 'confirmed',
 					},
 				],

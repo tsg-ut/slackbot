@@ -1,4 +1,5 @@
 import type {KnownBlock} from '@slack/web-api';
+import {chunk} from 'lodash';
 import type {WordEntry} from '../../lib/candidateWords';
 
 export default (candidates: WordEntry[]): KnownBlock[] => {
@@ -13,19 +14,16 @@ export default (candidates: WordEntry[]): KnownBlock[] => {
 		value: word[1],
 	}));
 
-	const actionChunks: {type: 'button'; text: {type: 'plain_text'; text: string; emoji: boolean}; action_id: string; value: string}[][] = [];
-	for (let i = 0; i < buttons.length; i += 5) {
-		actionChunks.push(buttons.slice(i, i + 5));
-	}
+	const actionChunks = chunk(buttons, 5);
 
 	const blocks: KnownBlock[] = [
 		{
 			type: 'section',
 			text: {type: 'mrkdwn', text: 'お題を選んでください（押したらゲーム開始）'},
 		},
-		...actionChunks.map((chunk): KnownBlock => ({
+		...actionChunks.map((buttonGroup): KnownBlock => ({
 			type: 'actions',
-			elements: chunk,
+			elements: buttonGroup,
 		})),
 	];
 

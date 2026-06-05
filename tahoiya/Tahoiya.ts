@@ -2,6 +2,7 @@ import {randomUUID} from 'crypto';
 import type {BlockButtonAction, ViewSubmitAction} from '@slack/bolt';
 import type {ChatPostMessageArguments, KnownBlock, GenericMessageEvent} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
+import {stripIndent} from 'common-tags';
 // @ts-expect-error: fast-levenshtein has no type declarations
 import levenshtein from 'fast-levenshtein';
 import {minBy, maxBy, sample, sampleSize, shuffle, sum} from 'lodash';
@@ -12,8 +13,8 @@ import {increment} from '../achievements';
 import {getCandidateWords} from '../lib/candidateWords';
 import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 import {db} from '../lib/firestore';
-import State from '../lib/state';
 import type {SlackInterface} from '../lib/slack';
+import State from '../lib/state';
 import {getAIBotMeaning} from './aibot';
 import type {AIBotModel} from './aibot';
 import {calculateRatingDeltas} from './rating';
@@ -43,7 +44,6 @@ import {
 } from './views/registerThemeModal';
 import resultsMessage from './views/resultsMessage';
 import submitMeaningModal from './views/submitMeaningModal';
-import {stripIndent} from 'common-tags';
 
 const mutex = new Mutex();
 
@@ -1061,9 +1061,7 @@ export class Tahoiya extends ChannelLimitedBot {
 		for (const [userId, voteIndex] of Object.entries(game.votes)) {
 			const isCorrect = voteIndex === correctMeaningIndex;
 			if (isCorrect) {
-				// Registered users get +2, non-registered voters get +1
-				const hasRegistered = userId in game.meanings;
-				scoreMap[userId] = (scoreMap[userId] ?? 0) + (hasRegistered ? 2 : 1);
+				scoreMap[userId] = (scoreMap[userId] ?? 0) + 2;
 			} else {
 				const misdirectedUserId = game.shuffledMeanings[voteIndex]?.userId;
 				if (misdirectedUserId) {

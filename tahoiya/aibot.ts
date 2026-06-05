@@ -146,7 +146,7 @@ const executeModel = async (rawInput: string, modelName: AIBotModel): Promise<AI
 		]);
 		log.debug(`AI bot (${modelName}) stdout: ${result[0].toString()}`);
 		log.debug(`AI bot (${modelName}) stderr: ${result[1].toString()}`);
-		stdout = result[0];
+		[stdout] = result;
 	} finally {
 		if (container !== null) {
 			await container.stop().catch((error: {statusCode?: number}) => {

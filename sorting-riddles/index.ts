@@ -3,7 +3,7 @@ import type { SlackInterface } from '../lib/slack';
 import axios from 'axios';
 import { stripIndent } from 'common-tags';
 import sample from 'lodash/sample';
-import {getPageTitle, getWordUrl} from '../tahoiya/utils';
+import { getPageTitle, getWordUrl } from '../tahoiya/utils';
 import type { DictionarySource } from '../tahoiya/types';
 import { getCandidateWords } from '../lib/candidateWords';
 import { unlock, increment } from '../achievements';

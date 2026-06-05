@@ -6,6 +6,7 @@ import {randomUUID} from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import {promisify} from 'util';
+import * as firebase from 'firebase-admin';
 import {open} from 'sqlite';
 import sqlite3 from 'sqlite3';
 import {db} from '../lib/firestore';
@@ -16,7 +17,8 @@ const readFile = promisify(fs.readFile);
 
 async function migrateSqliteThemes() {
 	const dbPath = path.join(__dirname, 'themes.sqlite3');
-	if (!fs.existsSync(dbPath)) {
+	const dbExists = await fs.promises.access(dbPath).then(() => true).catch(() => false);
+	if (!dbExists) {
 		console.log('No sqlite3 db found, skipping theme migration');
 		return;
 	}
@@ -56,7 +58,8 @@ async function migrateSqliteThemes() {
 
 async function migrateStateRatings() {
 	const statePath = path.join(__dirname, 'state.json');
-	if (!fs.existsSync(statePath)) {
+	const stateExists = await fs.promises.access(statePath).then(() => true).catch(() => false);
+	if (!stateExists) {
 		console.log('No state.json found, skipping ratings migration');
 		return;
 	}
@@ -152,6 +155,63 @@ async function migrateAchievementCounters() {
 	console.log(`Achievement counter migration complete for ${Object.keys(userCounters).length} users`);
 }
 
+// Mapping from old camelCase counter names to new kebab-case names (renamed in b704c987)
+const counterRenameMap: Record<string, string> = {
+	tahoiyaParticipate: 'tahoiya-participate',
+	dailyTahoiyaTheme: 'daily-tahoiya-theme',
+	tahoiyaArbitraryTheme: 'tahoiya-arbitrary-theme',
+	tahoiyaFirstPlace: 'tahoiya-first-place',
+	tahoiyaOver6: 'tahoiya-over-6',
+	tahoiyaOver10: 'tahoiya-over-10',
+	tahoiyaWin: 'tahoiya-win',
+	tahoiyaPositiveWithoutWin: 'tahoiya-positive-without-win',
+	tahoiyaDeceiveOnce: 'tahoiya-deceive-once',
+	tahoiyaDeceive3Once: 'tahoiya-deceive-3-once',
+	tahoiya5Bet: 'tahoiya-5-bet',
+	tahoiyaDeceive: 'tahoiya-deceive',
+	tahoiyaDown10: 'tahoiya-down-10',
+	tahoiyaSingularity: 'tahoiya-singularity',
+	tahoiyaDeceiveEachOther: 'tahoiya-deceive-each-other',
+	tahoiyaRating500: 'tahoiya-rating-500',
+	tahoiyaRating800: 'tahoiya-rating-800',
+};
+
+async function migrateCounterNames() {
+	if (!db) {
+		return;
+	}
+
+	const usersSnapshot = await db.collection('users').get();
+	console.log(`Checking counter names for ${usersSnapshot.size} users...`);
+
+	let updatedCount = 0;
+	for (const doc of usersSnapshot.docs) {
+		const data = doc.data();
+		const updates: Record<string, number | firebase.firestore.FieldValue> = {};
+
+		for (const [oldName, newName] of Object.entries(counterRenameMap)) {
+			const oldValue = data[oldName];
+			if (typeof oldValue !== 'number' || oldValue <= 0) {
+				continue;
+			}
+
+			const newValue = typeof data[newName] === 'number' ? data[newName] as number : 0;
+			if (oldValue > newValue) {
+				updates[newName] = oldValue;
+			}
+			updates[oldName] = firebase.firestore.FieldValue.delete();
+		}
+
+		if (Object.keys(updates).length > 0) {
+			await doc.ref.set(updates, {merge: true});
+			updatedCount++;
+			console.log(`Updated counter names for ${doc.id}:`, updates);
+		}
+	}
+
+	console.log(`Counter name migration complete for ${updatedCount} users`);
+}
+
 (async () => {
 	if (!db) {
 		console.error('Firestore not initialized (not in production mode)');
@@ -161,6 +221,7 @@ async function migrateAchievementCounters() {
 	await migrateSqliteThemes();
 	await migrateStateRatings();
 	await migrateAchievementCounters();
+	await migrateCounterNames();
 
 	console.log('Migration complete!');
 	process.exit(0);
