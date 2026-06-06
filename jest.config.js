@@ -12,4 +12,7 @@ module.exports = {
 		'coverage',
 		'/node_modules/',
 	],
+	moduleNameMapper: {
+		'^node-schedule$': '<rootDir>/__mocks__/node-schedule.js',
+	},
 };
