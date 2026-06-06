@@ -14,5 +14,7 @@ module.exports = {
 	],
 	moduleNameMapper: {
 		'^node-schedule$': '<rootDir>/__mocks__/node-schedule.js',
+		'^dockerode$': '<rootDir>/__mocks__/dockerode.js',
+		'^download$': '<rootDir>/__mocks__/download.js',
 	},
 };
