@@ -1,5 +1,5 @@
 import type {KnownBlock} from '@slack/web-api';
-import type {RatingChange, ShuffledMeaning, Theme} from '../types';
+import type {RatingChange, ShuffledMeaning, Theme, DictionarySource} from '../types';
 import {getWordUrl, SOURCE_LABELS} from '../utils';
 
 const themeTitle = (theme: Theme): string => {
@@ -28,7 +28,7 @@ const dummyAttribution = (m: ShuffledMeaning): string => {
 		return `（${m.userId}）`;
 	}
 	const [word, , source, , id] = m.dummyWord;
-	const url = getWordUrl(word, source as any, id);
+	const url = getWordUrl(word, source as DictionarySource, id);
 	const label = SOURCE_LABELS[source as keyof typeof SOURCE_LABELS] ?? source;
 	return `（<${url}|${word} - ${label}>）`;
 };
