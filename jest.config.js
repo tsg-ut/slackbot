@@ -11,6 +11,7 @@ module.exports = {
 		'bin',
 		'coverage',
 		'/node_modules/',
+		'/tahoiya/',
 	],
 	moduleNameMapper: {
 		'^node-schedule$': '<rootDir>/__mocks__/node-schedule.js',
