@@ -40,7 +40,6 @@ jobs:
     timeout-minutes: 7
     permissions:
       contents: 'read'
-      id-token: 'write'
       issues: 'write'
       pull-requests: 'write'
     steps:
@@ -70,23 +69,16 @@ jobs:
           REPOSITORY: '${{ inputs.repository }}'
           ADDITIONAL_CONTEXT: '${{ inputs.additional_context }}'
         with:
-          gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
-          gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
-          gcp_service_account: '${{ vars.SERVICE_ACCOUNT_EMAIL }}'
-          gcp_workload_identity_provider: '${{ vars.GCP_WIF_PROVIDER }}'
           gemini_api_key: '${{ secrets.GEMINI_API_KEY }}'
           gemini_cli_version: '${{ vars.GEMINI_CLI_VERSION }}'
           gemini_debug: '${{ fromJSON(vars.GEMINI_DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}'
-          gemini_model: '${{ vars.GEMINI_MODEL }}'
-          google_api_key: '${{ secrets.GOOGLE_API_KEY }}'
-          use_gemini_code_assist: '${{ vars.GOOGLE_GENAI_USE_GCA }}'
-          use_vertex_ai: '${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}'
+          gemini_model: 'gemini-2.0-flash'
           upload_artifacts: '${{ vars.UPLOAD_ARTIFACTS }}'
           workflow_name: 'gemini-review'
           settings: |-
             {
               "model": {
-                "maxSessionTurns": 25
+                "maxSessionTurns": 10
               },
               "telemetry": {
                 "enabled": true,
