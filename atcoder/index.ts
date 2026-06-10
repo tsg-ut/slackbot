@@ -584,7 +584,8 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		}
 
 		// contest notifications
-		const contests = state.contests.filter((contest) => now.valueOf() < contest.date && contest.date <= oneDayLater.valueOf());
+		const contests = state.contests.filter((contest) => now.valueOf() < contest.date && contest.date <= oneDayLater.valueOf())
+			.filter((contest) => !SILENT_CONTEST_PREFIXES.some((prefix) => contest.id.startsWith(prefix)));
 
 		log.info(`[atcoder-daily] Posting daily notifications of ${contests.length} contests...`);
 
