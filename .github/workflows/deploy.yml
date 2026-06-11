@@ -24,6 +24,12 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Create functions/.env
+        run: |
+          echo "SLACK_TOKEN=${{ secrets.FUNCTIONS_SLACK_TOKEN }}" >> functions/.env
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.FUNCTIONS_AWS_ACCESS_KEY_ID }}" >> functions/.env
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.FUNCTIONS_AWS_SECRET_ACCESS_KEY }}" >> functions/.env
+
       - name: Deploy to Firebase
         uses: w9jds/firebase-action@master
         with:
