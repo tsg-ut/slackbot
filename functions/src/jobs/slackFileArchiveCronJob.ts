@@ -2,25 +2,23 @@ import {WebClient} from '@slack/web-api';
 import {DynamoDB, S3} from 'aws-sdk';
 import axios from 'axios';
 import {chunk} from 'lodash';
-import {runWith, config as getConfig, logger} from 'firebase-functions/v1';
+import {runWith, logger} from 'firebase-functions/v1';
 
 const cronJob = async () => {
-	const config = getConfig();
-
-	const slack = new WebClient(config.slack.token);
+	const slack = new WebClient(process.env.SLACK_TOKEN);
 
 	const db = new DynamoDB.DocumentClient({
 		region: 'ap-northeast-1',
 		credentials: {
-			secretAccessKey: config.aws.secret_access_key,
-			accessKeyId: config.aws.access_key_id,
+			secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+			accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
 		},
 	});
 
 	const s3 = new S3({
 		credentials: {
-			secretAccessKey: config.aws.secret_access_key,
-			accessKeyId: config.aws.access_key_id,
+			secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+			accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
 		},
 	});
 
@@ -87,7 +85,7 @@ const cronJob = async () => {
 				url: file.url_private_download,
 				responseType: 'arraybuffer',
 				headers: {
-					Authorization: `Bearer ${config.slack.token}`,
+					Authorization: `Bearer ${process.env.SLACK_TOKEN}`,
 				},
 				validateStatus: () => true,
 			});
