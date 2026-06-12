@@ -7,8 +7,7 @@ import getReading from '../lib/getReading';
 /* eslint-disable no-unused-vars */
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils';
-// @ts-expect-error
-import tahoiyaBot from '../tahoiya/bot';
+import {getAIBotMeaning} from '../tahoiya/aibot';
 import {tags} from './cfp-tags';
 
 const normalizeMeaning = (input: string) => {
@@ -86,10 +85,10 @@ const randomWord = async (): Promise<Word> => {
   });
   if (date === '4/1') {
     const reading = await getReading(response.data.word);
-    const result = await tahoiyaBot.getResult(reading, 'tahoiyabot-02');
+    const aiResult = await getAIBotMeaning(reading, 'tahoiyabot-02');
     return {
       word: response.data.word,
-      description: result.result,
+      description: aiResult?.result ?? response.data.word,
     };
   }
   const description = extractMeaning(response.data.description);
