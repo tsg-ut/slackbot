@@ -42,6 +42,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 				icon_emoji: ':heavy-exclamation-mark:',
 				channel: process.env.CHANNEL_SANDBOX,
 				text: stripIndent`
+					<!channel>
 					今日はhakatashiがsolid personだよ！！！ :among_us_report: :among_us_report: :among_us_report:
 					1/32768の確率だよ :waiwai: :hakatashi: :azaika-crying:
 				`,
