@@ -6,6 +6,7 @@ jest.mock('sqlite3', () => ({
 	Database: jest.fn(),
 }));
 jest.mock('fs');
+jest.mock('../lib/slackUtils');
 
 const fs = require('fs');
 const path = require('path');
@@ -22,7 +23,8 @@ let slack = null;
 
 beforeEach(() => {
 	slack = new Slack();
-	process.env.CHANNEL_SANDBOX = slack.fakeChannel;
+	process.env.CHANNEL_GAMES = slack.fakeChannel;
+	process.env.CHANNEL_SANDBOX = 'CSANDBOX';
 	shogi(slack);
 });
 
