@@ -1,4 +1,4 @@
-import type { CollectionReference, DocumentData, Timestamp } from "firebase-admin/lib/firestore";
+import type { CollectionReference, DocumentData, Timestamp } from "firebase-admin/firestore";
 import OpenAI from "openai";
 import db from "./firestore";
 import logger from "./logger";

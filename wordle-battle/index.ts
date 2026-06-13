@@ -149,7 +149,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
     };
 
     const unlockWordAchievements = async (user: string, pattern: (0 | 1 | 2)[]) => {
-        increment(user, "wordle-battle-letters", pattern.map(i => (i ? 1 : 0)).reduce((a, c) => a + c, 0));
+        increment(user, "wordle-battle-letters", pattern.map(i => (i ? 1 : 0)).reduce<number>((a, c) => a + c, 0));
     };
 
     eventClient.on("message", async (message: any) => {

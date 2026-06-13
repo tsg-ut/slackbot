@@ -9,7 +9,6 @@ import toSJIS from 'qrcode/helper/to-sjis';
 import sharp from 'sharp';
 import {increment} from '../achievements';
 import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
-// @ts-expect-error: untyped
 import {getDictionary} from '../hangman';
 import logger from '../lib/logger';
 import {SlackInterface} from '../lib/slack';

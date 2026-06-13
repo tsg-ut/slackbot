@@ -3,7 +3,7 @@ import type {Context} from './custom-responses';
 import {sample, shuffle} from 'lodash';
 import type {SlackInterface} from '../lib/slack';
 import {unlock} from '../achievements';
-import {ReadOnlyState} from "../lib/state";
+import {ReadOnlyState} from "../lib/readOnlyState";
 import unicodeScripts from "../lib/unicode-scripts";
 
 interface TextResponse {

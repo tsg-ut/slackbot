@@ -1,7 +1,7 @@
 {
   "name": "functions",
   "scripts": {
-    "build": "tsc",
+    "build": "tsgo",
     "serve": "npm run build && firebase serve --only functions",
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
@@ -21,6 +21,7 @@
     "lodash": "^4.17.23"
   },
   "devDependencies": {
+    "@typescript/native-preview": "latest",
     "typescript": "^5.8.3"
   },
   "private": true

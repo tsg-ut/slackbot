@@ -10,7 +10,8 @@
     "start": "pm2 start ecosystem.config.js",
     "stop": "pm2 stop ecosystem.config.js",
     "restart": "pm2 restart ecosystem.config.js",
-    "dev": "ts-node-dev --respawn --rs --ignore-watch \".json$\" index.ts",
+    "dev": "tsx watch --exclude '**/*.json' --require dotenv/config index.ts",
+    "build": "tsgo",
     "lint": "sed \"s/\\/.\\+//g\" CODEOWNERS | grep \"^[a-z]\" | awk '{print $1}' | xargs -n 1 eslint --ext js,ts",
     "fix": "npm run lint -- --fix",
     "test": "jest --verbose --detectOpenHandles --forceExit",
@@ -145,7 +146,6 @@
     "sqlite3": "^5.1.7",
     "suncalc": "^1.9.0",
     "trie-prefix-tree": "^1.5.1",
-    "ts-node": "^10.9.1",
     "ts-trueskill": "^4.1.0",
     "twitter": "^1.7.1",
     "typescript": "^5.8.3",
@@ -162,6 +162,7 @@
     "@hakatashi/eslint-config": "^1.19.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
+    "@typescript/native-preview": "^7.0.0-dev.20260612.1",
     "byline": "^5.0.0",
     "eslint": "^8.23.0",
     "eslint-config-google": "0.14.0",
@@ -173,6 +174,6 @@
     "mock-cloud-firestore": "^0.12.0",
     "prettier-eslint-cli": "^7.1.0",
     "ts-jest": "^29.0.0",
-    "ts-node-dev": "^2.0.0"
+    "tsx": "^4.22.4"
   }
 }

@@ -8,9 +8,9 @@ const {hiraganize} = require('japanese');
 const {get, last, minBy, random, sum, sample, uniq, groupBy, mapValues, range, flatten} = require('lodash');
 const {xml2js} = require('xml-js');
 const {unlock, increment} = require('../achievements');
-const {ChannelLimitedBot} = require('../lib/channelLimitedBot.ts');
-const {extractMessage} = require('../lib/slackUtils.ts');
-const {Deferred} = require('../lib/utils.ts');
+const {ChannelLimitedBot} = require('../lib/channelLimitedBot');
+const {extractMessage} = require('../lib/slackUtils');
+const {Deferred} = require('../lib/utils');
 
 const animesDeferred = new Deferred();
 const mutex = new Mutex();

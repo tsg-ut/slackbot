@@ -66,6 +66,7 @@ __cache__
 __state__
 google_application_credentials.json
 google_application_credentials_live.json
+.build
 target
 
 tokens.sqlite3

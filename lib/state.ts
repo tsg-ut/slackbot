@@ -198,5 +198,3 @@ export const StateDevelopment: StateInterface = class StateDevelopment<StateObj>
 const State: StateInterface = process.env.NODE_ENV === 'production' ? StateProduction : StateDevelopment;
 
 export default State;
-
-export {ReadOnlyState} from './readOnlyState';

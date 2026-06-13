@@ -1,7 +1,4 @@
 {
-  "ts-node": {
-    "files": true
-  },
   "files": [
     "globals.d.ts"
   ],
@@ -10,13 +7,24 @@
   ],
   "exclude": [
     "./bin",
-    "./node_modules"
+    "./functions",
+    "./node_modules",
+    "./.build",
+    "**/*.test.ts",
+    "**/*.test.js",
+    "**/*.spec.ts",
+    "**/*.spec.js"
   ],
   "compilerOptions": {
+    "outDir": ".build",
+    "allowJs": true,
+    "declaration": false,
+    "sourceMap": false,
     "target": "ESNext",
     "module": "CommonJS",
-    "moduleResolution": "node",
     "noImplicitAny": true,
+    "strictNullChecks": false,
+    "useUnknownInCatchVariables": false,
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "lib": [
@@ -24,6 +32,10 @@
     ],
     "types": ["node", "jest"],
     "skipLibCheck": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "paths": {
+      "@turf/turf": ["./node_modules/@turf/turf/index.d.ts"],
+      "yaml": ["./node_modules/yaml/dist/index.d.ts"]
+    }
   }
 }
