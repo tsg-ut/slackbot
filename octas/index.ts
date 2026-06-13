@@ -1,5 +1,4 @@
 import type {SlackInterface} from '../lib/slack';
-import logger from '../lib/logger';
 import cloudinary from 'cloudinary';
 import sharp from 'sharp';
 import path from 'path';
@@ -11,8 +10,9 @@ import BoardElement from './lib/Render';
 import {JSDOM} from 'jsdom';
 import Queue from 'p-queue';
 import {increment, unlock} from '../achievements/index.js';
-
-const log = logger.child({bot: 'octas'});
+import {ChannelLimitedBot} from '../lib/channelLimitedBot';
+import type {GenericMessageEvent} from '@slack/web-api';
+import {extractMessage} from '../lib/slackUtils';
 
 const applyCSS = (paper: any) => {
     paper.selectAll('.board-edge').attr({
@@ -80,7 +80,8 @@ const uploadImage = async (paper: any) => {
 };
 
 interface State {
-    thread: string,
+    thread: string | null,
+    channel: string | null,
     isHolding: boolean,
     isGaming: boolean,
     player: any,     // 先手
@@ -92,9 +93,14 @@ interface State {
 
 const processQueue = new Queue({concurrency: 1});
 
-export default async ({eventClient, webClient: slack}: SlackInterface) => {
-    const state: State = {
+class OctasBot extends ChannelLimitedBot {
+    protected override readonly wakeWordRegex = /^octas$/i;
+    protected override readonly username = 'octas';
+    protected override readonly iconEmoji = ':octopus:';
+
+    private state: State = {
         thread: null,
+        channel: null,
         isHolding: false,
         isGaming: false,
         player: null,
@@ -104,6 +110,273 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
         element: null,
     };
 
+    constructor(
+        slackClients: SlackInterface,
+        private readonly dom: any,
+    ) {
+        super(slackClients);
+    }
+
+    private halt() {
+        this.state.thread = null;
+        this.state.channel = null;
+        this.state.isHolding = false;
+        this.state.isGaming = false;
+        this.state.player = null;
+        this.state.opponent = null;
+        this.state.board = null;
+        this.state.paper = null;
+        this.state.element = null;
+    }
+
+    private async launch(channel: string): Promise<string> {
+        this.log.info('[OCTAS] instance launched.');
+        this.state.isHolding = true;
+        this.state.channel = channel;
+        this.state.board = new Board({width: 5, height: 5});
+        this.state.paper = this.dom.window.Snap();
+        this.state.element = new BoardElement(this.state.board, this.state.paper, this.dom.window.Snap);
+
+        const cloudinaryData: any = await uploadImage(this.state.paper);
+        const {ts}: any = await this.postMessage({
+            channel,
+            text: stripIndent`
+                Octas対人を始めるよ～
+                スレッドに「先手」か「後手」と返信して参加しよう！
+            `,
+            attachments: [{
+                title: 'octas',
+                image_url: cloudinaryData.secure_url
+            }],
+        });
+        this.state.thread = ts;
+
+        await this.postMessage({
+            channel,
+            text: 'ここにお願いします！',
+            thread_ts: ts,
+        });
+
+        return ts;
+    }
+
+    private async pardon(message: string) {
+        await this.postMessage({
+            channel: this.state.channel!,
+            text: message,
+            thread_ts: this.state.thread!,
+        });
+    }
+
+    private async waitForPlayers(message: any) {
+        if (message.text.match(/^先手$/)) {
+            if (this.state.player === null) {
+                // assign player
+                this.state.player = message.user;
+
+                await this.postMessage({
+                    channel: this.state.channel!,
+                    text: `先手<@${this.state.player}>`,
+                    thread_ts: this.state.thread!,
+                });
+            } else {
+                await this.pardon(`先手はすでに<@${this.state.player}>に決まっています`);
+            }
+        }
+        if (message.text.match(/^後手$/)) {
+            if (this.state.opponent === null) {
+                this.state.opponent = message.user;
+
+                await this.postMessage({
+                    channel: this.state.channel!,
+                    text: `後手<@${this.state.opponent}>`,
+                    thread_ts: this.state.thread!,
+                });
+            } else {
+                await this.pardon(`後手はすでに<@${this.state.opponent}>に決まっています`);
+            }
+        }
+        if (this.state.player !== null && this.state.opponent !== null) {
+            this.state.isGaming = true;
+            await this.postMessage({
+                channel: this.state.channel!,
+                text: `*ゲーム開始* 方位を[N, E, W, S, NE, NW, SE, SW]から選択してください`,
+                thread_ts: this.state.thread!,
+            });
+
+            // begin match!
+            this.log.info('[OCTAS] matching accepted.');
+        }
+    }
+
+    private async processHand(message: any) {
+        if (this.state.board.ended) {
+            // いつのまにか終っている　強制終了
+            processQueue.add(() => this.halt());
+            return;
+        }
+        const cmd2dir = new Map([
+            ['N',  0],
+            ['NE', 1],
+            ['E',  2],
+            ['SE', 3],
+            ['S',  4],
+            ['SW', 5],
+            ['W',  6],
+            ['NW', 7]]);
+        let response: string = "";
+        if (this.state.board.activePlayer == 0) {
+            if (message.user == this.state.player) {
+                if (!cmd2dir.has(message.text)) {
+                    await this.pardon('方位は[N, E, W, S, NE, NW, SE, SW]から選択してください');
+                    return;
+                }
+                const dir = cmd2dir.get(message.text);
+                if (!this.state.board.getCurrentPoint().movableDirections.has(dir)) {
+                    await this.pardon('その方向へは進めません！');
+                    return;
+                }
+                response = "先手: " + message.text;
+                this.state.board.moveTo(dir);
+                if (this.state.board.activePlayer == 0 && !this.state.board.ended)
+                    response += " もう一回！";
+            } else if (message.user == this.state.opponent) {
+                await this.pardon('今は先手番です！');
+                return;
+            }
+        }
+        else if (this.state.board.activePlayer == 1) {
+            if (message.user == this.state.opponent) {
+                if (!cmd2dir.has(message.text)) {
+                    return;
+                }
+                const dir = cmd2dir.get(message.text);
+                if (!this.state.board.getCurrentPoint().movableDirections.has(dir)) {
+                    await this.pardon('その方向へは進めません！');
+                    return;
+                }
+                response = "後手: " + message.text;
+                this.state.board.moveTo(dir);
+                if (this.state.board.activePlayer == 1 && !this.state.board.ended)
+                    response += " もう一回！";
+            } else if (message.user == this.state.player) {
+                await this.pardon('今は後手番です！');
+                return;
+            }
+        }
+
+        const cloudinaryData: any = await uploadImage(this.state.paper);
+        await this.slack.chat.update({
+            channel: this.state.channel!,
+            text: stripIndent`
+                Octas対人を始めるよ～
+                スレッドに「先手」か「後手」と返信して参加しよう！
+            `,
+            ts: this.state.thread!,
+            attachments: [{
+                title: 'octas',
+                image_url: cloudinaryData.secure_url
+            }],
+        });
+
+        await this.postMessage({
+            channel: this.state.channel!,
+            text: response,
+            thread_ts: this.state.thread!,
+        });
+
+        if (this.state.board.ended) {
+            await this.postMessage({
+                channel: this.state.channel!,
+                text: `ゲームセット`,
+                thread_ts: this.state.thread!,
+            });
+
+            if (this.state.board.winner == 0) {
+                await this.postMessage({
+                    channel: this.state.channel!,
+                    text: `先手 <@${this.state.player}> の勝利:tada:`,
+                    thread_ts: this.state.thread!,
+                    reply_broadcast: true
+                });
+            }
+            if (this.state.board.winner == 1) {
+                await this.postMessage({
+                    channel: this.state.channel!,
+                    text: `後手 <@${this.state.opponent}> の勝利:tada:`,
+                    thread_ts: this.state.thread!,
+                    reply_broadcast: true
+                });
+            }
+            this.log.info(`active: ${this.state.board.activePlayer}, winner: ${this.state.board.winner}`);
+            unlock(this.state.player, 'octas-beginner');
+            unlock(this.state.opponent, 'octas-beginner');
+            if (this.state.player != this.state.opponent) {
+                if (this.state.board.winner == 0) {
+                    increment(this.state.player, 'octas-win');
+                    if (this.state.board.getCurrentPoint() == null) {
+                        // goal
+                        if (this.state.board.activePlayer == 1) {
+                            unlock(this.state.opponent, 'octas-owngoaler');
+                        }
+                    } else {
+                        // unable to move
+                        unlock(this.state.player, 'octas-catch');
+                    }
+                } else {
+                    increment(this.state.opponent, 'octas-win');
+                    if (this.state.board.getCurrentPoint() == null) {
+                        // goal
+                        if (this.state.board.activePlayer == 0) {
+                            unlock(this.state.player, 'octas-owngoaler');
+                        }
+                    } else {
+                        // unable to move
+                        unlock(this.state.opponent, 'octas-catch');
+                    }
+                }
+            }
+            await this.deleteProgressMessage(this.state.thread!);
+            processQueue.add(() => this.halt());
+            return;
+        }
+    }
+
+    protected override async onMessageEvent(event: any) {
+        await super.onMessageEvent(event);
+
+        const message = extractMessage(event);
+        if (message === null || !message.text || message.subtype) {
+            return;
+        }
+
+        if (message.thread_ts && message.thread_ts === this.state.thread) {
+            if (this.state.isGaming) {
+                await processQueue.add(async () => this.processHand(message));
+            } else {
+                await processQueue.add(async () => this.waitForPlayers(message));
+            }
+        }
+    }
+
+    protected override async onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+        if (this.state.isHolding) {
+            await this.postMessage({
+                channel: this.state.channel!,
+                text: '中止(新規ゲームの開始)',
+                thread_ts: this.state.thread!,
+            });
+            processQueue.add(() => this.halt());
+        }
+        if (message.thread_ts) {
+            return null;
+        }
+        const ts = await processQueue.add(() => this.launch(channel));
+        return ts ?? null;
+    }
+}
+
+export default async (slackClients: SlackInterface) => {
     const dom: any = await new Promise((resolve, reject) => {
         const resource: string = path.join(__dirname, "../node_modules/snapsvg/dist/snap.svg.js");
         const dom = new JSDOM(`
@@ -122,274 +395,5 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
         head.appendChild(script);
     });
 
-    const Pardon = async (message: string) => {
-        await slack.chat.postMessage({
-            channel: process.env.CHANNEL_SANDBOX,
-            text: message,
-            thread_ts: state.thread,
-            username: 'octas',
-            icon_emoji: ':ha:'
-        });
-    };
-
-    const Halt = () => {
-        state.thread = null;
-        state.isHolding = false;
-        state.isGaming = false;
-        state.player = null;
-        state.opponent = null;
-        state.board = null;
-        state.paper = null;
-        state.element = null;
-    };
-
-    const Launch = async () => {
-        log.info('[OCTAS] instance launched.');
-        state.isHolding = true;
-        state.board = new Board({width: 5, height: 5});
-        state.paper = dom.window.Snap();
-        state.element = new BoardElement(state.board, state.paper, dom.window.Snap);
-
-        const cloudinaryData: any = await uploadImage(state.paper);
-        const {ts}: any = await slack.chat.postMessage({
-            channel: process.env.CHANNEL_SANDBOX,
-            text: stripIndent`
-                Octas対人を始めるよ～
-                スレッドに「先手」か「後手」と返信して参加しよう！
-            `,
-            attachments: [{
-                title: 'octas',
-                image_url: cloudinaryData.secure_url
-            }],
-            username: 'octas',
-            icon_emoji: ':octopus:',
-        });
-        state.thread = ts;
-
-        await slack.chat.postMessage({
-            channel: process.env.CHANNEL_SANDBOX,
-            text: 'ここにお願いします！',
-            thread_ts: ts,
-            username: 'octas',
-            icon_emoji: ':octopus:',
-        });
-    };
-
-    const WaitForPlayers = async (message: any) => {
-        if (message.text.match(/^先手$/)) {
-            if (state.player === null) {
-                // assign player
-                state.player = message.user;
-
-                await slack.chat.postMessage({
-                    channel: process.env.CHANNEL_SANDBOX,
-                    text: `先手<@${state.player}>`,
-                    thread_ts: state.thread,
-                    username: 'octas',
-                    icon_emoji: ':octopus:'
-                });
-            } else {
-                await Pardon(`先手はすでに<@${state.player}>に決まっています`);
-            }
-        }
-        if (message.text.match(/^後手$/)) {
-            if (state.opponent === null) {
-                state.opponent = message.user;
-
-                await slack.chat.postMessage({
-                    channel: process.env.CHANNEL_SANDBOX,
-                    text: `後手<@${state.opponent}>`,
-                    thread_ts: state.thread,
-                    username: 'octas',
-                    icon_emoji: ':octopus:'
-                });
-            } else {
-                await Pardon(`後手はすでに<@${state.opponent}>に決まっています`);
-            }
-        }
-        if (state.player !== null && state.opponent !== null) {
-            state.isGaming = true;
-            await slack.chat.postMessage({
-                channel: process.env.CHANNEL_SANDBOX,
-                text: `*ゲーム開始* 方位を[N, E, W, S, NE, NW, SE, SW]から選択してください`,
-                thread_ts: state.thread,
-                username: 'octas',
-                icon_emoji: ':octopus:'
-            });
-
-            // begin match!
-            log.info('[OCTAS] matching accepted.');
-        }
-    };
-
-    const ProcessHand = async (message: any) => {
-        if (state.board.ended) {
-            // いつのまにか終っている　強制終了
-            processQueue.add(Halt);
-            return;
-        }
-        const cmd2dir = new Map([
-            ['N',  0],
-            ['NE', 1],
-            ['E',  2],
-            ['SE', 3],
-            ['S',  4],
-            ['SW', 5],
-            ['W',  6],
-            ['NW', 7]]);
-        let response: string = "";
-        if (state.board.activePlayer == 0) {
-            if (message.user == state.player) {
-                if (!cmd2dir.has(message.text)) {
-                    await Pardon('方位は[N, E, W, S, NE, NW, SE, SW]から選択してください');
-                    return;
-                }
-                const dir = cmd2dir.get(message.text);
-                if (!state.board.getCurrentPoint().movableDirections.has(dir)) {
-                    await Pardon('その方向へは進めません！');
-                    return;
-                }
-                response = "先手: " + message.text;
-                state.board.moveTo(dir);
-                if (state.board.activePlayer == 0 && !state.board.ended)
-                    response += " もう一回！";
-            } else if (message.user == state.opponent) {
-                await Pardon('今は先手番です！');
-                return;
-            }
-        }
-        else if (state.board.activePlayer == 1) {
-            if (message.user == state.opponent) {
-                if (!cmd2dir.has(message.text)) {
-                    return;
-                }
-                const dir = cmd2dir.get(message.text);
-                if (!state.board.getCurrentPoint().movableDirections.has(dir)) {
-                    await Pardon('その方向へは進めません！');
-                    return;
-                }
-                response = "後手: " + message.text;
-                state.board.moveTo(dir);
-                if (state.board.activePlayer == 1 && !state.board.ended)
-                    response += " もう一回！";
-            } else if (message.user == state.player) {
-                await Pardon('今は後手番です！');
-                return;
-            }
-        }
-
-        const cloudinaryData: any = await uploadImage(state.paper);
-        await slack.chat.update({
-            channel: process.env.CHANNEL_SANDBOX,
-            text: stripIndent`
-                Octas対人を始めるよ～
-                スレッドに「先手」か「後手」と返信して参加しよう！
-            `,
-            ts: state.thread,
-            attachments: [{
-                title: 'octas',
-                image_url: cloudinaryData.secure_url
-            }],
-        });
-
-        await slack.chat.postMessage({
-            channel: process.env.CHANNEL_SANDBOX,
-            text: response,
-            thread_ts: state.thread,
-            username: 'octas',
-            icon_emoji: ':octopus:'
-        });
-
-        if (state.board.ended) {
-            await slack.chat.postMessage({
-                channel: process.env.CHANNEL_SANDBOX,
-                text: `ゲームセット`,
-                thread_ts: state.thread,
-                username: 'octas',
-                icon_emoji: ':octopus:'
-            });
-
-            if (state.board.winner == 0) {
-                await slack.chat.postMessage({
-                    channel: process.env.CHANNEL_SANDBOX,
-                    text: `先手 <@${state.player}> の勝利:tada:`,
-                    thread_ts: state.thread,
-                    username: 'octas',
-                    icon_emoji: ':octopus:',
-                    reply_broadcast: true
-                });
-            }
-            if (state.board.winner == 1) {
-                await slack.chat.postMessage({
-                    channel: process.env.CHANNEL_SANDBOX,
-                    text: `後手 <@${state.opponent}> の勝利:tada:`,
-                    thread_ts: state.thread,
-                    username: 'octas',
-                    icon_emoji: ':octopus:',
-                    reply_broadcast: true
-                });
-            }
-            log.info(`active: ${state.board.activePlayer}, winner: ${state.board.winner}`);
-            unlock(state.player, 'octas-beginner');
-            unlock(state.opponent, 'octas-beginner');
-            if (state.player != state.opponent) {
-                if (state.board.winner == 0) {
-                    increment(state.player, 'octas-win');
-                    if (state.board.getCurrentPoint() == null) {
-                        // goal
-                        if (state.board.activePlayer == 1) {
-                            unlock(state.opponent, 'octas-owngoaler');
-                        }
-                    } else {
-                        // unable to move
-                        unlock(state.player, 'octas-catch');
-                    }
-                } else {
-                    increment(state.opponent, 'octas-win');
-                    if (state.board.getCurrentPoint() == null) {
-                        // goal
-                        if (state.board.activePlayer == 0) {
-                            unlock(state.player, 'octas-owngoaler');
-                        }
-                    } else {
-                        // unable to move
-                        unlock(state.opponent, 'octas-catch');
-                    }
-                }
-            }
-            processQueue.add(Halt);
-            return;
-        }
-    };
-
-    eventClient.on('message', async (message: any) => {
-        if (!message.text || message.subtype || message.channel !== process.env.CHANNEL_SANDBOX) {
-			return;
-        }
-
-        if (message.thread_ts && message.thread_ts == state.thread) {
-            if (state.isGaming) {
-                await processQueue.add(async () => ProcessHand(message));
-            } else {
-                await processQueue.add(async () => WaitForPlayers(message));
-            }
-        }
-
-        if (message.text.match(/^octas$/i)) {
-            if (state.isHolding) {
-                await slack.chat.postMessage({
-                    channel: process.env.CHANNEL_SANDBOX,
-                    text: `中止(新規ゲームの開始)`,
-                    thread_ts: state.thread,
-                    username: 'octas',
-                    icon_emoji: ':octopus:'
-                });
-                await processQueue.add(Halt);
-            }
-            if (message.thread_ts) {
-                return;
-            }
-            await processQueue.add(Launch);
-        }
-    });
-}
+    return new OctasBot(slackClients, dom);
+};
