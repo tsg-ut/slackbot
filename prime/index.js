@@ -10,46 +10,12 @@ const {constant, times, flatten, range, shuffle, uniq} = require('lodash');
 const MillerRabin = require('miller-rabin');
 const prime = require('primes-and-factors');
 const {unlock} = require('../achievements');
+const {ChannelLimitedBot} = require('../lib/channelLimitedBot.ts');
+const {extractMessage} = require('../lib/slackUtils.ts');
 const primes = require('./primes.ts');
 
 const cardSet = range(1, 14);
 const millerRabin = new MillerRabin();
-
-const state = (() => {
-	try {
-		// eslint-disable-next-line global-require
-		const savedState = require('./state.json');
-		return {
-			phase: savedState.phase,
-			challenger: savedState.challenger || null,
-			hand: savedState.hand || [],
-			stock: savedState.stock || [],
-			pile: savedState.pile || [],
-			isDrew: savedState.isDrew || false,
-			isDrewOnce: savedState.isDrewOnce || false,
-			isPenaltied: savedState.isPenaltied || false,
-			isRevolution: savedState.isRevolution || false,
-			boardCards: savedState.boardCards || [],
-			boardNumber: savedState.boardNumber || null,
-			turns: savedState.turns || 0,
-		};
-	} catch (e) {
-		return {
-			phase: 'waiting',
-			challenger: null,
-			hand: [],
-			stock: [], // 山札
-			pile: [], // 捨て札
-			isDrew: false,
-			isDrewOnce: false,
-			isPenaltied: false,
-			isRevolution: false,
-			boardCards: [],
-			boardNumber: null,
-			turns: 0,
-		};
-	}
-})();
 
 const sort = (cards) => cards.slice().sort((a, b) => {
 	if (a === 'X') {
@@ -225,73 +191,107 @@ const matchByCards = (number, factors, cards, count) => {
 	return null;
 };
 
-const setState = async (newState) => {
-	Object.assign(state, newState);
+class PrimeBot extends ChannelLimitedBot {
+	constructor(slackClients) {
+		super(slackClients);
 
-	const savedState = {};
-	for (const [key, value] of Object.entries(state)) {
-		savedState[key] = value;
+		this.username = 'primebot';
+		this.iconEmoji = ':1234:';
+		this.wakeWordRegex = /^素数大富豪$/;
+
+		try {
+			// eslint-disable-next-line global-require
+			const savedState = require('./state.json');
+			this.state = {
+				phase: savedState.phase,
+				challenger: savedState.challenger || null,
+				hand: savedState.hand || [],
+				stock: savedState.stock || [], // 山札
+				pile: savedState.pile || [], // 捨て札
+				isDrew: savedState.isDrew || false,
+				isDrewOnce: savedState.isDrewOnce || false,
+				isPenaltied: savedState.isPenaltied || false,
+				isRevolution: savedState.isRevolution || false,
+				boardCards: savedState.boardCards || [],
+				boardNumber: savedState.boardNumber || null,
+				turns: savedState.turns || 0,
+				channel: savedState.channel || null,
+				gameMessageTs: savedState.gameMessageTs || null,
+			};
+		} catch (e) {
+			this.state = {
+				phase: 'waiting',
+				challenger: null,
+				hand: [],
+				stock: [], // 山札
+				pile: [], // 捨て札
+				isDrew: false,
+				isDrewOnce: false,
+				isPenaltied: false,
+				isRevolution: false,
+				boardCards: [],
+				boardNumber: null,
+				turns: 0,
+				channel: null,
+				gameMessageTs: null,
+			};
+		}
 	}
 
-	await promisify(fs.writeFile)(
-		path.join(__dirname, 'state.json'),
-		JSON.stringify(savedState),
-	);
-};
+	async setState(newState) {
+		Object.assign(this.state, newState);
 
-const discard = (cards) => {
-	let newHand = state.hand;
-	for (const card of cards) {
-		newHand = drop(newHand, card);
-	}
-	return setState({
-		hand: newHand,
-		pile: state.pile.concat(cards),
-	});
-};
-
-const draw = async (count) => {
-	let newStock = state.stock.slice();
-	let newPile = state.pile.slice();
-	let newHand = state.hand.slice();
-
-	if (state.stock.length < count) {
-		newStock.push(...shuffle(newPile));
-		newPile = [];
+		await promisify(fs.writeFile)(
+			path.join(__dirname, 'state.json'),
+			JSON.stringify(this.state),
+		);
 	}
 
-	const drewCards = newStock.slice(0, count);
-	newHand = sort(newHand.concat(drewCards));
-	newStock = newStock.slice(drewCards.length);
+	discard(cards) {
+		let newHand = this.state.hand;
+		for (const card of cards) {
+			newHand = drop(newHand, card);
+		}
+		return this.setState({
+			hand: newHand,
+			pile: this.state.pile.concat(cards),
+		});
+	}
 
-	await setState({
-		stock: newStock,
-		pile: newPile,
-		hand: newHand,
-	});
+	async draw(count) {
+		let newStock = this.state.stock.slice();
+		let newPile = this.state.pile.slice();
+		let newHand = this.state.hand.slice();
 
-	return drewCards;
-};
+		if (this.state.stock.length < count) {
+			newStock.push(...shuffle(newPile));
+			newPile = [];
+		}
 
-module.exports = ({eventClient, webClient: slack}) => {
-	const postMessage = (text, attachments, options) => slack.chat.postMessage({
-		channel: process.env.CHANNEL_SANDBOX,
-		text,
-		username: 'primebot',
-		// eslint-disable-next-line camelcase
-		icon_emoji: ':1234:',
-		...(attachments ? {attachments} : {}),
-		...(options ? options : {}),
-	});
+		const drewCards = newStock.slice(0, count);
+		newHand = sort(newHand.concat(drewCards));
+		newStock = newStock.slice(drewCards.length);
 
-	const afterDiscard = async () => {
-		if (state.hand.length === 0) {
-			const {turns, challenger, isDrewOnce, isPenaltied} = state;
-			await postMessage(stripIndent`
-				クリアしました:tada:
-				*ターン数* ${state.turns}
-			`);
-			await setState({
+		await this.setState({
+			stock: newStock,
+			pile: newPile,
+			hand: newHand,
+		});
+
+		return drewCards;
+	}
+
+	async afterDiscard() {
+		if (this.state.hand.length === 0) {
+			const {turns, challenger, isDrewOnce, isPenaltied, channel, gameMessageTs} = this.state;
+			await this.postMessage({
+				channel,
+				text: stripIndent`
+					クリアしました:tada:
+					*ターン数* ${turns}
+				`,
+			});
+			await this.setState({
 				phase: 'waiting',
 				challenger: null,
 				hand: [],
@@ -303,7 +303,12 @@ module.exports = ({eventClient, webClient: slack}) => {
 				boardCards: [],
 				boardNumber: null,
 				turns: 0,
+				channel: null,
+				gameMessageTs: null,
 			});
+			if (gameMessageTs !== null) {
+				await this.deleteProgressMessage(gameMessageTs);
+			}
 			unlock(challenger, 'prime-clear');
 			if (turns <= 4) {
 				unlock(challenger, 'prime-fast-clear');
@@ -315,18 +320,78 @@ module.exports = ({eventClient, webClient: slack}) => {
 				}
 			}
 		}
-	};
+	}
 
-	eventClient.on('message', async (message) => {
-		if (message.channel !== process.env.CHANNEL_SANDBOX) {
+	async onWakeWord(message, channel) {
+		if (this.state.phase !== 'waiting') {
+			if (this.state.boardNumber === null) {
+				await this.postMessage({
+					channel,
+					text: stripIndent`
+						現在の状態
+						${this.state.isRevolution ? ':hammer_and_wrench:革命中:hammer_and_wrench:' : ''}
+						*手札* ${cardsToString(this.state.hand)}
+					`,
+				});
+			} else {
+				await this.postMessage({
+					channel,
+					text: stripIndent`
+						現在の状態
+						${this.state.isRevolution ? ':hammer_and_wrench:革命中:hammer_and_wrench:' : ''}
+						*場数* ${this.state.boardNumber} (${cardsToString(this.state.boardCards)})
+						*手札* ${cardsToString(this.state.hand)}
+					`,
+				});
+			}
+			return null;
+		}
+
+		const deck = shuffle([
+			...flatten(times(4, constant(range(1, 14)))),
+			'X',
+			'X',
+		]);
+		const hand = deck.slice(0, 11);
+		const stock = deck.slice(11);
+
+		await this.setState({
+			hand: sort(hand),
+			challenger: message.user,
+			isRevolution: false,
+			isDrew: false,
+			isDrewOnce: false,
+			isPenaltied: false,
+			stock,
+			phase: 'playing',
+			turns: 0,
+			channel,
+		});
+
+		const result = await this.postMessage({
+			channel,
+			text: `*手札* ${cardsToString(this.state.hand)}`,
+		});
+
+		await this.setState({gameMessageTs: result.ts});
+		unlock(message.user, 'prime');
+		return result.ts;
+	}
+
+	async onMessageEvent(event) {
+		await super.onMessageEvent(event);
+
+		const message = extractMessage(event);
+
+		if (
+			message === null ||
+			!message.text ||
+			message.subtype
+		) {
 			return;
 		}
 
-		if (!message.text) {
-			return;
-		}
-
-		if (message.username === 'prime') {
+		if (!this.allowedChannels.includes(message.channel)) {
 			return;
 		}
 
@@ -339,55 +404,15 @@ module.exports = ({eventClient, webClient: slack}) => {
 		let matches = null;
 
 		if (text === '素数大富豪') {
-			if (state.phase !== 'waiting') {
-				if (state.boardNumber === null) {
-					await postMessage(stripIndent`
-						現在の状態
-						${state.isRevolution ? ':hammer_and_wrench:革命中:hammer_and_wrench:' : ''}
-						*手札* ${cardsToString(state.hand)}
-					`);
-				} else {
-					await postMessage(stripIndent`
-						現在の状態
-						${state.isRevolution ? ':hammer_and_wrench:革命中:hammer_and_wrench:' : ''}
-						*場数* ${state.boardNumber} (${cardsToString(state.boardCards)})
-						*手札* ${cardsToString(state.hand)}
-					`);
-				}
-				return;
-			}
-
-			const deck = shuffle([
-				...flatten(times(4, constant(range(1, 14)))),
-				'X',
-				'X',
-			]);
-			const hand = deck.slice(0, 11);
-			const stock = deck.slice(11);
-
-			await setState({
-				hand: sort(hand),
-				challenger: user,
-				isRevolution: false,
-				isDrew: false,
-				isDrewOnce: false,
-				isPenaltied: false,
-				stock,
-				phase: 'playing',
-				turns: 0,
-			});
-
-			await postMessage(`*手札* ${cardsToString(state.hand)}`);
-			unlock(user, 'prime');
 			return;
 		}
 
 		if (text.match(/^\d+$/)) {
-			if (state.phase !== 'playing') {
+			if (this.state.phase !== 'playing') {
 				return;
 			}
 
-			if (state.challenger !== user) {
+			if (this.state.challenger !== user) {
 				return;
 			}
 
@@ -396,9 +421,9 @@ module.exports = ({eventClient, webClient: slack}) => {
 
 			let decomposition = null;
 
-			if (state.boardNumber === null) {
+			if (this.state.boardNumber === null) {
 				for (const count of range(0, 55)) {
-					const match = matchByCards(numberText, [], state.hand, count);
+					const match = matchByCards(numberText, [], this.state.hand, count);
 					if (match !== null) {
 						const [numberMatch] = match;
 						decomposition = numberMatch;
@@ -406,31 +431,33 @@ module.exports = ({eventClient, webClient: slack}) => {
 					}
 				}
 			} else {
-				assert(typeof state.boardNumber === 'string');
+				assert(typeof this.state.boardNumber === 'string');
 
-				if (!state.isRevolution && parseInt(state.boardNumber) >= number) {
-					await postMessage(
-						`:warning: 場数 (${
-							state.boardNumber
+				if (!this.state.isRevolution && parseInt(this.state.boardNumber) >= number) {
+					await this.postMessage({
+						channel: this.state.channel,
+						text: `:warning: 場数 (${
+							this.state.boardNumber
 						}) 以下の数字を出すことはできません。`,
-					);
+					});
 					return;
 				}
 
-				if (state.isRevolution && parseInt(state.boardNumber) <= number) {
-					await postMessage(
-						`:warning: 場数 (${
-							state.boardNumber
+				if (this.state.isRevolution && parseInt(this.state.boardNumber) <= number) {
+					await this.postMessage({
+						channel: this.state.channel,
+						text: `:warning: 場数 (${
+							this.state.boardNumber
 						}) 以上の数字を出すことはできません:hammer_and_wrench:`,
-					);
+					});
 					return;
 				}
 
 				const match = matchByCards(
 					numberText,
 					[],
-					state.hand,
-					state.boardCards.length,
+					this.state.hand,
+					this.state.boardCards.length,
 				);
 				if (match !== null) {
 					const [numberMatch] = match;
@@ -439,102 +466,115 @@ module.exports = ({eventClient, webClient: slack}) => {
 			}
 
 			if (decomposition === null) {
-				await postMessage(
-					`:warning: ${numberText} は手元のカードから出せません。`,
-				);
+				await this.postMessage({
+					channel: this.state.channel,
+					text: `:warning: ${numberText} は手元のカードから出せません。`,
+				});
 				return;
 			}
 
 			if (number === 57) {
-				await discard(decomposition);
-				await setState({
+				await this.discard(decomposition);
+				await this.setState({
 					isDrew: false,
 					boardCards: [],
 					boardNumber: null,
-					turns: state.turns + 1,
+					turns: this.state.turns + 1,
 				});
-				await postMessage(stripIndent`
-					:boom:グロタンカット！:boom:
+				await this.postMessage({
+					channel: this.state.channel,
+					text: stripIndent`
+						:boom:グロタンカット！:boom:
 
-					場が流れました。
-					*手札* ${cardsToString(state.hand)}
-				`);
-				await unlock(state.challenger, 'prime-grothendieck');
-				await afterDiscard();
+						場が流れました。
+						*手札* ${cardsToString(this.state.hand)}
+					`,
+				});
+				await unlock(this.state.challenger, 'prime-grothendieck');
+				await this.afterDiscard();
 				return;
 			}
 
 			if (number === 1729) {
-				await discard(decomposition);
-				await setState({
+				await this.discard(decomposition);
+				await this.setState({
 					isDrew: false,
-					isRevolution: !state.isRevolution,
+					isRevolution: !this.state.isRevolution,
 					boardCards: decomposition,
 					boardNumber: numberText,
-					turns: state.turns + 1,
+					turns: this.state.turns + 1,
 				});
-				await postMessage(stripIndent`
-					:hammer_and_wrench:ラマヌジャン革命！:hammer_and_wrench:
+				await this.postMessage({
+					channel: this.state.channel,
+					text: stripIndent`
+						:hammer_and_wrench:ラマヌジャン革命！:hammer_and_wrench:
 
-					${state.isRevolution ? '革命状態になりました。' : '革命状態でなくなりました。'}
-					*手札* ${cardsToString(state.hand)}
-				`);
-				await unlock(state.challenger, 'prime-ramanujan');
-				await afterDiscard();
+						${this.state.isRevolution ? '革命状態になりました。' : '革命状態でなくなりました。'}
+						*手札* ${cardsToString(this.state.hand)}
+					`,
+				});
+				await unlock(this.state.challenger, 'prime-ramanujan');
+				await this.afterDiscard();
 				return;
 			}
 
 			const frequency = await getFrequency(numberText);
 
 			if (frequency === false || (typeof frequency !== 'boolean' && (frequency.length !== 1 || frequency[0].times !== 1)) || number < 2) {
-				const drewCards = await draw(decomposition.length);
-				await setState({
+				const drewCards = await this.draw(decomposition.length);
+				await this.setState({
 					isDrew: false,
 					isPenaltied: true,
 					boardCards: [],
 					boardNumber: null,
-					turns: state.turns + 1,
+					turns: this.state.turns + 1,
 				});
-				await postMessage(stripIndent`
-					:no_entry_sign: *${numberText}* は素数ではありません!!!
-					${frequency === false ? '' : `${numberText} = ${frequencyToString(frequency)}`}
+				await this.postMessage({
+					channel: this.state.channel,
+					text: stripIndent`
+						:no_entry_sign: *${numberText}* は素数ではありません!!!
+						${frequency === false ? '' : `${numberText} = ${frequencyToString(frequency)}`}
 
-					:warning:ペナルティ +${decomposition.length}枚 (${cardsToString(drewCards)})
-					*手札* ${cardsToString(state.hand)}
-				`);
+						:warning:ペナルティ +${decomposition.length}枚 (${cardsToString(drewCards)})
+						*手札* ${cardsToString(this.state.hand)}
+					`,
+				});
 				return;
 			}
 
-			await setState({
+			await this.setState({
 				isDrew: false,
 				boardCards: decomposition,
 				boardNumber: numberText,
-				turns: state.turns + 1,
+				turns: this.state.turns + 1,
 			});
 
-			await discard(decomposition);
-			await postMessage(stripIndent`
-				*場数* ${state.boardNumber} (${cardsToString(state.boardCards)})
-				*手札* ${cardsToString(state.hand)}
-			`);
+			await this.discard(decomposition);
+			await this.postMessage({
+				channel: this.state.channel,
+				text: stripIndent`
+					*場数* ${this.state.boardNumber} (${cardsToString(this.state.boardCards)})
+					*手札* ${cardsToString(this.state.hand)}
+				`,
+			});
 			if (numberText.length >= 3) {
 				if (primes.mersenne.includes(numberText)) {
-					await unlock(state.challenger, 'prime-mersenne');
+					await unlock(this.state.challenger, 'prime-mersenne');
 				}
 				if (primes.fermat.includes(numberText)) {
-					await unlock(state.challenger, 'prime-fermat');
+					await unlock(this.state.challenger, 'prime-fermat');
 				}
 				if (primes.fibonacci.includes(numberText)) {
-					await unlock(state.challenger, 'prime-fibonacci');
+					await unlock(this.state.challenger, 'prime-fibonacci');
 				}
 				if (primes.lucas.includes(numberText)) {
-					await unlock(state.challenger, 'prime-lucas');
+					await unlock(this.state.challenger, 'prime-lucas');
 				}
 				if (primes.wolstenholme.includes(numberText)) {
-					await unlock(state.challenger, 'prime-wolstenholme');
+					await unlock(this.state.challenger, 'prime-wolstenholme');
 				}
 			}
-			await afterDiscard();
+			await this.afterDiscard();
 			return;
 		}
 
@@ -543,11 +583,11 @@ module.exports = ({eventClient, webClient: slack}) => {
 				.replace(/\s/g, '')
 				.match(/^(?<rawNumberText>\d+)=(?<factorsText>(?:\d+(?:\^\d+)?\*)*\d+(?:\^\d+)?)$/))
 		) {
-			if (state.phase !== 'playing') {
+			if (this.state.phase !== 'playing') {
 				return;
 			}
 
-			if (state.challenger !== user) {
+			if (this.state.challenger !== user) {
 				return;
 			}
 
@@ -566,23 +606,29 @@ module.exports = ({eventClient, webClient: slack}) => {
 			const numberText = rawNumberText.replace(/^0+/, '');
 
 			if (factors.length === 1 && factors[0].exponent === 1) {
-				await postMessage(':warning: 合成数出しは因数が1つ以上必要です。');
+				await this.postMessage({
+					channel: this.state.channel,
+					text: ':warning: 合成数出しは因数が1つ以上必要です。',
+				});
 				return;
 			}
 
 			if (factorComponents.includes('1')) {
-				await postMessage(':warning: 合成数出しで「1」は使えません。');
+				await this.postMessage({
+					channel: this.state.channel,
+					text: ':warning: 合成数出しで「1」は使えません。',
+				});
 				return;
 			}
 
 			let decompositions = null;
 
-			if (state.boardNumber === null) {
+			if (this.state.boardNumber === null) {
 				for (const count of range(0, 55)) {
 					const match = matchByCards(
 						numberText,
 						factorComponents,
-						state.hand,
+						this.state.hand,
 						count,
 					);
 					if (match !== null) {
@@ -591,31 +637,33 @@ module.exports = ({eventClient, webClient: slack}) => {
 					}
 				}
 			} else {
-				assert(typeof state.boardNumber === 'string');
+				assert(typeof this.state.boardNumber === 'string');
 
-				if (!state.isRevolution && parseInt(state.boardNumber) >= number) {
-					await postMessage(
-						`:warning: 場数 (${
-							state.boardNumber
+				if (!this.state.isRevolution && parseInt(this.state.boardNumber) >= number) {
+					await this.postMessage({
+						channel: this.state.channel,
+						text: `:warning: 場数 (${
+							this.state.boardNumber
 						}) 以下の数字を出すことはできません。`,
-					);
+					});
 					return;
 				}
 
-				if (state.isRevolution && parseInt(state.boardNumber) <= number) {
-					await postMessage(
-						`:warning: 場数 (${
-							state.boardNumber
+				if (this.state.isRevolution && parseInt(this.state.boardNumber) <= number) {
+					await this.postMessage({
+						channel: this.state.channel,
+						text: `:warning: 場数 (${
+							this.state.boardNumber
 						}) 以上の数字を出すことはできません:hammer_and_wrench:`,
-					);
+					});
 					return;
 				}
 
 				const match = matchByCards(
 					numberText,
 					factorComponents,
-					state.hand,
-					state.boardCards.length,
+					this.state.hand,
+					this.state.boardCards.length,
 				);
 				if (match !== null) {
 					decompositions = match;
@@ -623,9 +671,10 @@ module.exports = ({eventClient, webClient: slack}) => {
 			}
 
 			if (decompositions === null) {
-				await postMessage(
-					`:warning: ${numberText} = ${factorsText} は手元のカードから出せません。`,
-				);
+				await this.postMessage({
+					channel: this.state.channel,
+					text: `:warning: ${numberText} = ${factorsText} は手元のカードから出せません。`,
+				});
 				return;
 			}
 
@@ -645,21 +694,24 @@ module.exports = ({eventClient, webClient: slack}) => {
 				);
 
 			if (notPrimeMantissas.length !== 0) {
-				const drewCards = await draw(decompositionCards.length);
-				await setState({
+				const drewCards = await this.draw(decompositionCards.length);
+				await this.setState({
 					isDrew: false,
 					isPenaltied: true,
 					boardCards: [],
 					boardNumber: null,
-					turns: state.turns + 1,
+					turns: this.state.turns + 1,
 				});
-				await postMessage(stripIndents`
-					:no_entry_sign: *${notPrimeMantissas.map(({mantissa}) => mantissa).join(', ')}* は素数ではありません!!!
-					${notPrimeMantissas.map(({mantissa, frequency}) => frequency === false ? '' : `${mantissa} = ${frequencyToString(frequency)}`).join('\n')}
+				await this.postMessage({
+					channel: this.state.channel,
+					text: stripIndents`
+						:no_entry_sign: *${notPrimeMantissas.map(({mantissa}) => mantissa).join(', ')}* は素数ではありません!!!
+						${notPrimeMantissas.map(({mantissa, frequency}) => frequency === false ? '' : `${mantissa} = ${frequencyToString(frequency)}`).join('\n')}
 
-					:warning:ペナルティ +${decompositionCards.length}枚 (${cardsToString(drewCards)})
-					*手札* ${cardsToString(state.hand)}
-				`);
+						:warning:ペナルティ +${decompositionCards.length}枚 (${cardsToString(drewCards)})
+						*手札* ${cardsToString(this.state.hand)}
+					`,
+				});
 				return;
 			}
 
@@ -669,115 +721,137 @@ module.exports = ({eventClient, webClient: slack}) => {
 				.toString();
 
 			if (correctCalculation !== numberText) {
-				const drewCards = await draw(decompositionCards.length);
-				await setState({
+				const drewCards = await this.draw(decompositionCards.length);
+				await this.setState({
 					isDrew: false,
 					isPenaltied: true,
 					boardCards: [],
 					boardNumber: null,
-					turns: state.turns + 1,
+					turns: this.state.turns + 1,
 				});
-				await postMessage(stripIndent`
-					:no_entry_sign: 素因数分解が正しくありません!!!
-					${frequencyToString(factors.map(({mantissa, exponent}) => ({factor: mantissa, times: exponent})))} = ${correctCalculation}
+				await this.postMessage({
+					channel: this.state.channel,
+					text: stripIndent`
+						:no_entry_sign: 素因数分解が正しくありません!!!
+						${frequencyToString(factors.map(({mantissa, exponent}) => ({factor: mantissa, times: exponent})))} = ${correctCalculation}
 
-					:warning:ペナルティ +${decompositionCards.length}枚 (${cardsToString(drewCards)})
-					*手札* ${cardsToString(state.hand)}
-				`);
+						:warning:ペナルティ +${decompositionCards.length}枚 (${cardsToString(drewCards)})
+						*手札* ${cardsToString(this.state.hand)}
+					`,
+				});
 				return;
 			}
 
-			await setState({
+			await this.setState({
 				isDrew: false,
 				boardCards: numberDecomposition,
 				boardNumber: numberText,
-				turns: state.turns + 1,
+				turns: this.state.turns + 1,
 			});
 
-			await discard(decompositionCards);
-			await postMessage(stripIndent`
-				*場数* ${state.boardNumber} (${cardsToString(state.boardCards)})
-				→ *素因数分解* ${frequencyToString(factors.map(({mantissa, exponent}) => ({factor: mantissa, times: exponent})))} (${cardsToString(flatten(factorDecompositions))})
-				*手札* ${cardsToString(state.hand)}
-			`);
+			await this.discard(decompositionCards);
+			await this.postMessage({
+				channel: this.state.channel,
+				text: stripIndent`
+					*場数* ${this.state.boardNumber} (${cardsToString(this.state.boardCards)})
+					→ *素因数分解* ${frequencyToString(factors.map(({mantissa, exponent}) => ({factor: mantissa, times: exponent})))} (${cardsToString(flatten(factorDecompositions))})
+					*手札* ${cardsToString(this.state.hand)}
+				`,
+			});
 			if (decompositionCards.length >= 8) {
-				await unlock(state.challenger, 'prime-composition-8');
+				await unlock(this.state.challenger, 'prime-composition-8');
 			}
-			await afterDiscard();
+			await this.afterDiscard();
 			return;
 		}
 
 		if (text === 'ドロー') {
-			if (state.phase !== 'playing') {
+			if (this.state.phase !== 'playing') {
 				return;
 			}
 
-			if (state.challenger !== user) {
+			if (this.state.challenger !== user) {
 				return;
 			}
 
-			if (state.isDrew) {
-				await postMessage(':warning: ドローは連続1回のみです。');
+			if (this.state.isDrew) {
+				await this.postMessage({
+					channel: this.state.channel,
+					text: ':warning: ドローは連続1回のみです。',
+				});
 				return;
 			}
 
-			const drewCards = await draw(1);
-			await setState({
+			const drewCards = await this.draw(1);
+			await this.setState({
 				isDrew: true,
 				isDrewOnce: true,
 			});
-			await postMessage(stripIndent`
-				ドロー +1枚 (${cardsToString(drewCards)})
-				*手札* ${cardsToString(state.hand)}
-			`);
+			await this.postMessage({
+				channel: this.state.channel,
+				text: stripIndent`
+					ドロー +1枚 (${cardsToString(drewCards)})
+					*手札* ${cardsToString(this.state.hand)}
+				`,
+			});
 			return;
 		}
 
 		if (text === 'パス') {
-			if (state.phase !== 'playing') {
+			if (this.state.phase !== 'playing') {
 				return;
 			}
 
-			if (state.challenger !== user) {
+			if (this.state.challenger !== user) {
 				return;
 			}
 
-			if (state.boardNumber === null) {
-				await postMessage(':warning: 場に何も出ていません。');
+			if (this.state.boardNumber === null) {
+				await this.postMessage({
+					channel: this.state.channel,
+					text: ':warning: 場に何も出ていません。',
+				});
 				return;
 			}
 
-			const drewCards = await draw(state.boardCards.length);
-			await setState({
+			const drewCards = await this.draw(this.state.boardCards.length);
+			await this.setState({
 				isDrew: false,
 				isPenaltied: true,
 				boardCards: [],
 				boardNumber: null,
-				turns: state.turns + 1,
+				turns: this.state.turns + 1,
 			});
-			await postMessage(stripIndent`
-				パスしました。
+			await this.postMessage({
+				channel: this.state.channel,
+				text: stripIndent`
+					パスしました。
 
-				:warning:ペナルティ +${drewCards.length}枚 (${cardsToString(drewCards)})
-				*手札* ${cardsToString(state.hand)}
-			`);
+					:warning:ペナルティ +${drewCards.length}枚 (${cardsToString(drewCards)})
+					*手札* ${cardsToString(this.state.hand)}
+				`,
+			});
 			return;
 		}
 
 		if (text === 'ギブアップ') {
-			if (state.phase !== 'playing') {
+			if (this.state.phase !== 'playing') {
 				return;
 			}
 
-			if (state.challenger !== user) {
+			if (this.state.challenger !== user) {
 				return;
 			}
 
-			await postMessage(stripIndent`
-				ギブアップしました。
-				*ターン数* ${state.turns}ターン
-			`);
-			await setState({
+			const {channel, gameMessageTs} = this.state;
+			await this.postMessage({
+				channel,
+				text: stripIndent`
+					ギブアップしました。
+					*ターン数* ${this.state.turns}ターン
+				`,
+			});
+			await this.setState({
 				phase: 'waiting',
 				challenger: null,
 				hand: [],
@@ -787,16 +861,22 @@ module.exports = ({eventClient, webClient: slack}) => {
 				boardCards: [],
 				boardNumber: null,
 				turns: 0,
+				channel: null,
+				gameMessageTs: null,
 			});
+			if (gameMessageTs !== null) {
+				await this.deleteProgressMessage(gameMessageTs);
+			}
 			return;
 		}
 
 		if (text.startsWith('@primebot')) {
 			const body = text.replace(/^@primebot/, '').trim();
 
-			if (state.phase === 'playing') {
+			if (this.state.phase === 'playing') {
 				if (body === 'reset') {
-					await setState({
+					const {channel: gameChannel, gameMessageTs} = this.state;
+					await this.setState({
 						phase: 'waiting',
 						challenger: null,
 						hand: [],
@@ -806,29 +886,49 @@ module.exports = ({eventClient, webClient: slack}) => {
 						boardCards: [],
 						boardNumber: null,
 						turns: 0,
+						channel: null,
+						gameMessageTs: null,
 					});
-					await postMessage(`<@${user}>によってリセットされました :wave:`);
+					await this.postMessage({
+						channel: gameChannel,
+						text: `<@${user}>によってリセットされました :wave:`,
+					});
+					if (gameMessageTs !== null) {
+						await this.deleteProgressMessage(gameMessageTs);
+					}
 					return;
 				}
 
-				await postMessage('カンニング禁止! :imp:');
+				await this.postMessage({
+					channel: this.state.channel,
+					text: 'カンニング禁止! :imp:',
+				});
 				return;
 			}
 
 			if (!body.match(/^\d+$/)) {
-				await postMessage(':ha:');
+				await this.postMessage({
+					channel: message.channel,
+					text: ':ha:',
+				});
 				return;
 			}
 
 			const frequency = await getFrequency(body);
 
 			if (frequency === true) {
-				await postMessage(`*${body}* は素数です!`);
+				await this.postMessage({
+					channel: message.channel,
+					text: `*${body}* は素数です!`,
+				});
 				return;
 			}
 
 			if (frequency === false) {
-				await postMessage(`*${body}* は合成数です!`);
+				await this.postMessage({
+					channel: message.channel,
+					text: `*${body}* は合成数です!`,
+				});
 				return;
 			}
 
@@ -836,13 +936,19 @@ module.exports = ({eventClient, webClient: slack}) => {
 				frequency.length === 1 && frequency[0].times === 1 && parseInt(body) >= 2;
 
 			if (isPrime) {
-				await postMessage(`*${body}* は素数です!`);
+				await this.postMessage({
+					channel: message.channel,
+					text: `*${body}* は素数です!`,
+				});
 				return;
 			}
 
-			await postMessage(
-				`*${body}* = ${parseInt(body) === 1 ? '1' : frequencyToString(frequency)}`,
-			);
+			await this.postMessage({
+				channel: message.channel,
+				text: `*${body}* = ${parseInt(body) === 1 ? '1' : frequencyToString(frequency)}`,
+			});
 		}
-	});
-};
+	}
+}
+
+module.exports = (slackClients) => new PrimeBot(slackClients);
