@@ -45,6 +45,12 @@ export interface ShuffledMeaning {
 export type NormalGamePhase = 'select_theme' | 'collect_meanings' | 'collect_bettings';
 export type DailyGamePhase = 'collect_meanings' | 'collect_bettings';
 
+export interface GameComment {
+	user: string;
+	text: string;
+	timestamp: number;
+}
+
 export interface NormalGameState {
 	phase: NormalGamePhase;
 	startedBy: string;
@@ -57,6 +63,7 @@ export interface NormalGameState {
 	gameMessageTs: string | null;
 	bettingMessageTs: string | null;
 	startedAt: number;
+	comments: GameComment[];
 }
 
 export interface DailyGameState {
@@ -71,6 +78,7 @@ export interface DailyGameState {
 	gameMessageTs: string | null;
 	bettingMessageTs: string | null;
 	startedAt: number;
+	comments: GameComment[];
 }
 
 export interface TahoiyaState {
@@ -105,7 +113,7 @@ export interface GameRecord {
 	sourceString: string;
 	url: string;
 	meanings: GameRecordMeaning[];
-	comments: string[];
+	comments: GameComment[];
 	author: string | null;
 	participants: string[];
 }

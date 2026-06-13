@@ -772,7 +772,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'tahoiya-arbitrary-theme',
 		difficulty: 'medium',
-		title: '見立ての名人',
+		title: '有知無知三十里',
 		condition: 'デイリーたほいやに任意たほいやのお題を登録する',
 		category: 'tahoiya',
 		counter: 'tahoiya-arbitrary-theme',
@@ -871,7 +871,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'tahoiya-rating-500',
 		difficulty: 'hard',
-		title: '半人前の辞書',
+		title: '明日の百より今日の五十',
 		condition: 'たほいやレーティングで500に到達する',
 		category: 'tahoiya',
 		counter: 'tahoiya-rating-500',
@@ -880,7 +880,7 @@ const achievements: Achievement[] = [
 	{
 		id: 'tahoiya-rating-800',
 		difficulty: 'professional',
-		title: '言葉の魔術師',
+		title: '天門登八',
 		condition: 'たほいやレーティングで800に到達する',
 		category: 'tahoiya',
 		counter: 'tahoiya-rating-800',

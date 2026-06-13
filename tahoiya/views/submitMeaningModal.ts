@@ -1,5 +1,5 @@
 import type {View} from '@slack/web-api';
-import type {Theme} from '../types';
+import type {GameComment, Theme} from '../types';
 
 const themeDescription = (theme: Theme): string => {
 	if (theme.type === 'dictionary') {
@@ -15,7 +15,7 @@ const inputLabel = (theme: Theme): string => {
 	return 'あなたが考えた「誤答選択肢」を入力してください（最大256文字）';
 };
 
-export default (theme: Theme, gameType: 'normal' | 'daily', initialValue?: string): View => ({
+export default (theme: Theme, gameType: 'normal' | 'daily', initialValue?: string, userComments: GameComment[] = []): View => ({
 	type: 'modal',
 	callback_id: gameType === 'normal' ? 'tahoiya_normal_submit_meaning_modal' : 'tahoiya_daily_submit_meaning_modal',
 	title: {type: 'plain_text', text: '意味を登録する'},
@@ -49,6 +49,36 @@ export default (theme: Theme, gameType: 'normal' | 'daily', initialValue?: strin
 						: '例: さよならプラスティックワールド',
 				},
 			},
+		},
+		{type: 'divider'},
+		...(userComments.length > 0 ? [{
+			type: 'section' as const,
+			text: {
+				type: 'mrkdwn' as const,
+				text: '*あなたのコメント:*\n' + userComments.map((c) => `> ${c.text}`).join('\n'),
+			},
+		}] : []),
+		{
+			type: 'input',
+			block_id: 'comment_input',
+			optional: true,
+			label: {type: 'plain_text', text: 'コメント（ゲーム終了まで非公開）'},
+			element: {
+				type: 'plain_text_input',
+				action_id: 'comment_text',
+				multiline: true,
+				max_length: 500,
+				placeholder: {type: 'plain_text', text: 'ゲームについてのコメントを入力...'},
+			},
+		},
+		{
+			type: 'actions',
+			block_id: 'comment_actions',
+			elements: [{
+				type: 'button',
+				action_id: `tahoiya_${gameType}_comment_button`,
+				text: {type: 'plain_text', text: 'コメントを送信', emoji: true},
+			}],
 		},
 	],
 });
