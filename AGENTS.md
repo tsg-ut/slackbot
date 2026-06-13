@@ -187,9 +187,9 @@ kill <ngrok-pid> <app-pid>
 
 Note the PIDs when launching (they are printed after the `&` command) and use them to stop only the intended processes.
 
-### Hot Reload with ts-node-dev
+### Hot Reload with tsx watch
 
-`npm run dev` uses `ts-node-dev`, which **automatically detects file changes and restarts the server** without any manual intervention. When a `.ts` file is saved, the output looks like:
+`npm run dev` uses `tsx watch`, which **automatically detects file changes and restarts the server** without any manual intervention. When a `.ts` file is saved, the output looks like:
 
 ```
 [INFO] Restarting: /path/to/changed-file.ts has been modified

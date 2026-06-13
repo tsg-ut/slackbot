@@ -2,7 +2,7 @@ const axios = require('axios');
 const {stripIndent} = require('common-tags');
 const get = require('lodash/get');
 const schedule = require('node-schedule');
-const {default: logger} = require('../lib/logger.ts');
+const {default: logger} = require('../lib/logger');
 
 const log = logger.child({bot: 'checkin'});
 

@@ -1,5 +1,5 @@
-import {File} from 'buffer';
 import {readFile} from 'fs/promises';
+import {toFile} from 'openai';
 import path from 'path';
 import type {BlockButtonAction, ViewSubmitAction} from '@slack/bolt';
 import {SlackMessageAdapter} from '@slack/interactive-messages';
@@ -584,7 +584,7 @@ export class SlowQuiz {
 	async #createBatchFile(requests: unknown[]) {
 		const jsonlContent = requests.map((req) => JSON.stringify(req)).join('\n');
 		const file = await systemOpenai.files.create({
-			file: new File([jsonlContent], 'batch_requests.jsonl', {type: 'application/jsonl'}),
+			file: await toFile(Buffer.from(jsonlContent), 'batch_requests.jsonl', {type: 'application/jsonl'}),
 			purpose: 'batch',
 		});
 		return file.id;

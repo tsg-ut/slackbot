@@ -4,7 +4,6 @@ import path from 'path';
 import assert from 'assert';
 import type {SlackInterface} from '../lib/slack';
 import {flatten, sum, sample, random, sortBy, maxBy, sumBy, shuffle} from 'lodash';
-// @ts-expect-error
 import trie from './trie';
 import cloudinary from 'cloudinary';
 import {stripIndent} from 'common-tags';

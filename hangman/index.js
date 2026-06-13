@@ -5,11 +5,11 @@ const path = require('path');
 const download = require('download');
 const { stripIndents } = require("common-tags");
 const { unlock, increment, set } = require('../achievements');
-const { default: logger } = require('../lib/logger.ts');
+const { default: logger } = require('../lib/logger');
 const { getMemberName, isPlayground } = require('../lib/slackUtils');
-const { ChannelLimitedBot } = require('../lib/channelLimitedBot.ts');
-const { extractMessage } = require('../lib/slackUtils.ts');
-const { Deferred } = require('../lib/utils.ts');
+const { ChannelLimitedBot } = require('../lib/channelLimitedBot');
+const { extractMessage } = require('../lib/slackUtils');
+const { Deferred } = require('../lib/utils');
 const axios = require('axios');
 
 const BOT_NAME = "hangmanbot";

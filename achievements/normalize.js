@@ -1,4 +1,4 @@
-const db = require('../lib/firestore.ts').default;
+const db = require('../lib/firestore').default;
 const countBy = require('lodash/countBy');
 const groupBy = require('lodash/groupBy');
 const minBy = require('lodash/minBy');

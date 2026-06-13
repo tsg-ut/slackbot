@@ -10,7 +10,7 @@ const {constant, times, flatten, range, shuffle, uniq} = require('lodash');
 const MillerRabin = require('miller-rabin');
 const prime = require('primes-and-factors');
 const {unlock} = require('../achievements');
-const primes = require('./primes.ts');
+const primes = require('./primes');
 
 const cardSet = range(1, 14);
 const millerRabin = new MillerRabin();

@@ -1,7 +1,7 @@
 /* eslint-disable global-require */
 
 if (process.env.NODE_ENV === 'production') {
-	module.exports = require('./index_production.ts');
+	module.exports = require('./index_production');
 } else {
-	module.exports = require('./index_development.ts');
+	module.exports = require('./index_development');
 }

@@ -7,9 +7,9 @@ const {sample, get} = require("lodash");
 const {hiraganize} = require("japanese");
 const {stripIndents} = require("common-tags");
 const {unlock, increment} = require("../achievements");
-const {default: logger} = require('../lib/logger.ts');
+const {default: logger} = require('../lib/logger');
 const {getMemberName} = require('../lib/slackUtils');
-const {default: State} = require('../lib/state.ts');
+const {default: State} = require('../lib/state');
 
 const log = logger.child({bot: 'pocky'});
 

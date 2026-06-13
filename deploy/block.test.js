@@ -1,6 +1,6 @@
 /* eslint-env node, jest */
 
-const Blocker = require('./block.js');
+const Blocker = require('./block').default;
 
 let blocker = null;
 
