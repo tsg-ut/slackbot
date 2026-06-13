@@ -20,6 +20,7 @@ import type {AIBotModel} from './aibot';
 import {calculateRatingDeltas} from './rating';
 import type {
 	DailyGameState,
+	GameComment,
 	NormalGameState,
 	TahoiyaState,
 	DictionarySource,
@@ -56,7 +57,7 @@ const DAILY_TAHOIYA_MINIMUM_PARTICIPANTS = 3;
 const AI_BOT_MODELS: AIBotModel[] = ['tahoiyabot-01', 'tahoiyabot-02'];
 
 export class Tahoiya extends ChannelLimitedBot {
-	protected override wakeWordRegex = /^(?:たほいや|デイリーたほいや)$/;
+	protected override wakeWordRegex = /^(?:たほいや|デイリーたほいや|たほいやランキング)$/;
 
 	protected override allowedChannels = [process.env.CHANNEL_SANDBOX!];
 
@@ -131,6 +132,9 @@ export class Tahoiya extends ChannelLimitedBot {
 		}
 		if (text === 'デイリーたほいや') {
 			return mutex.runExclusive(() => this.#showDailyStatus(targetChannel, null));
+		}
+		if (text === 'たほいやランキング') {
+			return mutex.runExclusive(() => this.#showRanking(targetChannel));
 		}
 		return Promise.resolve(null);
 	}
@@ -232,6 +236,32 @@ export class Tahoiya extends ChannelLimitedBot {
 			const userId = payload.user.id;
 			return mutex.runExclusive(() => this.#registerArbitraryTheme(userId, values));
 		});
+
+		// Comment button: normal game
+		this.messageClient.action({type: 'button', actionId: 'tahoiya_normal_comment_button'}, (payload: BlockButtonAction) => {
+			type ViewWithState = {id?: string; state?: {values?: Record<string, unknown>}};
+			const view = payload.view as ViewWithState;
+			const rawValues = Object.values(view?.state?.values ?? {});
+			const values = Object.assign({}, ...rawValues) as Record<string, {value?: string}>;
+			const text = values?.comment_text?.value?.trim();
+			const viewId = view?.id;
+			if (text && viewId) {
+				mutex.runExclusive(() => this.#submitComment('normal', payload.user.id, text, viewId)).catch((err) => this.log.error(err));
+			}
+		});
+
+		// Comment button: daily game
+		this.messageClient.action({type: 'button', actionId: 'tahoiya_daily_comment_button'}, (payload: BlockButtonAction) => {
+			type ViewWithState = {id?: string; state?: {values?: Record<string, unknown>}};
+			const view = payload.view as ViewWithState;
+			const rawValues = Object.values(view?.state?.values ?? {});
+			const values = Object.assign({}, ...rawValues) as Record<string, {value?: string}>;
+			const text = values?.comment_text?.value?.trim();
+			const viewId = view?.id;
+			if (text && viewId) {
+				mutex.runExclusive(() => this.#submitComment('daily', payload.user.id, text, viewId)).catch((err) => this.log.error(err));
+			}
+		});
 	}
 
 	async #startNormalGame(userId: string, channel: string): Promise<string | null> {
@@ -259,6 +289,7 @@ export class Tahoiya extends ChannelLimitedBot {
 				gameMessageTs: null,
 				bettingMessageTs: null,
 				startedAt: now,
+				comments: [],
 			};
 		}
 
@@ -426,6 +457,7 @@ export class Tahoiya extends ChannelLimitedBot {
 		const ratingChanges = this.#applyRatings(results);
 
 		await this.#postResultsMessage(game, results, ratingChanges, 'normal');
+		await this.#publishComments(game, 'normal');
 		await this.#grantAchievements(game, results, ratingChanges);
 		await this.#saveGameRecord(game, 'normal');
 
@@ -458,6 +490,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			gameMessageTs: this.#state.dailyStatusMessageTs,
 			bettingMessageTs: null,
 			startedAt: Date.now(),
+			comments: [],
 		};
 
 		await this.#updateDailyStatusMessage();
@@ -605,6 +638,7 @@ export class Tahoiya extends ChannelLimitedBot {
 		].slice(-10);
 
 		await this.#postResultsMessage(game, results, ratingChanges, 'daily');
+		await this.#publishComments(game, 'daily');
 		await this.#grantAchievements(game, results, ratingChanges);
 		await this.#saveGameRecord(game, 'daily');
 
@@ -634,9 +668,10 @@ export class Tahoiya extends ChannelLimitedBot {
 		}
 
 		const existingMeaning = game.meanings[userId];
+		const userComments = game.comments.filter((c) => c.user === userId);
 		await this.slack.views.open({
 			trigger_id: triggerId,
-			view: submitMeaningModal(game.theme, gameType, existingMeaning),
+			view: submitMeaningModal(game.theme, gameType, existingMeaning, userComments),
 		}).catch((err) => this.log.error('failed to open modal:', err));
 	}
 
@@ -660,9 +695,10 @@ export class Tahoiya extends ChannelLimitedBot {
 			return;
 		}
 
+		const userComments = game.comments.filter((c) => c.user === userId);
 		await this.slack.views.open({
 			trigger_id: triggerId,
-			view: bettingModal(game.shuffledMeanings, gameType, userId),
+			view: bettingModal(game.shuffledMeanings, gameType, userId, userComments),
 		}).catch((err) => this.log.error('failed to open modal:', err));
 	}
 
@@ -681,6 +717,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			return;
 		}
 
+		const isEditing = userId in game.meanings;
 		game.meanings[userId] = trimmed;
 
 		if (gameType === 'normal') {
@@ -690,7 +727,9 @@ export class Tahoiya extends ChannelLimitedBot {
 		}
 
 		if (userId.startsWith('U')) {
-			await this.#postThread(gameType, {text: `<@${userId}> が意味を登録したよ👍️`});
+			await this.#postThread(gameType, {
+				text: isEditing ? `<@${userId}> が意味を編集したよ✏️` : `<@${userId}> が意味を登録したよ👍️`,
+			});
 		}
 	}
 
@@ -1218,7 +1257,7 @@ export class Tahoiya extends ChannelLimitedBot {
 					.filter(([, voteIndex]) => voteIndex === i)
 					.map(([user]) => ({user})),
 			})),
-			comments: [],
+			comments: game.comments ?? [],
 			author: gameType === 'daily' ? (game as DailyGameState).themeAuthor : null,
 			participants: Object.keys(game.meanings).filter((u) => u.startsWith('U')),
 		};
@@ -1230,6 +1269,59 @@ export class Tahoiya extends ChannelLimitedBot {
 		} catch (err) {
 			this.log.error('failed to save game record:', err);
 		}
+	}
+
+	async #showRanking(channel: string): Promise<string | null> {
+		const entries = Object.entries(this.#state.ratings)
+			.filter(([userId]) => userId.startsWith('U'))
+			.sort(([, a], [, b]) => b - a)
+			.slice(0, 20);
+
+		if (entries.length === 0) {
+			const result = await this.#postMessage({channel, text: 'まだレーティングデータがありません。'});
+			return result.ts ?? null;
+		}
+
+		const lines = entries.map(([userId, rating], idx) => {
+			const games = this.#state.gamesPlayed[userId] ?? 0;
+			return `${idx + 1}位: <@${userId}> - ${Math.round(rating)}pt（${games}ゲーム）`;
+		});
+
+		const result = await this.#postMessage({
+			channel,
+			text: `たほいやランキング :trophy:\n${lines.join('\n')}`,
+		});
+		return result.ts ?? null;
+	}
+
+	async #submitComment(gameType: 'normal' | 'daily', userId: string, text: string, viewId: string) {
+		const game = gameType === 'normal' ? this.#state.normalGame : this.#state.dailyGame;
+		if (!game) {
+			return;
+		}
+
+		const comment: GameComment = {user: userId, text, timestamp: Date.now()};
+		game.comments.push(comment);
+
+		const userComments = game.comments.filter((c: GameComment) => c.user === userId);
+
+		if (game.phase === 'collect_meanings' && game.theme) {
+			const view = submitMeaningModal(game.theme, gameType, game.meanings[userId], userComments);
+			await this.slack.views.update({view_id: viewId, view}).catch((err) => this.log.error('failed to update modal after comment:', err));
+		} else if (game.phase === 'collect_bettings') {
+			const view = bettingModal(game.shuffledMeanings, gameType, userId, userComments);
+			await this.slack.views.update({view_id: viewId, view}).catch((err) => this.log.error('failed to update modal after comment:', err));
+		}
+	}
+
+	async #publishComments(game: NormalGameState | DailyGameState, gameType: 'normal' | 'daily') {
+		const comments = game.comments ?? [];
+		if (comments.length === 0) {
+			return;
+		}
+
+		const lines = comments.map((c) => `<@${c.user}>: ${c.text}`).join('\n');
+		await this.#postThread(gameType, {text: `ゲーム中のコメント:\n${lines}`});
 	}
 
 	async #fetchAvailableThemes(): Promise<StoredTheme[]> {
