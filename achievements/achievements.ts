@@ -4376,6 +4376,43 @@ const achievements: Achievement[] = [
 		category: 'manual',
 		manual: true,
 	},
+	// prefecture-quiz
+	{
+		id: 'prefecture-quiz-answer-1',
+		difficulty: 'easy',
+		title: '郷土愛',
+		condition: '都道府県当てクイズで正解する',
+		category: 'prefecture-quiz',
+		counter: 'prefecture-quiz-answer',
+		value: 1,
+	},
+	{
+		id: 'prefecture-quiz-answer-10',
+		difficulty: 'medium',
+		title: '旅人',
+		condition: '都道府県当てクイズで10回正解する',
+		category: 'prefecture-quiz',
+		counter: 'prefecture-quiz-answer',
+		value: 10,
+	},
+	{
+		id: 'prefecture-quiz-answer-47',
+		difficulty: 'hard',
+		title: '日本一周',
+		condition: '都道府県当てクイズで47回正解する',
+		category: 'prefecture-quiz',
+		counter: 'prefecture-quiz-answer',
+		value: 47,
+	},
+	{
+		id: 'prefecture-quiz-answer-first-hint',
+		difficulty: 'hard',
+		title: '地理マニア',
+		condition: '都道府県当てクイズで最初のヒントのみで正解する',
+		category: 'prefecture-quiz',
+		counter: 'prefecture-quiz-answer-first-hint',
+		value: 1,
+	},
 ];
 
 const achievementMap = new Map(achievements.map((achievement) => [achievement.id, achievement]));

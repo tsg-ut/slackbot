@@ -144,6 +144,7 @@ const productionBots = [
 	'autogen-quiz',
 	'twenty-questions',
 	'google-calendar',
+	'prefecture-quiz',
 ];
 
 const developmentBots = [

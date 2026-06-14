@@ -82,6 +82,13 @@ export class AteQuiz {
     );
   }
 
+  // Returns false to silently skip (no reaction). Override to filter or rate-limit answers.
+  isValidAnswer(_answer: string, _user: string, _message: MessageEvent): boolean | Promise<boolean> {
+    return true;
+  }
+
+  async onHintPosted(_hintIndex: number, _thread_ts: string): Promise<void> {}
+
   waitSecGen(hintIndex: number): number {
     return hintIndex === this.problem.hintMessages.length ? 30 : 15;
   }
@@ -185,6 +192,7 @@ export class AteQuiz {
           if (hintIndex < this.problem.hintMessages.length) {
             const hint = this.problem.hintMessages[hintIndex];
             await postMessage(Object.assign({}, hint, { thread_ts }));
+            await this.onHintPosted(hintIndex, thread_ts);
             hintIndex++;
           } else {
             this.state = 'unsolved';
@@ -217,6 +225,7 @@ export class AteQuiz {
         this.mutex.runExclusive(async () => {
           if (this.state === 'solving') {
             const answer = message.text as string;
+            if (!await this.isValidAnswer(answer, message.user as string, message)) return;
             const isCorrect = await this.judge(answer, message.user as string);
             if (isCorrect) {
               this.state = 'solved';
