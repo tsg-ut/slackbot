@@ -36,7 +36,7 @@ const getChangedFiles = (): string[] => {
 
 const buildConditionalCommands = (changedFiles: string[]): string[][] => {
 	const commands: string[][] = [];
-	if (changedFiles.some((f) => f === 'package-lock.json')) {
+	if (changedFiles.includes('package-lock.json')) {
 		commands.push(['npm', 'ci']);
 	}
 	if (changedFiles.some((f) => f.endsWith('.rs'))) {
@@ -45,6 +45,12 @@ const buildConditionalCommands = (changedFiles: string[]): string[][] => {
 	commands.push(['npm', 'run', 'build']);
 	return commands;
 };
+
+const collectStream = (stream: PassThrough): Promise<Buffer> => new Promise<Buffer>((resolve) => {
+	stream.pipe(concat({encoding: 'buffer'}, (data: Buffer) => {
+		resolve(data);
+	}));
+});
 
 const deployBlocker = new Blocker();
 export const blockDeploy = (name: string) => deployBlocker.block(name);
@@ -77,11 +83,7 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 			muxed.end();
 		});
 
-		const output = await new Promise<Buffer>((resolve) => {
-			muxed.pipe(concat({encoding: 'buffer'}, (data: Buffer) => {
-				resolve(data);
-			}));
-		});
+		const output = await collectStream(muxed);
 
 		const text = `\`\`\`\n$ ${[command, ...args].join(' ')}\n${output.toString().slice(0, 3500)}\`\`\``;
 		await postMessage(text);

@@ -122,7 +122,9 @@ is not necessary because the code is self-explanatory. Instead, you must just re
 
 - Run development server: `npm run dev`
 - Run specific plugin only: `npm run dev -- --only [bot-id]`
-- Production mode: `npm start`
+- Type-check the project: `npx tsgo --noEmit` (the project has migrated from `tsc`/`ts-node` to `tsgo`; CI runs this same command, so always use `tsgo` rather than `tsc`)
+- Build for production: `npm run build` (runs `tsgo`, compiling TypeScript into `.build/`)
+- Production mode: `npm start` (requires `npm run build` to have been run first — pm2 runs the compiled `.build/index.js` via plain `node`, not `index.ts` directly)
 
 ## Local Debugging
 

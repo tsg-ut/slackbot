@@ -7,7 +7,7 @@ interface BlockEntry {
 }
 
 export default class Blocker {
-	private blocks: Set<BlockEntry> = new Set();
+	private readonly blocks: Set<BlockEntry> = new Set();
 	private waitPromise: Promise<void> | null = null;
 
 	async block(name: string): Promise<UnblockFn> {
