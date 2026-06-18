@@ -119,7 +119,7 @@ export class Tahoiya extends ChannelLimitedBot {
 		}
 
 		if (this.#state.dailyGame === null) {
-			await mutex.runExclusive(() => this.#selectNextDailyTheme());
+			await mutex.runExclusive(() => this.#updateDailyGameTheme());
 		}
 
 		this.log.info('Tahoiya initialized');
@@ -128,6 +128,9 @@ export class Tahoiya extends ChannelLimitedBot {
 	protected override onWakeWord(event: GenericMessageEvent, targetChannel: string): Promise<string | null> {
 		const text = event.text?.trim();
 		if (text === 'たほいや') {
+			if (this.#state.normalGame !== null) {
+				return mutex.runExclusive(() => this.#postNormalGameStatus());
+			}
 			return mutex.runExclusive(() => this.#startNormalGame(event.user!, targetChannel));
 		}
 		if (text === 'デイリーたほいや') {
@@ -266,15 +269,6 @@ export class Tahoiya extends ChannelLimitedBot {
 
 	async #startNormalGame(userId: string, channel: string): Promise<string | null> {
 		if (this.#state.normalGame?.phase !== 'select_theme') {
-			if (this.#state.normalGame !== null) {
-				await this.slack.chat.postEphemeral({
-					channel,
-					user: userId,
-					text: '通常たほいやは現在進行中です。',
-				});
-				return null;
-			}
-
 			const now = Date.now();
 
 			this.#state.normalGame = {
@@ -287,7 +281,9 @@ export class Tahoiya extends ChannelLimitedBot {
 				votes: {},
 				endPhaseAt: now,
 				gameMessageTs: null,
+				meaningMessageTs: null,
 				bettingMessageTs: null,
+				statusMessageTss: [],
 				startedAt: now,
 				comments: [],
 			};
@@ -355,7 +351,15 @@ export class Tahoiya extends ChannelLimitedBot {
 			endPhaseAt,
 		};
 
-		await this.#updateNormalGameMessage();
+		// Post collectMeaningMessage as thread reply (broadcast)
+		const meaningResult = await this.#postThread('normal', {
+			text: `たほいや「${theme.ruby}」の意味を登録してください！`,
+			blocks: collectMeaningsMessage(this.#state.normalGame, 'normal'),
+			broadcast: true,
+		});
+		this.#state.normalGame.meaningMessageTs = meaningResult?.ts ?? null;
+
+		await this.#updateAllStatusMessages('normal');
 
 		setTimeout(() => {
 			mutex.runExclusive(() => this.#startNormalBettingsPhase());
@@ -385,7 +389,8 @@ export class Tahoiya extends ChannelLimitedBot {
 					}
 
 					this.#state.normalGame.meanings[modelId] = normalizeMeaning(aiResult.result);
-					await this.#updateNormalGameMessage();
+					await this.#updateMeaningMessage();
+					await this.#updateAllStatusMessages('normal');
 					await this.#postThread('normal', {text: `${modelId} が意味を登録したよ :robot_face:`});
 				});
 			}).catch((err) => this.log.error('AI bot error:', err));
@@ -409,22 +414,20 @@ export class Tahoiya extends ChannelLimitedBot {
 			bettingMessageTs: null,
 		};
 
-		// Disable the meanings message
-		await this.#updateNormalGameMessage(true);
+		// Disable the meaning message thread reply
+		await this.#disableMeaningMessage();
 
-		// Post new betting message with mentions, broadcast to channel
+		// Post new betting message (mentions are now inside collectBettingsMessage blocks)
 		const humanParticipants = Object.keys(game.meanings).filter((u) => u.startsWith('U'));
 		const mentions = humanParticipants.map((u) => `<@${u}>`).join(' ');
-		const mentionBlock: KnownBlock[] = mentions ? [{
-			type: 'section',
-			text: {type: 'mrkdwn', text: mentions},
-		}] : [];
 		const bettingResult = await this.#postThread('normal', {
 			text: `たほいや投票フェーズ開始！${mentions ? `\n${mentions} 投票してください！` : ''}`,
-			blocks: [...mentionBlock, ...collectBettingsMessage(this.#state.normalGame, 'normal')],
+			blocks: collectBettingsMessage(this.#state.normalGame, 'normal'),
 			broadcast: true,
 		});
 		this.#state.normalGame.bettingMessageTs = bettingResult?.ts ?? null;
+
+		await this.#updateAllStatusMessages('normal');
 
 		await this.#doAIBets('normal');
 
@@ -461,24 +464,51 @@ export class Tahoiya extends ChannelLimitedBot {
 		await this.#grantAchievements(game, results, ratingChanges);
 		await this.#saveGameRecord(game, 'normal');
 
+		// Save TS list before clearing state, then update all with "ended" content
+		const endedGameMessageTs = game.gameMessageTs;
+		const endedStatusTss = game.statusMessageTss ?? [];
+		const endedTheme = game.theme!;
+		const endedThemeText = endedTheme.type === 'dictionary' ? `「${endedTheme.ruby}」` : `「${endedTheme.question}」`;
+		const endedBlocks: KnownBlock[] = [
+			{type: 'section', text: {type: 'mrkdwn', text: `たほいや ${endedThemeText} 終了`}},
+		];
+
 		this.#state.normalGame = null;
+
+		if (endedGameMessageTs) {
+			await this.slack.chat.update({
+				channel: this.allowedChannels[0],
+				ts: endedGameMessageTs,
+				text: 'たほいや（終了）',
+				blocks: endedBlocks,
+			}).catch((err) => this.log.error('failed to update ended game message:', err));
+		}
+		for (const ts of endedStatusTss) {
+			await this.slack.chat.update({
+				channel: this.allowedChannels[0],
+				ts,
+				text: 'たほいや（終了）',
+				blocks: endedBlocks,
+			}).catch((err) => this.log.error('failed to update ended status message:', err));
+		}
 	}
 
-	async #selectNextDailyTheme(announce = false) {
-		const themes = await this.#fetchAvailableThemes();
+	async #updateDailyGameTheme(announce = false) {
+		const theme = await this.#selectNextDailyTheme();
 
-		if (themes.length === 0) {
+		if (!theme) {
 			this.log.warn('No daily themes available');
-			await this.#postThread('daily', {
-				text: '次のデイリーたほいやのお題が見つかりませんでした。お題を募集しています！',
-				broadcast: true,
-			});
+			// Post standalone message (no thread to reply to)
+			await this.#postMessage({text: '次のデイリーたほいやのお題が見つかりませんでした。お題を募集しています！'});
 			return;
 		}
 
-		const [theme] = themes;
+		// Post collectMeaningMessage as the new parent message for this game
+		const themeLabel = theme.theme.type === 'dictionary' ? `「${theme.theme.ruby}」` : `「${theme.theme.question}」`;
+		const now = Date.now();
 
-		this.#state.dailyGame = {
+		// Temporary game state to render the message (endPhaseAt is 0 during collect_meanings — no fixed deadline)
+		const tempGame: DailyGameState = {
 			phase: 'collect_meanings',
 			themeId: theme.id,
 			themeAuthor: theme.submittedBy,
@@ -486,19 +516,26 @@ export class Tahoiya extends ChannelLimitedBot {
 			meanings: {},
 			shuffledMeanings: [],
 			votes: {},
-			endPhaseAt: Date.now(),
-			gameMessageTs: this.#state.dailyStatusMessageTs,
+			endPhaseAt: now,
+			gameMessageTs: null,
 			bettingMessageTs: null,
-			startedAt: Date.now(),
+			statusMessageTss: [],
+			startedAt: now,
 			comments: [],
 		};
 
-		await this.#updateDailyStatusMessage();
+		const parentResult = await this.#postMessage({
+			text: `デイリーたほいや ${themeLabel}`,
+			blocks: collectMeaningsMessage(tempGame, 'daily'),
+		});
+
+		this.#state.dailyGame = {
+			...tempGame,
+			gameMessageTs: parentResult.ts ?? null,
+		};
+		this.#state.dailyStatusMessageTs = parentResult.ts ?? null;
 
 		if (announce) {
-			const themeLabel = theme.theme.type === 'dictionary'
-				? `「${theme.theme.ruby}」`
-				: `「${theme.theme.question}」`;
 			await this.#postThread('daily', {
 				text: stripIndent`
 					明日のデイリーたほいやのお題はこれ！
@@ -542,19 +579,17 @@ export class Tahoiya extends ChannelLimitedBot {
 	async #triggerDailyBetting() {
 		const game = this.#state.dailyGame;
 		if (!game || game.phase !== 'collect_meanings') {
-			await this.#showDailyStatus(
-				this.allowedChannels[0],
-				'お題ストックが不足しているため、デイリーたほいやはスキップされました😢',
-			);
+			await this.#postMessage({
+				text: 'お題ストックが不足しているため、デイリーたほいやはスキップされました😢',
+			});
 			return;
 		}
 
 		const humanCount = Object.keys(game.meanings).filter((u) => u.startsWith('U')).length;
 		if (humanCount < DAILY_TAHOIYA_MINIMUM_PARTICIPANTS) {
-			await this.#showDailyStatus(
-				this.allowedChannels[0],
-				`参加者が${DAILY_TAHOIYA_MINIMUM_PARTICIPANTS}人未満のため、デイリーたほいやはスキップされました😢`,
-			);
+			await this.#postMessage({
+				text: `参加者が${DAILY_TAHOIYA_MINIMUM_PARTICIPANTS}人未満のため、デイリーたほいやはスキップされました😢`,
+			});
 			return;
 		}
 
@@ -569,25 +604,22 @@ export class Tahoiya extends ChannelLimitedBot {
 			bettingMessageTs: null,
 		};
 
-		await this.#updateDailyStatusMessage();
-
-		// Announce betting with mentions
+		// Post collectBettingsMessage as thread reply (mentions are inside the blocks)
 		const humanParticipants = Object.keys(game.meanings).filter((u) => u.startsWith('U'));
 		const mentions = humanParticipants.map((u) => `<@${u}>`).join(' ');
 		const themeLabel = game.theme.type === 'dictionary'
 			? `「${game.theme.ruby}」`
 			: `「${game.theme.question}」`;
 
-		const mentionBlock: KnownBlock[] = mentions ? [{
-			type: 'section',
-			text: {type: 'mrkdwn', text: `${mentions} 60分以内に投票してください！`},
-		}] : [];
 		const bettingResult = await this.#postThread('daily', {
-			text: `デイリーたほいや ${themeLabel} の投票フェーズが始まりました！\n${mentions} 60分以内に投票してください！`,
-			blocks: [...mentionBlock, ...collectBettingsMessage(this.#state.dailyGame, 'daily')],
+			text: `デイリーたほいや ${themeLabel} の投票フェーズが始まりました！\n${mentions ? `${mentions} 60分以内に投票してください！` : ''}`,
+			blocks: collectBettingsMessage(this.#state.dailyGame, 'daily'),
 			broadcast: true,
 		});
 		this.#state.dailyGame.bettingMessageTs = bettingResult?.ts ?? null;
+
+		// Update parent and all status messages to show current state (投票するボタン)
+		await this.#updateAllStatusMessages('daily');
 
 		this.#doAIBets('daily');
 
@@ -642,9 +674,33 @@ export class Tahoiya extends ChannelLimitedBot {
 		await this.#grantAchievements(game, results, ratingChanges);
 		await this.#saveGameRecord(game, 'daily');
 
+		// Save TS list before clearing state, then start next game
+		const endedGameMessageTs = game.gameMessageTs;
+		const endedStatusTss = game.statusMessageTss ?? [];
+
 		this.#state.dailyGame = null;
 
-		await this.#selectNextDailyTheme(true);
+		await this.#updateDailyGameTheme(true);
+
+		// Update old parent and status messages to show "no game" state
+		const themeCount = await this.#countAvailableThemes();
+		const endedBlocks = dailyStatusMessage(null, themeCount, null);
+		if (endedGameMessageTs) {
+			await this.slack.chat.update({
+				channel: this.allowedChannels[0],
+				ts: endedGameMessageTs,
+				text: 'デイリーたほいや（終了）',
+				blocks: endedBlocks,
+			}).catch((err) => this.log.error('failed to update ended daily game message:', err));
+		}
+		for (const ts of endedStatusTss) {
+			await this.slack.chat.update({
+				channel: this.allowedChannels[0],
+				ts,
+				text: 'デイリーたほいや（終了）',
+				blocks: endedBlocks,
+			}).catch((err) => this.log.error('failed to update ended daily status message:', err));
+		}
 	}
 
 	async #openSubmitMeaningModal(triggerId: string, gameType: 'normal' | 'daily', userId: string) {
@@ -721,9 +777,10 @@ export class Tahoiya extends ChannelLimitedBot {
 		game.meanings[userId] = trimmed;
 
 		if (gameType === 'normal') {
-			await this.#updateNormalGameMessage();
+			await this.#updateMeaningMessage();
+			await this.#updateAllStatusMessages('normal');
 		} else {
-			await this.#updateDailyStatusMessage();
+			await this.#updateAllStatusMessages('daily');
 		}
 
 		if (userId.startsWith('U')) {
@@ -761,11 +818,8 @@ export class Tahoiya extends ChannelLimitedBot {
 
 		game.votes[userId] = clampedIndex;
 
-		if (gameType === 'normal') {
-			await this.#updateBettingMessage('normal');
-		} else {
-			await this.#updateBettingMessage('daily');
-		}
+		await this.#updateBettingMessage(gameType);
+		await this.#updateAllStatusMessages(gameType);
 
 		// Check if all human participants voted (normal game only)
 		if (gameType === 'normal') {
@@ -840,7 +894,7 @@ export class Tahoiya extends ChannelLimitedBot {
 		await increment(userId, 'daily-tahoiya-theme');
 		await this.#postMessage({text: `<@${userId}> がデイリーたほいやのお題を登録しました！`});
 		if (this.#state.dailyGame === null) {
-			await this.#selectNextDailyTheme(true);
+			await this.#updateDailyGameTheme(true);
 		}
 		return undefined;
 	}
@@ -873,13 +927,15 @@ export class Tahoiya extends ChannelLimitedBot {
 			return {response_action: 'errors', errors};
 		}
 
+		const isMimicryAllowed = values?.mimicry_allowed?.selected_options?.some((o) => o.value === 'allowed') ?? false;
+
 		const stored: StoredTheme = {
 			id: randomUUID(),
 			submittedBy: userId,
 			submittedAt: Date.now(),
 			used: false,
 			usedAt: null,
-			theme: {type: 'arbitrary', question, answer, sourceUrl: url},
+			theme: {type: 'arbitrary', question, answer, sourceUrl: url, isMimicryAllowed},
 		};
 
 		await this.#saveTheme(stored);
@@ -887,7 +943,7 @@ export class Tahoiya extends ChannelLimitedBot {
 		await increment(userId, 'tahoiya-arbitrary-theme');
 		await this.#postMessage({text: `<@${userId}> がデイリーたほいやのお題を登録しました！`});
 		if (this.#state.dailyGame === null) {
-			await this.#selectNextDailyTheme(true);
+			await this.#updateDailyGameTheme(true);
 		}
 		return undefined;
 	}
@@ -896,38 +952,31 @@ export class Tahoiya extends ChannelLimitedBot {
 		const themeCount = await this.#countAvailableThemes();
 		const blocks = dailyStatusMessage(this.#state.dailyGame, themeCount, skipNotice);
 
-		if (this.#state.dailyStatusMessageTs) {
-			await this.slack.chat.delete({
-				channel,
-				ts: this.#state.dailyStatusMessageTs,
-			}).catch(() => {
-				this.log.error('failed to delete old daily status message, ignoring');
+		if (this.#state.dailyGame?.gameMessageTs) {
+			// Game in progress: reply to existing thread (broadcast), add to statusMessageTss
+			const result = await this.#postThread('daily', {
+				text: 'デイリーたほいや',
+				blocks,
+				broadcast: true,
 			});
+			if (result?.ts) {
+				(this.#state.dailyGame.statusMessageTss ??= []).push(result.ts);
+			}
+			return result?.ts ?? null;
 		}
 
-		const result = await this.#postThread('daily', {
-			text: 'デイリーたほいや',
-			blocks,
-			broadcast: true,
-		});
-		this.#state.dailyStatusMessageTs = result.ts ?? null;
-
-		if (this.#state.dailyGame) {
-			this.#state.dailyGame.gameMessageTs = result.ts ?? null;
-		}
-
+		// No active game: post as standalone message
+		const result = await this.#postMessage({channel, text: 'デイリーたほいや', blocks});
 		return result.ts ?? null;
 	}
 
-	async #updateNormalGameMessage(disabled = false) {
+	async #updateNormalGameParentMessage() {
 		const game = this.#state.normalGame;
 		if (!game?.gameMessageTs) {
 			return;
 		}
 
-		const blocks: KnownBlock[] = game.phase === 'select_theme'
-			? candidatesMessage(game.candidates)
-			: collectMeaningsMessage(game, 'normal', disabled);
+		const blocks = this.#getNormalGameStatusBlocks(game);
 
 		await this.slack.chat.update({
 			channel: this.allowedChannels[0],
@@ -935,6 +984,105 @@ export class Tahoiya extends ChannelLimitedBot {
 			text: 'たほいや',
 			blocks,
 		}).catch((err) => this.log.error('failed to update normal game message:', err));
+	}
+
+	async #disableMeaningMessage() {
+		const game = this.#state.normalGame;
+		const ts = game?.meaningMessageTs ?? null;
+		if (!game || !ts) {
+			return;
+		}
+
+		await this.slack.chat.update({
+			channel: this.allowedChannels[0],
+			ts,
+			text: 'たほいや 意味登録フェーズ（終了）',
+			blocks: collectMeaningsMessage(game, 'normal', true),
+		}).catch((err) => this.log.error('failed to disable meaning message:', err));
+	}
+
+	async #updateMeaningMessage() {
+		const game = this.#state.normalGame;
+		const ts = game?.meaningMessageTs ?? null;
+		if (!game || !ts || game.phase !== 'collect_meanings') {
+			return;
+		}
+
+		await this.slack.chat.update({
+			channel: this.allowedChannels[0],
+			ts,
+			text: 'たほいや 意味登録フェーズ',
+			blocks: collectMeaningsMessage(game, 'normal'),
+		}).catch((err) => this.log.error('failed to update meaning message:', err));
+	}
+
+	async #postNormalGameStatus(): Promise<string | null> {
+		const game = this.#state.normalGame;
+		if (!game) {
+			return null;
+		}
+
+		const blocks = this.#getNormalGameStatusBlocks(game);
+		const result = await this.#postThread('normal', {
+			text: 'たほいや（ゲーム進行中）',
+			blocks,
+			broadcast: true,
+		});
+		if (result?.ts) {
+			(game.statusMessageTss ??= []).push(result.ts);
+		}
+		return result?.ts ?? null;
+	}
+
+	#getNormalGameStatusBlocks(game: NormalGameState): KnownBlock[] {
+		if (game.phase === 'select_theme') {
+			return candidatesMessage(game.candidates);
+		}
+
+		const theme = game.theme!;
+		const themeText = theme.type === 'dictionary' ? `「${theme.ruby}」` : `「${theme.question}」`;
+
+		if (game.phase === 'collect_meanings') {
+			const humanMeaningUsers = Object.keys(game.meanings).filter((u) => u.startsWith('U'));
+			const submittedText = humanMeaningUsers.length > 0
+				? `${humanMeaningUsers.map((u) => `<@${u}>`).join(' ')} (${humanMeaningUsers.length}人)`
+				: 'まだ誰も登録していません';
+			return [
+				{type: 'section', text: {type: 'mrkdwn', text: `たほいや ${themeText} 意味登録中\n登録済み: ${submittedText}`}},
+				{
+					type: 'actions',
+					elements: [{
+						type: 'button',
+						text: {type: 'plain_text', text: '意味を登録する', emoji: true},
+						action_id: 'tahoiya_normal_submit_meaning_button',
+						style: 'primary',
+					}],
+				},
+			];
+		}
+
+		if (game.phase === 'collect_bettings') {
+			const humanVoteUsers = Object.keys(game.votes).filter((u) => u.startsWith('U'));
+			const votedText = humanVoteUsers.length > 0
+				? `${humanVoteUsers.map((u) => `<@${u}>`).join(' ')} (${humanVoteUsers.length}人)`
+				: 'まだ誰も投票していません';
+			return [
+				{type: 'section', text: {type: 'mrkdwn', text: `たほいや ${themeText} 投票中\n投票済み: ${votedText}`}},
+				{
+					type: 'actions',
+					elements: [{
+						type: 'button',
+						text: {type: 'plain_text', text: '投票する', emoji: true},
+						action_id: 'tahoiya_normal_bet_button',
+						style: 'primary',
+					}],
+				},
+			];
+		}
+
+		// Game ended or unknown phase
+		const themeDisplay = theme.type === 'dictionary' ? `「${theme.ruby}」` : `「${theme.question}」`;
+		return [{type: 'section', text: {type: 'mrkdwn', text: `たほいや ${themeDisplay} 終了`}}];
 	}
 
 	async #updateBettingMessage(gameType: 'normal' | 'daily') {
@@ -965,23 +1113,62 @@ export class Tahoiya extends ChannelLimitedBot {
 		}).catch((err) => this.log.error('failed to disable betting message:', err));
 	}
 
-	async #updateDailyStatusMessage() {
-		if (!this.#state.dailyStatusMessageTs) {
+	async #updateDailyParentMessage() {
+		const game = this.#state.dailyGame;
+		const ts = game?.gameMessageTs ?? null;
+		if (!game || !ts) {
 			return;
 		}
 
-		const themeCount = await this.#countAvailableThemes();
-		const game = this.#state.dailyGame;
-		const blocks: KnownBlock[] = game?.phase === 'collect_bettings'
-			? collectBettingsMessage(game, 'daily')
-			: dailyStatusMessage(game, themeCount, null);
+		let blocks: KnownBlock[];
+		if (game.phase === 'collect_meanings') {
+			blocks = collectMeaningsMessage(game, 'daily');
+		} else {
+			const themeCount = await this.#countAvailableThemes();
+			blocks = dailyStatusMessage(game, themeCount, null);
+		}
 
 		await this.slack.chat.update({
 			channel: this.allowedChannels[0],
-			ts: this.#state.dailyStatusMessageTs,
+			ts,
 			text: 'デイリーたほいや',
 			blocks,
-		}).catch((err) => this.log.error('failed to update daily status message:', err));
+		}).catch((err) => this.log.error('failed to update daily parent message:', err));
+	}
+
+	async #updateAllStatusMessages(gameType: 'normal' | 'daily') {
+		if (gameType === 'normal') {
+			await this.#updateNormalGameParentMessage();
+			const game = this.#state.normalGame;
+			if (!game) {
+				return;
+			}
+			const blocks = this.#getNormalGameStatusBlocks(game);
+			for (const ts of (game.statusMessageTss ?? [])) {
+				await this.slack.chat.update({
+					channel: this.allowedChannels[0],
+					ts,
+					text: 'たほいや',
+					blocks,
+				}).catch((err) => this.log.error('failed to update status message:', err));
+			}
+		} else {
+			await this.#updateDailyParentMessage();
+			const game = this.#state.dailyGame;
+			if (!game) {
+				return;
+			}
+			const themeCount = await this.#countAvailableThemes();
+			const blocks = dailyStatusMessage(game, themeCount, null);
+			for (const ts of (game.statusMessageTss ?? [])) {
+				await this.slack.chat.update({
+					channel: this.allowedChannels[0],
+					ts,
+					text: 'デイリーたほいや',
+					blocks,
+				}).catch((err) => this.log.error('failed to update status message:', err));
+			}
+		}
 	}
 
 	// Post in thread of the game message
@@ -1324,35 +1511,52 @@ export class Tahoiya extends ChannelLimitedBot {
 		await this.#postThread(gameType, {text: `ゲーム中のコメント:\n${lines}`});
 	}
 
-	async #fetchAvailableThemes(): Promise<StoredTheme[]> {
+	async #selectNextDailyTheme(): Promise<StoredTheme | null> {
 		if (!db) {
 			const available = [...this.#devThemes.values()].filter((t) => !t.used);
-			const excluded = this.#state.authorHistory;
-			const filtered = available.filter((t) => !excluded.includes(t.submittedBy));
-			return shuffle(filtered.length > 0 ? filtered : available).slice(0, 1);
+			if (available.length === 0) {
+				return null;
+			}
+			const neverSelected = available.filter((t) => !this.#state.authorHistory.includes(t.submittedBy));
+			if (neverSelected.length > 0) {
+				return sample(neverSelected) ?? null;
+			}
+			for (const authorId of this.#state.authorHistory) {
+				const authorThemes = available.filter((t) => t.submittedBy === authorId);
+				if (authorThemes.length > 0) {
+					return sample(authorThemes) ?? null;
+				}
+			}
+			return sample(available) ?? null;
 		}
 
 		try {
-			const excluded = this.#state.authorHistory;
 			const snapshot = await db.collection('tahoiya_themes')
 				.where('used', '==', false)
 				.limit(30)
 				.get();
 
-			let themes: StoredTheme[] = snapshot.docs.map((d) => ({id: d.id, ...d.data()} as StoredTheme));
-			const filtered = themes.filter((t) => !excluded.includes(t.submittedBy));
-			if (filtered.length > 0) {
-				themes = filtered;
-			} else if (themes.length === 0) {
-				this.#state.authorHistory = [];
-				const retry = await db.collection('tahoiya_themes').where('used', '==', false).limit(30).get();
-				themes = retry.docs.map((d) => ({id: d.id, ...d.data()} as StoredTheme));
+			const themes: StoredTheme[] = snapshot.docs.map((d) => ({id: d.id, ...d.data()} as StoredTheme));
+			if (themes.length === 0) {
+				return null;
 			}
 
-			return shuffle(themes).slice(0, 1);
+			const neverSelected = themes.filter((t) => !this.#state.authorHistory.includes(t.submittedBy));
+			if (neverSelected.length > 0) {
+				return sample(neverSelected) ?? null;
+			}
+
+			for (const authorId of this.#state.authorHistory) {
+				const authorThemes = themes.filter((t) => t.submittedBy === authorId);
+				if (authorThemes.length > 0) {
+					return sample(authorThemes) ?? null;
+				}
+			}
+
+			return sample(themes) ?? null;
 		} catch (err) {
 			this.log.error('failed to fetch themes:', err);
-			return [];
+			return null;
 		}
 	}
 

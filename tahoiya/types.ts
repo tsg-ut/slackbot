@@ -21,6 +21,7 @@ export interface ArbitraryTheme {
 	question: string;
 	answer: string;
 	sourceUrl: string;
+	isMimicryAllowed?: boolean;
 }
 
 export type Theme = DictionaryTheme | ArbitraryTheme;
@@ -61,7 +62,9 @@ export interface NormalGameState {
 	votes: Record<string, number>;
 	endPhaseAt: number;
 	gameMessageTs: string | null;
+	meaningMessageTs?: string | null;
 	bettingMessageTs: string | null;
+	statusMessageTss?: string[];
 	startedAt: number;
 	comments: GameComment[];
 }
@@ -77,6 +80,7 @@ export interface DailyGameState {
 	endPhaseAt: number;
 	gameMessageTs: string | null;
 	bettingMessageTs: string | null;
+	statusMessageTss?: string[];
 	startedAt: number;
 	comments: GameComment[];
 }
