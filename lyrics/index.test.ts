@@ -59,14 +59,14 @@ describe('lyrics', () => {
             </div></body></html>`;
 
         const mockAxios = jest.mocked(axios);
-        mockAxios.mockImplementation(async (url) => {
-            if ((url as string).includes('index_search')) {
+        mockAxios.mockImplementation(async (url: string) => {
+            if (url.includes('index_search')) {
                 return {data: searchHtml} as AxiosResponse;
             }
-            if ((url as string).includes('song')) {
+            if (url.includes('song')) {
                 return {data: songHtml} as AxiosResponse;
             }
-            if ((url as string).includes('itunes')) { // iTunes Search API
+            if (url.includes('itunes')) { // iTunes Search API
                 return {data: {
                     resultCount: 1,
                     results: [{
