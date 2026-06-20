@@ -3,6 +3,7 @@ jest.mock('axios');
 import roomGacha from './index';
 import Slack from '../lib/slackMock';
 import axios from 'axios';
+import type {AxiosResponse} from 'axios';
 import { promises as fs } from 'fs';
 import { stripIndents } from 'common-tags';
 import assert from 'assert';
@@ -19,7 +20,8 @@ beforeEach(async () => {
 describe('room-gacha', () => {
     it('responds to "物件ガチャ" with a prefecture and a city specified', async () => {
         const data = await fs.readFile(`${__dirname}/search-result.test.html`, 'utf-8');
-        (axios as any).response = {data};
+        const mockAxios = jest.mocked(axios);
+        mockAxios.mockResolvedValue({data} as unknown as AxiosResponse);
         const response = await slack.getResponseTo('物件ガチャ 東京都 文京区');
         const blocks = 'blocks' in response ? response.blocks : [];
         expect('username' in response && response.username).toBe('物件ガチャ');

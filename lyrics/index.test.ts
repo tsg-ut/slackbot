@@ -3,6 +3,7 @@ jest.mock('axios');
 import lyrics from './index';
 import Slack from '../lib/slackMock';
 import axios from 'axios';
+import type {AxiosResponse} from 'axios';
 import { oneLineTrim, stripIndent } from 'common-tags';
 
 let slack: Slack = null;
@@ -57,19 +58,16 @@ describe('lyrics', () => {
                 </div></div></div>
             </div></body></html>`;
 
-        (axios as any).mockImplementation(async (url: string) => {
-            if (url.includes('index_search')) {
-                return {data: searchHtml};
+        const mockAxios = jest.mocked(axios);
+        mockAxios.mockImplementation(async (url) => {
+            if ((url as string).includes('index_search')) {
+                return {data: searchHtml} as AxiosResponse;
             }
-            if (url.includes('song')) {
-                return {data: songHtml};
+            if ((url as string).includes('song')) {
+                return {data: songHtml} as AxiosResponse;
             }
-            return {data: ''};
-        });
-        // @ts-expect-error
-        axios.get = jest.fn(async (url: string) => {
-            if (url.includes('itunes')) { // iTunes Search API
-                return { data: {
+            if ((url as string).includes('itunes')) { // iTunes Search API
+                return {data: {
                     resultCount: 1,
                     results: [{
                         wrapperType: 'track',
@@ -102,10 +100,11 @@ describe('lyrics', () => {
                         country: 'JPN',
                         currency: 'JPY',
                         primaryGenreName: 'アニメ',
-                        isStreamable: true
+                        isStreamable: true,
                     }],
-                }};
+                }} as AxiosResponse;
             }
+            return {data: ''} as AxiosResponse;
         });
         const response = await slack.getResponseTo('@lyrics 朝目が覚めたらもう');
         expect('username' in response && response.username).toBe('歌詞検索くん');
