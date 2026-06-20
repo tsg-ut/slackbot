@@ -64,8 +64,9 @@ export interface NormalGameState {
 	gameMessageTs: string | null;
 	meaningMessageTs?: string | null;
 	bettingMessageTs: string | null;
-	statusMessageTss?: string[];
+	statusMessageTs: string | null;
 	startedAt: number;
+	bettingPhaseStartedAt: number | null;
 	comments: GameComment[];
 }
 
@@ -80,8 +81,9 @@ export interface DailyGameState {
 	endPhaseAt: number;
 	gameMessageTs: string | null;
 	bettingMessageTs: string | null;
-	statusMessageTss?: string[];
+	statusMessageTs: string | null;
 	startedAt: number;
+	bettingPhaseStartedAt: number | null;
 	comments: GameComment[];
 }
 
@@ -91,7 +93,6 @@ export interface TahoiyaState {
 	ratings: Record<string, number>;
 	gamesPlayed: Record<string, number>;
 	lastGameScore: Record<string, number>;
-	dailyStatusMessageTs: string | null;
 	authorHistory: string[];
 }
 

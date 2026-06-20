@@ -163,13 +163,13 @@ export const registerThemeArbitraryModal = (): View => ({
 			type: 'input',
 			block_id: 'mimicry_allowed_input',
 			optional: true,
-			label: {type: 'plain_text', text: '参加者が質問に対する正解となる選択肢を意図的に登録することを許可する'},
+			label: {type: 'plain_text', text: 'ルール設定'},
 			element: {
 				type: 'checkboxes',
 				action_id: 'mimicry_allowed',
 				options: [
 					{
-						text: {type: 'plain_text', text: 'このオプションを有効にすると、参加者は正解そのものを選択肢として登録することができます', emoji: true},
+						text: {type: 'plain_text', text: '参加者が質問に対する正解となる選択肢を意図的に登録することを許可する', emoji: true},
 						value: 'allowed',
 					},
 				],

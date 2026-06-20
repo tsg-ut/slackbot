@@ -38,12 +38,17 @@ export default (
 		? `${humanMeaningUsers.map((u) => `<@${u}>`).join(' ')} (${humanMeaningUsers.length}人)`
 		: 'まだ誰も登録していません';
 
+	const isOver21 = new Date().getHours() >= 21;
+	const announceText = gameType === 'normal'
+		? '楽しい「たほいや」を始めるよ～'
+		: `次回のデイリーたほいやのお題はこれ！\n${isOver21 ? '今夜' : '明日'}の21時までに、「意味を登録する」ボタンから意味を登録してね :writing_hand:`;
+
 	const blocks: KnownBlock[] = [
 		{
 			type: 'header',
 			text: {
 				type: 'plain_text',
-				text: '楽しい「たほいや」を始めるよ～',
+				text: announceText,
 				emoji: true,
 			},
 		},

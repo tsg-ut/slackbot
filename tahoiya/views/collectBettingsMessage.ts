@@ -61,6 +61,14 @@ export default (
 		},
 	];
 
+	const themeAuthor = 'themeAuthor' in game ? (game as DailyGameState).themeAuthor : null;
+	if (themeAuthor) {
+		blocks.push({
+			type: 'section',
+			text: {type: 'mrkdwn', text: `出題者: <@${themeAuthor}>`},
+		});
+	}
+
 	if (participantText) {
 		blocks.push({
 			type: 'section',
@@ -79,11 +87,6 @@ export default (
 					style: 'primary',
 				},
 			],
-		});
-	} else {
-		blocks.push({
-			type: 'section',
-			text: {type: 'mrkdwn', text: '（ゲーム終了）'},
 		});
 	}
 
