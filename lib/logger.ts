@@ -3,8 +3,7 @@ import winston from 'winston';
 import {Syslog as WinstonSyslog} from 'winston-syslog';
 import {inspect} from 'util';
 import type {FastifyLogFn} from 'fastify';
-// @ts-expect-error
-import {serializers} from 'fastify/lib/logger';
+import {res as serializeHttpResponse} from 'pino-std-serializers';
 
 const logger = winston.createLogger({
 	level: 'info',
@@ -44,7 +43,7 @@ const logger = winston.createLogger({
 						const botString = bot ? ` \x1b[35m(${bot})\x1b[0m` : '';
 
 						if (typeof message?.res === 'object') {
-							message.res = serializers.res(message.res);
+							message.res = serializeHttpResponse(message.res);
 						}
 
 						if (typeof message?.req === 'object') {
