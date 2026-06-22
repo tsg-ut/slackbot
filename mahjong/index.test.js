@@ -1,5 +1,8 @@
 /* eslint-env node, jest */
 
+// @octokit/webhooks v14 はESM専用パッケージのためJest（CJS環境）では読み込めない。
+// deploy/index.ts が間接的に依存しているためここでモックする。
+jest.mock('@octokit/webhooks');
 jest.mock('../achievements');
 
 const {default: Slack} = require('../lib/slackMock.ts');
