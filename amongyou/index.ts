@@ -3,7 +3,7 @@ import path from 'path';
 import type {EventEmitter} from 'events';
 import {ChatPostMessageArguments, WebClient} from '@slack/web-api';
 import {stripIndent} from 'common-tags';
-import type {FastifyPluginCallback} from 'fastify';
+import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
 import {range} from 'lodash';
 import moment from 'moment';
@@ -652,7 +652,7 @@ const getNumOptions = () => {
 };
 
 export const server = ({webClient: slack, eventClient, messageClient: slackInteractions}: SlackInterface) => {
-	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
+	const callback: FastifyPluginAsync = async (fastify, opts) => {
 		const among = new Among({slack, eventClient, slackInteractions});
 		await among.initialize();
 
@@ -679,7 +679,6 @@ export const server = ({webClient: slack, eventClient, messageClient: slackInter
 			}
 		});
 
-		next();
 	};
 
 	return plugin(callback);

@@ -1,6 +1,6 @@
 import type {MessageEvent} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
-import type {FastifyPluginCallback} from 'fastify';
+import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
 import logger from '../lib/logger';
 import type {SlashCommandEndpoint, SlackInterface} from '../lib/slack';
@@ -46,7 +46,7 @@ export default async (slack: SlackInterface) => {
 };
 
 export const server = () => {
-	const callback: FastifyPluginCallback = async (fastify, _opts, next) => {
+	const callback: FastifyPluginAsync = async (fastify, _opts) => {
 		const bot = await botDeferred.promise;
 
 		fastify.post<SlashCommandEndpoint>('/slash/calendar', (req, res) => {
@@ -62,7 +62,6 @@ export const server = () => {
 			return '';
 		});
 
-		next();
 	};
 
 	return plugin(callback);
