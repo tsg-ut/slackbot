@@ -765,7 +765,7 @@ class Oogiri {
 }
 
 export const server = ({webClient: slack, eventClient, messageClient: slackInteractions}: SlackInterface) => {
-	const callback: FastifyPluginAsync = async (fastify, opts) => {
+	const callback: FastifyPluginAsync = async (fastify, _opts) => {
 		const oogiri = new Oogiri({slack, eventClient, slackInteractions});
 		await oogiri.initialize();
 

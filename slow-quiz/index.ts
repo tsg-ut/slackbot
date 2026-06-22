@@ -1435,7 +1435,7 @@ export class SlowQuiz {
 }
 
 export const server = ({webClient: slack, messageClient: slackInteractions}: SlackInterface) => {
-	const callback: FastifyPluginAsync = async (fastify, opts) => {
+	const callback: FastifyPluginAsync = async (fastify, _opts) => {
 		const slowquiz = new SlowQuiz({slack, slackInteractions});
 		await slowquiz.initialize();
 

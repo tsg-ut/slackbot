@@ -5,7 +5,7 @@ import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
 
 export const server = ({webClient: slack}: SlackInterface) => {
-	const callback: FastifyPluginAsync = async (fastify, opts) => {
+	const callback: FastifyPluginAsync = async (fastify, _opts) => {
 		const {team}: any = await slack.team.info();
 
 		fastify.post<SlashCommandEndpoint>('/slash/tsglive', async (req, res) => {

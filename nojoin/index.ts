@@ -29,7 +29,7 @@ export const server = async ({eventClient, webClient: slack}: SlackInterface) =>
 		}
 	});
 
-	const callback: FastifyPluginAsync = async (fastify, opts) => {
+	const callback: FastifyPluginAsync = async (fastify, _opts) => {
 		fastify.post<SlashCommandEndpoint>('/slash/nojoin', async (req, res) => {
 			if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
 				res.code(400);

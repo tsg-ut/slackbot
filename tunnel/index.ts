@@ -33,7 +33,7 @@ const getEmojiImageUrl = async (name: string, team: string): Promise<string> => 
 
 // eslint-disable-next-line import/prefer-default-export
 export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
-	const callback: FastifyPluginAsync = async (fastify, opts) => {
+	const callback: FastifyPluginAsync = async (fastify, _opts) => {
 		const db = await open({
 			filename: path.join(__dirname, '..', 'tokens.sqlite3'),
 			driver: sqlite3.Database,
