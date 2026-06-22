@@ -326,8 +326,9 @@ async function puppeteerWindow(
 		</head>	
 		<body><div id='map_canvas'></div></body>
 		`,
-    { waitUntil: "networkidle0" }
+    { waitUntil: "load" }
   );
+  await page.waitForNetworkIdle();
   const maxZoom = (await page.evaluate("result")) as number;
   const image = (await page.screenshot({
     encoding: "binary",
