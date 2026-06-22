@@ -35,7 +35,7 @@ export const blockDeploy = (name: string) => deployBlocker.block(name);
 export const server = ({webClient: slack}: SlackInterface) => async (fastify: FastifyInstance) => {
 	// GitHub webhook signature verification requires the raw request body string,
 	// so we receive JSON as a string and parse it manually in the route handler.
-	fastify.addContentTypeParser('application/json', {parseAs: 'string'}, function(_req, body: string, done) {
+	fastify.addContentTypeParser('application/json', {parseAs: 'string'}, (_req, body: string, done) => {
 		done(null, body);
 	});
 
@@ -53,7 +53,7 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 
 	// eslint-disable-next-line require-await
 	fastify.post('/hooks/github', async (req, res) => {
-		const rawBody = req.body as string;
+		const rawBody = String(req.body);
 
 		if (webhooks) {
 			if (await webhooks.verify(rawBody, req.headers['x-hub-signature-256'] as string) !== true) {
