@@ -33,6 +33,12 @@ export const blockDeploy = (name: string) => deployBlocker.block(name);
 
 // eslint-disable-next-line require-await
 export const server = ({webClient: slack}: SlackInterface) => async (fastify: FastifyInstance) => {
+	// GitHub webhook signature verification requires the raw request body string,
+	// so we receive JSON as a string and parse it manually in the route handler.
+	fastify.addContentTypeParser('application/json', {parseAs: 'string'}, (_req, body: string, done) => {
+		done(null, body);
+	});
+
 	let triggered = false;
 	let thread: string = null;
 
@@ -47,14 +53,17 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 
 	// eslint-disable-next-line require-await
 	fastify.post('/hooks/github', async (req, res) => {
+		const rawBody = String(req.body);
+
 		if (webhooks) {
-			if (await webhooks.verify(req.body as any, req.headers['x-hub-signature-256'] as string) !== true) {
+			if (await webhooks.verify(rawBody, req.headers['x-hub-signature-256'] as string) !== true) {
 				res.code(400);
 				return 'invalid signature';
 			}
 		}
 
-		log.info(JSON.stringify({body: req.body, headers: req.headers}));
+		const body = JSON.parse(rawBody) as Record<string, unknown>;
+		log.info(JSON.stringify({body, headers: req.headers}));
 
 		const name = req.headers['x-github-event'];
 		if (name === 'ping') {
@@ -62,11 +71,11 @@ export const server = ({webClient: slack}: SlackInterface) => async (fastify: Fa
 		}
 
 		if (name === 'push') {
-			if (get(req.body, ['repository', 'id']) !== 105612722) {
+			if (get(body, ['repository', 'id']) !== 105612722) {
 				res.code(400);
 				return 'repository id not match';
 			}
-			if (get(req.body, ['ref']) !== 'refs/heads/master') {
+			if (get(body, ['ref']) !== 'refs/heads/master') {
 				res.code(202);
 				return 'refs not match';
 			}
