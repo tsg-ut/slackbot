@@ -596,9 +596,10 @@ export class Tahoiya extends ChannelLimitedBot {
 
 		const humanCount = Object.keys(game.meanings).filter((u) => u.startsWith('U')).length;
 		if (humanCount < DAILY_TAHOIYA_MINIMUM_PARTICIPANTS) {
-			await this.#postMessage({
-				text: `参加者が${DAILY_TAHOIYA_MINIMUM_PARTICIPANTS}人未満のため、デイリーたほいやはスキップされました😢`,
-			});
+			const skipNotice = `参加者が${DAILY_TAHOIYA_MINIMUM_PARTICIPANTS}人未満のため、デイリーたほいやはスキップされました😢`;
+			const themeCount = await this.#countAvailableThemes();
+			const blocks = dailyStatusMessage(game, themeCount, skipNotice);
+			await this.#postThread('daily', {text: skipNotice, blocks, broadcast: true});
 			return;
 		}
 
