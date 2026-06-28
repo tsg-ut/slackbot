@@ -632,7 +632,7 @@ export default class Hayaoshi extends EventEmitter {
 	}
 
 	onMessage(message: Discord.Message) {
-		if (message.channel.id !== process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID || message.member.user.bot) {
+		if (message.channel.id !== process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID || !message.member || message.member.user.bot) {
 			return;
 		}
 

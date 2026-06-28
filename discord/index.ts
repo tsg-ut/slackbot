@@ -82,8 +82,12 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 
 			return;
 		}
-		hayaoshi.onMessage(message);
-		tts.onMessage(message);
+		try {
+			hayaoshi.onMessage(message);
+			tts.onMessage(message);
+		} catch (error) {
+			log.error('Error in messageCreate handler', {error});
+		}
 	});
 
 	discord.on('voiceStateUpdate', (oldState, newState) => {
