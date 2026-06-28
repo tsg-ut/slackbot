@@ -11,7 +11,7 @@
     "stop": "pm2 stop ecosystem.config.js",
     "restart": "pm2 restart ecosystem.config.js",
     "dev": "tsx watch --exclude '**/*.json' --require dotenv/config index.ts",
-    "build": "tsgo && tsx bin/copy-build-assets.ts",
+    "build": "tsgo && tsx bin/copy-build-assets.mts",
     "lint": "sed \"s/\\/.\\+//g\" CODEOWNERS | grep \"^[a-z]\" | awk '{print $1}' | xargs -n 1 eslint --ext js,ts",
     "fix": "npm run lint -- --fix",
     "test": "jest --verbose --detectOpenHandles --forceExit",

@@ -1,5 +1,5 @@
 import {spawnSync} from 'node:child_process';
-import {mkdirSync, copyFileSync, existsSync} from 'node:fs';
+import {mkdir, copyFile, access} from 'node:fs/promises';
 import path from 'node:path';
 
 // git ls-files では取得できないが .build/ へのコピーが必要なファイル（存在する場合のみコピー）
@@ -28,9 +28,18 @@ const EXCLUDE_PATTERNS = [
     '.test.',
 ];
 
-const copy = (src: string, dest: string) => {
-    mkdirSync(path.dirname(dest), {recursive: true});
-    copyFileSync(src, dest);
+const exists = async (f: string): Promise<boolean> => {
+    try {
+        await access(f);
+        return true;
+    } catch {
+        return false;
+    }
+};
+
+const copy = async (src: string, dest: string) => {
+    await mkdir(path.dirname(dest), {recursive: true});
+    await copyFile(src, dest);
     console.log(`Copied: ${src}`);
 };
 
@@ -43,13 +52,14 @@ const trackedFiles = spawnSync('git', ['ls-files'], {encoding: 'utf-8'}) // NOSO
 
 for (const f of trackedFiles) {
     if (!f) continue;
-    copy(f, path.join('.build', f));
+    await copy(f, path.join('.build', f));
 }
 
-for (const f of EXTRA_FILES) {
-    if (existsSync(f)) {
-        copy(f, path.join('.build', f));
-    }
+const extraFilesToCopy = (await Promise.all(EXTRA_FILES.map(async (f) => (await exists(f) ? f : null))))
+    .filter((f): f is string => f !== null);
+
+for (const f of extraFilesToCopy) {
+    await copy(f, path.join('.build', f));
 }
 
-console.log(`Done: ${trackedFiles.length} tracked + ${EXTRA_FILES.filter(existsSync).length} extra file(s) copied.`);
+console.log(`Done: ${trackedFiles.length} tracked + ${extraFilesToCopy.length} extra file(s) copied.`);
