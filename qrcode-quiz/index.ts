@@ -1,5 +1,5 @@
 import {writeFileSync} from 'fs';
-import type {GenericMessageEvent} from '@slack/bolt';
+import type {GenericMessageEvent} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {v2 as cloudinary} from 'cloudinary';
 import {stripIndent} from 'common-tags';
@@ -8,12 +8,13 @@ import QRCode, {QRCodeSegmentMode} from 'qrcode';
 import toSJIS from 'qrcode/helper/to-sjis';
 import sharp from 'sharp';
 import {increment} from '../achievements';
-import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
+import {AteQuiz, AteQuizStartOption, typicalMessageTextsGenerator} from '../atequiz';
 // @ts-expect-error: untyped
 import {getDictionary} from '../hangman';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 import logger from '../lib/logger';
 import {SlackInterface} from '../lib/slack';
-import {Loader} from '../lib/utils';
+import {Deferred, Loader} from '../lib/utils';
 import {getCandidateWords} from '../lib/candidateWords';
 
 const mutex = new Mutex();
@@ -338,9 +339,9 @@ class QrAteQuiz extends AteQuiz {
 		return 300;
 	}
 
-	start() {
+	start(startOption?: AteQuizStartOption) {
 		this.startTime = Date.now();
-		return super.start();
+		return super.start(startOption);
 	}
 
 	solvedMessageGen(message: GenericMessageEvent) {
@@ -363,150 +364,167 @@ class QrAteQuiz extends AteQuiz {
 	}
 }
 
-export default (slackClients: SlackInterface) => {
-	const {eventClient, webClient: slack} = slackClients;
+class QrcodeQuizBot extends ChannelLimitedBot {
+	protected override readonly wakeWordRegex = /^QR当てクイズ/;
 
-	eventClient.on('message', (message) => {
-		if (message.channel !== process.env.CHANNEL_SANDBOX) {
-			return;
-		}
+	protected override readonly username = 'QR当てクイズ';
 
-		const {text, channel} = message;
+	protected override readonly iconEmoji = ':qr:';
 
-		if (
-			text &&
-				text.startsWith('QR当てクイズ')
-		) {
-			if (mutex.isLocked()) {
-				slack.chat.postEphemeral({
+	constructor(
+		protected readonly slackClients: SlackInterface,
+	) {
+		super(slackClients);
+	}
+
+	protected override onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+		const quizMessageDeferred = new Deferred<string | null>();
+
+		mutex.runExclusive(async () => {
+			const quizOptions = parseQuizOptions(message.text.slice('QR当てクイズ'.length));
+			const quiz = await generateQuiz(quizOptions.difficulty, quizOptions.mode);
+			const imageUrl = await generateQrcode({
+				data: quiz.data,
+				mode: quiz.mode,
+				isUnmasked: quizOptions.isUnmasked,
+			});
+
+			const standardRuleUrl = 'https://scrapbox.io/tsg/QR%E5%BD%93%E3%81%A6%E3%82%AF%E3%82%A4%E3%82%BA%2F%E6%A8%99%E6%BA%96%E3%83%AB%E3%83%BC%E3%83%AB';
+			const quizText = `このQRコード、なんと書いてあるでしょう? (difficulty = ${quizOptions.difficulty}, mode = ${quizOptions.mode}, masked = ${!quizOptions.isUnmasked}) <${standardRuleUrl}|[標準ルール]>`;
+
+			const ateQuiz = new QrAteQuiz(this.slackClients, {
+				problemMessage: {
 					channel,
-					text: '今クイズ中だよ',
-					user: message.user,
-				});
-				return;
-			}
-
-			mutex.runExclusive(async () => {
-				const quizOptions = parseQuizOptions(text.slice('QR当てクイズ'.length));
-				const quiz = await generateQuiz(quizOptions.difficulty, quizOptions.mode);
-				const imageUrl = await generateQrcode({
-					data: quiz.data,
-					mode: quiz.mode,
-					isUnmasked: quizOptions.isUnmasked,
-				});
-
-				const standardRuleUrl = 'https://scrapbox.io/tsg/QR%E5%BD%93%E3%81%A6%E3%82%AF%E3%82%A4%E3%82%BA%2F%E6%A8%99%E6%BA%96%E3%83%AB%E3%83%BC%E3%83%AB';
-				const quizText = `このQRコード、なんと書いてあるでしょう? (difficulty = ${quizOptions.difficulty}, mode = ${quizOptions.mode}, masked = ${!quizOptions.isUnmasked}) <${standardRuleUrl}|[標準ルール]>`;
-
-				const ateQuiz = new QrAteQuiz(slackClients, {
-					problemMessage: {
-						channel,
-						text: quizText,
-						blocks: [
-							{
-								type: 'section',
-								text: {
-									type: 'mrkdwn',
-									text: quizText,
-								},
-								accessory: {
-									type: 'image',
-									image_url: imageUrl.quiz,
-									alt_text: 'QRコード',
-								},
+					text: quizText,
+					blocks: [
+						{
+							type: 'section',
+							text: {
+								type: 'mrkdwn',
+								text: quizText,
 							},
-						],
-						unfurl_links: false,
-						unfurl_media: false,
-					},
-					hintMessages: [],
-					immediateMessage: {
-						channel,
-						text: '300秒以内に回答してね！',
-						blocks: [
-							{
-								type: 'section',
-								text: {
-									type: 'plain_text',
-									text: '300秒以内に回答してね！',
-								},
-							},
-							{
+							accessory: {
 								type: 'image',
 								image_url: imageUrl.quiz,
 								alt_text: 'QRコード',
 							},
-						],
-					},
-					solvedMessage: {
-						channel,
-						text: '',
-					},
-					unsolvedMessage: {
-						channel,
-						text: typicalMessageTextsGenerator.unsolved(` ＊${quiz.data}＊ `),
-					},
-					answerMessage: {
-						channel,
-						text: 'QRコード',
-						blocks: [
-							{
-								type: 'image',
-								image_url: imageUrl.original,
-								alt_text: quiz.data,
+						},
+					],
+					unfurl_links: false,
+					unfurl_media: false,
+				},
+				hintMessages: [],
+				immediateMessage: {
+					channel,
+					text: '300秒以内に回答してね！',
+					blocks: [
+						{
+							type: 'section',
+							text: {
+								type: 'plain_text',
+								text: '300秒以内に回答してね！',
 							},
-						],
-					},
-					correctAnswers: [quiz.data, quiz.data.toLowerCase()],
-				}, {});
-
-				const result = await ateQuiz.start();
-				const duration = ateQuiz.endTime - ateQuiz.startTime;
-
-				if (result.state === 'solved' && quizOptions.isUnmasked === true) {
-					await increment(result.correctAnswerer, 'qrcode-quiz-answer-unmasked');
-				}
-
-				if (result.state === 'solved' && quizOptions.isUnmasked === false) {
-					await increment(result.correctAnswerer, 'qrcode-quiz-answer');
-					if (quiz.gameMode === 'alphabet') {
-						await increment(result.correctAnswerer, 'qrcode-quiz-answer-alphabet');
-					}
-					if (quiz.gameMode === 'hiragana') {
-						await increment(result.correctAnswerer, 'qrcode-quiz-answer-hiragana');
-					}
-					if (quiz.gameMode === 'kanji') {
-						await increment(result.correctAnswerer, 'qrcode-quiz-answer-kanji');
-					}
-					if (quiz.gameMode === 'numeric') {
-						await increment(result.correctAnswerer, 'qrcode-quiz-answer-numeric');
-					}
-					if (quizOptions.difficulty === 'easy') {
-						await increment(result.correctAnswerer, 'qrcode-quiz-answer-easy-or-above');
-					}
-					if (quizOptions.difficulty === 'normal') {
-						await increment(result.correctAnswerer, 'qrcode-quiz-answer-easy-or-above');
-						await increment(result.correctAnswerer, 'qrcode-quiz-answer-normal-or-above');
-					}
-					if (quizOptions.difficulty === 'hard') {
-						await increment(result.correctAnswerer, 'qrcode-quiz-answer-easy-or-above');
-						await increment(result.correctAnswerer, 'qrcode-quiz-answer-normal-or-above');
-						await increment(result.correctAnswerer, 'qrcode-quiz-answer-hard-or-above');
-					}
-					if (duration < 10000) {
-						await increment(result.correctAnswerer, 'qrcode-quiz-answer-less-than-10s');
-					}
-					if (duration < 30000) {
-						await increment(result.correctAnswerer, 'qrcode-quiz-answer-less-than-30s');
-					}
-					if (duration < 45000) {
-						await increment(result.correctAnswerer, 'qrcode-quiz-answer-less-than-45s');
-					}
-					if (duration < 150000) {
-						await increment(result.correctAnswerer, 'qrcode-quiz-answer-less-than-150s');
-					}
-				}
+						},
+						{
+							type: 'image',
+							image_url: imageUrl.quiz,
+							alt_text: 'QRコード',
+						},
+					],
+				},
+				solvedMessage: {
+					channel,
+					text: '',
+				},
+				unsolvedMessage: {
+					channel,
+					text: typicalMessageTextsGenerator.unsolved(` ＊${quiz.data}＊ `),
+				},
+				answerMessage: {
+					channel,
+					text: 'QRコード',
+					blocks: [
+						{
+							type: 'image',
+							image_url: imageUrl.original,
+							alt_text: quiz.data,
+						},
+					],
+				},
+				correctAnswers: [quiz.data, quiz.data.toLowerCase()],
+			}, {
+				username: this.username,
+				icon_emoji: this.iconEmoji,
 			});
-		}
-	});
-};
+
+			const result = await ateQuiz.start({
+				mode: 'normal',
+				onStarted(startMessage) {
+					quizMessageDeferred.resolve(startMessage.ts!);
+				},
+			});
+
+			await this.deleteProgressMessage(await quizMessageDeferred.promise);
+
+			const duration = ateQuiz.endTime - ateQuiz.startTime;
+
+			if (result.state === 'solved' && quizOptions.isUnmasked === true) {
+				await increment(result.correctAnswerer, 'qrcode-quiz-answer-unmasked');
+			}
+
+			if (result.state === 'solved' && quizOptions.isUnmasked === false) {
+				await increment(result.correctAnswerer, 'qrcode-quiz-answer');
+				if (quiz.gameMode === 'alphabet') {
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-alphabet');
+				}
+				if (quiz.gameMode === 'hiragana') {
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-hiragana');
+				}
+				if (quiz.gameMode === 'kanji') {
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-kanji');
+				}
+				if (quiz.gameMode === 'numeric') {
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-numeric');
+				}
+				if (quizOptions.difficulty === 'easy') {
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-easy-or-above');
+				}
+				if (quizOptions.difficulty === 'normal') {
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-easy-or-above');
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-normal-or-above');
+				}
+				if (quizOptions.difficulty === 'hard') {
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-easy-or-above');
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-normal-or-above');
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-hard-or-above');
+				}
+				if (duration < 10000) {
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-less-than-10s');
+				}
+				if (duration < 30000) {
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-less-than-30s');
+				}
+				if (duration < 45000) {
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-less-than-45s');
+				}
+				if (duration < 150000) {
+					await increment(result.correctAnswerer, 'qrcode-quiz-answer-less-than-150s');
+				}
+			}
+		}).catch((error: unknown) => {
+			this.log.error('Failed to start qrcode quiz', error);
+			const errorText =
+				error instanceof Error && error.stack !== undefined
+					? error.stack : String(error);
+			this.postMessage({
+				channel,
+				text: `エラー😢\n\`${errorText}\``,
+			});
+			quizMessageDeferred.resolve(null);
+		});
+
+		return quizMessageDeferred.promise;
+	}
+}
+
+export default (slackClients: SlackInterface) => new QrcodeQuizBot(slackClients);
