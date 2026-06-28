@@ -25,7 +25,7 @@ jobs:
       - run: npm ci
 
       - name: Typecheck files not covered by tests
-        run: npx tsc --noEmit
+        run: npx tsgo --noEmit
         env:
           NODE_OPTIONS: --max-old-space-size=8192
 

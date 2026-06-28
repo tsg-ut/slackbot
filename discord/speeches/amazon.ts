@@ -12,7 +12,7 @@ const polly = new AWS.Polly({
 	region: 'ap-northeast-1',
 });
 
-const speech: SynthesizeFunction = async (text: string, voiceType: string, {speed, engine}: {speed: number, engine: string}) => {
+const speech: SynthesizeFunction = async (text: string, voiceType: string, {speed, engine = 'standard'}: {speed: number, engine?: string}) => {
 	const result = await polly.synthesizeSpeech({
 		OutputFormat: 'mp3',
 		Text: `

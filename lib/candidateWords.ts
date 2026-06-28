@@ -31,7 +31,7 @@ export const getCandidateWords = async ({min = 3, max = 7}: GetCandidateWordsOpt
 		['binary.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/binary.txt'],
 		['ewords.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/ewords.txt'],
 		['fideli.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/fideli.txt'],
-	].map(async ([filename, url]: [string, string]): Promise<string> => {
+	].map(async ([filename, url]): Promise<string> => {
 		const dataPath = path.join(__dirname, '..', 'tahoiya', filename);
 
 		const dataExists = await new Promise<boolean>((resolve) => {

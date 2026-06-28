@@ -16,7 +16,7 @@ import gameStatusMessage from './views/gameStatusMessage';
 import playerModal from './views/playerModal';
 import gameLogModal from './views/gameLogModal';
 import {MAX_QUESTIONS, MAX_QUESTION_LENGTH, MAX_ANSWER_LENGTH, GAME_TIMEOUT, CHAT_COMPLETION_SEED} from './const';
-import type {CollectionReference} from 'firebase-admin/lib/firestore';
+import type {CollectionReference} from 'firebase-admin/firestore';
 import {getRankedPlayers, getRankEmoji} from './rankingUtils';
 
 const mutex = new Mutex();

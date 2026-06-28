@@ -5,7 +5,6 @@ import {katakanaRegex} from 'japanese';
 import {tokenize, KuromojiToken} from 'kuromojin';
 import {last, uniq, uniqBy} from 'lodash';
 import {isCorrectAnswer, normalize} from '../hayaoshi';
-// @ts-expect-error not typed
 import getReading from '../lib/getReading.js';
 import logger from '../lib/logger';
 

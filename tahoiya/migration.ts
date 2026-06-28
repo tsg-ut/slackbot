@@ -1,6 +1,6 @@
 /**
  * One-time migration script from old tahoiya data to new format.
- * Run via: npx ts-node tahoiya/migration.ts
+ * Run via: npx tsx tahoiya/migration.ts
  */
 import {randomUUID} from 'crypto';
 import fs from 'fs';

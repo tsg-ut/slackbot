@@ -7,8 +7,8 @@ const {v2: cloudinary} = require('cloudinary');
 const {source} = require('common-tags');
 const {chunk, shuffle, sampleSize, sample, random, range, zip} = require('lodash');
 const {unlock, increment} = require('../achievements');
-const {AteQuiz} = require('../atequiz/index.ts');
-const {blockDeploy} = require('../deploy/index.ts');
+const {AteQuiz} = require('../atequiz/index');
+const {blockDeploy} = require('../deploy/index');
 const {Mutex} = require('async-mutex');
 const calculator = require('./calculator.js');
 

@@ -7,8 +7,8 @@ const {tokenize} = require('kuromojin');
 const {escapeRegExp, sample, sampleSize, chunk, uniq, sortBy, shuffle} = require('lodash');
 const scrapeIt = require('scrape-it');
 const {unlock, increment} = require('../achievements');
-const {Deferred} = require('../lib/utils.ts');
-const {getSongInfo, getMovieInfo} = require('../lyrics/index.ts');
+const {Deferred} = require('../lib/utils');
+const {getSongInfo, getMovieInfo} = require('../lyrics/index');
 const {loadSheet} = require('./index.js');
 
 const freqDeferred = new Deferred();

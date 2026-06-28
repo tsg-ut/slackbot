@@ -7,7 +7,7 @@ const fs = require('fs');
 const concatStream = require('concat-stream');
 const schedule = require('node-schedule');
 
-const {default: logger} = require('../lib/logger.ts');
+const {default: logger} = require('../lib/logger');
 const {makeSummary} = require('./summary_writer.js');
 
 const log = logger.child({bot: 'summary'});
