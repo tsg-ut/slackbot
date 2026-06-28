@@ -1,6 +1,6 @@
-import {execSync} from 'child_process';
-import {mkdirSync, copyFileSync, existsSync} from 'fs';
-import path from 'path';
+import {spawnSync} from 'node:child_process';
+import {mkdirSync, copyFileSync, existsSync} from 'node:fs';
+import path from 'node:path';
 
 // git ls-files では取得できないが .build/ へのコピーが必要なファイル（存在する場合のみコピー）
 const EXTRA_FILES = [
@@ -34,8 +34,8 @@ const copy = (src: string, dest: string) => {
     console.log(`Copied: ${src}`);
 };
 
-const trackedFiles = execSync('git ls-files')
-    .toString()
+const trackedFiles = spawnSync('git', ['ls-files'], {encoding: 'utf-8'})
+    .stdout
     .split('\n')
     .filter((f) => f.match(/\.(json|geojson|txt|csv|html)$/))
     .filter((f) => !EXCLUDE_PATTERNS.some((ex) => f.includes(ex)));

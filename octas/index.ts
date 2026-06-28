@@ -2,7 +2,6 @@ import type {SlackInterface} from '../lib/slack';
 import logger from '../lib/logger';
 import cloudinary from 'cloudinary';
 import sharp from 'sharp';
-import path from 'path';
 import {stripIndent} from 'common-tags';
 import Board from './lib/Board';
 import BoardElement from './lib/Render';
