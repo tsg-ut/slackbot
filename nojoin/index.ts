@@ -1,4 +1,4 @@
-import type {FastifyPluginCallback} from 'fastify';
+import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
 import State from '../lib/state';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
@@ -29,7 +29,7 @@ export const server = async ({eventClient, webClient: slack}: SlackInterface) =>
 		}
 	});
 
-	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
+	const callback: FastifyPluginAsync = async (fastify, _opts) => {
 		fastify.post<SlashCommandEndpoint>('/slash/nojoin', async (req, res) => {
 			if (req.body.token !== process.env.SLACK_VERIFICATION_TOKEN) {
 				res.code(400);

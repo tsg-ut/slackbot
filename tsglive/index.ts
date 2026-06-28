@@ -1,11 +1,11 @@
-import type {FastifyPluginCallback} from 'fastify';
+import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
 import {liveDb as db} from '../lib/firestore';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
 
 export const server = ({webClient: slack}: SlackInterface) => {
-	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
+	const callback: FastifyPluginAsync = async (fastify, _opts) => {
 		const {team}: any = await slack.team.info();
 
 		fastify.post<SlashCommandEndpoint>('/slash/tsglive', async (req, res) => {
@@ -56,7 +56,6 @@ export const server = ({webClient: slack}: SlackInterface) => {
 			return '';
 		});
 
-		next();
 	};
 
 	return plugin(callback);

@@ -29,6 +29,11 @@ export default (
 		.map((m, i) => `${i + 1}. ${m.text}`)
 		.join('\n');
 
+	const meaningUsers = Object.keys(game.meanings).filter((u) => u.startsWith('U'));
+	const participantText = meaningUsers.length > 0
+		? meaningUsers.map((u) => `<@${u}>`).join(' ')
+		: null;
+
 	const bettingUsers = Object.keys(game.votes).filter((u) => u.startsWith('U'));
 	const bettingText = bettingUsers.length > 0
 		? `投票済み: ${bettingUsers.map((u) => `<@${u}>`).join(' ')} (${bettingUsers.length}人)`
@@ -56,6 +61,21 @@ export default (
 		},
 	];
 
+	const themeAuthor = 'themeAuthor' in game ? (game as DailyGameState).themeAuthor : null;
+	if (themeAuthor) {
+		blocks.push({
+			type: 'section',
+			text: {type: 'mrkdwn', text: `出題者: <@${themeAuthor}>`},
+		});
+	}
+
+	if (participantText) {
+		blocks.push({
+			type: 'section',
+			text: {type: 'mrkdwn', text: `意味登録者: ${participantText}`},
+		});
+	}
+
 	if (!disabled) {
 		blocks.push({
 			type: 'actions',
@@ -67,11 +87,6 @@ export default (
 					style: 'primary',
 				},
 			],
-		});
-	} else {
-		blocks.push({
-			type: 'section',
-			text: {type: 'mrkdwn', text: '（ゲーム終了）'},
 		});
 	}
 

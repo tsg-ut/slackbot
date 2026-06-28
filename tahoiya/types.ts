@@ -21,6 +21,7 @@ export interface ArbitraryTheme {
 	question: string;
 	answer: string;
 	sourceUrl: string;
+	isMimicryAllowed?: boolean;
 }
 
 export type Theme = DictionaryTheme | ArbitraryTheme;
@@ -45,6 +46,12 @@ export interface ShuffledMeaning {
 export type NormalGamePhase = 'select_theme' | 'collect_meanings' | 'collect_bettings';
 export type DailyGamePhase = 'collect_meanings' | 'collect_bettings';
 
+export interface GameComment {
+	user: string;
+	text: string;
+	timestamp: number;
+}
+
 export interface NormalGameState {
 	phase: NormalGamePhase;
 	startedBy: string;
@@ -55,8 +62,12 @@ export interface NormalGameState {
 	votes: Record<string, number>;
 	endPhaseAt: number;
 	gameMessageTs: string | null;
+	meaningMessageTs?: string | null;
 	bettingMessageTs: string | null;
+	statusMessageTs: string | null;
 	startedAt: number;
+	bettingPhaseStartedAt: number | null;
+	comments: GameComment[];
 }
 
 export interface DailyGameState {
@@ -70,7 +81,10 @@ export interface DailyGameState {
 	endPhaseAt: number;
 	gameMessageTs: string | null;
 	bettingMessageTs: string | null;
+	statusMessageTs: string | null;
 	startedAt: number;
+	bettingPhaseStartedAt: number | null;
+	comments: GameComment[];
 }
 
 export interface TahoiyaState {
@@ -79,7 +93,6 @@ export interface TahoiyaState {
 	ratings: Record<string, number>;
 	gamesPlayed: Record<string, number>;
 	lastGameScore: Record<string, number>;
-	dailyStatusMessageTs: string | null;
 	authorHistory: string[];
 }
 
@@ -105,7 +118,7 @@ export interface GameRecord {
 	sourceString: string;
 	url: string;
 	meanings: GameRecordMeaning[];
-	comments: string[];
+	comments: GameComment[];
 	author: string | null;
 	participants: string[];
 }

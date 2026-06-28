@@ -8,7 +8,7 @@ import path from 'path';
 import type {KnownBlock, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-import type {FastifyPluginCallback} from 'fastify';
+import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
 import {flatten, isEmpty, range, shuffle, times, uniq} from 'lodash';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
@@ -765,7 +765,7 @@ class Oogiri {
 }
 
 export const server = ({webClient: slack, eventClient, messageClient: slackInteractions}: SlackInterface) => {
-	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
+	const callback: FastifyPluginAsync = async (fastify, _opts) => {
 		const oogiri = new Oogiri({slack, eventClient, slackInteractions});
 		await oogiri.initialize();
 
@@ -779,7 +779,6 @@ export const server = ({webClient: slack, eventClient, messageClient: slackInter
 			return oogiri.showStartDialog(req.body.trigger_id, req.body.text);
 		});
 
-		next();
 	};
 
 	return plugin(callback);

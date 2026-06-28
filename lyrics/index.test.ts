@@ -1,11 +1,9 @@
-jest.mock('tinyreq');
 jest.mock('axios');
 
 import lyrics from './index';
 import Slack from '../lib/slackMock';
-// @ts-expect-error
-import tinyreq from 'tinyreq';
 import axios from 'axios';
+import type {AxiosResponse} from 'axios';
 import { oneLineTrim, stripIndent } from 'common-tags';
 
 let slack: Slack = null;
@@ -18,66 +16,58 @@ beforeEach(async () => {
 
 describe('lyrics', () => {
     it('responds to @lyrics query', async () => {
-        tinyreq.impl = jest.fn(async (url, callback) => {
-            if (url.includes('index_search')) { // Song search result
-                const data = oneLineTrim`
-                    <html><body><dl id="search_list">
-                        <dt>
-                            <span><a href="/song/159792/">とまどい→レシピ</a></span>
-                            <a>みかくにんぐッ!</a>　（作詞：<a>Junky</a>/作曲：<a>Junky</a>）
-                        </dt>
-                        <dd></dd>
-                    </dl></body></html>`;
-                if (callback) {
-                    callback(null, data);
-                }
-                return data;
-            }
-            if (url.includes('song')) { // Lyrics page
-                const data = oneLineTrim`
-                    <html><head>
-                        <link rel="canonical" href="https://www.uta-net.com/song/159792/">
-                    </head><body><div id="main">
-                        <div class="row"><div><div><div>
-                            <div>
-                                <h2>とまどい→レシピ</h2>
-                                <h3><a><span itemprop="byArtist name">みかくにんぐッ!</span></a></h3>
-                            </div>
-                            <div></div>
-                            <div>
-                                <p>未確認で進行形 オープニング</p>
-                                <p class="detail">
-                                    作詞：<a href="/lyricist/7740/" itemprop="lyricist">Junky</a><br>
-                                    作曲：<a href="/composer/9401/" itemprop="composer">Junky</a><br>
-                                    発売日：2014/02/19<br>                                    この曲の表示回数：106,837回
-                                </p>
-                            </div>
-                        </div></div></div></div>
-                        <div id="kashi"><div><div id="kashi_area">
-                            略
-                            <br><br>
-                            朝目が覚めたらもう昨日みたいな日常はなくて
-                            <br>
-                            「ホントあぁもう...えっとどうしよう」
-                            <br>
-                            ため息混じりに練るお菓子と妄想のレシピの中に
-                            <br>
-                            恋心入っちゃった
-                            <br><br>
-                            略
-                        </div></div></div>
-                    </div></body></html>`;
-                if (callback) {
-                    callback(null, data);
-                }
-                return data;
-            }
-        });
+        const searchHtml = oneLineTrim`
+            <html><body><dl id="search_list">
+                <dt>
+                    <span><a href="/song/159792/">とまどい→レシピ</a></span>
+                    <a>みかくにんぐッ!</a>　（作詞：<a>Junky</a>/作曲：<a>Junky</a>）
+                </dt>
+                <dd></dd>
+            </dl></body></html>`;
+        const songHtml = oneLineTrim`
+            <html><head>
+                <link rel="canonical" href="https://www.uta-net.com/song/159792/">
+            </head><body><div id="main">
+                <div class="row"><div><div><div>
+                    <div>
+                        <h2>とまどい→レシピ</h2>
+                        <h3><a><span itemprop="byArtist name">みかくにんぐッ!</span></a></h3>
+                    </div>
+                    <div></div>
+                    <div>
+                        <p>未確認で進行形 オープニング</p>
+                        <p class="detail">
+                            作詞：<a href="/lyricist/7740/" itemprop="lyricist">Junky</a><br>
+                            作曲：<a href="/composer/9401/" itemprop="composer">Junky</a><br>
+                            発売日：2014/02/19<br>                                    この曲の表示回数：106,837回
+                        </p>
+                    </div>
+                </div></div></div></div>
+                <div id="kashi"><div><div id="kashi_area">
+                    略
+                    <br><br>
+                    朝目が覚めたらもう昨日みたいな日常はなくて
+                    <br>
+                    「ホントあぁもう...えっとどうしよう」
+                    <br>
+                    ため息混じりに練るお菓子と妄想のレシピの中に
+                    <br>
+                    恋心入っちゃった
+                    <br><br>
+                    略
+                </div></div></div>
+            </div></body></html>`;
 
-        // @ts-expect-error
-        axios.get = jest.fn(async (url) => {
+        const mockAxios = jest.mocked(axios);
+        mockAxios.mockImplementation(async (url: string) => {
+            if (url.includes('index_search')) {
+                return {data: searchHtml} as AxiosResponse;
+            }
+            if (url.includes('song')) {
+                return {data: songHtml} as AxiosResponse;
+            }
             if (url.includes('itunes')) { // iTunes Search API
-                return { data: {
+                return {data: {
                     resultCount: 1,
                     results: [{
                         wrapperType: 'track',
@@ -110,10 +100,11 @@ describe('lyrics', () => {
                         country: 'JPN',
                         currency: 'JPY',
                         primaryGenreName: 'アニメ',
-                        isStreamable: true
+                        isStreamable: true,
                     }],
-                }};
+                }} as AxiosResponse;
             }
+            return {data: ''} as AxiosResponse;
         });
         const response = await slack.getResponseTo('@lyrics 朝目が覚めたらもう');
         expect('username' in response && response.username).toBe('歌詞検索くん');

@@ -2,7 +2,7 @@ import path from 'path';
 import {EnvelopedEvent} from '@slack/bolt';
 import {ReactionAddedEvent, ReactionRemovedEvent, WebClient} from '@slack/web-api';
 import {EmojiData} from 'emoji-data-ts';
-import type {FastifyPluginCallback} from 'fastify';
+import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
 import {flatten, uniq} from 'lodash';
 import sql from 'sql-template-strings';
@@ -33,7 +33,7 @@ const getEmojiImageUrl = async (name: string, team: string): Promise<string> => 
 
 // eslint-disable-next-line import/prefer-default-export
 export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
-	const callback: FastifyPluginCallback = async (fastify, opts, next) => {
+	const callback: FastifyPluginAsync = async (fastify, _opts) => {
 		const db = await open({
 			filename: path.join(__dirname, '..', 'tokens.sqlite3'),
 			driver: sqlite3.Database,
@@ -245,7 +245,6 @@ export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 			);
 		}
 
-		next();
 	};
 
 	return plugin(callback);
