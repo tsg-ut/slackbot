@@ -34,6 +34,7 @@ const copy = (src: string, dest: string) => {
     console.log(`Copied: ${src}`);
 };
 
+// NOSONAR: Absolute path (e.g. /usr/bin/git) is intentionally avoided to support cross-platform builds (Linux, macOS).
 const trackedFiles = spawnSync('git', ['ls-files'], {encoding: 'utf-8'})
     .stdout
     .split('\n')
