@@ -25,5 +25,8 @@ service cloud.firestore {
     match /twenty_questions_games/{document=**} {
       allow read;
     }
+    match /tahoiya_games/{document=**} {
+      allow read;
+    }
   }
 }
