@@ -2,13 +2,13 @@ import {GenericMessageEvent} from '@slack/web-api';
 import {ChannelLimitedBot} from './channelLimitedBot';
 import Slack from './slackMock';
 
-jest.mock('../lib/slackUtils');
+vi.mock('../lib/slackUtils');
 
 describe('ChannelLimitedBot', () => {
 	let slack: Slack;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		slack = new Slack();
 		process.env.CHANNEL_GAMES = slack.fakeChannel;
 		process.env.HAKATASHI_TOKEN = 'xoxb-hakatashi-token';
@@ -31,7 +31,7 @@ describe('ChannelLimitedBot', () => {
 	});
 
 	it('responds to messages containing the wake word in the allowed channel', async () => {
-		const onWakeWord = jest.fn<Promise<string | null>, [GenericMessageEvent, string]>();
+		const onWakeWord = vi.fn<Promise<string | null>, [GenericMessageEvent, string]>();
 
 		class TestBot extends ChannelLimitedBot {
 			protected override wakeWordRegex = /wakeword/;
@@ -52,7 +52,7 @@ describe('ChannelLimitedBot', () => {
 	});
 
 	it('posts ephemeral message and deletes original when wake word is used in disallowed channel (null response)', async () => {
-		const onWakeWord = jest.fn<Promise<string | null>, [GenericMessageEvent, string]>();
+		const onWakeWord = vi.fn<Promise<string | null>, [GenericMessageEvent, string]>();
 		const disallowedChannel = 'C9876543210';
 
 		class TestBot extends ChannelLimitedBot {
@@ -89,7 +89,7 @@ describe('ChannelLimitedBot', () => {
 	});
 
 	it('posts ephemeral message with permalink and deletes original when wake word is used in disallowed channel (with response)', async () => {
-		const onWakeWord = jest.fn<Promise<string | null>, [GenericMessageEvent, string]>();
+		const onWakeWord = vi.fn<Promise<string | null>, [GenericMessageEvent, string]>();
 		const disallowedChannel = 'C9876543210';
 		const responseTs = '12345.6789';
 		const progressChannel = 'CPROGRESS';
@@ -134,7 +134,7 @@ describe('ChannelLimitedBot', () => {
 	});
 
 	it('ignores messages without the wake word', async () => {
-		const onWakeWord = jest.fn<Promise<string | null>, [GenericMessageEvent, string]>();
+		const onWakeWord = vi.fn<Promise<string | null>, [GenericMessageEvent, string]>();
 
 		class TestBot extends ChannelLimitedBot {
 			protected override wakeWordRegex = /wakeword/;
@@ -149,7 +149,7 @@ describe('ChannelLimitedBot', () => {
 	});
 
 	it('ignores messages from bots', async () => {
-		const onWakeWord = jest.fn<Promise<string | null>, [GenericMessageEvent, string]>();
+		const onWakeWord = vi.fn<Promise<string | null>, [GenericMessageEvent, string]>();
 
 		class TestBot extends ChannelLimitedBot {
 			protected override wakeWordRegex = /wakeword/;
@@ -167,7 +167,7 @@ describe('ChannelLimitedBot', () => {
 	});
 
 	it('ignores messages without user', async () => {
-		const onWakeWord = jest.fn<Promise<string | null>, [GenericMessageEvent, string]>();
+		const onWakeWord = vi.fn<Promise<string | null>, [GenericMessageEvent, string]>();
 
 		class TestBot extends ChannelLimitedBot {
 			protected override wakeWordRegex = /wakeword/;
@@ -187,7 +187,7 @@ describe('ChannelLimitedBot', () => {
 	});
 
 	it('ignores messages without text', async () => {
-		const onWakeWord = jest.fn<Promise<string | null>, [GenericMessageEvent, string]>();
+		const onWakeWord = vi.fn<Promise<string | null>, [GenericMessageEvent, string]>();
 
 		class TestBot extends ChannelLimitedBot {
 			protected override wakeWordRegex = /wakeword/;

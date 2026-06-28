@@ -1,9 +1,9 @@
 /* eslint-env node, jest */
 
-jest.mock('axios');
-jest.mock('../achievements');
-jest.mock('../lib/slackUtils');
-jest.mock('../lib/state.ts');
+vi.mock('axios');
+vi.mock('../achievements');
+vi.mock('../lib/slackUtils');
+vi.mock('../lib/state.ts');
 
 const axios = require('axios');
 const pocky = require('./index.js');

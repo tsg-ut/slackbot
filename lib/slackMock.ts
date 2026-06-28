@@ -1,13 +1,12 @@
-/* eslint-env node, jest */
-
 import type {ChatPostMessageArguments, ReactionsAddArguments, WebClient} from '@slack/web-api';
 import {EventEmitter} from 'events';
-import {last} from 'lodash';
+import last from 'lodash/last.js';
 import type {SlackInterface} from './slack';
 import {createMessageAdapter} from '@slack/interactive-messages';
 import type {BlockAction} from '@slack/bolt';
+import {vi, type MockInstance} from 'vitest';
 
-// https://jestjs.io/docs/mock-function-api
+// https://vitest.dev/api/mock.html
 const mockMethodCalls = [
 	'mockImplementation',
 	'mockImplementationOnce',
@@ -34,7 +33,7 @@ interface MockWebClient extends Record<string, MockWebClient> {
 
 const createWebClient = (
 	fallbackFn: (stack: string[], ...args: any[]) => Promise<any>,
-	registeredMocks: Map<string, jest.Mock>,
+	registeredMocks: Map<string, MockInstance>,
 ) => {
 	const handler = (stack: string[]): MockWebClient => {
 		return new Proxy(
@@ -45,7 +44,7 @@ const createWebClient = (
 					return registeredMocks.get(path)(...args);
 				}
 				if (isMockMethodCall(methodName)) {
-					const mock = jest.fn();
+					const mock = vi.fn();
 					registeredMocks.set(stack.slice(0, -1).join('.'), mock);
 					return mock[methodName](
 						// @ts-expect-error: Spread operator is not supported.
@@ -62,7 +61,7 @@ const createWebClient = (
 						return registeredMocks.get(path);
 					}
 					if (typeof property === 'string' && isMockMethodCall(property)) {
-						const mock = jest.fn();
+						const mock = vi.fn();
 						registeredMocks.set(parentPath, mock);
 						return mock[property];
 					}
@@ -85,8 +84,8 @@ class MockTeamEventClient extends EventEmitter {
 }
 
 class MockMessageClient {
-	action = jest.fn();
-	viewSubmission = jest.fn();
+	action = vi.fn();
+	viewSubmission = vi.fn();
 	async sendAction(
 		payload: BlockAction,
 		callbackId?: string,
@@ -115,7 +114,7 @@ class MockMessageClient {
 		);
 		if (handlerEntry) {
 			const handler = handlerEntry[1];
-			return handler(payload, respondFn ?? jest.fn());
+			return handler(payload, respondFn ?? vi.fn());
 		}
 	}
 }
@@ -140,7 +139,7 @@ export default class SlackMock extends EventEmitter implements SlackInterface {
 	fakeTimestamp = '1234567890.123456';
 
 	readonly eventClient: MockTeamEventClient;
-	readonly registeredMocks: Map<string, jest.Mock>;
+	readonly registeredMocks: Map<string, MockInstance>;
 	readonly webClient: WebClient;
 	readonly messageClient: ReturnType<typeof createMessageAdapter> & MockMessageClient;
 

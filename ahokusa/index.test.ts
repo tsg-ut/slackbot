@@ -1,8 +1,8 @@
 import ahokusa from './index';
 import Slack from '../lib/slackMock';
 
-jest.mock('../achievements');
-jest.mock('../lib/slackUtils');
+vi.mock('../achievements');
+vi.mock('../lib/slackUtils');
 
 let slack: Slack;
 

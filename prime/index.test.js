@@ -1,6 +1,6 @@
 /* eslint-env node, jest */
 
-jest.mock('../achievements');
+vi.mock('../achievements');
 
 const {default: Slack} = require('../lib/slackMock.ts');
 const shogi = require('./index.js');

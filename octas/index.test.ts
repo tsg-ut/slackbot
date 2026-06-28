@@ -1,4 +1,5 @@
-jest.mock('cloudinary');
+vi.mock('../achievements');
+vi.mock('cloudinary');
 
 import octas from './index';
 import Slack from '../lib/slackMock';

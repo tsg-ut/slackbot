@@ -4,10 +4,10 @@ import {getDuplicateEventChecker, DuplicateEventChecker} from './eventDeduplicat
 import {createEventAdapter, type SlackEventAdapter} from '@slack/events-api';
 import {setImmediate} from 'timers/promises';
 
-jest.mock('./eventDeduplication');
+vi.mock('./eventDeduplication');
 
-const mockedGetDuplicateEventChecker = jest.mocked(getDuplicateEventChecker);
-const mockedDuplicateEventCheckerPrototype = jest.mocked(DuplicateEventChecker.prototype);
+const mockedGetDuplicateEventChecker = vi.mocked(getDuplicateEventChecker);
+const mockedDuplicateEventCheckerPrototype = vi.mocked(DuplicateEventChecker.prototype);
 
 describe('EventClientWrapper', () => {
 	let eventAdapter: SlackEventAdapter;
@@ -20,11 +20,11 @@ describe('EventClientWrapper', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should forward non-duplicate events', async () => {
-		const listener = jest.fn();
+		const listener = vi.fn();
 		mockedDuplicateEventCheckerPrototype.markEventAsProcessed.mockResolvedValue(false);
 
 		wrapper.on('test_event', listener);
@@ -40,7 +40,7 @@ describe('EventClientWrapper', () => {
 	});
 
 	it('should block duplicate events', async () => {
-		const listener = jest.fn();
+		const listener = vi.fn();
 		mockedDuplicateEventCheckerPrototype.markEventAsProcessed.mockResolvedValue(true);
 
 		wrapper.on('test_event', listener);
@@ -56,7 +56,7 @@ describe('EventClientWrapper', () => {
 	});
 
 	it('should handle events without event_id', async () => {
-		const listener = jest.fn();
+		const listener = vi.fn();
 
 		wrapper.on('test_event', listener);
 		
@@ -71,8 +71,8 @@ describe('EventClientWrapper', () => {
 	});
 
 	it('should handle multiple listeners for the same event with single deduplication check', async () => {
-		const listener1 = jest.fn();
-		const listener2 = jest.fn();
+		const listener1 = vi.fn();
+		const listener2 = vi.fn();
 		mockedDuplicateEventCheckerPrototype.markEventAsProcessed.mockResolvedValue(false);
 
 		wrapper.on('test_event', listener1);
@@ -90,8 +90,8 @@ describe('EventClientWrapper', () => {
 	});
 
 	it('should block duplicate events for all listeners', async () => {
-		const listener1 = jest.fn();
-		const listener2 = jest.fn();
+		const listener1 = vi.fn();
+		const listener2 = vi.fn();
 		mockedDuplicateEventCheckerPrototype.markEventAsProcessed.mockResolvedValue(true);
 
 		wrapper.on('test_event', listener1);

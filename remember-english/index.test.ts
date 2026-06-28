@@ -1,8 +1,9 @@
 /* eslint-disable import/imports-first */
 /* eslint-disable import/first */
 /* eslint-env jest */
-jest.mock('../lib/slackUtils');
-jest.mock('../lib/state');
+vi.mock('../achievements');
+vi.mock('../lib/slackUtils');
+vi.mock('../lib/state');
 
 import type {KnownBlock, WebAPICallResult, ViewsOpenArguments} from '@slack/web-api';
 import Slack from '../lib/slackMock';
@@ -10,9 +11,9 @@ import {RememberEnglish} from '.';
 
 let slack: Slack = null;
 let rememberEnglish: MockedRememberEnglish = null;
-const postMessage = jest.fn();
-const updateMessage = jest.fn();
-const viewsOpen = jest.fn();
+const postMessage = vi.fn();
+const updateMessage = vi.fn();
+const viewsOpen = vi.fn();
 
 const now = new Date('2021-01-01').getTime();
 
@@ -42,9 +43,8 @@ beforeEach(async () => {
 	updateMessage.mockClear();
 	viewsOpen.mockClear();
 
-	jest
-		.useFakeTimers()
-		.setSystemTime(now);
+	vi.useFakeTimers();
+	vi.setSystemTime(now);
 
 	rememberEnglish = new MockedRememberEnglish({slack: slack.webClient});
 	await rememberEnglish.initialize();

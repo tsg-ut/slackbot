@@ -1,10 +1,10 @@
 /* eslint-env node, jest */
-jest.mock('moment');
+vi.mock('moment');
 
 import moment from 'moment';
 import {scoreTimeOfDay, getReactionName} from './time-scoring';
 
-const mockedMoment = jest.mocked(moment);
+const mockedMoment = vi.mocked(moment);
 
 describe('time-scoring', () => {
 	describe('scoreTimeOfDay', () => {

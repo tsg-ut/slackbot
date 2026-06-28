@@ -1,9 +1,9 @@
 'use strict';
 
-jest.mock('cloudinary');
-jest.mock('./rust-proxy');
-jest.mock('../achievements');
-jest.mock('../lib/slackUtils');
+vi.mock('cloudinary');
+vi.mock('./rust-proxy');
+vi.mock('../achievements');
+vi.mock('../lib/slackUtils');
 
 import cloudinary from 'cloudinary';
 import * as rust_proxy from './rust-proxy';
@@ -34,10 +34,10 @@ describe('hyperrobot', () => {
 		process.env.CHANNEL_GAMES = slack.fakeChannel;
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		hyperrobot(slack);
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 	});
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 	describe('base', () => {
 		it('responds to ハイパーロボット', async () => {

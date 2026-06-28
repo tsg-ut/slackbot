@@ -1,11 +1,11 @@
-jest.mock('axios');
-jest.mock('../lib/slackUtils');
-jest.mock('../lib/download');
+vi.mock('axios');
+vi.mock('../lib/slackUtils');
+vi.mock('../lib/download');
 
 import path from 'path';
 import fs from 'fs';
 
-jest.mock('fs');
+vi.mock('fs');
 
 // @ts-expect-error
 fs.virtualFiles = {

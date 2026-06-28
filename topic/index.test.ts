@@ -4,28 +4,29 @@
 /* eslint-disable import/first */
 /* eslint-env jest */
 
-jest.mock('../lib/state');
-jest.mock('../lib/slack');
-jest.mock('../lib/slackUtils', () => ({
+vi.mock('../achievements');
+vi.mock('../lib/state');
+vi.mock('../lib/slack');
+vi.mock('../lib/slackUtils', () => ({
 	__esModule: true,
-	getReactions: jest.fn(),
+	getReactions: vi.fn(),
 }));
-jest.mock('../lib/slackPatron', () => ({
+vi.mock('../lib/slackPatron', () => ({
 	__esModule: true,
-	conversationsHistory: jest.fn(),
-	conversationsReplies: jest.fn(),
+	conversationsHistory: vi.fn(),
+	conversationsReplies: vi.fn(),
 }));
-jest.mock('../lib/firestore', () => ({
+vi.mock('../lib/firestore', () => ({
 	__esModule: true,
 	default: {
-		collection: jest.fn().mockReturnValue({
-			doc: jest.fn().mockReturnValue({
-				get: jest.fn(),
-				set: jest.fn(),
-				update: jest.fn(),
+		collection: vi.fn().mockReturnValue({
+			doc: vi.fn().mockReturnValue({
+				get: vi.fn(),
+				set: vi.fn(),
+				update: vi.fn(),
 			}),
 		}),
-		runTransaction: jest.fn(),
+		runTransaction: vi.fn(),
 	},
 }));
 
@@ -43,18 +44,18 @@ const FAKE_SANDBOX = 'C123456789';
 describe('topic', () => {
 	describe('index.ts', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		describe('addLike', () => {
 			it('should add a like to the message', async () => {
 				const mockTransaction = {
-					get: jest.fn(),
-					update: jest.fn(),
+					get: vi.fn(),
+					update: vi.fn(),
 				};
 				const mockDoc = {
 					exists: true,
-					get: jest.fn().mockReturnValue([]),
+					get: vi.fn().mockReturnValue([]),
 				};
 				runTransaction.mockImplementation(async (callback) => {
 					await callback(mockTransaction as unknown as firestore.Transaction);
@@ -69,8 +70,8 @@ describe('topic', () => {
 
 			it('should not add a like if the message does not exist', async () => {
 				const mockTransaction = {
-					get: jest.fn(),
-					update: jest.fn(),
+					get: vi.fn(),
+					update: vi.fn(),
 				};
 				const mockDoc = {
 					exists: false,
@@ -90,12 +91,12 @@ describe('topic', () => {
 		describe('removeLike', () => {
 			it('should remove a like from the message', async () => {
 				const mockTransaction = {
-					get: jest.fn(),
-					update: jest.fn(),
+					get: vi.fn(),
+					update: vi.fn(),
 				};
 				const mockDoc = {
 					exists: true,
-					get: jest.fn().mockReturnValue(['user1']),
+					get: vi.fn().mockReturnValue(['user1']),
 				};
 				runTransaction.mockImplementation(async (callback) => {
 					await callback(mockTransaction as unknown as firestore.Transaction);
@@ -110,8 +111,8 @@ describe('topic', () => {
 
 			it('should not remove a like if the message does not exist', async () => {
 				const mockTransaction = {
-					get: jest.fn(),
-					update: jest.fn(),
+					get: vi.fn(),
+					update: vi.fn(),
 				};
 				const mockDoc = {
 					exists: false,

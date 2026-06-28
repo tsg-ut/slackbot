@@ -1,11 +1,9 @@
-/* eslint-env node, jest */
+vi.mock('axios');
+vi.mock('fs');
+vi.mock('word2vec');
+vi.mock('../lib/download');
 
-jest.mock('axios');
-jest.mock('fs');
-jest.mock('word2vec');
-jest.mock('../lib/download');
-
-jest.mock('./state.json', () => ({}), {virtual: true});
+vi.mock('./state.json', () => ({}));
 
 const vocabwar = require('./index.js');
 const {default: Slack} = require('../lib/slackMock.ts');
@@ -13,7 +11,7 @@ const {promisify} = require('util');
 const path = require('path');
 const fs = require('fs');
 
-jest.unmock('fs');
+vi.unmock('fs');
 
 fs.virtualFiles = {
 	[path.join(__dirname, 'data')]: '',
@@ -37,11 +35,11 @@ describe('vocabwar', () => {
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		await vocabwar(slack);
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	it('responds to "弓箭"', async () => {
@@ -82,12 +80,12 @@ describe('vocabwar', () => {
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		await vocabwar(slack);
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		await slack.getResponseTo('弓箭 丸い');
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	it('rejects the same word as theme', async () => {

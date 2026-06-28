@@ -1,4 +1,3 @@
-/* eslint-env node, jest */
 
 class Model {
 	similarity() {
@@ -10,6 +9,6 @@ class Model {
 	}
 }
 
-module.exports.loadModel = jest.fn((params, done) => {
+module.exports.loadModel = vi.fn((params, done) => {
 	done(null, new Model());
 });

@@ -30,7 +30,7 @@
     "lib": [
       "ESNext"
     ],
-    "types": ["node", "jest"],
+    "types": ["node"],
     "skipLibCheck": true,
     "experimentalDecorators": true,
     "paths": {

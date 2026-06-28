@@ -1,19 +1,19 @@
 /* eslint-disable import/imports-first, import/first */
 /* eslint-env node, jest */
 
-jest.mock('../lib/openai', () => ({
+vi.mock('../lib/openai', () => ({
 	__esModule: true,
 	default: {
 		chat: {
-			create: jest.fn(),
+			create: vi.fn(),
 		},
 	},
 }));
 
-jest.mock('../lib/mailgun', () => ({
+vi.mock('../lib/mailgun', () => ({
 	__esModule: true,
 	default: {
-		client: jest.fn(),
+		client: vi.fn(),
 	},
 }));
 

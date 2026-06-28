@@ -1,6 +1,5 @@
-/* eslint-env node, jest */
 
-const download = jest.fn((options) => Promise.resolve(download.response));
+const download = vi.fn((options) => Promise.resolve(download.response));
 download.get = download;
 download.post = download;
 

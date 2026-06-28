@@ -7,25 +7,25 @@ import Slack from '../lib/slackMock';
 import State from '../lib/state';
 import {HelloWorld, type StateObj} from './HelloWorld';
 
-jest.mock('../lib/slackUtils');
-jest.mock('../lib/state');
-jest.mock('os', () => ({
-	hostname: jest.fn(() => 'test-hostname'),
-	release: jest.fn(() => 'test-release'),
+vi.mock('../lib/slackUtils');
+vi.mock('../lib/state');
+vi.mock('os', () => ({
+	hostname: vi.fn(() => 'test-hostname'),
+	release: vi.fn(() => 'test-release'),
 }));
-jest.mock('crypto', () => ({
-	randomUUID: jest.fn(() => 'test-uuid'),
+vi.mock('crypto', () => ({
+	randomUUID: vi.fn(() => 'test-uuid'),
 }));
 
 const MockedState = State as MockedStateInterface<StateObj>;
-const mockedCrypto = jest.mocked(crypto);
+const mockedCrypto = vi.mocked(crypto);
 
 describe('helloworld', () => {
 	let slack: Slack = null;
 	let helloWorld: HelloWorld = null;
 
 	beforeEach(async () => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;

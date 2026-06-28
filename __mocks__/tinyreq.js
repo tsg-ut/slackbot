@@ -1,4 +1,3 @@
-/* eslint-env node, jest */
 
 const {PassThrough} = require('stream');
 
@@ -6,7 +5,7 @@ const tinyreq = (...args) => (
 	tinyreq.impl(...args)
 );
 
-tinyreq.impl = jest.fn(() => {
+tinyreq.impl = vi.fn(() => {
 	return Promise.resolve(tinyreq.response);
 });
 

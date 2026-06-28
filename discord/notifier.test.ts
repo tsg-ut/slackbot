@@ -2,11 +2,11 @@
 /* eslint-disable import/first */
 /* eslint-env jest */
 
-jest.mock('../lib/state');
-jest.mock('../lib/slack');
-jest.mock('../lib/slackUtils');
-jest.mock('node-schedule', () => ({
-	scheduleJob: jest.fn(),
+vi.mock('../lib/state');
+vi.mock('../lib/slack');
+vi.mock('../lib/slackUtils');
+vi.mock('node-schedule', () => ({
+	scheduleJob: vi.fn(),
 }));
 
 import {GuildMember, User, VoiceChannel, VoiceState} from 'discord.js';

@@ -1,8 +1,7 @@
-/* eslint-env node, jest */
 
 const {PassThrough} = require('stream');
 
-const axios = jest.fn((options = {}) => {
+const axios = vi.fn((options = {}) => {
 	if (options.responseType === 'stream') {
 		const stream = new PassThrough();
 		process.nextTick(() => {

@@ -1,9 +1,12 @@
-jest.mock('fs-extra', () => ({
-	mkdirp: jest.fn(),
-	readFile: jest.fn(() => Promise.resolve(Buffer.from(''))),
-	writeFile: jest.fn(),
-	pathExists: jest.fn(() => Promise.resolve(false)),
-}));
+vi.mock('fs-extra', () => {
+	const mocked = {
+		mkdirp: vi.fn(),
+		readFile: vi.fn(() => Promise.resolve(Buffer.from(''))),
+		writeFile: vi.fn(),
+		pathExists: vi.fn(() => Promise.resolve(false)),
+	};
+	return {...mocked, default: mocked};
+});
 
 process.env.NODE_ENV = 'development';
 
@@ -18,7 +21,7 @@ interface StateObj {
 }
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 describe('State', () => {

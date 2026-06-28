@@ -1,11 +1,11 @@
-jest.mock('axios');
-jest.mock('node:fs', () => ({
-    createWriteStream: jest.fn(),
+vi.mock('axios');
+vi.mock('node:fs', () => ({
+    createWriteStream: vi.fn(),
     constants: { F_OK: 0 },
-    access: jest.fn(),
+    access: vi.fn(),
 }));
-jest.mock('node:fs/promises', () => ({
-    mkdir: jest.fn().mockResolvedValue(undefined),
+vi.mock('node:fs/promises', () => ({
+    mkdir: vi.fn().mockResolvedValue(undefined),
 }));
 
 import axios from 'axios';
@@ -29,7 +29,7 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 });
 
 it('downloads fetched data to path', async () => {

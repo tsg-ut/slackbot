@@ -1,12 +1,12 @@
 /* eslint-env node, jest */
-jest.mock('../achievements');
-jest.mock('moment');
-jest.mock('../lib/state');
-jest.mock('fs-extra', () => ({
-	mkdirp: jest.fn(),
-	readFile: jest.fn(() => Promise.resolve(Buffer.from(''))),
-	writeFile: jest.fn(),
-	pathExists: jest.fn(() => Promise.resolve(false)),
+vi.mock('../achievements');
+vi.mock('moment');
+vi.mock('../lib/state');
+vi.mock('fs-extra', () => ({
+	mkdirp: vi.fn(),
+	readFile: vi.fn(() => Promise.resolve(Buffer.from(''))),
+	writeFile: vi.fn(),
+	pathExists: vi.fn(() => Promise.resolve(false)),
 }));
 
 const moment = require('moment');

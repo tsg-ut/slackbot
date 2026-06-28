@@ -1,4 +1,4 @@
-jest.mock('../achievements');
+vi.mock('../achievements');
 
 import voiperrobot from './index';
 import Slack from '../lib/slackMock';

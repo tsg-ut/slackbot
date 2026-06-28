@@ -1,11 +1,11 @@
 /* eslint-env node, jest */
 
-jest.mock('cloudinary');
-jest.mock('sqlite');
-jest.mock('sqlite3', () => ({
-	Database: jest.fn(),
+vi.mock('cloudinary');
+vi.mock('sqlite');
+vi.mock('sqlite3', () => ({
+	Database: vi.fn(),
 }));
-jest.mock('fs');
+vi.mock('fs');
 
 const fs = require('fs');
 const path = require('path');

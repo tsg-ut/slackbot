@@ -9,31 +9,32 @@ import {SlowQuiz, validateQuestion, type StateObj, type Game} from './index';
 
 process.env.OPENAI_API_KEY = 'test-api-key';
 
-jest.mock('../lib/state');
-jest.mock('../lib/slackUtils', () => ({
-	getEmoji: jest.fn(() => 'https://example.com/emoji.png'),
-	getMemberIcon: jest.fn(() => Promise.resolve('https://example.com/icon.png')),
-	getMemberName: jest.fn(() => Promise.resolve('Test User')),
+vi.mock('../achievements');
+vi.mock('../lib/state');
+vi.mock('../lib/slackUtils', () => ({
+	getEmoji: vi.fn(() => 'https://example.com/emoji.png'),
+	getMemberIcon: vi.fn(() => Promise.resolve('https://example.com/icon.png')),
+	getMemberName: vi.fn(() => Promise.resolve('Test User')),
 }));
-jest.mock('../lib/openai', () => ({
+vi.mock('../lib/openai', () => ({
 	__esModule: true,
 	default: {
 		chat: {
 			completions: {
-				create: jest.fn(),
+				create: vi.fn(),
 			},
 		},
 		batches: {
-			create: jest.fn(),
-			retrieve: jest.fn(),
+			create: vi.fn(),
+			retrieve: vi.fn(),
 		},
 		files: {
-			create: jest.fn(),
+			create: vi.fn(),
 		},
 	},
 }));
-jest.mock('node-schedule', () => ({
-	scheduleJob: jest.fn(),
+vi.mock('node-schedule', () => ({
+	scheduleJob: vi.fn(),
 }));
 
 const MockedState = State as MockedStateInterface<StateObj>;
@@ -67,12 +68,12 @@ describe('slow-quiz', () => {
 	let slowQuiz: SlowQuiz;
 
 	beforeEach(async () => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		process.env.CHANNEL_QUIZ = slack.fakeChannel;
 
-		jest.mocked(openai.chat.completions.create).mockResolvedValue({
+		vi.mocked(openai.chat.completions.create).mockResolvedValue({
 			choices: [{
 				// @ts-expect-error: Mocking only the necessary properties
 				message: {
@@ -82,15 +83,15 @@ describe('slow-quiz', () => {
 			model: 'gpt-4o-mini',
 		});
 		// @ts-expect-error: Mocking only the necessary properties
-		jest.mocked(openai.batches.create).mockResolvedValue({
+		vi.mocked(openai.batches.create).mockResolvedValue({
 			id: 'batch-123',
 		});
 		// @ts-expect-error: Mocking only the necessary properties
-		jest.mocked(openai.batches.retrieve).mockResolvedValue({
+		vi.mocked(openai.batches.retrieve).mockResolvedValue({
 			status: 'completed',
 		});
 		// @ts-expect-error: Mocking only the necessary properties
-		jest.mocked(openai.files.create).mockResolvedValue({
+		vi.mocked(openai.files.create).mockResolvedValue({
 			id: 'file-123',
 		});
 

@@ -1,4 +1,4 @@
-jest.mock('axios');
+vi.mock('axios');
 
 import lyrics from './index';
 import Slack from '../lib/slackMock';
@@ -58,7 +58,7 @@ describe('lyrics', () => {
                 </div></div></div>
             </div></body></html>`;
 
-        const mockAxios = jest.mocked(axios);
+        const mockAxios = vi.mocked(axios);
         mockAxios.mockImplementation(async (url: string) => {
             if (url.includes('index_search')) {
                 return {data: searchHtml} as AxiosResponse;

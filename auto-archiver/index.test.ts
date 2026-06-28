@@ -9,11 +9,11 @@ import State from '../lib/state';
 import {Deferred} from '../lib/utils';
 import autoArchiver, {ChannelsStateObj, StateObj} from './index';
 
-jest.mock('../lib/state');
-jest.mock('../lib/slack');
-jest.mock('../lib/slackUtils');
-jest.mock('node-schedule', () => ({
-	scheduleJob: jest.fn(),
+vi.mock('../lib/state');
+vi.mock('../lib/slack');
+vi.mock('../lib/slackUtils');
+vi.mock('node-schedule', () => ({
+	scheduleJob: vi.fn(),
 }));
 
 describe('auto-archiver', () => {
@@ -22,10 +22,10 @@ describe('auto-archiver', () => {
 	const FAKE_TIMESTAMP = '12345678.123456';
 	const FAKE_USER = 'U12345678';
 
-	jest.useFakeTimers();
+	vi.useFakeTimers();
 
 	const registerScheduleCallback = () => {
-		const scheduleMock = jest.mocked(schedule);
+		const scheduleMock = vi.mocked(schedule);
 		const deferred = new Deferred<JobCallback>();
 
 		scheduleMock.scheduleJob.mockImplementationOnce((rule, fn) => {
@@ -67,14 +67,14 @@ describe('auto-archiver', () => {
 
 	it('should not remind to archive if message is posted within 90 days', async () => {
 		const slack = new Slack();
-		const listConversations = jest.mocked(slack.webClient.conversations.list);
+		const listConversations = vi.mocked(slack.webClient.conversations.list);
 		listConversations.mockResolvedValueOnce({
 			channels: [{id: FAKE_CHANNEL, name: 'random'}],
 			ok: true,
 			response_metadata: {},
 		});
 
-		const postMessage = jest.mocked(slack.webClient.chat.postMessage);
+		const postMessage = vi.mocked(slack.webClient.chat.postMessage);
 		postMessage.mockResolvedValueOnce({
 			ok: true,
 			ts: FAKE_TIMESTAMP,
@@ -97,14 +97,14 @@ describe('auto-archiver', () => {
 
 	it('should not remind to archive if no message is posted to channel', async () => {
 		const slack = new Slack();
-		const listConversations = jest.mocked(slack.webClient.conversations.list);
+		const listConversations = vi.mocked(slack.webClient.conversations.list);
 		listConversations.mockResolvedValueOnce({
 			channels: [{id: FAKE_CHANNEL, name: 'random'}],
 			ok: true,
 			response_metadata: {},
 		});
 
-		const postMessage = jest.mocked(slack.webClient.chat.postMessage);
+		const postMessage = vi.mocked(slack.webClient.chat.postMessage);
 		postMessage.mockResolvedValueOnce({
 			ok: true,
 			ts: FAKE_TIMESTAMP,
@@ -123,14 +123,14 @@ describe('auto-archiver', () => {
 
 	it('should not remind to archive if channel already has a notice', async () => {
 		const slack = new Slack();
-		const listConversations = jest.mocked(slack.webClient.conversations.list);
+		const listConversations = vi.mocked(slack.webClient.conversations.list);
 		listConversations.mockResolvedValueOnce({
 			channels: [{id: FAKE_CHANNEL, name: 'random'}],
 			ok: true,
 			response_metadata: {},
 		});
 
-		const postMessage = jest.mocked(slack.webClient.chat.postMessage);
+		const postMessage = vi.mocked(slack.webClient.chat.postMessage);
 		postMessage.mockResolvedValue({
 			ok: true,
 			ts: FAKE_TIMESTAMP,
@@ -163,14 +163,14 @@ describe('auto-archiver', () => {
 
 	it('should not remind to archive if channel was archived in the same session', async () => {
 		const slack = new Slack();
-		const listConversations = jest.mocked(slack.webClient.conversations.list);
+		const listConversations = vi.mocked(slack.webClient.conversations.list);
 		listConversations.mockResolvedValueOnce({
 			channels: [{id: FAKE_CHANNEL, name: 'random'}],
 			ok: true,
 			response_metadata: {},
 		});
 
-		const postMessage = jest.mocked(slack.webClient.chat.postMessage);
+		const postMessage = vi.mocked(slack.webClient.chat.postMessage);
 		postMessage.mockResolvedValue({
 			ok: true,
 			ts: FAKE_TIMESTAMP,
@@ -208,14 +208,14 @@ describe('auto-archiver', () => {
 	it('should remind channel to archive if message is posted after 90 days', async () => {
 		const slack = new Slack();
 
-		const listConversations = jest.mocked(slack.webClient.conversations.list);
+		const listConversations = vi.mocked(slack.webClient.conversations.list);
 		listConversations.mockResolvedValueOnce({
 			channels: [{id: FAKE_CHANNEL, name: 'random'}],
 			ok: true,
 			response_metadata: {},
 		});
 
-		const postMessage = jest.mocked(slack.webClient.chat.postMessage);
+		const postMessage = vi.mocked(slack.webClient.chat.postMessage);
 		postMessage.mockResolvedValueOnce({
 			ok: true,
 			ts: FAKE_TIMESTAMP,
@@ -237,7 +237,7 @@ describe('auto-archiver', () => {
 			limit: 1000,
 		});
 
-		const mockedPostMessage = jest.mocked(slack.webClient.chat.postMessage);
+		const mockedPostMessage = vi.mocked(slack.webClient.chat.postMessage);
 		expect(mockedPostMessage).toBeCalledTimes(1);
 		expect(mockedPostMessage.mock.calls[0][0].text).toBe([
 			'<!channel> このチャンネルには90日以上BOT以外のメッセージが投稿されていません。',
@@ -263,7 +263,7 @@ describe('auto-archiver', () => {
 
 		const slack = new Slack();
 
-		const mockedAction = jest.mocked(slack.messageClient.action);
+		const mockedAction = vi.mocked(slack.messageClient.action);
 		const actionDeferred = new Deferred();
 		mockedAction.mockImplementation((options, callbackFn) => {
 			if (typeof options !== 'object' || options instanceof RegExp) {
@@ -298,13 +298,13 @@ describe('auto-archiver', () => {
 			throw new Error('Invalid argument');
 		});
 
-		const updateMessage = jest.mocked(slack.webClient.chat.update);
+		const updateMessage = vi.mocked(slack.webClient.chat.update);
 		updateMessage.mockResolvedValueOnce({
 			ok: true,
 			ts: FAKE_TIMESTAMP,
 		});
 
-		const archiveConversation = jest.mocked(slack.webClient.conversations.archive);
+		const archiveConversation = vi.mocked(slack.webClient.conversations.archive);
 		archiveConversation.mockResolvedValueOnce({
 			ok: true,
 		});
@@ -313,7 +313,7 @@ describe('auto-archiver', () => {
 
 		await actionDeferred.promise;
 
-		const mockedUpdateMessage = jest.mocked(slack.webClient.chat.update);
+		const mockedUpdateMessage = vi.mocked(slack.webClient.chat.update);
 		expect(mockedUpdateMessage).toBeCalled();
 		expect(mockedUpdateMessage.mock.calls[0][0].text).toBe([
 			'<!channel> このチャンネルには90日以上BOT以外のメッセージが投稿されていません。',
@@ -334,7 +334,7 @@ describe('auto-archiver', () => {
 	it('should handle pagination when fetching channels', async () => {
 		const slack = new Slack();
 
-		const listConversations = jest.mocked(slack.webClient.conversations.list);
+		const listConversations = vi.mocked(slack.webClient.conversations.list);
 
 		listConversations
 			.mockResolvedValueOnce({
@@ -371,11 +371,11 @@ describe('auto-archiver', () => {
 
 	it('should snooze channel if user responded with "continue"', async () => {
 		const FAKE_NOW = new Date('2024-01-01T00:00:00Z');
-		jest.setSystemTime(FAKE_NOW);
+		vi.setSystemTime(FAKE_NOW);
 
 		const slack = new Slack();
 
-		const mockedAction = jest.mocked(slack.messageClient.action);
+		const mockedAction = vi.mocked(slack.messageClient.action);
 		const actionDeferred = new Deferred();
 		mockedAction.mockImplementation((options, callbackFn) => {
 			if (typeof options !== 'object' || options instanceof RegExp) {
@@ -410,7 +410,7 @@ describe('auto-archiver', () => {
 			throw new Error('Invalid argument');
 		});
 
-		const updateMessage = jest.mocked(slack.webClient.chat.update);
+		const updateMessage = vi.mocked(slack.webClient.chat.update);
 		updateMessage.mockResolvedValueOnce({
 			ok: true,
 			ts: FAKE_TIMESTAMP,
@@ -420,7 +420,7 @@ describe('auto-archiver', () => {
 
 		await actionDeferred.promise;
 
-		const mockedUpdateMessage = jest.mocked(slack.webClient.chat.update);
+		const mockedUpdateMessage = vi.mocked(slack.webClient.chat.update);
 		expect(mockedUpdateMessage).toBeCalled();
 		expect(mockedUpdateMessage.mock.calls[0][0].text).toBe([
 			'<!channel> このチャンネルには90日以上BOT以外のメッセージが投稿されていません。',

@@ -7,17 +7,17 @@ process.env.AWS_SECRET_ACCESS_KEY = 'SECRET-ACCESS-KEY';
 
 const test = firebaseFunctionsTest();
 
-const filesListMock = jest.fn();
+const filesListMock = vi.fn();
 
-jest.mock('axios');
-jest.mock('@slack/web-api', () => ({
-	WebClient: jest.fn().mockImplementation(() => ({
+vi.mock('axios');
+vi.mock('@slack/web-api', () => ({
+	WebClient: vi.fn().mockImplementation(() => ({
 		files: {
 			list: filesListMock,
 		},
 	}))
 }));
-jest.mock('aws-sdk');
+vi.mock('aws-sdk');
 
 import {DynamoDB} from 'aws-sdk';
 
@@ -27,12 +27,12 @@ const cronJob = test.wrap(slackFileArchiveCronJob);
 
 const CURRENT_TIME = 1700000000;
 
-jest.useFakeTimers();
-jest.spyOn(global, 'setTimeout');
+vi.useFakeTimers();
+vi.spyOn(global, 'setTimeout');
 
 describe('slackFileArchiveCronJob', () => {
 	it('works', async () => {
-		jest.setSystemTime(CURRENT_TIME * 1000);
+		vi.setSystemTime(CURRENT_TIME * 1000);
 
 		filesListMock.mockResolvedValue({
 			files: [{
@@ -45,7 +45,7 @@ describe('slackFileArchiveCronJob', () => {
 			.spyOn(DynamoDB.DocumentClient.prototype, 'batchGet')
 			// @ts-ignore
 			.mockImplementation(() => ({
-				promise: jest.fn().mockResolvedValue({
+				promise: vi.fn().mockResolvedValue({
 					Responses: {
 						'slack-files': [{
 							id: 'file1',
@@ -58,7 +58,7 @@ describe('slackFileArchiveCronJob', () => {
 			.spyOn(DynamoDB.DocumentClient.prototype, 'batchWrite')
 			// @ts-ignore
 			.mockImplementation(() => ({
-				promise: jest.fn(),
+				promise: vi.fn(),
 			}));
 
 		const cronJobPromise = cronJob(undefined);
@@ -66,7 +66,7 @@ describe('slackFileArchiveCronJob', () => {
 		expect(setTimeout).toHaveBeenCalledTimes(1);
 		expect(setTimeout).toHaveBeenLastCalledWith(expect.any(Function), 1000);
 
-		jest.runAllTimers();
+		vi.runAllTimers();
 		await cronJobPromise;
 
 		expect(filesListMock).toHaveBeenCalledWith({

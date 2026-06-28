@@ -1,8 +1,8 @@
 /* eslint-env node, jest */
 
-jest.mock('axios');
-jest.mock('./tokenize.js');
-jest.mock('../achievements');
+vi.mock('axios');
+vi.mock('./tokenize.js');
+vi.mock('../achievements', () => ({unlock: vi.fn(), increment: vi.fn(), get: vi.fn(), set: vi.fn()}));
 
 const dajare = require('./index.js');
 const {default: Slack} = require('../lib/slackMock.ts');

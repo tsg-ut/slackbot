@@ -1,6 +1,6 @@
 /* eslint-env node, jest */
 
-jest.mock('axios');
+vi.mock('axios');
 
 const axios = require('axios');
 const {default: Slack} = require('../lib/slackMock.ts');

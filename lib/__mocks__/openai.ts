@@ -1,12 +1,14 @@
+import {vi} from 'vitest';
+
 const openai = {
 	chat: {
 		completions: {
-			create: jest.fn(),
+			create: vi.fn(),
 		},
 	},
 	audio: {
 		speech: {
-			create: jest.fn(),
+			create: vi.fn(),
 		},
 	},
 };
@@ -16,11 +18,11 @@ export default openai;
 export const systemOpenAIClient = {
 	chat: {
 		completions: {
-			create: jest.fn(),
+			create: vi.fn(),
 		},
 	},
 	batches: {
-		create: jest.fn(),
-		retrieve: jest.fn(),
+		create: vi.fn(),
+		retrieve: vi.fn(),
 	},
 };

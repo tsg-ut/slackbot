@@ -3,7 +3,7 @@ import axios from 'axios';
 import slacklog from './index';
 import Slack from '../lib/slackMock';
 
-jest.mock('axios');
+vi.mock('axios');
 
 // @ts-expect-error
 axios.response = {data: {messages: [{

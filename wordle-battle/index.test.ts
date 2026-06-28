@@ -1,3 +1,4 @@
+vi.mock("../achievements");
 import wordle_battle from './index';
 import Slack from '../lib/slackMock';
 

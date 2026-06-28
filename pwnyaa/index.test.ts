@@ -11,14 +11,14 @@ import {fetchChallsTW, fetchUserProfileTW} from './lib/TWManager';
 import {fetchChallsXYZ, fetchUserProfileXYZ} from './lib/XYZManager';
 import pwnyaa, {State} from './index';
 
-jest.mock('../achievements');
-jest.unmock('axios');
-jest.mock('./lib/AHManager');
-jest.mock('./lib/CHManager');
-jest.mock('./lib/TWManager');
-jest.mock('./lib/XYZManager');
-jest.mock('./lib/KSNManager');
-jest.mock('../lib/slackUtils');
+vi.mock('../achievements');
+vi.unmock('axios');
+vi.mock('./lib/AHManager');
+vi.mock('./lib/CHManager');
+vi.mock('./lib/TWManager');
+vi.mock('./lib/XYZManager');
+vi.mock('./lib/KSNManager');
+vi.mock('../lib/slackUtils');
 
 let slack: Slack = null;
 
@@ -247,7 +247,7 @@ beforeEach(async () => {
 	}
 	await fs.writeFile(stateOriginalPath, JSON.stringify(fakeState));
 
-	jest.useFakeTimers();
+	vi.useFakeTimers();
 	const {initPromise} = await pwnyaa(slack);
 
 	await initPromise;
