@@ -34,8 +34,8 @@ const copy = (src: string, dest: string) => {
     console.log(`Copied: ${src}`);
 };
 
-// NOSONAR: Absolute path (e.g. /usr/bin/git) is intentionally avoided to support cross-platform builds (Linux, macOS).
-const trackedFiles = spawnSync('git', ['ls-files'], {encoding: 'utf-8'})
+// Absolute path (e.g. /usr/bin/git) is intentionally avoided to support cross-platform builds (Linux, macOS).
+const trackedFiles = spawnSync('git', ['ls-files'], {encoding: 'utf-8'}) // NOSONAR
     .stdout
     .split('\n')
     .filter((f) => f.match(/\.(json|geojson|txt|csv|html)$/))
