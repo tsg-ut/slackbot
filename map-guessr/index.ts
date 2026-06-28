@@ -10,7 +10,7 @@ import {
 import { increment } from "../achievements";
 import { EventEmitter } from 'events';
 const { Mutex } = require("async-mutex");
-const { AteQuiz } = require("../atequiz/index.ts");
+const { AteQuiz } = require("../atequiz");
 const cloudinary = require("cloudinary");
 
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
