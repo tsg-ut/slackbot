@@ -1,3 +1,8 @@
+import axios from 'axios';
+import fs from 'node:fs';
+import { PassThrough } from 'stream';
+import { download } from './download';
+
 vi.mock('axios');
 vi.mock('node:fs', () => {
     const mock = {
@@ -10,12 +15,6 @@ vi.mock('node:fs', () => {
 vi.mock('node:fs/promises', () => ({
     mkdir: vi.fn().mockResolvedValue(undefined),
 }));
-
-import axios from 'axios';
-import fs from 'node:fs';
-
-import { PassThrough } from 'stream';
-import { download } from './download';
 
 const fakeData = Buffer.from('FAKE_DATA');
 const fakePath = '~/fake/path';

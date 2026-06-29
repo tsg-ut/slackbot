@@ -1,4 +1,3 @@
-
 class Model {
 	similarity() {
 		return 0;

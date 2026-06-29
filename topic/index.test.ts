@@ -1,7 +1,12 @@
 /* eslint-disable callback-return */
 /* eslint-disable node/callback-return */
-/* eslint-disable import/imports-first */
-/* eslint-disable import/first */
+
+import type {firestore} from 'firebase-admin';
+import db from '../lib/firestore';
+import {conversationsHistory} from '../lib/slackPatron';
+import Slack from '../lib/slackMock';
+import {getReactions} from '../lib/slackUtils';
+import topicHandler, {addLike, removeLike} from './index';
 
 vi.mock('../achievements');
 vi.mock('../lib/state');
@@ -28,13 +33,6 @@ vi.mock('../lib/firestore', () => ({
 		runTransaction: vi.fn(),
 	},
 }));
-
-import type {firestore} from 'firebase-admin';
-import db from '../lib/firestore';
-import {conversationsHistory} from '../lib/slackPatron';
-import Slack from '../lib/slackMock';
-import {getReactions} from '../lib/slackUtils';
-import topicHandler, {addLike, removeLike} from './index';
 
 const runTransaction = db.runTransaction as vi.MockedFunction<typeof db.runTransaction>;
 

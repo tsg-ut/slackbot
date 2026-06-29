@@ -1,4 +1,3 @@
-
 const fs = {};
 const realFs = require('fs');
 const Path = require('path');

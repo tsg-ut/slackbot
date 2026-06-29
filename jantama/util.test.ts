@@ -1,4 +1,3 @@
-
 import {extractMajsoulId} from './util';
 
 describe('extractMajsoulId', () => {

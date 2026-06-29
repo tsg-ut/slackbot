@@ -143,7 +143,8 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		try {
 			const res = await axios.get(`https://kotobank.jp/word/${encodeURIComponent(word)}`);
 			const dom = new JSDOM(res.data);
-			return dom.window.document.querySelector('section.description').textContent.replace(/[ \t\n]/g, '').match(/(.+?)。/)[1];
+			const el = dom.window.document.querySelector('section.description');
+			return el?.textContent?.replace(/[ \t\n]/g, '').match(/(.+?)。/)?.[1] ?? '';
 		} catch (e) {
 			return '';
 		}

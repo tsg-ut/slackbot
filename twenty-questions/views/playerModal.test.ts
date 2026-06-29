@@ -1,4 +1,3 @@
-
 import playerModal from './playerModal';
 import type {StateObj, PlayerState} from '../TwentyQuestions';
 import type {InputBlock, SectionBlock} from '@slack/web-api';

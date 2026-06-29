@@ -1,11 +1,11 @@
+import axios from 'axios';
+import pocky from './index.js';
+import Slack from '../lib/slackMock';
+
 vi.mock('axios');
 vi.mock('../achievements');
 vi.mock('../lib/slackUtils');
 vi.mock('../lib/state');
-
-import axios from 'axios';
-import pocky from './index.js';
-import Slack from '../lib/slackMock';
 
 let slack: InstanceType<typeof Slack> = null;
 

@@ -1,19 +1,15 @@
-'use strict';
+import cloudinary from 'cloudinary';
+import * as rust_proxy from './rust-proxy';
+import hyperrobot from './index';
+import Slack from '../lib/slackMock';
+import fs from 'fs';
+import path from 'path';
+import type { SectionBlock } from '@slack/web-api';
 
 vi.mock('cloudinary');
 vi.mock('./rust-proxy');
 vi.mock('../achievements');
 vi.mock('../lib/slackUtils');
-
-import cloudinary from 'cloudinary';
-import * as rust_proxy from './rust-proxy';
-
-import hyperrobot from './index';
-import Slack from '../lib/slackMock';
-
-import fs from 'fs';
-import path from 'path';
-import type { SectionBlock } from '@slack/web-api';
 
 const get_data = rust_proxy.get_data as vi.MockedFunction<typeof rust_proxy.get_data>;
 get_data.mockImplementation((x) => {

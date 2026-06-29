@@ -1,6 +1,7 @@
-/* eslint-disable import/imports-first */
-/* eslint-disable import/first */
-/* eslint-env node, jest */
+import FakeTimers from '@sinonjs/fake-timers';
+import type {InstalledClock} from '@sinonjs/fake-timers';
+import Slack from '../lib/slackMock';
+import sunrise from './index';
 
 vi.mock('cloudinary');
 vi.mock('node-persist');
@@ -18,11 +19,6 @@ vi.mock('../lib/openai', () => ({
 		},
 	},
 }));
-
-import FakeTimers from '@sinonjs/fake-timers';
-import type {InstalledClock} from '@sinonjs/fake-timers';
-import Slack from '../lib/slackMock';
-import sunrise from './index';
 
 let slack: Slack = null;
 let clock: InstalledClock = null;

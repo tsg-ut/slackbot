@@ -1,4 +1,3 @@
-
 import {SectionBlock} from '@slack/web-api';
 import {noop} from 'lodash';
 import schedule, {Job, JobCallback} from 'node-schedule';

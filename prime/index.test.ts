@@ -1,7 +1,7 @@
-vi.mock('../achievements');
-
 import Slack from '../lib/slackMock';
 import prime from './index.js';
+
+vi.mock('../achievements');
 
 let slack: InstanceType<typeof Slack> = null;
 

@@ -1,8 +1,7 @@
-/* eslint-env node, jest */
-vi.mock('moment');
-
 import moment from 'moment';
 import {scoreTimeOfDay, getReactionName} from './time-scoring';
+
+vi.mock('moment');
 
 const mockedMoment = vi.mocked(moment);
 

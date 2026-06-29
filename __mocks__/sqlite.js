@@ -1,4 +1,3 @@
-
 const sqlite = {};
 
 sqlite.open = vi.fn(() => ({

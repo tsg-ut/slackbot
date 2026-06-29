@@ -1,3 +1,7 @@
+import moment from 'moment';
+import sushi from './index.js';
+import Slack from '../lib/slackMock';
+
 vi.mock('../achievements');
 vi.mock('moment');
 vi.mock('../lib/state');
@@ -7,10 +11,6 @@ vi.mock('fs-extra', () => ({
 	writeFile: vi.fn(),
 	pathExists: vi.fn(() => Promise.resolve(false)),
 }));
-
-import moment from 'moment';
-import sushi from './index.js';
-import Slack from '../lib/slackMock';
 
 let slack: InstanceType<typeof Slack> = null;
 

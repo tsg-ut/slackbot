@@ -1,8 +1,8 @@
-vi.mock('../achievements');
-vi.mock('cloudinary');
-
 import octas from './index';
 import Slack from '../lib/slackMock';
+
+vi.mock('../achievements');
+vi.mock('cloudinary');
 
 let slack: Slack = null;
 

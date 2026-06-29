@@ -1,3 +1,7 @@
+import sqlite from 'sqlite';
+import Slack from '../lib/slackMock';
+import shogi from './index.js';
+
 vi.mock('./image.js', () => ({
 	upload: vi.fn(() => Promise.resolve('https://hoge.com/hoge.png')),
 }));
@@ -6,10 +10,6 @@ vi.mock('sqlite3', () => {
 	const Database = vi.fn();
 	return {default: {Database}, Database};
 });
-
-import sqlite from 'sqlite';
-import Slack from '../lib/slackMock';
-import shogi from './index.js';
 
 let slack: InstanceType<typeof Slack> = null;
 

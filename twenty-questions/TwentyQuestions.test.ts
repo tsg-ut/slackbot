@@ -1,4 +1,3 @@
-
 import type {MockedStateInterface} from '../lib/__mocks__/state';
 import Slack from '../lib/slackMock';
 import State from '../lib/state';

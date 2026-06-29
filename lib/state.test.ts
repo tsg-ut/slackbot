@@ -1,3 +1,7 @@
+import {StateDevelopment} from './state';
+import path from 'path';
+import fs from 'fs-extra';
+
 vi.mock('fs-extra', () => {
 	const mocked = {
 		mkdirp: vi.fn(),
@@ -9,10 +13,6 @@ vi.mock('fs-extra', () => {
 });
 
 process.env.NODE_ENV = 'development';
-
-import {StateDevelopment} from './state';
-import path from 'path';
-import fs from 'fs-extra';
 
 interface StateObj {
 	number: number,

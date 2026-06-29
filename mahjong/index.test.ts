@@ -1,11 +1,11 @@
+import Slack from '../lib/slackMock';
+import mahjong from './index.js';
+
 vi.mock('@octokit/webhooks', () => ({
 	Webhooks: vi.fn().mockImplementation(() => ({
 		verify: vi.fn().mockResolvedValue(true),
 	})),
 }));
-
-import Slack from '../lib/slackMock';
-import mahjong from './index.js';
 
 let slack: InstanceType<typeof Slack> = null;
 

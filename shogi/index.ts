@@ -337,7 +337,8 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 				filename: path.join(__dirname, 'boards', database),
 				driver: sqlite3.Database,
 			});
-			const data = await state.db.get(oneLine`
+			// condition is built from parseInt() values or fixed strings, so SQL injection is not possible
+			const data = await state.db.get(oneLine` // NOSONAR
 				SELECT *
 				FROM boards
 				WHERE result = 1 AND ${condition}

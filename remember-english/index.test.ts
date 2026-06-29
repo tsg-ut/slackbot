@@ -1,12 +1,10 @@
-/* eslint-disable import/imports-first */
-/* eslint-disable import/first */
-vi.mock('../achievements');
-vi.mock('../lib/slackUtils');
-vi.mock('../lib/state');
-
 import type {KnownBlock, WebAPICallResult, ViewsOpenArguments} from '@slack/web-api';
 import Slack from '../lib/slackMock';
 import {RememberEnglish} from '.';
+
+vi.mock('../achievements');
+vi.mock('../lib/slackUtils');
+vi.mock('../lib/state');
 
 let slack: Slack = null;
 let rememberEnglish: MockedRememberEnglish = null;

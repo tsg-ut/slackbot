@@ -1,5 +1,6 @@
-/* eslint-disable import/imports-first */
-/* eslint-disable import/first */
+import {GuildMember, User, VoiceChannel, VoiceState} from 'discord.js';
+import Slack from '../lib/slackMock';
+import {Notifier} from './notifier';
 
 vi.mock('../lib/state');
 vi.mock('../lib/slack');
@@ -8,10 +9,6 @@ vi.mock('node-schedule', () => ({
 	default: {scheduleJob: vi.fn()},
 	scheduleJob: vi.fn(),
 }));
-
-import {GuildMember, User, VoiceChannel, VoiceState} from 'discord.js';
-import Slack from '../lib/slackMock';
-import {Notifier} from './notifier';
 
 describe('discord', () => {
 	describe('Notifier', () => {

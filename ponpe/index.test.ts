@@ -1,10 +1,11 @@
+import path from 'path';
+import fs from 'fs';
+import ponpe from './index';
+import Slack from '../lib/slackMock';
+
 vi.mock('axios');
 vi.mock('../lib/slackUtils');
 vi.mock('../lib/download');
-
-import path from 'path';
-import fs from 'fs';
-
 vi.mock('fs');
 
 // @ts-expect-error
@@ -13,9 +14,6 @@ fs.virtualFiles = {
 	[path.join(__dirname, 'data','emoji.json')]: `[{"short_names":["hoge","huga"]}]`,
 	[path.join(__dirname, 'data','common_word_list')]: `シコウサクゴ,試行錯誤`,
 };
-
-import ponpe from './index';
-import Slack from '../lib/slackMock';
 
 let slack: Slack = null;
 

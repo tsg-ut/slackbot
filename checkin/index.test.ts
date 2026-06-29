@@ -1,8 +1,8 @@
-vi.mock('axios');
-
 import axios from 'axios';
 import Slack from '../lib/slackMock';
 import checkin from './index.js';
+
+vi.mock('axios');
 
 let slack: InstanceType<typeof Slack> = null;
 

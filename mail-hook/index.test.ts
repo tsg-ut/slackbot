@@ -1,5 +1,4 @@
-/* eslint-disable import/imports-first, import/first */
-/* eslint-env node, jest */
+import {decodeMailBody, decodeMailSubject} from './index';
 
 vi.mock('../lib/openai', () => ({
 	__esModule: true,
@@ -16,8 +15,6 @@ vi.mock('../lib/mailgun', () => ({
 		client: vi.fn(),
 	},
 }));
-
-import {decodeMailBody, decodeMailSubject} from './index';
 
 describe('mail-hook', () => {
 	describe('decodeMailSubject', () => {

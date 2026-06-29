@@ -1,3 +1,9 @@
+import roomGacha from './index';
+import Slack from '../lib/slackMock';
+import { stripIndents } from 'common-tags';
+import assert from 'assert';
+import type { KnownBlock } from '@slack/web-api';
+
 vi.mock('scrape-it', async (importOriginal) => {
     const actual = await importOriginal<typeof import('scrape-it')>();
     const {scrapeHTML} = actual;
@@ -10,12 +16,6 @@ vi.mock('scrape-it', async (importOriginal) => {
         scrapeHTML,
     };
 });
-
-import roomGacha from './index';
-import Slack from '../lib/slackMock';
-import { stripIndents } from 'common-tags';
-import assert from 'assert';
-import type { KnownBlock } from '@slack/web-api';
 
 let slack: Slack = null;
 

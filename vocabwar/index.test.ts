@@ -1,15 +1,14 @@
-vi.mock('axios');
-vi.mock('fs');
-vi.mock('word2vec');
-vi.mock('../lib/download');
-
-vi.mock('./state.json', () => ({}));
-
 import vocabwar from './index.js';
 import Slack from '../lib/slackMock';
 import {promisify} from 'util';
 import path from 'path';
 import fs from 'fs';
+
+vi.mock('axios');
+vi.mock('fs');
+vi.mock('word2vec');
+vi.mock('../lib/download');
+vi.mock('./state.json', () => ({}));
 
 (fs as any).virtualFiles = {
 	[path.join(__dirname, 'data')]: '',
