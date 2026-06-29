@@ -40,7 +40,11 @@ describe('SlackCache', () => {
 				throw Error('unsupported mock');
 			}
 			const fn = path.join(__dirname, '__testdata__/conversations.history.json');
-			const res = await fs.readJson(fn);
+			// Use sync read to ensure all concurrent modifyReaction calls get already-resolved
+			// promises, making microtask resolution order deterministic (FIFO).
+			// With async readJson, CI and local environments may resolve in different orders,
+			// causing non-deterministic test outcomes.
+			const res = fs.readJsonSync(fn);
 
 			if (!args.limit) {
 				return res;
