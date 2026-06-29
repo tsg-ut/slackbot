@@ -34,23 +34,11 @@ jobs:
         env:
           NODE_OPTIONS: --trace-warnings --trace-deprecation --trace-exit --trace-uncaught --unhandled-rejections=strict --max-old-space-size=8192
 
-      - name: Set up reviewdog
-        if: ${{ github.event_name == 'pull_request' }}
-        uses: reviewdog/action-setup@v1
-        with:
-          reviewdog_version: latest
-
-      - name: Run reviewdog
-        continue-on-error: true
-        if: ${{ github.event_name == 'pull_request' }}
-        env:
-          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git ls-files | grep eslintrc | xargs -L 1 dirname | paste -sd ' ' | xargs -I {} sh -c "npx eslint --ext js,ts -f rdjson {} | reviewdog -f=rdjson -name=ESLint -reporter=github-pr-review"
-
       - name: codecov
         continue-on-error: true
-        run: npx codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   test-rust:
     runs-on: ubuntu-latest
