@@ -1,3 +1,6 @@
+/* eslint-disable require-await */
+
+import {expect, it, beforeEach} from 'vitest';
 import Blocker from './block';
 
 let blocker: InstanceType<typeof Blocker> = null;
@@ -10,10 +13,10 @@ it('blocks until unblocked', () => new Promise<void>(async (resolve) => {
 	const unblock = await blocker.block('block1');
 	let blocked = true;
 
-	blocker.wait(() => {
+	blocker.wait(async () => {
 		expect(blocked).toBe(false);
 		resolve();
-	});
+	}, 0);
 
 	process.nextTick(() => {
 		blocked = false;
@@ -28,39 +31,41 @@ it('blocks until all unblocked', () => new Promise<void>(async (resolve) => {
 	}
 	let unblocked = 0;
 
-	blocker.wait(() => {
+	blocker.wait(async () => {
 		expect(unblocked).toBe(10);
 		resolve();
-	});
+	}, 0);
 
 	while (unblocks.length > 0) {
 		unblocked++;
 		unblocks.shift()();
 
-		await new Promise((res) => process.nextTick(res));
+		await new Promise((resolve) => process.nextTick(resolve));
 	}
 }));
 
 it('calls intervalCallback when block continues', () => new Promise<void>(async (resolve, reject) => {
 	await blocker.block('block');
 
-	blocker.wait(reject as () => void, 0, resolve);
+	blocker.wait(async () => {
+		reject(new Error());
+	}, 0, () => resolve());
 }));
 
 it('does not call intervalCallback unless blocked', () => new Promise<void>(async (resolve, reject) => {
 	const unblock = await blocker.block('block');
 	unblock();
 
-	blocker.wait(() => {
+	blocker.wait(async () => {
 		process.nextTick(resolve);
-	}, 0, reject as () => void);
+	}, 0, reject);
 }));
 
 it('cannot block while wait callback is runnning', () => new Promise<void>(async (resolve, reject) => {
 	blocker.wait(() => new Promise<void>((callbackResolve) => process.nextTick(() => {
 		resolve();
 		callbackResolve();
-	})));
+	})), 0);
 
 	await blocker.block('block');
 	reject(new Error());

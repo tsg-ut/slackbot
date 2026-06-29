@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "files": [
+    "globals.d.ts"
+  ],
+  "exclude": [
+    "./bin",
+    "./functions",
+    "./node_modules",
+    "./.build",
+    "**/*.test.ts",
+    "**/*.test.js",
+    "**/*.spec.ts",
+    "**/*.spec.js"
+  ],
+  "compilerOptions": {
+    "outDir": ".build",
+    "types": ["node"]
+  }
+}

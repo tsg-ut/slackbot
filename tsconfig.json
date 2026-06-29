@@ -9,14 +9,9 @@
     "./bin",
     "./functions",
     "./node_modules",
-    "./.build",
-    "**/*.test.ts",
-    "**/*.test.js",
-    "**/*.spec.ts",
-    "**/*.spec.js"
+    "./.build"
   ],
   "compilerOptions": {
-    "outDir": ".build",
     "allowJs": true,
     "declaration": false,
     "sourceMap": false,
@@ -30,7 +25,7 @@
     "lib": [
       "ESNext"
     ],
-    "types": ["node"],
+    "types": ["node", "vitest/globals"],
     "skipLibCheck": true,
     "experimentalDecorators": true,
     "paths": {

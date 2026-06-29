@@ -339,7 +339,7 @@ it('reacts to "twitter" with :x-logo: case-insensitively', () => new Promise<voi
 }));
 
 it('does not react to "twitter.com"', async () => {
-	slack.webClient.reactions.add.mockReturnValue(null);
+	vi.mocked(slack.webClient.reactions.add).mockReturnValue(null);
 
 	slack.eventClient.emit('message', {
 		channel: slack.fakeChannel,
@@ -370,7 +370,7 @@ it('reacts to "X" with :twitter:', () => new Promise<void>((resolve) => {
 }));
 
 it('does not react to words including letter "x" (e.g. "fox", "xylophone")', async () => {
-	slack.webClient.reactions.add.mockReturnValue(null);
+	vi.mocked(slack.webClient.reactions.add).mockReturnValue(null);
 
 	slack.eventClient.emit('message', {
 		channel: slack.fakeChannel,

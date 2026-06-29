@@ -30,10 +30,10 @@ describe('shogi', () => {
 				is_good: 1,
 			},
 		];
-		const {username, attachments, text} = await slack.getResponseTo('将棋');
+		const message = await slack.getResponseTo('将棋');
 
-		expect(username).toBe('shogi');
-		expect(text).toMatch(/手必勝/);
-		expect(attachments).toHaveLength(1);
+		expect('username' in message && message.username).toBe('shogi');
+		expect(message.text).toMatch(/手必勝/);
+		expect('attachments' in message && message.attachments).toHaveLength(1);
 	});
 });

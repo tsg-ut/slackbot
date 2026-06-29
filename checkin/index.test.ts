@@ -55,11 +55,12 @@ describe('tiobot', () => {
 			},
 		};
 
-		const {text, username} = await slack.getResponseTo('checkin-check');
+		const message = await slack.getResponseTo('checkin-check');
 
-		expect(username).toBe('checkin');
-		expect(text).toContain('Koki Takahashi');
-		expect(text).toContain('理学部7号館');
-		expect(text).toContain('おるでｗ');
+		// eslint-disable-next-line no-restricted-syntax
+		expect('username' in message && message.username).toBe('checkin');
+		expect(message.text).toContain('Koki Takahashi');
+		expect(message.text).toContain('理学部7号館');
+		expect(message.text).toContain('おるでｗ');
 	});
 });

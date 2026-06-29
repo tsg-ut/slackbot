@@ -1,6 +1,7 @@
 import {StateDevelopment} from './state';
 import path from 'path';
 import fs from 'fs-extra';
+import type {Mock} from 'vitest';
 
 vi.mock('fs-extra', () => {
 	const mocked = {
@@ -28,9 +29,9 @@ describe('State', () => {
 	describe('StateDevelopment', () => {
 		it('writes default values as JSON when initialization', async () => {
 			await StateDevelopment.init<StateObj>('test', {number: 334});
-			expect((<vi.Mock>fs.mkdirp).mock.calls).toHaveLength(1);
-			expect((<vi.Mock>fs.writeFile).mock.calls).toHaveLength(1);
-			expect((<vi.Mock>fs.writeFile).mock.calls[0]).toEqual([
+			expect((<Mock>fs.mkdirp).mock.calls).toHaveLength(1);
+			expect((<Mock>fs.writeFile).mock.calls).toHaveLength(1);
+			expect((<Mock>fs.writeFile).mock.calls[0]).toEqual([
 				path.join(__dirname, '__state__', 'test.json'),
 				'{\n  "number": 334\n}',
 			]);
@@ -59,7 +60,7 @@ describe('State', () => {
 			});
 
 			const call = await new Promise((resolve) => {
-				(<vi.Mock>fs.writeFile).mockImplementationOnce((...args) => resolve(args));
+				(<Mock>fs.writeFile).mockImplementationOnce((...args) => resolve(args));
 
 				state.number = 100;
 				expect(state.number).toBe(100);
@@ -78,7 +79,7 @@ describe('State', () => {
 			});
 
 			const call = await new Promise((resolve) => {
-				(<vi.Mock>fs.writeFile).mockImplementationOnce((...args) => resolve(args));
+				(<Mock>fs.writeFile).mockImplementationOnce((...args) => resolve(args));
 
 				const item = state.list.find(({a}) => a === 1);
 				item.b = '2';
@@ -98,7 +99,7 @@ describe('State', () => {
 			});
 
 			const call = await new Promise((resolve) => {
-				(<vi.Mock>fs.writeFile).mockImplementationOnce((...args) => resolve(args));
+				(<Mock>fs.writeFile).mockImplementationOnce((...args) => resolve(args));
 
 				state.number2 = 200;
 				expect(state.number2).toBe(200);
@@ -117,7 +118,7 @@ describe('State', () => {
 			});
 
 			const call = await new Promise((resolve) => {
-				(<vi.Mock>fs.writeFile).mockImplementationOnce((...args) => resolve(args));
+				(<Mock>fs.writeFile).mockImplementationOnce((...args) => resolve(args));
 
 				state.list.push({a: 100, b: '100'})
 				expect(state.list).toEqual([{a: 100, b: '100'}]);
@@ -130,8 +131,8 @@ describe('State', () => {
 		});
 
 		it('merges the saved state with the default value', async () => {
-			(<vi.Mock>fs.pathExists).mockImplementation(async () => true);
-			(<vi.Mock>fs.readFile).mockImplementation(async () => (
+			(<Mock>fs.pathExists).mockImplementation(async () => true);
+			(<Mock>fs.readFile).mockImplementation(async () => (
 				JSON.stringify({number: 100, list: [{a: 1, b: '1'}]})
 			));
 

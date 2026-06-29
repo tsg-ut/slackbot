@@ -1,10 +1,11 @@
 /* eslint-disable no-undef */
 import {constants, promises as fs} from 'fs';
 import path from 'path';
+import type {Mock} from 'vitest';
 import Slack from '../lib/slackMock';
 import {getMemberName} from '../lib/slackUtils';
-import {AchievementType, Challenge, SolvedInfo, Profile} from './lib/BasicTypes';
 import {fetchChallsAH, fetchUserProfileAH} from './lib/AHManager';
+import {AchievementType, Challenge, SolvedInfo, Profile} from './lib/BasicTypes';
 import {fetchChallsCH, fetchUserProfileCH} from './lib/CHManager';
 import {fetchChallsKSN, fetchUserProfileKSN} from './lib/KSNManager';
 import {fetchChallsTW, fetchUserProfileTW} from './lib/TWManager';
@@ -164,17 +165,17 @@ beforeEach(async () => {
 		resolve({userid: 'fakeid', name: 'fakename'});
 	});
 	// mock funcs containing axios calls
-	(fetchChallsTW as vi.Mock).mockReturnValue(sampleChallsTW);
-	(fetchUserProfileTW as vi.Mock).mockReturnValue(sampleProfileTW);
-	(fetchChallsXYZ as vi.Mock).mockReturnValue(sampleChallsXYZ);
-	(fetchUserProfileXYZ as vi.Mock).mockReturnValue(sampleProfileXYZ);
-	(fetchChallsCH as vi.Mock).mockReturnValue(sampleChallsCH);
-	(fetchUserProfileCH as vi.Mock).mockReturnValue(sampleProfileCH);
-	(fetchChallsKSN as vi.Mock).mockReturnValue(sampleChallsKSN);
-	(fetchUserProfileKSN as vi.Mock).mockReturnValue(sampleProfileKSN);
-	(fetchChallsAH as vi.Mock).mockReturnValue(sampleChallsAH);
-	(fetchUserProfileAH as vi.Mock).mockReturnValue(sampleProfileAH);
-	(getMemberName as vi.Mock).mockReturnValue('FakeName');
+	(fetchChallsTW as Mock).mockReturnValue(sampleChallsTW);
+	(fetchUserProfileTW as Mock).mockReturnValue(sampleProfileTW);
+	(fetchChallsXYZ as Mock).mockReturnValue(sampleChallsXYZ);
+	(fetchUserProfileXYZ as Mock).mockReturnValue(sampleProfileXYZ);
+	(fetchChallsCH as Mock).mockReturnValue(sampleChallsCH);
+	(fetchUserProfileCH as Mock).mockReturnValue(sampleProfileCH);
+	(fetchChallsKSN as Mock).mockReturnValue(sampleChallsKSN);
+	(fetchUserProfileKSN as Mock).mockReturnValue(sampleProfileKSN);
+	(fetchChallsAH as Mock).mockReturnValue(sampleChallsAH);
+	(fetchUserProfileAH as Mock).mockReturnValue(sampleProfileAH);
+	(getMemberName as Mock).mockReturnValue('FakeName');
 
 	slack = new Slack();
 	process.env.CHANNEL_PWNABLE_TW = slack.fakeChannel;

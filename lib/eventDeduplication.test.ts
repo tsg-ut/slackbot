@@ -3,11 +3,12 @@ import {
 	closeDuplicateEventChecker,
 } from './eventDeduplication';
 import { createClient } from 'redis';
+import type { Mock, Mocked } from 'vitest';
 
 const mockRedis: Pick<
-	vi.Mocked<ReturnType<typeof createClient>>,
-	'set' | 'connect' | 'quit' | 'on'
-> = {
+	Mocked<ReturnType<typeof createClient>>,
+	'set' | 'connect' | 'quit'
+> & {on: Mock<ReturnType<typeof createClient>['on']>} = {
 	set: vi.fn(),
 	connect: vi.fn(),
 	quit: vi.fn(),

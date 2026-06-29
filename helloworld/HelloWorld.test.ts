@@ -52,7 +52,7 @@ describe('helloworld', () => {
 	});
 
 	it('can post Hello world message', async () => {
-		const postMessage = slack.webClient.chat.postMessage as vi.MockedFunction<typeof slack.webClient.chat.postMessage>;
+		const postMessage = vi.mocked(slack.webClient.chat.postMessage);
 		postMessage.mockResolvedValueOnce({
 			ok: true,
 			ts: slack.fakeTimestamp,
@@ -69,7 +69,7 @@ describe('helloworld', () => {
 			channel: slack.fakeChannel,
 		});
 
-		const mockedPostMessage = slack.webClient.chat.postMessage as vi.MockedFunction<typeof slack.webClient.chat.postMessage>;
+		const mockedPostMessage = vi.mocked(slack.webClient.chat.postMessage);
 		expect(mockedPostMessage).toBeCalledWith({
 			username: 'helloworld [TEST_AUTHORITY]',
 			channel: slack.fakeChannel,

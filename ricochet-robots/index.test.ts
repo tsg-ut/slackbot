@@ -11,7 +11,7 @@ vi.mock('./rust-proxy');
 vi.mock('../achievements');
 vi.mock('../lib/slackUtils');
 
-const get_data = rust_proxy.get_data as vi.MockedFunction<typeof rust_proxy.get_data>;
+const get_data = vi.mocked(rust_proxy.get_data);
 get_data.mockImplementation((x) => {
 	return new Promise((resolve) => {
 		resolve(fs.readFileSync(path.join(__dirname,'rust_test_output.txt')).toString());

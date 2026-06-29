@@ -3,8 +3,8 @@
 
 import type {firestore} from 'firebase-admin';
 import db from '../lib/firestore';
-import {conversationsHistory} from '../lib/slackPatron';
 import Slack from '../lib/slackMock';
+import {conversationsHistory} from '../lib/slackPatron';
 import {getReactions} from '../lib/slackUtils';
 import topicHandler, {addLike, removeLike} from './index';
 
@@ -34,7 +34,7 @@ vi.mock('../lib/firestore', () => ({
 	},
 }));
 
-const runTransaction = db.runTransaction as vi.MockedFunction<typeof db.runTransaction>;
+const runTransaction = vi.mocked(db.runTransaction);
 
 const FAKE_SANDBOX = 'C123456789';
 
@@ -137,7 +137,7 @@ describe('topic', () => {
 			) => {
 				const MESSAGE_TS = '12345';
 
-				const converastionsInfo = mockSlack.webClient.conversations.info as vi.MockedFunction<typeof mockSlack.webClient.conversations.info>;
+				const converastionsInfo = vi.mocked(mockSlack.webClient.conversations.info);
 				converastionsInfo.mockResolvedValue({
 					ok: true,
 					channel: {
@@ -147,7 +147,7 @@ describe('topic', () => {
 					},
 				});
 
-				const mockConversationsHistory = conversationsHistory as vi.MockedFunction<typeof conversationsHistory>;
+				const mockConversationsHistory = vi.mocked(conversationsHistory);
 				mockConversationsHistory.mockResolvedValue({
 					ok: true,
 					messages: [{
@@ -157,10 +157,11 @@ describe('topic', () => {
 					}],
 				});
 
-				const setTopic = mockSlack.webClient.conversations.setTopic as vi.MockedFunction<typeof mockSlack.webClient.conversations.setTopic>;
+				const setTopic = vi.mocked(mockSlack.webClient.conversations.setTopic);
 				setTopic.mockImplementation(() => Promise.resolve({ok: true}));
 
-				(getReactions as vi.MockedFunction<typeof getReactions>).mockResolvedValue(reactions);
+				const mockedGetReactions = vi.mocked(getReactions);
+				mockedGetReactions.mockResolvedValue(reactions);
 
 				process.env.CHANNEL_SANDBOX = FAKE_SANDBOX;
 

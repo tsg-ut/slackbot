@@ -1,6 +1,5 @@
 import vocabwar from './index.js';
 import Slack from '../lib/slackMock';
-import {promisify} from 'util';
 import path from 'path';
 import fs from 'fs';
 
@@ -40,35 +39,35 @@ describe('vocabwar', () => {
 	});
 
 	it('responds to "弓箭"', async () => {
-		const {username, text, attachments} = await slack.getResponseTo('弓箭');
+		const message = await slack.getResponseTo('弓箭');
 
-		expect(username).toBe('vocabwar');
-		expect(text).toContain('弓箭');
-		expect(attachments).toHaveLength(10);
+		expect('username' in message && message.username).toBe('vocabwar');
+		expect(message.text).toContain('弓箭');
+		expect('attachments' in message && message.attachments).toHaveLength(10);
 	});
 
 	it('responds to "即弓箭"', async () => {
-		const {username, text} = await slack.getResponseTo('即弓箭');
+		const message = await slack.getResponseTo('即弓箭');
 
-		expect(username).toBe('vocabwar');
-		expect(text).toContain('弓箭');
-		expect(text).toContain('終了予定時刻');
+		expect('username' in message && message.username).toBe('vocabwar');
+		expect(message.text).toContain('弓箭');
+		expect(message.text).toContain('終了予定時刻');
 	});
 
 	it('responds to "弓箭 お題"', async () => {
-		const {username, text} = await slack.getResponseTo('弓箭 丸い');
+		const message = await slack.getResponseTo('弓箭 丸い');
 
-		expect(username).toBe('vocabwar');
-		expect(text).toContain('弓箭');
-		expect(text).toContain('終了予定時刻');
-		expect(text).toContain('丸い');
+		expect('username' in message && message.username).toBe('vocabwar');
+		expect(message.text).toContain('弓箭');
+		expect(message.text).toContain('終了予定時刻');
+		expect(message.text).toContain('丸い');
 	});
 
 	it('does not set unknown words to theme by "弓箭 お題"', async () => {
-		const {username, text} = await slack.getResponseTo('弓箭 んをわろれるりら');
-		expect(username).toBe('vocabwar');
-		expect(text).toContain('知らない');
-		expect(text).not.toContain('決定');
+		const message = await slack.getResponseTo('弓箭 んをわろれるりら');
+		expect('username' in message && message.username).toBe('vocabwar');
+		expect(message.text).toContain('知らない');
+		expect(message.text).not.toContain('決定');
 	});
 });
 
@@ -86,15 +85,15 @@ describe('vocabwar', () => {
 	});
 
 	it('rejects the same word as theme', async () => {
-		const {username, text} = await slack.getResponseTo('丸い');
-		expect(username).toBe('vocabwar');
-		expect(text).toContain('お題');
+		const message = await slack.getResponseTo('丸い');
+		expect('username' in message && message.username).toBe('vocabwar');
+		expect(message.text).toContain('お題');
 	});
 
 	it('rejects unknown word', async () => {
-		const {username, text} = await slack.getResponseTo('んをわろれるりら');
-		expect(username).toBe('vocabwar');
-		expect(text).toContain('知らない');
+		const message = await slack.getResponseTo('んをわろれるりら');
+		expect('username' in message && message.username).toBe('vocabwar');
+		expect(message.text).toContain('知らない');
 	});
 
 	it('reacts "+1" to valid answer', () => new Promise<void>((resolve, reject) => {
@@ -128,7 +127,7 @@ describe('vocabwar', () => {
 	/* currently unavailable because of slackMock.handleWebcall
 	it('posts result', () => new Promise<void>((resolve, reject) => {
 		slack.on('chat.postMessage', ({text}) => {
-			expect(text).toContain('結果');
+			expect(message.text).toContain('結果');
 			resolve();
 		});
 	}));

@@ -4,6 +4,22 @@ import get from 'lodash/get';
 import schedule from 'node-schedule';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
+import type {MessageEvent} from '@slack/bolt';
+
+interface User {
+	firstName: string;
+	lastName: string;
+	photo: {
+		prefix: string;
+		suffix: string;
+	};
+}
+
+interface HereNowItem {
+	id: string;
+	user: User;
+	shout?: string;
+}
 
 const log = logger.child({bot: 'checkin'});
 
@@ -14,7 +30,7 @@ const places = [
 
 export default ({eventClient, webClient: slack}: SlackInterface) => {
 	const state = {
-		herenow: new Map<string, any[]>(),
+		herenow: new Map<string, HereNowItem[]>(),
 	};
 
 	const job = async () => {
@@ -32,11 +48,11 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 				responseType: 'json',
 			});
 
-			const items: any[] = get(data, ['data', 'response', 'hereNow', 'items'], []);
+			const items: HereNowItem[] = get(data, ['data', 'response', 'hereNow', 'items'], []);
 
 			if (state.herenow.has(place.id)) {
 				const newUsers = items.filter(({id}) => (
-					state.herenow.get(place.id).find((user: any) => user.id === id) === undefined
+					state.herenow.get(place.id).find((user) => user.id === id) === undefined
 				));
 
 				for (const {user, shout} of newUsers) {
@@ -60,8 +76,8 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 		schedule.scheduleJob('*/3 * * * *', job);
 	}
 
-	eventClient.on('message', (message: any) => {
-		if (message.text === 'checkin-check' && message.channel === process.env.CHANNEL_SANDBOX) {
+	eventClient.on('message', (message: MessageEvent) => {
+		if ('text' in message && message.text === 'checkin-check' && message.channel === process.env.CHANNEL_SANDBOX) {
 			job();
 		}
 	});

@@ -13,9 +13,9 @@ beforeEach(() => {
 
 describe('shogi', () => {
 	it('responds to "素数大富豪"', async () => {
-		const {username, text} = await slack.getResponseTo('素数大富豪');
+		const message = await slack.getResponseTo('素数大富豪');
 
-		expect(username).toBe('primebot');
-		expect(text).toContain('手札');
+		expect('username' in message && message.username).toBe('primebot');
+		expect(message.text).toContain('手札');
 	});
 });

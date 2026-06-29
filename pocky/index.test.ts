@@ -18,9 +18,9 @@ beforeEach(async () => {
 describe('pocky', () => {
 	it('responds to "ほげ?"', async () => {
 		(axios as any).response = {data: [null, ['ほげ ふが']]};
-		const {username, text} = await slack.getResponseTo('ほげ?');
+		const message = await slack.getResponseTo('ほげ?');
 
-		expect(username).toBe('pocky');
-		expect(text).toBe('ふが');
+		expect('username' in message && message.username).toBe('pocky');
+		expect(message.text).toBe('ふが');
 	});
 });

@@ -17,8 +17,8 @@ beforeEach(() => {
 
 describe('mahjong', () => {
 	it('responds to "配牌"', async () => {
-		const {username} = await slack.getResponseTo('配牌');
+		const message = await slack.getResponseTo('配牌');
 
-		expect(username).toBe('mahjong');
+		expect('username' in message && message.username).toBe('mahjong');
 	});
 });
