@@ -31,6 +31,10 @@ process.on('unhandledRejection', (error: Error, promise: Promise<any>) => {
 	log.error(`unhandledRejection at: ${promise} reason: ${error.stack ?? error.message}`, { error, stack: error.stack, promise });
 });
 
+process.on('uncaughtException', (error: Error) => {
+	log.error(`uncaughtException: ${error.stack ?? error.message}`, { error, stack: error.stack });
+});
+
 
 // Disable the cache since it likely hits the swap anyway
 sharp.cache(false);
