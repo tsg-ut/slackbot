@@ -3,6 +3,7 @@
 jest.mock('axios');
 jest.mock('fs');
 jest.mock('word2vec');
+jest.mock('../lib/download');
 
 jest.mock('./state.json', () => ({}), {virtual: true});
 

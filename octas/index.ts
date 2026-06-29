@@ -2,7 +2,6 @@ import type {SlackInterface} from '../lib/slack';
 import logger from '../lib/logger';
 import cloudinary from 'cloudinary';
 import sharp from 'sharp';
-import path from 'path';
 import {stripIndent} from 'common-tags';
 import Board from './lib/Board';
 import BoardElement from './lib/Render';
@@ -103,7 +102,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
     };
 
     const dom: any = await new Promise((resolve, reject) => {
-        const resource: string = path.join(__dirname, "../node_modules/snapsvg/dist/snap.svg.js");
+        const resource: string = require.resolve("snapsvg/dist/snap.svg.js");
         const dom = new JSDOM(`
                 <!DOCTYPE html><html>
                 <body><div id="test"></div></body></html>

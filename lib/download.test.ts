@@ -1,12 +1,15 @@
 jest.mock('axios');
-jest.mock('fs', () => ({
+jest.mock('node:fs', () => ({
     createWriteStream: jest.fn(),
     constants: { F_OK: 0 },
     access: jest.fn(),
 }));
+jest.mock('node:fs/promises', () => ({
+    mkdir: jest.fn().mockResolvedValue(undefined),
+}));
 
 import axios from 'axios';
-import fs from 'fs';
+import fs from 'node:fs';
 
 import { PassThrough } from 'stream';
 import { download } from './download';
