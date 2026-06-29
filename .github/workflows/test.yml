@@ -36,9 +36,10 @@ jobs:
 
       - name: codecov
         continue-on-error: true
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
 
   test-rust:
     runs-on: ubuntu-latest
