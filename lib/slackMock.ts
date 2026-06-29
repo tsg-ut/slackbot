@@ -41,7 +41,7 @@ const createWebClient = (
 				const path = stack.join('.');
 				const methodName = last(stack);
 				if (registeredMocks.has(path)) {
-					return registeredMocks.get(path)(...args);
+					return (registeredMocks.get(path) as unknown as (...args: any[]) => any)(...args);
 				}
 				if (isMockMethodCall(methodName)) {
 					const mock = vi.fn();

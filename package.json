@@ -161,6 +161,9 @@
   },
   "devDependencies": {
     "@hakatashi/eslint-config": "^1.19.0",
+    "@types/byline": "^4.2.36",
+    "@types/download": "^8.0.5",
+    "@types/node-emoji": "^1.8.2",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "@typescript/native-preview": "^7.0.0-dev.20260612.1",

@@ -1,6 +1,5 @@
 import moment from 'moment';
 import wanakana from 'wanakana';
-// @ts-expect-error: Not typed
 import {hiraganize} from 'japanese';
 
 export interface TimeOfDay {

@@ -1,5 +1,4 @@
 import * as opentype from 'opentype.js';
-// @ts-expect-error
 import download from 'download';
 import path from 'path';
 import fs from 'fs';

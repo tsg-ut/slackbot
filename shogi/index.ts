@@ -25,6 +25,12 @@ import {
 	transitionToText,
 } from './util.js';
 
+interface ShogiDbRow {
+	board: Buffer;
+	result: number | null;
+	depth: number;
+}
+
 const iconUrl =
 	'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/kenNldpvFDI6baHIW0XnB6JzITdh3hB2gCLcBGAs/s400/character_game_syougi.png';
 
@@ -82,7 +88,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 
 	const post = async (message: string, {mode = 'thread'} = {}) => {
 		const imageUrl = await upload(state.board);
-		return slack.chat.postMessage({
+		const baseArgs = {
 			channel: process.env.CHANNEL_SANDBOX,
 			text: message,
 			username: 'shogi',
@@ -94,8 +100,11 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 				},
 			],
 			thread_ts: state.thread,
-			...(mode === 'broadcast' ? {reply_broadcast: true} : {}),
-		});
+		};
+		if (mode === 'broadcast') {
+			return slack.chat.postMessage({...baseArgs, reply_broadcast: true});
+		}
+		return slack.chat.postMessage(baseArgs);
 	};
 
 	const end = async (color: any, reason?: string) => {
@@ -212,7 +221,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 
 		const transitions = getTransitions(inversedBoard);
 
-		const transitionResults = await state.db.all(
+		const transitionResults: ShogiDbRow[] = await state.db.all(
 			oneLine`
 				SELECT board, result, depth
 				FROM boards
@@ -430,7 +439,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 				{
 					const transitions = getTransitions(board);
 
-					const transitionResults = await state.db.all(
+					const transitionResults: ShogiDbRow[] = await state.db.all(
 						oneLine`
 							SELECT board, result, depth
 							FROM boards
@@ -443,7 +452,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 					);
 
 					const transitionResult = minBy(
-						transitionResults.filter(({result}: any) => result === 0),
+						transitionResults.filter(({result}) => result === 0),
 						'depth',
 					);
 					const transition = transitions.find(
@@ -471,7 +480,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 				{
 					const transitions = getTransitions(board);
 
-					const transitionResults = await state.db.all(
+					const transitionResults: ShogiDbRow[] = await state.db.all(
 						oneLine`
 							SELECT board, result, depth
 							FROM boards
@@ -484,7 +493,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 					);
 
 					const transitionResult = maxBy(
-						transitionResults.filter(({result}: any) => result === 1),
+						transitionResults.filter(({result}) => result === 1),
 						'depth',
 					);
 					const transition = transitions.find(
