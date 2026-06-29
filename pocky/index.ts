@@ -1,15 +1,16 @@
-const axios = require("axios");
-const emoji = require("node-emoji");
-const download = require("download");
-const {promises: fs, constants} = require("fs");
-const path = require("path");
-const {sample, get} = require("lodash");
-const {hiraganize} = require("japanese");
-const {stripIndents} = require("common-tags");
-const {unlock, increment} = require("../achievements");
-const {default: logger} = require('../lib/logger');
-const {getMemberName} = require('../lib/slackUtils');
-const {default: State} = require('../lib/state');
+import axios from 'axios';
+import * as emoji from 'node-emoji';
+import download from 'download';
+import {promises as fs, constants} from 'fs';
+import path from 'path';
+import {sample, get} from 'lodash';
+import {hiraganize} from 'japanese';
+import {stripIndents} from 'common-tags';
+import {unlock, increment} from '../achievements/index.js';
+import logger from '../lib/logger';
+import {getMemberName} from '../lib/slackUtils';
+import State from '../lib/state';
+import type {SlackInterface} from '../lib/slack';
 
 const log = logger.child({bot: 'pocky'});
 
@@ -17,7 +18,7 @@ const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，�
 
 const ignoreRe = /( 英語| 韓国語| 中国語|の?意味|meaning|とは)+$/i;
 
-async function getSuggestions(text) {
+async function getSuggestions(text: string): Promise<string[]> {
 	const response = await axios({
 		url: "https://www.google.com/complete/search",
 		params: {
@@ -33,7 +34,7 @@ async function getSuggestions(text) {
 	return get(response, ['data', 1], []);
 }
 
-async function reply(text, index) {
+async function reply(text: string, index: number): Promise<string | null> {
 	try {
 		const suggestions = await getSuggestions(text);
 		return generateReply(text, suggestions, index);
@@ -43,8 +44,7 @@ async function reply(text, index) {
 	}
 }
 
-function generateReply(text, words, index) {
-	// logger.info(text, words, index);
+function generateReply(text: string, words: string[], index: number): string | null {
 	const strippedText = text.replace(stripRe, "");
 	const normalizedText = normalize(strippedText);
 	const isAlphabet = /[a-z]$/.test(normalizedText);
@@ -54,35 +54,27 @@ function generateReply(text, words, index) {
 			return false;
 		}
 		const trailer = myWord.slice(normalizedText.length);
-		// let result = "";
-		// for (const token of trailer.split(/(\s+)/)) {
-		// 	result += token;
-		// 	if (token.replace(stripRe, "") !== "") {
-		// 		break;
-		// 	}
-		// }
 		const result = trailer;
 		return normalize(result).replace(stripRe, "") ? result : false;
-	}).filter(Boolean);
+	}).filter(Boolean) as string[];
 	let sortedTrailers = trailers;
 	if (!isAlphabet) {
-		const trailersSpaced = [];
-		const trailersNospaced = [];
+		const trailersSpaced: string[] = [];
+		const trailersNospaced: string[] = [];
 		trailers.forEach((trailer) => {
 			(trailer[0] === " " ? trailersSpaced : trailersNospaced).push(trailer);
 		});
 		sortedTrailers = trailersNospaced.concat(trailersSpaced);
 	}
-	// logger.info(sortedTrailers);
 	if (sortedTrailers.length <= index) {
 		return null;
 	}
 	return sortedTrailers[index].replace(stripRe, "");
 }
 
-function slackDecode(text) {
+function slackDecode(text: string): string {
 	let result = text.replace(/<([^>]+)>/g, (str, cont) => {
-		let m = /.+\|(.+)/.exec(cont);
+		const m = /.+\|(.+)/.exec(cont);
 		if (m) {
 			return m[1];
 		}
@@ -94,30 +86,30 @@ function slackDecode(text) {
 		lt: "<",
 		gt: ">",
 		amp: "&",
-	}[m1]));
+	} as {[key: string]: string})[m1]);
 	result = emoji.emojify(result);
 	result = result.replace(/^>\s*/mg, ""); // blockquote
 	result = result.trim();
 	return result;
 }
 
-function htmlEscape(text) {
+function htmlEscape(text: string): string {
 	return text
 		.replace(/&/g, "&amp;")
 		.replace(/</g, "&lt;")
 		.replace(/>/g, "&gt;");
 }
 
-function normalize(text) {
+function normalize(text: string): string {
 	return text
 		.normalize("NFKC")
-		.replace(/\ufe0f/g, "")
-		.replace(/\u200d/g, " ")
-		.replace(/\u301c/g, "~")
+		.replace(/️/g, "")
+		.replace(/‍/g, " ")
+		.replace(/〜/g, "~")
 		.toLowerCase();
 }
 
-async function getDictionary() {
+async function getDictionary(): Promise<{word: string; ruby: string}[]> {
 	const dictionaryPath = path.resolve(__dirname, 'kanjibox.txt');
 	const exists = await fs.access(dictionaryPath, constants.R_OK).then(() => true).catch(() => false);
 	if (!exists) {
@@ -133,20 +125,20 @@ async function getDictionary() {
 	return entries;
 }
 
-module.exports = async (clients) => {
-	const { eventClient, webClient: slack } = clients;
+export default async (clients: SlackInterface) => {
+	const {eventClient, webClient: slack} = clients;
 
 	const state = await State.init('pocky', {
-		quineSolutions: [],
-		longQuineSolutions: [],
+		quineSolutions: [] as string[],
+		longQuineSolutions: [] as string[],
 	});
 
-	function postMessage(message, channel, postThreadOptions = {}) {
+	function postMessage(message: string, channel: string, postThreadOptions: {broadcast?: boolean; threadPosted?: string | null} = {}) {
 		const {broadcast, threadPosted} = {
 			broadcast: false,
-			threadPosted: null,
+			threadPosted: null as string | null,
 			...postThreadOptions,
-		}
+		};
 		return slack.chat.postMessage({
 			channel,
 			text: message,
@@ -157,9 +149,9 @@ module.exports = async (clients) => {
 		});
 	}
 
-	let theme = null;
-	let thread = null;
-	let hints = [];
+	let theme: {word: string; ruby: string} | null = null;
+	let thread: string | null = null;
+	let hints: string[] = [];
 
 	async function pockygame() {
 		if (theme !== null) {
@@ -215,13 +207,13 @@ module.exports = async (clients) => {
 				thread = null;
 			}
 		}, 3 * 60 * 1000);
-	};
+	}
 
-	eventClient.on('message', async (message) => {
+	eventClient.on('message', async (message: any) => {
 		if (message.subtype) {
 			return;
 		}
-		const { channel, text, thread_ts, ts } = message;
+		const {channel, text, thread_ts, ts} = message;
 		if (theme !== null && thread_ts === thread) {
 			if (text === theme.word || hiraganize(text) === hiraganize(theme.ruby)) {
 				const {word, ruby} = theme;
@@ -274,7 +266,7 @@ module.exports = async (clients) => {
 				if (value === result) {
 					unlock(message.user, "self-pocky");
 				}
-			}, (error) => {
+			}, (error: any) => {
 				log.error("error:", error.message);
 			});
 			if (Array.from(result).length >= 20) {

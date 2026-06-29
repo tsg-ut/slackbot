@@ -1,4 +1,3 @@
-/* eslint-env jest */
 
 import gameLogModal from './gameLogModal';
 import type {FinishedGame} from '../TwentyQuestions';

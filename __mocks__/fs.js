@@ -1,9 +1,10 @@
 
-const fs = vi.createMockFromModule('fs');
-const realFs = vi.requireActual('fs');
+const fs = {};
+const realFs = require('fs');
 const Path = require('path');
 const {PassThrough} = require('stream');
 
+fs.constants = realFs.constants;
 fs.virtualFiles = {};
 
 fs.promises = {};
@@ -105,4 +106,5 @@ fs.writeFile = vi.fn((file, data, ...rest) => {
 	callback(null);
 });
 
+fs.default = fs;
 module.exports = fs;

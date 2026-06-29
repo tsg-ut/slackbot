@@ -1,4 +1,3 @@
-/* eslint-env jest */
 
 import {inspect} from 'util';
 import {extractValidAnswers} from './hayaoshiUtils';

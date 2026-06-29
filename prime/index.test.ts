@@ -1,16 +1,14 @@
-/* eslint-env node, jest */
-
 vi.mock('../achievements');
 
-const {default: Slack} = require('../lib/slackMock.ts');
-const shogi = require('./index.js');
+import Slack from '../lib/slackMock';
+import prime from './index.js';
 
-let slack = null;
+let slack: InstanceType<typeof Slack> = null;
 
 beforeEach(() => {
 	slack = new Slack();
 	process.env.CHANNEL_SANDBOX = slack.fakeChannel;
-	shogi(slack);
+	prime(slack);
 });
 
 describe('shogi', () => {

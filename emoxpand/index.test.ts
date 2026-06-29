@@ -1,5 +1,4 @@
 /* eslint-disable init-declarations, no-restricted-syntax */
-/* eslint-env jest */
 
 import Fastify from 'fastify';
 import Slack from '../lib/slackMock';

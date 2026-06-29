@@ -16,18 +16,23 @@ fs.virtualFiles = {
   [path.join(__dirname, 'data','JoyoKanjis.txt')]: kanjis.join('\n'),
 };
 
-vi.mock('lodash', async () => {
-  const orig = await vi.importActual<typeof import('lodash')>('lodash');
+vi.mock('lodash', async (importOriginal) => {
+  const orig = await importOriginal<typeof import('lodash')>();
+  const lodash: any = (orig as any).default ?? orig;
+  const allMethods = Object.fromEntries(
+    Object.keys(lodash).map((key: string) => [key, lodash[key]])
+  );
   return {
-    ...orig,
-    sample: vi.fn((...args) => {
+    default: lodash,
+    ...allMethods,
+    sample: vi.fn((...args: any[]) => {
       const [array] = args;
-      if(orig.isEqual(array.sort(),kanjis.sort())){
+      if(lodash.isEqual(array.sort(), kanjis.sort())){
         return '川';
       }
-      return orig.sample(...args);
-    })
-  }
+      return lodash.sample(...args);
+    }),
+  };
 });
 
 vi.mock('../lib/slackUtils');

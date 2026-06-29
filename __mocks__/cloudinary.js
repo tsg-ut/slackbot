@@ -1,7 +1,10 @@
 const {PassThrough} = require('stream');
 const noop = require('lodash/noop');
 
-const cloudinary = vi.createMockFromModule('cloudinary');
+const cloudinary = {
+	v2: {uploader: {}, config: () => {}, url: vi.fn(() => '')},
+	url: '',
+};
 
 cloudinary.v2.uploader.upload_stream = vi.fn((options, callback) => {
 	const stream = new PassThrough();
@@ -14,7 +17,5 @@ cloudinary.v2.uploader.upload_stream = vi.fn((options, callback) => {
 	stream.on('data', noop);
 	return stream;
 });
-
-cloudinary.url = '';
 
 module.exports = cloudinary;

@@ -13,19 +13,19 @@ describe('ChannelLimitedBot', () => {
 		process.env.CHANNEL_GAMES = slack.fakeChannel;
 		process.env.HAKATASHI_TOKEN = 'xoxb-hakatashi-token';
 
-		(slack.webClient.chat.getPermalink as jest.Mock).mockResolvedValue({
+		(slack.webClient.chat.getPermalink as vi.Mock).mockResolvedValue({
 			ok: true,
 			permalink: 'https://slack.com/archives/CHANNEL_ID/p1234567890123456',
 		});
-		(slack.webClient.chat.postEphemeral as jest.Mock).mockResolvedValue({
+		(slack.webClient.chat.postEphemeral as vi.Mock).mockResolvedValue({
 			ok: true,
 			message_ts: '12345.6789',
 		});
-		(slack.webClient.chat.postMessage as jest.Mock).mockResolvedValue({
+		(slack.webClient.chat.postMessage as vi.Mock).mockResolvedValue({
 			ok: true,
 			ts: 'progress.123',
 		});
-		(slack.webClient.chat.delete as jest.Mock).mockResolvedValue({
+		(slack.webClient.chat.delete as vi.Mock).mockResolvedValue({
 			ok: true,
 		});
 	});

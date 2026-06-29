@@ -164,17 +164,17 @@ beforeEach(async () => {
 		resolve({userid: 'fakeid', name: 'fakename'});
 	});
 	// mock funcs containing axios calls
-	(fetchChallsTW as jest.Mock).mockReturnValue(sampleChallsTW);
-	(fetchUserProfileTW as jest.Mock).mockReturnValue(sampleProfileTW);
-	(fetchChallsXYZ as jest.Mock).mockReturnValue(sampleChallsXYZ);
-	(fetchUserProfileXYZ as jest.Mock).mockReturnValue(sampleProfileXYZ);
-	(fetchChallsCH as jest.Mock).mockReturnValue(sampleChallsCH);
-	(fetchUserProfileCH as jest.Mock).mockReturnValue(sampleProfileCH);
-	(fetchChallsKSN as jest.Mock).mockReturnValue(sampleChallsKSN);
-	(fetchUserProfileKSN as jest.Mock).mockReturnValue(sampleProfileKSN);
-	(fetchChallsAH as jest.Mock).mockReturnValue(sampleChallsAH);
-	(fetchUserProfileAH as jest.Mock).mockReturnValue(sampleProfileAH);
-	(getMemberName as jest.Mock).mockReturnValue('FakeName');
+	(fetchChallsTW as vi.Mock).mockReturnValue(sampleChallsTW);
+	(fetchUserProfileTW as vi.Mock).mockReturnValue(sampleProfileTW);
+	(fetchChallsXYZ as vi.Mock).mockReturnValue(sampleChallsXYZ);
+	(fetchUserProfileXYZ as vi.Mock).mockReturnValue(sampleProfileXYZ);
+	(fetchChallsCH as vi.Mock).mockReturnValue(sampleChallsCH);
+	(fetchUserProfileCH as vi.Mock).mockReturnValue(sampleProfileCH);
+	(fetchChallsKSN as vi.Mock).mockReturnValue(sampleChallsKSN);
+	(fetchUserProfileKSN as vi.Mock).mockReturnValue(sampleProfileKSN);
+	(fetchChallsAH as vi.Mock).mockReturnValue(sampleChallsAH);
+	(fetchUserProfileAH as vi.Mock).mockReturnValue(sampleProfileAH);
+	(getMemberName as vi.Mock).mockReturnValue('FakeName');
 
 	slack = new Slack();
 	process.env.CHANNEL_PWNABLE_TW = slack.fakeChannel;

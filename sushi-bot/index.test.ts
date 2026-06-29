@@ -1,4 +1,3 @@
-/* eslint-env node, jest */
 vi.mock('../achievements');
 vi.mock('moment');
 vi.mock('../lib/state');
@@ -9,24 +8,24 @@ vi.mock('fs-extra', () => ({
 	pathExists: vi.fn(() => Promise.resolve(false)),
 }));
 
-const moment = require('moment');
-const {default: sushi} = require('./index.ts');
-const {default: Slack} = require('../lib/slackMock.ts');
+import moment from 'moment';
+import sushi from './index.js';
+import Slack from '../lib/slackMock';
 
-let slack = null;
+let slack: InstanceType<typeof Slack> = null;
 
 beforeEach(async () => {
 	slack = new Slack();
 	await sushi(slack);
 
-	moment.mockImplementation(() => ({
+	(moment as any).mockImplementation(() => ({
 		utcOffset: () => ({
 			day: () => 1,
 		})
 	}));
 });
 
-it('reacts to "おすし"', () => new Promise((resolve) => {
+it('reacts to "おすし"', () => new Promise<void>((resolve) => {
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
 		expect(name).toBe('sushi');
 		expect(channel).toBe(slack.fakeChannel);
@@ -42,8 +41,8 @@ it('reacts to "おすし"', () => new Promise((resolve) => {
 	});
 }));
 
-it('reacts to ":korosuzo:"', () => new Promise((resolve) => {
-	const table = {no_good: false, shaved_ice: false};
+it('reacts to ":korosuzo:"', () => new Promise<void>((resolve) => {
+	const table: {[key: string]: boolean} = {no_good: false, shaved_ice: false};
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
 		expect(Object.keys(table)).toContain(name); // FIXME
 		expect(channel).toBe(slack.fakeChannel);
@@ -63,8 +62,8 @@ it('reacts to ":korosuzo:"', () => new Promise((resolve) => {
 	});
 }));
 
-it('marks :x::four: to "sushi"x4', () => new Promise((resolve) => {
-	const table = {sushi: false, x: false, four: false};
+it('marks :x::four: to "sushi"x4', () => new Promise<void>((resolve) => {
+	const table: {[key: string]: boolean} = {sushi: false, x: false, four: false};
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
 		expect(Object.keys(table)).toContain(name); // FIXME
 		expect(channel).toBe(slack.fakeChannel);
@@ -83,7 +82,7 @@ it('marks :x::four: to "sushi"x4', () => new Promise((resolve) => {
 	});
 }));
 
-it('reacts to "\u3059\u0328"', () => new Promise((resolve) => {
+it('reacts to "す̨"', () => new Promise<void>((resolve) => {
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
 		expect(name).toBe('sushi');
 		expect(channel).toBe(slack.fakeChannel);
@@ -93,13 +92,13 @@ it('reacts to "\u3059\u0328"', () => new Promise((resolve) => {
 
 	slack.eventClient.emit('message', {
 		channel: slack.fakeChannel,
-		text: '\u3059\u0328',
+		text: 'す̨',
 		user: slack.fakeUser,
 		ts: slack.fakeTimestamp,
 	});
 }));
 
-it('reacts to "寿司ランキング 確認"', () => new Promise((resolve) => {
+it('reacts to "寿司ランキング 確認"', () => new Promise<void>((resolve) => {
 	slack.on('chat.postMessage', ({username, channel, text}) => {
 		expect(username).toBe('sushi-bot');
 		expect(channel).toBe("D00000000");
@@ -109,7 +108,7 @@ it('reacts to "寿司ランキング 確認"', () => new Promise((resolve) => {
 	});
 
 	(async () => {
-		const promise = new Promise(resolve => {
+		const promise = new Promise<void>(resolve => {
 			slack.on('reactions.add', ({name, timestamp}) => {
 				if (timestamp === slack.fakeTimestamp && name === 'sushi') {
 					resolve();
@@ -135,7 +134,7 @@ it('reacts to "寿司ランキング 確認"', () => new Promise((resolve) => {
 	})();
 }));
 
-it('reacts to "凍結ランキング 確認"', () => new Promise((resolve) => {
+it('reacts to "凍結ランキング 確認"', () => new Promise<void>((resolve) => {
 	slack.on('chat.postMessage', ({username, channel, text}) => {
 		expect(username).toBe('sushi-bot');
 		expect(channel).toBe("D00000000");
@@ -145,8 +144,8 @@ it('reacts to "凍結ランキング 確認"', () => new Promise((resolve) => {
 	});
 
 	(async () => {
-		const promise = new Promise(resolve => {
-			const table = {no_good: false, shaved_ice: false};
+		const promise = new Promise<void>(resolve => {
+			const table: {[key: string]: boolean} = {no_good: false, shaved_ice: false};
 			slack.on('reactions.add', ({name, timestamp}) => {
 				if (timestamp === slack.fakeTimestamp && table.hasOwnProperty(name)) {
 					table[name] = true;
@@ -175,8 +174,8 @@ it('reacts to "凍結ランキング 確認"', () => new Promise((resolve) => {
 	})();
 }));
 
-it('reacts to "あさ！" with :100: at 8:59:59', () => new Promise((resolve) => {
-	moment.mockImplementation(() => ({
+it('reacts to "あさ！" with :100: at 8:59:59', () => new Promise<void>((resolve) => {
+	(moment as any).mockImplementation(() => ({
 		utcOffset: () => ({
 			hour: () => 8,
 			minutes: () => 59,
@@ -199,8 +198,8 @@ it('reacts to "あさ！" with :100: at 8:59:59', () => new Promise((resolve) =>
 	});
 }));
 
-it('reacts to "あさ！" with :95: at 9:00:01', () => new Promise((resolve) => {
-	moment.mockImplementation(() => ({
+it('reacts to "あさ！" with :95: at 9:00:01', () => new Promise<void>((resolve) => {
+	(moment as any).mockImplementation(() => ({
 		utcOffset: () => ({
 			hour: () => 9,
 			minutes: () => 0,
@@ -223,8 +222,8 @@ it('reacts to "あさ！" with :95: at 9:00:01', () => new Promise((resolve) => 
 	});
 }));
 
-it('reacts to "起床ランキング 確認', () => new Promise((resolve) => {
-	moment.mockImplementation(() => ({
+it('reacts to "起床ランキング 確認', () => new Promise<void>((resolve) => {
+	(moment as any).mockImplementation(() => ({
 		utcOffset: () => ({
 			hour: () => 10,
 			minutes: () => 0,
@@ -241,7 +240,7 @@ it('reacts to "起床ランキング 確認', () => new Promise((resolve) => {
 
 
 	(async () => {
-		const promise = new Promise(resolve => {
+		const promise = new Promise<void>(resolve => {
 			slack.on('reactions.add', ({name, timestamp}) => {
 				if (timestamp === slack.fakeTimestamp && name === '80') {
 					resolve();
@@ -267,7 +266,7 @@ it('reacts to "起床ランキング 確認', () => new Promise((resolve) => {
 	})();
 }));
 
-it('reacts to "エクササイズランキング 確認"', () => new Promise((resolve) => {
+it('reacts to "エクササイズランキング 確認"', () => new Promise<void>((resolve) => {
 	slack.on('chat.postMessage', ({username, channel, text}) => {
 		expect(username).toBe('sushi-bot');
 		expect(channel).toBe("D00000000");
@@ -277,8 +276,8 @@ it('reacts to "エクササイズランキング 確認"', () => new Promise((re
 	});
 
 	(async () => {
-		const promise = new Promise(resolve => {
-			const table = {sugoi: false, erai: false};
+		const promise = new Promise<void>(resolve => {
+			const table: {[key: string]: boolean} = {sugoi: false, erai: false};
 			slack.on('reactions.add', ({name, timestamp}) => {
 				if (timestamp === slack.fakeTimestamp && table.hasOwnProperty(name)) {
 					table[name] = true;
@@ -307,7 +306,7 @@ it('reacts to "エクササイズランキング 確認"', () => new Promise((re
 	})();
 }));
 
-it('reacts to "twitter" with :x-logo:', () => new Promise((resolve) => {
+it('reacts to "twitter" with :x-logo:', () => new Promise<void>((resolve) => {
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
 		expect(name).toBe('x-logo');
 		expect(channel).toBe(slack.fakeChannel);
@@ -323,7 +322,7 @@ it('reacts to "twitter" with :x-logo:', () => new Promise((resolve) => {
 	});
 }));
 
-it('reacts to "twitter" with :x-logo: case-insensitively', () => new Promise((resolve) => {
+it('reacts to "twitter" with :x-logo: case-insensitively', () => new Promise<void>((resolve) => {
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
 		expect(name).toBe('x-logo');
 		expect(channel).toBe(slack.fakeChannel);
@@ -354,7 +353,7 @@ it('does not react to "twitter.com"', async () => {
 	expect(slack.webClient.reactions.add).not.toHaveBeenCalled();
 });
 
-it('reacts to "X" with :twitter:', () => new Promise((resolve) => {
+it('reacts to "X" with :twitter:', () => new Promise<void>((resolve) => {
 	slack.on('reactions.add', ({name, channel, timestamp}) => {
 		expect(name).toBe('twitter');
 		expect(channel).toBe(slack.fakeChannel);
@@ -390,7 +389,6 @@ it('reacts to sushi in an attachment', async () => {
 		expect(name).toBe('sushi');
 		expect(channel).toBe(slack.fakeChannel);
 		expect(timestamp).toBe(slack.fakeTimestamp);
-		resolve();
 	});
 
 	slack.eventClient.emit('message', {
@@ -409,7 +407,6 @@ it('reacts to sushi in an attachment (dynamically added)', async () => {
 		expect(name).toBe('sushi');
 		expect(channel).toBe(slack.fakeChannel);
 		expect(timestamp).toBe(slack.fakeTimestamp);
-		resolve();
 	});
 
 	slack.eventClient.emit('message', {
@@ -433,8 +430,8 @@ it('reacts to sushi in an attachment (dynamically added)', async () => {
 	});
 });
 
-it('reacts to "よる！" at 21:00 with :108:', () => new Promise((resolve) => {
-	moment.mockImplementation(() => ({
+it('reacts to "よる！" at 21:00 with :108:', () => new Promise<void>((resolve) => {
+	(moment as any).mockImplementation(() => ({
 		utcOffset: () => ({
 			hour: () => 21,
 			minutes: () => 0,
@@ -457,8 +454,8 @@ it('reacts to "よる！" at 21:00 with :108:', () => new Promise((resolve) => {
 	});
 }));
 
-it('reacts to "ひる" at 12:00 with :108:', () => new Promise((resolve) => {
-	moment.mockImplementation(() => ({
+it('reacts to "ひる" at 12:00 with :108:', () => new Promise<void>((resolve) => {
+	(moment as any).mockImplementation(() => ({
 		utcOffset: () => ({
 			hour: () => 12,
 			minutes: () => 0,
@@ -481,8 +478,8 @@ it('reacts to "ひる" at 12:00 with :108:', () => new Promise((resolve) => {
 	});
 }));
 
-it('reacts to "ゆうがた！" at 16:30 with :108:', () => new Promise((resolve) => {
-	moment.mockImplementation(() => ({
+it('reacts to "ゆうがた！" at 16:30 with :108:', () => new Promise<void>((resolve) => {
+	(moment as any).mockImplementation(() => ({
 		utcOffset: () => ({
 			hour: () => 16,
 			minutes: () => 30,

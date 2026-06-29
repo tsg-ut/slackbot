@@ -1,4 +1,3 @@
-/* eslint-env jest */
 
 import gameStatusMessage from './gameStatusMessage';
 import type {StateObj} from '../TwentyQuestions';

@@ -1,5 +1,5 @@
 
-const sqlite = vi.createMockFromModule('sqlite');
+const sqlite = {};
 
 sqlite.open = vi.fn(() => ({
   all: vi.fn(() => Promise.resolve(sqlite.records)),

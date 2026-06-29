@@ -1,7 +1,6 @@
 /* eslint-disable import/imports-first, import/first */
-/* eslint-env jest */
 
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import type {MockedStateInterface} from '../lib/__mocks__/state';
 import Slack from '../lib/slackMock';
 import State from '../lib/state';
@@ -53,7 +52,7 @@ describe('helloworld', () => {
 	});
 
 	it('can post Hello world message', async () => {
-		const postMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
+		const postMessage = slack.webClient.chat.postMessage as vi.MockedFunction<typeof slack.webClient.chat.postMessage>;
 		postMessage.mockResolvedValueOnce({
 			ok: true,
 			ts: slack.fakeTimestamp,
@@ -70,7 +69,7 @@ describe('helloworld', () => {
 			channel: slack.fakeChannel,
 		});
 
-		const mockedPostMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
+		const mockedPostMessage = slack.webClient.chat.postMessage as vi.MockedFunction<typeof slack.webClient.chat.postMessage>;
 		expect(mockedPostMessage).toBeCalledWith({
 			username: 'helloworld [TEST_AUTHORITY]',
 			channel: slack.fakeChannel,

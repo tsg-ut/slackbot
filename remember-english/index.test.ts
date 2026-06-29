@@ -1,6 +1,5 @@
 /* eslint-disable import/imports-first */
 /* eslint-disable import/first */
-/* eslint-env jest */
 vi.mock('../achievements');
 vi.mock('../lib/slackUtils');
 vi.mock('../lib/state');

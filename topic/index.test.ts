@@ -2,7 +2,6 @@
 /* eslint-disable node/callback-return */
 /* eslint-disable import/imports-first */
 /* eslint-disable import/first */
-/* eslint-env jest */
 
 vi.mock('../achievements');
 vi.mock('../lib/state');
@@ -37,7 +36,7 @@ import Slack from '../lib/slackMock';
 import {getReactions} from '../lib/slackUtils';
 import topicHandler, {addLike, removeLike} from './index';
 
-const runTransaction = db.runTransaction as jest.MockedFunction<typeof db.runTransaction>;
+const runTransaction = db.runTransaction as vi.MockedFunction<typeof db.runTransaction>;
 
 const FAKE_SANDBOX = 'C123456789';
 
@@ -140,7 +139,7 @@ describe('topic', () => {
 			) => {
 				const MESSAGE_TS = '12345';
 
-				const converastionsInfo = mockSlack.webClient.conversations.info as jest.MockedFunction<typeof mockSlack.webClient.conversations.info>;
+				const converastionsInfo = mockSlack.webClient.conversations.info as vi.MockedFunction<typeof mockSlack.webClient.conversations.info>;
 				converastionsInfo.mockResolvedValue({
 					ok: true,
 					channel: {
@@ -150,7 +149,7 @@ describe('topic', () => {
 					},
 				});
 
-				const mockConversationsHistory = conversationsHistory as jest.MockedFunction<typeof conversationsHistory>;
+				const mockConversationsHistory = conversationsHistory as vi.MockedFunction<typeof conversationsHistory>;
 				mockConversationsHistory.mockResolvedValue({
 					ok: true,
 					messages: [{
@@ -160,10 +159,10 @@ describe('topic', () => {
 					}],
 				});
 
-				const setTopic = mockSlack.webClient.conversations.setTopic as jest.MockedFunction<typeof mockSlack.webClient.conversations.setTopic>;
+				const setTopic = mockSlack.webClient.conversations.setTopic as vi.MockedFunction<typeof mockSlack.webClient.conversations.setTopic>;
 				setTopic.mockImplementation(() => Promise.resolve({ok: true}));
 
-				(getReactions as jest.MockedFunction<typeof getReactions>).mockResolvedValue(reactions);
+				(getReactions as vi.MockedFunction<typeof getReactions>).mockResolvedValue(reactions);
 
 				process.env.CHANNEL_SANDBOX = FAKE_SANDBOX;
 

@@ -1,12 +1,10 @@
-/* eslint-env node, jest */
-
 vi.mock('axios');
 
-const axios = require('axios');
-const {default: Slack} = require('../lib/slackMock.ts');
-const checkin = require('./index.js');
+import axios from 'axios';
+import Slack from '../lib/slackMock';
+import checkin from './index.js';
 
-let slack = null;
+let slack: InstanceType<typeof Slack> = null;
 
 beforeEach(() => {
 	slack = new Slack();
@@ -17,7 +15,7 @@ beforeEach(() => {
 
 describe('tiobot', () => {
 	it('responds to "checkin-check"', async () => {
-		axios.response = {
+		(axios as any).response = {
 			data: {
 				response: {
 					hereNow: {
@@ -34,7 +32,7 @@ describe('tiobot', () => {
 			ts: slack.fakeTimestamp,
 		});
 
-		axios.response = {
+		(axios as any).response = {
 			data: {
 				response: {
 					hereNow: {

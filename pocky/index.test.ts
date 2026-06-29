@@ -1,15 +1,13 @@
-/* eslint-env node, jest */
-
 vi.mock('axios');
 vi.mock('../achievements');
 vi.mock('../lib/slackUtils');
-vi.mock('../lib/state.ts');
+vi.mock('../lib/state');
 
-const axios = require('axios');
-const pocky = require('./index.js');
-const {default: Slack} = require('../lib/slackMock.ts');
+import axios from 'axios';
+import pocky from './index.js';
+import Slack from '../lib/slackMock';
 
-let slack = null;
+let slack: InstanceType<typeof Slack> = null;
 
 beforeEach(async () => {
 	slack = new Slack();
@@ -19,7 +17,7 @@ beforeEach(async () => {
 
 describe('pocky', () => {
 	it('responds to "ほげ?"', async () => {
-		axios.response = {data: [null, ['ほげ ふが']]}
+		(axios as any).response = {data: [null, ['ほげ ふが']]};
 		const {username, text} = await slack.getResponseTo('ほげ?');
 
 		expect(username).toBe('pocky');

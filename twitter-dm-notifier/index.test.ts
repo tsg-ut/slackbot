@@ -1,3 +1,5 @@
+vi.mock('twitter');
+
 import { createSlackPostParams } from './index';
 import moment from 'moment';
 

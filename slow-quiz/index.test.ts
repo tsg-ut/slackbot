@@ -1,5 +1,4 @@
 /* eslint-disable init-declarations */
-/* eslint-env jest */
 
 import type {MockedStateInterface} from '../lib/__mocks__/state';
 import openai from '../lib/openai';
@@ -34,6 +33,7 @@ vi.mock('../lib/openai', () => ({
 	},
 }));
 vi.mock('node-schedule', () => ({
+	default: {scheduleJob: vi.fn()},
 	scheduleJob: vi.fn(),
 }));
 

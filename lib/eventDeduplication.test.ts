@@ -5,7 +5,7 @@ import {
 import { createClient } from 'redis';
 
 const mockRedis: Pick<
-	jest.Mocked<ReturnType<typeof createClient>>,
+	vi.Mocked<ReturnType<typeof createClient>>,
 	'set' | 'connect' | 'quit' | 'on'
 > = {
 	set: vi.fn(),

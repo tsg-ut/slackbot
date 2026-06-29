@@ -21,7 +21,7 @@ export default defineConfig({
 		testTimeout: 10000,
 		server: {
 			deps: {
-				inline: ['pino-std-serializers'],
+				inline: ['pino-std-serializers', /\/(checkin|pocky|mahjong|prime|sushi-bot|vocabwar)\/index\.js$/],
 			},
 		},
 	},

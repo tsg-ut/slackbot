@@ -1,4 +1,3 @@
-/* eslint-env jest */
 
 import {SectionBlock} from '@slack/web-api';
 import {noop} from 'lodash';
@@ -13,6 +12,7 @@ vi.mock('../lib/state');
 vi.mock('../lib/slack');
 vi.mock('../lib/slackUtils');
 vi.mock('node-schedule', () => ({
+	default: {scheduleJob: vi.fn()},
 	scheduleJob: vi.fn(),
 }));
 

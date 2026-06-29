@@ -5,30 +5,28 @@ vi.mock('../lib/download');
 
 vi.mock('./state.json', () => ({}));
 
-const vocabwar = require('./index.js');
-const {default: Slack} = require('../lib/slackMock.ts');
-const {promisify} = require('util');
-const path = require('path');
-const fs = require('fs');
+import vocabwar from './index.js';
+import Slack from '../lib/slackMock';
+import {promisify} from 'util';
+import path from 'path';
+import fs from 'fs';
 
-vi.unmock('fs');
-
-fs.virtualFiles = {
+(fs as any).virtualFiles = {
 	[path.join(__dirname, 'data')]: '',
 	[path.join(__dirname, 'data', 'ad.txt')]: [
 		'丸い 1',
 		'鋭い 1',
-		...Array(100).fill().map((...[, i]) => `${i} 1`),
+		...Array(100).fill(null).map((...[, i]) => `${i} 1`),
 	].join('\n'),
 	[path.join(__dirname, 'data', 'frequency.txt')]: [
 		'丸い 1',
 		'鋭い 1',
-		...Array(100).fill().map((...[, i]) => `${i} 1`),
+		...Array(100).fill(null).map((...[, i]) => `${i} 1`),
 	].join('\n'),
 	[path.join(__dirname, 'data', 'wiki_wakati.wv')]: '',
 };
 
-let slack = null;
+let slack: InstanceType<typeof Slack> = null;
 
 describe('vocabwar', () => {
 	beforeEach(async () => {
@@ -100,7 +98,7 @@ describe('vocabwar', () => {
 		expect(text).toContain('知らない');
 	});
 
-	it('reacts "+1" to valid answer', () => new Promise((resolve, reject) => {
+	it('reacts "+1" to valid answer', () => new Promise<void>((resolve, reject) => {
 		slack.on('reactions.add', ({name}) => {
 			expect(name).toBe('+1');
 			resolve();
@@ -114,7 +112,7 @@ describe('vocabwar', () => {
 		});
 	}));
 
-	it('rejects duplicate answer', () => new Promise((resolve, reject) => {
+	it('rejects duplicate answer', () => new Promise<void>((resolve, reject) => {
 		slack.on('chat.postMessage', ({text}) => {
 			expect(text).toContain('パク');
 			resolve();
@@ -129,7 +127,7 @@ describe('vocabwar', () => {
 	}));
 
 	/* currently unavailable because of slackMock.handleWebcall
-	it('posts result', () => new Promise((resolve, reject) => {
+	it('posts result', () => new Promise<void>((resolve, reject) => {
 		slack.on('chat.postMessage', ({text}) => {
 			expect(text).toContain('結果');
 			resolve();
