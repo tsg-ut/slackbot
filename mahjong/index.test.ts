@@ -3,7 +3,6 @@ vi.mock('@octokit/webhooks', () => ({
 		verify: vi.fn().mockResolvedValue(true),
 	})),
 }));
-vi.mock('../achievements');
 
 import Slack from '../lib/slackMock';
 import mahjong from './index.js';
