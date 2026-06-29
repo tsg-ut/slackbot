@@ -1,4 +1,4 @@
-// XXX: このファイルは prime/index.js (CJS) が require('./primes') でロードするために存在する。
+// XXX: このファイルは prime/index.js (CJS) がテスト環境で require('./primes') でロードするために存在する。
 // prime/index.js は CJS 形式のため Vite のモジュール解決をバイパスし、Node の CJS ローダーが
 // .ts 拡張子を解決できないので、primes.ts の代わりにこの .js ファイルが必要になっている。
 // プロジェクトの ESM 化（または prime/index.js の TypeScript 化）完了後は必ずこのファイルを削除すること。(#846)

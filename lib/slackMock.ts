@@ -4,23 +4,28 @@ import last from 'lodash/last.js';
 import type {SlackInterface} from './slack';
 import {createMessageAdapter} from '@slack/interactive-messages';
 import type {BlockAction} from '@slack/bolt';
-import {vi, type MockInstance} from 'vitest';
+import {vi, type Mock} from 'vitest';
 
 // https://vitest.dev/api/mock.html
 const mockMethodCalls = [
+	'getMockImplementation',
+	'getMockName',
+	'mockClear',
+	'mockName',
 	'mockImplementation',
 	'mockImplementationOnce',
+	'withImplementation',
+	'mockRejectedValue',
+	'mockRejectedValueOnce',
+	'mockReset',
+	'mockRestore',
+	'mockResolvedValue',
+	'mockResolvedValueOnce',
 	'mockReturnThis',
 	'mockReturnValue',
 	'mockReturnValueOnce',
-	'mockResolvedValue',
-	'mockResolvedValueOnce',
-	'mockRejectedValue',
-	'mockRejectedValueOnce',
-	'mockRestore',
-	'mockClear',
-	'mockReset',
-	'mockName',
+	'mockThrow',
+	'mockThrowOnce',
 ] as const;
 
 const isMockMethodCall = (name: string): name is (typeof mockMethodCalls)[number] => (
@@ -33,15 +38,16 @@ interface MockWebClient extends Record<string, MockWebClient> {
 
 const createWebClient = (
 	fallbackFn: (stack: string[], ...args: any[]) => Promise<any>,
-	registeredMocks: Map<string, MockInstance>,
+	registeredMocks: Map<string, Mock>,
 ) => {
 	const handler = (stack: string[]): MockWebClient => {
 		return new Proxy(
 			(...args: any[]) => {
 				const path = stack.join('.');
 				const methodName = last(stack);
-				if (registeredMocks.has(path)) {
-					return (registeredMocks.get(path) as unknown as (...args: any[]) => any)(...args);
+				const registeredMock = registeredMocks.get(path);
+				if (registeredMock !== undefined) {
+					return registeredMock(...args);
 				}
 				if (isMockMethodCall(methodName)) {
 					const mock = vi.fn();
@@ -139,7 +145,7 @@ export default class SlackMock extends EventEmitter implements SlackInterface {
 	fakeTimestamp = '1234567890.123456';
 
 	readonly eventClient: MockTeamEventClient;
-	readonly registeredMocks: Map<string, MockInstance>;
+	readonly registeredMocks: Map<string, Mock>;
 	readonly webClient: WebClient;
 	readonly messageClient: ReturnType<typeof createMessageAdapter> & MockMessageClient;
 

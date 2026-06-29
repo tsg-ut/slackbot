@@ -2,44 +2,28 @@ import lyrics from './index';
 import Slack from '../lib/slackMock';
 import axios from 'axios';
 import type {AxiosResponse} from 'axios';
-import { stripIndent } from 'common-tags';
+import { stripIndent, oneLineTrim } from 'common-tags';
 
-vi.mock('scrape-it', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('scrape-it')>();
-    const {scrapeHTML} = actual;
-    const searchHtml = [
-        '<html><body><dl id="search_list">',
-        '<dt><span><a href="/song/159792/">とまどい→レシピ</a></span>',
-        '<a>みかくにんぐッ!</a>（作詞：<a>Junky</a>/作曲：<a>Junky</a>）</dt>',
-        '<dd></dd></dl></body></html>',
-    ].join('');
-    const songHtml = [
-        '<html><head><link rel="canonical" href="https://www.uta-net.com/song/159792/"></head>',
-        '<body><div id="main"><div class="row"><div><div><div><div>',
-        '<h2>とまどい→レシピ</h2>',
-        '<h3><a><span itemprop="byArtist name">みかくにんぐッ!</span></a></h3>',
-        '</div><div></div><div><p class="detail">',
-        '作詞：<a href="/lyricist/7740/" itemprop="lyricist">Junky</a><br>',
-        '作曲：<a href="/composer/9401/" itemprop="composer">Junky</a><br>',
-        '</p></div></div></div></div></div>',
-        '<div id="kashi"><div><div id="kashi_area">',
-        '略<br><br>',
-        '朝目が覚めたらもう昨日みたいな日常はなくて<br>',
-        '「ホントあぁもう...えっとどうしよう」<br>',
-        'ため息混じりに練るお菓子と妄想のレシピの中に<br>',
-        '恋心入っちゃった<br><br>',
-        '略</div></div></div></div></body></html>',
-    ].join('');
-    return {
-        default: vi.fn(async (url: any, opts: any) => {
-            if (String(url).includes('index_search')) return {data: scrapeHTML(searchHtml, opts)};
-            if (String(url).includes('/song/')) return {data: scrapeHTML(songHtml, opts)};
-            return {data: {}};
-        }),
-        scrapeHTML,
-    };
-});
 vi.mock('axios');
+
+// scrape-itはCJSのrequire経由でaxiosを呼ぶため、ESMモックが届かない。
+// そのためscrape-itをモックし、内部でモック済みaxiosを使って同じURLルーティングを通す。
+vi.mock('scrape-it', async () => {
+    const {load} = await vi.importActual<typeof import('cheerio')>('cheerio');
+    const {default: axiosFn} = await import('axios');
+    const scrapeItCoreModule = await vi.importActual<any>('scrape-it-core');
+    const scrapeHTML: ($: any, opts: any) => any =
+        typeof scrapeItCoreModule === 'function' ? scrapeItCoreModule : scrapeItCoreModule.default;
+
+    const scrapeIt = async <T>(url: string, opts: object): Promise<{data: T}> => {
+        const res = await axiosFn(url) as {data: string};
+        const $ = load(res.data);
+        return {data: scrapeHTML($, opts) as T};
+    };
+    (scrapeIt as any).scrapeHTML = scrapeHTML;
+
+    return {default: scrapeIt};
+});
 
 let slack: Slack = null;
 
@@ -51,8 +35,55 @@ beforeEach(async () => {
 
 describe('lyrics', () => {
     it('responds to @lyrics query', async () => {
+        const searchHtml = oneLineTrim`
+            <html><body><dl id="search_list">
+                <dt>
+                    <span><a href="/song/159792/">とまどい→レシピ</a></span>
+                    <a>みかくにんぐッ!</a>　（作詞：<a>Junky</a>/作曲：<a>Junky</a>）
+                </dt>
+                <dd></dd>
+            </dl></body></html>`;
+        const songHtml = oneLineTrim`
+            <html><head>
+                <link rel="canonical" href="https://www.uta-net.com/song/159792/">
+            </head><body><div id="main">
+                <div class="row"><div><div><div>
+                    <div>
+                        <h2>とまどい→レシピ</h2>
+                        <h3><a><span itemprop="byArtist name">みかくにんぐッ!</span></a></h3>
+                    </div>
+                    <div></div>
+                    <div>
+                        <p>未確認で進行形 オープニング</p>
+                        <p class="detail">
+                            作詞：<a href="/lyricist/7740/" itemprop="lyricist">Junky</a><br>
+                            作曲：<a href="/composer/9401/" itemprop="composer">Junky</a><br>
+                            発売日：2014/02/19<br>                                    この曲の表示回数：106,837回
+                        </p>
+                    </div>
+                </div></div></div></div>
+                <div id="kashi"><div><div id="kashi_area">
+                    略
+                    <br><br>
+                    朝目が覚めたらもう昨日みたいな日常はなくて
+                    <br>
+                    「ホントあぁもう...えっとどうしよう」
+                    <br>
+                    ため息混じりに練るお菓子と妄想のレシピの中に
+                    <br>
+                    恋心入っちゃった
+                    <br><br>
+                    略
+                </div></div></div>
+            </div></body></html>`;
         const mockAxios = vi.mocked(axios);
         mockAxios.mockImplementation(async (url: string) => {
+            if (url.includes('index_search')) {
+                return {data: searchHtml} as AxiosResponse;
+            }
+            if (url.includes('song')) {
+                return {data: songHtml} as AxiosResponse;
+            }
             if (url.includes('itunes')) {
                 return {data: {
                     resultCount: 1,
