@@ -1,9 +1,6 @@
 import {defineConfig} from 'vitest/config';
 
 export default defineConfig({
-	ssr: {
-		noExternal: ['pino-std-serializers'],
-	},
 	resolve: {
 		extensions: ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json'],
 	},
@@ -19,10 +16,5 @@ export default defineConfig({
 			exclude: ['**/*.test.{js,ts}', 'bin', 'coverage', 'node_modules', '.build'],
 		},
 		testTimeout: 10000,
-		server: {
-			deps: {
-				inline: ['pino-std-serializers', /\/(checkin|pocky|mahjong|prime|sushi-bot|vocabwar)\/index\.js$/],
-			},
-		},
 	},
 });
