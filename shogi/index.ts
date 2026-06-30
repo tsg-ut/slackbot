@@ -481,7 +481,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			while (true) {
 				{
 					const transitions = getTransitions(board) as Transition[];
-					const transitionBoards = Array(transitions.length).fill('?').join(', ');
+					const transitionBoards = new Array(transitions.length).fill('?').join(', ');
 
 					const transitionResults: ShogiDbRow[] = await state.db.all(
 						oneLine`
@@ -521,7 +521,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 
 				{
 					const transitions = getTransitions(board) as Transition[];
-					const transitionBoards = Array(transitions.length).fill('?').join(', ');
+					const transitionBoards = new Array(transitions.length).fill('?').join(', ');
 
 					const transitionResults: ShogiDbRow[] = await state.db.all(
 						oneLine`
