@@ -33,8 +33,8 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		} catch (e) {
 			return {
 				phase: 'waiting', // waiting, collecting,
-				theme: null,
-				candidates: [],
+				theme: null as string | null,
+				candidates: [] as string[],
 				ans: new Map(),
 			};
 		}
