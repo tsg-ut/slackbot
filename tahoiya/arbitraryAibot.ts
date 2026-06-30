@@ -31,7 +31,6 @@ const extractJson = (content: string): unknown => {
 const buildGenerationPrompt = (
 	question: string,
 	answer: string,
-	isMimicryAllowed: boolean,
 	previousAttempts: string[],
 ): string => stripIndent`
 	あなたは「たほいや」という言葉遊びゲームの「任意お題モード」に、他のプレイヤーに混じって参加するAIです。
@@ -53,10 +52,9 @@ const buildGenerationPrompt = (
 	4. 選んだ候補の内容が、正解と実質的に同じ意味になっていないかを再確認し、もし同じ意味であれば候補を修正する。
 
 	# 重要な注意事項（必ず守ること）
-	- どのような場合であっても、質問に対して正解となるような回答をしてはいけません。これはこのゲームの設定（正解を答えることが許可されているかどうか）に関わらず、常に守ってください。
+	- どのような場合であっても、質問に対して正解となるような回答をしてはいけません。
 	- 誤答選択肢は日本語で、正解と同程度の分量・自然さにしてください。
 	- 誤答選択肢は${MAX_ANSWER_LENGTH}文字以内にしてください。
-	${isMimicryAllowed ? '- このゲームでは人間の参加者が正解をそのまま登録することも許可されていますが、あなたは必ず誤答を作成してください。' : ''}
 	${previousAttempts.length > 0 ? stripIndent`
 
 		# 補足
@@ -72,19 +70,25 @@ const buildGenerationPrompt = (
 
 const buildJudgePrompt = (question: string, answer: string, candidateAnswer: string): string => stripIndent`
 	あなたは「たほいや」という言葉遊びゲームにおける、回答の正解判定を行う審判です。
-	以下の「質問」と「正解」に対して、「判定対象の回答」が正解として扱われるべきかどうかを判定してください。
+	以下の「質問」と「参考正解」に対して、「判定対象の回答」が正解として扱われるべきかどうかを判定してください。
 
 	# 質問
 	${question}
 
-	# 正解
+	# 参考正解
 	${answer}
 
 	# 判定対象の回答
 	${candidateAnswer}
 
-	表記ゆれ・言い回しの違い・言語の違いなどは無視し、意味内容が正解と実質的に同じであれば true 、
-	正解とは異なる内容であれば false としてください。
+	この任意お題モードでは、質問に対する正解は「参考正解」の一つに限定されるとは限りません。「参考正解」はあくまで
+	正解の一例であり、判定対象の回答が「参考正解」と文字列としては異なっていても、あなたの知識に基づいて質問に
+	対する事実として正しい別解であると判断できる場合は、正解として扱ってください。
+	一方で、判定対象の回答が「参考正解」とも別解とも言えず、質問に対して誤った内容である場合は、誤答として
+	扱ってください。
+
+	表記ゆれ・言い回しの違い・言語の違いなどは無視し、意味内容が正解（別解を含む）と実質的に同じであれば true 、
+	正解・別解のいずれでもない誤った内容であれば false としてください。
 
 	以下のJSON形式のみを出力してください。それ以外の文章は一切出力しないでください。
 	\`\`\`
@@ -95,13 +99,12 @@ const buildJudgePrompt = (question: string, answer: string, candidateAnswer: str
 const generateDecoyAnswer = async (
 	question: string,
 	answer: string,
-	isMimicryAllowed: boolean,
 	previousAttempts: string[],
 ): Promise<string | null> => {
 	const response = await openai.chat.completions.create({
 		model: MODEL,
 		messages: [
-			{role: 'user', content: buildGenerationPrompt(question, answer, isMimicryAllowed, previousAttempts)},
+			{role: 'user', content: buildGenerationPrompt(question, answer, previousAttempts)},
 		],
 		max_tokens: 1024,
 	});
@@ -139,7 +142,6 @@ const judgeIsCorrect = async (question: string, answer: string, candidateAnswer:
 export const getArbitraryAIAnswer = async (
 	question: string,
 	answer: string,
-	isMimicryAllowed: boolean,
 ): Promise<string | null> => {
 	const previousAttempts: string[] = [];
 
@@ -147,7 +149,7 @@ export const getArbitraryAIAnswer = async (
 		let decoyAnswer: string | null = null;
 
 		try {
-			decoyAnswer = await generateDecoyAnswer(question, answer, isMimicryAllowed, previousAttempts);
+			decoyAnswer = await generateDecoyAnswer(question, answer, previousAttempts);
 		} catch (error) {
 			log.error(`Failed to generate decoy answer (attempt ${attempt}): ${(error as Error)?.message ?? error}`);
 			return null;

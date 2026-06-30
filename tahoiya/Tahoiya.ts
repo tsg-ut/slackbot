@@ -595,7 +595,6 @@ export class Tahoiya extends ChannelLimitedBot {
 			getArbitraryAIAnswer(
 				arbitraryTheme.question,
 				arbitraryTheme.answer,
-				arbitraryTheme.isMimicryAllowed ?? false,
 			).then((decoyAnswer) => {
 				if (!decoyAnswer) {
 					return;

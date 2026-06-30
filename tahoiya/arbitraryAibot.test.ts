@@ -34,22 +34,34 @@ describe('tahoiya/arbitraryAibot', () => {
 			.mockResolvedValueOnce(mockContent('{"decoyAnswer": "さよならプラスティックワールド"}'))
 			.mockResolvedValueOnce(mockContent('{"isCorrect": false}'));
 
-		const result = await getArbitraryAIAnswer('実在するPerfumeのシングルは?', 'ポリリズム', false);
+		const result = await getArbitraryAIAnswer('実在するPerfumeのシングルは?', 'ポリリズム');
 
 		expect(result).toBe('さよならプラスティックワールド');
 		expect(openai.chat.completions.create).toHaveBeenCalledTimes(2);
 	});
 
-	it('always instructs the model not to answer correctly, regardless of isMimicryAllowed', async () => {
+	it('always instructs the model not to answer correctly', async () => {
 		jest.mocked(openai.chat.completions.create)
 			.mockResolvedValueOnce(mockContent('{"decoyAnswer": "誤答"}'))
 			.mockResolvedValueOnce(mockContent('{"isCorrect": false}'));
 
-		await getArbitraryAIAnswer('質問', '正解', true);
+		await getArbitraryAIAnswer('質問', '正解');
 
 		const [[generationCall]] = jest.mocked(openai.chat.completions.create).mock.calls;
 		const prompt = generationCall.messages[0].content as string;
 		expect(prompt).toContain('質問に対して正解となるような回答をしてはいけません');
+	});
+
+	it('instructs the judge to also treat alternative correct answers as correct', async () => {
+		jest.mocked(openai.chat.completions.create)
+			.mockResolvedValueOnce(mockContent('{"decoyAnswer": "誤答"}'))
+			.mockResolvedValueOnce(mockContent('{"isCorrect": false}'));
+
+		await getArbitraryAIAnswer('質問', '正解');
+
+		const [, [judgeCall]] = jest.mocked(openai.chat.completions.create).mock.calls;
+		const prompt = judgeCall.messages[0].content as string;
+		expect(prompt).toContain('別解');
 	});
 
 	it('regenerates up to 2 times when judged as correct, and returns the answer once judged incorrect', async () => {
@@ -59,7 +71,7 @@ describe('tahoiya/arbitraryAibot', () => {
 			.mockResolvedValueOnce(mockContent('{"decoyAnswer": "誤答2"}'))
 			.mockResolvedValueOnce(mockContent('{"isCorrect": false}'));
 
-		const result = await getArbitraryAIAnswer('質問', '正解', false);
+		const result = await getArbitraryAIAnswer('質問', '正解');
 
 		expect(result).toBe('誤答2');
 		expect(openai.chat.completions.create).toHaveBeenCalledTimes(4);
@@ -74,7 +86,7 @@ describe('tahoiya/arbitraryAibot', () => {
 			.mockResolvedValueOnce(mockContent('{"decoyAnswer": "誤答3"}'))
 			.mockResolvedValueOnce(mockContent('{"isCorrect": true}'));
 
-		const result = await getArbitraryAIAnswer('質問', '正解', false);
+		const result = await getArbitraryAIAnswer('質問', '正解');
 
 		expect(result).toBeNull();
 		expect(openai.chat.completions.create).toHaveBeenCalledTimes(6);
@@ -83,7 +95,7 @@ describe('tahoiya/arbitraryAibot', () => {
 	it('returns null and does not throw when the generation call fails', async () => {
 		jest.mocked(openai.chat.completions.create).mockRejectedValueOnce(new Error('API error'));
 
-		const result = await getArbitraryAIAnswer('質問', '正解', false);
+		const result = await getArbitraryAIAnswer('質問', '正解');
 
 		expect(result).toBeNull();
 	});
@@ -93,7 +105,7 @@ describe('tahoiya/arbitraryAibot', () => {
 			.mockResolvedValueOnce(mockContent('{"decoyAnswer": "誤答"}'))
 			.mockRejectedValueOnce(new Error('API error'));
 
-		const result = await getArbitraryAIAnswer('質問', '正解', false);
+		const result = await getArbitraryAIAnswer('質問', '正解');
 
 		expect(result).toBeNull();
 	});
@@ -101,7 +113,7 @@ describe('tahoiya/arbitraryAibot', () => {
 	it('returns null when the response does not contain valid JSON', async () => {
 		jest.mocked(openai.chat.completions.create).mockResolvedValueOnce(mockContent('申し訳ありませんが回答できません'));
 
-		const result = await getArbitraryAIAnswer('質問', '正解', false);
+		const result = await getArbitraryAIAnswer('質問', '正解');
 
 		expect(result).toBeNull();
 	});
