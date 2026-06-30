@@ -42,6 +42,13 @@ fs.promises.readFile = vi.fn((...args) => {
 	}
 });
 
+fs.promises.writeFile = vi.fn((...args) => {
+	const [file, data] = args;
+	const fullPath = Path.resolve(process.cwd(), file);
+	fs.virtualFiles[fullPath] = data;
+	return new Promise((resolve) => resolve());
+});
+
 fs.promises.readdir = vi.fn((...args) => {
 	const [path] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
@@ -102,6 +109,14 @@ fs.writeFile = vi.fn((file, data, ...rest) => {
 	}
 	const fullPath = Path.resolve(process.cwd(), file);
 	fs.virtualFiles[fullPath] = data;
+	callback(null);
+});
+
+fs.mkdir = vi.fn((...args) => {
+	const [path, options, callback] = args;
+
+	// no-op
+
 	callback(null);
 });
 

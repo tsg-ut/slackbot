@@ -7,8 +7,8 @@ export const isUnlocked = () => false;
 export const increment = (user: string, name: string, value: number = 1) => {
 	console.log(`[achievements stub] ${user} increased ${name} by ${value}`);
 };
-export const get = (): any => null;
-export const set = (user: string, name: string, value: any) => {
+export const get = (): unknown => null;
+export const set = (user: string, name: string, value: unknown) => {
 	console.log(`[achievements stub] ${user} set ${name} = ${value}`);
 };
 export const lock = () => {};
