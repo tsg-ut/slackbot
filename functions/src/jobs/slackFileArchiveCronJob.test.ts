@@ -1,5 +1,6 @@
-
+import {slackFileArchiveCronJob} from './slackFileArchiveCronJob';
 import firebaseFunctionsTest from 'firebase-functions-test';
+import {vi} from 'vitest';
 
 process.env.SLACK_TOKEN = 'xoxb-slacktoken';
 process.env.AWS_ACCESS_KEY_ID = 'ACCESS-KEY-ID';
@@ -7,33 +8,27 @@ process.env.AWS_SECRET_ACCESS_KEY = 'SECRET-ACCESS-KEY';
 
 const test = firebaseFunctionsTest();
 
-const filesListMock = vi.hoisted(() => vi.fn());
+const filesList = vi.hoisted(() => vi.fn());
+const batchGet = vi.hoisted(() => vi.fn());
+const batchWrite = vi.hoisted(() => vi.fn());
 
 vi.mock('axios');
 vi.mock('@slack/web-api', () => ({
-	WebClient: vi.fn(function(this: any) {
-		this.files = {
-			list: filesListMock,
+	WebClient: class {
+		files = {
+			list: filesList,
 		};
-	}),
+	},
 }));
-vi.mock('aws-sdk', () => {
-	class DocumentClient {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		batchGet(_params: unknown) { return {promise: vi.fn()}; }
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		batchWrite(_params: unknown) { return {promise: vi.fn()}; }
-	}
-	class S3 {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		putObject(_params: unknown) { return {promise: vi.fn()}; }
-	}
-	return {DynamoDB: {DocumentClient}, S3};
-});
-
-import {DynamoDB} from 'aws-sdk';
-
-import {slackFileArchiveCronJob} from './slackFileArchiveCronJob';
+vi.mock('aws-sdk', () => ({
+	DynamoDB: {
+		DocumentClient: class {
+			batchGet = batchGet;
+			batchWrite = batchWrite;
+		},
+	},
+	S3: class {},
+}));
 
 const cronJob = test.wrap(slackFileArchiveCronJob);
 
@@ -48,7 +43,7 @@ describe('slackFileArchiveCronJob', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(CURRENT_TIME * 1000);
 
-		filesListMock
+		filesList
 			.mockResolvedValueOnce({
 				files: [{
 					id: 'file1',
@@ -57,32 +52,26 @@ describe('slackFileArchiveCronJob', () => {
 			})
 			.mockResolvedValue({files: []});
 
-		const batchGetMock = vi
-			.spyOn(DynamoDB.DocumentClient.prototype, 'batchGet')
-			// @ts-ignore
-			.mockImplementation(() => ({
-				promise: vi.fn().mockResolvedValue({
-					Responses: {
-						'slack-files': [{
-							id: 'file1',
-						}],
-					},
-				}),
-			}));
+		const batchGetMock = batchGet.mockReturnValue({
+			promise: vi.fn().mockResolvedValue({
+				Responses: {
+					'slack-files': [{
+						id: 'file1',
+					}],
+				},
+			}),
+		});
 
-		const batchWriteMock = vi
-			.spyOn(DynamoDB.DocumentClient.prototype, 'batchWrite')
-			// @ts-ignore
-			.mockImplementation(() => ({
-				promise: vi.fn(),
-			}));
+		const batchWriteMock = batchWrite.mockReturnValue({
+			promise: vi.fn(),
+		});
 
 		const cronJobPromise = cronJob(undefined);
 
 		await vi.runAllTimersAsync();
 		await cronJobPromise;
 
-		expect(filesListMock).toHaveBeenCalledWith({
+		expect(filesList).toHaveBeenCalledWith({
 			count: 100,
 			page: 1,
 			ts_to: CURRENT_TIME.toString(),

@@ -1,6 +1,6 @@
 /* eslint-disable import/imports-first, import/first */
 
-import * as crypto from 'crypto';
+import crypto from 'crypto';
 import type {MockedStateInterface} from '../lib/__mocks__/state';
 import Slack from '../lib/slackMock';
 import State from '../lib/state';
