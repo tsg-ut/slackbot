@@ -28,7 +28,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 				phase: savedState.phase,
 				theme: savedState.theme || null,
 				candidates: savedState.candidates || [],
-				ans: new Map(Object.entries(savedState.ans)) || new Map(),
+				ans: new Map(Object.entries(savedState.ans)),
 			};
 		} catch (e) {
 			return {
@@ -251,7 +251,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			sim.push([(model.similarity(state.theme, word) + 1) / 2, user, word]);
 		}
 
-		sim = sim.sort().reverse();
+		sim = sim.sort((a, b) => a[0] - b[0]);
 		const genAttachments = async () => (
 			Promise.all(sim.map(async ([s, user, word], index) => {
 				const [point, frq] = calcPoint(word);

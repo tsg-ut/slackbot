@@ -582,7 +582,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			message.thread_ts &&
 			state.thread === message.thread_ts &&
 			(match = text.match(
-				/^(?<position>[123１２３一二三][123１２３一二三]|同)(?<pieceChar>歩|歩兵|香|香車|桂|桂馬|銀|銀将|金|金将|飛|飛車|角|角行|王|王将|玉|玉将|と|と金|成香|杏|成桂|圭|成銀|全|龍|竜|龍王|竜王|馬|龍馬|竜馬)(?:(?<xFlag>[右左直]?)(?<yFlag>[寄引上]?)(?<promoteFlag>成|不成)?|(?<dropFlag>打))?$/,
+				/^(?<position>[123１２３一二三][123１２３一二三]|同)(?<pieceChar>歩|歩兵|香|香車|桂|桂馬|銀|銀将|金|金将|飛|飛車|角|角行|王|王将|玉|玉将|と|と金|成香|杏|成桂|圭|成銀|全|龍|竜|龍王|竜王|馬|龍馬|竜馬)(?:(?<xFlag>[右左直]?)(?<yFlag>[寄引上]?)(?<promoteFlag>成|不成)?|(?<dropFlag>打)?)$/,
 			))
 		) {
 			const {
