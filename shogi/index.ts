@@ -1,17 +1,19 @@
+import assert from 'assert';
+import {promises as fs} from 'fs';
 import path from 'path';
+import {oneLine} from 'common-tags';
+import flatten from 'lodash/flatten';
+import last from 'lodash/last';
+import maxBy from 'lodash/maxBy';
+import minBy from 'lodash/minBy';
+import sample from 'lodash/sample';
 import Shogi from 'shogi9.js';
+import type {IMove} from 'shogi9.js';
 import Color from 'shogi9.js/lib/Color.js';
 import Piece from 'shogi9.js/lib/Piece.js';
 import sqlite from 'sqlite';
+import type {Database} from 'sqlite';
 import sqlite3 from 'sqlite3';
-import {promises as fs} from 'fs';
-import assert from 'assert';
-import minBy from 'lodash/minBy';
-import maxBy from 'lodash/maxBy';
-import sample from 'lodash/sample';
-import last from 'lodash/last';
-import flatten from 'lodash/flatten';
-import {oneLine} from 'common-tags';
 import {unlock, increment} from '../achievements/index.js';
 import type {SlackInterface} from '../lib/slack';
 
@@ -31,16 +33,56 @@ interface ShogiDbRow {
 	depth: number;
 }
 
+interface ShogiSlackMessage {
+	channel: string;
+	text?: string;
+	ts: string;
+	user?: string;
+	username?: string;
+	thread_ts?: string;
+}
+
+interface ShogiState {
+	previousPosition: {x: number; y: number} | null;
+	previousBoard: Shogi;
+	previousDatabase: string;
+	previousTurns: number;
+	isPrevious打ち歩: boolean;
+	isSpoiled: boolean;
+	isLocked: boolean;
+	isEnded: boolean;
+	player: string | null;
+	board: Shogi | null;
+	turn: Color | null;
+	log: string[];
+	thread: string | null;
+	flags: Set<string>;
+	db: Database | null;
+}
+
+type Transition = {
+	type: 'move';
+	data: IMove;
+	kind: string;
+	board: Shogi;
+	promotion: boolean | null;
+} | {
+	type: 'drop';
+	data: IMove;
+	board: Shogi;
+	promotion: null;
+};
+
 const iconUrl =
 	'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/kenNldpvFDI6baHIW0XnB6JzITdh3hB2gCLcBGAs/s400/character_game_syougi.png';
 
 export default ({eventClient, webClient: slack}: SlackInterface) => {
-	const state: any = {
+	const state: ShogiState = {
 		previousPosition: null,
-		previousBoard: new (Shogi as any)({
+		previousBoard: new Shogi({
 			preset: 'OTHER',
 			data: {
-				color: (Color as any).Black,
+				color: Color.Black,
 				board: [[{}, {}, {}], [{}, {}, {}], [{}, {}, {}]],
 				hands: [
 					{HI: 0, KY: 0, KE: 0, GI: 0, KI: 0, KA: 0, FU: 0},
@@ -107,7 +149,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 		return slack.chat.postMessage(baseArgs);
 	};
 
-	const end = async (color: any, reason?: string) => {
+	const end = async (color: Color, reason?: string) => {
 		const {log, isEnded} = state;
 		state.previousPosition = null;
 		state.board = null;
@@ -118,7 +160,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
 		const player =
-			color === (Color as any).Black
+			color === Color.Black
 				? `先手<@${state.player}>`
 				: '後手9マスしょうぎ名人';
 		const message = `まで、${log.length}手で${player}の勝ちです。${
@@ -148,7 +190,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 		if (reason === '打ち歩詰め') {
 			await unlock(state.player, 'shogi-打ち歩詰め');
 		}
-		if (color === (Color as any).Black) {
+		if (color === Color.Black) {
 			await unlock(state.player, 'shogi');
 			if (log.length === state.previousTurns) {
 				await unlock(state.player, 'shogi-shortest');
@@ -204,22 +246,22 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 
 		// 先手自殺手
 		if (!currentResult) {
-			end((Color as any).White, '王手放置');
+			end(Color.White, '王手放置');
 			return;
 		}
 
 		// 後手詰み
 		if (currentResult.depth === 1) {
 			if (state.isPrevious打ち歩) {
-				end((Color as any).White, '打ち歩詰め');
+				end(Color.White, '打ち歩詰め');
 				return;
 			}
 
-			end((Color as any).Black);
+			end(Color.Black);
 			return;
 		}
 
-		const transitions = getTransitions(inversedBoard);
+		const transitions = getTransitions(inversedBoard) as Transition[];
 
 		const transitionResults: ShogiDbRow[] = await state.db.all(
 			oneLine`
@@ -230,26 +272,26 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 		.join(', ')})
 				ORDER BY RANDOM()
 			`,
-			transitions.map((transition: any) => serialize(transition.board)),
+			transitions.map(({board}) => serialize(board)),
 		);
 
-		const loseResults = transitionResults.filter(({result}: any) => result === 0);
-		const winResults = transitionResults.filter(({result}: any) => result === 1);
+		const loseResults = transitionResults.filter(({result}) => result === 0);
+		const winResults = transitionResults.filter(({result}) => result === 1);
 		const unknownResults = transitionResults.filter(
-			({result}: any) => result === null,
+			({result}) => result === null,
 		);
 		state.isPrevious打ち歩 = false;
 
 		if (loseResults.length > 0) {
 			const transitionResult = minBy(loseResults, 'depth');
 			const transition = transitions.find(
-				({board}: any) => Buffer.compare(serialize(board), transitionResult.board) === 0,
+				({board}) => Buffer.compare(serialize(board), transitionResult.board) === 0,
 			);
 			state.board = deserialize(transitionResult.board);
-			state.turn = (Color as any).Black;
+			state.turn = Color.Black;
 			const logText = transitionToText(
 				transition,
-				(Color as any).White,
+				Color.White,
 				state.previousPosition,
 			);
 			state.previousPosition = {
@@ -261,7 +303,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 
 			// 先手詰み
 			if (transitionResult.depth === 1) {
-				end((Color as any).White);
+				end(Color.White);
 			}
 		} else {
 			const transitionResult =
@@ -269,13 +311,13 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 					? sample(unknownResults)
 					: maxBy(winResults, 'depth');
 			const transition = transitions.find(
-				({board}: any) => Buffer.compare(serialize(board), transitionResult.board) === 0,
+				({board}) => Buffer.compare(serialize(board), transitionResult.board) === 0,
 			);
 			state.board = deserialize(transitionResult.board);
-			state.turn = (Color as any).Black;
+			state.turn = Color.Black;
 			const logText = transitionToText(
 				transition,
-				(Color as any).White,
+				Color.White,
 				state.previousPosition,
 			);
 			state.previousPosition = {
@@ -287,7 +329,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 		}
 	};
 
-	eventClient.on('message', async (message: any) => {
+	eventClient.on('message', async (message: ShogiSlackMessage) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
@@ -361,7 +403,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			state.isPrevious打ち歩 = false;
 			state.isSpoiled = false;
 			state.isEnded = false;
-			state.turn = (Color as any).Black;
+			state.turn = Color.Black;
 			state.player = message.user;
 			state.flags = new Set();
 			state.thread = ts;
@@ -369,7 +411,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			const 桂馬count = flatten([
 				...state.board.board,
 				state.board.hands[0],
-			]).filter((piece: any) => piece && piece.color === (Color as any).Black && piece.kind === 'KE').length;
+			]).filter((piece) => piece && piece.color === Color.Black && piece.kind === 'KE').length;
 			if (桂馬count >= 3) {
 				state.flags.add('三桂');
 			}
@@ -389,7 +431,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			}
 
 			if (state.board !== null) {
-				await end((Color as any).White);
+				await end(Color.White);
 			}
 
 			state.db = await sqlite.open({
@@ -399,14 +441,14 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			state.board = state.previousBoard;
 			state.previousBoard = state.board.clone();
 			state.isPrevious打ち歩 = false;
-			state.turn = (Color as any).Black;
+			state.turn = Color.Black;
 			state.player = message.user;
 			state.flags = new Set();
 
 			const 桂馬count = flatten([
 				...state.board.board,
 				state.board.hands[0],
-			]).filter((piece: any) => piece && piece.color === (Color as any).Black && piece.kind === 'KE').length;
+			]).filter((piece) => piece && piece.color === Color.Black && piece.kind === 'KE').length;
 			if (桂馬count >= 3) {
 				state.flags.add('三桂');
 			}
@@ -433,23 +475,22 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			state.isSpoiled = true;
 
 			let board = state.previousBoard;
-			let previousPosition: any = null;
+			let previousPosition: {x: number; y: number} | null = null;
 			const logs: string[] = [];
 
 			while (true) {
 				{
-					const transitions = getTransitions(board);
+					const transitions = getTransitions(board) as Transition[];
+					const transitionBoards = Array(transitions.length).fill('?').join(', ');
 
 					const transitionResults: ShogiDbRow[] = await state.db.all(
 						oneLine`
 							SELECT board, result, depth
 							FROM boards
-							WHERE board IN (${Array(transitions.length)
-		.fill('?')
-		.join(', ')})
+							WHERE board IN (${transitionBoards})
 							ORDER BY RANDOM()
 						`,
-						transitions.map((transition: any) => serialize(transition.board)),
+						transitions.map(({board: b}) => serialize(b)),
 					);
 
 					const transitionResult = minBy(
@@ -457,12 +498,12 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 						'depth',
 					);
 					const transition = transitions.find(
-						({board: b}: any) => Buffer.compare(serialize(b), transitionResult.board) === 0,
+						({board: b}) => Buffer.compare(serialize(b), transitionResult.board) === 0,
 					);
 					board = deserialize(transitionResult.board);
 					const logText = transitionToText(
 						transition,
-						(Color as any).Black,
+						Color.Black,
 						previousPosition,
 					);
 					logs.push(logText);
@@ -479,18 +520,17 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 				}
 
 				{
-					const transitions = getTransitions(board);
+					const transitions = getTransitions(board) as Transition[];
+					const transitionBoards = Array(transitions.length).fill('?').join(', ');
 
 					const transitionResults: ShogiDbRow[] = await state.db.all(
 						oneLine`
 							SELECT board, result, depth
 							FROM boards
-							WHERE board IN (${Array(transitions.length)
-		.fill('?')
-		.join(', ')})
+							WHERE board IN (${transitionBoards})
 							ORDER BY RANDOM()
 						`,
-						transitions.map((transition: any) => serialize(transition.board)),
+						transitions.map(({board: b}) => serialize(b)),
 					);
 
 					const transitionResult = maxBy(
@@ -498,13 +538,13 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 						'depth',
 					);
 					const transition = transitions.find(
-						({board: b}: any) => Buffer.compare(serialize(b), transitionResult.board) === 0,
+						({board: b}) => Buffer.compare(serialize(b), transitionResult.board) === 0,
 					);
 					board = deserialize(transitionResult.board);
 
 					const logText = transitionToText(
 						transition,
-						(Color as any).White,
+						Color.White,
 						previousPosition,
 					);
 					logs.push(logText);
@@ -557,7 +597,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 
 			if (
 				state.board === null ||
-				state.turn !== (Color as any).Black ||
+				state.turn !== Color.Black ||
 				state.isLocked
 			) {
 				perdon();
@@ -591,10 +631,10 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 					: `${'123'[x - 1]}${'一二三'[y - 1]}`;
 
 			if (dropFlag !== '打') {
-				const moves = state.board.getMovesTo(x, y, piece, (Color as any).Black);
+				const moves = state.board.getMovesTo(x, y, piece, Color.Black);
 
 				const yFilteredMoves = moves
-					.filter((move: any) => {
+					.filter((move) => {
 						if (yFlag === '引') {
 							return move.from.y < move.to.y;
 						}
@@ -610,10 +650,10 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 						assert(!yFlag);
 						return true;
 					})
-					.sort((a: any, b: any) => b.from.x - a.from.x);
+					.sort((a, b) => b.from.x - a.from.x);
 
 				if (yFilteredMoves.length >= 1) {
-					const filteredMoves = yFilteredMoves.filter((move: any, index: number) => {
+					const filteredMoves = yFilteredMoves.filter((move, index) => {
 						if (['HI', 'KA', 'RY', 'UM'].includes(piece)) {
 							if (xFlag === '右') {
 								return index === moves.length - 1;
@@ -647,7 +687,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 						const move = filteredMoves[0];
 
 						const isPromotable =
-							(move.from.y === 1 || move.to.y === 1) && (Piece as any).canPromote(piece);
+							(move.from.y === 1 || move.to.y === 1) && Piece.canPromote(piece);
 
 						if (isPromotable && !promoteFlag) {
 							perdon('成・不成を指定してください。');
@@ -663,9 +703,9 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 						);
 
 						const didPromote =
-							state.board.get(move.to.x, move.to.y).piece !== piece;
+							state.board.get(move.to.x, move.to.y).kind !== piece;
 
-						state.turn = (Color as any).White;
+						state.turn = Color.White;
 						state.isPrevious打ち歩 = false;
 						state.previousPosition = {x, y};
 						const newPromoteFlag = didPromote ? '成' : '不成';
@@ -691,12 +731,12 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			}
 
 			const hands = state.board
-				.getDropsBy((Color as any).Black)
-				.filter(({to, kind}: any) => to.x === x && to.y === y && kind === piece);
+				.getDropsBy(Color.Black)
+				.filter(({to, kind}) => to.x === x && to.y === y && kind === piece);
 			if (hands.length > 0) {
-				state.board.drop(x, y, piece, (Color as any).Black);
+				state.board.drop(x, y, piece, Color.Black);
 
-				state.turn = (Color as any).White;
+				state.turn = Color.White;
 				state.isPrevious打ち歩 = piece === 'FU';
 				state.previousPosition = {x, y};
 				const logText = `☗${newPosition}${pieceToChar(piece)}`;
@@ -725,12 +765,12 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			state.thread === message.thread_ts &&
 			['負けました', '投げます', 'ありません', '投了'].includes(text)
 		) {
-			if (state.board === null || state.turn !== (Color as any).Black) {
+			if (state.board === null || state.turn !== Color.Black) {
 				perdon();
 				return;
 			}
 
-			end((Color as any).White);
+			end(Color.White);
 			return;
 		}
 
@@ -739,7 +779,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			state.thread === message.thread_ts &&
 			text === '盤面'
 		) {
-			if (state.board === null || state.turn !== (Color as any).Black) {
+			if (state.board === null || state.turn !== Color.Black) {
 				perdon();
 				return;
 			}
