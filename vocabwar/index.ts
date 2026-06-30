@@ -12,6 +12,7 @@ import byline from 'byline';
 import w2v from 'word2vec';
 import {download} from '../lib/download';
 import type {SlackInterface} from '../lib/slack';
+import type {GenericMessageEvent} from '@slack/bolt';
 
 export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const state: {
@@ -31,7 +32,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			};
 		} catch (e) {
 			return {
-				phase: 'waiting',
+				phase: 'waiting', // waiting, collecting,
 				theme: null,
 				candidates: [],
 				ans: new Map(),
@@ -65,11 +66,11 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		await promisify(fs.writeFile)(path.join(__dirname, 'state.json'), JSON.stringify(savedState));
 	};
 
-	const {members} = await (slack as any).users.list();
-	const {team} = await (slack as any).team.info();
+	const {members} = await slack.users.list({});
+	const {team} = await slack.team.info();
 
 	const getMemberIcon = (user: string) => {
-		const member = members.find(({id}: {id: string}) => id === user);
+		const member = members.find(({id}) => id === user);
 		return member.profile.image_24;
 	};
 
@@ -284,7 +285,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		});
 	};
 
-	eventClient.on('message', async (message: any) => {
+	eventClient.on('message', async (message: GenericMessageEvent) => {
 		if (!message.text || message.subtype !== undefined) {
 			return;
 		}
@@ -306,7 +307,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 					await postMessage(stripIndent`
                         語彙力の戦い:fire:*弓箭*:fire:を始めるよ:bow_and_arrow:
                         お題は「 *${state.theme}* 」:muscle:
-                        参加者は30秒以内にこの単語に"近い"単語を<#${process.env.CHANNEL_SANDBOX}|sandbox>に書き込んでね:crossed_swords:
+                        参加者は30秒以内にこの単語に“近い”単語を<#${process.env.CHANNEL_SANDBOX}|sandbox>に書き込んでね:crossed_swords:
                         終了予定時刻: ${getTimeLink(end)}
                     `);
 					return;
@@ -347,7 +348,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 					await postMessage(stripIndent`
                         語彙力の戦い:fire:*弓箭*:fire:を始めるよ:bow_and_arrow:
                         お題は「 *${state.theme}* 」:muscle:
-                        参加者は30秒以内にこの単語に"近い"単語を<#${process.env.CHANNEL_SANDBOX}|sandbox>に書き込んでね:crossed_swords:
+                        参加者は30秒以内にこの単語に“近い”単語を<#${process.env.CHANNEL_SANDBOX}|sandbox>に書き込んでね:crossed_swords:
                         終了予定時刻: ${getTimeLink(end)}
                     `);
 					return;
@@ -358,6 +359,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 
 					const word = text;
 					await setState({candidates: []});
+
 					await setState({theme: word});
 
 					const end = Date.now() + 0.5 * 60 * 1000;

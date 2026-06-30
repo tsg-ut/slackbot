@@ -3,26 +3,20 @@ import Slack from '../lib/slackMock';
 import axios from 'axios';
 import type {AxiosResponse} from 'axios';
 import { stripIndent, oneLineTrim } from 'common-tags';
+import type { ScrapeOptions } from 'scrape-it';
 
 vi.mock('axios');
 
-// scrape-itはCJSのrequire経由でaxiosを呼ぶため、ESMモックが届かない。
-// そのためscrape-itをモックし、内部でモック済みaxiosを使って同じURLルーティングを通す。
+// scrape-itからのaxiosの呼び出しはモックできないため、簡易実装を提供する
 vi.mock('scrape-it', async () => {
-    const {load} = await vi.importActual<typeof import('cheerio')>('cheerio');
-    const {default: axiosFn} = await import('axios');
-    const scrapeItCoreModule = await vi.importActual<any>('scrape-it-core');
-    const scrapeHTML: ($: any, opts: any) => any =
-        typeof scrapeItCoreModule === 'function' ? scrapeItCoreModule : scrapeItCoreModule.default;
-
-    const scrapeIt = async <T>(url: string, opts: object): Promise<{data: T}> => {
-        const res = await axiosFn(url) as {data: string};
-        const $ = load(res.data);
-        return {data: scrapeHTML($, opts) as T};
+    const scrapeIt = await vi.importActual<typeof import('scrape-it')>('scrape-it');
+    const cheerio = await vi.importActual<typeof import('cheerio')>('cheerio');
+    return {
+        default: async (url: string, opts: ScrapeOptions) => {
+            const res = await axios(url);
+            return {data: scrapeIt.scrapeHTML(cheerio.load(res.data), opts)};
+        },
     };
-    (scrapeIt as any).scrapeHTML = scrapeHTML;
-
-    return {default: scrapeIt};
 });
 
 let slack: Slack = null;
@@ -84,7 +78,7 @@ describe('lyrics', () => {
             if (url.includes('song')) {
                 return {data: songHtml} as AxiosResponse;
             }
-            if (url.includes('itunes')) {
+            if (url.includes('itunes')) { // iTunes Search API
                 return {data: {
                     resultCount: 1,
                     results: [{

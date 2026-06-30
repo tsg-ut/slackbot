@@ -17,20 +17,14 @@ fs.virtualFiles = {
 };
 
 vi.mock('lodash', async (importOriginal) => {
-  const orig = await importOriginal<typeof import('lodash')>();
-  const lodash: any = (orig as any).default ?? orig;
-  const allMethods = Object.fromEntries(
-    Object.keys(lodash).map((key: string) => [key, lodash[key]])
-  );
+  const orig = (await importOriginal<{default: typeof import('lodash')}>()).default;
   return {
-    default: lodash,
-    ...allMethods,
-    sample: vi.fn((...args: any[]) => {
-      const [array] = args;
-      if(lodash.isEqual(array.sort(), kanjis.sort())){
+    ...orig,
+    sample: vi.fn((array: string[]) => {
+      if(orig.isEqual(array.sort(), kanjis.sort())){
         return '川';
       }
-      return lodash.sample(...args);
+      return orig.sample(array);
     }),
   };
 });

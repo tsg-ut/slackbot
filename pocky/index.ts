@@ -11,6 +11,7 @@ import logger from '../lib/logger';
 import {getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
 import type {SlackInterface} from '../lib/slack';
+import type {GenericMessageEvent} from '@slack/bolt';
 
 const log = logger.child({bot: 'pocky'});
 
@@ -54,6 +55,13 @@ function generateReply(text: string, words: string[], index: number): string | n
 			return false;
 		}
 		const trailer = myWord.slice(normalizedText.length);
+		// let result = "";
+		// for (const token of trailer.split(/(\s+)/)) {
+		// 	result += token;
+		// 	if (token.replace(stripRe, "") !== "") {
+		// 		break;
+		// 	}
+		// }
 		const result = trailer;
 		return normalize(result).replace(stripRe, "") ? result : false;
 	}).filter(Boolean) as string[];
@@ -66,6 +74,7 @@ function generateReply(text: string, words: string[], index: number): string | n
 		});
 		sortedTrailers = trailersNospaced.concat(trailersSpaced);
 	}
+	// logger.info(sortedTrailers);
 	if (sortedTrailers.length <= index) {
 		return null;
 	}
@@ -103,9 +112,9 @@ function htmlEscape(text: string): string {
 function normalize(text: string): string {
 	return text
 		.normalize("NFKC")
-		.replace(/️/g, "")
-		.replace(/‍/g, " ")
-		.replace(/〜/g, "~")
+		.replace(/\ufe0f/g, "")
+		.replace(/\u200d/g, " ")
+		.replace(/\u301c/g, "~")
 		.toLowerCase();
 }
 
@@ -136,7 +145,7 @@ export default async (clients: SlackInterface) => {
 	function postMessage(message: string, channel: string, postThreadOptions: {broadcast?: boolean; threadPosted?: string | null} = {}) {
 		const {broadcast, threadPosted} = {
 			broadcast: false,
-			threadPosted: null as string | null,
+			threadPosted: null,
 			...postThreadOptions,
 		};
 		return slack.chat.postMessage({
@@ -209,7 +218,7 @@ export default async (clients: SlackInterface) => {
 		}, 3 * 60 * 1000);
 	}
 
-	eventClient.on('message', async (message: any) => {
+	eventClient.on('message', async (message: GenericMessageEvent) => {
 		if (message.subtype) {
 			return;
 		}
@@ -266,7 +275,7 @@ export default async (clients: SlackInterface) => {
 				if (value === result) {
 					unlock(message.user, "self-pocky");
 				}
-			}, (error: any) => {
+			}, (error: Error) => {
 				log.error("error:", error.message);
 			});
 			if (Array.from(result).length >= 20) {
