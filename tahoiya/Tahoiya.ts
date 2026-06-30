@@ -17,12 +17,14 @@ import type {SlackInterface} from '../lib/slack';
 import State from '../lib/state';
 import {getAIBotMeaning} from './aibot';
 import type {AIBotModel} from './aibot';
+import {getArbitraryAIAnswer} from './arbitraryAibot';
 import {calculateRatingDeltas} from './rating';
 import type {
 	DailyGameState,
 	GameComment,
 	NormalGameState,
 	TahoiyaState,
+	ArbitraryTheme,
 	DictionarySource,
 	DictionaryTheme,
 	ShuffledMeaning,
@@ -55,6 +57,8 @@ const DUMMY_SIZE_BASE = 4;
 const DAILY_TAHOIYA_MINIMUM_PARTICIPANTS = 3;
 
 const AI_BOT_MODELS: AIBotModel[] = ['tahoiyabot-01', 'tahoiyabot-02'];
+const ARBITRARY_AI_BOT_ID = 'tahoiyabot-arbitrary';
+const ALL_AI_BOT_IDS: string[] = [...AI_BOT_MODELS, ARBITRARY_AI_BOT_ID];
 
 export class Tahoiya extends ChannelLimitedBot {
 	protected override wakeWordRegex = /^(?:たほいや|デイリーたほいや|たほいやランキング)$/;
@@ -582,6 +586,31 @@ export class Tahoiya extends ChannelLimitedBot {
 					});
 				}).catch((err) => this.log.error('AI bot error (daily):', err));
 			}
+		}
+
+		// OpenAI-based AI participant submits a decoy answer for arbitrary themes in the background
+		if (theme.theme.type === 'arbitrary') {
+			const arbitraryTheme = theme.theme as ArbitraryTheme;
+
+			getArbitraryAIAnswer(
+				arbitraryTheme.question,
+				arbitraryTheme.answer,
+				arbitraryTheme.isMimicryAllowed ?? false,
+			).then((decoyAnswer) => {
+				if (!decoyAnswer) {
+					return;
+				}
+				mutex.runExclusive(() => {
+					if (this.#state.dailyGame?.themeId !== theme.id) {
+						return;
+					}
+					if (this.#state.dailyGame.phase !== 'collect_meanings') {
+						return;
+					}
+
+					this.#state.dailyGame.meanings[ARBITRARY_AI_BOT_ID] = normalizeMeaning(decoyAnswer);
+				});
+			}).catch((err) => this.log.error('Arbitrary AI bot error (daily):', err));
 		}
 	}
 
@@ -1246,7 +1275,7 @@ export class Tahoiya extends ChannelLimitedBot {
 			return;
 		}
 
-		for (const botId of AI_BOT_MODELS) {
+		for (const botId of ALL_AI_BOT_IDS) {
 			if (!game.meanings[botId]) {
 				continue;
 			}
