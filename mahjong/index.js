@@ -3,13 +3,13 @@ const fs = require('fs');
 const path = require('path');
 const qs = require('querystring');
 const {promisify} = require('util');
-const {Mutex} = require('async-mutex');
 const {v2: cloudinary} = require('cloudinary');
 const {source} = require('common-tags');
 const {chunk, shuffle, sampleSize, sample, random, range, zip} = require('lodash');
 const {unlock, increment} = require('../achievements');
 const {AteQuiz} = require('../atequiz/index');
 const {blockDeploy} = require('../deploy/index');
+const {Mutex} = require('async-mutex');
 const calculator = require('./calculator.js');
 
 const mutex = new Mutex();
@@ -987,7 +987,9 @@ module.exports = (clients) => {
 				{username: 'mahjong', icon_emoji: ':mahjong:'},
 			);
 
-			const result = await mutex.runExclusive(async () => ateQuiz.start());
+			const result = await mutex.runExclusive(async () => {
+				return ateQuiz.start();
+			});
 
 			if (result.state === 'solved') {
 				await increment(result.correctAnswerer, 'mahjong-chinitsu-quiz-answer');

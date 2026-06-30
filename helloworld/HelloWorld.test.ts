@@ -1,10 +1,11 @@
 /* eslint-disable import/imports-first, import/first */
 
-import crypto from 'crypto';
 import type {MockedStateInterface} from '../lib/__mocks__/state';
 import Slack from '../lib/slackMock';
 import State from '../lib/state';
 import {HelloWorld, type StateObj} from './HelloWorld';
+
+const randomUUID = vi.hoisted(() => vi.fn(() => 'test-uuid'));
 
 vi.mock('../lib/slackUtils');
 vi.mock('../lib/state');
@@ -13,11 +14,11 @@ vi.mock('os', () => ({
 	release: vi.fn(() => 'test-release'),
 }));
 vi.mock('crypto', () => ({
-	randomUUID: vi.fn(() => 'test-uuid'),
+	default: {randomUUID},
+	randomUUID,
 }));
 
 const MockedState = State as MockedStateInterface<StateObj>;
-const mockedCrypto = vi.mocked(crypto);
 
 describe('helloworld', () => {
 	let slack: Slack = null;
@@ -33,8 +34,8 @@ describe('helloworld', () => {
 	});
 
 	it('initializes correctly', () => {
-		expect(mockedCrypto.randomUUID).toHaveBeenCalledTimes(1);
-		expect(mockedCrypto.randomUUID.mock.calls[0]).toHaveLength(0);
+		expect(randomUUID).toHaveBeenCalledTimes(1);
+		expect(randomUUID.mock.calls[0]).toHaveLength(0);
 
 		const state = MockedState.mocks.get('helloworld');
 		expect(state.counter).toBe(0);

@@ -1,19 +1,24 @@
 import roomGacha from './index';
 import Slack from '../lib/slackMock';
+import axios from 'axios';
+import type { AxiosResponse } from 'axios';
+import { promises as fs } from 'fs';
 import { stripIndents } from 'common-tags';
 import assert from 'assert';
 import type { KnownBlock } from '@slack/web-api';
+import type { ScrapeOptions } from 'scrape-it';
 
-vi.mock('scrape-it', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('scrape-it')>();
-    const {scrapeHTML} = actual;
+vi.mock('axios');
+
+// scrape-itからのaxiosの呼び出しはモックできないため、簡易実装を提供する
+vi.mock('scrape-it', async () => {
+    const scrapeIt = await vi.importActual<typeof import('scrape-it')>('scrape-it');
+    const cheerio = await vi.importActual<typeof import('cheerio')>('cheerio');
     return {
-        default: vi.fn(async (_url: unknown, opts: Parameters<typeof scrapeHTML>[1]) => {
-            const {promises: fs} = await import('fs');
-            const html = await fs.readFile(`${__dirname}/search-result.test.html`, 'utf-8');
-            return {data: scrapeHTML(html, opts)};
-        }),
-        scrapeHTML,
+        default: async (url: string, opts: ScrapeOptions) => {
+            const res = await axios(url);
+            return {data: scrapeIt.scrapeHTML(cheerio.load(res.data), opts)};
+        },
     };
 });
 
@@ -27,6 +32,9 @@ beforeEach(async () => {
 
 describe('room-gacha', () => {
     it('responds to "物件ガチャ" with a prefecture and a city specified', async () => {
+        const data = await fs.readFile(`${__dirname}/search-result.test.html`, 'utf-8');
+        const mockAxios = vi.mocked(axios);
+        mockAxios.mockResolvedValue({data} as AxiosResponse);
         const response = await slack.getResponseTo('物件ガチャ 東京都 文京区');
         const blocks = 'blocks' in response ? response.blocks : [];
         expect('username' in response && response.username).toBe('物件ガチャ');
