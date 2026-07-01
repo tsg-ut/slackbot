@@ -51,7 +51,7 @@ export const tsgEventClient = new TeamEventClient(eventClient, process.env.TEAM_
 const loadTokensDeferred = new Deferred<Token[]>();
 const loadTokens = async () => {
 	const db = await sqlite.open({
-		filename: path.join(__dirname, '..', 'tokens.sqlite3'),
+		filename: path.join(process.cwd(), 'tokens.sqlite3'),
 		driver: sqlite3.Database,
 	});
 	const tokens: Token[] = await db.all(sql`SELECT * FROM tokens WHERE bot_access_token <> ''`).catch((): Token[] => []);
