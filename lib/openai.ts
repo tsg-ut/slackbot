@@ -28,7 +28,7 @@ interface OpenAIUsageLog extends DocumentData {
 	cost: number | null; // Cost in USD
 }
 
-const OpenAIUsageLog = db.collection('openai_usage_logs') as CollectionReference<OpenAIUsageLog>;
+const OpenAIUsageLog = db?.collection('openai_usage_logs') as CollectionReference<OpenAIUsageLog> | null ?? null;
 
 const openai = new OpenAI({
 	apiKey: process.env.OPENAI_API_KEY,
@@ -45,6 +45,7 @@ const formatDurationInHours = (durationInHours: number): string => {
 };
 
 const checkUsageLimit = async (errorDestination: 'slack' | 'discord'): Promise<void> => {
+	if (!OpenAIUsageLog) return;
 	const now = new Date();
 	const oneDayAgo = dayjs(now).subtract(1, 'day').toDate();
 	const query = OpenAIUsageLog.where('createdAt', '>=', oneDayAgo).orderBy('createdAt', 'desc');
@@ -133,7 +134,7 @@ const audioSpeechCreate = async (params: SpeechCreateParams): Promise<Response &
 
 	log.info(`OpenAI audio.speech.create API cost: $${cost?.toFixed(4) ?? 'unknown'}`);
 
-	await OpenAIUsageLog.add({
+	await OpenAIUsageLog?.add({
 		method: 'audio.speech.create',
 		createdAt: firestore.FieldValue.serverTimestamp(),
 		model: params.model,
@@ -204,7 +205,7 @@ const chatCompletionCreate = async (params: ChatCompletionCreateParamsNonStreami
 
 	log.info(`OpenAI chat.completions.create API cost: $${cost?.toFixed(4) ?? 'unknown'}`);
 
-	await OpenAIUsageLog.add({
+	await OpenAIUsageLog?.add({
 		method: 'chat.completions.create',
 		createdAt: firestore.FieldValue.serverTimestamp(),
 		model: params.model,
