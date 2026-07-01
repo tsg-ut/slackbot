@@ -28,7 +28,8 @@ interface OpenAIUsageLog extends DocumentData {
 	cost: number | null; // Cost in USD
 }
 
-const OpenAIUsageLog = db.collection('openai_usage_logs') as CollectionReference<OpenAIUsageLog>;
+// Firestore (and thus usage logging/limiting) is unavailable outside of production; see lib/firestore.ts.
+const OpenAIUsageLog = db ? (db.collection('openai_usage_logs') as CollectionReference<OpenAIUsageLog>) : null;
 
 const openai = new OpenAI({
 	apiKey: process.env.OPENAI_API_KEY,
@@ -45,6 +46,10 @@ const formatDurationInHours = (durationInHours: number): string => {
 };
 
 const checkUsageLimit = async (errorDestination: 'slack' | 'discord'): Promise<void> => {
+	if (!OpenAIUsageLog) {
+		return;
+	}
+
 	const now = new Date();
 	const oneDayAgo = dayjs(now).subtract(1, 'day').toDate();
 	const query = OpenAIUsageLog.where('createdAt', '>=', oneDayAgo).orderBy('createdAt', 'desc');
@@ -133,7 +138,7 @@ const audioSpeechCreate = async (params: SpeechCreateParams): Promise<Response &
 
 	log.info(`OpenAI audio.speech.create API cost: $${cost?.toFixed(4) ?? 'unknown'}`);
 
-	await OpenAIUsageLog.add({
+	await OpenAIUsageLog?.add({
 		method: 'audio.speech.create',
 		createdAt: firestore.FieldValue.serverTimestamp(),
 		model: params.model,
@@ -157,6 +162,7 @@ const checkChatCompletionCreateModel = (params: ChatCompletionCreateParamsNonStr
 		model === 'gpt-4o-mini' ||
 		model === 'gpt-4.1-mini' ||
 		model === 'gpt-5-mini' ||
+		model === 'gpt-5.4-nano' ||
 		model === 'o4-mini'
 	) {
 		return model;
@@ -193,6 +199,11 @@ const chatCompletionCreate = async (params: ChatCompletionCreateParamsNonStreami
 		// Output: $2.00 / 1M tokens
 		// https://platform.openai.com/docs/models/gpt-5-mini
 		cost = (promptTokens / 1_000_000) * 0.25 + (completionTokens / 1_000_000) * 2.00;
+	} else if (model === 'gpt-5.4-nano') {
+		// Input: $0.20 / 1M tokens
+		// Output: $1.25 / 1M tokens
+		// https://developers.openai.com/api/docs/models/gpt-5.4-nano
+		cost = (promptTokens / 1_000_000) * 0.20 + (completionTokens / 1_000_000) * 1.25;
 	} else {
 		assert(model === 'o4-mini', `Unexpected model: ${model}`);
 
@@ -204,7 +215,7 @@ const chatCompletionCreate = async (params: ChatCompletionCreateParamsNonStreami
 
 	log.info(`OpenAI chat.completions.create API cost: $${cost?.toFixed(4) ?? 'unknown'}`);
 
-	await OpenAIUsageLog.add({
+	await OpenAIUsageLog?.add({
 		method: 'chat.completions.create',
 		createdAt: firestore.FieldValue.serverTimestamp(),
 		model: params.model,

@@ -1,4 +1,5 @@
 /* eslint-disable import/prefer-default-export */
+import {inspect} from 'util';
 import {stripIndent} from 'common-tags';
 import {z} from 'zod';
 import logger from '../lib/logger';
@@ -6,7 +7,7 @@ import openai from '../lib/openai';
 
 const log = logger.child({bot: 'tahoiya/arbitraryAibot'});
 
-const MODEL = 'gpt-4.1-mini';
+const MODEL = 'gpt-5.4-nano';
 const MAX_ANSWER_LENGTH = 256;
 
 // Initial generation + up to 2 regenerations when the previous attempt is judged correct.
@@ -40,19 +41,20 @@ const buildGenerationPrompt = (
 	# 質問
 	${question}
 
-	# 正解（あなたはこれを知っていますが、誤答選択肢としてこれを使ったり、言い換えて使ったりしてはいけません）
+	# 正解（あなたはこれを知っていますが、誤答選択肢としてこれを使ったり、言い換えて使ったり、近い分野の回答を作成してはいけません）
 	${answer}
 
 	# あなたのタスク
 	以下の手順で思考しながら、この質問に対する「誤答選択肢」を1つ作成してください。
 
 	1. 質問の分野・意図と、正解の形式（固有名詞か説明文か、文体、大まかな分量など）を分析する。
-	2. 分析結果を踏まえ、正解と似た形式でありながら内容が異なる、もっともらしい誤答の候補を3つ挙げる。
+	2. 分析結果を踏まえ、正解と似た形式でありながら内容が全く異なる、もっともらしい誤答の候補を、自由な発想で3つ挙げる。
 	3. 各候補について、他のプレイヤーが正解と誤認しそうな説得力があるかを吟味し、最も優れた候補を1つ選ぶ。
-	4. 選んだ候補の内容が、正解と実質的に同じ意味になっていないかを再確認し、もし同じ意味であれば候補を修正する。
+	4. 選んだ候補の内容が、正解と実質的に同じ意味になっていないか、正解と近すぎないかを再確認し、もし同じ意味であれば候補を修正する。
 
 	# 重要な注意事項（必ず守ること）
 	- どのような場合であっても、質問に対して正解となるような回答をしてはいけません。
+	- 上に挙げた正解と似た分野の回答を作ることは避け、自由な発想で、正解と全く異なる内容の誤答選択肢を作ってください。
 	- 誤答選択肢は日本語で、正解と同程度の分量・自然さにしてください。
 	- 誤答選択肢は${MAX_ANSWER_LENGTH}文字以内にしてください。
 	${previousAttempts.length > 0 ? stripIndent`
@@ -65,6 +67,11 @@ const buildGenerationPrompt = (
 	最後に、これまでの思考過程を踏まえて、以下のJSON形式のみを出力してください。それ以外の文章は一切出力しないでください。
 	\`\`\`
 	{"decoyAnswer": "誤答選択肢の文字列"}
+	\`\`\`
+
+	出力例:
+	\`\`\`
+	{"decoyAnswer": "${answer}"}
 	\`\`\`
 `;
 
@@ -82,10 +89,8 @@ const buildJudgePrompt = (question: string, answer: string, candidateAnswer: str
 	${candidateAnswer}
 
 	この任意お題モードでは、質問に対する正解は「参考正解」の一つに限定されるとは限りません。「参考正解」はあくまで
-	正解の一例であり、判定対象の回答が「参考正解」と文字列としては異なっていても、あなたの知識に基づいて質問に
-	対する事実として正しい別解であると判断できる場合は、正解として扱ってください。
-	一方で、判定対象の回答が「参考正解」とも別解とも言えず、質問に対して誤った内容である場合は、誤答として
-	扱ってください。
+	正解の一例であり、判定対象の回答が「参考正解」と文字列としては異なっていても、あなたの知識に基づいて質問に対する事実として正しい別解であると判断できる場合は、正解として扱ってください。
+	一方で、判定対象の回答が「参考正解」とも別解とも言えず、質問に対して誤った内容である場合は、誤答として扱ってください。
 
 	表記ゆれ・言い回しの違い・言語の違いなどは無視し、意味内容が正解（別解を含む）と実質的に同じであれば true 、
 	正解・別解のいずれでもない誤った内容であれば false としてください。
@@ -106,8 +111,11 @@ const generateDecoyAnswer = async (
 		messages: [
 			{role: 'user', content: buildGenerationPrompt(question, answer, previousAttempts)},
 		],
-		max_tokens: 1024,
+		max_completion_tokens: 2048,
+		reasoning_effort: 'medium',
 	});
+
+	log.debug(inspect(response, {depth: null}));
 
 	const content = response?.choices?.[0]?.message?.content;
 	if (!content) {
@@ -125,7 +133,8 @@ const judgeIsCorrect = async (question: string, answer: string, candidateAnswer:
 		messages: [
 			{role: 'user', content: buildJudgePrompt(question, answer, candidateAnswer)},
 		],
-		max_tokens: 256,
+		max_completion_tokens: 128,
+		reasoning_effort: 'none',
 	});
 
 	const content = response?.choices?.[0]?.message?.content;

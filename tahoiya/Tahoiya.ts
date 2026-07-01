@@ -2,7 +2,6 @@ import {randomUUID} from 'crypto';
 import type {BlockButtonAction, ViewSubmitAction} from '@slack/bolt';
 import type {ChatPostMessageArguments, KnownBlock, GenericMessageEvent} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
-import {stripIndent} from 'common-tags';
 // @ts-expect-error: fast-levenshtein has no type declarations
 import levenshtein from 'fast-levenshtein';
 import {minBy, maxBy, sample, sampleSize, shuffle, sum} from 'lodash';
@@ -54,14 +53,14 @@ const TIME_COLLECT_MEANING_NORMAL = 3 * 60 * 1000;
 const TIME_COLLECT_BETTING_NORMAL = 3 * 60 * 1000;
 const TIME_COLLECT_BETTING_DAILY = 60 * 60 * 1000;
 const DUMMY_SIZE_BASE = 4;
-const DAILY_TAHOIYA_MINIMUM_PARTICIPANTS = 3;
+const DAILY_TAHOIYA_MINIMUM_PARTICIPANTS = process.env.NODE_ENV === 'development' ? 0 : 3;
 
 const AI_BOT_MODELS: AIBotModel[] = ['tahoiyabot-01', 'tahoiyabot-02'];
 const ARBITRARY_AI_BOT_ID = 'tahoiyabot-arbitrary';
 const ALL_AI_BOT_IDS: string[] = [...AI_BOT_MODELS, ARBITRARY_AI_BOT_ID];
 
 export class Tahoiya extends ChannelLimitedBot {
-	protected override wakeWordRegex = /^(?:たほいや|デイリーたほいや|たほいやランキング)$/;
+	protected override wakeWordRegex = /^(?:たほいや|デイリーたほいや|デイリーたほいや開始|たほいやランキング)$/;
 
 	protected override allowedChannels = [process.env.CHANNEL_SANDBOX!];
 
@@ -146,6 +145,10 @@ export class Tahoiya extends ChannelLimitedBot {
 		}
 		if (text === 'デイリーたほいや') {
 			return mutex.runExclusive(() => this.#showDailyStatus(targetChannel, null));
+		}
+		if (process.env.NODE_ENV === 'development' && text === 'デイリーたほいや開始') {
+			mutex.runExclusive(() => this.#triggerDailyBetting());
+			return Promise.resolve(null);
 		}
 		if (text === 'たほいやランキング') {
 			return mutex.runExclusive(() => this.#showRanking(targetChannel));
