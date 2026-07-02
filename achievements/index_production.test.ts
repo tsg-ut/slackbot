@@ -8,11 +8,11 @@ import achievements from './index_production';
 
 let slack: Slack = null;
 
-jest.mock('../lib/slackUtils');
+vi.mock('../lib/slackUtils');
 
-jest.mock('../lib/state');
+vi.mock('../lib/state');
 
-jest.mock('../lib/firestore', () => {
+vi.mock('../lib/firestore', () => {
 	const firebase = new MockFirebase({});
 	const db = firebase.firestore();
 	db.runTransaction = noop;

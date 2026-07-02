@@ -1,18 +1,17 @@
 /* eslint-disable init-declarations, no-restricted-syntax */
-/* eslint-env jest */
 
 import Fastify from 'fastify';
 import Slack from '../lib/slackMock';
 import {server} from './index';
 
-jest.mock('../lib/slackUtils');
-jest.mock('fs', () => ({
+vi.mock('../lib/slackUtils');
+vi.mock('fs', () => ({
   promises: {
-    readFile: jest.fn().mockResolvedValue(JSON.stringify({
+    readFile: vi.fn().mockResolvedValue(JSON.stringify({
       'test-emoji': [['emoji1', 'emoji2'], ['emoji3', 'emoji4']],
       'another-emoji': [['smile']],
     })),
-    writeFile: jest.fn().mockResolvedValue(undefined),
+    writeFile: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -20,7 +19,7 @@ describe('emoxpand', () => {
   let slack: Slack;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     slack = new Slack();
     process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 

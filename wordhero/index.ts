@@ -7,9 +7,7 @@ import {flatten, sum, sample, random, sortBy, maxBy, sumBy, shuffle} from 'lodas
 import trie from './trie';
 import cloudinary from 'cloudinary';
 import {stripIndent} from 'common-tags';
-// @ts-expect-error
 import {hiraganize} from 'japanese';
-// @ts-expect-error
 import download from 'download';
 import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';

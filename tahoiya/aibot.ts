@@ -2,9 +2,7 @@ import path from 'path';
 import concatStream from 'concat-stream';
 // @ts-expect-error: untyped
 import Docker from 'dockerode';
-// @ts-expect-error: untyped
 import download from 'download';
-// @ts-expect-error: untyped
 import {hiraganize} from 'japanese';
 import Queue from 'p-queue';
 import logger from '../lib/logger';

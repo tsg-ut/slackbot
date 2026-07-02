@@ -1,15 +1,17 @@
-const mockCollection = jest.fn(() => ({
-	add: jest.fn(),
-	doc: jest.fn(() => ({
-		get: jest.fn(),
-		set: jest.fn(),
-		update: jest.fn(),
-		delete: jest.fn(),
+import {vi} from 'vitest';
+
+const mockCollection = vi.fn(() => ({
+	add: vi.fn(),
+	doc: vi.fn(() => ({
+		get: vi.fn(),
+		set: vi.fn(),
+		update: vi.fn(),
+		delete: vi.fn(),
 	})),
-	where: jest.fn(),
-	orderBy: jest.fn(),
-	limit: jest.fn(),
-	get: jest.fn(),
+	where: vi.fn(),
+	orderBy: vi.fn(),
+	limit: vi.fn(),
+	get: vi.fn(),
 }));
 
 const db = {

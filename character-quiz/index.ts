@@ -8,7 +8,6 @@ import {Mutex} from 'async-mutex';
 import axios from 'axios';
 import cloudinary from 'cloudinary';
 import type {CommonTransformationOptions} from 'cloudinary';
-// @ts-expect-error: Missing types
 import {hiraganize} from 'japanese';
 import {random, sample, range} from 'lodash';
 import {increment} from '../achievements';

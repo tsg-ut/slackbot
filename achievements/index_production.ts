@@ -6,7 +6,6 @@ import {WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import type {CollectionReference} from 'firebase-admin/firestore';
-// @ts-expect-error: Not typed
 import japanese from 'japanese';
 import {countBy, throttle, groupBy, get as getter, chunk, uniq} from 'lodash';
 import moment from 'moment';

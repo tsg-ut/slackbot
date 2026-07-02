@@ -1,6 +1,8 @@
 import wordle_battle from './index';
 import Slack from '../lib/slackMock';
 
+vi.mock("../achievements");
+
 let slack: Slack = null;
 
 beforeEach(async () => {

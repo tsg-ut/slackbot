@@ -1,9 +1,9 @@
-/* eslint-env node, jest */
+import {vi} from 'vitest';
 import { MrkdwnElement, PlainTextElement } from '@slack/web-api';
 import type { GenericMessageEvent, MessageEvent } from '@slack/bolt';
 
-export const getMemberName = jest.fn(async () => 'Dummy User');
-export const getMemberIcon = jest.fn(async () => 'https://example.com/dummy.png');
+export const getMemberName = vi.fn(async () => 'Dummy User');
+export const getMemberIcon = vi.fn(async () => 'https://example.com/dummy.png');
 
 export const plainText = (text: string, emoji: boolean = true): PlainTextElement => ({
 	type: 'plain_text' as 'plain_text',

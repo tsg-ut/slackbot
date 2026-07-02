@@ -1,19 +1,26 @@
-const fs = require('fs');
-const path = require('path');
-const assert = require('assert');
-const {promisify} = require('util');
-const querystring = require('querystring');
-const {stripIndent} = require('common-tags');
-const {JSDOM} = require('jsdom');
-const axios = require('axios');
-const moment = require('moment');
-const {sampleSize} = require('lodash');
-const byline = require('byline');
-const w2v = require('word2vec');
-const {download} = require('../lib/download');
+import fs from 'fs';
+import path from 'path';
+import assert from 'assert';
+import {promisify} from 'util';
+import querystring from 'querystring';
+import {stripIndent} from 'common-tags';
+import {JSDOM} from 'jsdom';
+import axios from 'axios';
+import moment from 'moment';
+import {sampleSize} from 'lodash';
+import byline from 'byline';
+import w2v from 'word2vec';
+import {download} from '../lib/download';
+import type {SlackInterface} from '../lib/slack';
+import type {GenericMessageEvent} from '@slack/bolt';
 
-module.exports = async ({eventClient, webClient: slack}) => {
-	const state = (() => {
+export default async ({eventClient, webClient: slack}: SlackInterface) => {
+	const state: {
+		phase: string;
+		theme: string | null;
+		candidates: string[];
+		ans: Map<string, string>;
+	} = (() => {
 		try {
 			// eslint-disable-next-line global-require
 			const savedState = require('./state.json');
@@ -21,20 +28,20 @@ module.exports = async ({eventClient, webClient: slack}) => {
 				phase: savedState.phase,
 				theme: savedState.theme || null,
 				candidates: savedState.candidates || [],
-				ans: new Map(Object.entries(savedState.ans)) || new Map(),
+				ans: new Map(Object.entries(savedState.ans)),
 			};
 		} catch (e) {
 			return {
 				phase: 'waiting', // waiting, collecting,
-				theme: null,
-				candidates: [],
+				theme: null as string | null,
+				candidates: [] as string[],
 				ans: new Map(),
 			};
 		}
 	})();
 
-	const mapToObject = (map) => {
-		const object = {};
+	const mapToObject = (map: Map<string, string>) => {
+		const object: {[key: string]: string} = {};
 		for (const [key, value] of map.entries()) {
 			if (!key) {
 				continue;
@@ -43,10 +50,11 @@ module.exports = async ({eventClient, webClient: slack}) => {
 		}
 		return object;
 	};
-	const setState = async (newState) => {
+
+	const setState = async (newState: Partial<typeof state>) => {
 		Object.assign(state, newState);
 
-		const savedState = {};
+		const savedState: {[key: string]: any} = {};
 		for (const [key, value] of Object.entries(state)) {
 			if (value instanceof Map) {
 				savedState[key] = mapToObject(value);
@@ -58,19 +66,21 @@ module.exports = async ({eventClient, webClient: slack}) => {
 		await promisify(fs.writeFile)(path.join(__dirname, 'state.json'), JSON.stringify(savedState));
 	};
 
-	const {members} = await slack.users.list();
+	const {members} = await slack.users.list({});
 	const {team} = await slack.team.info();
 
-	const getMemberIcon = (user) => {
+	const getMemberIcon = (user: string) => {
 		const member = members.find(({id}) => id === user);
 		return member.profile.image_24;
 	};
 
-	const genColorRGB = (H) => {
+	const genColorRGB = (H: number): [number, number, number] => {
 		const C = 0.5;
 		const Hp = H / 60;
 		const X = C * (1 - Math.abs(Hp % 2 - 1));
-		let B, G, R;
+		let B = 0;
+		let G = 0;
+		let R = 0;
 
 		if (0 <= Hp && Hp < 1) {
 			[R, G, B] = [C, X, 0];
@@ -101,9 +111,9 @@ module.exports = async ({eventClient, webClient: slack}) => {
 		return [R, G, B];
 	};
 
-	const genColorHex = (i) => genColorRGB(i * 101 % 360).map((v) => (`0${v.toString(16)}`).slice(-2)).join('');
+	const genColorHex = (i: number) => genColorRGB(i * 101 % 360).map((v) => (`0${v.toString(16)}`).slice(-2)).join('');
 
-	const getTimeLink = (time) => {
+	const getTimeLink = (time: number) => {
 		const text = moment(time).utcOffset('+0900').format('HH:mm:ss');
 		const url = `https://www.timeanddate.com/countdown/generic?${querystring.stringify({
 			iso: moment(time).utcOffset('+0900').format('YYYYMMDDTHHmmss'),
@@ -115,38 +125,41 @@ module.exports = async ({eventClient, webClient: slack}) => {
 		return `<${url}|${text}>`;
 	};
 
-
-	const postMessage = (text, attachments, options) => (
+	const postMessage = (text: string, attachments?: any[], options?: any) => (
 		slack.chat.postMessage({
 			channel: process.env.CHANNEL_SANDBOX,
 			text,
-			username: 'vocabwar', // 'Blitzkreig',
-			// eslint-disable-next-line camelcase
+			username: 'vocabwar',
 			icon_emoji: ':bow_and_arrow:',
 			...(attachments ? {attachments} : {}),
 			...(options ? options : {}),
 		})
 	);
 
-	const failed = (error) => (
+	const failed = (error: Error) => (
 		postMessage(error.stack)
 	);
 
-	const getMeaning = async(word) => {
+	const getMeaning = async (word: string) => {
 		try {
 			const res = await axios.get(`https://kotobank.jp/word/${encodeURIComponent(word)}`);
 			const dom = new JSDOM(res.data);
-			return dom.window.document.querySelector('section.description').textContent.replace(/[ \t\n]/g, '').match(/(.+?)。/)[1];
+			const el = dom.window.document.querySelector('section.description');
+			return el?.textContent?.replace(/[ \t\n]/g, '').match(/(.+?)。/)?.[1] ?? '';
 		} catch (e) {
 			return '';
 		}
 	};
 
-	const normalizedFreq = (word) => Math.atan(freq[word]) / Math.PI * 2;
+	let freq: {[key: string]: number} = {};
+	let ad: {[key: string]: number} = {};
 
-	const genTheme = (n) => {
-		// 普通の単語を多く
-		const res = new Set();
+	const normalizedFreq = (word: string) => Math.atan(freq[word]) / Math.PI * 2;
+
+	const genWordList = (n: number) => sampleSize(Object.keys(ad), n);
+
+	const genTheme = (n: number) => {
+		const res = new Set<string>();
 		do {
 			const nres = genWordList(n - res.size);
 			for (const word of nres) {
@@ -158,11 +171,8 @@ module.exports = async ({eventClient, webClient: slack}) => {
 		return Array.from(res).slice(0, n);
 	};
 
-	const genWordList = (n) => sampleSize(Object.keys(ad), n);
-
-	const genDummy = (n) => {
-		// レアな単語を多く
-		const res = new Set();
+	const genDummy = (n: number) => {
+		const res = new Set<string>();
 		do {
 			const nres = sampleSize(Object.keys(ad), n - res.size);
 			for (const word of nres) {
@@ -175,8 +185,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 	};
 
 	const addDummy = () => {
-		// ダミーを作成
-		const ret = [];
+		const ret: [string | null, string][] = [];
 		for (const [user, word] of state.ans.entries()) {
 			ret.push([user, word]);
 		}
@@ -186,12 +195,12 @@ module.exports = async ({eventClient, webClient: slack}) => {
 		return ret;
 	};
 
-	const loadFrqData = async (filepath) => new Promise((resolve, reject) => {
+	const loadFrqData = async (filepath: string): Promise<{[key: string]: number}> => new Promise((resolve, reject) => {
 		const rs = fs.createReadStream(filepath, {encoding: 'utf-8'});
 		const stream = byline.createStream(rs);
-		const res = {};
+		const res: {[key: string]: number} = {};
 
-		stream.on('data', (line) => {
+		stream.on('data', (line: string) => {
 			const tmp = line.toString().split(' ');
 			res[tmp[0]] = parseFloat(tmp[1]);
 		});
@@ -200,8 +209,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 			resolve(res);
 		});
 
-
-		stream.on('error', (err) => {
+		stream.on('error', (err: Error) => {
 			reject(err);
 		});
 	});
@@ -222,37 +230,36 @@ module.exports = async ({eventClient, webClient: slack}) => {
 		// eslint-disable-next-line require-await
 		].map(async ([filename, url]) => download(path.join(__dirname, 'data', filename), url))
 	);
-	const freq = await loadFrqData(path.join(__dirname, 'data', 'frequency.txt'));
-	const ad = await loadFrqData(path.join(__dirname, 'data', 'ad.txt'));
-	const model = await promisify(w2v.loadModel)({file: path.join(__dirname, 'data', 'wiki_wakati.wv'), is_binary: true});
+	freq = await loadFrqData(path.join(__dirname, 'data', 'frequency.txt'));
+	ad = await loadFrqData(path.join(__dirname, 'data', 'ad.txt'));
+	const model: any = await promisify((w2v as any).loadModel)({file: path.join(__dirname, 'data', 'wiki_wakati.wv'), is_binary: true});
 
 	const onFinish = async () => {
 		assert(state.phase === 'collecting');
 		setState({phase: 'waiting'});
-		const calcPoint = (word) => {
+		const calcPoint = (word: string) => {
 			const i = sim.findIndex((x) => x[2] === word);
 			if (i < state.ans.size) {
-				// 正の得点
 				return [(sim[i][0] ** 3) * (freq[word] ** 3) / 3 / 4, freq[word]];
 			}
 			return [-1 / sim[i][0], freq[word]];
 		};
 		const words = addDummy();
 
-		let sim = [];
+		let sim: [number, string | null, string][] = [];
 		for (const [user, word] of words) {
 			sim.push([(model.similarity(state.theme, word) + 1) / 2, user, word]);
 		}
 
-		sim = sim.sort().reverse();
+		sim = sim.sort((a, b) => a[0] - b[0]);
 		const genAttachments = async () => (
 			Promise.all(sim.map(async ([s, user, word], index) => {
 				const [point, frq] = calcPoint(word);
 				const meaning = await getMeaning(word);
 				return {
 					author_name: `#${index + 1}: ${user ? `<@${user}>` : '-'}`,
-					 author_link: user ? `https://${team.domain}.slack.com/team/${user}` : undefined,
-					 author_icon: user ? getMemberIcon(user) : undefined,
+					author_link: user ? `https://${team.domain}.slack.com/team/${user}` : undefined,
+					author_icon: user ? getMemberIcon(user) : undefined,
 					title: `${word} (${(point >= 0 ? '+' : '') + point.toFixed(1)}点)`,
 					title_link: `https://kotobank.jp/word/${encodeURIComponent(word)}`,
 					text: stripIndent`
@@ -278,7 +285,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 		});
 	};
 
-	eventClient.on('message', async (message) => {
+	eventClient.on('message', async (message: GenericMessageEvent) => {
 		if (!message.text || message.subtype !== undefined) {
 			return;
 		}
@@ -360,7 +367,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 
 					await postMessage(stripIndent`
                         お題 *「${word}」* に決定:bow_and_arrow:
-                        参加者は30秒以内にこの単語に“近い”単語を<#${process.env.CHANNEL_SANDBOX}|sandbox>に書き込んでね:crossed_swords:
+                        参加者は30秒以内にこの単語に"近い"単語を<#${process.env.CHANNEL_SANDBOX}|sandbox>に書き込んでね:crossed_swords:
                         終了予定時刻: ${getTimeLink(end)}
                     `);
 					return;
@@ -385,7 +392,7 @@ module.exports = async ({eventClient, webClient: slack}) => {
 				}
 			}
 		} catch (e) {
-			failed(e);
+			failed(e as Error);
 		}
 	});
 };

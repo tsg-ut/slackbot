@@ -1,15 +1,14 @@
-/* eslint-env node, jest */
-
-const fs = jest.genMockFromModule('fs');
-const realFs = jest.requireActual('fs');
+const fs = {};
+const realFs = require('fs');
 const Path = require('path');
 const {PassThrough} = require('stream');
 
+fs.constants = realFs.constants;
 fs.virtualFiles = {};
 
 fs.promises = {};
 
-fs.readFile = jest.fn((...args) => {
+fs.readFile = vi.fn((...args) => {
 	const [path, callback] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
 
@@ -21,7 +20,7 @@ fs.readFile = jest.fn((...args) => {
 	}
 });
 
-fs.readFileSync = jest.fn((...args) => {
+fs.readFileSync = vi.fn((...args) => {
 	const [path] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
 
@@ -32,7 +31,7 @@ fs.readFileSync = jest.fn((...args) => {
 	}
 });
 
-fs.promises.readFile = jest.fn((...args) => {
+fs.promises.readFile = vi.fn((...args) => {
 	const [path] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
 
@@ -43,7 +42,14 @@ fs.promises.readFile = jest.fn((...args) => {
 	}
 });
 
-fs.promises.readdir = jest.fn((...args) => {
+fs.promises.writeFile = vi.fn((...args) => {
+	const [file, data] = args;
+	const fullPath = Path.resolve(process.cwd(), file);
+	fs.virtualFiles[fullPath] = data;
+	return new Promise((resolve) => resolve());
+});
+
+fs.promises.readdir = vi.fn((...args) => {
 	const [path] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
 	const files = Object.keys(fs.virtualFiles).filter((file) => file.startsWith(fullPath));
@@ -55,7 +61,7 @@ fs.promises.readdir = jest.fn((...args) => {
 	}
 });
 
-fs.access = jest.fn((...args) => {
+fs.access = vi.fn((...args) => {
 	const [path, , callback] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
 
@@ -67,7 +73,7 @@ fs.access = jest.fn((...args) => {
 	}
 });
 
-fs.accessSync = jest.fn((...args) => {
+fs.accessSync = vi.fn((...args) => {
 	const [path] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
 
@@ -78,7 +84,7 @@ fs.accessSync = jest.fn((...args) => {
 	}
 });
 
-fs.createReadStream = jest.fn((...args) => {
+fs.createReadStream = vi.fn((...args) => {
 	const [path, options] = args;
 	const fullPath = Path.resolve(process.cwd(), path);
 
@@ -93,7 +99,7 @@ fs.createReadStream = jest.fn((...args) => {
 	}
 });
 
-fs.writeFile = jest.fn((file, data, ...rest) => {
+fs.writeFile = vi.fn((file, data, ...rest) => {
 	let options, callback;
 	if (rest.length === 1) {
 		callback = rest[0];
@@ -106,4 +112,13 @@ fs.writeFile = jest.fn((file, data, ...rest) => {
 	callback(null);
 });
 
+fs.mkdir = vi.fn((...args) => {
+	const [path, options, callback] = args;
+
+	// no-op
+
+	callback(null);
+});
+
+fs.default = fs;
 module.exports = fs;

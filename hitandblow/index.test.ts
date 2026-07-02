@@ -2,7 +2,8 @@ import { stripIndent } from 'common-tags';
 import hitandblow from './';
 import Slack from '../lib/slackMock';
 
-jest.mock('../lib/slackUtils');
+vi.mock('../achievements');
+vi.mock('../lib/slackUtils');
 
 let slack: Slack;
 

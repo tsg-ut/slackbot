@@ -1,12 +1,10 @@
-/* eslint-env node, jest */
+import axios from 'axios';
+import Slack from '../lib/slackMock';
+import checkin from './index.js';
 
-jest.mock('axios');
+vi.mock('axios');
 
-const axios = require('axios');
-const {default: Slack} = require('../lib/slackMock.ts');
-const checkin = require('./index.js');
-
-let slack = null;
+let slack: InstanceType<typeof Slack> = null;
 
 beforeEach(() => {
 	slack = new Slack();
@@ -17,7 +15,7 @@ beforeEach(() => {
 
 describe('tiobot', () => {
 	it('responds to "checkin-check"', async () => {
-		axios.response = {
+		(axios as any).response = {
 			data: {
 				response: {
 					hereNow: {
@@ -34,7 +32,7 @@ describe('tiobot', () => {
 			ts: slack.fakeTimestamp,
 		});
 
-		axios.response = {
+		(axios as any).response = {
 			data: {
 				response: {
 					hereNow: {
@@ -57,11 +55,12 @@ describe('tiobot', () => {
 			},
 		};
 
-		const {text, username} = await slack.getResponseTo('checkin-check');
+		const message = await slack.getResponseTo('checkin-check');
 
-		expect(username).toBe('checkin');
-		expect(text).toContain('Koki Takahashi');
-		expect(text).toContain('理学部7号館');
-		expect(text).toContain('おるでｗ');
+		// eslint-disable-next-line no-restricted-syntax
+		expect('username' in message && message.username).toBe('checkin');
+		expect(message.text).toContain('Koki Takahashi');
+		expect(message.text).toContain('理学部7号館');
+		expect(message.text).toContain('おるでｗ');
 	});
 });

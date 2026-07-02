@@ -1,6 +1,8 @@
 import { createSlackPostParams } from './index';
 import moment from 'moment';
 
+vi.mock('twitter');
+
 describe('twitter-dm-notifier', () => {
     it('Create Slack Blocks for Twitter DMs', async () => {
         const params = await createSlackPostParams(moment().subtract(2, 'minutes'));

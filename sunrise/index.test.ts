@@ -1,28 +1,24 @@
-/* eslint-disable import/imports-first */
-/* eslint-disable import/first */
-/* eslint-env node, jest */
-
-jest.mock('cloudinary');
-jest.mock('node-persist');
-jest.mock('./render');
-jest.mock('./fetch');
-jest.mock('../lib/slackUtils');
-jest.mock('../lib/state');
-jest.mock('../lib/openai', () => ({
-	__esModule: true,
-	default: {
-		chat: {
-			completions: {
-				create: jest.fn(),
-			},
-		},
-	},
-}));
-
 import FakeTimers from '@sinonjs/fake-timers';
 import type {InstalledClock} from '@sinonjs/fake-timers';
 import Slack from '../lib/slackMock';
 import sunrise from './index';
+
+vi.mock('cloudinary');
+vi.mock('node-persist');
+vi.mock('./render');
+vi.mock('./fetch');
+vi.mock('../lib/slackUtils');
+vi.mock('../lib/state');
+vi.mock('../lib/openai', () => ({
+	__esModule: true,
+	default: {
+		chat: {
+			completions: {
+				create: vi.fn(),
+			},
+		},
+	},
+}));
 
 let slack: Slack = null;
 let clock: InstalledClock = null;

@@ -4,7 +4,7 @@ import Slack from '../lib/slackMock';
 
 import welcome from './index';
 
-jest.mock('axios');
+vi.mock('axios');
 
 const apiData = `:tada:TSGへようこそ！:tada:
 uouofishlife. uouo. uouo.

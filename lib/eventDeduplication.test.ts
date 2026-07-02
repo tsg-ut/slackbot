@@ -3,29 +3,30 @@ import {
 	closeDuplicateEventChecker,
 } from './eventDeduplication';
 import { createClient } from 'redis';
+import type { Mock, Mocked } from 'vitest';
 
 const mockRedis: Pick<
-	jest.Mocked<ReturnType<typeof createClient>>,
-	'set' | 'connect' | 'quit' | 'on'
-> = {
-	set: jest.fn(),
-	connect: jest.fn(),
-	quit: jest.fn(),
-	on: jest.fn(),
+	Mocked<ReturnType<typeof createClient>>,
+	'set' | 'connect' | 'quit'
+> & {on: Mock<ReturnType<typeof createClient>['on']>} = {
+	set: vi.fn(),
+	connect: vi.fn(),
+	quit: vi.fn(),
+	on: vi.fn(),
 };
 
-jest.mock('redis', () => ({
-	createClient: jest.fn(() => mockRedis),
+vi.mock('redis', () => ({
+	createClient: vi.fn(() => mockRedis),
 }));
 
-const mockedCreateClient = jest.mocked(createClient);
+const mockedCreateClient = vi.mocked(createClient);
 
 describe('Event Deduplication', () => {
 	let originalRedisUrl: string | undefined;
 
 	beforeEach(() => {
 		originalRedisUrl = process.env.REDIS_URL;
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(async () => {

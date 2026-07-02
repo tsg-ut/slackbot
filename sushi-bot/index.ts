@@ -1,7 +1,7 @@
 import schedule from 'node-schedule';
 import {sortBy} from 'lodash';
 import moment from 'moment';
-import {unlock, increment, get, set} from '../achievements';
+import {unlock, increment, get, set} from '../achievements/index.js';
 import type {SlackInterface} from '../lib/slack';
 import {scoreTimeOfDay, getReactionName, timeOfDayDefinitions} from './time-scoring';
 

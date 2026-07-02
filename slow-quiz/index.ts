@@ -8,7 +8,6 @@ import {Mutex} from 'async-mutex';
 import {oneLine, stripIndent} from 'common-tags';
 import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
-// @ts-expect-error: Not typed
 import {hiraganize} from 'japanese';
 import yaml from 'js-yaml';
 import {last, minBy} from 'lodash';

@@ -3,7 +3,7 @@ import axios from 'axios';
 import Slack from '../lib/slackMock';
 import scrapbox, {scrapbox2slack} from './index';
 
-jest.mock('axios');
+vi.mock('axios');
 
 // @ts-expect-error
 axios.response = {data: {

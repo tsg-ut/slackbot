@@ -1,34 +1,83 @@
-const path = require('path');
-const {default: Shogi} = require('shogi9.js');
-const {default: Color} = require('shogi9.js/lib/Color.js');
-const {default: Piece} = require('shogi9.js/lib/Piece.js');
-const sqlite = require('sqlite');
-const sqlite3 = require('sqlite3');
-const fs = require('fs').promises;
-const assert = require('assert');
-const minBy = require('lodash/minBy');
-const maxBy = require('lodash/maxBy');
-const sample = require('lodash/sample');
-const last = require('lodash/last');
-const flatten = require('lodash/flatten');
-const oneLine = require('common-tags/lib/oneLine');
-const {unlock, increment} = require('../achievements');
+import assert from 'assert';
+import {promises as fs} from 'fs';
+import path from 'path';
+import {oneLine} from 'common-tags';
+import flatten from 'lodash/flatten';
+import last from 'lodash/last';
+import maxBy from 'lodash/maxBy';
+import minBy from 'lodash/minBy';
+import sample from 'lodash/sample';
+import Shogi from 'shogi9.js';
+import type {IMove} from 'shogi9.js';
+import Color from 'shogi9.js/lib/Color.js';
+import Piece from 'shogi9.js/lib/Piece.js';
+import sqlite from 'sqlite';
+import type {Database} from 'sqlite';
+import sqlite3 from 'sqlite3';
+import {unlock, increment} from '../achievements/index.js';
+import type {SlackInterface} from '../lib/slack';
 
-const {upload} = require('./image.js');
-const {
+import {upload} from './image.js';
+import {
 	serialize,
 	deserialize,
 	getTransitions,
 	charToPiece,
 	pieceToChar,
 	transitionToText,
-} = require('./util.js');
+} from './util.js';
+
+interface ShogiDbRow {
+	board: Buffer;
+	result: number | null;
+	depth: number;
+}
+
+interface ShogiSlackMessage {
+	channel: string;
+	text?: string;
+	ts: string;
+	user?: string;
+	username?: string;
+	thread_ts?: string;
+}
+
+interface ShogiState {
+	previousPosition: {x: number; y: number} | null;
+	previousBoard: Shogi;
+	previousDatabase: string;
+	previousTurns: number;
+	isPrevious打ち歩: boolean;
+	isSpoiled: boolean;
+	isLocked: boolean;
+	isEnded: boolean;
+	player: string | null;
+	board: Shogi | null;
+	turn: Color | null;
+	log: string[];
+	thread: string | null;
+	flags: Set<string>;
+	db: Database | null;
+}
+
+type Transition = {
+	type: 'move';
+	data: IMove;
+	kind: string;
+	board: Shogi;
+	promotion: boolean | null;
+} | {
+	type: 'drop';
+	data: IMove;
+	board: Shogi;
+	promotion: null;
+};
 
 const iconUrl =
 	'https://2.bp.blogspot.com/-UT3sRYCqmLg/WerKjjCzRGI/AAAAAAABHpE/kenNldpvFDI6baHIW0XnB6JzITdh3hB2gCLcBGAs/s400/character_game_syougi.png';
 
-module.exports = ({eventClient, webClient: slack}) => {
-	const state = {
+export default ({eventClient, webClient: slack}: SlackInterface) => {
+	const state: ShogiState = {
 		previousPosition: null,
 		previousBoard: new Shogi({
 			preset: 'OTHER',
@@ -56,7 +105,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 		db: null,
 	};
 
-	let match = null;
+	let match: RegExpMatchArray | null = null;
 
 	const perdon = async (description = '', broadcast = false) => {
 		await slack.chat.postMessage({
@@ -79,9 +128,9 @@ module.exports = ({eventClient, webClient: slack}) => {
 		}
 	};
 
-	const post = async (message, {mode = 'thread'} = {}) => {
+	const post = async (message: string, {mode = 'thread'} = {}) => {
 		const imageUrl = await upload(state.board);
-		return slack.chat.postMessage({
+		const baseArgs = {
 			channel: process.env.CHANNEL_SANDBOX,
 			text: message,
 			username: 'shogi',
@@ -93,11 +142,14 @@ module.exports = ({eventClient, webClient: slack}) => {
 				},
 			],
 			thread_ts: state.thread,
-			...(mode === 'broadcast' ? {reply_broadcast: true} : {}),
-		});
+		};
+		if (mode === 'broadcast') {
+			return slack.chat.postMessage({...baseArgs, reply_broadcast: true});
+		}
+		return slack.chat.postMessage(baseArgs);
 	};
 
-	const end = async (color, reason) => {
+	const end = async (color: Color, reason?: string) => {
 		const {log, isEnded} = state;
 		state.previousPosition = null;
 		state.board = null;
@@ -209,9 +261,9 @@ module.exports = ({eventClient, webClient: slack}) => {
 			return;
 		}
 
-		const transitions = getTransitions(inversedBoard);
+		const transitions = getTransitions(inversedBoard) as Transition[];
 
-		const transitionResults = await state.db.all(
+		const transitionResults: ShogiDbRow[] = await state.db.all(
 			oneLine`
 				SELECT board, result, depth
 				FROM boards
@@ -220,7 +272,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 		.join(', ')})
 				ORDER BY RANDOM()
 			`,
-			transitions.map((transition) => serialize(transition.board)),
+			transitions.map(({board}) => serialize(board)),
 		);
 
 		const loseResults = transitionResults.filter(({result}) => result === 0);
@@ -277,7 +329,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 		}
 	};
 
-	eventClient.on('message', async (message) => {
+	eventClient.on('message', async (message: ShogiSlackMessage) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX) {
 			return;
 		}
@@ -305,7 +357,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 				perdon('スレッド中からの起動はやめてください');
 				return;
 			}
-			let matches = null;
+			let matches: RegExpMatchArray | null = null;
 			let condition = '';
 			if ((matches = text.match(/^(?<count>\d+)手(?:詰め|必勝将棋)$/))) {
 				condition = `depth = ${(parseInt(
@@ -327,7 +379,8 @@ module.exports = ({eventClient, webClient: slack}) => {
 				filename: path.join(__dirname, 'boards', database),
 				driver: sqlite3.Database,
 			});
-			const data = await state.db.get(oneLine`
+			// condition is built from parseInt() values or fixed strings, so SQL injection is not possible
+			const data = await state.db.get(oneLine` // NOSONAR
 				SELECT *
 				FROM boards
 				WHERE result = 1 AND ${condition}
@@ -422,23 +475,22 @@ module.exports = ({eventClient, webClient: slack}) => {
 			state.isSpoiled = true;
 
 			let board = state.previousBoard;
-			let previousPosition = null;
-			const logs = [];
+			let previousPosition: {x: number; y: number} | null = null;
+			const logs: string[] = [];
 
 			while (true) {
 				{
-					const transitions = getTransitions(board);
+					const transitions = getTransitions(board) as Transition[];
+					const transitionBoards = new Array(transitions.length).fill('?').join(', ');
 
-					const transitionResults = await state.db.all(
+					const transitionResults: ShogiDbRow[] = await state.db.all(
 						oneLine`
 							SELECT board, result, depth
 							FROM boards
-							WHERE board IN (${Array(transitions.length)
-		.fill('?')
-		.join(', ')})
+							WHERE board IN (${transitionBoards})
 							ORDER BY RANDOM()
 						`,
-						transitions.map((transition) => serialize(transition.board)),
+						transitions.map(({board: b}) => serialize(b)),
 					);
 
 					const transitionResult = minBy(
@@ -468,18 +520,17 @@ module.exports = ({eventClient, webClient: slack}) => {
 				}
 
 				{
-					const transitions = getTransitions(board);
+					const transitions = getTransitions(board) as Transition[];
+					const transitionBoards = new Array(transitions.length).fill('?').join(', ');
 
-					const transitionResults = await state.db.all(
+					const transitionResults: ShogiDbRow[] = await state.db.all(
 						oneLine`
 							SELECT board, result, depth
 							FROM boards
-							WHERE board IN (${Array(transitions.length)
-		.fill('?')
-		.join(', ')})
+							WHERE board IN (${transitionBoards})
 							ORDER BY RANDOM()
 						`,
-						transitions.map((transition) => serialize(transition.board)),
+						transitions.map(({board: b}) => serialize(b)),
 					);
 
 					const transitionResult = maxBy(
@@ -531,7 +582,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 			message.thread_ts &&
 			state.thread === message.thread_ts &&
 			(match = text.match(
-				/^(?<position>[123１２３一二三][123１２３一二三]|同)(?<pieceChar>歩|歩兵|香|香車|桂|桂馬|銀|銀将|金|金将|飛|飛車|角|角行|王|王将|玉|玉将|と|と金|成香|杏|成桂|圭|成銀|全|龍|竜|龍王|竜王|馬|龍馬|竜馬)(?:(?<xFlag>[右左直]?)(?<yFlag>[寄引上]?)(?<promoteFlag>成|不成)?|(?<dropFlag>打))?$/,
+				/^(?<position>[123１２３一二三][123１２３一二三]|同)(?<pieceChar>歩|歩兵|香|香車|桂|桂馬|銀|銀将|金|金将|飛|飛車|角|角行|王|王将|玉|玉将|と|と金|成香|杏|成桂|圭|成銀|全|龍|竜|龍王|竜王|馬|龍馬|竜馬)(?:(?<xFlag>[右左直]?)(?<yFlag>[寄引上]?)(?<promoteFlag>成|不成)?|(?<dropFlag>打)?)$/,
 			))
 		) {
 			const {
@@ -652,7 +703,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 						);
 
 						const didPromote =
-							state.board.get(move.to.x, move.to.y).piece !== piece;
+							state.board.get(move.to.x, move.to.y).kind !== piece;
 
 						state.turn = Color.White;
 						state.isPrevious打ち歩 = false;
@@ -733,10 +784,10 @@ module.exports = ({eventClient, webClient: slack}) => {
 				return;
 			}
 
-			if (state.logs.length === 0) {
+			if (state.log.length === 0) {
 				await post('初手');
 			} else {
-				await post(`${last(state.logs)}まで`);
+				await post(`${last(state.log)}まで`);
 			}
 		}
 	});

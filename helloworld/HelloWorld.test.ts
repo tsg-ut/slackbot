@@ -1,31 +1,31 @@
 /* eslint-disable import/imports-first, import/first */
-/* eslint-env jest */
 
-import crypto from 'crypto';
 import type {MockedStateInterface} from '../lib/__mocks__/state';
 import Slack from '../lib/slackMock';
 import State from '../lib/state';
 import {HelloWorld, type StateObj} from './HelloWorld';
 
-jest.mock('../lib/slackUtils');
-jest.mock('../lib/state');
-jest.mock('os', () => ({
-	hostname: jest.fn(() => 'test-hostname'),
-	release: jest.fn(() => 'test-release'),
+const randomUUID = vi.hoisted(() => vi.fn(() => 'test-uuid'));
+
+vi.mock('../lib/slackUtils');
+vi.mock('../lib/state');
+vi.mock('os', () => ({
+	hostname: vi.fn(() => 'test-hostname'),
+	release: vi.fn(() => 'test-release'),
 }));
-jest.mock('crypto', () => ({
-	randomUUID: jest.fn(() => 'test-uuid'),
+vi.mock('crypto', () => ({
+	default: {randomUUID},
+	randomUUID,
 }));
 
 const MockedState = State as MockedStateInterface<StateObj>;
-const mockedCrypto = jest.mocked(crypto);
 
 describe('helloworld', () => {
 	let slack: Slack = null;
 	let helloWorld: HelloWorld = null;
 
 	beforeEach(async () => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
@@ -34,8 +34,8 @@ describe('helloworld', () => {
 	});
 
 	it('initializes correctly', () => {
-		expect(mockedCrypto.randomUUID).toHaveBeenCalledTimes(1);
-		expect(mockedCrypto.randomUUID.mock.calls[0]).toHaveLength(0);
+		expect(randomUUID).toHaveBeenCalledTimes(1);
+		expect(randomUUID.mock.calls[0]).toHaveLength(0);
 
 		const state = MockedState.mocks.get('helloworld');
 		expect(state.counter).toBe(0);
@@ -53,7 +53,7 @@ describe('helloworld', () => {
 	});
 
 	it('can post Hello world message', async () => {
-		const postMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
+		const postMessage = vi.mocked(slack.webClient.chat.postMessage);
 		postMessage.mockResolvedValueOnce({
 			ok: true,
 			ts: slack.fakeTimestamp,
@@ -70,7 +70,7 @@ describe('helloworld', () => {
 			channel: slack.fakeChannel,
 		});
 
-		const mockedPostMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
+		const mockedPostMessage = vi.mocked(slack.webClient.chat.postMessage);
 		expect(mockedPostMessage).toBeCalledWith({
 			username: 'helloworld [TEST_AUTHORITY]',
 			channel: slack.fakeChannel,
