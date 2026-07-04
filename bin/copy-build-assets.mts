@@ -21,12 +21,27 @@ const EXCLUDE_PATTERNS = [
     '.gemini',
     '.claude',
     '.vscode',
+    '.github',
     'bench_',
     'rust_test_',
     'settings.json',
     'launch.json',
     '.test.',
+    '.gitignore',
+    '.gitattributes',
+    '.gitkeep',
+    '.firebaserc',
+    'README.md',
+    'AGENTS.md',
+    'CLAUDE.md',
+    'codecov.yml',
 ];
+
+// tsgo (allowJs 有効) が .build/ に出力する拡張子。手動コピーは不要。
+const COMPILED_EXTENSIONS = /\.(ts|tsx|js|jsx|mts|cts)$/;
+
+// リポジトリ管理用で実行時に読み込まれない拡張子。
+const NON_ASSET_EXTENSIONS = /\.(rs|toml|py|sh|lock|example|patch|rules|ai)$/;
 
 const exists = async (f: string): Promise<boolean> => {
     try {
@@ -44,10 +59,12 @@ const copy = async (src: string, dest: string) => {
 };
 
 // Absolute path (e.g. /usr/bin/git) is intentionally avoided to support cross-platform builds (Linux, macOS).
+// 拡張子のホワイトリスト方式は新しいアセット種別（.yml, .md, .png, .mp3 等）が追加される度に
+// 欠落を繰り返してきたため、コンパイル対象/非アセットの拡張子のみを除外するブラックリスト方式にしている。
 const trackedFiles = spawnSync('git', ['ls-files'], {encoding: 'utf-8'}) // NOSONAR
     .stdout
     .split('\n')
-    .filter((f) => f.match(/\.(json|geojson|txt|csv|html)$/))
+    .filter((f) => f && !COMPILED_EXTENSIONS.test(f) && !NON_ASSET_EXTENSIONS.test(f))
     .filter((f) => !EXCLUDE_PATTERNS.some((ex) => f.includes(ex)));
 
 for (const f of trackedFiles) {
