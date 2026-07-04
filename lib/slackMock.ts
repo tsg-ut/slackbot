@@ -164,6 +164,9 @@ export default class SlackMock extends EventEmitter implements SlackInterface {
 		if (stack.join('.') === "users.list") {
 			return Promise.resolve({ok: true, members: []});
 		}
+		if (stack.join('.') === "team.info") {
+			return Promise.resolve({ok: true, team: {id: this.fakeTeam, name: 'fakeTeam'}});
+		}
 		if (stack.join('.') === "conversations.list") {
 			return Promise.resolve({ok: true, channels: [
 				{id: 'CGENERAL', is_general: true},
