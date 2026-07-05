@@ -1,8 +1,2 @@
 [unstable]
 sparse-registry = true
-
-[source.crates-io]
-replace-with = "sparse-crates-io"
-
-[source.sparse-crates-io]
-registry = "sparse+https://index.crates.io/"
