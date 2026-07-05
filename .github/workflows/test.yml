@@ -67,10 +67,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: build
-        # Cargo.lockに変更がなければ--offlineでcrates.ioインデックス更新の
-        # ネットワークアクセス(数分かかる)をスキップできる。キャッシュが
-        # 古い/不足している場合のみ通常のオンラインビルドにフォールバックする。
-        run: cargo build --all --verbose --offline || cargo build --all --verbose
+        run: cargo build --all --verbose
 
       - name: test
-        run: cargo test --all --verbose --offline || cargo test --all --verbose
+        run: cargo test --all --verbose
