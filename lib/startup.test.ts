@@ -73,12 +73,6 @@ vi.mock('./mailgun', () => ({
 // 実認証情報が無くても内部で非同期の認証情報探索が走り、そのタイミング次第で
 // 無関係な後続テストの失敗として現れることを確認したため、まとめてモックする。
 vi.mock('googleapis');
-// dajare/tokenize.js がモジュール読み込み時に無条件で lib/getReading.js の
-// getReading() を呼び出す。辞書ファイル(lib/bep-ss-2.3/bep-eng.dic)が
-// 存在しない環境(CI等)では http://www.argv.org から実際にtarballを
-// ダウンロードしようとして失敗する。lib/__mocks__/getReading.js の
-// 既存の手動モックを使うことでこれを防ぐ。
-vi.mock('../lib/getReading');
 vi.mock('../achievements');
 // slack-log は default() 内で無条件に slack-log API へ axios.get() する。
 // 共有axiosモック(空文字列応答)を使い、実ネットワーク接続の
