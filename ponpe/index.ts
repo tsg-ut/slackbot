@@ -7,6 +7,7 @@ import fs from 'fs';
 import {getMemberName, getEmoji} from '../lib/slackUtils';
 import path from 'path';
 import {download} from '../lib/download';
+import {Loader} from '../lib/utils';
 
 function getTimeLink(time:number){
 	return moment(time).utcOffset('+0900').format('HH:mm:ss');
@@ -59,12 +60,20 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const states : State[] = [];
 
 	const emojipath = path.join(__dirname, 'data', 'emoji.json');
-	await download(emojipath, 'https://raw.githubusercontent.com/iamcal/emoji-data/master/emoji.json');
-	const default_emoji_list = JSON.parse(await loadFile(emojipath))
-		.map((x:{short_names:string[]})=>{return x.short_names;}).flat();
+	const emojiListLoader = new Loader<string[]>(async () => {
+		await download(emojipath, 'https://raw.githubusercontent.com/iamcal/emoji-data/master/emoji.json');
+		return JSON.parse(await loadFile(emojipath))
+			.map((x:{short_names:string[]})=>{return x.short_names;}).flat();
+	});
 
-	const {team: tsgTeam}: any = await slack.team.info();
+	const tsgTeamLoader = new Loader<any>(async () => {
+		const {team}: any = await slack.team.info();
+		return team;
+	});
+
 	async function isValidEmoji(name:string){
+		const tsgTeam = await tsgTeamLoader.load();
+		const default_emoji_list = await emojiListLoader.load();
 		return default_emoji_list.includes(name) ||
 			await getEmoji(name,tsgTeam.id) !== undefined;
 	}
@@ -73,10 +82,13 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	// | awk '{ print $2 "," $3 }' | grep -E -v "^([^,]{1,5}|[^,]{10,100})," | head -n 50000 | tail -n 20000 > common_word_list
 
 	const themepath = path.join(__dirname, 'data', 'common_word_list');
-	await download(themepath, 'https://drive.google.com/uc?id=1MO5fDrDHLtrVvNcnfUlddo56w29OWFMc');
-	const themes = (await loadFile(themepath)).split('\n');
+	const themesLoader = new Loader<string[]>(async () => {
+		await download(themepath, 'https://drive.google.com/uc?id=1MO5fDrDHLtrVvNcnfUlddo56w29OWFMc');
+		return (await loadFile(themepath)).split('\n');
+	});
 
-	function getTheme(){
+	async function getTheme(){
+		const themes = await themesLoader.load();
 		const theme = sample(themes).split(',');
 		return {
 			word: theme[1],

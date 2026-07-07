@@ -1,8 +1,22 @@
 import Fastify from 'fastify';
 import SlackMock from './slackMock';
 import {allBots} from './bots';
+import {EventEmitter} from 'events';
 
 vi.setConfig({testTimeout: 60 * 1000});
+
+// atcoder/google-calendar等、複数のプラグインが default() 内で
+// setInterval や node-schedule の scheduleJob(内部的にsetTimeoutを使用)で
+// 定期実行ジョブを登録する。setTimeout/setIntervalのみをフェイク化することで
+// テスト実行中にこれらのコールバックが実際に発火することはなくなり、非同期の
+// unhandled rejectionによる無関係なテストの汚染を防げる。
+// Dateまでフェイク化するとwinstonのタイムスタンプ生成(logform)や
+// node-scheduleのJob生成が `toISOString is not a function` で
+// クラッシュするため、toFakeで対象を限定する。
+vi.useFakeTimers({toFake: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval']});
+afterAll(() => {
+	vi.useRealTimers();
+});
 
 // 各プラグインのテストで慣例的に行われているのと同様、実クライアント/実DBに
 // 接続する共有シングルトンをモック化する。これらは plugin.default(slack) /
@@ -16,7 +30,6 @@ vi.setConfig({testTimeout: 60 * 1000});
 // しまい副作用(実ログイン)を防げないため、実モジュールを読み込まない
 // factoryを明示的に渡す。
 vi.mock('./discord', () => {
-	const {EventEmitter} = require('events');
 	const emitter = new EventEmitter();
 	const chainable: any = new Proxy(() => chainable, {
 		get: () => chainable,
@@ -78,24 +91,6 @@ vi.mock('axios');
 vi.mock('dotenv/config', () => ({}));
 
 const EXCLUDED_BOTS = new Set([
-	// mahjong は deploy 経由で @octokit/webhooks の Webhooks インスタンスを
-	// 生成し、起動直後に実GitHub APIへの接続を試みる副作用がある。
-	'deploy',
-	'mahjong',
-	// default() が起動直後に実際のネットワークスクレイピング
-	// (updateContests)を無条件に開始する。この操作自体が本テストの対象外
-	// (実外部アクセスを伴う)である上、この環境では Node 内部の
-	// async_hooks 周りで SIGABRT を引き起こすことが確認されたため除外する。
-	'atcoder',
-	// GoogleCalendar.ts が node-schedule で毎分('* * * * *')発火するジョブを
-	// 登録する。テスト実行中に実際に発火し実Google APIへアクセスしようとして
-	// 失敗し、そのタイミング次第で無関係な後続テストの失敗として現れるため
-	// 除外する。
-	'google-calendar',
-	// 起動時に絵文字データを実際にダウンロードしてJSON.parseする。共有axios
-	// モックのデフォルト応答(空文字列)はJSONとして不正なため失敗する。
-	// 実ネットワークアクセスを伴う初期化のため、本テストの対象外とする。
-	'ponpe',
 	// default() が起動直後に updateAll() で複数のCTFプラットフォームを
 	// 未awaitのままスクレイピングし始める。共有axiosモックの空文字列応答では
 	// cheerioのHTMLパースが失敗し、そのタイミング次第で無関係な後続テストの
