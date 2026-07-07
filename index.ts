@@ -24,6 +24,7 @@ import { inspect } from 'util';
 import concat from 'concat-stream';
 import { getAuthorityLabel } from './lib/slackUtils';
 import { closeDuplicateEventChecker } from './lib/eventDeduplication';
+import { productionBots, allBots } from './lib/bots';
 
 const log = logger.child({ bot: 'index' });
 
@@ -68,93 +69,6 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2'));
 // pm2 reload
 process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
-
-const productionBots = [
-	'summary',
-	'mahjong',
-	'pocky',
-	'emoji-notifier',
-	'sushi-bot',
-	'shogi',
-	'tiobot',
-	'checkin',
-	'tahoiya',
-	'channel-notifier',
-	'prime',
-	'dajare',
-	'sunrise',
-	'ahokusa',
-	// ...(word2vecInstalled ? ['vocabwar'] : []),
-	'ricochet-robots',
-	'scrapbox',
-	'slack-log',
-	'welcome',
-	'deploy',
-	'achievements',
-	'mail-hook',
-	'wordhero',
-	'wordhero/crossword',
-	'oauth',
-	'tunnel',
-	'voiperrobot',
-	'atcoder',
-	'lyrics',
-	'better-custom-response',
-	'emoxpand',
-	'ponpe',
-	'anime',
-	'anime/anison',
-	'oogiri',
-	'sorting-riddles',
-	'tsglive',
-	'emoji-modifier',
-	'context-free',
-	'room-gacha',
-	'taiko',
-	'hayaoshi',
-	'twitter-dm-notifier',
-	'hitandblow',
-	'discord',
-	'octas',
-	'pwnyaa',
-	'amongyou',
-	'api',
-	'hangman',
-	'hakatashi-visor',
-	'nojoin',
-	'remember-english',
-	'golfbot',
-	'kirafan/quiz',
-	'topic',
-	'bungo-quiz',
-	'adventar',
-	'jantama',
-	'tabi-gatcha',
-	'achievement-quiz',
-	'wadokaichin',
-	'wordle-battle',
-	// 'slow-quiz',
-	'dicebot',
-	'taimai',
-	'map-guessr',
-	'character-quiz',
-	'shmug',
-	'pilot',
-	'qrcode-quiz',
-	'oneiromancy',
-	'auto-archiver',
-	'city-symbol',
-	'nmpz',
-	'autogen-quiz',
-	'twenty-questions',
-	'google-calendar',
-];
-
-const developmentBots = [
-	'helloworld',
-];
-
-const allBots = [...productionBots, ...developmentBots];
 
 log.info('slackbot started');
 

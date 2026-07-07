@@ -52,7 +52,12 @@ const loadEmojis = async () => {
   return allEmojis;
 };
 
-loadEmojis();
+loadEmojis().catch((err: NodeJS.ErrnoException) => {
+  if (err.code === 'ENOENT') {
+    return;
+  }
+  logError(err, 'failed to load big emojis');
+});
 
 const emojisToJson = (emojis: EmojiTable): string => {
   const obj = Object.fromEntries(
