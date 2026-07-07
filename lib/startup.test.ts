@@ -78,11 +78,6 @@ vi.mock('axios');
 vi.mock('dotenv/config', () => ({}));
 
 const EXCLUDED_BOTS = new Set([
-	// puppeteer (ESM形式のpuppeteer-coreに依存) が実際にヘッドレスブラウザの
-	// 起動を試みる。Fastify登録クラスのクラッシュ検知という本テストの目的とは
-	// 無関係な実ブラウザ依存のため対象外とする。
-	'map-guessr',
-	'nmpz',
 	// mahjong は deploy 経由で @octokit/webhooks の Webhooks インスタンスを
 	// 生成し、起動直後に実GitHub APIへの接続を試みる副作用がある。
 	'deploy',
@@ -136,6 +131,10 @@ describe.each(testedBots)('%s', (name) => {
 		const slack = new SlackMock();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		process.env.CHANNEL_GAMES = slack.fakeChannel;
+		// nmpz はモジュール読み込み時に GOOGLE_MAPS_API_KEY / CLOUDINARY_URL の
+		// 存在を無条件にチェックし、無ければ即座にthrowする。
+		process.env.GOOGLE_MAPS_API_KEY ||= 'dummy-google-maps-api-key';
+		process.env.CLOUDINARY_URL ||= 'cloudinary://dummy:dummy@dummy';
 
 		const plugin = await import(`../${name}`);
 
