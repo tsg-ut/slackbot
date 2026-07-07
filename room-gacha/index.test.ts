@@ -10,17 +10,7 @@ import type { ScrapeOptions } from 'scrape-it';
 
 vi.mock('axios');
 
-// scrape-itからのaxiosの呼び出しはモックできないため、簡易実装を提供する
-vi.mock('scrape-it', async () => {
-    const scrapeIt = await vi.importActual<typeof import('scrape-it')>('scrape-it');
-    const cheerio = await vi.importActual<typeof import('cheerio')>('cheerio');
-    return {
-        default: async (url: string, opts: ScrapeOptions) => {
-            const res = await axios(url);
-            return {data: scrapeIt.scrapeHTML(cheerio.load(res.data), opts)};
-        },
-    };
-});
+vi.mock('scrape-it');
 
 let slack: Slack = null;
 
