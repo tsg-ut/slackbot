@@ -1,4 +1,5 @@
 import sqlite from 'sqlite';
+import {expect, it, beforeEach, describe, vi} from 'vitest';
 import Slack from '../lib/slackMock';
 import shogi from './index.js';
 

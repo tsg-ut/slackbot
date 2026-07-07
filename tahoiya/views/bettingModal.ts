@@ -34,7 +34,7 @@ export default (shuffledMeanings: ShuffledMeaning[], gameType: 'normal' | 'daily
 				type: 'section' as const,
 				text: {
 					type: 'mrkdwn' as const,
-					text: '*あなたのコメント:*\n' + userComments.map((c) => `> ${c.text}`).join('\n'),
+					text: `*あなたのコメント:*\n${userComments.map((c) => `> ${c.text}`).join('\n')}`,
 				},
 			}] : []),
 			{
