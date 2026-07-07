@@ -37,7 +37,10 @@ const getChangedFiles = (): string[] => {
 const buildConditionalCommands = (changedFiles: string[]): string[][] => {
 	const commands: string[][] = [];
 	if (changedFiles.includes('package-lock.json')) {
-		commands.push(['npm', 'ci']);
+		// NODE_ENV=production (loaded from .env by this app) is inherited by
+		// spawned npm processes, which makes npm ci skip devDependencies
+		// such as tsgo. Force-include them since the build step needs them.
+		commands.push(['npm', 'ci', '--include=dev']);
 	}
 	if (changedFiles.some((f) => f.endsWith('.rs'))) {
 		commands.push(['/home/slackbot/.cargo/bin/cargo', 'build', '--release', '--all']);
