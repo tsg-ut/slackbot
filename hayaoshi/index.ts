@@ -2,7 +2,7 @@ import type {GenericMessageEvent, MessageEvent} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 // @ts-expect-error: not typed
 import levenshtein from 'fast-levenshtein';
-import {sample, shuffle, flatten, times, constant} from 'lodash';
+import {sample, shuffle, flatten, times, constant} from 'lodash-es';
 import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 import type {SlackInterface} from '../lib/slack';
 import {extractMessage, HumanMessageEvent, isHumanMessage} from '../lib/slackUtils';

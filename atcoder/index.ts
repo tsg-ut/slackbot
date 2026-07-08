@@ -2,7 +2,7 @@ import qs from 'querystring';
 import {Mutex} from 'async-mutex';
 import axios from 'axios';
 import {stripIndent} from 'common-tags';
-import {sumBy, minBy, sum} from 'lodash';
+import {sumBy, minBy, sum} from 'lodash-es';
 import moment from 'moment';
 import schedule from 'node-schedule';
 // @ts-expect-error

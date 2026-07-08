@@ -1,5 +1,4 @@
-/* eslint-disable no-undef */
-import noop from 'lodash/noop';
+// @ts-nocheck
 // @ts-expect-error
 import MockFirebase from 'mock-cloud-firestore';
 import Slack from '../lib/slackMock';
@@ -15,7 +14,7 @@ vi.mock('../lib/state');
 vi.mock('../lib/firestore', () => {
 	const firebase = new MockFirebase({});
 	const db = firebase.firestore();
-	db.runTransaction = noop;
+	db.runTransaction = () => {};
 	return {db};
 });
 

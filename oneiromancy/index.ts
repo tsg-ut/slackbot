@@ -27,7 +27,7 @@ interface OneiromancyPrompts {
 
 const promptLoader = new Loader<OneiromancyPrompts>(async () => {
 	const prompts = await Promise.all(['prompt.yml', 'newyear-prompt.yml'].map(async (filename) => {
-		const promptYaml = await readFile(path.join(__dirname, filename));
+		const promptYaml = await readFile(path.join(import.meta.dirname, filename));
 		const prompt = yaml.load(promptYaml.toString()) as OpenAI.Chat.ChatCompletionMessageParam[];
 		return prompt;
 	}));

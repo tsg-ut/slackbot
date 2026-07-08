@@ -1,14 +1,16 @@
-const {stripIndent} = require('common-tags');
-const {toZenKana} = require('jaconv');
-const {katakanize} = require('japanese');
-const {flatten, maxBy} = require('lodash');
+import {stripIndent} from 'common-tags';
+// @ts-expect-error
+import {toZenKana} from 'jaconv';
+// @ts-expect-error
+import {katakanize} from 'japanese';
+import {flatten, maxBy} from 'lodash-es';
 
-const tokenize = require('./tokenize');
-const {findDajare, listAlternativeReadings} = require('./dajare');
-const {unlock} = require('../achievements');
+import tokenize from './tokenize';
+import {findDajare, listAlternativeReadings} from './dajare';
+import {unlock} from '../achievements';
 
-module.exports = ({eventClient, webClient: slack}) => {
-	const slackDecode = (text) => text
+export default ({eventClient, webClient: slack}: any) => {
+	const slackDecode = (text: string) => text
 		.replace(/<[^>]+>/g, (link) => {
 			const matches = (/^(.+)\|(.+)$/).exec(link);
 			if (!matches) {
@@ -16,23 +18,26 @@ module.exports = ({eventClient, webClient: slack}) => {
 			}
 			return matches[2];
 		})
-		.replace(/&(lt|gt|amp);/g, (_s, str1) => ({
-			amp: '&',
-			lt: '<',
-			gt: '>',
-		}[str1]));
+		.replace(/&(lt|gt|amp);/g, (_s, str1) => {
+			const map: Record<string, string> = {
+				amp: '&',
+				lt: '<',
+				gt: '>',
+			};
+			return map[str1] || '';
+		});
 
-	const getTokenReading = (token) => {
+	const getTokenReading = (token: any) => {
 		const {reading, surface_form, pronunciation} = token;
 		return toZenKana(katakanize(pronunciation || reading || surface_form || ''))
 			.replace(/(?![ー\uff70])\P{Script=Katakana}/gu, '');
 	};
 
-	const countMora = (text) => (
+	const countMora = (text: string) => (
 		(text.match(/.[ァィゥェォャュョヮ]?/g) || []).length
 	);
 
-	const getTokenPos = (readings, pos) => {
+	const getTokenPos = (readings: string[], pos: number) => {
 		let sum = 0;
 		for (let i = 0; i < readings.length; i++) {
 			const reading = readings[i];
@@ -45,13 +50,13 @@ module.exports = ({eventClient, webClient: slack}) => {
 	};
 
 	// eslint-disable-next-line max-params
-	const getTokenSlice = (tokens, readings, index, length) => {
+	const getTokenSlice = (tokens: any[], readings: string[], index: number, length: number) => {
 		const [start] = getTokenPos(readings, index);
 		const [end] = getTokenPos(readings, index + length - 1);
 		return tokens.slice(start, end + 1);
 	};
 
-	const getDajare = (readings, tokens) => {
+	const getDajare = (readings: string[], tokens: any[]) => {
 		const moraLimit = (() => {
 			const reading = readings.join('');
 			if (reading.length < 10) {
@@ -76,7 +81,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 					...dajare,
 				};
 			})
-			.filter((item) => item !== null);
+			.filter((item): item is NonNullable<typeof item> => item !== null);
 		if (dajares.length === 0) {
 			return null;
 		}
@@ -85,15 +90,15 @@ module.exports = ({eventClient, webClient: slack}) => {
 			({word, indices}) => word.length * indices.length - indices.length * 0.2
 		);
 		return {
-			...dajare,
+			...dajare!,
 			tokens,
-			tokenSlices: dajare.indices
-				.map((index) => getTokenSlice(tokens, dajare.readings, index, dajare.word.length)),
+			tokenSlices: dajare!.indices
+				.map((index) => getTokenSlice(tokens, dajare!.readings, index, dajare!.word.length)),
 		};
 	};
 
-	const isTrivial = ({indices, word, readings, tokens}) => {
-		if (new Set(indices.map((index) => {
+	const isTrivial = ({indices, word, readings, tokens}: any) => {
+		if (new Set(indices.map((index: number) => {
 			const [start, startOff] = getTokenPos(readings, index);
 			const [end, endOff] = getTokenPos(readings, index + word.length - 1);
 			const reading = readings.slice(start, end + 1).join(' ')
@@ -103,7 +108,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 			const completeEnd = endOff + 1 === readings[end].length ? end + 1 : end;
 			const surface = tokens
 				.slice(completeStart, completeEnd)
-				.map((token, idx) => {
+				.map((token: any, idx: number) => {
 					// if (!getTokenReading(token)) {
 					if (!readings[completeStart + idx]) {
 						return '';
@@ -120,7 +125,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 		return false;
 	};
 
-	const evaluateDajare = (dajare) => {
+	const evaluateDajare = (dajare: any) => {
 		const {word, indices} = dajare;
 		if ((/^(.ー*)\1*$/u).test(word) || (/^(..)\1{2,}$/u).test(word)) {
 			// apparently not a dajare, such as あああああああああああああ, ほげほげほげほげほげほげ, or so
@@ -142,7 +147,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 		return ':zabuton:';
 	};
 
-	eventClient.on('message', async (message) => {
+	eventClient.on('message', async (message: any) => {
 		if (message.channel !== process.env.CHANNEL_SANDBOX && !message.channel.startsWith('D')) {
 			return;
 		}
@@ -182,7 +187,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 					[index + word.length, '* '],
 				])).reverse();
 				let readingStr = altReadings.join('');
-				for (const [pos, str] of insertions) {
+				for (const [pos, str] of insertions as any) {
 					readingStr = readingStr.substring(0, pos) + str + readingStr.substring(pos);
 				}
 

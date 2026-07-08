@@ -1,24 +1,28 @@
-const assert = require('assert');
-const {spawn} = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const {promisify} = require('util');
-const BN = require('bn.js');
-const {stripIndent, stripIndents} = require('common-tags');
-const concat = require('concat-stream');
-const {constant, times, flatten, range, shuffle, uniq} = require('lodash');
-const MillerRabin = require('miller-rabin');
-const prime = require('primes-and-factors');
-const {unlock} = require('../achievements');
-const primes = require('./primes');
+// @ts-nocheck
+import assert from 'assert';
+import {spawn} from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import {promisify} from 'util';
+import BN from 'bn.js';
+import {stripIndent, stripIndents} from 'common-tags';
+import concat from 'concat-stream';
+import lodash from 'lodash-es';
+const {constant, times, flatten, range, shuffle, uniq} = lodash;
+import MillerRabin from 'miller-rabin';
+// @ts-expect-error
+import prime from 'primes-and-factors';
+import {unlock} from '../achievements';
+import * as primes from './primes';
 
 const cardSet = range(1, 14);
 const millerRabin = new MillerRabin();
 
 const state = (() => {
 	try {
-		// eslint-disable-next-line global-require
-		const savedState = require('./state.json');
+		const filePath = path.join(import.meta.dirname, 'state.json');
+		const fileContent = fs.readFileSync(filePath, 'utf-8');
+		const savedState = JSON.parse(fileContent);
 		return {
 			phase: savedState.phase,
 			challenger: savedState.challenger || null,
@@ -234,7 +238,7 @@ const setState = async (newState) => {
 	}
 
 	await promisify(fs.writeFile)(
-		path.join(__dirname, 'state.json'),
+		path.join(import.meta.dirname, 'state.json'),
 		JSON.stringify(savedState),
 	);
 };
@@ -273,7 +277,7 @@ const draw = async (count) => {
 	return drewCards;
 };
 
-module.exports = ({eventClient, webClient: slack}) => {
+export default ({eventClient, webClient: slack}: any) => {
 	const postMessage = (text, attachments, options) => slack.chat.postMessage({
 		channel: process.env.CHANNEL_SANDBOX,
 		text,

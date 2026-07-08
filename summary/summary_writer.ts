@@ -1,15 +1,16 @@
-require('dotenv').config();
+// @ts-nocheck
+import lodash from 'lodash-es';
+const {uniq, countBy, groupBy, maxBy, minBy} = lodash;
+import moment from 'moment';
+import {tokenize} from 'kuromojin';
+import cloud from 'd3-cloud';
+import {JSDOM} from 'jsdom';
+import cloudinary from 'cloudinary';
+import canvasPkg from 'canvas';
+const {createCanvas, Image, registerFont} = canvasPkg;
+import path from 'path';
 
-const {uniq, countBy, groupBy, maxBy, minBy} = require('lodash');
-const moment = require('moment');
-const {tokenize} = require('kuromojin');
-const cloud = require('d3-cloud');
-const {JSDOM} = require('jsdom');
-const cloudinary = require('cloudinary');
-const {createCanvas, Image, registerFont} = require('canvas');
-const path = require('path');
-
-const {default: logger} = require('../lib/logger');
+import logger from '../lib/logger.js';
 const log = logger.child({bot: 'summary'});
 
 let fontloaded = false;
@@ -31,13 +32,13 @@ function filtering(messages) {
     return out;
 }
 
-module.exports.makeSummary = async (messages, slack) => {
+export const makeSummary = async (messages, slack) => {
     // 7.0からD3.jsはESM必須
     const d3 = await import('d3');
 
     if (!fontloaded) {
         const fontPath = path.resolve(
-            __dirname, '../lib/NotoSerifCJKjp-Bold.otf');
+            import.meta.dirname, '../lib/NotoSerifCJKjp-Bold.otf');
         registerFont(fontPath, {family: 'NotoSerifCJKjp'});
         fontloaded = true;
     }

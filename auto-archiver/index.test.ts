@@ -1,5 +1,5 @@
 import {SectionBlock} from '@slack/web-api';
-import {noop} from 'lodash';
+import {noop} from 'lodash-es';
 import schedule, {Job, JobCallback} from 'node-schedule';
 import {MockedStateInterface} from '../lib/__mocks__/state';
 import Slack from '../lib/slackMock';

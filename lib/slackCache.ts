@@ -1,4 +1,4 @@
-import {get} from 'lodash';
+import lodash from 'lodash-es';
 import type EventEmitter from 'events';
 import type {Token} from '../oauth/tokens';
 import {Deferred} from './utils';
@@ -168,7 +168,7 @@ export default class SlackCache {
 			}
 		}
 
-		const remoteReactions: Reaction[] = get(data, ['messages', 0, 'reactions'], [] as Reaction[]);
+		const remoteReactions: Reaction[] = lodash.get(data, ['messages', 0, 'reactions'], [] as Reaction[]);
 		const remoteReactionsObj = Object.fromEntries(remoteReactions.map((reaction) => (
 			[reaction.name, reaction.users ?? []]
 		)));
@@ -247,7 +247,7 @@ export default class SlackCache {
 			}
 		}
 
-		const remoteReactions: Reaction[] = get(data, ['messages', 0, 'reactions'], [] as Reaction[]);
+		const remoteReactions: Reaction[] = lodash.get(data, ['messages', 0, 'reactions'], [] as Reaction[]);
 		const remoteReactionsObj = Object.fromEntries(remoteReactions.map((reaction) => (
 			[reaction.name, reaction.users ?? []]
 		)));

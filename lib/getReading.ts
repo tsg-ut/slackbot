@@ -1,16 +1,18 @@
-const {tokenize} = require('kuromojin');
-const toJapanese = require('jp-num/toJapanese');
-const iconv = require('iconv-lite');
-const {toZenKana} = require('jaconv');
-const path = require('path');
-const fs = require('fs');
-const download = require('download');
-const {promisify} = require('util');
-const {escapeRegExp} = require('lodash');
-const {katakanize} = require('japanese');
+// @ts-nocheck
+import {tokenize} from 'kuromojin';
+import toJapanese from 'jp-num/toJapanese.js';
+import iconv from 'iconv-lite';
+import {toZenKana} from 'jaconv';
+import path from 'path';
+import fs from 'fs';
+import download from 'download';
+import {promisify} from 'util';
+import lodash from 'lodash-es';
+const {escapeRegExp} = lodash;
+import {katakanize} from 'japanese';
 
 const loadingPromise = async () => {
-	const englishDictPath = path.resolve(__dirname, 'bep-ss-2.3', 'bep-eng.dic');
+	const englishDictPath = path.resolve(import.meta.dirname, 'bep-ss-2.3', 'bep-eng.dic');
 
 	const englishDictExists = await new Promise((resolve) => {
 		fs.access(englishDictPath, fs.constants.F_OK, (error) => {
@@ -19,7 +21,7 @@ const loadingPromise = async () => {
 	});
 
 	if (!englishDictExists) {
-		await download('http://www.argv.org/bep/files/linux/beta/bep-ss-2.3.tar.gz', __dirname, {extract: true});
+		await download('http://www.argv.org/bep/files/linux/beta/bep-ss-2.3.tar.gz', import.meta.dirname, {extract: true});
 	}
 
 	const englishDictBuffer = await promisify(fs.readFile)(englishDictPath);
@@ -120,7 +122,7 @@ const kanizeEnglish = async (word_) => {
 		.join('');
 };
 
-module.exports = async (text) => {
+export default async (text: string) => {
 	const englishWords = text.match(/[a-zA-Z]+/g) || [];
 	const readingMap = new Map(await Promise.all(englishWords.map(async (word) => {
 		const reading = await kanizeEnglish(word);

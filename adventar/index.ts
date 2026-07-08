@@ -69,7 +69,7 @@ const fetchAdventarSnapshot = async (pageID: number) => {
   } as AdventarCalendarSnapshot;
 };
 
-const snapshotsPath = path.join(__dirname, 'snapshots.json');
+const snapshotsPath = path.join(import.meta.dirname, 'snapshots.json');
 
 const loadAdventarSnapshots = async () => {
   const snapshots: AdventarCalendarSnapshot[] = (await promisify(fs.exists)(

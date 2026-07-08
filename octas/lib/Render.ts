@@ -1,3 +1,4 @@
+// @ts-nocheck
 class BoardElement {
 	constructor(board, boardPaper, Snap) {
 		this.board = board;
@@ -206,4 +207,4 @@ class BoardElement {
 	}
 }
 
-module.exports = BoardElement;
+export default BoardElement;

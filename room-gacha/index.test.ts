@@ -22,7 +22,7 @@ beforeEach(async () => {
 
 describe('room-gacha', () => {
     it('responds to "物件ガチャ" with a prefecture and a city specified', async () => {
-        const data = await fs.readFile(`${__dirname}/search-result.test.html`, 'utf-8');
+        const data = await fs.readFile(`${import.meta.dirname}/search-result.test.html`, 'utf-8');
         const mockAxios = vi.mocked(axios);
         mockAxios.mockResolvedValue({data} as AxiosResponse);
         const response = await slack.getResponseTo('物件ガチャ 東京都 文京区');

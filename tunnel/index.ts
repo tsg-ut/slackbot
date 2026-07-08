@@ -4,7 +4,7 @@ import {ReactionAddedEvent, ReactionRemovedEvent, WebClient} from '@slack/web-ap
 import {EmojiData} from 'emoji-data-ts';
 import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
-import {flatten, uniq} from 'lodash';
+import {flatten, uniq} from 'lodash-es';
 import sql from 'sql-template-strings';
 import {open} from 'sqlite';
 import sqlite3 from 'sqlite3';

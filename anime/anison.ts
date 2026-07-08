@@ -1,15 +1,17 @@
-const {promises: fs} = require('fs');
-const path = require('path');
-const {Mutex} = require('async-mutex');
-const levenshtein = require('fast-levenshtein');
-const {hiraganize} = require('japanese');
-const {tokenize} = require('kuromojin');
-const {escapeRegExp, sample, sampleSize, chunk, uniq, sortBy, shuffle} = require('lodash');
-const scrapeIt = require('scrape-it');
-const {unlock, increment} = require('../achievements');
-const {Deferred} = require('../lib/utils');
-const {getSongInfo, getMovieInfo} = require('../lyrics/index');
-const {loadSheet} = require('./index.js');
+// @ts-nocheck
+import {promises as fs} from 'fs';
+import path from 'path';
+import {Mutex} from 'async-mutex';
+import levenshtein from 'fast-levenshtein';
+import {hiraganize} from 'japanese';
+import {tokenize} from 'kuromojin';
+import lodash from 'lodash-es';
+const {escapeRegExp, sample, sampleSize, chunk, uniq, sortBy, shuffle} = lodash;
+import scrapeIt from 'scrape-it';
+import {unlock, increment} from '../achievements/index.js';
+import {Deferred} from '../lib/utils.js';
+import {getSongInfo, getMovieInfo} from '../lyrics/index.js';
+import {loadSheet} from './index.js';
 
 const freqDeferred = new Deferred();
 const mutex = new Mutex();
@@ -19,7 +21,7 @@ const loadFreq = async () => {
 		return freqDeferred.promise;
 	}
 
-	const data = await fs.readFile(path.resolve(__dirname, '../vocabwar/data/frequency.txt'));
+	const data = await fs.readFile(path.resolve(import.meta.dirname, '../vocabwar/data/frequency.txt'));
 	const freq = new Map(data.toString().split('\n').filter((line) => line).map((line) => {
 		const [word, frequency] = line.split(' ');
 		return [word, parseFloat(frequency)];
@@ -134,7 +136,7 @@ const getHint = async (songInfos, n) => {
 	return '';
 };
 
-module.exports = ({eventClient, webClient: slack}) => {
+export default ({eventClient, webClient: slack}: any) => {
 	const state = {
 		answer: null,
 		previousTick: 0,

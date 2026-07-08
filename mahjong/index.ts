@@ -1,16 +1,19 @@
-const assert = require('assert');
-const fs = require('fs');
-const path = require('path');
-const qs = require('querystring');
-const {promisify} = require('util');
-const {v2: cloudinary} = require('cloudinary');
-const {source} = require('common-tags');
-const {chunk, shuffle, sampleSize, sample, random, range, zip} = require('lodash');
-const {unlock, increment} = require('../achievements');
-const {AteQuiz} = require('../atequiz/index');
-const {blockDeploy} = require('../deploy/index');
-const {Mutex} = require('async-mutex');
-const calculator = require('./calculator.js');
+// @ts-nocheck
+import assert from 'assert';
+import fs from 'fs';
+import path from 'path';
+import qs from 'querystring';
+import {promisify} from 'util';
+import {v2 as cloudinary} from 'cloudinary';
+import {source} from 'common-tags';
+import {chunk, shuffle, sampleSize, sample, random, range, zip} from 'lodash-es';
+import {unlock, increment} from '../achievements';
+// @ts-expect-error
+import {AteQuiz} from '../atequiz/index';
+// @ts-expect-error
+import {blockDeploy} from '../deploy/index';
+import {Mutex} from 'async-mutex';
+import * as calculator from './calculator';
 
 const mutex = new Mutex();
 
@@ -24,8 +27,9 @@ const savedState = (() => {
 			大麻雀Wins: 0,
 			大麻雀Loses: 0,
 		};
-		// eslint-disable-next-line global-require
-		return Object.assign(defaultSavedState, require('./current-point.json'));
+		const filePath = path.join(import.meta.dirname, 'current-point.json');
+		const fileContent = fs.readFileSync(filePath, 'utf-8');
+		return Object.assign(defaultSavedState, JSON.parse(fileContent));
 	} catch (e) {
 		return {
 			points: 25000,
@@ -185,7 +189,7 @@ const 麻雀牌Forサンマ = 麻雀牌.filter((牌) => {
 assert.strictEqual(麻雀牌Forサンマ.length, 108);
 
 const saveState = async () => {
-	await promisify(fs.writeFile)(path.join(__dirname, 'current-point.json'), JSON.stringify({
+	await promisify(fs.writeFile)(path.join(import.meta.dirname, 'current-point.json'), JSON.stringify({
 		points: state.points,
 		wins: state.wins,
 		loses: state.loses,
@@ -237,7 +241,7 @@ class TenpaiAteQuiz extends AteQuiz {
 	}
 }
 
-module.exports = (clients) => {
+export default (clients: any) => {
 	const {eventClient, webClient: slack} = clients;
 
 	eventClient.on('message', async (message) => {

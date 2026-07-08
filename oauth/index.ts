@@ -5,7 +5,7 @@ import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import sql from 'sql-template-strings';
-import {get} from 'lodash';
+import {get} from 'lodash-es';
 
 const log = logger.child({bot: 'oauth'});
 

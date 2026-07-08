@@ -1,7 +1,11 @@
-const path = require('path');
-const cloudinary = require('cloudinary');
-const sharp = require('sharp');
-const {default: Color} = require('shogi9.js/lib/Color.js');
+// @ts-nocheck
+import path from 'path';
+import cloudinary from 'cloudinary';
+import sharp from 'sharp';
+import type ColorType from 'shogi9.js/lib/Color.js';
+import ColorPkg from 'shogi9.js/lib/Color.js';
+const Color = (ColorPkg as any).default?.default || (ColorPkg as any).default || ColorPkg;
+type Color = ColorType;
 
 const filenameMap = {
 	FU: 'fu',
@@ -20,7 +24,7 @@ const filenameMap = {
 	UM: 'uma',
 };
 
-module.exports.upload = async (board) => {
+export const upload = async (board) => {
 	const imageOptions = {
 		raw: {
 			width: 570,
@@ -29,7 +33,7 @@ module.exports.upload = async (board) => {
 		},
 	};
 
-	let image = await sharp(path.resolve(__dirname, 'images/board.png'))
+	let image = await sharp(path.resolve(import.meta.dirname, 'images/board.png'))
 		.raw()
 		.toBuffer();
 
@@ -47,7 +51,7 @@ module.exports.upload = async (board) => {
 			}.png`;
 
 			compositeImages.push({
-				input: path.resolve(__dirname, 'images', filename),
+				input: path.resolve(import.meta.dirname, 'images', filename),
 				left: Math.floor(319 - 58.5 * x),
 				top: Math.floor(42 + 58.5 * y),
 			});
@@ -68,7 +72,7 @@ module.exports.upload = async (board) => {
 			}
 
 			compositeImages.push({
-				input: path.resolve(__dirname, 'images', filename),
+				input: path.resolve(import.meta.dirname, 'images', filename),
 				left: Math.floor(base.x + 45 * x * (color === Color.Black ? 1 : -1)),
 				top: Math.floor(base.y - 50 * y * (color === Color.Black ? 1 : -1)),
 			});

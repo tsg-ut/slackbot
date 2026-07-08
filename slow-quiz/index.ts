@@ -10,7 +10,7 @@ import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
 import {hiraganize} from 'japanese';
 import yaml from 'js-yaml';
-import {last, minBy} from 'lodash';
+import {last, minBy} from 'lodash-es';
 import {scheduleJob} from 'node-schedule';
 import type {OpenAI} from 'openai';
 import type {ChatCompletion, ChatCompletionCreateParams} from 'openai/resources/chat';
@@ -126,13 +126,13 @@ export const validateQuestion = (question: string) => {
 };
 
 const promptLoader = new Loader<OpenAI.Chat.ChatCompletionMessageParam[]>(async () => {
-	const promptYaml = await readFile(path.join(__dirname, 'prompt.yml'));
+	const promptYaml = await readFile(path.join(import.meta.dirname, 'prompt.yml'));
 	const prompt = yaml.load(promptYaml.toString()) as OpenAI.Chat.ChatCompletionMessageParam[];
 	return prompt;
 });
 
 const reasoningPromptLoader = new Loader<OpenAI.Chat.ChatCompletionMessageParam[]>(async () => {
-	const promptYaml = await readFile(path.join(__dirname, 'prompt-reasoning.yml'));
+	const promptYaml = await readFile(path.join(import.meta.dirname, 'prompt-reasoning.yml'));
 	const prompt = yaml.load(promptYaml.toString()) as OpenAI.Chat.ChatCompletionMessageParam[];
 	return prompt;
 });

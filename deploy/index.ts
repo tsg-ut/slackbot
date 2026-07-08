@@ -4,7 +4,7 @@ import {PassThrough} from 'stream';
 import {Webhooks} from '@octokit/webhooks';
 import concat from 'concat-stream';
 import {FastifyInstance} from 'fastify';
-import {get} from 'lodash';
+import {get} from 'lodash-es';
 import pm2 from 'pm2';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';

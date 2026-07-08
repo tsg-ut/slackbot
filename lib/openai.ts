@@ -6,7 +6,7 @@ import mp3Duration from "mp3-duration";
 import { firestore } from "firebase-admin";
 import type { SpeechCreateParams } from "openai/resources/audio/speech";
 import dayjs from "dayjs";
-import { sumBy } from "lodash";
+import { sumBy } from "lodash-es";
 import {webClient as slack} from "./slack";
 import discord from "./discord";
 import type { TextChannel } from "discord.js";

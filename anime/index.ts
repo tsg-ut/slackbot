@@ -1,16 +1,18 @@
-const {Mutex} = require('async-mutex');
-const axios = require('axios');
-const cloudinary = require('cloudinary');
-const {stripIndent} = require('common-tags');
-const levenshtein = require('fast-levenshtein');
-const {google} = require('googleapis');
-const {hiraganize} = require('japanese');
-const {get, last, minBy, random, sum, sample, uniq, groupBy, mapValues, range, flatten} = require('lodash');
-const {xml2js} = require('xml-js');
-const {unlock, increment} = require('../achievements');
-const {ChannelLimitedBot} = require('../lib/channelLimitedBot');
-const {extractMessage} = require('../lib/slackUtils');
-const {Deferred} = require('../lib/utils');
+// @ts-nocheck
+import {Mutex} from 'async-mutex';
+import axios from 'axios';
+import cloudinary from 'cloudinary';
+import {stripIndent} from 'common-tags';
+import levenshtein from 'fast-levenshtein';
+import {google} from 'googleapis';
+import {hiraganize} from 'japanese';
+import lodash from 'lodash-es';
+const {get, last, minBy, random, sum, sample, uniq, groupBy, mapValues, range, flatten} = lodash;
+import {xml2js} from 'xml-js';
+import {unlock, increment} from '../achievements/index.js';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot.js';
+import {extractMessage} from '../lib/slackUtils.js';
+import {Deferred} from '../lib/utils.js';
 
 const animesDeferred = new Deferred();
 const mutex = new Mutex();
@@ -563,6 +565,6 @@ class AnimeBot extends ChannelLimitedBot {
 	}
 }
 
-module.exports = (slackClients) => new AnimeBot(slackClients);
+export default (slackClients: any) => new AnimeBot(slackClients);
 
-module.exports.loadSheet = loadSheet;
+export { loadSheet };

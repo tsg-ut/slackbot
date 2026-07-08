@@ -145,7 +145,7 @@ const fetchChakuwiki = async (title: string) => {
 
 		console.log('Saving progress...');
 		const cityTitleMapJson = JSON.stringify(Object.fromEntries(cityTitleMap.entries()), null, '  ');
-		await fs.writeFile(path.join(__dirname, '..', 'city-symbol', 'chakuwiki-title-map.json'), cityTitleMapJson);
+		await fs.writeFile(path.join(import.meta.dirname, '..', 'city-symbol', 'chakuwiki-title-map.json'), cityTitleMapJson);
 	}
 
 	console.log('Done');

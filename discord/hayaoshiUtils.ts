@@ -3,7 +3,7 @@ import {google, sheets_v4} from 'googleapis';
 // @ts-expect-error not typed
 import {katakanaRegex} from 'japanese';
 import {tokenize, KuromojiToken} from 'kuromojin';
-import {last, uniq, uniqBy} from 'lodash';
+import {last, uniq, uniqBy} from 'lodash-es';
 import {isCorrectAnswer, normalize} from '../hayaoshi';
 import getReading from '../lib/getReading.js';
 import logger from '../lib/logger';

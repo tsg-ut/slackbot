@@ -3,7 +3,7 @@ import type {BlockAction, ViewSubmitAction} from '@slack/bolt';
 import type {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {WebClient, KnownBlock} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
-import {sampleSize, sample, last} from 'lodash';
+import {sampleSize, sample, last} from 'lodash-es';
 import logger from '../lib/logger';
 import openai from '../lib/openai';
 import type {SlackInterface} from '../lib/slack';

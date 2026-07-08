@@ -6,7 +6,7 @@ import moment from 'moment';
 import querystring from 'querystring';
 import { Mutex } from 'async-mutex';
 import { unlock } from '../achievements';
-import { round } from 'lodash';
+import { round } from 'lodash-es';
 import type { SlackInterface } from '../lib/slack.js';
 import type { MessageEvent } from '@slack/bolt';
 import { extractMessage } from '../lib/slackUtils';

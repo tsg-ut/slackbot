@@ -1,6 +1,7 @@
 import axios from 'axios';
 import {stripIndent} from 'common-tags';
-import get from 'lodash/get';
+import lodash from 'lodash-es';
+const { get } = lodash;
 import schedule from 'node-schedule';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';

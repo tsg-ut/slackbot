@@ -2,7 +2,8 @@ import type {SlackInterface} from '../lib/slack';
 import moment from 'moment';
 import axios from 'axios';
 import {hiraganize} from 'japanese';
-import sample from 'lodash/sample';
+import lodash from 'lodash-es';
+const { sample } = lodash;
 import fs from 'fs';
 import {getMemberName, getEmoji} from '../lib/slackUtils';
 import path from 'path';
@@ -60,7 +61,7 @@ async function loadFile(filepath:string) : Promise<string> {
 export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const states : State[] = [];
 
-	const emojipath = path.join(__dirname, 'data', 'emoji.json');
+	const emojipath = path.join(import.meta.dirname, 'data', 'emoji.json');
 	const emojiListLoader = new Loader<string[]>(async () => {
 		await download(emojipath, 'https://raw.githubusercontent.com/iamcal/emoji-data/master/emoji.json');
 		return JSON.parse(await loadFile(emojipath))
@@ -82,7 +83,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	// cat BCCWJ_frequencylist_luw_ver1_0.tsv | grep "名詞" | grep -v "人名" | grep -v "数詞"
 	// | awk '{ print $2 "," $3 }' | grep -E -v "^([^,]{1,5}|[^,]{10,100})," | head -n 50000 | tail -n 20000 > common_word_list
 
-	const themepath = path.join(__dirname, 'data', 'common_word_list');
+	const themepath = path.join(import.meta.dirname, 'data', 'common_word_list');
 	const themesLoader = new Loader<string[]>(async () => {
 		await download(themepath, 'https://drive.google.com/uc?id=1MO5fDrDHLtrVvNcnfUlddo56w29OWFMc');
 		return (await loadFile(themepath)).split('\n');

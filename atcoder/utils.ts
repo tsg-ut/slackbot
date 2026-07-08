@@ -25,7 +25,7 @@ let storagePromise: Promise<nodePersist.LocalStorage> | null = null;
 const getStorage = (): Promise<nodePersist.LocalStorage> => {
 	if (!storagePromise) {
 		const storage = nodePersist.create({
-			dir: path.resolve(__dirname, '__state__'),
+			dir: path.resolve(import.meta.dirname, '__state__'),
 		});
 		storagePromise = storage.init().then(() => storage);
 	}

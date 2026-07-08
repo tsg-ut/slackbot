@@ -1,9 +1,8 @@
-/* eslint-env node, jest */
+// @ts-nocheck
+import Slack from '../lib/slackMock';
+import emojiNotifier from './index';
 
-const {default: Slack} = require('../lib/slackMock.ts');
-const emojiNotifier = require('./index.js');
-
-let slack = null;
+let slack: any = null;
 
 beforeEach(() => {
 	slack = new Slack();
@@ -14,20 +13,20 @@ beforeEach(() => {
 it('responds to emoji addition', () => {
 	const promise = Promise.all([
 		new Promise((resolve) => {
-			slack.on('chat.postMessage', ({channel, text, username, icon_emoji: icon}) => {
+			slack.on('chat.postMessage', ({channel, text, username, icon_emoji: icon}: any) => {
 				expect(channel).toBe(slack.fakeChannel);
 				expect(username).toContain('emoji-notifier');
 				expect(username).toContain('hoge');
 				expect(text).toContain(':hoge:');
 				expect(text).toContain('追加');
 				expect(icon).toBe(':hoge:');
-				resolve();
+				resolve(undefined);
 			});
 		}),
 		new Promise((resolve) => {
-			slack.on('reactions.add', ({name}) => {
+			slack.on('reactions.add', ({name}: any) => {
 				expect(name).toBe('hoge');
-				resolve();
+				resolve(undefined);
 			});
 		}),
 	]);
@@ -40,13 +39,13 @@ it('responds to emoji addition', () => {
 });
 
 it('responds to emoji removal', () => new Promise((resolve) => {
-	slack.on('chat.postMessage', ({channel, text, username, icon_emoji: icon}) => {
+	slack.on('chat.postMessage', ({channel, text, username, icon_emoji: icon}: any) => {
 		expect(channel).toBe(slack.fakeChannel);
 		expect(username).toBe('emoji-notifier');
 		expect(text).toContain(':hoge:');
 		expect(text).toContain('削除');
 		expect(icon).toBe(':innocent:');
-		resolve();
+		resolve(undefined);
 	});
 
 	slack.eventClient.emit('emoji_changed', {

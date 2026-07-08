@@ -39,7 +39,7 @@ describe('SlackCache', () => {
 			if (args.limit && args.limit !== 1) {
 				throw Error('unsupported mock');
 			}
-			const fn = path.join(__dirname, '__testdata__/conversations.history.json');
+			const fn = path.join(import.meta.dirname, '__testdata__/conversations.history.json');
 			// Use sync read to ensure all concurrent modifyReaction calls get already-resolved
 			// promises, making microtask resolution order deterministic (FIFO).
 			// With async readJson, CI and local environments may resolve in different orders,
@@ -55,13 +55,13 @@ describe('SlackCache', () => {
 
 		const mockedUsersList = vi.mocked(slack.webClient.users.list);
 		mockedUsersList.mockImplementation(async () => {
-			const fn = path.join(__dirname, '__testdata__/users.list.json');
+			const fn = path.join(import.meta.dirname, '__testdata__/users.list.json');
 			return fs.readJson(fn);
 		});
 
 		const mockedEmojiList = vi.mocked(slack.webClient.emoji.list);
 		mockedEmojiList.mockImplementation(async () => {
-			const fn = path.join(__dirname, '__testdata__/emoji.list.json');
+			const fn = path.join(import.meta.dirname, '__testdata__/emoji.list.json');
 			return fs.readJson(fn);
 		});
 

@@ -6,8 +6,8 @@ import {createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discor
 import ytdl from '@distube/ytdl-core';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-import Discord from 'discord.js';
-import {max, get, sample} from 'lodash';
+import * as Discord from 'discord.js';
+import {max, get, sample} from 'lodash-es';
 import {FFmpeg, opus} from 'prism-media';
 import {increment, unlock} from '../achievements';
 import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
@@ -406,7 +406,7 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.audioPlayer.off(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
 
 		const audiopath = path.join(
-			__dirname,
+			import.meta.dirname,
 			this.state.quizMode === 'quiz' ? 'questionText.mp3' : 'questionText.webm',
 		);
 
@@ -440,7 +440,7 @@ export default class Hayaoshi extends EventEmitter {
 
 		const audio = await this.getTTS(text);
 
-		await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), audio.data);
+		await fs.writeFile(path.join(import.meta.dirname, 'tempAudio.mp3'), audio.data);
 
 		await this.playSound('../tempAudio');
 	}
@@ -545,7 +545,7 @@ export default class Hayaoshi extends EventEmitter {
 		this.state.audioPlayer.off(AudioPlayerStatus.Idle, this.onFinishReadingQuestion);
 
 		return new Promise<void>((resolve) => {
-			this.state.audioResource = createAudioResource(path.join(__dirname, `sounds/${name}.mp3`));
+			this.state.audioResource = createAudioResource(path.join(import.meta.dirname, `sounds/${name}.mp3`));
 			this.state.audioPlayer.play(this.state.audioResource);
 			this.state.audioPlayer.once(AudioPlayerStatus.Idle, () => {
 				resolve();
@@ -566,7 +566,7 @@ export default class Hayaoshi extends EventEmitter {
 				await this.downloadYoutubeAudioWithRetries(
 					this.state.quiz.question,
 					`${this.state.quiz.song?.introSeconds ?? 0}s`,
-					path.join(__dirname, 'questionText.webm'),
+					path.join(import.meta.dirname, 'questionText.webm'),
 				);
 			} catch (error) {
 				log.error(`[hayaoshi] downloadYoutubeAudio error: ${error.toString()}`);
@@ -583,11 +583,11 @@ export default class Hayaoshi extends EventEmitter {
 			this.state.clauses = clauses;
 			this.state.timePoints = questionAudio.timepoints.map((point) => point.timeSeconds * 1000);
 
-			await fs.writeFile(path.join(__dirname, 'questionText.mp3'), questionAudio.data);
+			await fs.writeFile(path.join(import.meta.dirname, 'questionText.mp3'), questionAudio.data);
 		}
 
 		const answerAudio = await this.getTTS(`<speak>答えは、${get(this.state.validAnswers, 0, '')}、でした。</speak>`);
-		await fs.writeFile(path.join(__dirname, 'answerText.mp3'), answerAudio.data);
+		await fs.writeFile(path.join(import.meta.dirname, 'answerText.mp3'), answerAudio.data);
 
 		this.state.connection = this.joinVoiceChannelFn();
 		this.state.audioPlayer = createAudioPlayer();

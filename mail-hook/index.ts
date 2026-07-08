@@ -10,7 +10,7 @@ import type {FastifyPluginCallback} from 'fastify';
 import plugin from 'fastify-plugin';
 import yaml from 'js-yaml';
 import libmime from 'libmime';
-import {mapValues} from 'lodash';
+import {mapValues} from 'lodash-es';
 import type {OpenAI} from 'openai';
 import isValidUTF8 from 'utf-8-validate';
 import {z} from 'zod';
@@ -343,7 +343,7 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 			});
 
 			log.info('loading prompt...');
-			const promptPath = path.resolve(__dirname, `prompts/${promptConfig.id}.yml`);
+			const promptPath = path.resolve(import.meta.dirname, `prompts/${promptConfig.id}.yml`);
 			const promptYaml = await readFile(promptPath, 'utf-8');
 			const prompt = yaml.load(promptYaml) as OpenAI.Chat.ChatCompletionMessageParam[];
 			for (const message of prompt) {

@@ -1,6 +1,6 @@
 import type { GenericMessageEvent } from '@slack/web-api';
 import type { MessageEvent } from '@slack/bolt';
-import { range, shuffle, round } from 'lodash';
+import { range, shuffle, round } from 'lodash-es';
 import { stripIndent } from 'common-tags';
 import { unlock } from '../achievements';
 import { extractMessage } from '../lib/slackUtils';

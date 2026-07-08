@@ -1,8 +1,7 @@
-const db = require('../lib/firestore').default;
-const countBy = require('lodash/countBy');
-const groupBy = require('lodash/groupBy');
-const minBy = require('lodash/minBy');
-const sortBy = require('lodash/sortBy');
+// @ts-nocheck
+import db from '../lib/firestore.js';
+import lodash from 'lodash-es';
+const { countBy, groupBy, minBy, sortBy } = lodash;
 
 (async () => {
 	// remove duplicated

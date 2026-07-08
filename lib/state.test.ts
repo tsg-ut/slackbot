@@ -32,7 +32,7 @@ describe('State', () => {
 			expect((<Mock>fs.mkdirp).mock.calls).toHaveLength(1);
 			expect((<Mock>fs.writeFile).mock.calls).toHaveLength(1);
 			expect((<Mock>fs.writeFile).mock.calls[0]).toEqual([
-				path.join(__dirname, '__state__', 'test.json'),
+				path.join(import.meta.dirname, '__state__', 'test.json'),
 				'{\n  "number": 334\n}',
 			]);
 		});
@@ -67,7 +67,7 @@ describe('State', () => {
 			});
 
 			expect(call).toEqual([
-				path.join(__dirname, '__state__', 'test.json'),
+				path.join(import.meta.dirname, '__state__', 'test.json'),
 				'{\n  "number": 100\n}',
 			]);
 		});
@@ -88,7 +88,7 @@ describe('State', () => {
 			});
 
 			expect(call).toEqual([
-				path.join(__dirname, '__state__', 'test.json'),
+				path.join(import.meta.dirname, '__state__', 'test.json'),
 				JSON.stringify({number: 100, list: [{a: 0, b: '0'}, {a: 1, b: '2'}]}, null, '  '),
 			]);
 		});
@@ -106,7 +106,7 @@ describe('State', () => {
 			});
 
 			expect(call).toEqual([
-				path.join(__dirname, '__state__', 'test.json'),
+				path.join(import.meta.dirname, '__state__', 'test.json'),
 				'{\n  "number": 100,\n  "number2": 200\n}',
 			]);
 		});
@@ -125,7 +125,7 @@ describe('State', () => {
 			});
 
 			expect(call).toEqual([
-				path.join(__dirname, '__state__', 'test.json'),
+				path.join(import.meta.dirname, '__state__', 'test.json'),
 				JSON.stringify({number: 100, list: [{a: 100, b: '100'}]}, null, '  '),
 			]);
 		});

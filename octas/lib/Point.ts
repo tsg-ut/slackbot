@@ -1,3 +1,4 @@
+// @ts-nocheck
 class Point {
 	constructor(board, x, y) {
 		this.boardWidth = board.width;
@@ -98,4 +99,4 @@ class Point {
 	}
 }
 
-module.exports = Point;
+export default Point;

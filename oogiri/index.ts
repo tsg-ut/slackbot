@@ -10,7 +10,7 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
-import {flatten, isEmpty, range, shuffle, times, uniq} from 'lodash';
+import {flatten, isEmpty, range, shuffle, times, uniq} from 'lodash-es';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName} from '../lib/slackUtils';
 import {Deferred} from '../lib/utils';
@@ -84,7 +84,7 @@ class Oogiri {
 			return this.loadDeferred.promise;
 		}
 
-		const statePath = path.resolve(__dirname, 'state.json');
+		const statePath = path.resolve(import.meta.dirname, 'state.json');
 		const stateExists = await fs.access(statePath, constants.F_OK).then(() => true).catch(() => false);
 		if (stateExists) {
 			const stateData = await fs.readFile(statePath);
@@ -741,7 +741,7 @@ class Oogiri {
 
 	async setState(object: Partial<State>) {
 		Object.assign(this.state, object);
-		const statePath = path.resolve(__dirname, 'state.json');
+		const statePath = path.resolve(import.meta.dirname, 'state.json');
 		await fs.writeFile(statePath, JSON.stringify(this.state));
 	}
 

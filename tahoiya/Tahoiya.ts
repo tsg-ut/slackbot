@@ -4,7 +4,7 @@ import type {ChatPostMessageArguments, KnownBlock, GenericMessageEvent} from '@s
 import {Mutex} from 'async-mutex';
 // @ts-expect-error: fast-levenshtein has no type declarations
 import levenshtein from 'fast-levenshtein';
-import {minBy, maxBy, sample, sampleSize, shuffle, sum} from 'lodash';
+import {minBy, maxBy, sample, sampleSize, shuffle, sum} from 'lodash-es';
 import {scheduleJob} from 'node-schedule';
 // @ts-expect-error: rouge has no type declarations
 import rouge from 'rouge';

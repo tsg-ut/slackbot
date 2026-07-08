@@ -5,7 +5,7 @@ import type {ChatPostMessageArguments, GenericMessageEvent} from '@slack/web-api
 import {Mutex} from 'async-mutex';
 import {load as cheerioLoad} from 'cheerio';
 import {stripIndent} from 'common-tags';
-import {sample} from 'lodash';
+import {sample} from 'lodash-es';
 import {z} from 'zod';
 import {increment} from '../achievements';
 import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
@@ -16,7 +16,7 @@ import openai from '../lib/openai';
 import {SlackInterface} from '../lib/slack';
 import {Deferred, Loader} from '../lib/utils';
 import {type PrefectureKanji, prefectures} from '../room-gacha/prefectures';
-import chakuwikiTitles from './chakuwiki-title-map.json';
+import chakuwikiTitles from './chakuwiki-title-map.json' with { type: 'json' };
 
 const MediaWikiRevisionsResponseSchema = z.object({
 	query: z.object({

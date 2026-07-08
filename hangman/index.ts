@@ -1,16 +1,17 @@
 
-const { random, range } = require('lodash');
-const { promises: fs, constants } = require('fs');
-const path = require('path');
-const download = require('download');
-const { stripIndents } = require("common-tags");
-const { unlock, increment, set } = require('../achievements');
-const { default: logger } = require('../lib/logger');
-const { getMemberName, isPlayground } = require('../lib/slackUtils');
-const { ChannelLimitedBot } = require('../lib/channelLimitedBot');
-const { extractMessage } = require('../lib/slackUtils');
-const { Deferred } = require('../lib/utils');
-const axios = require('axios');
+// @ts-nocheck
+import lodash from 'lodash-es';
+const { random, range } = lodash;
+import { promises as fs, constants } from 'fs';
+import path from 'path';
+import download from 'download';
+import { stripIndents } from 'common-tags';
+import { unlock, increment, set } from '../achievements/index.js';
+import logger from '../lib/logger.js';
+import { getMemberName, isPlayground, extractMessage } from '../lib/slackUtils.js';
+import { ChannelLimitedBot } from '../lib/channelLimitedBot.js';
+import { Deferred } from '../lib/utils.js';
+import axios from 'axios';
 
 const BOT_NAME = "hangmanbot";
 const BOT_CALL_KEYWORD = "hangman";
@@ -34,7 +35,7 @@ const setState = async (newState) => {
     }
 
     await fs.writeFile(
-        path.join(__dirname, 'state.json'),
+        path.join(import.meta.dirname, 'state.json'),
         JSON.stringify(savedState),
     );
 };
@@ -123,11 +124,11 @@ const tmpDictionary = [
 ];
 
 async function getDictionary() {
-    const dictionaryPath = path.resolve(__dirname, 'wordset.txt');
+    const dictionaryPath = path.resolve(import.meta.dirname, 'wordset.txt');
     const exists = await fs.access(dictionaryPath, constants.R_OK).then(() => true).catch(() => false);
     const downloadLink = "https://gist.githubusercontent.com/platypus999/1f96b0658f900ffa5d34ce468ede5b9a/raw/5825dd2aa6d8863ef576c348bc249061c07a1a74/hangman_set.txt";
     if (!exists) {
-        await download(downloadLink, __dirname, {filename: 'wordset.txt'});
+        await download(downloadLink, import.meta.dirname, {filename: 'wordset.txt'});
     }
     const dictionary = await fs.readFile(dictionaryPath);
     const entries = dictionary.toString().split('\n').filter((line) => (
@@ -525,8 +526,8 @@ class HangmanBot extends ChannelLimitedBot {
     }
 }
 
-module.exports = (slackClients) => {
+export default (slackClients: any) => {
     return new HangmanBot(slackClients);
 };
 
-module.exports.getDictionary = getDictionary;
+export { getDictionary };

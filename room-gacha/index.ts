@@ -1,7 +1,7 @@
 import scrapeIt from 'scrape-it';
 import { promises as fs } from 'fs';
 import * as qs from 'querystring';
-import _ from 'lodash';
+import _ from 'lodash-es';
 import type { SlackInterface } from '../lib/slack';
 import { prefectures, PrefectureKanji } from './prefectures';
 
@@ -114,7 +114,7 @@ export default async ({eventClient, webClient}: SlackInterface) => {
         }};
     }
 
-    const dataStr = await fs.readFile(`${__dirname}/data.json`, 'utf-8');
+    const dataStr = await fs.readFile(`${import.meta.dirname}/data.json`, 'utf-8');
     const data: Data = JSON.parse(dataStr);
     const { sc, hiddenValue } = data;
     eventClient.on('message', async message => {

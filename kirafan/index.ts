@@ -62,12 +62,12 @@ export const getKirafanCards = async (
   forceUpdate = false
 ): Promise<KirafanCard[]> => {
   const { timestamp } = (await promisify(fs.exists)(
-    path.join(__dirname, 'timestamp.json')
+    path.join(import.meta.dirname, 'timestamp.json')
   ))
     ? Object.assign(
         { timestamp: undefined },
         JSON.parse(
-          await promisify(fs.readFile)(path.join(__dirname, 'timestamp.json'), {
+          await promisify(fs.readFile)(path.join(import.meta.dirname, 'timestamp.json'), {
             encoding: 'utf8',
           })
         )
@@ -80,7 +80,7 @@ export const getKirafanCards = async (
     Date.now() - timestamp < 1000 * 60 * 60 * 24
   ) {
     const cards = JSON.parse(
-      await promisify(fs.readFile)(path.join(__dirname, 'kirafan-cards.json'), {
+      await promisify(fs.readFile)(path.join(import.meta.dirname, 'kirafan-cards.json'), {
         encoding: 'utf8',
       })
     );
@@ -173,12 +173,12 @@ export const getKirafanCards = async (
   });
 
   await promisify(fs.writeFile)(
-    path.join(__dirname, 'kirafan-cards.json'),
+    path.join(import.meta.dirname, 'kirafan-cards.json'),
     JSON.stringify(cards)
   );
 
   await promisify(fs.writeFile)(
-    path.join(__dirname, 'timestamp.json'),
+    path.join(import.meta.dirname, 'timestamp.json'),
     JSON.stringify({ timestamp: Date.now() })
   );
 

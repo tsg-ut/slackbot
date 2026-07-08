@@ -1,6 +1,7 @@
 import type {ChatPostMessageArguments, ReactionsAddArguments, WebClient} from '@slack/web-api';
 import {EventEmitter} from 'events';
-import last from 'lodash/last.js';
+import lodash from 'lodash-es';
+const { last } = lodash;
 import type {SlackInterface} from './slack';
 import {createMessageAdapter} from '@slack/interactive-messages';
 import type {BlockAction} from '@slack/bolt';

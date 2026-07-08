@@ -4,7 +4,7 @@ import type {KnownBlock, ImageBlock, WebClient, ViewsOpenArguments} from '@slack
 import {Mutex} from 'async-mutex';
 import type {Model} from 'ebisu-js';
 import ebisu from 'ebisu-js';
-import {sortBy, get, clamp} from 'lodash';
+import {sortBy, get, clamp} from 'lodash-es';
 import schedule from 'node-schedule';
 import {increment} from '../achievements';
 import type {SlackInterface} from '../lib/slack';

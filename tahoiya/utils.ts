@@ -1,6 +1,6 @@
 import querystring from 'querystring';
 import axios from 'axios';
-import {get, last} from 'lodash';
+import {get, last} from 'lodash-es';
 import type {WordEntry} from '../lib/candidateWords';
 import type {DictionarySource} from './types';
 

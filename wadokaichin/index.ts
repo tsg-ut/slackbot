@@ -2,7 +2,7 @@ import {Mutex} from 'async-mutex';
 import fs from 'fs';
 import path from 'path';
 import JSZip from 'jszip';
-import {sample,sampleSize,uniq} from 'lodash';
+import {sample,sampleSize,uniq} from 'lodash-es';
 import type {SlackInterface} from '../lib/slack';
 import {download} from '../lib/download';
 import {parse as csv_parse} from 'csv-parse';
@@ -19,7 +19,7 @@ Future works
 const mutex = new Mutex();
 
 const kanjisLoader : Loader<string[]> = new Loader(async () => {
-  const text = await fs.promises.readFile(path.join(__dirname, 'data','JoyoKanjis.txt'));
+  const text = await fs.promises.readFile(path.join(import.meta.dirname, 'data','JoyoKanjis.txt'));
   return text.toString('utf-8').split('\n');
 });
 /*
@@ -33,14 +33,14 @@ type jukugoDict = [
 const jukugoLoader : Loader<jukugoDict> = new Loader(async () => {
   const kanjis = await kanjisLoader.load();
   const kanjisSet = new Set(kanjis);
-  const dictionaryPath = path.resolve(__dirname, 'data','2KanjiWords.txt');
+  const dictionaryPath = path.resolve(import.meta.dirname, 'data','2KanjiWords.txt');
   const dictionaryExists = await new Promise((resolve) => {
     fs.access(dictionaryPath, fs.constants.F_OK, (error) => {
       resolve(!error);
     });
   });
   if(!dictionaryExists){
-    const corpusPath = path.resolve(__dirname, 'data','corpus.zip');
+    const corpusPath = path.resolve(import.meta.dirname, 'data','corpus.zip');
     await download(corpusPath,"https://repository.ninjal.ac.jp/?action=repository_uri&item_id=3231&file_id=22&file_no=1");
     const data = await fs.promises.readFile(corpusPath);
     const dict : string = await new Promise((resolve,reject) => {

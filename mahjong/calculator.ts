@@ -1,6 +1,9 @@
-const {Pai, decomp} = require('@hakatashi/riichi-core');
-const Agari = require('@hakatashi/riichi-core/src/agari');
-const tenhou6 = require('@hakatashi/riichi-core/src/tenhou6');
+// @ts-expect-error
+import {Pai, decomp} from '@hakatashi/riichi-core';
+// @ts-expect-error
+import Agari from '@hakatashi/riichi-core/src/agari.js';
+// @ts-expect-error
+import tenhou6 from '@hakatashi/riichi-core/src/tenhou6.js';
 
 const paiIndices = [
 	'1z', '2z', '3z', '4z', '7z', '6z', '5z',
@@ -9,7 +12,7 @@ const paiIndices = [
 	'1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p',
 ];
 
-const 牌ToPai = (牌, {no赤牌 = false} = {}) => {
+const 牌ToPai = (牌: string, {no赤牌 = false} = {}) => {
 	if (!no赤牌) {
 		if (牌 === '🀋\uFE00') {
 			return Pai['0m'];
@@ -27,7 +30,7 @@ const 牌ToPai = (牌, {no赤牌 = false} = {}) => {
 	return Pai[paiIndices[牌.codePointAt(0) - 0x1F000]];
 };
 
-module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = false, isDoubleRiichi = false, isIppatsu = false, isRon = false, doraHyouji = [], uraDoraHyouji = [], additionalDora = 0}) => {
+export const agari = (牌s: string[], {isHaitei = false, isVirgin = false, isRiichi = false, isDoubleRiichi = false, isIppatsu = false, isRon = false, doraHyouji = [], uraDoraHyouji = [], additionalDora = 0}) => {
 	const pais = 牌s.map((牌) => 牌ToPai(牌));
 	const paisWithout赤牌 = 牌s.map((牌) => 牌ToPai(牌, {no赤牌: true}));
 
@@ -135,8 +138,8 @@ module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = fa
 		}
 
 		const raw役s = tenhou6.makeAgari({chancha: 0, bakaze: 0}, agari).slice(4);
-		const 役sWithoutParens = raw役s.map((string) => string.replace(/\(.+?\)/, ''));
-		const 役sWithoutドラ = 役sWithoutParens.filter((役) => !役.includes('ドラ'));
+		const 役sWithoutParens = raw役s.map((string: string) => string.replace(/\(.+?\)/, ''));
+		const 役sWithoutドラ = 役sWithoutParens.filter((役: string) => !役.includes('ドラ'));
 		if (agari.doraTotal > 0) {
 			役sWithoutドラ.push(`ドラ${agari.doraTotal}`);
 		}
@@ -150,10 +153,10 @@ module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = fa
 	};
 };
 
-module.exports.tenpai = (牌s) => {
-	const pais = 牌s.map(牌ToPai);
+export const tenpai = (牌s: string[]) => {
+	const pais = 牌s.map((牌) => 牌ToPai(牌));
 	const tenpaiDecomp = decomp.decompTenpai(Pai.binsFromArray(pais));
 	return tenpaiDecomp.decomps.length > 0;
 };
 
-module.exports.paiIndices = paiIndices;
+export { paiIndices };

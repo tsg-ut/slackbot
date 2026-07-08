@@ -1,6 +1,6 @@
 import { WebClient } from "@slack/web-api";
 import { DynamicLoader } from "bcdice";
-import { GameSystemInfo } from "bcdice/lib/bcdice/game_system_list.json";
+import type { GameSystemInfo } from "bcdice/lib/bcdice/game_system_list.json";
 import GameSystemClass from "bcdice/lib/game_system";
 import type { SlackInterface } from "../lib/slack";
 

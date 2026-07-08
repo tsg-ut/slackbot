@@ -128,8 +128,8 @@ const sampleProfileAH: Profile = {
 
 beforeAll(async () => {
 	// backup state file
-	const stateOriginalPath = path.resolve(__dirname, 'state.json');
-	const stateBackupPath = path.resolve(__dirname, 'state.json.bkup');
+	const stateOriginalPath = path.resolve(import.meta.dirname, 'state.json');
+	const stateBackupPath = path.resolve(import.meta.dirname, 'state.json.bkup');
 	const exists = await fs.access(stateOriginalPath, constants.F_OK)
 		.then(() => true).catch(() => false);
 	const originalState: State = {
@@ -142,8 +142,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
 	// restore state file
-	const stateOriginalPath = path.resolve(__dirname, 'state.json');
-	const stateBackupPath = path.resolve(__dirname, 'state.json.bkup');
+	const stateOriginalPath = path.resolve(import.meta.dirname, 'state.json');
+	const stateBackupPath = path.resolve(import.meta.dirname, 'state.json.bkup');
 	const exists = await fs.access(stateOriginalPath, constants.F_OK)
 		.then(() => true).catch(() => false);
 	const originalState: State = {
@@ -240,7 +240,7 @@ beforeEach(async () => {
 	};
 
 	// set fake state
-	const stateOriginalPath = path.resolve(__dirname, 'state.json');
+	const stateOriginalPath = path.resolve(import.meta.dirname, 'state.json');
 	try {
 		await fs.unlink(stateOriginalPath);
 	} catch {

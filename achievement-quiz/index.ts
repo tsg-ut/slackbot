@@ -1,7 +1,7 @@
 import { AteQuizProblem, AteQuiz } from '../atequiz';
 import { SlackInterface } from '../lib/slack';
 import { ChatPostMessageArguments, GenericMessageEvent } from '@slack/web-api';
-import { sample } from 'lodash';
+import { sample } from 'lodash-es';
 import { increment, unlock } from '../achievements';
 import achievementsMap, {
   Achievement,

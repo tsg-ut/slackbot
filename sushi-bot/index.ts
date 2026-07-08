@@ -1,5 +1,5 @@
 import schedule from 'node-schedule';
-import {sortBy} from 'lodash';
+import {sortBy} from 'lodash-es';
 import moment from 'moment';
 import {unlock, increment, get, set} from '../achievements/index.js';
 import type {SlackInterface} from '../lib/slack';

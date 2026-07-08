@@ -1,7 +1,7 @@
 import { Mutex } from 'async-mutex';
 import axios from 'axios';
 import { load as cheerioLoad } from 'cheerio';
-import { sample, random } from 'lodash';
+import { sample, random } from 'lodash-es';
 import type { SlackInterface } from '../lib/slack';
 import type { GenericMessageEvent } from '@slack/web-api';
 import { AteQuizProblem, AteQuiz, typicalMessageTextsGenerator } from '../atequiz';

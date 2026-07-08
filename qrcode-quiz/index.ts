@@ -3,9 +3,9 @@ import type {GenericMessageEvent} from '@slack/bolt';
 import {Mutex} from 'async-mutex';
 import {v2 as cloudinary} from 'cloudinary';
 import {stripIndent} from 'common-tags';
-import {random, sample} from 'lodash';
+import {random, sample} from 'lodash-es';
 import QRCode, {QRCodeSegmentMode} from 'qrcode';
-import toSJIS from 'qrcode/helper/to-sjis';
+import toSJIS from 'qrcode/helper/to-sjis.js';
 import sharp from 'sharp';
 import {increment} from '../achievements';
 import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
@@ -264,7 +264,7 @@ const getKanjiText = async (difficulty: Difficulty) => {
 		const candidateWords = tahoiyaDictionary
 			.filter((word) => word.length === 1);
 		logger.info(new Set(candidateWords).size);
-		logger.info(writeFileSync(`${__dirname}/temp.txt`, Array.from(new Set(candidateWords)).sort().join('')));
+		logger.info(writeFileSync(`${import.meta.dirname}/temp.txt`, Array.from(new Set(candidateWords)).sort().join('')));
 		return sample(candidateWords);
 	}
 

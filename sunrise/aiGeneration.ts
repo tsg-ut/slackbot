@@ -8,7 +8,7 @@ import {OpenWeatherOneCallResponse} from './fetch';
 const replaceParams = (template: string, params: Record<string, string>) => template.replace(/\{(?<key>\w+)\}/g, (_, key) => params[key] || `{${key}}`);
 
 const weatherCastHeadlineLoader = new Loader<string>(async () => {
-	const promptText = await readFile(path.join(__dirname, 'prompts', 'weather_cast_headline.md'));
+	const promptText = await readFile(path.join(import.meta.dirname, 'prompts', 'weather_cast_headline.md'));
 	return promptText.toString();
 });
 
@@ -62,7 +62,7 @@ export const getWeatherCastHeadline = async (weatherData: OpenWeatherOneCallResp
 };
 
 const weatherCastForecastLoader = new Loader<string>(async () => {
-	const promptText = await readFile(path.join(__dirname, 'prompts', 'weather_cast_forecast.md'));
+	const promptText = await readFile(path.join(import.meta.dirname, 'prompts', 'weather_cast_forecast.md'));
 	return promptText.toString();
 });
 
@@ -152,7 +152,7 @@ const generateRainCastDescription = (currentTime: number, minutely: OpenWeatherO
 };
 
 const rainMinuteCastLoader = new Loader<string>(async () => {
-	const promptText = await readFile(path.join(__dirname, 'prompts', 'rain_minute_cast.md'));
+	const promptText = await readFile(path.join(import.meta.dirname, 'prompts', 'rain_minute_cast.md'));
 	return promptText.toString();
 });
 
@@ -191,7 +191,7 @@ export const getRainMinuteCast = async (weatherData: OpenWeatherOneCallResponse)
 
 if (require.main === module) {
 	(async () => {
-		const weatherData = await readJson(path.join(__dirname, '__mocks__/assets/weather.json')) as OpenWeatherOneCallResponse;
+		const weatherData = await readJson(path.join(import.meta.dirname, '__mocks__/assets/weather.json')) as OpenWeatherOneCallResponse;
 		console.log(await getWeatherCastForecast(weatherData));
 		console.log(await getWeatherCastHeadline(weatherData));
 		console.log(await getRainMinuteCast(weatherData));

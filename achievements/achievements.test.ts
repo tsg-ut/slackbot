@@ -1,5 +1,5 @@
 /* eslint-disable no-undef */
-import {countBy} from 'lodash';
+import {countBy} from 'lodash-es';
 import achievements from './achievements';
 
 describe('achievements', () => {

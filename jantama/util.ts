@@ -1,5 +1,6 @@
-import {createMajsoulConnection} from 'amae-koromo/majsoul';
-import type {lq} from 'amae-koromo/majsoulPb';
+// @ts-expect-error
+import {createMajsoulConnection} from 'amae-koromo/majsoul.js';
+import type {lq} from 'amae-koromo/majsoulPb.js';
 
 export interface Player {
 	accountId: number,

@@ -7,10 +7,12 @@ import dotenv from 'dotenv';
 dotenv.config({ override: true });
 
 import Fastify from 'fastify';
+import fs from 'fs';
+import path from 'path';
 import qs from 'querystring';
 import { eventClient, messageClient, tsgEventClient, webClient } from './lib/slack';
 
-import yargs from 'yargs';
+import yargs from 'yargs/yargs';
 import logger from './lib/logger';
 
 import fastifyExpress from '@fastify/express';
@@ -18,7 +20,8 @@ import fastifyFormbody from '@fastify/formbody';
 
 import sharp from 'sharp';
 
-import { throttle, uniq } from 'lodash';
+import lodash from 'lodash-es';
+const { throttle, uniq } = lodash;
 import { RequestHandler } from 'express-serve-static-core';
 import { inspect } from 'util';
 import concat from 'concat-stream';
@@ -72,14 +75,14 @@ process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
 
 log.info('slackbot started');
 
-const argv = yargs
+const argv = yargs(process.argv.slice(2))
 	.array('only')
 	.choices('only', allBots)
 	.default('only', productionBots)
 	.default('startup', 'ｼｭｯｼｭｯ (起動音)')
-	.argv;
+	.argv as any;
 
-const plugins = uniq(argv.only);
+const plugins = uniq(argv.only) as string[];
 
 if (plugins.length !== argv.only.length) {
 	log.info(`Some plugins are specified more than once. Duplicated plugins were removed.`)
@@ -166,7 +169,10 @@ eventClient.on('error', (error) => {
 	}, 0.5 * 1000);
 
 	await Promise.all(plugins.map(async (name) => {
-		const plugin = await import(`./${name}`);
+		const pluginDir = path.resolve(import.meta.dirname, `./${name}`);
+		const isFolder = fs.existsSync(pluginDir) && fs.statSync(pluginDir).isDirectory();
+		const importPath = isFolder ? `./${name}/index.js` : `./${name}.js`;
+		const plugin = await import(importPath);
 		if (typeof plugin === 'function') {
 			await plugin({ webClient, eventClient: tsgEventClient, messageClient });
 		}

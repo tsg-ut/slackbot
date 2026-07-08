@@ -2,7 +2,7 @@ import * as opentype from 'opentype.js';
 import download from 'download';
 import path from 'path';
 import fs from 'fs';
-import * as _ from 'lodash';
+import * as _ from 'lodash-es';
 
 const fontURLs = new Map<string, string>([
   ['Noto Serif JP Thin', 'https://github.com/googlefonts/noto-cjk/raw/main/Serif/OTF/Japanese/NotoSerifCJKjp-Thin.otf'],
@@ -27,7 +27,7 @@ const loadFont = async (fontName: string): Promise<opentype.Font | null> => {
 		return null;
 	}
 	const fileName = _.last(url.split('/'));
-	const fontPath = path.resolve(__dirname, fileName);
+	const fontPath = path.resolve(import.meta.dirname, fileName);
 
 	const fontExists = await new Promise((resolve) => {
 		fs.access(fontPath, fs.constants.F_OK, (error) => {
@@ -36,7 +36,7 @@ const loadFont = async (fontName: string): Promise<opentype.Font | null> => {
 	});
 
 	if (!fontExists) {
-		await download(url, __dirname, {
+		await download(url, import.meta.dirname, {
 			filename: fileName,
 		});
 	}

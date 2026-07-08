@@ -1,4 +1,4 @@
-import {throttle, groupBy} from 'lodash';
+import {throttle, groupBy} from 'lodash-es';
 import db from './firestore';
 import {Deferred} from './utils';
 import path from 'path';
@@ -121,8 +121,8 @@ export const StateDevelopment: StateInterface = class StateDevelopment<StateObj>
 	new: (name: string, defaultValues: StateObj) => Partial<StateObj>;
 
 	static async init<StateObj>(name: string, defaultValues: StateObj): Promise<StateObj> {
-		await fs.mkdirp(path.resolve(__dirname, '__state__'));
-		const statePath = path.resolve(__dirname, '__state__', `${name}.json`);
+		await fs.mkdirp(path.resolve(import.meta.dirname, '__state__'));
+		const statePath = path.resolve(import.meta.dirname, '__state__', `${name}.json`);
 
 		let stateObj = {};
 		if (await fs.pathExists(statePath)) {
@@ -149,7 +149,7 @@ export const StateDevelopment: StateInterface = class StateDevelopment<StateObj>
 	constructor(name: string, initialValues: StateObj) {
 		this.name = name;
 		this.stateObject = initialValues;
-		this.statePath = path.resolve(__dirname, '__state__', `${name}.json`);
+		this.statePath = path.resolve(import.meta.dirname, '__state__', `${name}.json`);
 		this.mutex = new Mutex();
 	}
 

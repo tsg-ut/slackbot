@@ -1,5 +1,6 @@
-const EventEmitter = require('events');
-const Point = require('./Point');
+// @ts-nocheck
+import EventEmitter from 'events';
+import Point from './Point';
 
 class Board extends EventEmitter {
 	constructor({width = 9, height = 9} = {}) {
@@ -163,4 +164,4 @@ class Board extends EventEmitter {
 	}
 }
 
-module.exports = Board;
+export default Board;

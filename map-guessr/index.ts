@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as Turf from "@turf/turf";
 import fs from "fs-extra";
 import type { SlackInterface } from "../lib/slack";
@@ -9,9 +10,9 @@ import {
 } from "@slack/web-api";
 import { increment } from "../achievements";
 import { EventEmitter } from 'events';
-const { Mutex } = require("async-mutex");
-const { AteQuiz } = require("../atequiz");
-const cloudinary = require("cloudinary");
+import { Mutex } from "async-mutex";
+import { AteQuiz } from "../atequiz";
+import cloudinary from "cloudinary";
 
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const CHANNEL = process.env.CHANNEL_SANDBOX;
@@ -533,10 +534,10 @@ async function problemGen(
   const extent = Turf.bbox(worldFilter);
   while (true) {
     [latitude, longitude] = randomPoint(extent);
-    const points = Turf.points([[longitude, latitude]]);
+    const points = (Turf as any).points([[longitude, latitude]]);
     const resArr = worldFilter.features.filter(
       (country: any) =>
-        Turf.pointsWithinPolygon(points, country).features.length > 0
+        (Turf as any).pointsWithinPolygon(points, country).features.length > 0
     );
     if (resArr.length > 0) {
       country = resArr[0];
@@ -694,10 +695,10 @@ async function prepareProblem(
 
 export default async ({ eventClient, webClient: slack }: SlackInterface) => {
   const aliases = (await fs.readJson(
-    __dirname + "/country_names.json"
+    import.meta.dirname + "/country_names.json"
   )) as Record<string, string[]>;
 
-  const world = await fs.readJson(__dirname + "/countries.geojson");
+  const world = await fs.readJson(import.meta.dirname + "/countries.geojson");
   eventClient.on("message", async (message) => {
     if (
       message.channel !== CHANNEL ||

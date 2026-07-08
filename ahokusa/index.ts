@@ -1,4 +1,4 @@
-import {chunk, cloneDeep, escapeRegExp, flatten, invert, random, round, sample, shuffle, uniq} from 'lodash';
+import {chunk, cloneDeep, escapeRegExp, flatten, invert, random, round, sample, shuffle, uniq} from 'lodash-es';
 import {unlock} from '../achievements';
 import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 import type {SlackInterface} from '../lib/slack';

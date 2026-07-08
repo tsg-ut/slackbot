@@ -5,7 +5,7 @@ import type {ViewStateValue, ViewSubmitAction, BlockButtonAction, MessageEvent} 
 import cloudinary from 'cloudinary';
 import type {UploadApiResponse} from 'cloudinary';
 import {stripIndent} from 'common-tags';
-import {maxBy, range, map} from 'lodash';
+import {maxBy, range, map} from 'lodash-es';
 import moment from 'moment';
 import nodePersist from 'node-persist';
 import Queue from 'p-queue';
@@ -163,7 +163,7 @@ const getWeatherRegex = (pointNames: string[]) => {
 export default async ({eventClient, webClient: slack, messageClient}: SlackInterface) => {
 	// TODO: Remove these codes after migration to State library
 	const storage = nodePersist.create({
-		dir: path.resolve(__dirname, '__state__'),
+		dir: path.resolve(import.meta.dirname, '__state__'),
 	});
 	await storage.init();
 

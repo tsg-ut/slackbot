@@ -2,7 +2,7 @@ import {firestore} from 'firebase-admin';
 import {initializeApp} from 'firebase-admin/app';
 import {logger} from 'firebase-functions';
 import {onDocumentCreated, onDocumentUpdated} from 'firebase-functions/v2/firestore';
-import {isEqual} from 'lodash';
+import {isEqual} from 'lodash-es';
 
 export {slackFileArchiveCronJob} from './jobs/slackFileArchiveCronJob';
 

@@ -2,7 +2,7 @@ import type {SlackInterface} from '../lib/slack';
 import logger from '../lib/logger';
 import {stripIndents} from 'common-tags';
 import axios from 'axios';
-import { shuffle } from 'lodash';
+import { shuffle } from 'lodash-es';
 import { ChatPostMessageArguments } from '@slack/web-api';
 import { unlock, increment } from '../achievements';
 

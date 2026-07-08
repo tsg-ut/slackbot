@@ -3,7 +3,7 @@ import {promisify} from 'util';
 import path from 'path';
 import assert from 'assert';
 import type {SlackInterface} from '../lib/slack';
-import {flatten, sum, sample, random, sortBy, maxBy, sumBy, shuffle} from 'lodash';
+import {flatten, sum, sample, random, sortBy, maxBy, sumBy, shuffle} from 'lodash-es';
 import trie from './trie';
 import cloudinary from 'cloudinary';
 import {stripIndent} from 'common-tags';
@@ -199,7 +199,7 @@ const load = async () => {
 	}
 
 	for (const file of ['words.txt', 'dictionary.sqlite3', 'LOUDS_LBS.bin', 'LOUDS_label.txt', 'LOUDS_terminal.bin']) {
-		const filePath = path.resolve(__dirname, file);
+		const filePath = path.resolve(import.meta.dirname, file);
 
 		const exists = await new Promise((resolve) => {
 			fs.access(filePath, fs.constants.F_OK, (error) => {
@@ -208,27 +208,27 @@ const load = async () => {
 		});
 
 		if (!exists) {
-			await download(`https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/${file}`, __dirname, {
+			await download(`https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/${file}`, import.meta.dirname, {
 				filename: file,
 			});
 		}
 	}
 
-	const data = await promisify(fs.readFile)(path.join(__dirname, 'words.txt'));
+	const data = await promisify(fs.readFile)(path.join(import.meta.dirname, 'words.txt'));
 	const dictionary = data.toString().split('\n').filter((s) => (
 		typeof s === 'string' && 2 <= s.length && s.length <= 16
 	));
 	const seedWords = dictionary.filter((word) => 7 <= word.length && word.length <= 8);
 	const hardSeedWords = dictionary.filter((word) => 9 <= word.length && word.length <= 10);
 	const rawTrie = {
-		LBS: await promisify(fs.readFile)(path.join(__dirname, 'LOUDS_LBS.bin')),
-		label: await promisify(fs.readFile)(path.join(__dirname, 'LOUDS_label.txt')),
-		terminal: await promisify(fs.readFile)(path.join(__dirname, 'LOUDS_terminal.bin'))
+		LBS: await promisify(fs.readFile)(path.join(import.meta.dirname, 'LOUDS_LBS.bin')),
+		label: await promisify(fs.readFile)(path.join(import.meta.dirname, 'LOUDS_label.txt')),
+		terminal: await promisify(fs.readFile)(path.join(import.meta.dirname, 'LOUDS_terminal.bin'))
 	};
 	const tree = trie(rawTrie);
 
 	const db = await sqlite.open({
-		filename: path.join(__dirname, 'dictionary.sqlite3'),
+		filename: path.join(import.meta.dirname, 'dictionary.sqlite3'),
 		driver: sqlite3.Database,
 	});
 

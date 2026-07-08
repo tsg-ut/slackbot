@@ -82,7 +82,7 @@ const executeModel = async (rawInput: string, modelName: AIBotModel): Promise<AI
 		stderrWriter = concatStream({encoding: 'buffer'}, (stderr: Buffer) => resolve(stderr));
 	});
 
-	const modelPath = path.join(__dirname, 'models', modelName);
+	const modelPath = path.join(import.meta.dirname, 'models', modelName);
 	const dockerVolumePath = path.sep === '\\' ? modelPath.replace('C:\\', '/c/').replace(/\\/g, '/') : modelPath;
 
 	type ContainerLike = {

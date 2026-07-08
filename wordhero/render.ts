@@ -1,7 +1,7 @@
 import sharp from 'sharp';
 import loadFont from '../lib/loadFont';
 import path from 'path';
-import {max} from 'lodash';
+import {max} from 'lodash-es';
 import fs from 'fs/promises';
 import {stripIndents} from 'common-tags';
 
@@ -44,7 +44,7 @@ export const renderCrossword = async (board: ({letter: string | null, color: str
 	});
 
 	if (cells.length === 0) {
-		return fs.readFile(path.join(__dirname, `${boardId}.png`));
+		return fs.readFile(path.join(import.meta.dirname, `${boardId}.png`));
 	}
 
 	const letterPaths = cells.map((cell) => (
@@ -62,7 +62,7 @@ export const renderCrossword = async (board: ({letter: string | null, color: str
 			${letterPaths.join('')}
 		</svg>
 	`);
-	return sharp(path.join(__dirname, `${boardId}.png`))
+	return sharp(path.join(import.meta.dirname, `${boardId}.png`))
 		.composite([{input: svg, top: 0, left: 0}])
 		.png()
 		.toBuffer();

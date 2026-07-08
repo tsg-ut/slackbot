@@ -3,7 +3,7 @@ import { AteQuizProblem, AteQuiz } from '../atequiz';
 import { SlackInterface } from '../lib/slack';
 import sharp, { OverlayOptions } from 'sharp';
 import axios from 'axios';
-import { random, sample } from 'lodash';
+import { random, sample } from 'lodash-es';
 import { ChatPostMessageArguments, GenericMessageEvent } from '@slack/web-api';
 import cloudinary, { UploadApiResponse } from 'cloudinary';
 import { hiraganize } from 'japanese';

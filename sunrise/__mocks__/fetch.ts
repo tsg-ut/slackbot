@@ -16,7 +16,7 @@ const getHaiku = () => Promise.resolve({
 });
 
 const getWeather = async () => {
-	const weatherData = await readJson(path.join(__dirname, 'assets/weather.json')) as OpenWeatherOneCallResponse;
+	const weatherData = await readJson(path.join(import.meta.dirname, 'assets/weather.json')) as OpenWeatherOneCallResponse;
 	return weatherData;
 };
 

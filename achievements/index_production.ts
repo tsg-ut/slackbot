@@ -7,7 +7,7 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import type {CollectionReference} from 'firebase-admin/firestore';
 import japanese from 'japanese';
-import {countBy, throttle, groupBy, get as getter, chunk, uniq} from 'lodash';
+import {countBy, throttle, groupBy, get as getter, chunk, uniq} from 'lodash-es';
 import moment from 'moment';
 import {db} from '../lib/firestore';
 import getReading from '../lib/getReading';

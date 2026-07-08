@@ -3,7 +3,8 @@ import winston from 'winston';
 import {Syslog as WinstonSyslog} from 'winston-syslog';
 import {inspect} from 'util';
 import type {FastifyLogFn} from 'fastify';
-import {res as serializeHttpResponse} from 'pino-std-serializers';
+import pinoStdSerializers from 'pino-std-serializers';
+const serializeHttpResponse = pinoStdSerializers.res;
 
 const logger = winston.createLogger({
 	level: 'info',

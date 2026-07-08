@@ -1,6 +1,6 @@
 import axios from 'axios';
 import {load as cheerioLoad} from 'cheerio';
-import {flatten, sortBy} from 'lodash';
+import {flatten, sortBy} from 'lodash-es';
 import scrapeIt from 'scrape-it';
 import {z} from 'zod';
 import logger from '../lib/logger';

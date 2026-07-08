@@ -3,7 +3,7 @@ import type {BlockAction, ViewSubmitAction} from '@slack/bolt';
 import type {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
-import {uniq} from 'lodash';
+import {uniq} from 'lodash-es';
 import {scheduleJob} from 'node-schedule';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';

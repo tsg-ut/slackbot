@@ -1,7 +1,7 @@
 import {promises as fs} from 'fs';
 import path from 'path';
 import plugin from 'fastify-plugin';
-import _ from 'lodash';
+import _ from 'lodash-es';
 import logger from '../lib/logger';
 /* eslint-disable no-unused-vars */
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
@@ -38,7 +38,7 @@ const logError = (err: Error, mesg: string): void => {
 
 // Emoji saving {{{
 const emojiData = 'bigemojis.json';
-const emojiPath = path.resolve(__dirname, emojiData);
+const emojiPath = path.resolve(import.meta.dirname, emojiData);
 
 const emojisLoader = new Loader<EmojiTable>(async () => {
   const emojis: EmojiTable = new Map();

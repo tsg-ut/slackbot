@@ -1,11 +1,12 @@
 /* eslint-env node, jest */
 
+// @ts-nocheck
+import Slack from '../lib/slackMock';
+import channelNotifier from './index';
+
 vi.mock('axios');
 
-const {default: Slack} = require('../lib/slackMock.ts');
-const channelNotifier = require('./index.js');
-
-let slack = null;
+let slack: any = null;
 
 beforeEach(() => {
 	slack = new Slack();
@@ -15,13 +16,13 @@ beforeEach(() => {
 
 describe('channel-notifier', () => {
 	it('responds to channel creation', () => new Promise((resolve) => {
-		slack.on('chat.postMessage', ({channel, text, username}) => {
+		slack.on('chat.postMessage', ({channel, text, username}: any) => {
 			expect(channel).toBe(slack.fakeChannel);
 			expect(username).toBe('channel-notifier');
 			expect(text).toContain('U024BE7LH');
 			expect(text).toContain('C024BE91L');
 			expect(text).toContain('作成');
-			resolve();
+			resolve(undefined);
 		});
 
 		// https://api.slack.com/events/channel_created
@@ -36,13 +37,13 @@ describe('channel-notifier', () => {
 	}));
 
 	it('responds to channel unarchive', () => new Promise((resolve) => {
-		slack.on('chat.postMessage', ({channel, text, username}) => {
+		slack.on('chat.postMessage', ({channel, text, username}: any) => {
 			expect(channel).toBe(slack.fakeChannel);
 			expect(username).toBe('channel-notifier');
 			expect(text).toContain('U024BE7LH');
 			expect(text).toContain('C024BE91L');
 			expect(text).toContain('復元');
-			resolve();
+			resolve(undefined);
 		});
 
 		// https://api.slack.com/events/channel_unarchiveu

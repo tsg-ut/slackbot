@@ -3,7 +3,7 @@ import path from 'path';
 import {promisify} from 'util';
 import download from 'download';
 import {hiraganize} from 'japanese';
-import {shuffle} from 'lodash';
+import {shuffle} from 'lodash-es';
 
 export type WordEntry = [word: string, ruby: string, source: string, ...rest: string[]];
 
@@ -30,7 +30,7 @@ export const getCandidateWords = async ({min = 3, max = 7}: GetCandidateWordsOpt
 		['ewords.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/ewords.txt'],
 		['fideli.txt', 'https://s3-ap-northeast-1.amazonaws.com/hakata-public/slackbot/fideli.txt'],
 	].map(async ([filename, url]): Promise<string> => {
-		const dataPath = path.join(__dirname, '..', 'tahoiya', filename);
+		const dataPath = path.join(import.meta.dirname, '..', 'tahoiya', filename);
 
 		const dataExists = await new Promise<boolean>((resolve) => {
 			fs.access(dataPath, fs.constants.F_OK, (error) => {

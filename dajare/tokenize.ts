@@ -1,27 +1,29 @@
-const fs = require('fs');
-const iconv = require('iconv-lite');
-const {toZenKana} = require('jaconv');
-const {katakanize, romanizationTable, defaultRomanizationConfig} = require('japanese');
-const toJapanese = require('jp-num/toJapanese');
-const {tokenize} = require('kuromojin');
-const {escapeRegExp} = require('lodash');
-const path = require('path');
-const {promisify} = require('util');
-
-const getReading = require('../lib/getReading');
+import fs from 'fs';
+import iconv from 'iconv-lite';
+// @ts-expect-error
+import {toZenKana} from 'jaconv';
+// @ts-expect-error
+import {katakanize, romanizationTable, defaultRomanizationConfig} from 'japanese';
+// @ts-expect-error
+import toJapanese from 'jp-num/toJapanese.js';
+import {tokenize} from 'kuromojin';
+import {escapeRegExp} from 'lodash-es';
+import path from 'path';
+import {promisify} from 'util';
+import getReading from '../lib/getReading';
 
 const loadingPromise = (async () => {
 	// ensure the dictionary file is downloaded (は？)
 	await getReading('sushi');
 
-	const englishDictPath = path.resolve(__dirname, '..', 'lib', 'bep-ss-2.3', 'bep-eng.dic');
+	const englishDictPath = path.resolve(import.meta.dirname, '..', 'lib', 'bep-ss-2.3', 'bep-eng.dic');
 	const englishDictBuffer = await promisify(fs.readFile)(englishDictPath);
 	const englishDictText = iconv.decode(englishDictBuffer, 'sjis');
-	const englishDict = new Map([
+	const englishDict = new Map<string, string>([
 		...[
 			...Object.entries(romanizationTable),
 			...Object.entries(defaultRomanizationConfig),
-		].reverse().map(([kana, romaji]) => [romaji, katakanize(kana)]),
+		].reverse().map(([kana, romaji]): [string, string] => [romaji as string, katakanize(kana) as string]),
 		...englishDictText
 			.split('\n')
 			.map((line) => {
@@ -29,9 +31,9 @@ const loadingPromise = (async () => {
 				if (!english || !japanese) {
 					return null;
 				}
-				return [english.toLowerCase(), toZenKana(japanese).replace(/([トド])ゥ$/, '$1')];
+				return [english.toLowerCase(), toZenKana(japanese).replace(/([トド])ゥ$/, '$1')] as [string, string];
 			})
-			.filter((entry) => entry),
+			.filter((entry): entry is [string, string] => entry !== null),
 
 		['dajare', 'だじゃれ'],
 		['tahoiya', 'たほいや'],
@@ -72,14 +74,14 @@ const loadingPromise = (async () => {
 		'gi'
 	);
 
-	const numberToJapanese = (number) => {
+	const numberToJapanese = (number: string) => {
 		if ((/^0\d/).test(number)) {
 			return number.split('').map((num) => toJapanese(num)).join('');
 		}
 		return toJapanese(number);
 	};
 
-	const preprocessText = (text) => text
+	const preprocessText = (text: string) => text
 		.replace(englishDictRegex, (english) => ` ${englishDict.get(english.toLowerCase()) || english} `)
 		.replace(/\s{2,}/gu, ' ')
 		.replace(/\d+/g, (number) => (number.length <= 8 ? numberToJapanese(number) : number))
@@ -89,7 +91,7 @@ const loadingPromise = (async () => {
 	return {preprocessText};
 })();
 
-module.exports = async (text) => {
+export default async (text: string) => {
 	const {preprocessText} = await loadingPromise;
 	const pText = preprocessText(text);
 	return tokenize(pText);

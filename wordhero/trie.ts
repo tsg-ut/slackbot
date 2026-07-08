@@ -1,3 +1,4 @@
+// @ts-nocheck
 class Trie {
 	constructor({LBS, label, terminal}) {
 		this.lbs = new Uint8Array(LBS);
@@ -101,4 +102,4 @@ class TrieNode {
 	}
 }
 
-module.exports = (x) => {return new Trie(x);};
+export default (x: any) => {return new Trie(x);};

@@ -2,7 +2,7 @@ import {stripIndent} from 'common-tags';
 import type {FastifyPluginCallback} from 'fastify';
 import plugin from 'fastify-plugin';
 import {google} from 'googleapis';
-import {zip} from 'lodash';
+import {zip} from 'lodash-es';
 // eslint-disable-next-line import/no-namespace
 import type * as Trueskill from 'ts-trueskill';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';

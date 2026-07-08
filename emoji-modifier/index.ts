@@ -5,7 +5,7 @@ import {EmojiData} from 'emoji-data-ts';
 /* eslint-disable no-unused-vars */
 import {GifFrame, GifSpec, GifCodec} from 'gifwrap';
 import {utils, buildPalette, applyPalette} from 'image-q';
-import _ from 'lodash';
+import _ from 'lodash-es';
 import sharp from 'sharp';
 import loadFont from '../lib/loadFont';
 import logger from '../lib/logger';

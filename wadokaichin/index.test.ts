@@ -11,14 +11,14 @@ const dicts = Array.from({length:2}, () => [
 
 // @ts-ignore
 fs.virtualFiles = {
-  [path.join(__dirname, 'data')]: '',
-  [path.join(__dirname, 'data','2KanjiWords.txt')]: dicts.join('\n'),
-  [path.join(__dirname, 'data','JoyoKanjis.txt')]: kanjis.join('\n'),
+  [path.join(import.meta.dirname, 'data')]: '',
+  [path.join(import.meta.dirname, 'data','2KanjiWords.txt')]: dicts.join('\n'),
+  [path.join(import.meta.dirname, 'data','JoyoKanjis.txt')]: kanjis.join('\n'),
 };
 
-vi.mock('lodash', async (importOriginal) => {
-  const orig = (await importOriginal<{default: typeof import('lodash')}>()).default;
-  return {
+vi.mock('lodash-es', async (importOriginal) => {
+  const orig = (await importOriginal<{default: typeof import('lodash-es')}>()).default;
+  const mock = {
     ...orig,
     sample: vi.fn((array: string[]) => {
       if(orig.isEqual(array.sort(), kanjis.sort())){
@@ -26,6 +26,10 @@ vi.mock('lodash', async (importOriginal) => {
       }
       return orig.sample(array);
     }),
+  };
+  return {
+    ...mock,
+    default: mock,
   };
 });
 

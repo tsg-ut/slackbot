@@ -1,7 +1,8 @@
-const axios = require('axios');
-const {stripIndent} = require('common-tags');
+// @ts-nocheck
+import axios from 'axios';
+import {stripIndent} from 'common-tags';
 
-module.exports = (clients) => {
+export default (clients: any) => {
 	const {eventClient, webClient: slack} = clients;
 
 	const notify = async ({type, channel, user}) => {

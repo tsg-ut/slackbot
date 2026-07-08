@@ -5,7 +5,7 @@ import {ChatPostMessageArguments, WebClient} from '@slack/web-api';
 import {stripIndent} from 'common-tags';
 import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
-import {range} from 'lodash';
+import {range} from 'lodash-es';
 import moment from 'moment';
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberIcon, getMemberName} from '../lib/slackUtils';
@@ -172,7 +172,7 @@ class Among {
 		}
 
 		// restore state
-		const statePath = path.resolve(__dirname, 'state.json');
+		const statePath = path.resolve(import.meta.dirname, 'state.json');
 		const exists = await fs.access(statePath, constants.F_OK)
 			.then(() => true).catch(() => false);
 		this.state = {
@@ -319,12 +319,12 @@ class Among {
 	}
 
 	async clearFile() {
-		const statePath = path.resolve(__dirname, 'state.json');
+		const statePath = path.resolve(import.meta.dirname, 'state.json');
 		await fs.writeFile(statePath, '');
 	}
 
 	async setState(object: { [key: string]: any }) {
-		const statePath = path.resolve(__dirname, 'state.json');
+		const statePath = path.resolve(import.meta.dirname, 'state.json');
 		Object.assign(this.state, object);
 		await fs.writeFile(statePath, JSON.stringify(this.state));
 	}

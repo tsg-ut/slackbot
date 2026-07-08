@@ -1,5 +1,5 @@
 import type {KnownBlock} from '@slack/web-api';
-import {sortBy} from 'lodash';
+import {sortBy} from 'lodash-es';
 import type {Game, Submission} from '../..';
 import {getUserMention} from '../../util';
 

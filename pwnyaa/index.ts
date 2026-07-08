@@ -173,7 +173,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	let pendingUsers: { slackid: string, contestid: number, contestUserId: string, threadId: string }[] = [];
 
 	// Restore state
-	const statePath = path.resolve(__dirname, 'state.json');
+	const statePath = path.resolve(import.meta.dirname, 'state.json');
 	const exists = await fs.access(statePath, constants.F_OK)
 		.then(() => true).catch(() => false);
 	const state: State = {

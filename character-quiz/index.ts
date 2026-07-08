@@ -9,7 +9,7 @@ import axios from 'axios';
 import cloudinary from 'cloudinary';
 import type {CommonTransformationOptions} from 'cloudinary';
 import {hiraganize} from 'japanese';
-import {random, sample, range} from 'lodash';
+import {random, sample, range} from 'lodash-es';
 import {increment} from '../achievements';
 import {
 	AteQuizProblem,

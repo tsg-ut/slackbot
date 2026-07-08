@@ -1,4 +1,5 @@
-import Discord, {GatewayIntentBits} from 'discord.js';
+import * as Discord from 'discord.js';
+import {GatewayIntentBits} from 'discord.js';
 
 // eslint-disable-next-line import/no-named-as-default-member
 const discord = new Discord.Client({

@@ -7,7 +7,7 @@ import {stripIndent} from 'common-tags';
 import {JSDOM} from 'jsdom';
 import axios from 'axios';
 import moment from 'moment';
-import {sampleSize} from 'lodash';
+import {sampleSize} from 'lodash-es';
 import byline from 'byline';
 import w2v from 'word2vec';
 import {download} from '../lib/download';
@@ -63,7 +63,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			}
 		}
 
-		await promisify(fs.writeFile)(path.join(__dirname, 'state.json'), JSON.stringify(savedState));
+		await promisify(fs.writeFile)(path.join(import.meta.dirname, 'state.json'), JSON.stringify(savedState));
 	};
 
 	const {members} = await slack.users.list({});
@@ -215,11 +215,11 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	});
 
 	if (!await new Promise((resolve) => {
-		fs.access(path.join(__dirname, 'data'), fs.constants.F_OK, (error) => {
+		fs.access(path.join(import.meta.dirname, 'data'), fs.constants.F_OK, (error) => {
 			resolve(!error);
 		});
 	})) {
-		await promisify(fs.mkdir)(path.join(__dirname, 'data'));
+		await promisify(fs.mkdir)(path.join(import.meta.dirname, 'data'));
 	}
 
 	await Promise.all(
@@ -228,11 +228,11 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			['frequency.txt', 'https://drive.google.com/uc?id=1dtkJPTbH7xVRov77h8OBJ3wLsBaNPMNV'],
 			['wiki_wakati.wv', 'https://dl.dropboxusercontent.com/s/7laifmbdq4oqks9/wiki_wakati.wv'],
 		// eslint-disable-next-line require-await
-		].map(async ([filename, url]) => download(path.join(__dirname, 'data', filename), url))
+		].map(async ([filename, url]) => download(path.join(import.meta.dirname, 'data', filename), url))
 	);
-	freq = await loadFrqData(path.join(__dirname, 'data', 'frequency.txt'));
-	ad = await loadFrqData(path.join(__dirname, 'data', 'ad.txt'));
-	const model: any = await promisify((w2v as any).loadModel)({file: path.join(__dirname, 'data', 'wiki_wakati.wv'), is_binary: true});
+	freq = await loadFrqData(path.join(import.meta.dirname, 'data', 'frequency.txt'));
+	ad = await loadFrqData(path.join(import.meta.dirname, 'data', 'ad.txt'));
+	const model: any = await promisify((w2v as any).loadModel)({file: path.join(import.meta.dirname, 'data', 'wiki_wakati.wv'), is_binary: true});
 
 	const onFinish = async () => {
 		assert(state.phase === 'collecting');

@@ -13,7 +13,7 @@ import {stripIndent} from 'common-tags';
 import eaw from 'eastasianwidth';
 import {readFile} from 'fs-extra';
 import yaml from 'js-yaml';
-import {sample, sortBy} from 'lodash';
+import {sample, sortBy} from 'lodash-es';
 // @ts-ignore: untyped
 import emoji from 'node-emoji';
 import type OpenAI from 'openai';
@@ -69,7 +69,7 @@ type WikipediaPagesResponse = z.infer<typeof WikipediaPagesResponse>;
 
 const promptsLoader = new Loader<AutogenQuizPrompts>(async () => {
 	const prompts = await Promise.all(['wikipedia'].map(async (filename) => {
-		const promptYaml = await readFile(path.join(__dirname, 'prompts', `${filename}.yaml`));
+		const promptYaml = await readFile(path.join(import.meta.dirname, 'prompts', `${filename}.yaml`));
 		const prompt = yaml.load(promptYaml.toString());
 		return [filename, prompt];
 	}));

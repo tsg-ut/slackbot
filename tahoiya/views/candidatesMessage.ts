@@ -1,5 +1,5 @@
 import type {KnownBlock} from '@slack/web-api';
-import {chunk} from 'lodash';
+import {chunk} from 'lodash-es';
 import type {WordEntry} from '../../lib/candidateWords';
 
 export default (candidates: WordEntry[]): KnownBlock[] => {

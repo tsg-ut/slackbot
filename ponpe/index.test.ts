@@ -10,9 +10,9 @@ vi.mock('fs');
 
 // @ts-expect-error
 fs.virtualFiles = {
-	[path.join(__dirname, 'data')]: '',
-	[path.join(__dirname, 'data','emoji.json')]: `[{"short_names":["hoge","huga"]}]`,
-	[path.join(__dirname, 'data','common_word_list')]: `シコウサクゴ,試行錯誤`,
+	[path.join(import.meta.dirname, 'data')]: '',
+	[path.join(import.meta.dirname, 'data','emoji.json')]: `[{"short_names":["hoge","huga"]}]`,
+	[path.join(import.meta.dirname, 'data','common_word_list')]: `シコウサクゴ,試行錯誤`,
 };
 
 let slack: Slack = null;

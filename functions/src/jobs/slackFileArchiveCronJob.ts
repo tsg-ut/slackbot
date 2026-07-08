@@ -1,7 +1,7 @@
 import {WebClient} from '@slack/web-api';
 import {DynamoDB, S3} from 'aws-sdk';
 import axios from 'axios';
-import {chunk} from 'lodash';
+import {chunk} from 'lodash-es';
 import {runWith, logger} from 'firebase-functions/v1';
 
 const cronJob = async () => {

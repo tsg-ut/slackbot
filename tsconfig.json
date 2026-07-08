@@ -16,11 +16,13 @@
     "declaration": false,
     "sourceMap": false,
     "target": "ESNext",
-    "module": "CommonJS",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "noImplicitAny": true,
     "strictNullChecks": false,
     "useUnknownInCatchVariables": false,
     "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "lib": [
       "ESNext"

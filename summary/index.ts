@@ -1,14 +1,13 @@
-require('dotenv').config();
+// @ts-nocheck
+import {google} from 'googleapis';
+import moment from 'moment';
+import JSZip from 'jszip';
+import fs from 'fs';
+import concatStream from 'concat-stream';
+import schedule from 'node-schedule';
 
-const {google} = require('googleapis');
-const moment = require('moment');
-const JSZip = require('jszip');
-const fs = require('fs');
-const concatStream = require('concat-stream');
-const schedule = require('node-schedule');
-
-const {default: logger} = require('../lib/logger');
-const {makeSummary} = require('./summary_writer.js');
+import logger from '../lib/logger.js';
+import {makeSummary} from './summary_writer.js';
 
 const log = logger.child({bot: 'summary'});
 
@@ -54,7 +53,7 @@ async function getZipData(drive, month) {
 
     // local
     const bufferPromise = new Promise((resolve, reject) => {
-        fs.readFile(__dirname + '/' + filename, (err, data) => {
+        fs.readFile(import.meta.dirname + '/' + filename, (err, data) => {
             if (err) log.info(`unable to load ${filename}`);
             else {
                 log.info(`successfully loaded ${filename}`); resolve(data);
@@ -113,7 +112,7 @@ async function job(slack) {
     });
 }
 
-module.exports = async ({webClient: slack}) => {
+export default async ({webClient: slack}) => {
     if (process.env.NODE_ENV === 'production') {
         schedule.scheduleJob('0 7 * * *', async () => {
             job(slack);

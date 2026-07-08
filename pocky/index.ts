@@ -3,7 +3,7 @@ import * as emoji from 'node-emoji';
 import download from 'download';
 import {promises as fs, constants} from 'fs';
 import path from 'path';
-import {sample, get} from 'lodash';
+import {sample, get} from 'lodash-es';
 import {hiraganize} from 'japanese';
 import {stripIndents} from 'common-tags';
 import {unlock, increment} from '../achievements/index.js';
@@ -119,10 +119,10 @@ function normalize(text: string): string {
 }
 
 async function getDictionary(): Promise<{word: string; ruby: string}[]> {
-	const dictionaryPath = path.resolve(__dirname, 'kanjibox.txt');
+	const dictionaryPath = path.resolve(import.meta.dirname, 'kanjibox.txt');
 	const exists = await fs.access(dictionaryPath, constants.R_OK).then(() => true).catch(() => false);
 	if (!exists) {
-		await download("https://hakata-public.s3-ap-northeast-1.amazonaws.com/slackbot/kanjibox.txt", __dirname, {filename: 'kanjibox.txt'});
+		await download("https://hakata-public.s3-ap-northeast-1.amazonaws.com/slackbot/kanjibox.txt", import.meta.dirname, {filename: 'kanjibox.txt'});
 	}
 	const dictionary = await fs.readFile(dictionaryPath);
 	const entries = dictionary.toString().split('\n').filter((line) => (

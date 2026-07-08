@@ -5,8 +5,8 @@ import {inspect} from 'util';
 import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discordjs/voice';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-import Discord from 'discord.js';
-import {minBy, countBy, chunk} from 'lodash';
+import * as Discord from 'discord.js';
+import {minBy, countBy, chunk} from 'lodash-es';
 import logger from '../lib/logger';
 import State from '../lib/state';
 import {Loader, Deferred} from '../lib/utils';
@@ -368,8 +368,8 @@ export default class TTS extends EventEmitter {
 						return; // 再生時にTTSBotがログアウトしていたら諦める
 					}
 
-					await fs.writeFile(path.join(__dirname, 'tempAudio.mp3'), speech.data);
-					const resource = createAudioResource(path.join(__dirname, 'tempAudio.mp3'));
+					await fs.writeFile(path.join(import.meta.dirname, 'tempAudio.mp3'), speech.data);
+					const resource = createAudioResource(path.join(import.meta.dirname, 'tempAudio.mp3'));
 
 					const playDeferred = new Deferred<void>();
 					const onFinishPlaying = () => {

@@ -3,8 +3,8 @@ import sqlite3 from 'sqlite3';
 import path from 'path';
 import {spawn} from 'child_process';
 import concat from 'concat-stream';
-import {sortBy} from 'lodash';
-import boardConfigs from './boards.json';
+import {sortBy} from 'lodash-es';
+import boardConfigs from './boards.json' with { type: 'json' };
 import type {Crossword} from './crossword';
 
 const stocks: any[] = [];
@@ -44,7 +44,7 @@ const generate = async (usedAt: string): Promise<Crossword> => {
 	));
 
 	const db = await sqlite.open({
-		filename: path.join(__dirname, 'crossword.sqlite3'),
+		filename: path.join(import.meta.dirname, 'crossword.sqlite3'),
 		driver: sqlite3.Database,
 	});
 	const descriptions = await Promise.all(words.map((word) => (

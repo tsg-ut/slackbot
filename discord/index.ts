@@ -1,6 +1,7 @@
 import {joinVoiceChannel} from '@discordjs/voice';
 import type {DiscordGatewayAdapterCreator} from '@discordjs/voice';
-import Discord, {TextChannel, VoiceChannel} from 'discord.js';
+import * as Discord from 'discord.js';
+import type {TextChannel, VoiceChannel} from 'discord.js';
 import discord from '../lib/discord';
 import logger from '../lib/logger';
 import type {SlackInterface} from '../lib/slack';
@@ -90,7 +91,7 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 		}
 	});
 
-	discord.on('voiceStateUpdate', (oldState, newState) => {
+	discord.on('voiceStateUpdate', (oldState: Discord.VoiceState, newState: Discord.VoiceState) => {
 		slackNotifier.voiceStateUpdate(oldState, newState);
 	});
 

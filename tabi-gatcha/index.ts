@@ -14,7 +14,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 
 		const prefecture = message.text.slice(5).trim();
 
-		const japan = await fs.readJson(__dirname + '/japan.geojson');
+		const japan = await fs.readJson(import.meta.dirname + '/japan.geojson');
 
 		const prefectureGeo = prefecture === '' ? japan : japan.features.find((feature: any) => (
 			feature.properties.nam_ja === prefecture
@@ -31,8 +31,8 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 		while (true) {
 			const longitude = range(120, 155);
 			const latitude = range(20, 46);
-			const points = Turf.points([[longitude, latitude]]);
-			const res = Turf.pointsWithinPolygon(points, prefectureGeo);
+			const points = (Turf as any).points([[longitude, latitude]]);
+			const res = (Turf as any).pointsWithinPolygon(points, prefectureGeo);
 			
 			if (res.features.length > 0) {
 				const pluscode = encode({longitude, latitude});

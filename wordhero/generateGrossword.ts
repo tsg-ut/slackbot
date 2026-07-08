@@ -2,7 +2,7 @@ import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import db from '../lib/firestore';
-import {sample, negate, isEmpty, maxBy} from 'lodash';
+import {sample, negate, isEmpty, maxBy} from 'lodash-es';
 import type {Crossword} from './crossword';
 
 const Boards = db.collection('crossword_boards');
@@ -147,7 +147,7 @@ const generate = async (usedAt: string): Promise<Crossword> => {
 	));
 
 	const crosswordDb = await sqlite.open({
-		filename: path.join(__dirname, 'crossword.sqlite3'),
+		filename: path.join(import.meta.dirname, 'crossword.sqlite3'),
 		driver: sqlite3.Database,
 	});
 	const descriptions = await Promise.all(words.map((word) => (

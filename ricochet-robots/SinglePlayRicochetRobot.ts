@@ -1,5 +1,5 @@
 import { AteQuiz, AteQuizProblem, AteQuizStartOption } from '../atequiz';
-import { round } from 'lodash';
+import { round } from 'lodash-es';
 import cloudinary from 'cloudinary';
 import type { GenericMessageEvent } from '@slack/bolt';
 import { SlackInterface } from '../lib/slack';

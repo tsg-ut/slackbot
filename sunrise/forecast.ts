@@ -1,5 +1,8 @@
 import type {MessageAttachment, WebClient} from '@slack/web-api';
-import {FeatureCollection, MultiPolygon, points as Points, pointsWithinPolygon} from '@turf/turf';
+import type {FeatureCollection, MultiPolygon} from 'geojson';
+import * as Turf from '@turf/turf';
+const Points = (Turf as any).points;
+const pointsWithinPolygon = (Turf as any).pointsWithinPolygon;
 import {Loader} from '../lib/utils';
 import {getRainMinuteCast, getWeatherCastForecast, getWeatherCastHeadline} from './aiGeneration';
 import {getJmaForecast, getWeather} from './fetch';
@@ -114,7 +117,7 @@ export const postWeatherCast = async (point: Point, slack: WebClient, threadTime
 
 	const firstAreaGeojson = await firstAreaGeojsonLoader.load();
 	const points = Points([[point.longitude, point.latitude]]);
-	const featureContainingPoints = firstAreaGeojson.features.find((feature) => (
+	const featureContainingPoints = firstAreaGeojson.features.find((feature: any) => (
 		pointsWithinPolygon(points, feature)?.features?.length > 0
 	));
 

@@ -10,18 +10,18 @@ vi.mock('../lib/download');
 vi.mock('./state.json', () => ({}));
 
 (fs as any).virtualFiles = {
-	[path.join(__dirname, 'data')]: '',
-	[path.join(__dirname, 'data', 'ad.txt')]: [
+	[path.join(import.meta.dirname, 'data')]: '',
+	[path.join(import.meta.dirname, 'data', 'ad.txt')]: [
 		'丸い 1',
 		'鋭い 1',
 		...Array(100).fill(null).map((...[, i]) => `${i} 1`),
 	].join('\n'),
-	[path.join(__dirname, 'data', 'frequency.txt')]: [
+	[path.join(import.meta.dirname, 'data', 'frequency.txt')]: [
 		'丸い 1',
 		'鋭い 1',
 		...Array(100).fill(null).map((...[, i]) => `${i} 1`),
 	].join('\n'),
-	[path.join(__dirname, 'data', 'wiki_wakati.wv')]: '',
+	[path.join(import.meta.dirname, 'data', 'wiki_wakati.wv')]: '',
 };
 
 let slack: InstanceType<typeof Slack> = null;

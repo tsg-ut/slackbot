@@ -1,4 +1,4 @@
-import { sample } from 'lodash';
+import { sample } from 'lodash-es';
 import { getAudioUrl } from 'google-tts-api';
 import moment from 'moment';
 import { stringify } from 'querystring';

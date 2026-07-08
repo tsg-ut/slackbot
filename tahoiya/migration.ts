@@ -16,7 +16,7 @@ import {SOURCE_LABELS} from './utils';
 const readFile = promisify(fs.readFile);
 
 async function migrateSqliteThemes() {
-	const dbPath = path.join(__dirname, 'themes.sqlite3');
+	const dbPath = path.join(import.meta.dirname, 'themes.sqlite3');
 	const dbExists = await fs.promises.access(dbPath).then(() => true).catch(() => false);
 	if (!dbExists) {
 		console.log('No sqlite3 db found, skipping theme migration');
@@ -57,7 +57,7 @@ async function migrateSqliteThemes() {
 }
 
 async function migrateStateRatings() {
-	const statePath = path.join(__dirname, 'state.json');
+	const statePath = path.join(import.meta.dirname, 'state.json');
 	const stateExists = await fs.promises.access(statePath).then(() => true).catch(() => false);
 	if (!stateExists) {
 		console.log('No state.json found, skipping ratings migration');

@@ -1,5 +1,5 @@
 import type {KnownBlock, View} from '@slack/web-api';
-import {sortBy} from 'lodash';
+import {sortBy} from 'lodash-es';
 import type {FinishedGame} from '../TwentyQuestions';
 
 export default (game: FinishedGame): View => {

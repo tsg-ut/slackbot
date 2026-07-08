@@ -1,6 +1,6 @@
 import axios from 'axios';
 import plugin from 'fastify-plugin';
-import {escapeRegExp} from 'lodash';
+import {escapeRegExp} from 'lodash-es';
 import scrapeIt from 'scrape-it';
 import getReading from '../lib/getReading';
 /* eslint-disable no-unused-vars */

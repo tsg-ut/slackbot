@@ -2,14 +2,14 @@ import assert from 'assert';
 import {promises as fs} from 'fs';
 import path from 'path';
 import {oneLine} from 'common-tags';
-import flatten from 'lodash/flatten';
-import last from 'lodash/last';
-import maxBy from 'lodash/maxBy';
-import minBy from 'lodash/minBy';
-import sample from 'lodash/sample';
+import lodash from 'lodash-es';
+const { flatten, last, maxBy, minBy, sample } = lodash;
 import Shogi from 'shogi9.js';
 import type {IMove} from 'shogi9.js';
-import Color from 'shogi9.js/lib/Color.js';
+import type ColorType from 'shogi9.js/lib/Color.js';
+import ColorPkg from 'shogi9.js/lib/Color.js';
+const Color = (ColorPkg as any).default?.default || (ColorPkg as any).default || ColorPkg;
+type Color = ColorType;
 import Piece from 'shogi9.js/lib/Piece.js';
 import sqlite from 'sqlite';
 import type {Database} from 'sqlite';
@@ -373,10 +373,10 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 				condition = 'depth > 5';
 			}
 
-			const databases = await fs.readdir(path.resolve(__dirname, 'boards'));
+			const databases = await fs.readdir(path.resolve(import.meta.dirname, 'boards'));
 			const database = sample(databases);
 			state.db = await sqlite.open({
-				filename: path.join(__dirname, 'boards', database),
+				filename: path.join(import.meta.dirname, 'boards', database),
 				driver: sqlite3.Database,
 			});
 			// condition is built from parseInt() values or fixed strings, so SQL injection is not possible
@@ -435,7 +435,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 			}
 
 			state.db = await sqlite.open({
-				filename: path.resolve(__dirname, 'boards', state.previousDatabase),
+				filename: path.resolve(import.meta.dirname, 'boards', state.previousDatabase),
 				driver: sqlite3.Database,
 			});
 			state.board = state.previousBoard;

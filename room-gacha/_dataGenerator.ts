@@ -54,5 +54,5 @@ export const fetchData = async (prefectureRomaji: PrefectureRomaji) => {
     }
     const cityJson = JSON.stringify(cityDictionary, null, '    ');
     const hiddenValueJson = JSON.stringify(hiddenValueDictionary, null, '    ');
-    await fs.writeFile(`${__dirname}/data.json`, `{ "sc": ${cityJson}, "hiddenValue": ${hiddenValueJson}}`);
+    await fs.writeFile(`${import.meta.dirname}/data.json`, `{ "sc": ${cityJson}, "hiddenValue": ${hiddenValueJson}}`);
 })();

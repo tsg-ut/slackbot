@@ -68,10 +68,7 @@ const EXCLUDED_BOTS = new Set([
 	// vitestの開発/テスト実行環境固有の制約として対象外とする。
 	// (qrcode-quizはhangmanを、anime/anisonはanime/index.jsをそれぞれ
 	// importするため、同じ理由で連鎖的に失敗する)
-	'anime',
-	'anime/anison',
-	'hangman',
-	'qrcode-quiz',
+
 ]);
 
 const testedBots = allBots.filter((name) => !EXCLUDED_BOTS.has(name));
