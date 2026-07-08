@@ -18,36 +18,9 @@ afterAll(() => {
 	vi.useRealTimers();
 });
 
-// 各プラグインのテストで慣例的に行われているのと同様、実クライアント/実DBに
-// 接続する共有シングルトンをモック化する。これらは plugin.default(slack) /
-// plugin.server(slack) に渡す SlackMock とは独立しており、モックしても
-// Fastify登録クラスのクラッシュ検知という本テストの目的には影響しない。
-//
-// lib/discord.ts はガード無しでモジュール読み込み時に
-// discord.login(process.env.TSGBOT_DISCORD_TOKEN) を実行するため、
-// 実トークンが環境変数にあると本テストが実際にDiscordへログインしてしまう。
-// factory無しの automock はモック生成のために実モジュールを一度requireして
-// しまい副作用(実ログイン)を防げないため、実モジュールを読み込まない
-// factoryを明示的に渡す。
-vi.mock('./discord', () => {
-	const emitter = new EventEmitter();
-	const chainable: any = new Proxy(() => chainable, {
-		get: () => chainable,
-	});
-	return {
-		default: new Proxy(emitter, {
-			get(target: any, prop, receiver) {
-				if (prop === 'isReady') {
-					return () => false;
-				}
-				if (prop in target || typeof prop === 'symbol') {
-					return Reflect.get(target, prop, receiver);
-				}
-				return chainable;
-			},
-		}),
-	};
-});
+vi.mock('./discord', () => ({
+	default: new EventEmitter(),
+}));
 vi.mock('./slack', () => ({
 	webClient: {},
 	eventClient: {},
@@ -58,36 +31,21 @@ vi.mock('./slack', () => ({
 vi.mock('./openai');
 vi.mock('./firestore');
 vi.mock('./state');
-// lib/mailgun.ts はモジュール読み込み時に無条件で mailgun.client({username, key})
-// を実行するが、mailgun.js は username が無いと即座に例外を投げる。開発環境の
-// 実行時は .env 経由で値が入っているため気づきにくいが、CIのようにこれらの
-// 環境変数が未設定の環境では起動時クラッシュになるため、既存の
-// mail-hook/index.test.ts と同様にモックする。
 vi.mock('./mailgun', () => ({
 	__esModule: true,
 	default: {
 		client: vi.fn(),
 	},
 }));
-// hayaoshi/jantama等、複数のプラグインがGoogle Sheets連携にgoogleapisを使う。
-// 実認証情報が無くても内部で非同期の認証情報探索が走り、そのタイミング次第で
-// 無関係な後続テストの失敗として現れることを確認したため、まとめてモックする。
-vi.mock('googleapis');
+vi.mock('../achievements');
 // dajare/tokenize.js がモジュール読み込み時に無条件で lib/getReading.js の
 // getReading() を呼び出す。辞書ファイル(lib/bep-ss-2.3/bep-eng.dic)が
 // 存在しない環境(CI等)では http://www.argv.org から実際にtarballを
 // ダウンロードしようとして失敗する。lib/__mocks__/getReading.js の
 // 既存の手動モックを使うことでこれを防ぐ。
 vi.mock('../lib/getReading');
-vi.mock('../achievements');
-// slack-log は default() 内で無条件に slack-log API へ axios.get() する。
-// 共有axiosモック(空文字列応答)を使い、実ネットワーク接続の
-// ECONNREFUSEDによる失敗を防ぐ。
+vi.mock('googleapis');
 vi.mock('axios');
-
-// autogen-quiz, city-symbol 等、一部のプラグインが誤って自モジュール内で
-// `import 'dotenv/config'` を実行しており、テスト中に .env の実際の
-// シークレットが process.env に読み込まれてしまう。多重の安全策として無効化する。
 vi.mock('dotenv/config', () => ({}));
 
 const EXCLUDED_BOTS = new Set([
@@ -118,16 +76,13 @@ const EXCLUDED_BOTS = new Set([
 
 const testedBots = allBots.filter((name) => !EXCLUDED_BOTS.has(name));
 
-// PR #1215 (FST_ERR_PLUGIN_INVALID_ASYNC_HANDLER) のように、実際に
-// fastify.register() するまで顕在化しない起動時クラッシュを検知するためのテスト。
-// SlackMock だけを使う通常のユニットテストはこのクラスの不具合を検知できない。
 describe.each(testedBots)('%s', (name) => {
 	it('loads without throwing', async () => {
 		const slack = new SlackMock();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		process.env.CHANNEL_GAMES = slack.fakeChannel;
-		// nmpz はモジュール読み込み時に GOOGLE_MAPS_API_KEY / CLOUDINARY_URL の
-		// 存在を無条件にチェックし、無ければ即座にthrowする。
+
+		// nmpz
 		process.env.GOOGLE_MAPS_API_KEY ||= 'dummy-google-maps-api-key';
 		process.env.CLOUDINARY_URL ||= 'cloudinary://dummy:dummy@dummy';
 
