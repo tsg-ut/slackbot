@@ -1,5 +1,3 @@
-/* eslint-env jest */
-
 import gameStatusMessage from './gameStatusMessage';
 import type {StateObj} from '../TwentyQuestions';
 import type {KnownBlock, ActionsBlock} from '@slack/web-api';

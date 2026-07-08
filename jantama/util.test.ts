@@ -1,5 +1,3 @@
-/* eslint-env jest */
-
 import {extractMajsoulId} from './util';
 
 describe('extractMajsoulId', () => {

@@ -1,11 +1,12 @@
-/* eslint-env node, jest */
-
 const {PassThrough} = require('stream');
 const noop = require('lodash/noop');
 
-const cloudinary = jest.genMockFromModule('cloudinary');
+const cloudinary = {
+	v2: {uploader: {}, config: () => {}, url: vi.fn(() => '')},
+	url: '',
+};
 
-cloudinary.v2.uploader.upload_stream = jest.fn((options, callback) => {
+cloudinary.v2.uploader.upload_stream = vi.fn((options, callback) => {
 	const stream = new PassThrough();
 	stream.on('end', () => {
 		callback(null, {
@@ -16,7 +17,5 @@ cloudinary.v2.uploader.upload_stream = jest.fn((options, callback) => {
 	stream.on('data', noop);
 	return stream;
 });
-
-cloudinary.url = '';
 
 module.exports = cloudinary;

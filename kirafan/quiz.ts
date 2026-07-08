@@ -6,8 +6,6 @@ import axios from 'axios';
 import { random, sample } from 'lodash';
 import { ChatPostMessageArguments, GenericMessageEvent } from '@slack/web-api';
 import cloudinary, { UploadApiResponse } from 'cloudinary';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error
 import { hiraganize } from 'japanese';
 import { increment } from '../achievements';
 import { ChannelLimitedBot } from '../lib/channelLimitedBot';

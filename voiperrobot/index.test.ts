@@ -1,7 +1,7 @@
-jest.mock('../achievements');
-
 import voiperrobot from './index';
 import Slack from '../lib/slackMock';
+
+vi.mock('../achievements');
 
 let slack: Slack = null;
 

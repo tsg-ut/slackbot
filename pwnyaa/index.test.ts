@@ -1,24 +1,25 @@
 /* eslint-disable no-undef */
 import {constants, promises as fs} from 'fs';
 import path from 'path';
+import type {Mock} from 'vitest';
 import Slack from '../lib/slackMock';
 import {getMemberName} from '../lib/slackUtils';
-import {AchievementType, Challenge, SolvedInfo, Profile} from './lib/BasicTypes';
 import {fetchChallsAH, fetchUserProfileAH} from './lib/AHManager';
+import {AchievementType, Challenge, SolvedInfo, Profile} from './lib/BasicTypes';
 import {fetchChallsCH, fetchUserProfileCH} from './lib/CHManager';
 import {fetchChallsKSN, fetchUserProfileKSN} from './lib/KSNManager';
 import {fetchChallsTW, fetchUserProfileTW} from './lib/TWManager';
 import {fetchChallsXYZ, fetchUserProfileXYZ} from './lib/XYZManager';
 import pwnyaa, {State} from './index';
 
-jest.mock('../achievements');
-jest.unmock('axios');
-jest.mock('./lib/AHManager');
-jest.mock('./lib/CHManager');
-jest.mock('./lib/TWManager');
-jest.mock('./lib/XYZManager');
-jest.mock('./lib/KSNManager');
-jest.mock('../lib/slackUtils');
+vi.mock('../achievements');
+vi.unmock('axios');
+vi.mock('./lib/AHManager');
+vi.mock('./lib/CHManager');
+vi.mock('./lib/TWManager');
+vi.mock('./lib/XYZManager');
+vi.mock('./lib/KSNManager');
+vi.mock('../lib/slackUtils');
 
 let slack: Slack = null;
 
@@ -164,17 +165,17 @@ beforeEach(async () => {
 		resolve({userid: 'fakeid', name: 'fakename'});
 	});
 	// mock funcs containing axios calls
-	(fetchChallsTW as jest.Mock).mockReturnValue(sampleChallsTW);
-	(fetchUserProfileTW as jest.Mock).mockReturnValue(sampleProfileTW);
-	(fetchChallsXYZ as jest.Mock).mockReturnValue(sampleChallsXYZ);
-	(fetchUserProfileXYZ as jest.Mock).mockReturnValue(sampleProfileXYZ);
-	(fetchChallsCH as jest.Mock).mockReturnValue(sampleChallsCH);
-	(fetchUserProfileCH as jest.Mock).mockReturnValue(sampleProfileCH);
-	(fetchChallsKSN as jest.Mock).mockReturnValue(sampleChallsKSN);
-	(fetchUserProfileKSN as jest.Mock).mockReturnValue(sampleProfileKSN);
-	(fetchChallsAH as jest.Mock).mockReturnValue(sampleChallsAH);
-	(fetchUserProfileAH as jest.Mock).mockReturnValue(sampleProfileAH);
-	(getMemberName as jest.Mock).mockReturnValue('FakeName');
+	(fetchChallsTW as Mock).mockReturnValue(sampleChallsTW);
+	(fetchUserProfileTW as Mock).mockReturnValue(sampleProfileTW);
+	(fetchChallsXYZ as Mock).mockReturnValue(sampleChallsXYZ);
+	(fetchUserProfileXYZ as Mock).mockReturnValue(sampleProfileXYZ);
+	(fetchChallsCH as Mock).mockReturnValue(sampleChallsCH);
+	(fetchUserProfileCH as Mock).mockReturnValue(sampleProfileCH);
+	(fetchChallsKSN as Mock).mockReturnValue(sampleChallsKSN);
+	(fetchUserProfileKSN as Mock).mockReturnValue(sampleProfileKSN);
+	(fetchChallsAH as Mock).mockReturnValue(sampleChallsAH);
+	(fetchUserProfileAH as Mock).mockReturnValue(sampleProfileAH);
+	(getMemberName as Mock).mockReturnValue('FakeName');
 
 	slack = new Slack();
 	process.env.CHANNEL_PWNABLE_TW = slack.fakeChannel;
@@ -247,7 +248,7 @@ beforeEach(async () => {
 	}
 	await fs.writeFile(stateOriginalPath, JSON.stringify(fakeState));
 
-	jest.useFakeTimers();
+	vi.useFakeTimers();
 	const {initPromise} = await pwnyaa(slack);
 
 	await initPromise;

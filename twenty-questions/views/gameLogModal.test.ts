@@ -1,5 +1,3 @@
-/* eslint-env jest */
-
 import gameLogModal from './gameLogModal';
 import type {FinishedGame} from '../TwentyQuestions';
 import type {KnownBlock} from '@slack/web-api';

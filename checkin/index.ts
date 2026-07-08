@@ -1,8 +1,25 @@
-const axios = require('axios');
-const {stripIndent} = require('common-tags');
-const get = require('lodash/get');
-const schedule = require('node-schedule');
-const {default: logger} = require('../lib/logger');
+import axios from 'axios';
+import {stripIndent} from 'common-tags';
+import get from 'lodash/get';
+import schedule from 'node-schedule';
+import logger from '../lib/logger';
+import type {SlackInterface} from '../lib/slack';
+import type {MessageEvent} from '@slack/bolt';
+
+interface User {
+	firstName: string;
+	lastName: string;
+	photo: {
+		prefix: string;
+		suffix: string;
+	};
+}
+
+interface HereNowItem {
+	id: string;
+	user: User;
+	shout?: string;
+}
 
 const log = logger.child({bot: 'checkin'});
 
@@ -11,9 +28,9 @@ const places = [
 	{id: '5b1a2ff17269fe002ce4f8de', name: 'TSG部室'},
 ];
 
-module.exports = ({eventClient, webClient: slack}) => {
+export default ({eventClient, webClient: slack}: SlackInterface) => {
 	const state = {
-		herenow: new Map(),
+		herenow: new Map<string, HereNowItem[]>(),
 	};
 
 	const job = async () => {
@@ -31,7 +48,7 @@ module.exports = ({eventClient, webClient: slack}) => {
 				responseType: 'json',
 			});
 
-			const items = get(data, ['data', 'response', 'hereNow', 'items'], []);
+			const items: HereNowItem[] = get(data, ['data', 'response', 'hereNow', 'items'], []);
 
 			if (state.herenow.has(place.id)) {
 				const newUsers = items.filter(({id}) => (
@@ -59,8 +76,8 @@ module.exports = ({eventClient, webClient: slack}) => {
 		schedule.scheduleJob('*/3 * * * *', job);
 	}
 
-	eventClient.on('message', (message) => {
-		if (message.text === 'checkin-check' && message.channel === process.env.CHANNEL_SANDBOX) {
+	eventClient.on('message', (message: MessageEvent) => {
+		if ('text' in message && message.text === 'checkin-check' && message.channel === process.env.CHANNEL_SANDBOX) {
 			job();
 		}
 	});

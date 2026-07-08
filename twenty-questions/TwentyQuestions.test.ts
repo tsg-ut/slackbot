@@ -1,5 +1,3 @@
-/* eslint-env jest */
-
 import type {MockedStateInterface} from '../lib/__mocks__/state';
 import Slack from '../lib/slackMock';
 import State from '../lib/state';
@@ -9,35 +7,35 @@ import {getCandidateWords} from '../lib/candidateWords';
 import {increment} from '../achievements';
 import {BlockAction, BlockElementAction} from '@slack/bolt';
 
-jest.mock('axios');
-jest.mock('../lib/slackUtils');
-jest.mock('../lib/state');
-jest.mock('../lib/openai');
-jest.mock('../lib/firestore');
-jest.mock('../lib/candidateWords');
-jest.mock('../achievements', () => ({
-	increment: jest.fn(),
+vi.mock('axios');
+vi.mock('../lib/slackUtils');
+vi.mock('../lib/state');
+vi.mock('../lib/openai');
+vi.mock('../lib/firestore');
+vi.mock('../lib/candidateWords');
+vi.mock('../achievements', () => ({
+	increment: vi.fn(),
 }));
-jest.mock('../lib/slack', () => ({
+vi.mock('../lib/slack', () => ({
 	webClient: {},
 	eventClient: {},
 	messageClient: {},
 }));
-jest.mock('crypto', () => ({
-	randomUUID: jest.fn(() => 'test-uuid'),
+vi.mock('crypto', () => ({
+	randomUUID: vi.fn(() => 'test-uuid'),
 }));
 
 const MockedState = State as MockedStateInterface<StateObj>;
-const mockedChatCompletionsCreate = jest.mocked(openai.chat.completions.create);
-const mockedGetCandidateWords = jest.mocked(getCandidateWords);
-const mockedIncrement = jest.mocked(increment);
+const mockedChatCompletionsCreate = vi.mocked(openai.chat.completions.create);
+const mockedGetCandidateWords = vi.mocked(getCandidateWords);
+const mockedIncrement = vi.mocked(increment);
 
 describe('twenty-questions', () => {
 	let slack: Slack = null;
 	let twentyQuestions: TwentyQuestions = null;
 
 	beforeEach(async () => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		slack = new Slack();
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
@@ -75,12 +73,12 @@ describe('twenty-questions', () => {
 			['別の単語', 'べつのたんご', 'wikipedia'],
 		]);
 
-		const postEphemeral = jest.mocked(slack.webClient.chat.postEphemeral);
+		const postEphemeral = vi.mocked(slack.webClient.chat.postEphemeral);
 		postEphemeral.mockResolvedValueOnce({
 			ok: true,
 		});
 
-		const postMessage = jest.mocked(slack.webClient.chat.postMessage);
+		const postMessage = vi.mocked(slack.webClient.chat.postMessage);
 		postMessage.mockResolvedValueOnce({
 			ok: true,
 			ts: slack.fakeTimestamp,
@@ -89,10 +87,10 @@ describe('twenty-questions', () => {
 		const state = MockedState.mocks.get('twenty-questions');
 		await twentyQuestions.startGame(slack.fakeUser);
 
-		const mockedPostEphemeral = jest.mocked(
+		const mockedPostEphemeral = vi.mocked(
 			slack.webClient.chat.postEphemeral,
 		);
-		const mockedPostMessage = jest.mocked(slack.webClient.chat.postMessage);
+		const mockedPostMessage = vi.mocked(slack.webClient.chat.postMessage);
 
 		expect(state.currentGame).not.toBe(null);
 		expect(state.currentGame?.status).toBe('active');
@@ -145,7 +143,7 @@ describe('twenty-questions', () => {
 		});
 
 		it('prevents starting game', async () => {
-			const postEphemeral = jest.mocked(
+			const postEphemeral = vi.mocked(
 				slack.webClient.chat.postEphemeral,
 			);
 			postEphemeral.mockResolvedValueOnce({
@@ -156,7 +154,7 @@ describe('twenty-questions', () => {
 
 			const state = MockedState.mocks.get('twenty-questions');
 
-			const mockedPostEphemeral = jest.mocked(
+			const mockedPostEphemeral = vi.mocked(
 				slack.webClient.chat.postEphemeral,
 			);
 
@@ -189,12 +187,12 @@ describe('twenty-questions', () => {
 				],
 			});
 
-			const chatUpdate = jest.mocked(slack.webClient.chat.update);
+			const chatUpdate = vi.mocked(slack.webClient.chat.update);
 			chatUpdate.mockResolvedValueOnce({
 				ok: true,
 			});
 
-			const viewsUpdate = jest.mocked(slack.webClient.views.update);
+			const viewsUpdate = vi.mocked(slack.webClient.views.update);
 			viewsUpdate.mockResolvedValueOnce({
 				ok: true,
 			});
@@ -264,8 +262,8 @@ describe('twenty-questions', () => {
 
 			await slack.messageClient.sendAction(payload);
 
-			const mockedChatUpdate = jest.mocked(slack.webClient.chat.update);
-			const mockedViewsUpdate = jest.mocked(slack.webClient.views.update);
+			const mockedChatUpdate = vi.mocked(slack.webClient.chat.update);
+			const mockedViewsUpdate = vi.mocked(slack.webClient.views.update);
 
 			const state = MockedState.mocks.get('twenty-questions');
 			const player = state.currentGame.players[slack.fakeUser];

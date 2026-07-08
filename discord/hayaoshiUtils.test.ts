@@ -1,11 +1,10 @@
-/* eslint-env jest */
 
 import {inspect} from 'util';
 import {extractValidAnswers} from './hayaoshiUtils';
 
-jest.mock('../hayaoshi', () => ({
-	isCorrectAnswer: jest.fn(),
-	normalize: jest.fn(),
+vi.mock('../hayaoshi', () => ({
+	isCorrectAnswer: vi.fn(),
+	normalize: vi.fn(),
 }));
 
 const testCases: [string, string, string[]][] = [

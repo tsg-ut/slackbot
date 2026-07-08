@@ -57,7 +57,7 @@ export default (theme: Theme, gameType: 'normal' | 'daily', initialValue?: strin
 			type: 'section' as const,
 			text: {
 				type: 'mrkdwn' as const,
-				text: '*あなたのコメント:*\n' + userComments.map((c) => `> ${c.text}`).join('\n'),
+				text: `*あなたのコメント:*\n${userComments.map((c) => `> ${c.text}`).join('\n')}`,
 			},
 		}] : []),
 		{

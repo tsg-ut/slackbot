@@ -1,60 +1,58 @@
 /* eslint-disable callback-return */
 /* eslint-disable node/callback-return */
-/* eslint-disable import/imports-first */
-/* eslint-disable import/first */
-/* eslint-env jest */
-
-jest.mock('../lib/state');
-jest.mock('../lib/slack');
-jest.mock('../lib/slackUtils', () => ({
-	__esModule: true,
-	getReactions: jest.fn(),
-}));
-jest.mock('../lib/slackPatron', () => ({
-	__esModule: true,
-	conversationsHistory: jest.fn(),
-	conversationsReplies: jest.fn(),
-}));
-jest.mock('../lib/firestore', () => ({
-	__esModule: true,
-	default: {
-		collection: jest.fn().mockReturnValue({
-			doc: jest.fn().mockReturnValue({
-				get: jest.fn(),
-				set: jest.fn(),
-				update: jest.fn(),
-			}),
-		}),
-		runTransaction: jest.fn(),
-	},
-}));
 
 import type {firestore} from 'firebase-admin';
 import db from '../lib/firestore';
-import {conversationsHistory} from '../lib/slackPatron';
 import Slack from '../lib/slackMock';
+import {conversationsHistory} from '../lib/slackPatron';
 import {getReactions} from '../lib/slackUtils';
 import topicHandler, {addLike, removeLike} from './index';
 
-const runTransaction = db.runTransaction as jest.MockedFunction<typeof db.runTransaction>;
+vi.mock('../achievements');
+vi.mock('../lib/state');
+vi.mock('../lib/slack');
+vi.mock('../lib/slackUtils', () => ({
+	__esModule: true,
+	getReactions: vi.fn(),
+}));
+vi.mock('../lib/slackPatron', () => ({
+	__esModule: true,
+	conversationsHistory: vi.fn(),
+	conversationsReplies: vi.fn(),
+}));
+vi.mock('../lib/firestore', () => ({
+	__esModule: true,
+	default: {
+		collection: vi.fn().mockReturnValue({
+			doc: vi.fn().mockReturnValue({
+				get: vi.fn(),
+				set: vi.fn(),
+				update: vi.fn(),
+			}),
+		}),
+		runTransaction: vi.fn(),
+	},
+}));
+
+const runTransaction = vi.mocked(db.runTransaction);
 
 const FAKE_SANDBOX = 'C123456789';
 
 describe('topic', () => {
 	describe('index.ts', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		describe('addLike', () => {
 			it('should add a like to the message', async () => {
 				const mockTransaction = {
-					get: jest.fn(),
-					update: jest.fn(),
+					get: vi.fn(),
+					update: vi.fn(),
 				};
 				const mockDoc = {
 					exists: true,
-					get: jest.fn().mockReturnValue([]),
+					get: vi.fn().mockReturnValue([]),
 				};
 				runTransaction.mockImplementation(async (callback) => {
 					await callback(mockTransaction as unknown as firestore.Transaction);
@@ -69,8 +67,8 @@ describe('topic', () => {
 
 			it('should not add a like if the message does not exist', async () => {
 				const mockTransaction = {
-					get: jest.fn(),
-					update: jest.fn(),
+					get: vi.fn(),
+					update: vi.fn(),
 				};
 				const mockDoc = {
 					exists: false,
@@ -90,12 +88,12 @@ describe('topic', () => {
 		describe('removeLike', () => {
 			it('should remove a like from the message', async () => {
 				const mockTransaction = {
-					get: jest.fn(),
-					update: jest.fn(),
+					get: vi.fn(),
+					update: vi.fn(),
 				};
 				const mockDoc = {
 					exists: true,
-					get: jest.fn().mockReturnValue(['user1']),
+					get: vi.fn().mockReturnValue(['user1']),
 				};
 				runTransaction.mockImplementation(async (callback) => {
 					await callback(mockTransaction as unknown as firestore.Transaction);
@@ -110,8 +108,8 @@ describe('topic', () => {
 
 			it('should not remove a like if the message does not exist', async () => {
 				const mockTransaction = {
-					get: jest.fn(),
-					update: jest.fn(),
+					get: vi.fn(),
+					update: vi.fn(),
 				};
 				const mockDoc = {
 					exists: false,
@@ -139,7 +137,7 @@ describe('topic', () => {
 			) => {
 				const MESSAGE_TS = '12345';
 
-				const converastionsInfo = mockSlack.webClient.conversations.info as jest.MockedFunction<typeof mockSlack.webClient.conversations.info>;
+				const converastionsInfo = vi.mocked(mockSlack.webClient.conversations.info);
 				converastionsInfo.mockResolvedValue({
 					ok: true,
 					channel: {
@@ -149,7 +147,7 @@ describe('topic', () => {
 					},
 				});
 
-				const mockConversationsHistory = conversationsHistory as jest.MockedFunction<typeof conversationsHistory>;
+				const mockConversationsHistory = vi.mocked(conversationsHistory);
 				mockConversationsHistory.mockResolvedValue({
 					ok: true,
 					messages: [{
@@ -159,10 +157,11 @@ describe('topic', () => {
 					}],
 				});
 
-				const setTopic = mockSlack.webClient.conversations.setTopic as jest.MockedFunction<typeof mockSlack.webClient.conversations.setTopic>;
+				const setTopic = vi.mocked(mockSlack.webClient.conversations.setTopic);
 				setTopic.mockImplementation(() => Promise.resolve({ok: true}));
 
-				(getReactions as jest.MockedFunction<typeof getReactions>).mockResolvedValue(reactions);
+				const mockedGetReactions = vi.mocked(getReactions);
+				mockedGetReactions.mockResolvedValue(reactions);
 
 				process.env.CHANNEL_SANDBOX = FAKE_SANDBOX;
 

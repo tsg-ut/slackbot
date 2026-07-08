@@ -1,21 +1,17 @@
-'use strict';
-
-jest.mock('cloudinary');
-jest.mock('./rust-proxy');
-jest.mock('../achievements');
-jest.mock('../lib/slackUtils');
-
 import cloudinary from 'cloudinary';
 import * as rust_proxy from './rust-proxy';
-
 import hyperrobot from './index';
 import Slack from '../lib/slackMock';
-
 import fs from 'fs';
 import path from 'path';
 import type { SectionBlock } from '@slack/web-api';
 
-const get_data = rust_proxy.get_data as jest.MockedFunction<typeof rust_proxy.get_data>;
+vi.mock('cloudinary');
+vi.mock('./rust-proxy');
+vi.mock('../achievements');
+vi.mock('../lib/slackUtils');
+
+const get_data = vi.mocked(rust_proxy.get_data);
 get_data.mockImplementation((x) => {
 	return new Promise((resolve) => {
 		resolve(fs.readFileSync(path.join(__dirname,'rust_test_output.txt')).toString());
@@ -34,10 +30,10 @@ describe('hyperrobot', () => {
 		process.env.CHANNEL_GAMES = slack.fakeChannel;
 		process.env.CHANNEL_SANDBOX = slack.fakeChannel;
 		hyperrobot(slack);
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 	});
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 	describe('base', () => {
 		it('responds to ハイパーロボット', async () => {

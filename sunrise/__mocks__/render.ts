@@ -1,6 +1,6 @@
-/* eslint-env node, jest */
+import {vi} from 'vitest';
 
-const render = jest.fn(() => (
+const render = vi.fn(() => (
 	Promise.resolve(Buffer.alloc(0x100))
 ));
 

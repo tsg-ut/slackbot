@@ -1,7 +1,7 @@
 import Slack from '../lib/slackMock';
 import path from 'path';
 
-jest.mock('fs');
+vi.mock('fs');
 import fs from 'fs';
 
 const kanjis = [ '山', '川', '谷', '海' ];
@@ -16,24 +16,23 @@ fs.virtualFiles = {
   [path.join(__dirname, 'data','JoyoKanjis.txt')]: kanjis.join('\n'),
 };
 
-jest.mock('lodash',() => {
-  const orig = jest.requireActual('lodash');
+vi.mock('lodash', async (importOriginal) => {
+  const orig = (await importOriginal<{default: typeof import('lodash')}>()).default;
   return {
     ...orig,
-    sample: jest.fn((...args) => {
-      const [array] = args;
-      if(orig.isEqual(array.sort(),kanjis.sort())){
+    sample: vi.fn((array: string[]) => {
+      if(orig.isEqual(array.sort(), kanjis.sort())){
         return '川';
       }
-      return orig.sample(...args);
-    })
-  }
+      return orig.sample(array);
+    }),
+  };
 });
 
-jest.mock('../lib/slackUtils');
+vi.mock('../lib/slackUtils');
 import wadokaichin from "./index";
 
-jest.useFakeTimers();
+vi.useFakeTimers();
 
 let slack: Slack = null;
 beforeEach(() => {
@@ -112,8 +111,8 @@ describe('wadokaichin works', () => {
     await (new Promise((res) => res(0)));
     // await new Promise(process.nextTick); // これはデッドロックする模様
 
-    Date.now = jest.fn(() => now + 3*60*1000);
-    jest.advanceTimersByTime(1000);
+    vi.spyOn(Date, 'now').mockReturnValue(now + 3*60*1000);
+    vi.advanceTimersByTime(1000);
     {
       const response = await slack.waitForResponse();
       expect('username' in response && response.username).toBe('和同開珎');

@@ -1,10 +1,13 @@
-jest.mock('axios');
-
 import lyrics from './index';
 import Slack from '../lib/slackMock';
 import axios from 'axios';
 import type {AxiosResponse} from 'axios';
-import { oneLineTrim, stripIndent } from 'common-tags';
+import { stripIndent, oneLineTrim } from 'common-tags';
+import type { ScrapeOptions } from 'scrape-it';
+
+vi.mock('axios');
+
+vi.mock('scrape-it');
 
 let slack: Slack = null;
 
@@ -57,8 +60,7 @@ describe('lyrics', () => {
                     略
                 </div></div></div>
             </div></body></html>`;
-
-        const mockAxios = jest.mocked(axios);
+        const mockAxios = vi.mocked(axios);
         mockAxios.mockImplementation(async (url: string) => {
             if (url.includes('index_search')) {
                 return {data: searchHtml} as AxiosResponse;

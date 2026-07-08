@@ -4,15 +4,15 @@ import Slack from './slackMock';
 import SlackCache from './slackCache';
 import {conversationsHistory} from './slackPatron';
 
-jest.mock('./slackPatron', () => ({
+vi.mock('./slackPatron', () => ({
 	__esModule: true,
-	conversationsHistory: jest.fn(),
-	conversationsReplies: jest.fn(),
+	conversationsHistory: vi.fn(),
+	conversationsReplies: vi.fn(),
 }));
 
-jest.mock('./eventDeduplication', () => ({
-	getDuplicateEventChecker: jest.fn(() => ({
-		markEventAsProcessed: jest.fn().mockResolvedValue(false),
+vi.mock('./eventDeduplication', () => ({
+	getDuplicateEventChecker: vi.fn(() => ({
+		markEventAsProcessed: vi.fn().mockResolvedValue(false),
 	})),
 }));
 
@@ -34,13 +34,17 @@ describe('SlackCache', () => {
 		slack = new Slack();
 		
 		// Setup mock for conversationsHistory
-		const mockConversationsHistory = jest.mocked(conversationsHistory);
+		const mockConversationsHistory = vi.mocked(conversationsHistory);
 		mockConversationsHistory.mockImplementation(async (args) => {
 			if (args.limit && args.limit !== 1) {
 				throw Error('unsupported mock');
 			}
 			const fn = path.join(__dirname, '__testdata__/conversations.history.json');
-			const res = await fs.readJson(fn);
+			// Use sync read to ensure all concurrent modifyReaction calls get already-resolved
+			// promises, making microtask resolution order deterministic (FIFO).
+			// With async readJson, CI and local environments may resolve in different orders,
+			// causing non-deterministic test outcomes.
+			const res = fs.readJsonSync(fn);
 
 			if (!args.limit) {
 				return res;
@@ -49,13 +53,13 @@ describe('SlackCache', () => {
 			return res;
 		});
 
-		const mockedUsersList = jest.mocked(slack.webClient.users.list);
+		const mockedUsersList = vi.mocked(slack.webClient.users.list);
 		mockedUsersList.mockImplementation(async () => {
 			const fn = path.join(__dirname, '__testdata__/users.list.json');
 			return fs.readJson(fn);
 		});
 
-		const mockedEmojiList = jest.mocked(slack.webClient.emoji.list);
+		const mockedEmojiList = vi.mocked(slack.webClient.emoji.list);
 		mockedEmojiList.mockImplementation(async () => {
 			const fn = path.join(__dirname, '__testdata__/emoji.list.json');
 			return fs.readJson(fn);

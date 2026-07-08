@@ -1,17 +1,14 @@
-/* eslint-disable import/imports-first */
-/* eslint-disable import/first */
-/* eslint-env jest */
-
-jest.mock('../lib/state');
-jest.mock('../lib/slack');
-jest.mock('../lib/slackUtils');
-jest.mock('node-schedule', () => ({
-	scheduleJob: jest.fn(),
-}));
-
 import {GuildMember, User, VoiceChannel, VoiceState} from 'discord.js';
 import Slack from '../lib/slackMock';
 import {Notifier} from './notifier';
+
+vi.mock('../lib/state');
+vi.mock('../lib/slack');
+vi.mock('../lib/slackUtils');
+vi.mock('node-schedule', () => ({
+	default: {scheduleJob: vi.fn()},
+	scheduleJob: vi.fn(),
+}));
 
 describe('discord', () => {
 	describe('Notifier', () => {
@@ -107,7 +104,7 @@ describe('discord', () => {
 
 			const slack = new Slack();
 
-			const postMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
+			const postMessage = vi.mocked(slack.webClient.chat.postMessage);
 			postMessage.mockResolvedValue({
 				ok: true,
 				ts: '123456789.123456',
@@ -168,7 +165,7 @@ describe('discord', () => {
 
 			const slack = new Slack();
 
-			const postMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
+			const postMessage = vi.mocked(slack.webClient.chat.postMessage);
 			postMessage.mockResolvedValue({
 				ok: true,
 				ts: '123456789.123456',
@@ -229,7 +226,7 @@ describe('discord', () => {
 
 			const slack = new Slack();
 
-			const postMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
+			const postMessage = vi.mocked(slack.webClient.chat.postMessage);
 			postMessage.mockResolvedValue({ok: false});
 
 			const notifier = new Notifier(slack.webClient);
@@ -245,7 +242,7 @@ describe('discord', () => {
 
 			const slack = new Slack();
 
-			const postMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
+			const postMessage = vi.mocked(slack.webClient.chat.postMessage);
 			postMessage.mockImplementation((message) => {
 				if (message.channel === FAKE_SANDBOX) {
 					return Promise.resolve({
@@ -263,7 +260,7 @@ describe('discord', () => {
 
 			await notifier.voiceStateUpdate(EMPTY_CHANNEL_STATE, JOINED_CHANNEL_STATE);
 
-			const deleteMessage = slack.webClient.chat.delete as jest.MockedFunction<typeof slack.webClient.chat.delete>;
+			const deleteMessage = vi.mocked(slack.webClient.chat.delete);
 			deleteMessage.mockResolvedValue({ok: true});
 
 			await notifier.voiceStateUpdate(JOINED_CHANNEL_STATE, EMPTY_CHANNEL_STATE);
@@ -281,7 +278,7 @@ describe('discord', () => {
 
 			const slack = new Slack();
 
-			const postMessage = slack.webClient.chat.postMessage as jest.MockedFunction<typeof slack.webClient.chat.postMessage>;
+			const postMessage = vi.mocked(slack.webClient.chat.postMessage);
 			postMessage.mockResolvedValue({
 				ok: true,
 				ts: '123456789.123456',

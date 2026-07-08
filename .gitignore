@@ -83,3 +83,6 @@ gha-creds-*.json
 
 # Local Claude instructions
 CLAUDE.local.md
+
+# Runtime-generated state files
+vocabwar/state.json

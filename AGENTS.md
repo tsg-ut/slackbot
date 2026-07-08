@@ -112,11 +112,11 @@ is not necessary because the code is self-explanatory. Instead, you must just re
 
 ### Testing
 
-- Write tests using Jest framework
+- Write tests using Vitest framework
 - Follow existing test patterns and structure
 - Use the provided `SlackMock` class for testing Slack interactions
 - Place tests in `*.test.ts` files
-- Run tests with `npm test -- [<test-file>]`
+- Run tests with `npx vitest run [<test-file>]`
 
 ### Development Environment
 

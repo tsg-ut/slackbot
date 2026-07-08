@@ -1,9 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import {promisify} from 'util';
-// @ts-expect-error: untyped
 import download from 'download';
-// @ts-expect-error: untyped
 import {hiraganize} from 'japanese';
 import {shuffle} from 'lodash';
 
