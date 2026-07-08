@@ -8,6 +8,7 @@ import {getMemberName, getEmoji} from '../lib/slackUtils';
 import path from 'path';
 import {download} from '../lib/download';
 import {Loader} from '../lib/utils';
+import type {TeamInfoResponse} from '@slack/web-api';
 
 function getTimeLink(time:number){
 	return moment(time).utcOffset('+0900').format('HH:mm:ss');
@@ -66,8 +67,8 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			.map((x:{short_names:string[]})=>{return x.short_names;}).flat();
 	});
 
-	const tsgTeamLoader = new Loader<any>(async () => {
-		const {team}: any = await slack.team.info();
+	const tsgTeamLoader = new Loader<TeamInfoResponse['team']>(async () => {
+		const {team} = await slack.team.info();
 		return team;
 	});
 
