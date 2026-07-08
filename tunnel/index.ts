@@ -35,7 +35,7 @@ const getEmojiImageUrl = async (name: string, team: string): Promise<string> => 
 export const server = ({webClient: tsgSlack, eventClient}: SlackInterface) => {
 	const callback: FastifyPluginAsync = async (fastify, _opts) => {
 		const db = await open({
-			filename: path.join(__dirname, '..', 'tokens.sqlite3'),
+			filename: path.join(process.cwd(), 'tokens.sqlite3'),
 			driver: sqlite3.Database,
 		});
 		const kmcToken = await db.get(sql`SELECT * FROM tokens WHERE team_id = ${process.env.KMC_TEAM_ID}`).catch((): null => null);

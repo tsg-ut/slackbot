@@ -6,7 +6,7 @@ RUN apt-get update -y && \
     # https://github.com/Automattic/node-canvas/wiki/Installation%3A-Ubuntu-and-other-Debian-based-systems
     apt-get install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev -y && \
     # Install other dependencies
-    apt-get install git curl bash gnupg -y && \
+    apt-get install git curl bash gnupg unzip -y && \
     # Setup asdf
     git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.15.0 && \
     echo ". $HOME/.asdf/asdf.sh" >> ~/.bashrc && \

@@ -11,7 +11,7 @@ const log = logger.child({bot: 'oauth'});
 
 export const server = ({webClient: slack}: SlackInterface) => async (fastify: FastifyInstance) => {
 	const db = await sqlite.open({
-		filename: path.join(__dirname, '..', 'tokens.sqlite3'),
+		filename: path.join(process.cwd(), 'tokens.sqlite3'),
 		driver: sqlite3.Database,
 	});
 	await db.run(`

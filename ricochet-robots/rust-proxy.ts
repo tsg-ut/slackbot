@@ -12,7 +12,7 @@ interface BoardSpec {
 
 export const get_data = async (boardspec: BoardSpec) => {
 	const generator = child_process.spawn(
-											path.join(__dirname,'../target/release/ricochet_robot_problem_generator'), 
+											path.join(process.cwd(),'target/release/ricochet_robot_problem_generator'),
 											[`${boardspec.depth}`,`${boardspec.size.h}`,`${boardspec.size.w}`,`${boardspec.numOfWalls}`]);
 	const output = await new Promise((resolve) => {
 		const stream = concatstream({ encoding: 'buffer' }, (data) => {
