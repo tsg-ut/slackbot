@@ -5,12 +5,15 @@ import {inspect} from 'util';
 import {VoiceConnection, AudioPlayer, PlayerSubscription, createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discordjs/voice';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-import Discord from 'discord.js';
-import {minBy, countBy, chunk} from 'lodash';
-import logger from '../lib/logger';
-import State from '../lib/state';
-import {Loader, Deferred} from '../lib/utils';
-import {getSpeech, Voice, speechConfig, Emotion, VoiceMeta, getDefaultVoiceMeta} from './speeches';
+import type {Message} from 'discord.js';
+import {minBy, countBy, chunk} from 'lodash-es';
+import logger from '../lib/logger.js';
+import State from '../lib/state.js';
+import {Loader, Deferred} from '../lib/utils.js';
+import {getSpeech, Voice, speechConfig, Emotion, VoiceMeta, getDefaultVoiceMeta} from './speeches/index.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const log = logger.child({bot: 'discord'});
 const mutex = new Mutex();
@@ -169,7 +172,7 @@ export default class TTS extends EventEmitter {
 		});
 	}
 
-	async onMessage(message: Discord.Message) {
+	async onMessage(message: Message) {
 		if (message.member.user.bot) {
 			return;
 		}

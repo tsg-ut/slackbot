@@ -1,10 +1,10 @@
-import type {MockedStateInterface} from '../lib/__mocks__/state';
-import Slack from '../lib/slackMock';
-import State from '../lib/state';
-import {TwentyQuestions, type StateObj} from './TwentyQuestions';
-import openai from '../lib/openai';
-import {getCandidateWords} from '../lib/candidateWords';
-import {increment} from '../achievements';
+import type {MockedStateInterface} from '../lib/__mocks__/state.js';
+import Slack from '../lib/slackMock.js';
+import State from '../lib/state.js';
+import {TwentyQuestions, type StateObj} from './TwentyQuestions.js';
+import openai from '../lib/openai.js';
+import {getCandidateWords} from '../lib/candidateWords.js';
+import {increment} from '../achievements/index.js';
 import {BlockAction, BlockElementAction} from '@slack/bolt';
 
 vi.mock('axios');

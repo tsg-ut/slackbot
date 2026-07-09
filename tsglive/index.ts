@@ -1,8 +1,8 @@
 import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
-import {liveDb as db} from '../lib/firestore';
-import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
-import {getMemberName} from '../lib/slackUtils';
+import {liveDb as db} from '../lib/firestore.js';
+import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack.js';
+import {getMemberName} from '../lib/slackUtils.js';
 
 export const server = ({webClient: slack}: SlackInterface) => {
 	const callback: FastifyPluginAsync = async (fastify, _opts) => {

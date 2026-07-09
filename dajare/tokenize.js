@@ -1,14 +1,19 @@
-const fs = require('fs');
-const iconv = require('iconv-lite');
-const {toZenKana} = require('jaconv');
-const {katakanize, romanizationTable, defaultRomanizationConfig} = require('japanese');
-const toJapanese = require('jp-num/toJapanese');
-const {tokenize} = require('kuromojin');
-const {escapeRegExp} = require('lodash');
-const path = require('path');
-const {promisify} = require('util');
+import fs from 'fs';
+import iconv from 'iconv-lite';
+import jaconv from 'jaconv';
+const {toZenKana} = jaconv;
+import japaneseModule from 'japanese';
+const {katakanize, romanizationTable, defaultRomanizationConfig} = japaneseModule;
+import toJapanese from 'jp-num/toJapanese.js';
+import {tokenize} from 'kuromojin';
+import {escapeRegExp} from 'lodash-es';
+import path from 'path';
+import {fileURLToPath} from 'url';
+import {promisify} from 'util';
 
-const getReading = require('../lib/getReading');
+import getReading from '../lib/getReading.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const loadingPromise = (async () => {
 	// ensure the dictionary file is downloaded (は？)
@@ -89,7 +94,7 @@ const loadingPromise = (async () => {
 	return {preprocessText};
 })();
 
-module.exports = async (text) => {
+export default async (text) => {
 	const {preprocessText} = await loadingPromise;
 	const pText = preprocessText(text);
 	return tokenize(pText);

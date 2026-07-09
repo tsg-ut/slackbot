@@ -1,8 +1,8 @@
 import qs from 'querystring';
 import axios, {AxiosResponse} from 'axios';
 import scrapeIt from 'scrape-it';
-import logger from '../../lib/logger';
-import {Challenge, SolvedInfo, Profile} from './BasicTypes';
+import logger from '../../lib/logger.js';
+import {Challenge, SolvedInfo, Profile} from './BasicTypes.js';
 
 const log = logger.child({bot: 'pwnyaa'});
 

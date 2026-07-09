@@ -1,6 +1,6 @@
 import {View} from '@slack/web-api';
 import {stripIndent} from 'common-tags';
-import type {Game} from '../index';
+import type {Game} from '../index.js';
 
 export default (games: Game[]) => ({
 	type: 'modal',

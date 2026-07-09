@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import axios from 'axios';
-import {db} from '../lib/firestore';
-import type {GameComment, GameRecord, GameRecordMeaning} from '../tahoiya/types';
+import {db} from '../lib/firestore.js';
+import type {GameComment, GameRecord, GameRecordMeaning} from '../tahoiya/types.js';
 
 const GIST_IDS = [
 	'37085656670aec5093cc83360c189e7e', // 第1〜100回

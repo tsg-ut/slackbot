@@ -1,15 +1,19 @@
-const {promises: fs} = require('fs');
-const path = require('path');
-const {Mutex} = require('async-mutex');
-const levenshtein = require('fast-levenshtein');
-const {hiraganize} = require('japanese');
-const {tokenize} = require('kuromojin');
-const {escapeRegExp, sample, sampleSize, chunk, uniq, sortBy, shuffle} = require('lodash');
-const scrapeIt = require('scrape-it');
-const {unlock, increment} = require('../achievements');
-const {Deferred} = require('../lib/utils');
-const {getSongInfo, getMovieInfo} = require('../lyrics/index');
-const {loadSheet} = require('./index.js');
+import {promises as fs} from 'fs';
+import path from 'path';
+import {fileURLToPath} from 'url';
+import {Mutex} from 'async-mutex';
+import levenshtein from 'fast-levenshtein';
+import japaneseModule from 'japanese';
+const {hiraganize} = japaneseModule;
+import {tokenize} from 'kuromojin';
+import {escapeRegExp, sample, sampleSize, chunk, uniq, sortBy, shuffle} from 'lodash-es';
+import scrapeIt from 'scrape-it';
+import {unlock, increment} from '../achievements/index.js';
+import {Deferred} from '../lib/utils.js';
+import {getSongInfo, getMovieInfo} from '../lyrics/index.js';
+import {loadSheet} from './index.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const freqDeferred = new Deferred();
 const mutex = new Mutex();
@@ -134,7 +138,7 @@ const getHint = async (songInfos, n) => {
 	return '';
 };
 
-module.exports = ({eventClient, webClient: slack}) => {
+export default ({eventClient, webClient: slack}) => {
 	const state = {
 		answer: null,
 		previousTick: 0,

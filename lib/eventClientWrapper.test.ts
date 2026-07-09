@@ -1,6 +1,6 @@
 import {EventEmitter} from 'events';
-import {EventClientWrapper} from './eventClientWrapper';
-import {getDuplicateEventChecker, DuplicateEventChecker} from './eventDeduplication';
+import {EventClientWrapper} from './eventClientWrapper.js';
+import {getDuplicateEventChecker, DuplicateEventChecker} from './eventDeduplication.js';
 import {createEventAdapter, type SlackEventAdapter} from '@slack/events-api';
 import {setImmediate} from 'timers/promises';
 

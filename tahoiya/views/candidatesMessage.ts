@@ -1,6 +1,6 @@
 import type {KnownBlock} from '@slack/web-api';
-import {chunk} from 'lodash';
-import type {WordEntry} from '../../lib/candidateWords';
+import {chunk} from 'lodash-es';
+import type {WordEntry} from '../../lib/candidateWords.js';
 
 export default (candidates: WordEntry[]): KnownBlock[] => {
 	const buttons = candidates.map((word): {type: 'button'; text: {type: 'plain_text'; text: string; emoji: boolean}; action_id: string; value: string} => ({

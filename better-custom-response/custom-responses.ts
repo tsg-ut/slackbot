@@ -1,9 +1,9 @@
 import { stripIndent } from 'common-tags';
-// @ts-expect-error
-import { romanize, katakanize } from 'japanese';
-import { shuffle } from 'lodash';
+import japaneseModule from 'japanese';
+const {romanize, katakanize} = japaneseModule;
+import { shuffle } from 'lodash-es';
 import { tokenize } from 'kuromojin';
-import omikuji from './omikuji.json';
+import omikuji from './omikuji.json' with {type: 'json'};
 import moment from 'moment-timezone';
 
 interface Achievement {

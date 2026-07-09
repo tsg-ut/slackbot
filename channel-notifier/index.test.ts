@@ -1,11 +1,9 @@
-/* eslint-env node, jest */
-
 vi.mock('axios');
 
-const {default: Slack} = require('../lib/slackMock.ts');
-const channelNotifier = require('./index.js');
+import Slack from '../lib/slackMock.js';
+import channelNotifier from './index.js';
 
-let slack = null;
+let slack: any = null;
 
 beforeEach(() => {
 	slack = new Slack();
@@ -14,8 +12,8 @@ beforeEach(() => {
 });
 
 describe('channel-notifier', () => {
-	it('responds to channel creation', () => new Promise((resolve) => {
-		slack.on('chat.postMessage', ({channel, text, username}) => {
+	it('responds to channel creation', () => new Promise<void>((resolve) => {
+		slack.on('chat.postMessage', ({channel, text, username}: any) => {
 			expect(channel).toBe(slack.fakeChannel);
 			expect(username).toBe('channel-notifier');
 			expect(text).toContain('U024BE7LH');
@@ -35,8 +33,8 @@ describe('channel-notifier', () => {
 		});
 	}));
 
-	it('responds to channel unarchive', () => new Promise((resolve) => {
-		slack.on('chat.postMessage', ({channel, text, username}) => {
+	it('responds to channel unarchive', () => new Promise<void>((resolve) => {
+		slack.on('chat.postMessage', ({channel, text, username}: any) => {
 			expect(channel).toBe(slack.fakeChannel);
 			expect(username).toBe('channel-notifier');
 			expect(text).toContain('U024BE7LH');

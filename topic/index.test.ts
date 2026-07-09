@@ -2,11 +2,11 @@
 /* eslint-disable node/callback-return */
 
 import type {firestore} from 'firebase-admin';
-import db from '../lib/firestore';
-import Slack from '../lib/slackMock';
-import {conversationsHistory} from '../lib/slackPatron';
-import {getReactions} from '../lib/slackUtils';
-import topicHandler, {addLike, removeLike} from './index';
+import db from '../lib/firestore.js';
+import Slack from '../lib/slackMock.js';
+import {conversationsHistory} from '../lib/slackPatron.js';
+import {getReactions} from '../lib/slackUtils.js';
+import topicHandler, {addLike, removeLike} from './index.js';
 
 vi.mock('../achievements');
 vi.mock('../lib/state');

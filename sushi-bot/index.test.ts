@@ -1,6 +1,6 @@
 import moment from 'moment';
 import sushi from './index.js';
-import Slack from '../lib/slackMock';
+import Slack from '../lib/slackMock.js';
 
 vi.mock('../achievements');
 vi.mock('moment');

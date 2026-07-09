@@ -1,6 +1,10 @@
-const fs = require('fs');
-const path = require('path');
-const {hiraganize} = require('japanese');
+import fs from 'fs';
+import path from 'path';
+import {fileURLToPath} from 'url';
+import japaneseModule from 'japanese';
+const {hiraganize} = japaneseModule;
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const data = fs.readFileSync(path.join(__dirname, '../wordhero/dict/kojien.txt'));
 const lines = data.toString().split('\r\n');

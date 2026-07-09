@@ -1,9 +1,9 @@
-import type {SlackInterface} from './slack';
-import {extractMessage, isGenericMessage} from './slackUtils';
+import type {SlackInterface} from './slack.js';
+import {extractMessage, isGenericMessage} from './slackUtils.js';
 import type {ChatPostMessageArguments, GenericMessageEvent, WebClient} from '@slack/web-api';
 import type {MessageEvent} from '@slack/bolt';
-import logger from './logger';
-import {Deferred} from './utils';
+import logger from './logger.js';
+import {Deferred} from './utils.js';
 
 export abstract class ChannelLimitedBot {
 	protected readonly slack: WebClient;

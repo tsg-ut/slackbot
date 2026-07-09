@@ -8,6 +8,8 @@ class Model {
 	}
 }
 
-module.exports.loadModel = vi.fn((params, done) => {
+export const loadModel = vi.fn((params, done) => {
 	done(null, new Model());
 });
+
+export default {loadModel};

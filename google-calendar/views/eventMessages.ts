@@ -1,6 +1,6 @@
 import type {KnownBlock, SectionBlock} from '@slack/bolt';
-import dayjs from '../../lib/dayjs';
-import type {CalendarEvent} from '../types';
+import dayjs from '../../lib/dayjs.js';
+import type {CalendarEvent} from '../types.js';
 
 const MAX_DESCRIPTION_LENGTH = 200;
 const MAX_SUBTITLE_LENGTH = 150;

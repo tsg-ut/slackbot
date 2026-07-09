@@ -1,6 +1,6 @@
 import {stripIndent} from 'common-tags';
 import * as zlib from 'zlib';
-import type {SlackInterface} from '../lib/slack';
+import type {SlackInterface} from '../lib/slack.js';
 
 export default ({eventClient, webClient: slack}: SlackInterface) => {
 	eventClient.on('message', async (message) => {

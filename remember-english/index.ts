@@ -4,12 +4,12 @@ import type {KnownBlock, ImageBlock, WebClient, ViewsOpenArguments} from '@slack
 import {Mutex} from 'async-mutex';
 import type {Model} from 'ebisu-js';
 import ebisu from 'ebisu-js';
-import {sortBy, get, clamp} from 'lodash';
+import {sortBy, get, clamp} from 'lodash-es';
 import schedule from 'node-schedule';
-import {increment} from '../achievements';
-import type {SlackInterface} from '../lib/slack';
-import {getMemberIcon, getMemberName, mrkdwn, plainText} from '../lib/slackUtils';
-import State from '../lib/state';
+import {increment} from '../achievements/index.js';
+import type {SlackInterface} from '../lib/slack.js';
+import {getMemberIcon, getMemberName, mrkdwn, plainText} from '../lib/slackUtils.js';
+import State from '../lib/state.js';
 
 interface Word {
 	ja: string,

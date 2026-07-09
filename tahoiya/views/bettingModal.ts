@@ -1,5 +1,5 @@
 import type {View} from '@slack/web-api';
-import type {GameComment, ShuffledMeaning} from '../types';
+import type {GameComment, ShuffledMeaning} from '../types.js';
 
 export default (shuffledMeanings: ShuffledMeaning[], gameType: 'normal' | 'daily', userId: string, userComments: GameComment[] = []): View => {
 	const votableMeanings = shuffledMeanings

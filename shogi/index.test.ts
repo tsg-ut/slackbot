@@ -1,6 +1,6 @@
 import sqlite from 'sqlite';
 import {expect, it, beforeEach, describe, vi} from 'vitest';
-import Slack from '../lib/slackMock';
+import Slack from '../lib/slackMock.js';
 import shogi from './index.js';
 
 vi.mock('./image.js', () => ({

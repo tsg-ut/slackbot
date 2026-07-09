@@ -1,6 +1,6 @@
 import type {SlackEventAdapter} from '@slack/events-api';
-import {getDuplicateEventChecker} from './eventDeduplication';
-import logger from './logger';
+import {getDuplicateEventChecker} from './eventDeduplication.js';
+import logger from './logger.js';
 import {EventEmitter} from 'events';
 
 const log = logger.child({ bot: 'EventClientWrapper' });

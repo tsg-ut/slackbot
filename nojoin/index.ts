@@ -1,7 +1,7 @@
 import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
-import State from '../lib/state';
-import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
+import State from '../lib/state.js';
+import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack.js';
 
 interface StateObj {
 	optoutUsers: string[],

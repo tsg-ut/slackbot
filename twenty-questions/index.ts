@@ -1,6 +1,6 @@
-import type {SlackInterface} from '../lib/slack';
-import {extractMessage} from '../lib/slackUtils';
-import {TwentyQuestions} from './TwentyQuestions';
+import type {SlackInterface} from '../lib/slack.js';
+import {extractMessage} from '../lib/slackUtils.js';
+import {TwentyQuestions} from './TwentyQuestions.js';
 import type {MessageEvent} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 

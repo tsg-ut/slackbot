@@ -2,7 +2,10 @@ import * as opentype from 'opentype.js';
 import download from 'download';
 import path from 'path';
 import fs from 'fs';
-import * as _ from 'lodash';
+import * as _ from 'lodash-es';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const fontURLs = new Map<string, string>([
   ['Noto Serif JP Thin', 'https://github.com/googlefonts/noto-cjk/raw/main/Serif/OTF/Japanese/NotoSerifCJKjp-Thin.otf'],

@@ -1,10 +1,10 @@
-import customResponses from './custom-responses';
-import type {Context} from './custom-responses';
-import {sample, shuffle} from 'lodash';
-import type {SlackInterface} from '../lib/slack';
-import {unlock} from '../achievements';
-import {ReadOnlyState} from "../lib/readOnlyState";
-import unicodeScripts from "../lib/unicode-scripts";
+import customResponses from './custom-responses.js';
+import type {Context} from './custom-responses.js';
+import {sample, shuffle} from 'lodash-es';
+import type {SlackInterface} from '../lib/slack.js';
+import {unlock} from '../achievements/index.js';
+import {ReadOnlyState} from "../lib/readOnlyState.js";
+import unicodeScripts from "../lib/unicode-scripts.js";
 
 interface TextResponse {
     readonly input: ReadonlyArray<string>,

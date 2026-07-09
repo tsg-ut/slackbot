@@ -1,4 +1,4 @@
-import customResponses from "./custom-responses";
+import customResponses from "./custom-responses.js";
 
 describe('better-custom-response', () => {
     it('either one of array and function', async () => {

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import Slack from '../lib/slackMock';
+import Slack from '../lib/slackMock.js';
 import checkin from './index.js';
 
 vi.mock('axios');

@@ -1,14 +1,12 @@
-/* eslint-env node, jest */
-
 vi.mock('axios');
 vi.mock('./tokenize.js');
 vi.mock('../achievements');
 
-const dajare = require('./index.js');
-const {default: Slack} = require('../lib/slackMock.ts');
-const tokenize = require('./tokenize.js');
+import dajare from './index.js';
+import Slack from '../lib/slackMock.js';
+import tokenize from './tokenize.js';
 
-tokenize.virtualTokens = {
+(tokenize as any).virtualTokens = {
 	アルミ缶の上にあるミカン: [
 		{
 			word_id: 2396740,
@@ -118,7 +116,7 @@ tokenize.virtualTokens = {
 	],
 };
 
-let slack = null;
+let slack: any = null;
 
 beforeEach(async () => {
 	slack = new Slack();
@@ -127,8 +125,8 @@ beforeEach(async () => {
 });
 
 describe('dajare', () => {
-	it('reacts to dajare', () => new Promise((resolve) => {
-		slack.on('reactions.add', ({name, channel, timestamp}) => {
+	it('reacts to dajare', () => new Promise<void>((resolve) => {
+		slack.on('reactions.add', ({name, channel, timestamp}: any) => {
 			expect(name).toContain('zabuton');
 			expect(channel).toBe(slack.fakeChannel);
 			expect(timestamp).toBe(slack.fakeTimestamp);

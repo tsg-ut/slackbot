@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
-import {countBy} from 'lodash';
-import achievements from './achievements';
+import {countBy} from 'lodash-es';
+import achievements from './achievements.js';
 
 describe('achievements', () => {
 	it('all ids are unique', () => {

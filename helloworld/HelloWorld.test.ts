@@ -1,9 +1,9 @@
 /* eslint-disable import/imports-first, import/first */
 
-import type {MockedStateInterface} from '../lib/__mocks__/state';
-import Slack from '../lib/slackMock';
-import State from '../lib/state';
-import {HelloWorld, type StateObj} from './HelloWorld';
+import type {MockedStateInterface} from '../lib/__mocks__/state.js';
+import Slack from '../lib/slackMock.js';
+import State from '../lib/state.js';
+import {HelloWorld, type StateObj} from './HelloWorld.js';
 
 const randomUUID = vi.hoisted(() => vi.fn(() => 'test-uuid'));
 

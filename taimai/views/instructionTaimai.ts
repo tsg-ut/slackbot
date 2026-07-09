@@ -1,7 +1,7 @@
 import { stripIndent } from 'common-tags';
-import { TaimaiGame } from '..';
-import config from '../config';
-import { formatOutlineDynamic } from '../util';
+import { TaimaiGame } from '../index.js';
+import config from '../config.js';
+import { formatOutlineDynamic } from '../util.js';
 
 export default (games: TaimaiGame[]) => ({
 	text: "タイマイの遊び方",

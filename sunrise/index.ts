@@ -5,24 +5,30 @@ import type {ViewStateValue, ViewSubmitAction, BlockButtonAction, MessageEvent} 
 import cloudinary from 'cloudinary';
 import type {UploadApiResponse} from 'cloudinary';
 import {stripIndent} from 'common-tags';
-import {maxBy, range, map} from 'lodash';
+import {maxBy, range, map} from 'lodash-es';
 import moment from 'moment';
 import nodePersist from 'node-persist';
-import Queue from 'p-queue';
+import QueueModule from 'p-queue';
+// p-queue の compiled JS は exports.default = X 形式でネストしたdefaultを持つため明示的にunwrapする
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Queue: any = (QueueModule as any).default ?? QueueModule;
 import suncalc from 'suncalc';
-import logger from '../lib/logger';
-import type {SlackInterface} from '../lib/slack';
-import {extractMessage} from '../lib/slackUtils';
-import State from '../lib/state';
-import {getWeather, getHaiku, getEntries} from './fetch';
-import {postRainMinuteCast, postTemperatureReport, postWeatherCast} from './forecast';
-import render from './render';
-import {getGoogleMapsLink} from './util';
-import footer from './views/footer';
-import listPointsDialog from './views/listPointsDialog';
-import registerPointDialog from './views/registerPointDialog';
-import weathers from './weathers';
-import type {WeatherCondition} from './weathers';
+import logger from '../lib/logger.js';
+import type {SlackInterface} from '../lib/slack.js';
+import {extractMessage} from '../lib/slackUtils.js';
+import State from '../lib/state.js';
+import {getWeather, getHaiku, getEntries} from './fetch.js';
+import {postRainMinuteCast, postTemperatureReport, postWeatherCast} from './forecast.js';
+import render from './render.js';
+import {getGoogleMapsLink} from './util.js';
+import footer from './views/footer.js';
+import listPointsDialog from './views/listPointsDialog.js';
+import registerPointDialog from './views/registerPointDialog.js';
+import weathers from './weathers.js';
+import type {WeatherCondition} from './weathers.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const log = logger.child({bot: 'sunrise'});
 

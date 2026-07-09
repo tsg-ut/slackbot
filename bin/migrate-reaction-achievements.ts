@@ -3,8 +3,8 @@
 
 import 'dotenv/config';
 
-import {increment, set} from '../achievements';
-import {db} from '../lib/firestore';
+import {increment, set} from '../achievements/index.js';
+import {db} from '../lib/firestore.js';
 import type {CollectionReference} from 'firebase-admin/firestore';
 import type {DocumentData} from 'firebase-admin/firestore';
 

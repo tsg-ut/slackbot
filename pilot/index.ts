@@ -1,15 +1,12 @@
-/* eslint-disable import/no-named-as-default-member */
-
 import {KnownBlock} from '@slack/web-api';
 import axios from 'axios';
 import Mustache from 'mustache';
 import yaml from 'yaml';
-import {string} from 'yargs';
 import {z} from 'zod';
-import logger from '../lib/logger';
-import type {SlackInterface} from '../lib/slack';
-import State from '../lib/state';
-import {Loader} from '../lib/utils';
+import logger from '../lib/logger.js';
+import type {SlackInterface} from '../lib/slack.js';
+import State from '../lib/state.js';
+import {Loader} from '../lib/utils.js';
 
 const log = logger.child({bot: 'pilot'});
 

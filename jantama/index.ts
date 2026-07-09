@@ -2,15 +2,15 @@ import {stripIndent} from 'common-tags';
 import type {FastifyPluginCallback} from 'fastify';
 import plugin from 'fastify-plugin';
 import {google} from 'googleapis';
-import {zip} from 'lodash';
+import {zip} from 'lodash-es';
 // eslint-disable-next-line import/no-namespace
 import type * as Trueskill from 'ts-trueskill';
-import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
-import {getMemberName} from '../lib/slackUtils';
-import State from '../lib/state';
-import {Loader} from '../lib/utils';
-import type {Player} from './util';
-import {extractMajsoulId, getMajsoulResult} from './util';
+import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack.js';
+import {getMemberName} from '../lib/slackUtils.js';
+import State from '../lib/state.js';
+import {Loader} from '../lib/utils.js';
+import type {Player} from './util.js';
+import {extractMajsoulId, getMajsoulResult} from './util.js';
 
 const trueskillLoader = new Loader<typeof Trueskill>(() => import('ts-trueskill'));
 

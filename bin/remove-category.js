@@ -1,7 +1,7 @@
 // remove achievements by category
 // node remove-category.js [category]
 
-const db = require('../lib/firestore.ts').default;
+import db from '../lib/firestore.ts';
 
 if (process.argv.length !== 3) {
 	throw new Error('Usage: node remove-category.js [category]');

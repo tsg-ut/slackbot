@@ -1,12 +1,15 @@
 import {promises as fs} from 'fs';
 import path from 'path';
 import plugin from 'fastify-plugin';
-import _ from 'lodash';
-import logger from '../lib/logger';
+import * as _ from 'lodash-es';
+import logger from '../lib/logger.js';
 /* eslint-disable no-unused-vars */
-import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
-import {getMemberName, getMemberIcon} from '../lib/slackUtils';
-import {Loader} from '../lib/utils';
+import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack.js';
+import {getMemberName, getMemberIcon} from '../lib/slackUtils.js';
+import {Loader} from '../lib/utils.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const log = logger.child({bot: 'emoxpand'});
 

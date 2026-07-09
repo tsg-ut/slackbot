@@ -1,8 +1,8 @@
 import axios from 'axios';
 import scrapeIt from 'scrape-it';
 import { decode as decodeHtmlEntities } from 'html-entities';
-import type { SlackInterface } from '../lib/slack';
-import { escapeRegExp, sample } from 'lodash';
+import type { SlackInterface } from '../lib/slack.js';
+import { escapeRegExp, sample } from 'lodash-es';
 import qs from 'querystring';
 
 interface SongInfo {

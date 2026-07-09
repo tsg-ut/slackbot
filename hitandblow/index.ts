@@ -1,12 +1,12 @@
 import type { GenericMessageEvent } from '@slack/web-api';
 import type { MessageEvent } from '@slack/bolt';
-import { range, shuffle, round } from 'lodash';
+import { range, shuffle, round } from 'lodash-es';
 import { stripIndent } from 'common-tags';
-import { unlock } from '../achievements';
-import { extractMessage } from '../lib/slackUtils';
-import { ChannelLimitedBot } from '../lib/channelLimitedBot';
-import { Deferred } from '../lib/utils';
-import type { SlackInterface } from '../lib/slack';
+import { unlock } from '../achievements/index.js';
+import { extractMessage } from '../lib/slackUtils.js';
+import { ChannelLimitedBot } from '../lib/channelLimitedBot.js';
+import { Deferred } from '../lib/utils.js';
+import type { SlackInterface } from '../lib/slack.js';
 import assert from 'assert';
 
 interface HitAndBlowHistory {

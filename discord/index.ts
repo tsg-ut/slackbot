@@ -1,14 +1,15 @@
 import {joinVoiceChannel} from '@discordjs/voice';
 import type {DiscordGatewayAdapterCreator} from '@discordjs/voice';
-import Discord, {TextChannel, VoiceChannel} from 'discord.js';
-import discord from '../lib/discord';
-import logger from '../lib/logger';
-import type {SlackInterface} from '../lib/slack';
-import {getMemberIcon, getMemberName} from '../lib/slackUtils';
-import State from '../lib/state';
-import Hayaoshi from './hayaoshi';
-import {Notifier} from './notifier';
-import TTS from './tts';
+import {TextChannel, VoiceChannel} from 'discord.js';
+import type {Message} from 'discord.js';
+import discord from '../lib/discord.js';
+import logger from '../lib/logger.js';
+import type {SlackInterface} from '../lib/slack.js';
+import {getMemberIcon, getMemberName} from '../lib/slackUtils.js';
+import State from '../lib/state.js';
+import Hayaoshi from './hayaoshi.js';
+import {Notifier} from './notifier.js';
+import TTS from './tts.js';
 
 const log = logger.child({bot: 'discord'});
 
@@ -66,7 +67,7 @@ export default async ({webClient: slack, eventClient}: SlackInterface) => {
 	};
 
 	attachDiscordHandlers(hayaoshi, tts);
-	discord.on('messageCreate', async (message: Discord.Message) => {
+	discord.on('messageCreate', async (message: Message) => {
 		if (message.content === 'tsgbot reload') {
 			log.info('reloading hayaoshi and tts');
 			tts.destroy();

@@ -5,14 +5,17 @@ import {Mutex} from 'async-mutex';
 import yaml from 'js-yaml';
 // eslint-disable-next-line import/no-named-as-default
 import OpenAI from 'openai';
-import {increment} from '../achievements';
-import dayjs from '../lib/dayjs';
-import logger from '../lib/logger';
-import openai from '../lib/openai';
-import type {SlackInterface} from '../lib/slack';
-import {conversationsReplies} from '../lib/slackPatron';
-import State from '../lib/state';
-import {Loader} from '../lib/utils';
+import {increment} from '../achievements/index.js';
+import dayjs from '../lib/dayjs.js';
+import logger from '../lib/logger.js';
+import openai from '../lib/openai.js';
+import type {SlackInterface} from '../lib/slack.js';
+import {conversationsReplies} from '../lib/slackPatron.js';
+import State from '../lib/state.js';
+import {Loader} from '../lib/utils.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const mutex = new Mutex();
 const log = logger.child({bot: 'oneiromancy'});

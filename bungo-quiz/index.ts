@@ -1,14 +1,14 @@
 import { Mutex } from 'async-mutex';
 import axios from 'axios';
 import { load as cheerioLoad } from 'cheerio';
-import { sample, random } from 'lodash';
-import type { SlackInterface } from '../lib/slack';
+import { sample, random } from 'lodash-es';
+import type { SlackInterface } from '../lib/slack.js';
 import type { GenericMessageEvent } from '@slack/web-api';
-import { AteQuizProblem, AteQuiz, typicalMessageTextsGenerator } from '../atequiz';
-import { isCorrectAnswer } from '../hayaoshi';
-import { unlock, increment } from '../achievements';
-import { ChannelLimitedBot } from '../lib/channelLimitedBot';
-import { Deferred } from '../lib/utils';
+import { AteQuizProblem, AteQuiz, typicalMessageTextsGenerator } from '../atequiz/index.js';
+import { isCorrectAnswer } from '../hayaoshi/index.js';
+import { unlock, increment } from '../achievements/index.js';
+import { ChannelLimitedBot } from '../lib/channelLimitedBot.js';
+import { Deferred } from '../lib/utils.js';
 
 const mutex = new Mutex();
 const decoder = new TextDecoder('shift-jis');

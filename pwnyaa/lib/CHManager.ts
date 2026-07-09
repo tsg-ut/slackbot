@@ -3,7 +3,7 @@
 import qs from 'querystring';
 import axios, {AxiosResponse} from 'axios';
 import scrapeIt from 'scrape-it';
-import {Challenge, SolvedInfo, Profile} from './BasicTypes';
+import {Challenge, SolvedInfo, Profile} from './BasicTypes.js';
 
 const getAxiosClientCH = () => {
 	const clientCH = axios.create({

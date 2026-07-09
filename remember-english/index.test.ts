@@ -1,6 +1,6 @@
 import type {KnownBlock, WebAPICallResult, ViewsOpenArguments} from '@slack/web-api';
-import Slack from '../lib/slackMock';
-import {RememberEnglish} from '.';
+import Slack from '../lib/slackMock.js';
+import {RememberEnglish} from './index.js';
 
 vi.mock('../achievements');
 vi.mock('../lib/slackUtils');

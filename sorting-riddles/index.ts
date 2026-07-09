@@ -1,12 +1,12 @@
 import type { WebAPICallResult } from '@slack/web-api';
-import type { SlackInterface } from '../lib/slack';
+import type { SlackInterface } from '../lib/slack.js';
 import axios from 'axios';
 import { stripIndent } from 'common-tags';
-import sample from 'lodash/sample';
-import { getPageTitle, getWordUrl } from '../tahoiya/utils';
-import type { DictionarySource } from '../tahoiya/types';
-import { getCandidateWords } from '../lib/candidateWords';
-import { unlock, increment } from '../achievements';
+import {sample} from 'lodash-es';
+import { getPageTitle, getWordUrl } from '../tahoiya/utils.js';
+import type { DictionarySource } from '../tahoiya/types.js';
+import { getCandidateWords } from '../lib/candidateWords.js';
+import { unlock, increment } from '../achievements/index.js';
 
 interface ChatPostMessageResult extends WebAPICallResult {
 	channel: string;

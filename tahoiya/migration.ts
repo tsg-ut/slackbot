@@ -9,9 +9,12 @@ import {promisify} from 'util';
 import * as firebase from 'firebase-admin';
 import {open} from 'sqlite';
 import sqlite3 from 'sqlite3';
-import {db} from '../lib/firestore';
-import type {StoredTheme} from './types';
-import {SOURCE_LABELS} from './utils';
+import {db} from '../lib/firestore.js';
+import type {StoredTheme} from './types.js';
+import {SOURCE_LABELS} from './utils.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const readFile = promisify(fs.readFile);
 

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import pocky from './index.js';
-import Slack from '../lib/slackMock';
+import Slack from '../lib/slackMock.js';
 
 vi.mock('axios');
 vi.mock('../achievements');

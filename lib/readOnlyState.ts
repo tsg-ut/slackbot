@@ -1,5 +1,5 @@
-import db from './firestore';
-import State, {StateInterface, StateDevelopment} from './state';
+import db from './firestore.js';
+import State, {StateInterface, StateDevelopment} from './state.js';
 
 export interface ReadOnlyStateInterface extends StateInterface {
 	init<StateObj>(name: string, defaultValues: StateObj): Promise<Readonly<StateObj>>;

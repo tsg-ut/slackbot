@@ -3,9 +3,16 @@ import concatStream from 'concat-stream';
 // @ts-expect-error: untyped
 import Docker from 'dockerode';
 import download from 'download';
-import {hiraganize} from 'japanese';
-import Queue from 'p-queue';
-import logger from '../lib/logger';
+import japaneseModule from 'japanese';
+const {hiraganize} = japaneseModule;
+import QueueModule from 'p-queue';
+// p-queue の compiled JS は exports.default = X 形式でネストしたdefaultを持つため明示的にunwrapする
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Queue: any = (QueueModule as any).default ?? QueueModule;
+import logger from '../lib/logger.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const docker = new Docker();
 const queue = new Queue({concurrency: 1});

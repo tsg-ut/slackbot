@@ -1,7 +1,8 @@
-import gameLogModal from './gameLogModal';
-import type {FinishedGame} from '../TwentyQuestions';
+import gameLogModal from './gameLogModal.js';
+import type {FinishedGame} from '../TwentyQuestions.js';
 import type {KnownBlock} from '@slack/web-api';
-import {firestore} from 'firebase-admin';
+import firebaseAdmin from 'firebase-admin';
+const {firestore} = firebaseAdmin;
 
 const expectEquals: <S, T extends S>(actual: S, expected: T) => asserts actual is T = <S, T extends S>(actual: S, expected: T) => {
 	expect(actual).toBe(expected);

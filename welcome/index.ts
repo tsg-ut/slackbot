@@ -1,5 +1,5 @@
 import axios from 'axios';
-import logger from '../lib/logger';
+import logger from '../lib/logger.js';
 
 const log = logger.child({bot: 'welcome'});
 
@@ -8,9 +8,9 @@ const log = logger.child({bot: 'welcome'});
 const welcomeScrapboxUrl = `https://scrapbox.io/api/code/tsg/welcome/message`;
 
 import { WebClient } from '@slack/web-api';
-import type { Member } from '@slack/web-api/dist/types/response/UsersListResponse';
+import type { Member } from '@slack/web-api/dist/types/response/UsersListResponse.js';
 
-import type { SlackInterface } from '../lib/slack';
+import type { SlackInterface } from '../lib/slack.js';
 
 async function extractWelcomeMessage(): Promise<string> {
 	const { data } = await axios.get<any>(

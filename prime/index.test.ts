@@ -1,4 +1,4 @@
-import Slack from '../lib/slackMock';
+import Slack from '../lib/slackMock.js';
 import prime from './index.js';
 
 vi.mock('../achievements');

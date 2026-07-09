@@ -3,15 +3,19 @@ import * as emoji from 'node-emoji';
 import download from 'download';
 import {promises as fs, constants} from 'fs';
 import path from 'path';
-import {sample, get} from 'lodash';
-import {hiraganize} from 'japanese';
+import {sample, get} from 'lodash-es';
+import japaneseModule from 'japanese';
+const {hiraganize} = japaneseModule;
 import {stripIndents} from 'common-tags';
 import {unlock, increment} from '../achievements/index.js';
-import logger from '../lib/logger';
-import {getMemberName} from '../lib/slackUtils';
-import State from '../lib/state';
-import type {SlackInterface} from '../lib/slack';
+import logger from '../lib/logger.js';
+import {getMemberName} from '../lib/slackUtils.js';
+import State from '../lib/state.js';
+import type {SlackInterface} from '../lib/slack.js';
 import type {GenericMessageEvent} from '@slack/bolt';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const log = logger.child({bot: 'pocky'});
 

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import {fileURLToPath} from 'url';
 import assert from 'assert';
 import {promisify} from 'util';
 import querystring from 'querystring';
@@ -7,12 +8,14 @@ import {stripIndent} from 'common-tags';
 import {JSDOM} from 'jsdom';
 import axios from 'axios';
 import moment from 'moment';
-import {sampleSize} from 'lodash';
+import {sampleSize} from 'lodash-es';
 import byline from 'byline';
 import w2v from 'word2vec';
-import {download} from '../lib/download';
-import type {SlackInterface} from '../lib/slack';
+import {download} from '../lib/download.js';
+import type {SlackInterface} from '../lib/slack.js';
 import type {GenericMessageEvent} from '@slack/bolt';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const state: {
@@ -20,10 +23,9 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		theme: string | null;
 		candidates: string[];
 		ans: Map<string, string>;
-	} = (() => {
+	} = await (async () => {
 		try {
-			// eslint-disable-next-line global-require
-			const savedState = require('./state.json');
+			const savedState: any = (await import('./state.json', {with: {type: 'json'}})).default;
 			return {
 				phase: savedState.phase,
 				theme: savedState.theme || null,

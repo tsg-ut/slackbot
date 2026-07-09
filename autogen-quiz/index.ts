@@ -11,24 +11,28 @@ import {Mutex} from 'async-mutex';
 import axios from 'axios';
 import {stripIndent} from 'common-tags';
 import eaw from 'eastasianwidth';
-import {readFile} from 'fs-extra';
+import fsExtra from 'fs-extra';
+const {readFile} = fsExtra;
 import yaml from 'js-yaml';
-import {sample, sortBy} from 'lodash';
+import {sample, sortBy} from 'lodash-es';
 // @ts-ignore: untyped
 import emoji from 'node-emoji';
 import type OpenAI from 'openai';
 import {z} from 'zod';
-import {increment} from '../achievements';
-import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
-import type {AteQuizProblem} from '../atequiz';
-import {judgeAnswer} from '../discord/hayaoshiUtils';
-import {ChannelLimitedBot} from '../lib/channelLimitedBot';
-import logger from '../lib/logger';
-import openai from '../lib/openai';
-import {SlackInterface} from '../lib/slack';
-import {getMemberName} from '../lib/slackUtils';
-import {Loader, Deferred} from '../lib/utils';
-import genres from './genres';
+import {increment} from '../achievements/index.js';
+import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz/index.js';
+import type {AteQuizProblem} from '../atequiz/index.js';
+import {judgeAnswer} from '../discord/hayaoshiUtils.js';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot.js';
+import logger from '../lib/logger.js';
+import openai from '../lib/openai.js';
+import {SlackInterface} from '../lib/slack.js';
+import {getMemberName} from '../lib/slackUtils.js';
+import {Loader, Deferred} from '../lib/utils.js';
+import genres from './genres.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const mutex = new Mutex();
 

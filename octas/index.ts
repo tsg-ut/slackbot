@@ -1,12 +1,15 @@
-import type {SlackInterface} from '../lib/slack';
-import logger from '../lib/logger';
+import type {SlackInterface} from '../lib/slack.js';
+import logger from '../lib/logger.js';
 import cloudinary from 'cloudinary';
 import sharp from 'sharp';
 import {stripIndent} from 'common-tags';
-import Board from './lib/Board';
-import BoardElement from './lib/Render';
+import Board from './lib/Board.js';
+import BoardElement from './lib/Render.js';
 import {JSDOM} from 'jsdom';
-import Queue from 'p-queue';
+import QueueModule from 'p-queue';
+// p-queue の compiled JS は exports.default = X 形式でネストしたdefaultを持つため明示的にunwrapする
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Queue: any = (QueueModule as any).default ?? QueueModule;
 import {increment, unlock} from '../achievements/index.js';
 
 const log = logger.child({bot: 'octas'});

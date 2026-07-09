@@ -1,7 +1,8 @@
+import realFs from 'fs';
+import Path from 'path';
+import {PassThrough} from 'stream';
+
 const fs = {};
-const realFs = require('fs');
-const Path = require('path');
-const {PassThrough} = require('stream');
 
 fs.constants = realFs.constants;
 fs.virtualFiles = {};
@@ -121,4 +122,4 @@ fs.mkdir = vi.fn((...args) => {
 });
 
 fs.default = fs;
-module.exports = fs;
+export default fs;

@@ -1,9 +1,12 @@
 import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
-import db from '../lib/firestore';
-import {sample, negate, isEmpty, maxBy} from 'lodash';
-import type {Crossword} from './crossword';
+import db from '../lib/firestore.js';
+import {sample, negate, isEmpty, maxBy} from 'lodash-es';
+import type {Crossword} from './crossword.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const Boards = db.collection('crossword_boards');
 

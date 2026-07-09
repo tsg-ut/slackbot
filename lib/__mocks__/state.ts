@@ -1,4 +1,4 @@
-import type {StateInterface} from '../state';
+import type {StateInterface} from '../state.js';
 
 export type MockedStateInterface<StateObj> = StateInterface & {
 	mocks: Map<string, StateObj>,

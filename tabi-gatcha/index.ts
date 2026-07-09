@@ -1,8 +1,13 @@
 // eslint-disable-next-line import/no-namespace
 import * as Turf from '@turf/turf';
 import fs from 'fs-extra';
-import {encode} from 'pluscodes';
-import type {SlackInterface} from '../lib/slack';
+import pluscodes from 'pluscodes';
+const {encode} = pluscodes;
+import type {SlackInterface} from '../lib/slack.js';
+
+import path from 'path';
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const range = (lower: number, upper: number) => Math.random() * (upper - lower) + lower;
 

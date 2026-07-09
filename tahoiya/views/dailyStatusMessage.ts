@@ -1,5 +1,5 @@
 import type {KnownBlock} from '@slack/web-api';
-import type {DailyGameState, Theme} from '../types';
+import type {DailyGameState, Theme} from '../types.js';
 
 const themeLabel = (theme: Theme): string => {
 	if (theme.type === 'dictionary') {

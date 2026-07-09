@@ -1,5 +1,5 @@
 import axios from 'axios';
-import logger from '../lib/logger';
+import logger from '../lib/logger.js';
 import type {LinkUnfurls} from '@slack/web-api';
 import qs from 'querystring';
 
@@ -9,7 +9,7 @@ const slacklogAPIDomain = process.env.SLACK_PATRON_API_HOST || 'localhost:4567';
 const slacklogURLRegexp = new RegExp('^https?://slack-log.tsg.ne.jp/([A-Z0-9]+)/([0-9]+\.[0-9]+)');
 const getAroundMessagesUrl = (channel: string) => `http://${slacklogAPIDomain}/around_messages/${channel}.json`;
 
-import type {SlackInterface} from '../lib/slack';
+import type {SlackInterface} from '../lib/slack.js';
 
 export default async ({eventClient, webClient: slack, eventClient: event}: SlackInterface) => {
     const users = await axios.get<any>(`http://${slacklogAPIDomain}/users.json`).then(({data}) => data);

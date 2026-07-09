@@ -2,17 +2,21 @@ import fs from 'fs';
 import {promisify} from 'util';
 import path from 'path';
 import assert from 'assert';
-import type {SlackInterface} from '../lib/slack';
-import {flatten, sum, sample, random, sortBy, maxBy, sumBy, shuffle} from 'lodash';
-import trie from './trie';
+import type {SlackInterface} from '../lib/slack.js';
+import {flatten, sum, sample, random, sortBy, maxBy, sumBy, shuffle} from 'lodash-es';
+import trie from './trie.js';
 import cloudinary from 'cloudinary';
 import {stripIndent} from 'common-tags';
-import {hiraganize} from 'japanese';
+import japaneseModule from 'japanese';
+const {hiraganize} = japaneseModule;
 import download from 'download';
 import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
-import render from './render';
-import {Deferred} from '../lib/utils';
+import render from './render.js';
+import {Deferred} from '../lib/utils.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const hiraganaLetters = 'ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろわをんー'.split('');
 

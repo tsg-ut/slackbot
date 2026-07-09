@@ -1,10 +1,10 @@
-import {chunk, cloneDeep, escapeRegExp, flatten, invert, random, round, sample, shuffle, uniq} from 'lodash';
-import {unlock} from '../achievements';
-import {ChannelLimitedBot} from '../lib/channelLimitedBot';
-import type {SlackInterface} from '../lib/slack';
+import {chunk, cloneDeep, escapeRegExp, flatten, invert, random, round, sample, shuffle, uniq} from 'lodash-es';
+import {unlock} from '../achievements/index.js';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot.js';
+import type {SlackInterface} from '../lib/slack.js';
 import type {GenericMessageEvent} from '@slack/web-api';
 import type {MessageEvent} from '@slack/bolt';
-import {extractMessage, isGenericMessage} from '../lib/slackUtils';
+import {extractMessage, isGenericMessage} from '../lib/slackUtils.js';
 
 interface CompleteBoard {
 	[key: string]: string[][];

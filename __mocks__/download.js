@@ -4,4 +4,4 @@ download.post = download;
 
 download.response = '';
 
-module.exports = download;
+export default download;

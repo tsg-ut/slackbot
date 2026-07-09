@@ -1,4 +1,4 @@
-const {PassThrough} = require('stream');
+import {PassThrough} from 'stream';
 
 const axios = vi.fn((urlOrConfig = {}, config = {}) => {
 	// axios.get(url, config) / axios.post(url, data, config) のように、第一引数が
@@ -38,4 +38,4 @@ axios.default = {
 	defaults: {},
 };
 
-module.exports = axios;
+export default axios;

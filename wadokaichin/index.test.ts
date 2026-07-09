@@ -1,5 +1,8 @@
-import Slack from '../lib/slackMock';
+import Slack from '../lib/slackMock.js';
 import path from 'path';
+import {fileURLToPath} from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 vi.mock('fs');
 import fs from 'fs';
@@ -16,8 +19,8 @@ fs.virtualFiles = {
   [path.join(__dirname, 'data','JoyoKanjis.txt')]: kanjis.join('\n'),
 };
 
-vi.mock('lodash', async (importOriginal) => {
-  const orig = (await importOriginal<{default: typeof import('lodash')}>()).default;
+vi.mock('lodash-es', async (importOriginal) => {
+  const orig = await importOriginal<typeof import('lodash-es')>();
   return {
     ...orig,
     sample: vi.fn((array: string[]) => {
@@ -30,7 +33,7 @@ vi.mock('lodash', async (importOriginal) => {
 });
 
 vi.mock('../lib/slackUtils');
-import wadokaichin from "./index";
+import wadokaichin from "./index.js";
 
 vi.useFakeTimers();
 

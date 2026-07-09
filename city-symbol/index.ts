@@ -5,18 +5,18 @@ import type {ChatPostMessageArguments, GenericMessageEvent} from '@slack/web-api
 import {Mutex} from 'async-mutex';
 import {load as cheerioLoad} from 'cheerio';
 import {stripIndent} from 'common-tags';
-import {sample} from 'lodash';
+import {sample} from 'lodash-es';
 import {z} from 'zod';
-import {increment} from '../achievements';
-import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
-import type {AteQuizProblem} from '../atequiz';
-import {ChannelLimitedBot} from '../lib/channelLimitedBot';
-import logger from '../lib/logger';
-import openai from '../lib/openai';
-import {SlackInterface} from '../lib/slack';
-import {Deferred, Loader} from '../lib/utils';
-import {type PrefectureKanji, prefectures} from '../room-gacha/prefectures';
-import chakuwikiTitles from './chakuwiki-title-map.json';
+import {increment} from '../achievements/index.js';
+import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz/index.js';
+import type {AteQuizProblem} from '../atequiz/index.js';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot.js';
+import logger from '../lib/logger.js';
+import openai from '../lib/openai.js';
+import {SlackInterface} from '../lib/slack.js';
+import {Deferred, Loader} from '../lib/utils.js';
+import {type PrefectureKanji, prefectures} from '../room-gacha/prefectures.js';
+import chakuwikiTitles from './chakuwiki-title-map.json' with {type: 'json'};
 
 const MediaWikiRevisionsResponseSchema = z.object({
 	query: z.object({
