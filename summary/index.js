@@ -1,14 +1,20 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
+import path from 'path';
+import {fileURLToPath} from 'url';
 
-const {google} = require('googleapis');
-const moment = require('moment');
-const JSZip = require('jszip');
-const fs = require('fs');
-const concatStream = require('concat-stream');
-const schedule = require('node-schedule');
+dotenv.config();
 
-const {default: logger} = require('../lib/logger');
-const {makeSummary} = require('./summary_writer.js');
+import {google} from 'googleapis';
+import moment from 'moment';
+import JSZip from 'jszip';
+import fs from 'fs';
+import concatStream from 'concat-stream';
+import schedule from 'node-schedule';
+
+import logger from '../lib/logger.js';
+import {makeSummary} from './summary_writer.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const log = logger.child({bot: 'summary'});
 
@@ -113,7 +119,7 @@ async function job(slack) {
     });
 }
 
-module.exports = async ({webClient: slack}) => {
+export default async ({webClient: slack}) => {
     if (process.env.NODE_ENV === 'production') {
         schedule.scheduleJob('0 7 * * *', async () => {
             job(slack);

@@ -1,5 +1,5 @@
-import openai from '../../lib/openai';
-import {SynthesizeFunction} from './types.d';
+import openai from '../../lib/openai.js';
+import type {SynthesizeFunction} from './types.js';
 
 type VoiceType = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
 

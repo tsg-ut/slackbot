@@ -1,5 +1,5 @@
-import lyrics from './index';
-import Slack from '../lib/slackMock';
+import lyrics from './index.js';
+import Slack from '../lib/slackMock.js';
 import axios from 'axios';
 import type {AxiosResponse} from 'axios';
 import { stripIndent, oneLineTrim } from 'common-tags';

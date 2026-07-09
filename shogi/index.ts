@@ -2,22 +2,38 @@ import assert from 'assert';
 import {promises as fs} from 'fs';
 import path from 'path';
 import {oneLine} from 'common-tags';
-import flatten from 'lodash/flatten';
-import last from 'lodash/last';
-import maxBy from 'lodash/maxBy';
-import minBy from 'lodash/minBy';
-import sample from 'lodash/sample';
-import Shogi from 'shogi9.js';
+import {flatten, last, maxBy, minBy, sample} from 'lodash-es';
+import ShogiModule from 'shogi9.js';
+import type * as ShogiNS from 'shogi9.js';
 import type {IMove} from 'shogi9.js';
-import Color from 'shogi9.js/lib/Color.js';
-import Piece from 'shogi9.js/lib/Piece.js';
-import sqlite from 'sqlite';
+import ColorModule from 'shogi9.js/lib/Color.js';
+import type * as ColorNS from 'shogi9.js/lib/Color.js';
+import PieceModule from 'shogi9.js/lib/Piece.js';
+
+type ShogiType = ShogiNS.default;
+type ColorType = ColorNS.default;
+
+// shogi9.js は tsc(esModuleInterop) でビルドされているため、compiled JS は
+// `exports.default = X` の形でネストしたdefaultを持つ。Node のネイティブ ESM は
+// これを二重に unwrap しないため `.default` を取り出す必要があるが、
+// vitest/tsx (esbuild) は逆にこの時点で既に unwrap 済みの値を渡してくることがあるため、
+// どちらの場合でも動作するよう `??` でフォールバックする
+// (型としての ShogiType/ColorType は上で別途取得)。
+const Shogi = ((ShogiModule as any).default ?? ShogiModule) as {new (setting?: unknown): ShogiType};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Color: any = (ColorModule as any).default ?? ColorModule;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Piece: any = (PieceModule as any).default ?? PieceModule;
+import {open as sqliteOpen} from 'sqlite';
 import type {Database} from 'sqlite';
 import sqlite3 from 'sqlite3';
 import {unlock, increment} from '../achievements/index.js';
-import type {SlackInterface} from '../lib/slack';
+import type {SlackInterface} from '../lib/slack.js';
 
 import {upload} from './image.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import {
 	serialize,
 	deserialize,
@@ -44,7 +60,7 @@ interface ShogiSlackMessage {
 
 interface ShogiState {
 	previousPosition: {x: number; y: number} | null;
-	previousBoard: Shogi;
+	previousBoard: ShogiType;
 	previousDatabase: string;
 	previousTurns: number;
 	isPrevious打ち歩: boolean;
@@ -52,8 +68,8 @@ interface ShogiState {
 	isLocked: boolean;
 	isEnded: boolean;
 	player: string | null;
-	board: Shogi | null;
-	turn: Color | null;
+	board: ShogiType | null;
+	turn: ColorType | null;
 	log: string[];
 	thread: string | null;
 	flags: Set<string>;
@@ -64,12 +80,12 @@ type Transition = {
 	type: 'move';
 	data: IMove;
 	kind: string;
-	board: Shogi;
+	board: ShogiType;
 	promotion: boolean | null;
 } | {
 	type: 'drop';
 	data: IMove;
-	board: Shogi;
+	board: ShogiType;
 	promotion: null;
 };
 
@@ -149,7 +165,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 		return slack.chat.postMessage(baseArgs);
 	};
 
-	const end = async (color: Color, reason?: string) => {
+	const end = async (color: ColorType, reason?: string) => {
 		const {log, isEnded} = state;
 		state.previousPosition = null;
 		state.board = null;
@@ -375,7 +391,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 
 			const databases = await fs.readdir(path.resolve(__dirname, 'boards'));
 			const database = sample(databases);
-			state.db = await sqlite.open({
+			state.db = await sqliteOpen({
 				filename: path.join(__dirname, 'boards', database),
 				driver: sqlite3.Database,
 			});
@@ -434,7 +450,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 				await end(Color.White);
 			}
 
-			state.db = await sqlite.open({
+			state.db = await sqliteOpen({
 				filename: path.resolve(__dirname, 'boards', state.previousDatabase),
 				driver: sqlite3.Database,
 			});

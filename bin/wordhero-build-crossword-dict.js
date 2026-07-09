@@ -1,10 +1,7 @@
-const download = require('download');
-const decompress = require('decompress');
-const parse = require('csv-parse');
-const {promisify} = require('util');
-const fs = require('fs');
-const iconv = require('iconv-lite');
-const {hiraganize} = require('japanese');
+import parse from 'csv-parse';
+import fs from 'fs';
+import japaneseModule from 'japanese';
+const {hiraganize} = japaneseModule;
 
 (async () => {
 	const dictionary = [];

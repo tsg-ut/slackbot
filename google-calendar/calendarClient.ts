@@ -1,7 +1,7 @@
 import {readFileSync} from 'fs';
 import {google, calendar_v3} from 'googleapis';
-import dayjs from '../lib/dayjs';
-import type {CalendarEvent} from './types';
+import dayjs from '../lib/dayjs.js';
+import type {CalendarEvent} from './types.js';
 
 const TIMEZONE = 'Asia/Tokyo';
 

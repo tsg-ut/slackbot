@@ -1,10 +1,10 @@
-import logger from '../../lib/logger';
-import amazon from './amazon';
-import azure from './azure';
-import google from './google';
-import openai from './openai';
-import voicetext, {Emotion, EmoLV} from './voicetext';
-import voicevox from './voicevox';
+import logger from '../../lib/logger.js';
+import amazon from './amazon.js';
+import azure from './azure.js';
+import google from './google.js';
+import openai from './openai.js';
+import voicetext, {Emotion, EmoLV} from './voicetext.js';
+import voicevox from './voicevox.js';
 
 const log = logger.child({bot: 'discord'});
 

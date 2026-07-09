@@ -8,19 +8,20 @@ import {Mutex} from 'async-mutex';
 import axios from 'axios';
 import cloudinary from 'cloudinary';
 import type {CommonTransformationOptions} from 'cloudinary';
-import {hiraganize} from 'japanese';
-import {random, sample, range} from 'lodash';
-import {increment} from '../achievements';
+import japaneseModule from 'japanese';
+const {hiraganize} = japaneseModule;
+import {random, sample, range} from 'lodash-es';
+import {increment} from '../achievements/index.js';
 import {
 	AteQuizProblem,
 	AteQuiz,
 	typicalMessageTextsGenerator,
 	typicalAteQuizHintTexts,
-} from '../atequiz';
-import {ChannelLimitedBot} from '../lib/channelLimitedBot';
-import {SlackInterface} from '../lib/slack';
-import State from '../lib/state';
-import {Deferred, Loader} from '../lib/utils';
+} from '../atequiz/index.js';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot.js';
+import {SlackInterface} from '../lib/slack.js';
+import State from '../lib/state.js';
+import {Deferred, Loader} from '../lib/utils.js';
 
 const mutex = new Mutex();
 

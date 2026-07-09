@@ -1,9 +1,9 @@
 import axios from 'axios';
 import {stripIndent} from 'common-tags';
-import get from 'lodash/get';
+import {get} from 'lodash-es';
 import schedule from 'node-schedule';
-import logger from '../lib/logger';
-import type {SlackInterface} from '../lib/slack';
+import logger from '../lib/logger.js';
+import type {SlackInterface} from '../lib/slack.js';
 import type {MessageEvent} from '@slack/bolt';
 
 interface User {

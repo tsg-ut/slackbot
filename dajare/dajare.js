@@ -1,4 +1,4 @@
-const {flatten, uniqBy} = require('lodash');
+import {flatten, uniqBy} from 'lodash-es';
 
 const isGoodWord = (text) => !(/^[ァィゥェォッャュョヮンー]/).test(text);
 
@@ -68,8 +68,7 @@ const substRulesList = Array.from(product(
 	],
 ), (rules) => flatten(rules));
 
-module.exports = {
-	findDajare(text, lim = 2) {
+export function findDajare(text, lim = 2) {
 		if (text.length < lim * 2) {
 			return null;
 		}
@@ -141,15 +140,15 @@ module.exports = {
 			};
 		}
 		return null;
-	},
-	listAlternativeReadings(readings) {
-		const altReadings = substRulesList.map((rules) => readings.map((reading) => {
-			let result = reading;
-			for (const [regexp, repl] of rules) {
-				result = result.replace(regexp, repl);
-			}
-			return result;
-		}));
-		return uniqBy(altReadings, (altReading) => altReading.join(''));
-	},
-};
+}
+
+export function listAlternativeReadings(readings) {
+	const altReadings = substRulesList.map((rules) => readings.map((reading) => {
+		let result = reading;
+		for (const [regexp, repl] of rules) {
+			result = result.replace(regexp, repl);
+		}
+		return result;
+	}));
+	return uniqBy(altReadings, (altReading) => altReading.join(''));
+}

@@ -3,6 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 export interface KirafanCard {
   cardId: number;
   fullname: string;

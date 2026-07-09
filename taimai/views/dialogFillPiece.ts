@@ -1,7 +1,7 @@
 import { View } from '@slack/web-api';
-import { TaimaiGame } from '..';
-import config from '../config';
-import { formatOutlineUnfilled } from '../util';
+import { TaimaiGame } from '../index.js';
+import config from '../config.js';
+import { formatOutlineUnfilled } from '../util.js';
 
 export default (game: TaimaiGame, focus: number) => ({
 	type: "modal",

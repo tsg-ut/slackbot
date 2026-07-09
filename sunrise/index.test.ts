@@ -1,8 +1,8 @@
 import FakeTimers from '@sinonjs/fake-timers';
 import type {InstalledClock} from '@sinonjs/fake-timers';
 import {expect, it, beforeEach, afterEach, describe, vi} from 'vitest';
-import Slack from '../lib/slackMock';
-import sunrise from './index';
+import Slack from '../lib/slackMock.js';
+import sunrise from './index.js';
 
 vi.mock('cloudinary');
 vi.mock('node-persist');

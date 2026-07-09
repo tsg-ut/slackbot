@@ -1,5 +1,5 @@
-const EventEmitter = require('events');
-const Point = require('./Point');
+import EventEmitter from 'events';
+import Point from './Point.js';
 
 class Board extends EventEmitter {
 	constructor({width = 9, height = 9} = {}) {
@@ -163,4 +163,4 @@ class Board extends EventEmitter {
 	}
 }
 
-module.exports = Board;
+export default Board;

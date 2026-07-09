@@ -1,6 +1,6 @@
 import axios from 'axios';
 import scrapeIt from 'scrape-it';
-import {Challenge, SolvedInfo, Profile} from './BasicTypes';
+import {Challenge, SolvedInfo, Profile} from './BasicTypes.js';
 
 const SAFELIMIT = 20;
 const CACHE_UPDATE_INTERNAL = 12;

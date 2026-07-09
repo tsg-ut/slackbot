@@ -3,9 +3,12 @@ import sqlite3 from 'sqlite3';
 import path from 'path';
 import {spawn} from 'child_process';
 import concat from 'concat-stream';
-import {sortBy} from 'lodash';
-import boardConfigs from './boards.json';
-import type {Crossword} from './crossword';
+import {sortBy} from 'lodash-es';
+import boardConfigs from './boards.json' with {type: 'json'};
+import type {Crossword} from './crossword.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const stocks: any[] = [];
 

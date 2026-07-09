@@ -1,7 +1,10 @@
 import vocabwar from './index.js';
-import Slack from '../lib/slackMock';
+import Slack from '../lib/slackMock.js';
 import path from 'path';
 import fs from 'fs';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 vi.mock('axios');
 vi.mock('fs');

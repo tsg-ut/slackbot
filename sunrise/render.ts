@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import loadFont from '../lib/loadFont';
+import loadFont from '../lib/loadFont.js';
 
 export default async (text: string) => {
 	const font = await loadFont('Noto Serif JP Bold');

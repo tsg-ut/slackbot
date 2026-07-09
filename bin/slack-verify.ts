@@ -5,7 +5,7 @@
 // cf. https://api.slack.com/events/url_verification
 
 import assert from 'assert';
-import logger from '../lib/logger';
+import logger from '../lib/logger.js';
 const log = logger.child({bot: 'slack-verify'});
 
 import dotenv from 'dotenv';

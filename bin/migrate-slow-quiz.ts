@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import fs from 'fs/promises';
-import State from "../lib/state";
-import {Game} from "../slow-quiz";
+import State from "../lib/state.js";
+import {Game} from "../slow-quiz/index.js";
 
 interface StateObj {
 	games: Game[],

@@ -1,6 +1,7 @@
-const {Pai, decomp} = require('@hakatashi/riichi-core');
-const Agari = require('@hakatashi/riichi-core/src/agari');
-const tenhou6 = require('@hakatashi/riichi-core/src/tenhou6');
+import riichiCore from '@hakatashi/riichi-core';
+const {Pai, decomp} = riichiCore;
+import Agari from '@hakatashi/riichi-core/src/agari.js';
+import tenhou6 from '@hakatashi/riichi-core/src/tenhou6.js';
 
 const paiIndices = [
 	'1z', '2z', '3z', '4z', '7z', '6z', '5z',
@@ -27,7 +28,7 @@ const 牌ToPai = (牌, {no赤牌 = false} = {}) => {
 	return Pai[paiIndices[牌.codePointAt(0) - 0x1F000]];
 };
 
-module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = false, isDoubleRiichi = false, isIppatsu = false, isRon = false, doraHyouji = [], uraDoraHyouji = [], additionalDora = 0}) => {
+export const agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = false, isDoubleRiichi = false, isIppatsu = false, isRon = false, doraHyouji = [], uraDoraHyouji = [], additionalDora = 0}) => {
 	const pais = 牌s.map((牌) => 牌ToPai(牌));
 	const paisWithout赤牌 = 牌s.map((牌) => 牌ToPai(牌, {no赤牌: true}));
 
@@ -150,10 +151,10 @@ module.exports.agari = (牌s, {isHaitei = false, isVirgin = false, isRiichi = fa
 	};
 };
 
-module.exports.tenpai = (牌s) => {
+export const tenpai = (牌s) => {
 	const pais = 牌s.map(牌ToPai);
 	const tenpaiDecomp = decomp.decompTenpai(Pai.binsFromArray(pais));
 	return tenpaiDecomp.decomps.length > 0;
 };
 
-module.exports.paiIndices = paiIndices;
+export {paiIndices};

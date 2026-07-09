@@ -1,15 +1,16 @@
-import { KirafanCard, kirafanTools, getKirafanCards } from './';
-import { AteQuizProblem, AteQuiz } from '../atequiz';
-import { SlackInterface } from '../lib/slack';
+import { KirafanCard, kirafanTools, getKirafanCards } from './/index.js';
+import { AteQuizProblem, AteQuiz } from '../atequiz/index.js';
+import { SlackInterface } from '../lib/slack.js';
 import sharp, { OverlayOptions } from 'sharp';
 import axios from 'axios';
-import { random, sample } from 'lodash';
+import { random, sample } from 'lodash-es';
 import { ChatPostMessageArguments, GenericMessageEvent } from '@slack/web-api';
 import cloudinary, { UploadApiResponse } from 'cloudinary';
-import { hiraganize } from 'japanese';
-import { increment } from '../achievements';
-import { ChannelLimitedBot } from '../lib/channelLimitedBot';
-import { Deferred } from '../lib/utils';
+import japaneseModule from 'japanese';
+const {hiraganize} = japaneseModule;
+import { increment } from '../achievements/index.js';
+import { ChannelLimitedBot } from '../lib/channelLimitedBot.js';
+import { Deferred } from '../lib/utils.js';
 
 interface KirafanAteQuizProblem extends AteQuizProblem {
   correctAnswerCard: KirafanCard;

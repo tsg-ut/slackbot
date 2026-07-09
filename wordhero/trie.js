@@ -101,4 +101,4 @@ class TrieNode {
 	}
 }
 
-module.exports = (x) => {return new Trie(x);};
+export default (x) => {return new Trie(x);};

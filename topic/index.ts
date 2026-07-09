@@ -1,10 +1,10 @@
-import type {MessageElement} from '@slack/web-api/dist/types/response/ConversationsHistoryResponse';
-import {increment} from '../achievements';
-import db from '../lib/firestore';
-import type {SlackInterface} from '../lib/slack';
-import {getReactions} from '../lib/slackUtils';
-import {conversationsHistory} from '../lib/slackPatron';
-import State from '../lib/state';
+import type {MessageElement} from '@slack/web-api/dist/types/response/ConversationsHistoryResponse.js';
+import {increment} from '../achievements/index.js';
+import db from '../lib/firestore.js';
+import type {SlackInterface} from '../lib/slack.js';
+import {getReactions} from '../lib/slackUtils.js';
+import {conversationsHistory} from '../lib/slackPatron.js';
+import State from '../lib/state.js';
 
 const isQualifiableMessage = (message: MessageElement) => {
 	if (message?.attachments?.length > 0) {

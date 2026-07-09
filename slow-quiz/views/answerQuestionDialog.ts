@@ -1,6 +1,6 @@
 import {View} from '@slack/web-api';
-import type {Game} from '../index';
-import {getSubmissionsBlocks} from './lib/utils';
+import type {Game} from '../index.js';
+import {getSubmissionsBlocks} from './lib/utils.js';
 
 export default (game: Game, questionText: string, user: string): View => ({
 	type: 'modal',

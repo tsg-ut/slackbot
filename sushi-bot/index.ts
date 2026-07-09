@@ -1,11 +1,11 @@
 import schedule from 'node-schedule';
-import {sortBy} from 'lodash';
+import {sortBy} from 'lodash-es';
 import moment from 'moment';
 import {unlock, increment, get, set} from '../achievements/index.js';
-import type {SlackInterface} from '../lib/slack';
-import {scoreTimeOfDay, getReactionName, timeOfDayDefinitions} from './time-scoring';
+import type {SlackInterface} from '../lib/slack.js';
+import {scoreTimeOfDay, getReactionName, timeOfDayDefinitions} from './time-scoring.js';
 
-import State from '../lib/state';
+import State from '../lib/state.js';
 
 interface CounterStateObj {
 	data: {[index: string]: number};

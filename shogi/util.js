@@ -1,6 +1,9 @@
-const assert = require('assert');
-const {default: Shogi} = require('shogi9.js');
-const {default: Color} = require('shogi9.js/lib/Color.js');
+import assert from 'assert';
+import ShogiModule from 'shogi9.js';
+import ColorModule from 'shogi9.js/lib/Color.js';
+
+const Shogi = ShogiModule.default ?? ShogiModule;
+const Color = ColorModule.default ?? ColorModule;
 
 const gridList = [
 	{},
@@ -36,7 +39,7 @@ const gridList = [
 
 const handList = ['HI', 'KA', 'KI', 'GI', 'KE', 'KY', 'FU'];
 
-module.exports.charToPiece = (char) => ({
+export const charToPiece = (char) => ({
 	歩: 'FU',
 	歩兵: 'FU',
 	香: 'KY',
@@ -72,7 +75,7 @@ module.exports.charToPiece = (char) => ({
 	竜馬: 'UM',
 }[char]);
 
-module.exports.pieceToChar = (piece) => ({
+export const pieceToChar = (piece) => ({
 	FU: '歩',
 	KY: '香',
 	KE: '桂',
@@ -89,7 +92,7 @@ module.exports.pieceToChar = (piece) => ({
 	UM: '馬',
 }[piece]);
 
-module.exports.deserialize = (blob) => {
+export const deserialize = (blob) => {
 	const gridsBlob = [...blob]
 		.slice(0, 8)
 		.map((byte) => byte.toString(2).padStart(8, '0'))
@@ -142,7 +145,7 @@ module.exports.deserialize = (blob) => {
 	});
 };
 
-module.exports.serialize = (board) => {
+export const serialize = (board) => {
 	const gridNumbers = [];
 
 	for (const y of Array(3).keys()) {
@@ -200,7 +203,7 @@ module.exports.serialize = (board) => {
 	return Buffer.from(gridHex + handHex, 'hex');
 };
 
-module.exports.getTransitions = (board) => {
+export const getTransitions = (board) => {
 	const transitions = [];
 
 	for (const y of Array(3).keys()) {
@@ -281,7 +284,7 @@ module.exports.getTransitions = (board) => {
 	return transitions;
 };
 
-module.exports.transitionToText = (transition, color, previousPosition) => {
+export const transitionToText = (transition, color, previousPosition) => {
 	const koma = color === Color.Black ? '☗' : '☖';
 	const x =
 		color === Color.Black ? transition.data.to.x - 1 : 3 - transition.data.to.x;
@@ -298,7 +301,7 @@ module.exports.transitionToText = (transition, color, previousPosition) => {
 			: `${xText}${yText}`;
 
 	if (transition.type === 'move') {
-		const pieceChar = module.exports.pieceToChar(transition.kind);
+		const pieceChar = pieceToChar(transition.kind);
 
 		if (transition.promotion === null) {
 			return `${koma}${coords}${pieceChar}`;
@@ -310,7 +313,7 @@ module.exports.transitionToText = (transition, color, previousPosition) => {
 
 	assert(transition.type === 'drop');
 	{
-		const pieceChar = module.exports.pieceToChar(transition.data.kind);
+		const pieceChar = pieceToChar(transition.data.kind);
 		return `${koma}${coords}${pieceChar}`;
 	}
 };

@@ -1,5 +1,5 @@
-import {getRankedPlayers, getRankEmoji} from './rankingUtils';
-import type {PlayerState} from './TwentyQuestions';
+import {getRankedPlayers, getRankEmoji} from './rankingUtils.js';
+import type {PlayerState} from './TwentyQuestions.js';
 
 describe('rankingUtils', () => {
 	describe('getRankedPlayers', () => {

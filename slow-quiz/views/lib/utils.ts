@@ -1,7 +1,7 @@
 import type {KnownBlock} from '@slack/web-api';
-import {sortBy} from 'lodash';
-import type {Game, Submission} from '../..';
-import {getUserMention} from '../../util';
+import {sortBy} from 'lodash-es';
+import type {Game, Submission} from '../../index.js';
+import {getUserMention} from '../../util.js';
 
 type UserSubmission = Submission & { type: 'wrong_answer' | 'correct_answer' | 'comment' }
 

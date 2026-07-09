@@ -1,7 +1,7 @@
 // node state-file-to-firebase.js [state.json] [name]
 
-const {default: db} = require('../lib/firestore.ts').default;
-const {promises: fs} = require('fs');
+import db from '../lib/firestore.ts';
+import {promises as fs} from 'fs';
 
 if (process.argv.length !== 4) {
 	throw new Error('Usage: node state-file-to-firebase.js [state.json] [name]');

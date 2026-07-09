@@ -1,6 +1,6 @@
 import {GuildMember, User, VoiceChannel, VoiceState} from 'discord.js';
-import Slack from '../lib/slackMock';
-import {Notifier} from './notifier';
+import Slack from '../lib/slackMock.js';
+import {Notifier} from './notifier.js';
 
 vi.mock('../lib/state');
 vi.mock('../lib/slack');

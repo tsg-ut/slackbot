@@ -2,20 +2,20 @@ import qs from 'querystring';
 import {Mutex} from 'async-mutex';
 import axios from 'axios';
 import {stripIndent} from 'common-tags';
-import {sumBy, minBy, sum} from 'lodash';
+import {sumBy, minBy, sum} from 'lodash-es';
 import moment from 'moment';
 import schedule from 'node-schedule';
 // @ts-expect-error
 import prime from 'primes-and-factors';
 import scrapeIt from 'scrape-it';
 import {increment, unlock, set, get} from '../achievements/index.js';
-import logger from '../lib/logger';
-import type {SlackInterface} from '../lib/slack';
-import {getMemberIcon, getMemberName} from '../lib/slackUtils';
-import State from '../lib/state';
+import logger from '../lib/logger.js';
+import type {SlackInterface} from '../lib/slack.js';
+import {getMemberIcon, getMemberName} from '../lib/slackUtils.js';
+import State from '../lib/state.js';
 // eslint-disable-next-line no-unused-vars
-import type {Results, Standings} from './types';
-import {fetchUserACsInContest} from './utils';
+import type {Results, Standings} from './types.js';
+import {fetchUserACsInContest} from './utils.js';
 
 const log = logger.child({bot: 'atcoder'});
 const mutex = new Mutex();

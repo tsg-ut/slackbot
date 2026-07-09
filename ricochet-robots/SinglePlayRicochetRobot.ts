@@ -1,12 +1,12 @@
-import { AteQuiz, AteQuizProblem, AteQuizStartOption } from '../atequiz';
-import { round } from 'lodash';
+import { AteQuiz, AteQuizProblem, AteQuizStartOption } from '../atequiz/index.js';
+import { round } from 'lodash-es';
 import cloudinary from 'cloudinary';
 import type { GenericMessageEvent } from '@slack/bolt';
-import { SlackInterface } from '../lib/slack';
-import * as image from './image';
-import * as board from './board';
+import { SlackInterface } from '../lib/slack.js';
+import * as image from './image.js';
+import * as board from './board.js';
 import { ChatPostMessageArguments, KnownBlock } from '@slack/web-api';
-import { unlock } from '../achievements';
+import { unlock } from '../achievements/index.js';
 import assert from 'assert';
 import { stripIndent } from 'common-tags';
 

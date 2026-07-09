@@ -1,10 +1,10 @@
 /* eslint-disable no-undef */
-import noop from 'lodash/noop';
+import {noop} from 'lodash-es';
 // @ts-expect-error
 import MockFirebase from 'mock-cloud-firestore';
-import Slack from '../lib/slackMock';
+import Slack from '../lib/slackMock.js';
 
-import achievements from './index_production';
+import achievements from './index_production.js';
 
 let slack: Slack = null;
 

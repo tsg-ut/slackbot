@@ -1,14 +1,14 @@
-import { AteQuizProblem, AteQuiz } from '../atequiz';
-import { SlackInterface } from '../lib/slack';
+import { AteQuizProblem, AteQuiz } from '../atequiz/index.js';
+import { SlackInterface } from '../lib/slack.js';
 import { ChatPostMessageArguments, GenericMessageEvent } from '@slack/web-api';
-import { sample } from 'lodash';
-import { increment, unlock } from '../achievements';
+import { sample } from 'lodash-es';
+import { increment, unlock } from '../achievements/index.js';
 import achievementsMap, {
   Achievement,
   Difficulty,
-} from '../achievements/achievements';
-import { ChannelLimitedBot } from '../lib/channelLimitedBot';
-import { Deferred } from '../lib/utils';
+} from '../achievements/achievements.js';
+import { ChannelLimitedBot } from '../lib/channelLimitedBot.js';
+import { Deferred } from '../lib/utils.js';
 
 const timeLimitSec = 2 * 60;
 

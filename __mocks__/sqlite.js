@@ -10,4 +10,5 @@ sqlite.open = vi.fn(() => ({
 
 sqlite.records = [];
 
-module.exports = sqlite;
+export default sqlite;
+export const open = (...args) => sqlite.open(...args);

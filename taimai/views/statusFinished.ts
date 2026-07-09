@@ -1,6 +1,6 @@
-import { TaimaiGame } from '..';
-import config from '../config';
-import { formatOutlineFilled } from '../util';
+import { TaimaiGame } from '../index.js';
+import config from '../config.js';
+import { formatOutlineFilled } from '../util.js';
 
 export default (game: TaimaiGame) => ({
 	text: `タイマイの問題が終了: ${game.answer || '投了'}`,

@@ -10,10 +10,13 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
-import {flatten, isEmpty, range, shuffle, times, uniq} from 'lodash';
-import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
-import {getMemberName} from '../lib/slackUtils';
-import {Deferred} from '../lib/utils';
+import {flatten, isEmpty, range, shuffle, times, uniq} from 'lodash-es';
+import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack.js';
+import {getMemberName} from '../lib/slackUtils.js';
+import {Deferred} from '../lib/utils.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 interface Meaning {
 	user: string,

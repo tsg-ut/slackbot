@@ -1,4 +1,4 @@
-import type { User, MessageCreateEvent } from '../lib/twitter';
+import type { User, MessageCreateEvent } from '../lib/twitter.js';
 
 const somebody54: User = {
     id_str: '123456789',
@@ -78,4 +78,4 @@ class Twitter {
     }
 }
 
-module.exports = Twitter;
+export default Twitter;

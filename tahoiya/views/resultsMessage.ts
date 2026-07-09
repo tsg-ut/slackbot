@@ -1,6 +1,6 @@
 import type {KnownBlock} from '@slack/web-api';
-import type {RatingChange, ShuffledMeaning, Theme, DictionarySource} from '../types';
-import {getWordUrl, SOURCE_LABELS} from '../utils';
+import type {RatingChange, ShuffledMeaning, Theme, DictionarySource} from '../types.js';
+import {getWordUrl, SOURCE_LABELS} from '../utils.js';
 
 const themeTitle = (theme: Theme): string => {
 	if (theme.type === 'dictionary') {

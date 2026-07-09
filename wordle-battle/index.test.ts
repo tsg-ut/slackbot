@@ -1,5 +1,5 @@
-import wordle_battle from './index';
-import Slack from '../lib/slackMock';
+import wordle_battle from './index.js';
+import Slack from '../lib/slackMock.js';
 
 vi.mock("../achievements");
 

@@ -1,6 +1,6 @@
 import {KnownBlock, MessageAttachment, Option, PlainTextElement, View} from '@slack/web-api';
-import {mrkdwn, plainText} from '../lib/slackUtils';
-import config from './config';
+import {mrkdwn, plainText} from '../lib/slackUtils.js';
+import config from './config.js';
 
 // https://api.slack.com/reference/surfaces/formatting#escaping
 const escapeText = (text: string): string => {

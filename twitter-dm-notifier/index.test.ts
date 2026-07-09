@@ -1,4 +1,4 @@
-import { createSlackPostParams } from './index';
+import { createSlackPostParams } from './index.js';
 import moment from 'moment';
 
 vi.mock('twitter');

@@ -1,12 +1,12 @@
 import assert from 'assert';
 import {google, sheets_v4} from 'googleapis';
-// @ts-expect-error not typed
-import {katakanaRegex} from 'japanese';
+import japaneseModule from 'japanese';
+const {katakanaRegex} = japaneseModule;
 import {tokenize, KuromojiToken} from 'kuromojin';
-import {last, uniq, uniqBy} from 'lodash';
-import {isCorrectAnswer, normalize} from '../hayaoshi';
+import {last, uniq, uniqBy} from 'lodash-es';
+import {isCorrectAnswer, normalize} from '../hayaoshi/index.js';
 import getReading from '../lib/getReading.js';
-import logger from '../lib/logger';
+import logger from '../lib/logger.js';
 
 const katakanaMatchRegex = new RegExp(`^(?:${katakanaRegex.source}|ー|・|･)+$`);
 

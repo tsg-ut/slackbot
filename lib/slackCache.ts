@@ -1,13 +1,13 @@
-import {get} from 'lodash';
+import {get} from 'lodash-es';
 import type EventEmitter from 'events';
-import type {Token} from '../oauth/tokens';
-import {Deferred} from './utils';
-import {TeamEventClient} from './slackEventClient';
-import {conversationsHistory} from './slackPatron';
-import logger from './logger';
+import type {Token} from '../oauth/tokens.js';
+import {Deferred} from './utils.js';
+import {TeamEventClient} from './slackEventClient.js';
+import {conversationsHistory} from './slackPatron.js';
+import logger from './logger.js';
 
-import type {Reaction} from '@slack/web-api/dist/types/response/ConversationsHistoryResponse';
-import type {Member} from '@slack/web-api/dist/types/response/UsersListResponse';
+import type {Reaction} from '@slack/web-api/dist/types/response/ConversationsHistoryResponse.js';
+import type {Member} from '@slack/web-api/dist/types/response/UsersListResponse.js';
 import type {
 	ConversationsHistoryArguments,
 	ConversationsHistoryResponse,

@@ -10,6 +10,9 @@ import fs from 'fs';
 import path from 'path';
 import { Mutex } from 'async-mutex';
 
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 interface AdventarArticle {
   user: { uid: number; name: string; iconURI: string };
   articleURI: string | null;

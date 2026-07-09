@@ -1,6 +1,6 @@
 import type {KnownBlock, View} from '@slack/web-api';
-import {sortBy} from 'lodash';
-import type {FinishedGame} from '../TwentyQuestions';
+import {sortBy} from 'lodash-es';
+import type {FinishedGame} from '../TwentyQuestions.js';
 
 export default (game: FinishedGame): View => {
 	const blocks: KnownBlock[] = [

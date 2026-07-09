@@ -1,13 +1,15 @@
-const {stripIndent} = require('common-tags');
-const {toZenKana} = require('jaconv');
-const {katakanize} = require('japanese');
-const {flatten, maxBy} = require('lodash');
+import {stripIndent} from 'common-tags';
+import jaconv from 'jaconv';
+const {toZenKana} = jaconv;
+import japaneseModule from 'japanese';
+const {katakanize} = japaneseModule;
+import {flatten, maxBy} from 'lodash-es';
 
-const tokenize = require('./tokenize');
-const {findDajare, listAlternativeReadings} = require('./dajare');
-const {unlock} = require('../achievements');
+import tokenize from './tokenize.js';
+import {findDajare, listAlternativeReadings} from './dajare.js';
+import {unlock} from '../achievements/index.js';
 
-module.exports = ({eventClient, webClient: slack}) => {
+export default ({eventClient, webClient: slack}) => {
 	const slackDecode = (text) => text
 		.replace(/<[^>]+>/g, (link) => {
 			const matches = (/^(.+)\|(.+)$/).exec(link);

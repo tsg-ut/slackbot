@@ -1,6 +1,6 @@
 import axios, {AxiosError} from 'axios';
-import logger from '../../lib/logger';
-import {SynthesizeFunction} from './types.d';
+import logger from '../../lib/logger.js';
+import type {SynthesizeFunction} from './types.js';
 
 const log = logger.child({bot: 'discord'});
 

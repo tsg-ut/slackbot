@@ -2,8 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import {promisify} from 'util';
 import download from 'download';
-import {hiraganize} from 'japanese';
-import {shuffle} from 'lodash';
+import japaneseModule from 'japanese';
+const {hiraganize} = japaneseModule;
+import {shuffle} from 'lodash-es';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export type WordEntry = [word: string, ruby: string, source: string, ...rest: string[]];
 

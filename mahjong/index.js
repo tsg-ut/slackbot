@@ -1,16 +1,20 @@
-const assert = require('assert');
-const fs = require('fs');
-const path = require('path');
-const qs = require('querystring');
-const {promisify} = require('util');
-const {v2: cloudinary} = require('cloudinary');
-const {source} = require('common-tags');
-const {chunk, shuffle, sampleSize, sample, random, range, zip} = require('lodash');
-const {unlock, increment} = require('../achievements');
-const {AteQuiz} = require('../atequiz/index');
-const {blockDeploy} = require('../deploy/index');
-const {Mutex} = require('async-mutex');
-const calculator = require('./calculator.js');
+import assert from 'assert';
+import fs from 'fs';
+import path from 'path';
+import {fileURLToPath} from 'url';
+import qs from 'querystring';
+import {promisify} from 'util';
+import cloudinaryModule from 'cloudinary';
+import {source} from 'common-tags';
+import {chunk, shuffle, sampleSize, sample, random, range, zip} from 'lodash-es';
+import {unlock, increment} from '../achievements/index.js';
+import {AteQuiz} from '../atequiz/index.js';
+import {blockDeploy} from '../deploy/index.js';
+import {Mutex} from 'async-mutex';
+import * as calculator from './calculator.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const {v2: cloudinary} = cloudinaryModule;
 
 const mutex = new Mutex();
 
@@ -24,8 +28,9 @@ const savedState = (() => {
 			大麻雀Wins: 0,
 			大麻雀Loses: 0,
 		};
-		// eslint-disable-next-line global-require
-		return Object.assign(defaultSavedState, require('./current-point.json'));
+		const currentPointPath = path.join(__dirname, 'current-point.json');
+		const savedData = JSON.parse(fs.readFileSync(currentPointPath, 'utf-8'));
+		return Object.assign(defaultSavedState, savedData);
 	} catch (e) {
 		return {
 			points: 25000,
@@ -237,7 +242,7 @@ class TenpaiAteQuiz extends AteQuiz {
 	}
 }
 
-module.exports = (clients) => {
+export default (clients) => {
 	const {eventClient, webClient: slack} = clients;
 
 	eventClient.on('message', async (message) => {

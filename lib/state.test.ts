@@ -1,7 +1,10 @@
-import {StateDevelopment} from './state';
+import {StateDevelopment} from './state.js';
 import path from 'path';
 import fs from 'fs-extra';
 import type {Mock} from 'vitest';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 vi.mock('fs-extra', () => {
 	const mocked = {

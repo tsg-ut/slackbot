@@ -1,9 +1,13 @@
 import 'dotenv/config';
 import path from 'path';
-import {readFile, readJson} from 'fs-extra';
-import openai from '../lib/openai';
-import {Loader} from '../lib/utils';
-import {OpenWeatherOneCallResponse} from './fetch';
+import fsExtra from 'fs-extra';
+const {readFile, readJson} = fsExtra;
+import openai from '../lib/openai.js';
+import {Loader} from '../lib/utils.js';
+import {OpenWeatherOneCallResponse} from './fetch.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const replaceParams = (template: string, params: Record<string, string>) => template.replace(/\{(?<key>\w+)\}/g, (_, key) => params[key] || `{${key}}`);
 
@@ -189,7 +193,7 @@ export const getRainMinuteCast = async (weatherData: OpenWeatherOneCallResponse)
 	return result;
 };
 
-if (require.main === module) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
 	(async () => {
 		const weatherData = await readJson(path.join(__dirname, '__mocks__/assets/weather.json')) as OpenWeatherOneCallResponse;
 		console.log(await getWeatherCastForecast(weatherData));

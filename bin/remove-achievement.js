@@ -1,7 +1,7 @@
 // remove achievement by user and achievement id
 // node remove-achievement.js [user] [achievement id]
 
-const db = require('../lib/firestore.ts').default;
+import db from '../lib/firestore.ts';
 
 if (process.argv.length !== 4) {
 	throw new Error('Usage: node remove-achievement.js [user] [achievement id');

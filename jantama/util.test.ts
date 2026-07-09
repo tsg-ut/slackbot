@@ -1,4 +1,4 @@
-import {extractMajsoulId} from './util';
+import {extractMajsoulId} from './util.js';
 
 describe('extractMajsoulId', () => {
 	it('extracts majsoul id from url', () => {

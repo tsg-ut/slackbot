@@ -1,10 +1,10 @@
 /* eslint-disable init-declarations */
 
-import type {MockedStateInterface} from '../lib/__mocks__/state';
-import openai from '../lib/openai';
-import Slack from '../lib/slackMock';
-import State from '../lib/state';
-import {SlowQuiz, validateQuestion, type StateObj, type Game} from './index';
+import type {MockedStateInterface} from '../lib/__mocks__/state.js';
+import openai from '../lib/openai.js';
+import Slack from '../lib/slackMock.js';
+import State from '../lib/state.js';
+import {SlowQuiz, validateQuestion, type StateObj, type Game} from './index.js';
 
 process.env.OPENAI_API_KEY = 'test-api-key';
 

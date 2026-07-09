@@ -1,6 +1,6 @@
-import { TaimaiGame } from '..';
-import config from '../config';
-import { formatOutlineUnfilled } from '../util';
+import { TaimaiGame } from '../index.js';
+import config from '../config.js';
+import { formatOutlineUnfilled } from '../util.js';
 
 export default (game: TaimaiGame) => ({
 	text: `タイマイの新しい問題: ${formatOutlineUnfilled(game.outline, game.pieces)}`,

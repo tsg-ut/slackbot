@@ -1,7 +1,11 @@
-const path = require('path');
-const cloudinary = require('cloudinary');
-const sharp = require('sharp');
-const {default: Color} = require('shogi9.js/lib/Color.js');
+import path from 'path';
+import {fileURLToPath} from 'url';
+import cloudinary from 'cloudinary';
+import sharp from 'sharp';
+import ColorModule from 'shogi9.js/lib/Color.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const Color = ColorModule.default ?? ColorModule;
 
 const filenameMap = {
 	FU: 'fu',
@@ -20,7 +24,7 @@ const filenameMap = {
 	UM: 'uma',
 };
 
-module.exports.upload = async (board) => {
+export const upload = async (board) => {
 	const imageOptions = {
 		raw: {
 			width: 570,

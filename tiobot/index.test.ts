@@ -1,5 +1,5 @@
-import Slack from '../lib/slackMock';
-import cubebot from './index';
+import Slack from '../lib/slackMock.js';
+import cubebot from './index.js';
 
 let slack: Slack = null;
 

@@ -6,15 +6,15 @@ import fs from "fs";
 import path from "path";
 import puppeteer from "puppeteer";
 import sqlite3 from "sqlite3";
-import { increment } from '../achievements';
-import { AteQuiz, AteQuizProblem } from "../atequiz";
-import { normalize } from "../hayaoshi";
-import { ChannelLimitedBot } from '../lib/channelLimitedBot';
-import logger from "../lib/logger";
-import type { SlackInterface } from "../lib/slack";
-import { Deferred } from '../lib/utils';
-const { Mutex } = require("async-mutex");
-const cloudinary = require("cloudinary");
+import { increment } from '../achievements/index.js';
+import { AteQuiz, AteQuizProblem } from "../atequiz/index.js";
+import { normalize } from "../hayaoshi/index.js";
+import { ChannelLimitedBot } from '../lib/channelLimitedBot.js';
+import logger from "../lib/logger.js";
+import type { SlackInterface } from "../lib/slack.js";
+import { Deferred } from '../lib/utils.js';
+import { Mutex } from "async-mutex";
+import cloudinary from "cloudinary";
 
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 if (!API_KEY) {

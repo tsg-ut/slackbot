@@ -1,10 +1,10 @@
 import type {MessageAttachment, WebClient} from '@slack/web-api';
 import {FeatureCollection, MultiPolygon, points as Points, pointsWithinPolygon} from '@turf/turf';
-import {Loader} from '../lib/utils';
-import {getRainMinuteCast, getWeatherCastForecast, getWeatherCastHeadline} from './aiGeneration';
-import {getJmaForecast, getWeather} from './fetch';
-import type {OpenWeatherOneCallResponse} from './fetch';
-import type {Point} from './index';
+import {Loader} from '../lib/utils.js';
+import {getRainMinuteCast, getWeatherCastForecast, getWeatherCastHeadline} from './aiGeneration.js';
+import {getJmaForecast, getWeather} from './fetch.js';
+import type {OpenWeatherOneCallResponse} from './fetch.js';
+import type {Point} from './index.js';
 
 const firstAreaGeojsonLoader = new Loader<FeatureCollection<MultiPolygon>>(() => {
 	const url = 'https://raw.githubusercontent.com/tmiyachi/jma-gis/master/geojson/firstarea.geojson';
