@@ -51,3 +51,7 @@ const State: StateInterface = class State<StateObj> {
 export default State;
 
 export const ReadOnlyState = State;
+
+// lib/readOnlyState.ts は非production環境で StateDevelopment を
+// ReadOnlyState として使う。このモックにも同じ名前でexportしておく。
+export const StateDevelopment = State;

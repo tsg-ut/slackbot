@@ -6,6 +6,7 @@ import logger from '../lib/logger';
 /* eslint-disable no-unused-vars */
 import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
 import {getMemberName, getMemberIcon} from '../lib/slackUtils';
+import {Loader} from '../lib/utils';
 
 const log = logger.child({bot: 'emoxpand'});
 
@@ -39,20 +40,24 @@ const logError = (err: Error, mesg: string): void => {
 const emojiData = 'bigemojis.json';
 const emojiPath = path.resolve(__dirname, emojiData);
 
-let allEmojis : EmojiTable = new Map();
-
-const loadEmojis = async () => {
-  allEmojis = new Map();
-  const data = await fs.readFile(emojiPath, {encoding: 'utf8'});
-  const obj: {[key: string]: EmojiContent} = JSON.parse(data);
-  log.info('emoxpand: loading big emojis...');
-  for (const [name, content] of Object.entries(obj)) {
-    allEmojis.set(name, emojiFromContent(content));
+const emojisLoader = new Loader<EmojiTable>(async () => {
+  const emojis: EmojiTable = new Map();
+  try {
+    const data = await fs.readFile(emojiPath, {encoding: 'utf8'});
+    const obj: {[key: string]: EmojiContent} = JSON.parse(data);
+    log.info('emoxpand: loading big emojis...');
+    for (const [name, content] of Object.entries(obj)) {
+      emojis.set(name, emojiFromContent(content));
+    }
+  } catch (err: unknown) {
+    if (err instanceof Error && 'code' in err && err.code === 'ENOENT') {
+      logError(err, 'failed to load big emojis');
+    } else {
+      throw err;
+    }
   }
-  return allEmojis;
-};
-
-loadEmojis();
+  return emojis;
+});
 
 const emojisToJson = (emojis: EmojiTable): string => {
   const obj = Object.fromEntries(
@@ -66,7 +71,8 @@ const storeEmojis = (emojis: EmojiTable): void => {
 };
 
 
-const addEmoji = (name: EmojiName, emoji: BigEmoji): void => {
+const addEmoji = async (name: EmojiName, emoji: BigEmoji): Promise<void> => {
+  const allEmojis = await emojisLoader.load();
   allEmojis.set(name, emoji);
   storeEmojis(allEmojis);
 };
@@ -97,7 +103,8 @@ interface Token {
 }
 
 
-const expandEmoji = (text: string): string => {
+const expandEmoji = async (text: string): Promise<string> => {
+  const allEmojis = await emojisLoader.load();
   let replacementCount = 0;
   const result = _.flatMap(text.split('\n'), (line) => {
     const [, , tokens] = (line + '\n').split('').reduce<[TokenType, string[], Token[]]>(
@@ -112,7 +119,8 @@ const expandEmoji = (text: string): string => {
               kind: 'Plain',
               content: `!${content}!`,
             });
-          } else {
+          }
+          else {
             parsed.push({
               kind: parsing,
               content: chars.join(''),
@@ -208,7 +216,7 @@ export const server = ({eventClient, webClient: slack}: SlackInterface) => plugi
     }
     slack.chat.postMessage({
       channel: request.body.channel_id,
-      text: expandEmoji(request.body.text),
+      text: await expandEmoji(request.body.text),
       username: await getMemberName(request.body.user_id),
       icon_url: await getMemberIcon(request.body.user_id, 192),
     });
@@ -217,9 +225,10 @@ export const server = ({eventClient, webClient: slack}: SlackInterface) => plugi
   // }}}
 
   // Emoji list API {{{
-  fastify.get('/emoxpand/list', (_, response) => {
+  fastify.get('/emoxpand/list', async (_, response) => {
     response.header('Content-Type', 'applicaton/json').code(200);
-    return Promise.resolve(emojisToJson(allEmojis));
+    const allEmojis = await emojisLoader.load();
+    return emojisToJson(allEmojis);
   });
   // }}}
 
@@ -240,6 +249,7 @@ export const server = ({eventClient, webClient: slack}: SlackInterface) => plugi
 
     // Big Emoji list {{{
     if (/^大(?:絵文字|emoji)一覧$/.test(message.text)) {
+      const allEmojis = await emojisLoader.load();
       const emojiNames = Array.from(allEmojis.keys());
       if (emojiNames.length === 0) {
         postMessage('登録されている大絵文字はありません');
@@ -287,7 +297,7 @@ export const server = ({eventClient, webClient: slack}: SlackInterface) => plugi
             .split('\n')
             .map((row) =>
               row.slice(1, row.length - 1).split('::'));
-          addEmoji(state.name, emojiFromContent(contentLines));
+          await addEmoji(state.name, emojiFromContent(contentLines));
           postMessage(`大絵文字 \`!${state.name}!\`
 ${match.groups.content}
 が登録されました:sushi-go-left::waiwai::saikou::chian-ga-aru::sushi-go-right:`);

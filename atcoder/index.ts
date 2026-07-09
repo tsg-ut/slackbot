@@ -656,7 +656,6 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			updateContests();
 		});
 	}, 30 * 60 * 1000);
-	updateContests();
 
 	let time = Date.now();
 	setInterval(() => {
