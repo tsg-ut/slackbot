@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import moment from 'moment-timezone';
 import customResponses from "./custom-responses";
-import { get, increment } from "../achievements";
+import { increment } from "../achievements";
 
 let store: Record<string, any> = {};
 
@@ -26,34 +27,47 @@ describe('better-custom-response', () => {
         }
     });
 
-    it('It Works! achievement logic works', async () => {
+    it('It Works! achievement logic works for kcztime', async () => {
         const kczResponse = customResponses.find(r => r.username === 'kcztime');
-        const moraResponse = customResponses.find(r => r.username === 'moratime');
-
         expect(kczResponse).toBeDefined();
+
+        const context = { user: 'U123456' };
+
+        // 1. First query saves the time
+        await kczResponse.outputFunction([], context);
+        const time1 = store['U123456:bcr-kcztime-last-time'];
+        expect(time1).toBeDefined();
+        expect(increment).not.toHaveBeenCalled();
+
+        // 2. Artificially set the stored time to tomorrow
+        const tomorrow = moment().add(1, 'day').format('YYYY-MM-DD HH:mm:ss');
+        store['U123456:bcr-kcztime-last-time'] = tomorrow;
+
+        // 3. Second query gets the current time (which is earlier than tomorrow)
+        await kczResponse.outputFunction([], context);
+        expect(increment).toHaveBeenCalledWith('U123456', 'bcr-it-works');
+    });
+
+    it('It Works! achievement logic works for moratime', async () => {
+        const moraResponse = customResponses.find(r => r.username === 'moratime');
         expect(moraResponse).toBeDefined();
 
         const context = { user: 'U123456' };
 
-        // 1. Initial query to Cambridge (Europe/London)
+        // 1. First query saves the time
         await moraResponse.outputFunction([], context);
-
-        // check that last time is saved
-        const time1 = store['U123456:kcz-mora-last-time'];
+        const time1 = store['U123456:bcr-moratime-last-time'];
         expect(time1).toBeDefined();
         expect(increment).not.toHaveBeenCalled();
 
-        // 2. Query to Boston (America/New_York)
-        // Since Boston local time is 5 hours behind London local time,
-        // even with a tiny delay, Boston local time is earlier than the previously saved time1.
-        await kczResponse.outputFunction([], context);
+        // 2. Artificially set the stored time to tomorrow
+        const tomorrow = moment().add(1, 'day').format('YYYY-MM-DD HH:mm:ss');
+        store['U123456:bcr-moratime-last-time'] = tomorrow;
 
-        const time2 = store['U123456:kcz-mora-last-time'];
-        expect(time2).toBeDefined();
-        expect(time2 < time1).toBe(true);
-
-        // increment should have been called to unlock it-works
-        expect(increment).toHaveBeenCalledWith('U123456', 'it-works');
+        // 3. Second query gets the current time (which is earlier than tomorrow)
+        await moraResponse.outputFunction([], context);
+        expect(increment).toHaveBeenCalledWith('U123456', 'bcr-it-works');
     });
 });
+
 
