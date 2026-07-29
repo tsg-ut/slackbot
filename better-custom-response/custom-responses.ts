@@ -12,7 +12,7 @@ const checkTimeAchievement = async (user: string, nowTime: moment.Moment, key: s
     const previousTimeStr = await get(user, key);
     if (previousTimeStr && typeof previousTimeStr === 'string') {
         if (currentTimeStr.localeCompare(previousTimeStr) < 0) {
-            await increment(user, 'bcr-it-works');
+            await increment(user, 'bcr-time-display-rewind');
         }
     }
     await set(user, key, currentTimeStr);

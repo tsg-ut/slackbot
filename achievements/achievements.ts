@@ -2630,12 +2630,12 @@ const achievements: Achievement[] = [
 		category: 'bcr',
 	},
 	{
-		id: 'bcr-it-works',
+		id: 'bcr-time-display-rewind',
 		difficulty: 'hard',
 		title: 'It Works!',
 		condition: 'kcztimeもしくはmoratimeで、前回取得した時刻より早い時刻表示を取得する',
 		category: 'bcr',
-		counter: 'bcr-it-works',
+		counter: 'bcr-time-display-rewind',
 		value: 1,
 	},
 

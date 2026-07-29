@@ -33,19 +33,16 @@ describe('better-custom-response', () => {
 
         const context = { user: 'U123456' };
 
-        // 1. First query saves the time
         await kczResponse.outputFunction([], context);
         const time1 = store['U123456:bcr-kcztime-last-time'];
         expect(time1).toBeDefined();
         expect(increment).not.toHaveBeenCalled();
 
-        // 2. Artificially set the stored time to tomorrow
         const tomorrow = moment().add(1, 'day').format('YYYY-MM-DD HH:mm:ss');
         store['U123456:bcr-kcztime-last-time'] = tomorrow;
 
-        // 3. Second query gets the current time (which is earlier than tomorrow)
         await kczResponse.outputFunction([], context);
-        expect(increment).toHaveBeenCalledWith('U123456', 'bcr-it-works');
+        expect(increment).toHaveBeenCalledWith('U123456', 'bcr-time-display-rewind');
     });
 
     it('It Works! achievement logic works for moratime', async () => {
@@ -54,20 +51,18 @@ describe('better-custom-response', () => {
 
         const context = { user: 'U123456' };
 
-        // 1. First query saves the time
         await moraResponse.outputFunction([], context);
         const time1 = store['U123456:bcr-moratime-last-time'];
         expect(time1).toBeDefined();
         expect(increment).not.toHaveBeenCalled();
 
-        // 2. Artificially set the stored time to tomorrow
         const tomorrow = moment().add(1, 'day').format('YYYY-MM-DD HH:mm:ss');
         store['U123456:bcr-moratime-last-time'] = tomorrow;
 
-        // 3. Second query gets the current time (which is earlier than tomorrow)
         await moraResponse.outputFunction([], context);
-        expect(increment).toHaveBeenCalledWith('U123456', 'bcr-it-works');
+        expect(increment).toHaveBeenCalledWith('U123456', 'bcr-time-display-rewind');
     });
 });
+
 
 
