@@ -5,6 +5,18 @@ import { shuffle } from 'lodash';
 import { tokenize } from 'kuromojin';
 import omikuji from './omikuji.json';
 import moment from 'moment-timezone';
+import { get, set, increment } from '../achievements';
+
+const checkTimeAchievement = async (user: string, nowTime: moment.Moment) => {
+    const currentTimeStr = nowTime.format('YYYY-MM-DD HH:mm:ss');
+    const previousTimeStr = await get(user, 'kcz-mora-last-time');
+    if (previousTimeStr && typeof previousTimeStr === 'string') {
+        if (currentTimeStr < previousTimeStr) {
+            await increment(user, 'it-works');
+        }
+    }
+    await set(user, 'kcz-mora-last-time', currentTimeStr);
+};
 
 interface Achievement {
     trigger: RegExp[],
@@ -215,8 +227,9 @@ const customResponses: CustomResponse[] = [
     },
     {
         input: [/^こおしいず時間$/, /^kcztime$/, /^kczclock$/],
-        outputFunction: (input: string[]) => {
+        outputFunction: async (input: string[], context: Context) => {
             const nowBoston = moment().tz('America/New_York');
+            await checkTimeAchievement(context.user, nowBoston);
             const date = nowBoston.format('YYYY年 M月D日');
             const ampm = nowBoston.hour() < 12 ? '午前' : '午後';
             const yobi = ['日', '月', '火', '水', '木', '金', '土'][nowBoston.day()] + '曜日';
@@ -232,8 +245,9 @@ const customResponses: CustomResponse[] = [
     },
     {
         input: [/^moratime$/, /^moraclock$/],
-        outputFunction: (input: string[]) => {
+        outputFunction: async (input: string[], context: Context) => {
             const nowCambridge = moment().tz('Europe/London');
+            await checkTimeAchievement(context.user, nowCambridge);
             const date = nowCambridge.format('YYYY年 M月D日');
             const ampm = nowCambridge.hour() < 12 ? '午前' : '午後';
             const yobi = ['日', '月', '火', '水', '木', '金', '土'][nowCambridge.day()] + '曜日';
