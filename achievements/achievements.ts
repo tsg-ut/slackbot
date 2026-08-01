@@ -239,6 +239,8 @@ const achievements: Achievement[] = [
 	reactionAchievementFactory('お気の毒に...', 'pensive', 5),
 	reactionAchievementFactory('年の功カナ💦❓', 'ojisan', 5),
 	reactionAchievementFactory('アンタは今日も最高さ！', 'kuromi', 5),
+	reactionAchievementFactory('OOOOOjun', 'ojun', 5),
+	reactionAchievementFactory('TeX力会', 'oura', 5),
 
 	{
 		id: 'reaction-koresuki-5-first-reaction-1',
