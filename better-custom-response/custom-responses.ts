@@ -261,6 +261,38 @@ const customResponses: CustomResponse[] = [
         icon_emoji: ':circled_moratorium08:',
         username: 'moratime',
     },
+    {
+        input: [/^caphosratime$/, /^caphosraclock$/, /^ctime$/, /^cclock$/],
+        outputFunction: async (input: string[]) => {
+            const url = "http://neko.caphosra.net:5122/";
+            try {
+                const response = await fetch(url, {method : "GET"});
+                if (!response.ok) {
+                    throw new Error(`Response status: ${response.status}`);
+                }
+
+                const result = await response.json() as {time : string};
+                return [stripIndent`\
+                    現在の時刻は
+                    *${result.time}*
+                    だよ`];
+            }
+            catch (err) {
+                const nowTokyo = moment().tz('Asia/Tokyo');
+                const date = nowTokyo.format('YYYY年 M月D日');
+                const ampm = nowTokyo.hour() < 12 ? '午前' : '午後';
+                const yobi = ['日', '月', '火', '水', '木', '金', '土'][nowTokyo.day()] + '曜日';
+                const hour = nowTokyo.hour() % 12;
+                const minute = nowTokyo.minute();
+                return [stripIndent`\
+                    現在の時刻は
+                    *${date} ${yobi} ${ampm}${hour}時${minute}分*
+                    だよ`];
+            }
+        },
+        icon_emoji: ':caphosra:',
+        username: 'caphosratime',
+    },
 ];
 
 export default customResponses;
