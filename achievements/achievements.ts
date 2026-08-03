@@ -2631,6 +2631,15 @@ const achievements: Achievement[] = [
 		condition: '白鍵を1234鍵に寄せ、デニム譜面を2P割れにする',
 		category: 'bcr',
 	},
+	{
+		id: 'bcr-time-display-rewind',
+		difficulty: 'hard',
+		title: 'It Works!',
+		condition: 'kcztimeもしくはmoratimeで、前回取得した時刻より早い時刻表示を取得する',
+		category: 'bcr',
+		counter: 'bcr-time-display-rewind',
+		value: 1,
+	},
 
 	// achievement-quiz
 	{
