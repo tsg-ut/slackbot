@@ -502,14 +502,15 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			await new Promise<void>((resolve) => {
 				setTimeout(resolve, 1000);
 			});
-			// Sync the user's submissions once, then derive each set's AC count from the cache
-			// so a single daily run makes at most one API round-trip per user.
+			// abs / typical90 are fetched alongside the completion sets but kept out of
+			// PROBLEM_SET_COUNTERS because they don't map 1:1 to a counter
+			// (atcoder-typical-solves counts abs + typical90 combined).
 			const acsByContest = await fetchUserACsInContests(user.atcoder, [
 				'abs',
 				'typical90',
 				...PROBLEM_SET_COUNTERS.map(({contestId}) => contestId),
-			]).catch((error): null => {
-				log.error(`[atcoder-daily] Failed to fetch submissions for ${user.atcoder}: ${error}`);
+			]).catch((error: unknown): null => {
+				log.error(`[atcoder-daily] Failed to fetch submissions for ${user.atcoder}: ${String(error)}`);
 				return null;
 			});
 			// Skip this user for today's run if their submissions could not be fetched
@@ -520,7 +521,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			const absACs = acsByContest.get('abs') ?? new Set<string>();
 			absACs.delete('practice_1');
 			const absSolve = absACs.size;
-			const typicalSolve = (acsByContest.get('typical90') ?? new Set<string>()).size;
+			const typicalSolve = acsByContest.get('typical90')?.size ?? 0;
 
 			const previousAbsSolve = (await get(user.slack, 'atcoder-abs-solves')) || 0;
 			if (typeof previousAbsSolve !== 'number') {
@@ -540,7 +541,7 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 
 			// Unlock completion achievements for well-known problem sets (EDPC, TDPC, etc.)
 			for (const {contestId, counter} of PROBLEM_SET_COUNTERS) {
-				await set(user.slack, counter, (acsByContest.get(contestId) ?? new Set<string>()).size);
+				await set(user.slack, counter, acsByContest.get(contestId)?.size ?? 0);
 			}
 
 			let username = await getMemberName(user.slack);

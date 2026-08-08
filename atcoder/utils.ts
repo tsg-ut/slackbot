@@ -80,11 +80,6 @@ const syncUserSubmissions = async (userId: string): Promise<UserSubmissionCache>
 	return cached;
 };
 
-export const fetchUserACsInContest = async (userId: string, contestId: string): Promise<Set<string>> => {
-	const cached = await syncUserSubmissions(userId);
-	return new Set(cached.acsByContest[contestId] ?? []);
-};
-
 // Sync a user's submissions once and return the AC sets for multiple contests,
 // avoiding a separate API round-trip (and throttling delay) per contest.
 export const fetchUserACsInContests = async (userId: string, contestIds: string[]): Promise<Map<string, Set<string>>> => {
