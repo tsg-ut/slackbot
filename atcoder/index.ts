@@ -114,6 +114,15 @@ interface ContestEntry {
 const SILENT_CONTEST_PREFIXES = ['awc', 'adt_'];
 const SILENT_START_CONTEST_PREFIXES = ['adt_'];
 
+// AtCoder problem sets whose solve counts unlock completion achievements.
+// contestId is the AtCoder Problems contest id; counter matches an achievement in achievements.ts.
+const PROBLEM_SET_COUNTERS: {contestId: string, counter: string}[] = [
+	{contestId: 'fps-24', counter: 'atcoder-fps24-solves'},
+	{contestId: 'tdpc', counter: 'atcoder-tdpc-solves'},
+	{contestId: 'dp', counter: 'atcoder-edpc-solves'},
+	{contestId: 'ndpc', counter: 'atcoder-ndpc-solves'},
+];
+
 export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const state = await State.init<StateObj>('atcoder', {
 		users: [],
@@ -518,6 +527,15 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 
 			increase += Math.max(0, absSolve - previousAbsSolve);
 			increase += Math.max(0, typicalSolve - previousTypicalSolve);
+
+			// Unlock completion achievements for well-known problem sets (EDPC, TDPC, etc.)
+			for (const {contestId, counter} of PROBLEM_SET_COUNTERS) {
+				await new Promise<void>((resolve) => {
+					setTimeout(resolve, 1000);
+				});
+				const acs = await fetchUserACsInContest(user.atcoder, contestId);
+				set(user.slack, counter, acs.size);
+			}
 
 			let username = await getMemberName(user.slack);
 			if (username.length > 12) {
