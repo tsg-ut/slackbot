@@ -15,7 +15,7 @@ import {getMemberIcon, getMemberName} from '../lib/slackUtils.js';
 import State from '../lib/state.js';
 // eslint-disable-next-line no-unused-vars
 import type {Results, Standings} from './types.js';
-import {fetchUserACsInContest} from './utils.js';
+import {fetchUserACsInContests} from './utils.js';
 
 const log = logger.child({bot: 'atcoder'});
 const mutex = new Mutex();
@@ -113,6 +113,15 @@ interface ContestEntry {
 
 const SILENT_CONTEST_PREFIXES = ['awc', 'adt_'];
 const SILENT_START_CONTEST_PREFIXES = ['adt_'];
+
+// AtCoder problem sets whose solve counts unlock completion achievements.
+// contestId is the AtCoder Problems contest id; counter matches an achievement in achievements.ts.
+const PROBLEM_SET_COUNTERS: {contestId: string, counter: string}[] = [
+	{contestId: 'fps-24', counter: 'atcoder-fps24-solves'},
+	{contestId: 'tdpc', counter: 'atcoder-tdpc-solves'},
+	{contestId: 'dp', counter: 'atcoder-edpc-solves'},
+	{contestId: 'ndpc', counter: 'atcoder-ndpc-solves'},
+];
 
 export default async ({eventClient, webClient: slack}: SlackInterface) => {
 	const state = await State.init<StateObj>('atcoder', {
@@ -493,15 +502,26 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			await new Promise<void>((resolve) => {
 				setTimeout(resolve, 1000);
 			});
-			const absACs = await fetchUserACsInContest(user.atcoder, 'abs');
+			// abs / typical90 are fetched alongside the completion sets but kept out of
+			// PROBLEM_SET_COUNTERS because they don't map 1:1 to a counter
+			// (atcoder-typical-solves counts abs + typical90 combined).
+			const acsByContest = await fetchUserACsInContests(user.atcoder, [
+				'abs',
+				'typical90',
+				...PROBLEM_SET_COUNTERS.map(({contestId}) => contestId),
+			]).catch((error: unknown): null => {
+				log.error(`[atcoder-daily] Failed to fetch submissions for ${user.atcoder}: ${String(error)}`);
+				return null;
+			});
+			// Skip this user for today's run if their submissions could not be fetched
+			if (acsByContest === null) {
+				continue;
+			}
+
+			const absACs = acsByContest.get('abs') ?? new Set<string>();
 			absACs.delete('practice_1');
 			const absSolve = absACs.size;
-
-			await new Promise<void>((resolve) => {
-				setTimeout(resolve, 1000);
-			});
-			const typicalACs = await fetchUserACsInContest(user.atcoder, 'typical90');
-			const typicalSolve = typicalACs.size;
+			const typicalSolve = acsByContest.get('typical90')?.size ?? 0;
 
 			const previousAbsSolve = (await get(user.slack, 'atcoder-abs-solves')) || 0;
 			if (typeof previousAbsSolve !== 'number') {
@@ -513,11 +533,16 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 			}
 			const previousTypicalSolve = previousTypicalSolves - previousAbsSolve;
 
-			set(user.slack, 'atcoder-abs-solves', absSolve);
-			set(user.slack, 'atcoder-typical-solves', absSolve + typicalSolve);
+			await set(user.slack, 'atcoder-abs-solves', absSolve);
+			await set(user.slack, 'atcoder-typical-solves', absSolve + typicalSolve);
 
 			increase += Math.max(0, absSolve - previousAbsSolve);
 			increase += Math.max(0, typicalSolve - previousTypicalSolve);
+
+			// Unlock completion achievements for well-known problem sets (EDPC, TDPC, etc.)
+			for (const {contestId, counter} of PROBLEM_SET_COUNTERS) {
+				await set(user.slack, counter, acsByContest.get(contestId)?.size ?? 0);
+			}
 
 			let username = await getMemberName(user.slack);
 			if (username.length > 12) {

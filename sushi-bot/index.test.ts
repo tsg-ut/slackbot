@@ -1,10 +1,20 @@
 import moment from 'moment';
+import schedule, {Job, JobCallback} from 'node-schedule';
+import {unlock, increment} from '../achievements/index.js';
+import State from '../lib/state.js';
+import {MockedStateInterface} from '../lib/__mocks__/state.js';
 import sushi from './index.js';
 import Slack from '../lib/slackMock.js';
 
 vi.mock('../achievements');
 vi.mock('moment');
 vi.mock('../lib/state');
+vi.mock('node-schedule', () => ({
+	default: {
+		scheduleJob: vi.fn(),
+	},
+	scheduleJob: vi.fn(),
+}));
 vi.mock('fs-extra', () => ({
 	mkdirp: vi.fn(),
 	readFile: vi.fn(() => Promise.resolve(Buffer.from(''))),
@@ -13,11 +23,18 @@ vi.mock('fs-extra', () => ({
 }));
 
 let slack: InstanceType<typeof Slack> = null;
+let scheduleCallback: JobCallback | null = null;
 
 describe('sushi-bot', async () => {
 	const originalMoment = (await vi.importActual<{default: typeof import('moment')}>('moment')).default;
 
 	beforeEach(async () => {
+		vi.clearAllMocks();
+		scheduleCallback = null;
+		vi.mocked(schedule.scheduleJob).mockImplementation((rule, fn) => {
+			scheduleCallback = fn;
+			return {} as Job;
+		});
 		slack = new Slack();
 		await sushi(slack);
 
@@ -464,4 +481,89 @@ describe('sushi-bot', async () => {
 			ts: slack.fakeTimestamp,
 		});
 	}));
+
+	describe('weekly wakeup ranking achievements', () => {
+		beforeEach(() => {
+			vi.mocked(slack.webClient.users.list).mockResolvedValue({
+				ok: true,
+				members: [
+					{
+						id: slack.fakeUser,
+						name: 'fakeUser',
+						profile: {
+							display_name: 'Fake User',
+							image_24: 'https://example.com/image.png',
+						},
+					},
+				],
+			});
+		});
+
+		it('unlocks "起床フィーバータイム" (asa-week-repdigit) when score is a 3-digit repdigit (e.g. 333)', async () => {
+			const mockedState = State as MockedStateInterface<any>;
+			const state = mockedState.mocks.get('sushi-bot-counter-asa');
+			state.data = {[slack.fakeUser]: 333};
+
+			expect(scheduleCallback).not.toBeNull();
+			// 2023-01-01 is a Sunday!
+			await scheduleCallback!(new Date('2023-01-01T19:00:00+09:00'));
+
+			expect(increment).toHaveBeenCalledWith(slack.fakeUser, 'asa-week-repdigit');
+		});
+
+		it('does not unlock "起床フィーバータイム" when score is not a 3-digit repdigit (e.g. 334)', async () => {
+			const mockedState = State as MockedStateInterface<any>;
+			const state = mockedState.mocks.get('sushi-bot-counter-asa');
+			state.data = {[slack.fakeUser]: 334};
+
+			expect(scheduleCallback).not.toBeNull();
+			await scheduleCallback!(new Date('2023-01-01T19:00:00+09:00'));
+
+			expect(increment).not.toHaveBeenCalledWith(slack.fakeUser, 'asa-week-repdigit');
+		});
+
+		it('unlocks "起床ロボット" (asa-week-power-of-two) when score is a power of 2 (e.g. 256)', async () => {
+			const mockedState = State as MockedStateInterface<any>;
+			const state = mockedState.mocks.get('sushi-bot-counter-asa');
+			state.data = {[slack.fakeUser]: 256};
+
+			expect(scheduleCallback).not.toBeNull();
+			await scheduleCallback!(new Date('2023-01-01T19:00:00+09:00'));
+
+			expect(increment).toHaveBeenCalledWith(slack.fakeUser, 'asa-week-power-of-two');
+		});
+
+		it('does not unlock "起床ロボット" when score is not a power of 2 (e.g. 255)', async () => {
+			const mockedState = State as MockedStateInterface<any>;
+			const state = mockedState.mocks.get('sushi-bot-counter-asa');
+			state.data = {[slack.fakeUser]: 255};
+
+			expect(scheduleCallback).not.toBeNull();
+			await scheduleCallback!(new Date('2023-01-01T19:00:00+09:00'));
+
+			expect(increment).not.toHaveBeenCalledWith(slack.fakeUser, 'asa-week-power-of-two');
+		});
+
+		it('unlocks "なんでや" (asa-week-334) when score is exactly 334', async () => {
+			const mockedState = State as MockedStateInterface<any>;
+			const state = mockedState.mocks.get('sushi-bot-counter-asa');
+			state.data = {[slack.fakeUser]: 334};
+
+			expect(scheduleCallback).not.toBeNull();
+			await scheduleCallback!(new Date('2023-01-01T19:00:00+09:00'));
+
+			expect(increment).toHaveBeenCalledWith(slack.fakeUser, 'asa-week-334');
+		});
+
+		it('does not unlock "なんでや" when score is not exactly 334 (e.g. 333)', async () => {
+			const mockedState = State as MockedStateInterface<any>;
+			const state = mockedState.mocks.get('sushi-bot-counter-asa');
+			state.data = {[slack.fakeUser]: 333};
+
+			expect(scheduleCallback).not.toBeNull();
+			await scheduleCallback!(new Date('2023-01-01T19:00:00+09:00'));
+
+			expect(increment).not.toHaveBeenCalledWith(slack.fakeUser, 'asa-week-334');
+		});
+	});
 });

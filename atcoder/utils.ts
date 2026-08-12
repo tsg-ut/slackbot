@@ -35,7 +35,7 @@ const getStorage = (): Promise<nodePersist.LocalStorage> => {
 	return storagePromise;
 };
 
-export const fetchUserACsInContest = async (userId: string, contestId: string): Promise<Set<string>> => {
+const syncUserSubmissions = async (userId: string): Promise<UserSubmissionCache> => {
 	const storage = await getStorage();
 
 	const cacheKey = `submissions-${userId}`;
@@ -80,5 +80,12 @@ export const fetchUserACsInContest = async (userId: string, contestId: string): 
 	cached.lastFetchedSecond = maxEpochSecond;
 	await storage.setItem(cacheKey, cached);
 
-	return new Set(cached.acsByContest[contestId] ?? []);
+	return cached;
+};
+
+// Sync a user's submissions once and return the AC sets for multiple contests,
+// avoiding a separate API round-trip (and throttling delay) per contest.
+export const fetchUserACsInContests = async (userId: string, contestIds: string[]): Promise<Map<string, Set<string>>> => {
+	const cached = await syncUserSubmissions(userId);
+	return new Map(contestIds.map((contestId) => [contestId, new Set(cached.acsByContest[contestId] ?? [])]));
 };

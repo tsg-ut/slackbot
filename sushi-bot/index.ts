@@ -444,6 +444,15 @@ export default async function ({eventClient, webClient: slack}: SlackInterface) 
 					if (count >= 7 * 108) {
 						unlock(user, 'asa-week-perfect');
 					}
+					if (count >= 100 && count <= 999 && count % 111 === 0) {
+						increment(user, 'asa-week-repdigit');
+					}
+					if (count > 0 && (count & (count - 1)) === 0) {
+						increment(user, 'asa-week-power-of-two');
+					}
+					if (count === 334) {
+						increment(user, 'asa-week-334');
+					}
 
 					return {
 						author_name: `${index + 1}位: ${name} (${count}点)`,

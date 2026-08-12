@@ -5,6 +5,18 @@ import { shuffle } from 'lodash-es';
 import { tokenize } from 'kuromojin';
 import omikuji from './omikuji.json' with {type: 'json'};
 import moment from 'moment-timezone';
+import { get, set, increment } from '../achievements/index.js';
+
+const checkTimeAchievement = async (user: string, nowTime: moment.Moment, key: string) => {
+    const currentTimeStr = nowTime.format('YYYY-MM-DD HH:mm:ss');
+    const previousTimeStr = await get(user, key);
+    if (previousTimeStr && typeof previousTimeStr === 'string') {
+        if (currentTimeStr.localeCompare(previousTimeStr) < 0) {
+            await increment(user, 'bcr-time-display-rewind');
+        }
+    }
+    await set(user, key, currentTimeStr);
+};
 
 interface Achievement {
     trigger: RegExp[],
@@ -215,8 +227,9 @@ const customResponses: CustomResponse[] = [
     },
     {
         input: [/^こおしいず時間$/, /^kcztime$/, /^kczclock$/],
-        outputFunction: (input: string[]) => {
+        outputFunction: async (input: string[], context: Context) => {
             const nowBoston = moment().tz('America/New_York');
+            await checkTimeAchievement(context.user, nowBoston, 'bcr-kcztime-last-time');
             const date = nowBoston.format('YYYY年 M月D日');
             const ampm = nowBoston.hour() < 12 ? '午前' : '午後';
             const yobi = ['日', '月', '火', '水', '木', '金', '土'][nowBoston.day()] + '曜日';
@@ -232,8 +245,9 @@ const customResponses: CustomResponse[] = [
     },
     {
         input: [/^moratime$/, /^moraclock$/],
-        outputFunction: (input: string[]) => {
+        outputFunction: async (input: string[], context: Context) => {
             const nowCambridge = moment().tz('Europe/London');
+            await checkTimeAchievement(context.user, nowCambridge, 'bcr-moratime-last-time');
             const date = nowCambridge.format('YYYY年 M月D日');
             const ampm = nowCambridge.hour() < 12 ? '午前' : '午後';
             const yobi = ['日', '月', '火', '水', '木', '金', '土'][nowCambridge.day()] + '曜日';
@@ -246,6 +260,38 @@ const customResponses: CustomResponse[] = [
         },
         icon_emoji: ':circled_moratorium08:',
         username: 'moratime',
+    },
+    {
+        input: [/^caphosratime$/, /^caphosraclock$/, /^ctime$/, /^cclock$/],
+        outputFunction: async (input: string[]) => {
+            const url = "http://neko.caphosra.net:5122/";
+            try {
+                const response = await fetch(url, {method : "GET"});
+                if (!response.ok) {
+                    throw new Error(`Response status: ${response.status}`);
+                }
+
+                const result = await response.json() as {time : string};
+                return [stripIndent`\
+                    現在の時刻は
+                    *${result.time}*
+                    だよ`];
+            }
+            catch (err) {
+                const nowTokyo = moment().tz('Asia/Tokyo');
+                const date = nowTokyo.format('YYYY年 M月D日');
+                const ampm = nowTokyo.hour() < 12 ? '午前' : '午後';
+                const yobi = ['日', '月', '火', '水', '木', '金', '土'][nowTokyo.day()] + '曜日';
+                const hour = nowTokyo.hour() % 12;
+                const minute = nowTokyo.minute();
+                return [stripIndent`\
+                    現在の時刻は
+                    *${date} ${yobi} ${ampm}${hour}時${minute}分*
+                    だよ`];
+            }
+        },
+        icon_emoji: ':caphosra:',
+        username: 'caphosratime',
     },
 ];
 
