@@ -25,7 +25,14 @@ export default async ({eventClient, webClient: slack}: SlackInterface) => {
 		ans: Map<string, string>;
 	} = await (async () => {
 		try {
-			const savedState: any = (await import('./state.json', {with: {type: 'json'}})).default;
+			// state.json is gitignored and may not exist, so it is read at runtime instead of being imported
+			const savedStateText = await promisify(fs.readFile)(path.join(__dirname, 'state.json'), 'utf8');
+			const savedState = JSON.parse(savedStateText) as {
+				phase: string;
+				theme: string | null;
+				candidates: string[];
+				ans: {[key: string]: string};
+			};
 			return {
 				phase: savedState.phase,
 				theme: savedState.theme || null,
