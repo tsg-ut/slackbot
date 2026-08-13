@@ -2,18 +2,14 @@
 // https://github.com/Automattic/node-canvas/issues/930
 import 'canvas';
 
+import './lib/dotenv.js';
+
 import path from 'path';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
 
-dotenv.config({ override: true });
-
-// NOTE: ESM の static import はファイル内の記述順に関わらずすべて
-// dotenv.config() より先に評価されてしまう。process.env をモジュール
-// トップレベルで参照する ./lib/slack は、dotenv.config() 完了後に
-// 動的 import で読み込む必要がある。
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const { eventClient, messageClient, tsgEventClient, webClient } = await import('./lib/slack.js');
+
+import { eventClient, messageClient, tsgEventClient, webClient } from './lib/slack.js';
 
 import Fastify from 'fastify';
 import qs from 'querystring';

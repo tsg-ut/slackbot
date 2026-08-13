@@ -1,19 +1,18 @@
 import path from 'path';
+import {fileURLToPath} from 'url';
 import concatStream from 'concat-stream';
 // @ts-expect-error: untyped
 import Docker from 'dockerode';
 import download from 'download';
 import japaneseModule from 'japanese';
-const {hiraganize} = japaneseModule;
 import QueueModule from 'p-queue';
-// p-queue の compiled JS は exports.default = X 形式でネストしたdefaultを持つため明示的にunwrapする
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const Queue: any = (QueueModule as any).default ?? QueueModule;
 import logger from '../lib/logger.js';
+import {unwrapDefault} from '../lib/utils.js';
 
-import {fileURLToPath} from 'url';
+const {hiraganize} = japaneseModule;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const Queue = unwrapDefault(QueueModule);
 const docker = new Docker();
 const queue = new Queue({concurrency: 1});
 const log = logger.child({bot: 'tahoiya/aibot'});

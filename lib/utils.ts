@@ -67,3 +67,13 @@ export class Loader<T> {
 		return this.value;
 	}
 }
+
+/**
+ * tsc の esModuleInterop でビルドされた CJS モジュールは `exports.default = X` の形で
+ * 本体を持つため、Node のネイティブ ESM ローダー経由で読み込むと default が二重になる。
+ * 一方 vitest/tsx (esbuild) は unwrap 済みの値を渡してくるため、どちらでも動くよう
+ * default があればそれを、なければモジュールそのものを返す。
+ */
+export const unwrapDefault = <T>(module: T | {default: T}): T => (
+	(module as {default?: T}).default ?? (module as T)
+);

@@ -9,21 +9,6 @@ import type {IMove} from 'shogi9.js';
 import ColorModule from 'shogi9.js/lib/Color.js';
 import type * as ColorNS from 'shogi9.js/lib/Color.js';
 import PieceModule from 'shogi9.js/lib/Piece.js';
-
-type ShogiType = ShogiNS.default;
-type ColorType = ColorNS.default;
-
-// shogi9.js は tsc(esModuleInterop) でビルドされているため、compiled JS は
-// `exports.default = X` の形でネストしたdefaultを持つ。Node のネイティブ ESM は
-// これを二重に unwrap しないため `.default` を取り出す必要があるが、
-// vitest/tsx (esbuild) は逆にこの時点で既に unwrap 済みの値を渡してくることがあるため、
-// どちらの場合でも動作するよう `??` でフォールバックする
-// (型としての ShogiType/ColorType は上で別途取得)。
-const Shogi = ((ShogiModule as any).default ?? ShogiModule) as {new (setting?: unknown): ShogiType};
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const Color: any = (ColorModule as any).default ?? ColorModule;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const Piece: any = (PieceModule as any).default ?? PieceModule;
 import {open as sqliteOpen} from 'sqlite';
 import type {Database} from 'sqlite';
 import sqlite3 from 'sqlite3';
@@ -42,6 +27,14 @@ import {
 	pieceToChar,
 	transitionToText,
 } from './util.js';
+import {unwrapDefault} from '../lib/utils.js';
+
+type ShogiType = ShogiNS.default;
+type ColorType = ColorNS.default;
+
+const Shogi = unwrapDefault(ShogiModule);
+const Color = unwrapDefault(ColorModule);
+const Piece = unwrapDefault(PieceModule);
 
 interface ShogiDbRow {
 	board: Buffer;

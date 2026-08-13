@@ -1,3 +1,6 @@
+// 下のトップレベルで process.env を参照するため、他の import より先に読み込む
+import './dotenv.js';
+
 import {WebClient} from '@slack/web-api';
 import {createMessageAdapter} from '@slack/interactive-messages';
 import {createEventAdapter} from '@slack/events-api';

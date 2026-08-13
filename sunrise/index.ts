@@ -9,9 +9,6 @@ import {maxBy, range, map} from 'lodash-es';
 import moment from 'moment';
 import nodePersist from 'node-persist';
 import QueueModule from 'p-queue';
-// p-queue の compiled JS は exports.default = X 形式でネストしたdefaultを持つため明示的にunwrapする
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const Queue: any = (QueueModule as any).default ?? QueueModule;
 import suncalc from 'suncalc';
 import logger from '../lib/logger.js';
 import type {SlackInterface} from '../lib/slack.js';
@@ -28,8 +25,11 @@ import weathers from './weathers.js';
 import type {WeatherCondition} from './weathers.js';
 
 import {fileURLToPath} from 'url';
+import {unwrapDefault} from '../lib/utils.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const Queue = unwrapDefault(QueueModule);
 const log = logger.child({bot: 'sunrise'});
 
 const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

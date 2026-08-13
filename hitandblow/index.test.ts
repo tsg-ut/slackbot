@@ -1,5 +1,5 @@
 import { stripIndent } from 'common-tags';
-import hitandblow from './/index.js';
+import hitandblow from './index.js';
 import Slack from '../lib/slackMock.js';
 
 vi.mock('../achievements');

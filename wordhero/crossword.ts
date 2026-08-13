@@ -2,11 +2,7 @@ import type {SlackInterface} from '../lib/slack.js';
 import cloudinary from 'cloudinary';
 import {stripIndent} from 'common-tags';
 import japaneseModule from 'japanese';
-const {hiraganize} = japaneseModule;
 import QueueModule from 'p-queue';
-// p-queue の compiled JS は exports.default = X 形式でネストしたdefaultを持つため明示的にunwrapする
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const Queue: any = (QueueModule as any).default ?? QueueModule;
 import {renderCrossword} from './render.js';
 import generateCrossword from './generateCrossword.js';
 import generateGrossword from './generateGrossword.js';
@@ -14,6 +10,10 @@ import {unlock, increment} from '../achievements/index.js';
 import {ChannelLimitedBot} from '../lib/channelLimitedBot.js';
 import {extractMessage} from '../lib/slackUtils.js';
 import type {GenericMessageEvent, MessageEvent} from '@slack/bolt';
+import {unwrapDefault} from '../lib/utils.js';
+
+const {hiraganize} = japaneseModule;
+const Queue = unwrapDefault(QueueModule);
 
 interface Description {
 	word: string,

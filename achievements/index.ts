@@ -4,17 +4,7 @@
 // 評価しないよう、動的 import で分岐する。
 const impl = process.env.NODE_ENV === 'production'
 	? await import('./index_production.js')
-	: process.env.NODE_ENV === 'test'
-		? {
-			default: async (): Promise<void> => {},
-			unlock: (): void => {},
-			isUnlocked: (): boolean => false,
-			increment: (): void => {},
-			get: (): unknown => null,
-			set: (): void => {},
-			lock: (): void => {},
-		}
-		: await import('./index_development.js');
+	: await import('./index_development.js');
 
 export default impl.default;
 export const unlock = impl.unlock;

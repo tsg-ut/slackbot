@@ -7,11 +7,10 @@ import Board from './lib/Board.js';
 import BoardElement from './lib/Render.js';
 import {JSDOM} from 'jsdom';
 import QueueModule from 'p-queue';
-// p-queue の compiled JS は exports.default = X 形式でネストしたdefaultを持つため明示的にunwrapする
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const Queue: any = (QueueModule as any).default ?? QueueModule;
 import {increment, unlock} from '../achievements/index.js';
+import {unwrapDefault} from '../lib/utils.js';
 
+const Queue = unwrapDefault(QueueModule);
 const log = logger.child({bot: 'octas'});
 
 const applyCSS = (paper: any) => {

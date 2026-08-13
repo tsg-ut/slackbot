@@ -1,9 +1,10 @@
 import assert from 'assert';
 import ShogiModule from 'shogi9.js';
 import ColorModule from 'shogi9.js/lib/Color.js';
+import {unwrapDefault} from '../lib/utils.js';
 
-const Shogi = ShogiModule.default ?? ShogiModule;
-const Color = ColorModule.default ?? ColorModule;
+const Shogi = unwrapDefault(ShogiModule);
+const Color = unwrapDefault(ColorModule);
 
 const gridList = [
 	{},

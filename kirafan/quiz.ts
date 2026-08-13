@@ -1,4 +1,4 @@
-import { KirafanCard, kirafanTools, getKirafanCards } from './/index.js';
+import { KirafanCard, kirafanTools, getKirafanCards } from './index.js';
 import { AteQuizProblem, AteQuiz } from '../atequiz/index.js';
 import { SlackInterface } from '../lib/slack.js';
 import sharp, { OverlayOptions } from 'sharp';
