@@ -1,9 +1,12 @@
 import sharp from 'sharp';
-import loadFont from '../lib/loadFont';
+import loadFont from '../lib/loadFont.js';
 import path from 'path';
-import {max} from 'lodash';
+import {max} from 'lodash-es';
 import fs from 'fs/promises';
 import {stripIndents} from 'common-tags';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const render = async (board: string[], {color = 'black'}: {color: string}) => {
 	const font = await loadFont('Noto Serif JP Bold');

@@ -1,7 +1,7 @@
 // AlpacaHack
 
 import axios from "axios";
-import { Challenge, SolvedInfo, Profile } from "./BasicTypes";
+import { Challenge, SolvedInfo, Profile } from "./BasicTypes.js";
 
 const client = axios.create({
 	withCredentials: false,

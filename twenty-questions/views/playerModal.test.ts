@@ -1,5 +1,5 @@
-import playerModal from './playerModal';
-import type {StateObj, PlayerState} from '../TwentyQuestions';
+import playerModal from './playerModal.js';
+import type {StateObj, PlayerState} from '../TwentyQuestions.js';
 import type {InputBlock, SectionBlock} from '@slack/web-api';
 
 const expectEquals: <S, T extends S>(actual: S, expected: T) => asserts actual is T = <S, T extends S>(actual: S, expected: T) => {

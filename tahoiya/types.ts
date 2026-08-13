@@ -1,6 +1,6 @@
-import type {WordEntry} from '../lib/candidateWords';
+import type {WordEntry} from '../lib/candidateWords.js';
 
-export {WordEntry} from '../lib/candidateWords';
+export {WordEntry} from '../lib/candidateWords.js';
 
 export type ThemeType = 'dictionary' | 'arbitrary';
 

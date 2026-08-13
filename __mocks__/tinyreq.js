@@ -1,5 +1,3 @@
-const {PassThrough} = require('stream');
-
 const tinyreq = (...args) => (
 	tinyreq.impl(...args)
 );
@@ -10,4 +8,4 @@ tinyreq.impl = vi.fn(() => {
 
 tinyreq.response = '';
 
-module.exports = tinyreq;
+export default tinyreq;

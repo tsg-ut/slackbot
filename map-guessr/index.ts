@@ -1,17 +1,19 @@
 import * as Turf from "@turf/turf";
 import fs from "fs-extra";
-import type { SlackInterface } from "../lib/slack";
+import type { SlackInterface } from "../lib/slack.js";
 import puppeteer from "puppeteer";
-import { AteQuizProblem, AteQuizResult } from "../atequiz";
+import { AteQuiz, AteQuizProblem, AteQuizResult } from "../atequiz/index.js";
 import {
   ChatPostMessageArguments,
   WebClient,
 } from "@slack/web-api";
-import { increment } from "../achievements";
-import { EventEmitter } from 'events';
-const { Mutex } = require("async-mutex");
-const { AteQuiz } = require("../atequiz");
-const cloudinary = require("cloudinary");
+import { increment } from "../achievements/index.js";
+import { Mutex } from "async-mutex";
+import cloudinary from "cloudinary";
+
+import path from 'path';
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const CHANNEL = process.env.CHANNEL_SANDBOX;
@@ -37,13 +39,15 @@ interface CoordAteQuizProblem extends AteQuizProblem {
 class CoordAteQuiz extends AteQuiz {
   static option?: Partial<ChatPostMessageArguments> = postOptions;
   ngReaction: string | null = null;
+  declare problem: CoordAteQuizProblem;
+  answeredUsers: Set<string>;
   constructor(
-    eventClient: EventEmitter,
+    eventClient: SlackInterface["eventClient"],
     slack: WebClient,
     problem: CoordAteQuizProblem
   ) {
     super(
-      { eventClient: eventClient, webClient: slack },
+      { eventClient: eventClient, webClient: slack, messageClient: undefined as unknown as SlackInterface["messageClient"] },
       problem,
       CoordAteQuiz.option
     );

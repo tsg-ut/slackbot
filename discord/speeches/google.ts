@@ -1,7 +1,8 @@
 import {v1beta1 as GoogleCloudTextToSpeech} from '@google-cloud/text-to-speech';
-import {google} from '@google-cloud/text-to-speech/build/protos/protos';
-import {SynthesizeFunction} from './types.d';
-import {textToSsml} from './util';
+import protos from '@google-cloud/text-to-speech/build/protos/protos.js';
+const {google} = protos;
+import type {SynthesizeFunction} from './types.js';
+import {textToSsml} from './util.js';
 
 const {TextToSpeechClient} = GoogleCloudTextToSpeech;
 

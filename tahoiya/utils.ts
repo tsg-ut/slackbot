@@ -1,8 +1,8 @@
 import querystring from 'querystring';
 import axios from 'axios';
-import {get, last} from 'lodash';
-import type {WordEntry} from '../lib/candidateWords';
-import type {DictionarySource} from './types';
+import {get, last} from 'lodash-es';
+import type {WordEntry} from '../lib/candidateWords.js';
+import type {DictionarySource} from './types.js';
 
 export const SOURCE_LABELS: Record<DictionarySource, string> = {
 	wikipedia: 'Wikipedia',

@@ -1,15 +1,19 @@
-import type {SlackInterface} from '../lib/slack';
+import type {SlackInterface} from '../lib/slack.js';
 import cloudinary from 'cloudinary';
 import {stripIndent} from 'common-tags';
-import {hiraganize} from 'japanese';
-import Queue from 'p-queue';
-import {renderCrossword} from './render';
-import generateCrossword from './generateCrossword';
-import generateGrossword from './generateGrossword';
-import {unlock, increment} from '../achievements';
-import {ChannelLimitedBot} from '../lib/channelLimitedBot';
-import {extractMessage} from '../lib/slackUtils';
+import japaneseModule from 'japanese';
+import QueueModule from 'p-queue';
+import {renderCrossword} from './render.js';
+import generateCrossword from './generateCrossword.js';
+import generateGrossword from './generateGrossword.js';
+import {unlock, increment} from '../achievements/index.js';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot.js';
+import {extractMessage} from '../lib/slackUtils.js';
 import type {GenericMessageEvent, MessageEvent} from '@slack/bolt';
+import {unwrapDefault} from '../lib/utils.js';
+
+const {hiraganize} = japaneseModule;
+const Queue = unwrapDefault(QueueModule);
 
 interface Description {
 	word: string,

@@ -1,11 +1,11 @@
 import { stripIndent } from 'common-tags';
-// @ts-expect-error
-import { romanize, katakanize } from 'japanese';
-import { shuffle } from 'lodash';
+import japaneseModule from 'japanese';
+const {romanize, katakanize} = japaneseModule;
+import { shuffle } from 'lodash-es';
 import { tokenize } from 'kuromojin';
-import omikuji from './omikuji.json';
+import omikuji from './omikuji.json' with {type: 'json'};
 import moment from 'moment-timezone';
-import { get, set, increment } from '../achievements';
+import { get, set, increment } from '../achievements/index.js';
 
 const checkTimeAchievement = async (user: string, nowTime: moment.Moment, key: string) => {
     const currentTimeStr = nowTime.format('YYYY-MM-DD HH:mm:ss');

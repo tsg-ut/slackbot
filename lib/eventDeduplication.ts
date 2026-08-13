@@ -1,5 +1,5 @@
 import {createClient, RedisClientType} from 'redis';
-import logger from './logger';
+import logger from './logger.js';
 import {Mutex} from 'async-mutex';
 
 const log = logger.child({bot: 'eventDeduplication'});

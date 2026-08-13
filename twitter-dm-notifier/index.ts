@@ -1,8 +1,8 @@
 import Twitter from 'twitter';
 import moment, { Moment } from 'moment';
 import { promises as fs } from 'fs';
-import type { MessageCreateEvent, User } from '../lib/twitter';
-import type { SlackInterface } from '../lib/slack';
+import type { MessageCreateEvent, User } from '../lib/twitter.js';
+import type { SlackInterface } from '../lib/slack.js';
 
 const twitterClient = new Twitter({
     consumer_key: process.env.TWITTER_CONSUMER_KEY!,

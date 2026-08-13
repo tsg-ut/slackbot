@@ -1,7 +1,7 @@
 import type {ChatCompletion} from 'openai/resources/chat';
 import {vi} from 'vitest';
-import openai from '../lib/openai';
-import {getArbitraryAIAnswer} from './arbitraryAibot';
+import openai from '../lib/openai.js';
+import {getArbitraryAIAnswer} from './arbitraryAibot.js';
 
 process.env.OPENAI_API_KEY = 'test-api-key';
 

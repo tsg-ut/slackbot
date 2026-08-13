@@ -1,8 +1,12 @@
 /* eslint-env node, jest */
 
 import path from 'path';
-import {readJson} from 'fs-extra';
-import type {OpenWeatherOneCallResponse} from '../fetch';
+import fsExtra from 'fs-extra';
+const {readJson} = fsExtra;
+import type {OpenWeatherOneCallResponse} from '../fetch.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const getEntries = () => Promise.resolve([
 	[{title: 'タイトル', link: 'http://google.com'}],

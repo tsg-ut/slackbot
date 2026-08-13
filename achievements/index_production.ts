@@ -7,17 +7,17 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import type {CollectionReference} from 'firebase-admin/firestore';
 import japanese from 'japanese';
-import {countBy, throttle, groupBy, get as getter, chunk, uniq} from 'lodash';
+import {countBy, throttle, groupBy, get as getter, chunk, uniq} from 'lodash-es';
 import moment from 'moment';
-import {db} from '../lib/firestore';
-import getReading from '../lib/getReading';
-import logger from '../lib/logger';
-import type {SlackInterface} from '../lib/slack';
-import {conversationsHistory} from '../lib/slackPatron';
-import {getReactions} from '../lib/slackUtils';
-import {updateUsageCount} from '../lib/state';
-import {Deferred} from '../lib/utils';
-import achievements, {Difficulty, type Achievement} from './achievements';
+import {db} from '../lib/firestore.js';
+import getReading from '../lib/getReading.js';
+import logger from '../lib/logger.js';
+import type {SlackInterface} from '../lib/slack.js';
+import {conversationsHistory} from '../lib/slackPatron.js';
+import {getReactions} from '../lib/slackUtils.js';
+import {updateUsageCount} from '../lib/state.js';
+import {Deferred} from '../lib/utils.js';
+import achievements, {Difficulty, type Achievement} from './achievements.js';
 
 const mutex = new Mutex();
 

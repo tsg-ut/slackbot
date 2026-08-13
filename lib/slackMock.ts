@@ -1,7 +1,7 @@
 import type {ChatPostMessageArguments, ReactionsAddArguments, WebClient} from '@slack/web-api';
 import {EventEmitter} from 'events';
-import last from 'lodash/last.js';
-import type {SlackInterface} from './slack';
+import {last} from 'lodash-es';
+import type {SlackInterface} from './slack.js';
 import {createMessageAdapter} from '@slack/interactive-messages';
 import type {BlockAction} from '@slack/bolt';
 import {vi, type Mock} from 'vitest';

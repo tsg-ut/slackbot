@@ -1,12 +1,12 @@
-import { sample } from 'lodash';
+import { sample } from 'lodash-es';
 import { getAudioUrl } from 'google-tts-api';
 import moment from 'moment';
 import { stringify } from 'querystring';
 import assert from 'assert';
-import type { SlackInterface } from '../lib/slack';
+import type { SlackInterface } from '../lib/slack.js';
 
-import {unlock} from '../achievements';
-import Mutex from './mutex';
+import {unlock} from '../achievements/index.js';
+import Mutex from './mutex.js';
 
 type VoiperPhase = 'waiting' | 'answering'
 

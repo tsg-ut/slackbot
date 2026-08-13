@@ -1,7 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import moment from 'moment-timezone';
-import customResponses from "./custom-responses";
-import { increment } from "../achievements";
+import customResponses from "./custom-responses.js";
+import { increment } from "../achievements/index.js";
 
 let store: Record<string, any> = {};
 

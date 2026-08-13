@@ -1,5 +1,5 @@
 import moment from 'moment';
-import {scoreTimeOfDay, getReactionName} from './time-scoring';
+import {scoreTimeOfDay, getReactionName} from './time-scoring.js';
 
 vi.mock('moment');
 

@@ -1,8 +1,18 @@
 import { WebClient } from "@slack/web-api";
-import { DynamicLoader } from "bcdice";
-import { GameSystemInfo } from "bcdice/lib/bcdice/game_system_list.json";
-import GameSystemClass from "bcdice/lib/game_system";
-import type { SlackInterface } from "../lib/slack";
+import bcdice from "bcdice";
+const { DynamicLoader } = bcdice;
+import type * as GameSystemNS from "bcdice/lib/game_system.js";
+
+type GameSystemClass = GameSystemNS.default;
+type DynamicLoaderType = InstanceType<typeof DynamicLoader>;
+
+interface GameSystemInfo {
+  id: string;
+  className: string;
+  name: string;
+  sortKey: string;
+}
+import type { SlackInterface } from "../lib/slack.js";
 
 interface Message {
   type: string;
@@ -24,7 +34,7 @@ function unescapeHtml(str: string) {
 
 class DiceBot {
   slack: WebClient;
-  loader: DynamicLoader;
+  loader: DynamicLoaderType;
   gameSystem: GameSystemClass;
 
   constructor({ webClient: slack, eventClient }: SlackInterface) {
@@ -121,7 +131,7 @@ class DiceBot {
     return true;
   }
 
-  static getAvailableSystemsString(loader: DynamicLoader) {
+  static getAvailableSystemsString(loader: DynamicLoaderType) {
     return loader
       .listAvailableGameSystems()
       .sort((a, b) => a.name.localeCompare(b.name))

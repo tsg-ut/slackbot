@@ -1,4 +1,4 @@
-import type {PlayerState} from './TwentyQuestions';
+import type {PlayerState} from './TwentyQuestions.js';
 
 export interface RankedPlayer {
 	player: PlayerState;

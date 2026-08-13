@@ -1,6 +1,4 @@
-/* eslint-env node, jest */
-
-const {PassThrough} = require('stream');
+import {PassThrough} from 'stream';
 
 class Modem {
 	demuxStream(stream, stdout, stderr) {
@@ -48,4 +46,4 @@ class Docker {
 Docker.stdout = Buffer.from('');
 Docker.stderr = Buffer.from('');
 
-module.exports = Docker;
+export default Docker;

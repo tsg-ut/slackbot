@@ -1,6 +1,6 @@
 import {View} from '@slack/web-api';
 import {stripIndent} from 'common-tags';
-import type {Mail} from '..';
+import type {Mail} from '../index.js';
 
 export default (replyId: string, mail: Mail, replyContent: string) => ({
 	type: 'modal',

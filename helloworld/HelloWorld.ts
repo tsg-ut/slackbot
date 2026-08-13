@@ -4,12 +4,12 @@ import type {BlockAction, ViewSubmitAction} from '@slack/bolt';
 import type {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {MessageEvent, WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
-import logger from '../lib/logger';
-import type {SlackInterface} from '../lib/slack';
-import {extractMessage, getAuthorityLabel} from '../lib/slackUtils';
-import State from '../lib/state';
-import counterEditDialog from './views/counterEditDialog';
-import helloWorldMessage from './views/helloWorldMessage';
+import logger from '../lib/logger.js';
+import type {SlackInterface} from '../lib/slack.js';
+import {extractMessage, getAuthorityLabel} from '../lib/slackUtils.js';
+import State from '../lib/state.js';
+import counterEditDialog from './views/counterEditDialog.js';
+import helloWorldMessage from './views/helloWorldMessage.js';
 
 export interface StateObj {
 	uuid: string,

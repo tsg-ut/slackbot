@@ -2,6 +2,9 @@ import path from 'path';
 import axios from 'axios';
 import nodePersist from 'node-persist';
 
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 interface AtCoderProblemsSubmission {
 	id: number,
 	epoch_second: number,

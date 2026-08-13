@@ -1,6 +1,6 @@
 
 import {inspect} from 'util';
-import {extractValidAnswers} from './hayaoshiUtils';
+import {extractValidAnswers} from './hayaoshiUtils.js';
 
 vi.mock('../hayaoshi', () => ({
 	isCorrectAnswer: vi.fn(),

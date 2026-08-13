@@ -2,15 +2,18 @@
 import {constants, promises as fs} from 'fs';
 import path from 'path';
 import type {Mock} from 'vitest';
-import Slack from '../lib/slackMock';
-import {getMemberName} from '../lib/slackUtils';
-import {fetchChallsAH, fetchUserProfileAH} from './lib/AHManager';
-import {AchievementType, Challenge, SolvedInfo, Profile} from './lib/BasicTypes';
-import {fetchChallsCH, fetchUserProfileCH} from './lib/CHManager';
-import {fetchChallsKSN, fetchUserProfileKSN} from './lib/KSNManager';
-import {fetchChallsTW, fetchUserProfileTW} from './lib/TWManager';
-import {fetchChallsXYZ, fetchUserProfileXYZ} from './lib/XYZManager';
-import pwnyaa, {State} from './index';
+import Slack from '../lib/slackMock.js';
+import {getMemberName} from '../lib/slackUtils.js';
+import {fetchChallsAH, fetchUserProfileAH} from './lib/AHManager.js';
+import {AchievementType, Challenge, SolvedInfo, Profile} from './lib/BasicTypes.js';
+import {fetchChallsCH, fetchUserProfileCH} from './lib/CHManager.js';
+import {fetchChallsKSN, fetchUserProfileKSN} from './lib/KSNManager.js';
+import {fetchChallsTW, fetchUserProfileTW} from './lib/TWManager.js';
+import {fetchChallsXYZ, fetchUserProfileXYZ} from './lib/XYZManager.js';
+import pwnyaa, {State} from './index.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 vi.mock('../achievements');
 vi.unmock('axios');

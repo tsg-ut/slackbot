@@ -2,15 +2,18 @@ import {Mutex} from 'async-mutex';
 import fs from 'fs';
 import path from 'path';
 import JSZip from 'jszip';
-import {sample,sampleSize,uniq} from 'lodash';
-import type {SlackInterface} from '../lib/slack';
-import {download} from '../lib/download';
+import {sample,sampleSize,uniq} from 'lodash-es';
+import type {SlackInterface} from '../lib/slack.js';
+import {download} from '../lib/download.js';
 import {parse as csv_parse} from 'csv-parse';
-import {AteQuiz,AteQuizProblem} from '../atequiz';
+import {AteQuiz,AteQuizProblem} from '../atequiz/index.js';
 import type { ChatPostMessageArguments, GenericMessageEvent } from '@slack/web-api';
 import { stripIndent } from 'common-tags';
-import {Loader,Deferred} from '../lib/utils';
-import {ChannelLimitedBot} from '../lib/channelLimitedBot';
+import {Loader,Deferred} from '../lib/utils.js';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /*
 Future works

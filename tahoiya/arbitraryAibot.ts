@@ -2,8 +2,8 @@
 import {inspect} from 'util';
 import {stripIndent} from 'common-tags';
 import {z} from 'zod';
-import logger from '../lib/logger';
-import openai from '../lib/openai';
+import logger from '../lib/logger.js';
+import openai from '../lib/openai.js';
 
 const log = logger.child({bot: 'tahoiya/arbitraryAibot'});
 

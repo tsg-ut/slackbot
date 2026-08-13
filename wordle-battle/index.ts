@@ -1,10 +1,10 @@
-import type {SlackInterface} from '../lib/slack';
-import logger from '../lib/logger';
+import type {SlackInterface} from '../lib/slack.js';
+import logger from '../lib/logger.js';
 import {stripIndents} from 'common-tags';
 import axios from 'axios';
-import { shuffle } from 'lodash';
+import { shuffle } from 'lodash-es';
 import { ChatPostMessageArguments } from '@slack/web-api';
-import { unlock, increment } from '../achievements';
+import { unlock, increment } from '../achievements/index.js';
 
 const BOT_NAME = "Wordle Battle (beta)";
 const TL_SECONDS = 90;

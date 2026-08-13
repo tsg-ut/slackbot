@@ -1,12 +1,18 @@
 import path from 'path';
+import {fileURLToPath} from 'url';
 import concatStream from 'concat-stream';
 // @ts-expect-error: untyped
 import Docker from 'dockerode';
 import download from 'download';
-import {hiraganize} from 'japanese';
-import Queue from 'p-queue';
-import logger from '../lib/logger';
+import japaneseModule from 'japanese';
+import QueueModule from 'p-queue';
+import logger from '../lib/logger.js';
+import {unwrapDefault} from '../lib/utils.js';
 
+const {hiraganize} = japaneseModule;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const Queue = unwrapDefault(QueueModule);
 const docker = new Docker();
 const queue = new Queue({concurrency: 1});
 const log = logger.child({bot: 'tahoiya/aibot'});

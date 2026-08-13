@@ -1,6 +1,6 @@
 import type {KnownBlock} from '@slack/web-api';
-import type {StateObj} from '../TwentyQuestions';
-import {getRankedPlayers} from '../rankingUtils';
+import type {StateObj} from '../TwentyQuestions.js';
+import {getRankedPlayers} from '../rankingUtils.js';
 
 export default (state: StateObj): KnownBlock[] => {
 	const {currentGame} = state;

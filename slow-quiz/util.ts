@@ -1,4 +1,4 @@
-import {getEmoji, getMemberIcon, getMemberName} from '../lib/slackUtils';
+import {getEmoji, getMemberIcon, getMemberName} from '../lib/slackUtils.js';
 
 export const getUserMention = (userId: string) => {
 	if (userId.startsWith('bot:')) {

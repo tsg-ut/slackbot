@@ -1,10 +1,10 @@
 import moment from 'moment';
 import schedule, {Job, JobCallback} from 'node-schedule';
-import {unlock, increment} from '../achievements';
-import State from '../lib/state';
-import {MockedStateInterface} from '../lib/__mocks__/state';
+import {unlock, increment} from '../achievements/index.js';
+import State from '../lib/state.js';
+import {MockedStateInterface} from '../lib/__mocks__/state.js';
 import sushi from './index.js';
-import Slack from '../lib/slackMock';
+import Slack from '../lib/slackMock.js';
 
 vi.mock('../achievements');
 vi.mock('moment');

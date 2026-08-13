@@ -206,4 +206,4 @@ class BoardElement {
 	}
 }
 
-module.exports = BoardElement;
+export default BoardElement;

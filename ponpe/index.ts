@@ -1,14 +1,18 @@
-import type {SlackInterface} from '../lib/slack';
+import type {SlackInterface} from '../lib/slack.js';
 import moment from 'moment';
 import axios from 'axios';
-import {hiraganize} from 'japanese';
-import sample from 'lodash/sample';
+import japaneseModule from 'japanese';
+const {hiraganize} = japaneseModule;
+import {sample} from 'lodash-es';
 import fs from 'fs';
-import {getMemberName, getEmoji} from '../lib/slackUtils';
+import {getMemberName, getEmoji} from '../lib/slackUtils.js';
 import path from 'path';
-import {download} from '../lib/download';
-import {Loader} from '../lib/utils';
+import {download} from '../lib/download.js';
+import {Loader} from '../lib/utils.js';
 import type {TeamInfoResponse} from '@slack/web-api';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function getTimeLink(time:number){
 	return moment(time).utcOffset('+0900').format('HH:mm:ss');

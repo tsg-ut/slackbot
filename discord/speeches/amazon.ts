@@ -1,6 +1,6 @@
 import AWS from 'aws-sdk';
-import {SynthesizeFunction} from './types.d';
-import {textToSsml} from './util';
+import type {SynthesizeFunction} from './types.js';
+import {textToSsml} from './util.js';
 
 new AWS.Config({
 	accessKeyId: process.env.AWS_ACCESS_KEY_ID,

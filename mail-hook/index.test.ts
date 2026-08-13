@@ -1,4 +1,4 @@
-import {decodeMailBody, decodeMailSubject} from './index';
+import {decodeMailBody, decodeMailSubject} from './index.js';
 
 vi.mock('../lib/openai', () => ({
 	__esModule: true,

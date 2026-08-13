@@ -1,6 +1,6 @@
 /* eslint-disable prefer-named-capture-group */
 
-import {has} from 'lodash';
+import {has} from 'lodash-es';
 
 const escapeXml = (text: string) => text.replace(/&/g, '&amp;')
 	.replace(/</g, '&lt;')

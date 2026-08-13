@@ -1,10 +1,13 @@
 import cloudinary from 'cloudinary';
-import * as rust_proxy from './rust-proxy';
-import hyperrobot from './index';
-import Slack from '../lib/slackMock';
+import * as rust_proxy from './rust-proxy.js';
+import hyperrobot from './index.js';
+import Slack from '../lib/slackMock.js';
 import fs from 'fs';
 import path from 'path';
 import type { SectionBlock } from '@slack/web-api';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 vi.mock('cloudinary');
 vi.mock('./rust-proxy');

@@ -1,6 +1,5 @@
-const xml2js = require('xml2js');
-const xmljs = require('xml-js');
-const fs = require('fs');
+import xmljs from 'xml-js';
+import fs from 'fs';
 
 const colors = [
 	'#FF6F00',

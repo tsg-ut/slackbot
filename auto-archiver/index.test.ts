@@ -1,11 +1,11 @@
 import {SectionBlock} from '@slack/web-api';
-import {noop} from 'lodash';
+import {noop} from 'lodash-es';
 import schedule, {Job, JobCallback} from 'node-schedule';
-import {MockedStateInterface} from '../lib/__mocks__/state';
-import Slack from '../lib/slackMock';
-import State from '../lib/state';
-import {Deferred} from '../lib/utils';
-import autoArchiver, {ChannelsStateObj, StateObj} from './index';
+import {MockedStateInterface} from '../lib/__mocks__/state.js';
+import Slack from '../lib/slackMock.js';
+import State from '../lib/state.js';
+import {Deferred} from '../lib/utils.js';
+import autoArchiver, {ChannelsStateObj, StateObj} from './index.js';
 
 vi.mock('../lib/state');
 vi.mock('../lib/slack');

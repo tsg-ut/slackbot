@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 export const productionBots = [
 	'summary',
 	'mahjong',
@@ -84,3 +87,16 @@ export const developmentBots = [
 ];
 
 export const allBots = [...productionBots, ...developmentBots];
+
+// Node の native ESM では拡張子なし・ディレクトリインデックス省略の import が
+// 解決できないため、動的 import 前にプラグインの実体ファイルパスを解決する。
+// プラグインは「name.ts」(単一ファイル) と「name/index.ts」(ディレクトリ) の
+// 2パターンがあるため、実ファイルの有無で判定する。
+export const resolveBotEntryPath = (baseDir: string, name: string, prefix = './'): string => {
+	const directPath = path.join(baseDir, `${name}.ts`);
+	const directJsPath = path.join(baseDir, `${name}.js`);
+	if (fs.existsSync(directPath) || fs.existsSync(directJsPath)) {
+		return `${prefix}${name}.js`;
+	}
+	return `${prefix}${name}/index.js`;
+};

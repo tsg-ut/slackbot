@@ -3,17 +3,21 @@ import type {GenericMessageEvent} from '@slack/bolt';
 import {Mutex} from 'async-mutex';
 import {v2 as cloudinary} from 'cloudinary';
 import {stripIndent} from 'common-tags';
-import {random, sample} from 'lodash';
+import {random, sample} from 'lodash-es';
 import QRCode, {QRCodeSegmentMode} from 'qrcode';
-import toSJIS from 'qrcode/helper/to-sjis';
+import toSJIS from 'qrcode/helper/to-sjis.js';
 import sharp from 'sharp';
-import {increment} from '../achievements';
-import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz';
-import {getDictionary} from '../hangman';
-import logger from '../lib/logger';
-import {SlackInterface} from '../lib/slack';
-import {Loader} from '../lib/utils';
-import {getCandidateWords} from '../lib/candidateWords';
+import {increment} from '../achievements/index.js';
+import {AteQuiz, typicalMessageTextsGenerator} from '../atequiz/index.js';
+import {getDictionary} from '../hangman/index.js';
+import logger from '../lib/logger.js';
+import {SlackInterface} from '../lib/slack.js';
+import {Loader} from '../lib/utils.js';
+import {getCandidateWords} from '../lib/candidateWords.js';
+
+import path from 'path';
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const mutex = new Mutex();
 

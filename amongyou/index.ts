@@ -5,11 +5,14 @@ import {ChatPostMessageArguments, WebClient} from '@slack/web-api';
 import {stripIndent} from 'common-tags';
 import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
-import {range} from 'lodash';
+import {range} from 'lodash-es';
 import moment from 'moment';
-import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
-import {getMemberIcon, getMemberName} from '../lib/slackUtils';
-import {Deferred} from '../lib/utils';
+import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack.js';
+import {getMemberIcon, getMemberName} from '../lib/slackUtils.js';
+import {Deferred} from '../lib/utils.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const CALLME = '@amongyou';
 const AMONGABLE_CHECK_INTERVAL = 60 *1000;

@@ -1,4 +1,4 @@
-import { TaimaiGame } from '..';
+import { TaimaiGame } from '../index.js';
 
 export default (game: TaimaiGame) => ({
 	text: `正解: ${game.answer}`,

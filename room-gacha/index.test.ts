@@ -1,5 +1,5 @@
-import roomGacha from './index';
-import Slack from '../lib/slackMock';
+import roomGacha from './index.js';
+import Slack from '../lib/slackMock.js';
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
 import { promises as fs } from 'fs';
@@ -7,6 +7,10 @@ import { stripIndents } from 'common-tags';
 import assert from 'assert';
 import type { KnownBlock } from '@slack/web-api';
 import type { ScrapeOptions } from 'scrape-it';
+
+import path from 'path';
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 vi.mock('axios');
 

@@ -1,5 +1,5 @@
 import type {KnownBlock} from '@slack/web-api';
-import type {DailyGameState, NormalGameState, Theme} from '../types';
+import type {DailyGameState, NormalGameState, Theme} from '../types.js';
 
 const formatTime = (ts: number): string => {
 	const d = new Date(ts);

@@ -1,5 +1,5 @@
-import voiperrobot from './index';
-import Slack from '../lib/slackMock';
+import voiperrobot from './index.js';
+import Slack from '../lib/slackMock.js';
 
 vi.mock('../achievements');
 

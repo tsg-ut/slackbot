@@ -1,8 +1,8 @@
 /* eslint-disable init-declarations, no-restricted-syntax */
 
 import Fastify from 'fastify';
-import Slack from '../lib/slackMock';
-import {server} from './index';
+import Slack from '../lib/slackMock.js';
+import {server} from './index.js';
 
 vi.mock('../lib/slackUtils');
 vi.mock('fs', () => ({

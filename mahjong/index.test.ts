@@ -1,4 +1,4 @@
-import Slack from '../lib/slackMock';
+import Slack from '../lib/slackMock.js';
 import mahjong from './index.js';
 
 vi.mock('@octokit/webhooks', () => ({

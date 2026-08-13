@@ -4,13 +4,13 @@ import {ReactionAddedEvent, ReactionRemovedEvent, WebClient} from '@slack/web-ap
 import {EmojiData} from 'emoji-data-ts';
 import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
-import {flatten, uniq} from 'lodash';
+import {flatten, uniq} from 'lodash-es';
 import sql from 'sql-template-strings';
 import {open} from 'sqlite';
 import sqlite3 from 'sqlite3';
-import logger from '../lib/logger';
-import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
-import {getEmoji, getMemberIcon, getMemberName, getReactions} from '../lib/slackUtils';
+import logger from '../lib/logger.js';
+import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack.js';
+import {getEmoji, getMemberIcon, getMemberName, getReactions} from '../lib/slackUtils.js';
 
 const log = logger.child({bot: 'tunnel'});
 const messages = new Map<string, {team: string, ts: string, content: string}>();

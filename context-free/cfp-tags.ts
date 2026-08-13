@@ -1,4 +1,4 @@
-import {sample} from 'lodash';
+import {sample} from 'lodash-es';
 
 export const tags: Map<string, {(): string}> = new Map([
   // ['testTag', () => sample(['test1', 'test2', 'test4'])],

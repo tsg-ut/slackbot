@@ -2,29 +2,34 @@
 // https://github.com/Automattic/node-canvas/issues/930
 import 'canvas';
 
-import dotenv from 'dotenv';
+import './lib/dotenv.js';
 
-dotenv.config({ override: true });
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+import { eventClient, messageClient, tsgEventClient, webClient } from './lib/slack.js';
 
 import Fastify from 'fastify';
 import qs from 'querystring';
-import { eventClient, messageClient, tsgEventClient, webClient } from './lib/slack';
 
 import yargs from 'yargs';
-import logger from './lib/logger';
+import { hideBin } from 'yargs/helpers';
+import logger from './lib/logger.js';
 
 import fastifyExpress from '@fastify/express';
 import fastifyFormbody from '@fastify/formbody';
 
 import sharp from 'sharp';
 
-import { throttle, uniq } from 'lodash';
+import { throttle, uniq } from 'lodash-es';
 import { RequestHandler } from 'express-serve-static-core';
 import { inspect } from 'util';
 import concat from 'concat-stream';
-import { getAuthorityLabel } from './lib/slackUtils';
-import { closeDuplicateEventChecker } from './lib/eventDeduplication';
-import { productionBots, allBots } from './lib/bots';
+import { getAuthorityLabel } from './lib/slackUtils.js';
+import { closeDuplicateEventChecker } from './lib/eventDeduplication.js';
+import { productionBots, allBots, resolveBotEntryPath } from './lib/bots.js';
 
 const log = logger.child({ bot: 'index' });
 
@@ -72,7 +77,7 @@ process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
 
 log.info('slackbot started');
 
-const argv = yargs
+const argv = yargs(hideBin(process.argv))
 	.array('only')
 	.choices('only', allBots)
 	.default('only', productionBots)
@@ -166,7 +171,7 @@ eventClient.on('error', (error) => {
 	}, 0.5 * 1000);
 
 	await Promise.all(plugins.map(async (name) => {
-		const plugin = await import(`./${name}`);
+		const plugin = await import(resolveBotEntryPath(__dirname, name));
 		if (typeof plugin === 'function') {
 			await plugin({ webClient, eventClient: tsgEventClient, messageClient });
 		}

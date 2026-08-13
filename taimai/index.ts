@@ -1,20 +1,20 @@
 import { createMessageAdapter } from '@slack/interactive-messages';
 import type { ChatUpdateArguments, WebClient } from '@slack/web-api';
 import { Mutex } from 'async-mutex';
-import { increment } from '../achievements';
-import type { SlackInterface } from '../lib/slack';
+import { increment } from '../achievements/index.js';
+import type { SlackInterface } from '../lib/slack.js';
 import type { EventEmitter } from 'events';
-import State from '../lib/state';
-import config from './config';
-import announceGameEnd from './views/announceGameEnd';
-import announceGameStart from './views/announceGameStart';
-import dialogError from './views/dialogError';
-import dialogFillPiece from './views/dialogFillPiece';
-import instructionGame from './views/instructionGame';
-import instructionTaimai from './views/instructionTaimai';
-import statusCreation from './views/statusCreation';
-import statusFinished from './views/statusFinished';
-import statusOngoing from './views/statusOngoing';
+import State from '../lib/state.js';
+import config from './config.js';
+import announceGameEnd from './views/announceGameEnd.js';
+import announceGameStart from './views/announceGameStart.js';
+import dialogError from './views/dialogError.js';
+import dialogFillPiece from './views/dialogFillPiece.js';
+import instructionGame from './views/instructionGame.js';
+import instructionTaimai from './views/instructionTaimai.js';
+import statusCreation from './views/statusCreation.js';
+import statusFinished from './views/statusFinished.js';
+import statusOngoing from './views/statusOngoing.js';
 
 
 export interface TaimaiGame {

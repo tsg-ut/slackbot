@@ -1,6 +1,7 @@
 import moment from 'moment';
 import wanakana from 'wanakana';
-import {hiraganize} from 'japanese';
+import japaneseModule from 'japanese';
+const {hiraganize} = japaneseModule;
 
 export interface TimeOfDay {
 	pattern: RegExp;

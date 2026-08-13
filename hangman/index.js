@@ -1,16 +1,18 @@
 
-const { random, range } = require('lodash');
-const { promises: fs, constants } = require('fs');
-const path = require('path');
-const download = require('download');
-const { stripIndents } = require("common-tags");
-const { unlock, increment, set } = require('../achievements');
-const { default: logger } = require('../lib/logger');
-const { getMemberName, isPlayground } = require('../lib/slackUtils');
-const { ChannelLimitedBot } = require('../lib/channelLimitedBot');
-const { extractMessage } = require('../lib/slackUtils');
-const { Deferred } = require('../lib/utils');
-const axios = require('axios');
+import { random, range } from 'lodash-es';
+import fsSync, { promises as fs, constants } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import download from 'download';
+import { stripIndents } from "common-tags";
+import { unlock, increment, set } from '../achievements/index.js';
+import logger from '../lib/logger.js';
+import { getMemberName, isPlayground, extractMessage } from '../lib/slackUtils.js';
+import { ChannelLimitedBot } from '../lib/channelLimitedBot.js';
+import { Deferred } from '../lib/utils.js';
+import axios from 'axios';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const BOT_NAME = "hangmanbot";
 const BOT_CALL_KEYWORD = "hangman";
@@ -19,7 +21,7 @@ const log = logger.child({bot: 'hangman'});
 
 const state = (() => {
     try {
-        return require('./state.json');
+        return JSON.parse(fsSync.readFileSync(path.join(__dirname, 'state.json'), 'utf-8'));
     } catch (e) {
         return {};
     }
@@ -525,8 +527,8 @@ class HangmanBot extends ChannelLimitedBot {
     }
 }
 
-module.exports = (slackClients) => {
+export default (slackClients) => {
     return new HangmanBot(slackClients);
 };
 
-module.exports.getDictionary = getDictionary;
+export {getDictionary};

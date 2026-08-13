@@ -1,6 +1,6 @@
-const {stripIndent} = require('common-tags');
+import {stripIndent} from 'common-tags';
 
-module.exports = (clients) => {
+export default (clients) => {
 	const {eventClient, webClient: slack} = clients;
 
 	eventClient.on('emoji_changed', async (data) => {

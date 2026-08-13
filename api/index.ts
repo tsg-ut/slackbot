@@ -1,8 +1,8 @@
 import Fastify from 'fastify';
-import db from '../lib/firestore';
-import logger from '../lib/logger';
-import {getAllTSGMembers} from '../lib/slackUtils';
-import {addLike, removeLike} from '../topic';
+import db from '../lib/firestore.js';
+import logger from '../lib/logger.js';
+import {getAllTSGMembers} from '../lib/slackUtils.js';
+import {addLike, removeLike} from '../topic/index.js';
 
 const log = logger.child({bot: 'api'});
 

@@ -1,8 +1,8 @@
 import qs from 'querystring';
 import type {LinkUnfurls} from '@slack/web-api';
 import axios, {AxiosResponse} from 'axios';
-import logger from '../lib/logger';
-import type {SlackInterface} from '../lib/slack';
+import logger from '../lib/logger.js';
+import type {SlackInterface} from '../lib/slack.js';
 
 const log = logger.child({bot: 'scrapbox'});
 

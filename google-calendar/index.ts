@@ -2,11 +2,11 @@ import type {MessageEvent} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 import type {FastifyPluginAsync} from 'fastify';
 import plugin from 'fastify-plugin';
-import logger from '../lib/logger';
-import type {SlashCommandEndpoint, SlackInterface} from '../lib/slack';
-import {extractMessage} from '../lib/slackUtils';
-import {Deferred} from '../lib/utils';
-import {GoogleCalendar} from './GoogleCalendar';
+import logger from '../lib/logger.js';
+import type {SlashCommandEndpoint, SlackInterface} from '../lib/slack.js';
+import {extractMessage} from '../lib/slackUtils.js';
+import {Deferred} from '../lib/utils.js';
+import {GoogleCalendar} from './GoogleCalendar.js';
 
 const log = logger.child({bot: 'google-calendar'});
 const mutex = new Mutex();

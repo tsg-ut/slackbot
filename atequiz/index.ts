@@ -1,9 +1,9 @@
 import { ChatPostMessageArguments, ChatPostMessageResponse, MessageEvent, WebClient } from '@slack/web-api';
 import type { EventEmitter } from 'events';
-import { SlackInterface } from '../lib/slack';
+import { SlackInterface } from '../lib/slack.js';
 import assert from 'assert';
 import { Mutex } from 'async-mutex';
-import { Deferred } from '../lib/utils';
+import { Deferred } from '../lib/utils.js';
 
 export interface AteQuizProblem {
   problemMessage: ChatPostMessageArguments;

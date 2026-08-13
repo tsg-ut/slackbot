@@ -6,15 +6,19 @@ import {createAudioResource, createAudioPlayer, AudioPlayerStatus} from '@discor
 import ytdl from '@distube/ytdl-core';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
-import Discord from 'discord.js';
-import {max, get, sample} from 'lodash';
-import {FFmpeg, opus} from 'prism-media';
-import {increment, unlock} from '../achievements';
-import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi';
-import logger from '../lib/logger';
-import {Loader} from '../lib/utils';
-import {extractValidAnswers, judgeAnswer, formatQuizToSsml, fetchIntroQuizData, IntroQuizPlaylist, IntroQuizSong, IntroQuizSongPool} from './hayaoshiUtils';
-import {getSpeech, Voice} from './speeches';
+import type {Message} from 'discord.js';
+import {max, get, sample} from 'lodash-es';
+import prismMedia from 'prism-media';
+const {FFmpeg, opus} = prismMedia;
+import {increment, unlock} from '../achievements/index.js';
+import {getHardQuiz, getItQuiz, getUserQuiz, Quiz, getAbc2019Quiz} from '../hayaoshi/index.js';
+import logger from '../lib/logger.js';
+import {Loader} from '../lib/utils.js';
+import {extractValidAnswers, judgeAnswer, formatQuizToSsml, fetchIntroQuizData, IntroQuizPlaylist, IntroQuizSong, IntroQuizSongPool} from './hayaoshiUtils.js';
+import {getSpeech, Voice} from './speeches/index.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const log = logger.child({bot: 'discord'});
 
@@ -631,7 +635,7 @@ export default class Hayaoshi extends EventEmitter {
 		return null;
 	}
 
-	onMessage(message: Discord.Message) {
+	onMessage(message: Message) {
 		if (message.channel.id !== process.env.DISCORD_SANDBOX_TEXT_CHANNEL_ID || !message.member || message.member.user.bot) {
 			return;
 		}

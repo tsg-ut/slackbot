@@ -5,15 +5,18 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import schedule from 'node-schedule';
 import {unlock} from '../achievements/index.js';
-import logger from '../lib/logger';
-import type {SlackInterface} from '../lib/slack';
-import {getMemberIcon, getMemberName} from '../lib/slackUtils';
-import {fetchChallsAH, fetchUserProfileAH, findUserByNameAH} from './lib/AHManager';
-import {AchievementType, Contest, User, SolvedInfo} from './lib/BasicTypes';
-import {fetchChallsCH, fetchUserProfileCH, findUserByNameCH} from './lib/CHManager';
-import {fetchChallsKSN, fetchUserProfileKSN, findUserByNameKSN} from './lib/KSNManager';
-import {fetchUserProfileTW, fetchChallsTW, findUserByNameTW} from './lib/TWManager';
-import {fetchChallsXYZ, fetchUserProfileXYZ, findUserByNameXYZ} from './lib/XYZManager';
+import logger from '../lib/logger.js';
+import type {SlackInterface} from '../lib/slack.js';
+import {getMemberIcon, getMemberName} from '../lib/slackUtils.js';
+import {fetchChallsAH, fetchUserProfileAH, findUserByNameAH} from './lib/AHManager.js';
+import {AchievementType, Contest, User, SolvedInfo} from './lib/BasicTypes.js';
+import {fetchChallsCH, fetchUserProfileCH, findUserByNameCH} from './lib/CHManager.js';
+import {fetchChallsKSN, fetchUserProfileKSN, findUserByNameKSN} from './lib/KSNManager.js';
+import {fetchUserProfileTW, fetchChallsTW, findUserByNameTW} from './lib/TWManager.js';
+import {fetchChallsXYZ, fetchUserProfileXYZ, findUserByNameXYZ} from './lib/XYZManager.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const log = logger.child({bot: 'pwnyaa'});
 const mutex = new Mutex();

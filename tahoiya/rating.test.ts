@@ -1,4 +1,4 @@
-import {calculateRatingDeltas} from './rating';
+import {calculateRatingDeltas} from './rating.js';
 
 describe('calculateRatingDeltas', () => {
 	it('returns empty array for no scores', () => {

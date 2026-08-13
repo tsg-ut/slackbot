@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-import Slack from '../lib/slackMock';
+import Slack from '../lib/slackMock.js';
 
-import welcome from './index';
+import welcome from './index.js';
 
 vi.mock('axios');
 

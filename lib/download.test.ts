@@ -1,7 +1,7 @@
 import axios from 'axios';
 import fs from 'node:fs';
 import { PassThrough } from 'stream';
-import { download } from './download';
+import { download } from './download.js';
 import type { Mock } from 'vitest';
 
 vi.mock('axios');

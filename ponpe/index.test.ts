@@ -1,7 +1,10 @@
 import path from 'path';
 import fs from 'fs';
-import ponpe from './index';
-import Slack from '../lib/slackMock';
+import ponpe from './index.js';
+import Slack from '../lib/slackMock.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 vi.mock('axios');
 vi.mock('../lib/slackUtils');

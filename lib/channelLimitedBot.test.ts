@@ -1,6 +1,6 @@
 import {GenericMessageEvent} from '@slack/web-api';
-import {ChannelLimitedBot} from './channelLimitedBot';
-import Slack from './slackMock';
+import {ChannelLimitedBot} from './channelLimitedBot.js';
+import Slack from './slackMock.js';
 import type {Mock} from 'vitest';
 
 vi.mock('../lib/slackUtils');

@@ -1,14 +1,16 @@
-import type {SlackInterface} from '../lib/slack';
-import logger from '../lib/logger';
+import type {SlackInterface} from '../lib/slack.js';
+import logger from '../lib/logger.js';
 import cloudinary from 'cloudinary';
 import sharp from 'sharp';
 import {stripIndent} from 'common-tags';
-import Board from './lib/Board';
-import BoardElement from './lib/Render';
+import Board from './lib/Board.js';
+import BoardElement from './lib/Render.js';
 import {JSDOM} from 'jsdom';
-import Queue from 'p-queue';
+import QueueModule from 'p-queue';
 import {increment, unlock} from '../achievements/index.js';
+import {unwrapDefault} from '../lib/utils.js';
 
+const Queue = unwrapDefault(QueueModule);
 const log = logger.child({bot: 'octas'});
 
 const applyCSS = (paper: any) => {

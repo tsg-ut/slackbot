@@ -1,4 +1,4 @@
-import {clamp, minBy, maxBy, mean} from 'lodash';
+import {clamp, minBy, maxBy, mean} from 'lodash-es';
 
 export interface GameScore {
 	userId: string;

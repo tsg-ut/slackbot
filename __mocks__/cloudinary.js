@@ -1,5 +1,5 @@
-const {PassThrough} = require('stream');
-const noop = require('lodash/noop');
+import {PassThrough} from 'stream';
+import {noop} from 'lodash-es';
 
 const cloudinary = {
 	v2: {uploader: {}, config: () => {}, url: vi.fn(() => '')},
@@ -18,4 +18,4 @@ cloudinary.v2.uploader.upload_stream = vi.fn((options, callback) => {
 	return stream;
 });
 
-module.exports = cloudinary;
+export default cloudinary;

@@ -2,22 +2,23 @@ import assert from 'assert';
 import {promises as fs} from 'fs';
 import path from 'path';
 import {oneLine} from 'common-tags';
-import flatten from 'lodash/flatten';
-import last from 'lodash/last';
-import maxBy from 'lodash/maxBy';
-import minBy from 'lodash/minBy';
-import sample from 'lodash/sample';
-import Shogi from 'shogi9.js';
+import {flatten, last, maxBy, minBy, sample} from 'lodash-es';
+import ShogiModule from 'shogi9.js';
+import type * as ShogiNS from 'shogi9.js';
 import type {IMove} from 'shogi9.js';
-import Color from 'shogi9.js/lib/Color.js';
-import Piece from 'shogi9.js/lib/Piece.js';
-import sqlite from 'sqlite';
+import ColorModule from 'shogi9.js/lib/Color.js';
+import type * as ColorNS from 'shogi9.js/lib/Color.js';
+import PieceModule from 'shogi9.js/lib/Piece.js';
+import {open as sqliteOpen} from 'sqlite';
 import type {Database} from 'sqlite';
 import sqlite3 from 'sqlite3';
 import {unlock, increment} from '../achievements/index.js';
-import type {SlackInterface} from '../lib/slack';
+import type {SlackInterface} from '../lib/slack.js';
 
 import {upload} from './image.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import {
 	serialize,
 	deserialize,
@@ -26,6 +27,14 @@ import {
 	pieceToChar,
 	transitionToText,
 } from './util.js';
+import {unwrapDefault} from '../lib/utils.js';
+
+type ShogiType = ShogiNS.default;
+type ColorType = ColorNS.default;
+
+const Shogi = unwrapDefault(ShogiModule);
+const Color = unwrapDefault(ColorModule);
+const Piece = unwrapDefault(PieceModule);
 
 interface ShogiDbRow {
 	board: Buffer;
@@ -44,7 +53,7 @@ interface ShogiSlackMessage {
 
 interface ShogiState {
 	previousPosition: {x: number; y: number} | null;
-	previousBoard: Shogi;
+	previousBoard: ShogiType;
 	previousDatabase: string;
 	previousTurns: number;
 	isPrevious打ち歩: boolean;
@@ -52,8 +61,8 @@ interface ShogiState {
 	isLocked: boolean;
 	isEnded: boolean;
 	player: string | null;
-	board: Shogi | null;
-	turn: Color | null;
+	board: ShogiType | null;
+	turn: ColorType | null;
 	log: string[];
 	thread: string | null;
 	flags: Set<string>;
@@ -64,12 +73,12 @@ type Transition = {
 	type: 'move';
 	data: IMove;
 	kind: string;
-	board: Shogi;
+	board: ShogiType;
 	promotion: boolean | null;
 } | {
 	type: 'drop';
 	data: IMove;
-	board: Shogi;
+	board: ShogiType;
 	promotion: null;
 };
 
@@ -149,7 +158,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 		return slack.chat.postMessage(baseArgs);
 	};
 
-	const end = async (color: Color, reason?: string) => {
+	const end = async (color: ColorType, reason?: string) => {
 		const {log, isEnded} = state;
 		state.previousPosition = null;
 		state.board = null;
@@ -375,7 +384,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 
 			const databases = await fs.readdir(path.resolve(__dirname, 'boards'));
 			const database = sample(databases);
-			state.db = await sqlite.open({
+			state.db = await sqliteOpen({
 				filename: path.join(__dirname, 'boards', database),
 				driver: sqlite3.Database,
 			});
@@ -434,7 +443,7 @@ export default ({eventClient, webClient: slack}: SlackInterface) => {
 				await end(Color.White);
 			}
 
-			state.db = await sqlite.open({
+			state.db = await sqliteOpen({
 				filename: path.resolve(__dirname, 'boards', state.previousDatabase),
 				driver: sqlite3.Database,
 			});

@@ -1,24 +1,26 @@
-const assert = require('assert');
-const {spawn} = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const {promisify} = require('util');
-const BN = require('bn.js');
-const {stripIndent, stripIndents} = require('common-tags');
-const concat = require('concat-stream');
-const {constant, times, flatten, range, shuffle, uniq} = require('lodash');
-const MillerRabin = require('miller-rabin');
-const prime = require('primes-and-factors');
-const {unlock} = require('../achievements');
-const primes = require('./primes');
+import assert from 'assert';
+import {spawn} from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import {fileURLToPath} from 'url';
+import {promisify} from 'util';
+import BN from 'bn.js';
+import {stripIndent, stripIndents} from 'common-tags';
+import concat from 'concat-stream';
+import {constant, times, flatten, range, shuffle, uniq} from 'lodash-es';
+import MillerRabin from 'miller-rabin';
+import prime from 'primes-and-factors';
+import {unlock} from '../achievements/index.js';
+import * as primes from './primes.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const cardSet = range(1, 14);
 const millerRabin = new MillerRabin();
 
 const state = (() => {
 	try {
-		// eslint-disable-next-line global-require
-		const savedState = require('./state.json');
+		const savedState = JSON.parse(fs.readFileSync(path.join(__dirname, 'state.json'), 'utf-8'));
 		return {
 			phase: savedState.phase,
 			challenger: savedState.challenger || null,
@@ -273,7 +275,7 @@ const draw = async (count) => {
 	return drewCards;
 };
 
-module.exports = ({eventClient, webClient: slack}) => {
+export default ({eventClient, webClient: slack}) => {
 	const postMessage = (text, attachments, options) => slack.chat.postMessage({
 		channel: process.env.CHANNEL_SANDBOX,
 		text,

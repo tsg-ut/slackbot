@@ -1,5 +1,5 @@
-import ahokusa from './index';
-import Slack from '../lib/slackMock';
+import ahokusa from './index.js';
+import Slack from '../lib/slackMock.js';
 
 vi.mock('../achievements');
 vi.mock('../lib/slackUtils');

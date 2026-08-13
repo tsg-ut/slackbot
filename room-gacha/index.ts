@@ -1,9 +1,13 @@
 import scrapeIt from 'scrape-it';
 import { promises as fs } from 'fs';
 import * as qs from 'querystring';
-import _ from 'lodash';
-import type { SlackInterface } from '../lib/slack';
-import { prefectures, PrefectureKanji } from './prefectures';
+import * as _ from 'lodash-es';
+import type { SlackInterface } from '../lib/slack.js';
+import { prefectures, PrefectureKanji } from './prefectures.js';
+
+import path from 'path';
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 interface Image {
     url: string;

@@ -3,8 +3,8 @@ import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import axios from 'axios';
 import schedule from 'node-schedule';
-import type {SlackInterface} from '../lib/slack';
-import logger from '../lib/logger';
+import type {SlackInterface} from '../lib/slack.js';
+import logger from '../lib/logger.js';
 
 const log = logger.child({bot: 'hakatashi-visor'});
 const mutex = new Mutex();

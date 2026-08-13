@@ -7,10 +7,10 @@ import {
 	GuildScheduledEventStatus,
 } from 'discord.js';
 import type {GuildScheduledEventRecurrenceRuleNWeekday, GuildScheduledEventRecurrenceRuleOptions} from 'discord.js';
-import discord from '../lib/discord';
-import logger from '../lib/logger';
-import {getCalendarEvent, listUpcomingEvents, updateCalendarEventLocation} from './calendarClient';
-import type {CalendarEvent} from './types';
+import discord from '../lib/discord.js';
+import logger from '../lib/logger.js';
+import {getCalendarEvent, listUpcomingEvents, updateCalendarEventLocation} from './calendarClient.js';
+import type {CalendarEvent} from './types.js';
 
 const log = logger.child({bot: 'google-calendar', module: 'discordSync'});
 

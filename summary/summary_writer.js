@@ -1,15 +1,20 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
 
-const {uniq, countBy, groupBy, maxBy, minBy} = require('lodash');
-const moment = require('moment');
-const {tokenize} = require('kuromojin');
-const cloud = require('d3-cloud');
-const {JSDOM} = require('jsdom');
-const cloudinary = require('cloudinary');
-const {createCanvas, Image, registerFont} = require('canvas');
-const path = require('path');
+dotenv.config();
 
-const {default: logger} = require('../lib/logger');
+import {uniq, countBy, groupBy, maxBy, minBy} from 'lodash-es';
+import moment from 'moment';
+import {tokenize} from 'kuromojin';
+import cloud from 'd3-cloud';
+import {JSDOM} from 'jsdom';
+import cloudinary from 'cloudinary';
+import {createCanvas, Image, registerFont} from 'canvas';
+import path from 'path';
+import {fileURLToPath} from 'url';
+
+import logger from '../lib/logger.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const log = logger.child({bot: 'summary'});
 
 let fontloaded = false;
@@ -31,7 +36,7 @@ function filtering(messages) {
     return out;
 }
 
-module.exports.makeSummary = async (messages, slack) => {
+export const makeSummary = async (messages, slack) => {
     // 7.0からD3.jsはESM必須
     const d3 = await import('d3');
 

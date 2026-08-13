@@ -1,4 +1,4 @@
-import type { SlackInterface } from '../lib/slack';
+import type { SlackInterface } from '../lib/slack.js';
 
 enum TaikoNote {
 	Void,

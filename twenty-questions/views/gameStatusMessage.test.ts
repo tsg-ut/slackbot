@@ -1,5 +1,5 @@
-import gameStatusMessage from './gameStatusMessage';
-import type {StateObj} from '../TwentyQuestions';
+import gameStatusMessage from './gameStatusMessage.js';
+import type {StateObj} from '../TwentyQuestions.js';
 import type {KnownBlock, ActionsBlock} from '@slack/web-api';
 
 const expectEquals: <S, T extends S>(actual: S, expected: T) => asserts actual is T = <S, T extends S>(actual: S, expected: T) => {

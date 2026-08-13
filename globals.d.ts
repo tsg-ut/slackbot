@@ -1,4 +1,4 @@
-declare module "amae-koromo/majsoul" {
+declare module "amae-koromo/majsoul.js" {
   private class MajsoulConnection {
     clientVersionString: string;
     async rpcCall(methodName: string, payload: Record<string, any>): Promise<any>;
@@ -15,7 +15,15 @@ declare module "mp3-duration" {
 
 declare module "japanese" {
   export function hiraganize(str: string): string;
+  export function katakanize(str: string): string;
   export function romanize(str: string, config?: Record<string, string>): string;
+  export const romanizationTable: Record<string, string>;
+  export const defaultRomanizationConfig: Record<string, string>;
+  export const katakanaRegex: RegExp;
+}
+
+declare module "yargs/helpers" {
+  export function hideBin(argv: string[]): string[];
 }
 
 declare module "word2vec" {

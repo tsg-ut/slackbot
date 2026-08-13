@@ -1,7 +1,7 @@
 import {
 	getDuplicateEventChecker,
 	closeDuplicateEventChecker,
-} from './eventDeduplication';
+} from './eventDeduplication.js';
 import { createClient } from 'redis';
 import type { Mock, Mocked } from 'vitest';
 

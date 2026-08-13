@@ -1,7 +1,7 @@
 'use strict';
 
 import deepcopy from 'deepcopy';
-import * as rust_proxy from './rust-proxy';
+import * as rust_proxy from './rust-proxy.js';
 
 interface Position {
 	x: number,

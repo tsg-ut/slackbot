@@ -3,21 +3,21 @@ import type {BlockAction, ViewSubmitAction} from '@slack/bolt';
 import type {SlackMessageAdapter} from '@slack/interactive-messages';
 import type {WebClient} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
-import {uniq} from 'lodash';
+import {uniq} from 'lodash-es';
 import {scheduleJob} from 'node-schedule';
-import logger from '../lib/logger';
-import type {SlackInterface} from '../lib/slack';
-import State from '../lib/state';
+import logger from '../lib/logger.js';
+import type {SlackInterface} from '../lib/slack.js';
+import State from '../lib/state.js';
 import {
 	getCalendarInfo,
 	getServiceAccountEmail,
 	listUpcomingEvents,
 	syncCalendarEvents,
-} from './calendarClient';
-import {syncToDiscord} from './discordSync';
-import type {StateObj, Subscription} from './types';
-import addSubscriptionModal from './views/addSubscriptionModal';
-import type {EventMessage} from './views/eventMessages';
+} from './calendarClient.js';
+import {syncToDiscord} from './discordSync.js';
+import type {StateObj, Subscription} from './types.js';
+import addSubscriptionModal from './views/addSubscriptionModal.js';
+import type {EventMessage} from './views/eventMessages.js';
 import {
 	dailySummaryMessage,
 	eventAddedMessage,
@@ -25,8 +25,8 @@ import {
 	eventDeletedMessage,
 	eventStartMessage,
 	weeklySummaryMessage,
-} from './views/eventMessages';
-import settingsModal from './views/settingsModal';
+} from './views/eventMessages.js';
+import settingsModal from './views/settingsModal.js';
 
 const log = logger.child({bot: 'google-calendar'});
 const mutex = new Mutex();

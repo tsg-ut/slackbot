@@ -4,20 +4,20 @@ import type {ChatPostMessageArguments, KnownBlock, GenericMessageEvent} from '@s
 import {Mutex} from 'async-mutex';
 // @ts-expect-error: fast-levenshtein has no type declarations
 import levenshtein from 'fast-levenshtein';
-import {minBy, maxBy, sample, sampleSize, shuffle, sum} from 'lodash';
+import {minBy, maxBy, sample, sampleSize, shuffle, sum} from 'lodash-es';
 import {scheduleJob} from 'node-schedule';
 // @ts-expect-error: rouge has no type declarations
 import rouge from 'rouge';
-import {increment} from '../achievements';
-import {getCandidateWords} from '../lib/candidateWords';
-import {ChannelLimitedBot} from '../lib/channelLimitedBot';
-import {db} from '../lib/firestore';
-import type {SlackInterface} from '../lib/slack';
-import State from '../lib/state';
-import {getAIBotMeaning} from './aibot';
-import type {AIBotModel} from './aibot';
-import {getArbitraryAIAnswer} from './arbitraryAibot';
-import {calculateRatingDeltas} from './rating';
+import {increment} from '../achievements/index.js';
+import {getCandidateWords} from '../lib/candidateWords.js';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot.js';
+import {db} from '../lib/firestore.js';
+import type {SlackInterface} from '../lib/slack.js';
+import State from '../lib/state.js';
+import {getAIBotMeaning} from './aibot.js';
+import type {AIBotModel} from './aibot.js';
+import {getArbitraryAIAnswer} from './arbitraryAibot.js';
+import {calculateRatingDeltas} from './rating.js';
 import type {
 	DailyGameState,
 	GameComment,
@@ -32,20 +32,20 @@ import type {
 	StoredTheme,
 	PlayerResult,
 	WordEntry,
-} from './types';
-import {getMeaning, getWordUrl, normalizeMeaning, SOURCE_LABELS} from './utils';
-import bettingModal from './views/bettingModal';
-import candidatesMessage from './views/candidatesMessage';
-import collectBettingsMessage from './views/collectBettingsMessage';
-import collectMeaningsMessage from './views/collectMeaningsMessage';
-import dailyStatusMessage from './views/dailyStatusMessage';
+} from './types.js';
+import {getMeaning, getWordUrl, normalizeMeaning, SOURCE_LABELS} from './utils.js';
+import bettingModal from './views/bettingModal.js';
+import candidatesMessage from './views/candidatesMessage.js';
+import collectBettingsMessage from './views/collectBettingsMessage.js';
+import collectMeaningsMessage from './views/collectMeaningsMessage.js';
+import dailyStatusMessage from './views/dailyStatusMessage.js';
 import {
 	registerThemeModeSelectModal,
 	registerThemeDictModal,
 	registerThemeArbitraryModal,
-} from './views/registerThemeModal';
-import resultsMessage from './views/resultsMessage';
-import submitMeaningModal from './views/submitMeaningModal';
+} from './views/registerThemeModal.js';
+import resultsMessage from './views/resultsMessage.js';
+import submitMeaningModal from './views/submitMeaningModal.js';
 
 const mutex = new Mutex();
 

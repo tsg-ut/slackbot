@@ -1,18 +1,18 @@
 'use strict';
 
-import * as image from './image';
-import * as board from './board';
+import * as image from './image.js';
+import * as board from './board.js';
 import moment from 'moment';
 import querystring from 'querystring';
 import { Mutex } from 'async-mutex';
-import { unlock } from '../achievements';
-import { round } from 'lodash';
+import { unlock } from '../achievements/index.js';
+import { round } from 'lodash-es';
 import type { SlackInterface } from '../lib/slack.js';
 import type { MessageEvent } from '@slack/bolt';
-import { extractMessage } from '../lib/slackUtils';
-import SinglePlayRicochetRobot from './SinglePlayRicochetRobot';
-import { ChannelLimitedBot } from '../lib/channelLimitedBot';
-import { Deferred } from '../lib/utils';
+import { extractMessage } from '../lib/slackUtils.js';
+import SinglePlayRicochetRobot from './SinglePlayRicochetRobot.js';
+import { ChannelLimitedBot } from '../lib/channelLimitedBot.js';
+import { Deferred } from '../lib/utils.js';
 import type { GenericMessageEvent } from '@slack/web-api';
 
 interface State {

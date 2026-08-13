@@ -1,5 +1,5 @@
-import { TaimaiGame } from '..';
-import { formatOutlineFilled } from '../util';
+import { TaimaiGame } from '../index.js';
+import { formatOutlineFilled } from '../util.js';
 
 export default (game: TaimaiGame) => ({
 	text: `問題: ${formatOutlineFilled(game.outline, game.pieces)}`,

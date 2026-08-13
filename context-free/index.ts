@@ -1,13 +1,13 @@
 import axios from 'axios';
 import plugin from 'fastify-plugin';
-import {escapeRegExp} from 'lodash';
+import {escapeRegExp} from 'lodash-es';
 import scrapeIt from 'scrape-it';
-import getReading from '../lib/getReading';
+import getReading from '../lib/getReading.js';
 /* eslint-disable no-unused-vars */
-import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack';
-import {getMemberName, getMemberIcon} from '../lib/slackUtils';
-import {getAIBotMeaning} from '../tahoiya/aibot';
-import {tags} from './cfp-tags';
+import type {SlackInterface, SlashCommandEndpoint} from '../lib/slack.js';
+import {getMemberName, getMemberIcon} from '../lib/slackUtils.js';
+import {getAIBotMeaning} from '../tahoiya/aibot.js';
+import {tags} from './cfp-tags.js';
 
 const normalizeMeaning = (input: string) => {
   let meaning = input;

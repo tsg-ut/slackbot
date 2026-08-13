@@ -1,7 +1,7 @@
 /* eslint-disable require-await */
 
 import {expect, it, beforeEach} from 'vitest';
-import Blocker from './block';
+import Blocker from './block.js';
 
 let blocker: InstanceType<typeof Blocker> = null;
 

@@ -10,18 +10,21 @@ import type {FastifyPluginCallback} from 'fastify';
 import plugin from 'fastify-plugin';
 import yaml from 'js-yaml';
 import libmime from 'libmime';
-import {mapValues} from 'lodash';
+import {mapValues} from 'lodash-es';
 import type {OpenAI} from 'openai';
 import isValidUTF8 from 'utf-8-validate';
 import {z} from 'zod';
-import dayjs from '../lib/dayjs';
-import logger from '../lib/logger';
-import mailgun from '../lib/mailgun';
-import openai from '../lib/openai';
+import dayjs from '../lib/dayjs.js';
+import logger from '../lib/logger.js';
+import mailgun from '../lib/mailgun.js';
+import openai from '../lib/openai.js';
 import type {SlackInterface} from '../lib/slack.js';
-import State from '../lib/state';
-import editAndSendMailDialog from './views/editAndSendMailDialog';
-import replyConfigDialog from './views/replyConfigDialog';
+import State from '../lib/state.js';
+import editAndSendMailDialog from './views/editAndSendMailDialog.js';
+import replyConfigDialog from './views/replyConfigDialog.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const mutex = new Mutex();
 

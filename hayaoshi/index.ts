@@ -2,14 +2,14 @@ import type {GenericMessageEvent, MessageEvent} from '@slack/web-api';
 import {Mutex} from 'async-mutex';
 // @ts-expect-error: not typed
 import levenshtein from 'fast-levenshtein';
-import {sample, shuffle, flatten, times, constant} from 'lodash';
-import {ChannelLimitedBot} from '../lib/channelLimitedBot';
-import type {SlackInterface} from '../lib/slack';
-import {extractMessage, HumanMessageEvent, isHumanMessage} from '../lib/slackUtils';
-import {Deferred} from '../lib/utils';
-import {normalize, getQuiz, getHardQuiz} from './util';
+import {sample, shuffle, flatten, times, constant} from 'lodash-es';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot.js';
+import type {SlackInterface} from '../lib/slack.js';
+import {extractMessage, HumanMessageEvent, isHumanMessage} from '../lib/slackUtils.js';
+import {Deferred} from '../lib/utils.js';
+import {normalize, getQuiz, getHardQuiz} from './util.js';
 
-export {Quiz, Data, normalize, getQuiz, getHardQuiz, getItQuiz, getUserQuiz, getAbc2019Quiz} from './util';
+export {Quiz, Data, normalize, getQuiz, getHardQuiz, getItQuiz, getUserQuiz, getAbc2019Quiz} from './util.js';
 
 const mutex = new Mutex();
 

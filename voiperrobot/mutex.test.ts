@@ -1,4 +1,4 @@
-import Mutex from './mutex';
+import Mutex from './mutex.js';
 
 const waitNextTick = () => new Promise((resolve) => {
   process.nextTick(resolve);

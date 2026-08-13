@@ -1,8 +1,8 @@
 import axios from 'axios';
 import plugin from 'fastify-plugin';
 /* eslint-disable no-unused-vars */
-import type { SlackInterface, SlashCommandEndpoint } from '../lib/slack';
-import { getMemberName, getMemberIcon } from '../lib/slackUtils';
+import type { SlackInterface, SlashCommandEndpoint } from '../lib/slack.js';
+import { getMemberName, getMemberIcon } from '../lib/slackUtils.js';
 
 export const server = ({ eventClient, webClient: slack }: SlackInterface) =>
   plugin(async (fastify) => {

@@ -1,5 +1,5 @@
-import octas from './index';
-import Slack from '../lib/slackMock';
+import octas from './index.js';
+import Slack from '../lib/slackMock.js';
 
 vi.mock('../achievements');
 vi.mock('cloudinary');

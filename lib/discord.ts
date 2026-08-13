@@ -1,7 +1,6 @@
-import Discord, {GatewayIntentBits} from 'discord.js';
+import {Client, GatewayIntentBits} from 'discord.js';
 
-// eslint-disable-next-line import/no-named-as-default-member
-const discord = new Discord.Client({
+const discord = new Client({
 	intents: [
 		GatewayIntentBits.Guilds,
 		GatewayIntentBits.GuildMessages,

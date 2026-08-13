@@ -1,7 +1,12 @@
+import path from 'path';
+import {fileURLToPath} from 'url';
 import Fastify from 'fastify';
-import SlackMock from './slackMock';
-import {allBots} from './bots';
+import SlackMock from './slackMock.js';
+import {allBots, resolveBotEntryPath} from './bots.js';
 import {EventEmitter} from 'events';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.join(__dirname, '..');
 
 vi.setConfig({testTimeout: 60 * 1000});
 
@@ -60,18 +65,6 @@ const EXCLUDED_BOTS = new Set([
 	// 満たさず、非同期に unhandled rejection を発生させ、そのタイミング次第で
 	// 無関係な後続テストの失敗として現れるため除外する。
 	'summary',
-	// anime/index.js, hangman/index.js は未TypeScript化のCJSモジュールで、
-	// 拡張子なしで '../lib/*' 配下の.tsファイルをrequireしている。
-	// vite-nodeがこれらのファイルをネイティブCJSとして扱う場合、Node標準の
-	// 拡張子解決(.ts非対応)でMODULE_NOT_FOUNDになる。tsgoでのビルド後
-	// (.build配下は全て.js化される)は問題なく動作するため実害はないが、
-	// vitestの開発/テスト実行環境固有の制約として対象外とする。
-	// (qrcode-quizはhangmanを、anime/anisonはanime/index.jsをそれぞれ
-	// importするため、同じ理由で連鎖的に失敗する)
-	'anime',
-	'anime/anison',
-	'hangman',
-	'qrcode-quiz',
 ]);
 
 const testedBots = allBots.filter((name) => !EXCLUDED_BOTS.has(name));
@@ -86,7 +79,7 @@ describe.each(testedBots)('%s', (name) => {
 		process.env.GOOGLE_MAPS_API_KEY ||= 'dummy-google-maps-api-key';
 		process.env.CLOUDINARY_URL ||= 'cloudinary://dummy:dummy@dummy';
 
-		const plugin = await import(`../${name}`);
+		const plugin = await import(resolveBotEntryPath(projectRoot, name, '../'));
 
 		if (typeof plugin.default === 'function') {
 			await plugin.default(slack);

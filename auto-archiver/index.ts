@@ -1,12 +1,12 @@
 import {BlockButtonAction, MessageEvent} from '@slack/bolt';
-import type {Channel} from '@slack/web-api/dist/types/response/ConversationsListResponse';
+import type {Channel} from '@slack/web-api/dist/types/response/ConversationsListResponse.js';
 import {Mutex} from 'async-mutex';
 import {stripIndent} from 'common-tags';
 import schedule from 'node-schedule';
-import logger from '../lib/logger';
-import type {SlackInterface} from '../lib/slack';
-import {extractMessage} from '../lib/slackUtils';
-import State from '../lib/state';
+import logger from '../lib/logger.js';
+import type {SlackInterface} from '../lib/slack.js';
+import {extractMessage} from '../lib/slackUtils.js';
+import State from '../lib/state.js';
 
 const mutex = new Mutex();
 

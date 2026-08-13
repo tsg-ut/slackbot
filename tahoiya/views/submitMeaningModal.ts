@@ -1,5 +1,5 @@
 import type {View} from '@slack/web-api';
-import type {GameComment, Theme} from '../types';
+import type {GameComment, Theme} from '../types.js';
 
 const themeDescription = (theme: Theme): string => {
 	if (theme.type === 'dictionary') {

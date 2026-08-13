@@ -1,6 +1,6 @@
 // See ../atcoder/utils.ts for reference.
 
-import {last} from 'lodash';
+import {last} from 'lodash-es';
 import scrapeIt from 'scrape-it';
 
 export interface Problem {

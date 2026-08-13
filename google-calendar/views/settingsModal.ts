@@ -1,5 +1,5 @@
 import type {View, KnownBlock} from '@slack/web-api';
-import type {Subscription} from '../types';
+import type {Subscription} from '../types.js';
 
 const DAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'];
 

@@ -3,7 +3,7 @@
 import sharp from 'sharp';
 import cloudinary, { UploadApiResponse } from 'cloudinary';
 import deepcopy from 'deepcopy';
-import type { Board } from './board';
+import type { Board } from './board.js';
 import type { OverlayOptions } from 'sharp';
 
 interface Position {

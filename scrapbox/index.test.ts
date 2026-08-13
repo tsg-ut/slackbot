@@ -1,7 +1,7 @@
 import type {ChatUnfurlArguments} from '@slack/web-api';
 import axios from 'axios';
-import Slack from '../lib/slackMock';
-import scrapbox, {scrapbox2slack} from './index';
+import Slack from '../lib/slackMock.js';
+import scrapbox, {scrapbox2slack} from './index.js';
 
 vi.mock('axios');
 

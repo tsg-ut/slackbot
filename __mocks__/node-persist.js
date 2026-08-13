@@ -24,4 +24,4 @@ const nodePersist = {
 
 nodePersist.storage = {};
 
-module.exports = nodePersist;
+export default nodePersist;

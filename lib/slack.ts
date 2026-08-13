@@ -1,3 +1,6 @@
+// 下のトップレベルで process.env を参照するため、他の import より先に読み込む
+import './dotenv.js';
+
 import {WebClient} from '@slack/web-api';
 import {createMessageAdapter} from '@slack/interactive-messages';
 import {createEventAdapter} from '@slack/events-api';
@@ -5,11 +8,11 @@ import sql from 'sql-template-strings';
 import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
-import {TeamEventClient} from './slackEventClient';
-import {EventClientWrapper} from './eventClientWrapper';
+import {TeamEventClient} from './slackEventClient.js';
+import {EventClientWrapper} from './eventClientWrapper.js';
 import type {EventEmitter} from 'events';
-import {Deferred} from './utils';
-import {Token} from '../oauth/tokens';
+import {Deferred} from './utils.js';
+import type {Token} from '../oauth/tokens.js';
 
 export interface SlackInterface {
 	webClient: WebClient;

@@ -1,4 +1,4 @@
-import config from "./config";
+import config from "./config.js";
 
 export function formatOutlineUnfilled(outline: string[], pieces: string[], focus: number=null): string {
   let tokens: string[] = [];

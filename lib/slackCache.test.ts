@@ -1,8 +1,11 @@
 import fs from 'fs-extra';
 import path from 'path';
-import Slack from './slackMock';
-import SlackCache from './slackCache';
-import {conversationsHistory} from './slackPatron';
+import Slack from './slackMock.js';
+import SlackCache from './slackCache.js';
+import {conversationsHistory} from './slackPatron.js';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 vi.mock('./slackPatron', () => ({
 	__esModule: true,

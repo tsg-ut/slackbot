@@ -1,7 +1,10 @@
-import { prefectures } from '../room-gacha/prefectures';
+import { prefectures } from '../room-gacha/prefectures.js';
 import qs from 'querystring';
 import fs from 'fs/promises';
 import path from 'path';
+
+import {fileURLToPath} from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 interface City {
 	pref: string,
