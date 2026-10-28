@@ -11,7 +11,7 @@ const mockContent = (content: string) => ({
 	choices: [{
 		message: {content},
 	}],
-	model: 'gpt-4.1-mini',
+	model: 'gpt-5.4-mini',
 } as ChatCompletion);
 
 describe('tahoiya/arbitraryAibot', () => {

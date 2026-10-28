@@ -54,7 +54,7 @@
 - **クラスベース設計**: HelloWorldボットのパターンに従った実装
 - **State管理**: lib/stateモジュールを使用した永続化
 - **Firestore保存**: 終了したゲームはFirestoreのtwenty_questions_gamesコレクションに保存
-- **AI統合**: lib/openai.tsを使用してgpt-4o-miniモデルで処理
+- **AI統合**: lib/openai.tsを使用してgpt-6-lunaモデルで処理
 
 ### ファイル構成
 
@@ -206,7 +206,7 @@ npm test -- twenty-questions
 
 - TypeScript
 - Slack Web API
-- OpenAI API (gpt-4o-mini, gpt-5-mini)
+- OpenAI API (gpt-6-luna)
 - Firestore
 - async-mutex (並行処理制御)
 - lodash (ユーティリティ関数)

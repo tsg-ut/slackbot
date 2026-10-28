@@ -67,7 +67,7 @@ export interface Game {
 interface BatchJob {
 	id: string,
 	gameId: string,
-	model: 'gpt-4o-mini' | 'o4-mini',
+	model: 'gpt-4o-mini' | 'o4-mini' | 'gpt-6-luna' | 'gpt-6.1-terra',
 	status: 'pending' | 'in_progress' | 'completed' | 'failed',
 	createdAt: number,
 	completedAt?: number,
@@ -148,6 +148,7 @@ export class SlowQuiz {
 
 	readonly #MAX_CORRECT_ANSWERS = 3;
 
+	readonly #MAX_TERRA_OUTPUT_TOKENS = 3000;
 	readonly #MAX_O4_MINI_OUTPUT_TOKENS = 3000;
 
 	constructor({
@@ -486,7 +487,7 @@ export class SlowQuiz {
 
 		log.info('Requesting to OpenAI API...');
 		const completion = await openai.chat.completions.create({
-			model: 'gpt-4o-mini',
+			model: 'gpt-6-luna',
 			messages: [
 				...prompt,
 				{
@@ -518,21 +519,21 @@ export class SlowQuiz {
 		};
 	}
 
-	async #createO4MiniBatchJob(game: Game) {
-		log.info(`Creating o4-mini batch job for game ${game.id}...`);
+	async #createTerraBatchJob(game: Game) {
+		log.info(`Creating gpt-6.1-terra batch job for game ${game.id}...`);
 		const prompt = await reasoningPromptLoader.load();
 		const questionText = this.#getQuestionText(game);
 		const [visibleText] = questionText.split('\u200B');
 
-		const botId = 'o4-mini:ver1';
+		const botId = 'gpt-6.1-terra:ver1';
 		const userId = `bot:${botId}`;
 
 		const wrongAnswers = game.wrongAnswers
-			.filter((answer) => answer.user === userId)
+			.filter((answer) => answer.user === userId || answer.user === 'bot:o4-mini:ver1')
 			.map((answer) => answer.answer);
 
 		const requestBody: ChatCompletionCreateParams = {
-			model: 'o4-mini',
+			model: 'gpt-6.1-terra',
 			messages: [
 				...prompt,
 				{
@@ -545,9 +546,9 @@ export class SlowQuiz {
 				},
 			],
 			// 25,000 is recommended, but it will be too expensive for this game
-			// Input tokens: $0.55 / 1M * 2,000 = $0.0011
-			// Output tokens: $2.20 / 1M * 3,000 = $0.0066
-			max_completion_tokens: this.#MAX_O4_MINI_OUTPUT_TOKENS,
+			// Input tokens: $0.50 / 1M * 2,000 = $0.0010
+			// Output tokens: $2.50 / 1M * 3,000 = $0.0075
+			max_completion_tokens: this.#MAX_TERRA_OUTPUT_TOKENS,
 		};
 
 		// https://platform.openai.com/docs/api-reference/batch/request-input
@@ -568,7 +569,7 @@ export class SlowQuiz {
 			const batchJob: BatchJob = {
 				id: batch.id,
 				gameId: game.id,
-				model: 'o4-mini',
+				model: 'gpt-6.1-terra',
 				status: 'pending',
 				createdAt: Date.now(),
 			};
@@ -628,11 +629,11 @@ export class SlowQuiz {
 			return;
 		}
 
-		const botId = 'o4-mini:ver1';
+		const botId = batchJob.model === 'gpt-6.1-terra' ? 'gpt-6.1-terra:ver1' : 'o4-mini:ver1';
 		const userId = `bot:${botId}`;
 
-		if (game.correctAnswers.some((answer) => answer.user === userId)) {
-			log.info(`Game ${game.id} already has an o4-mini answer, skipping`);
+		if (game.correctAnswers.some((answer) => answer.user === userId || answer.user === 'bot:o4-mini:ver1' || answer.user === 'bot:gpt-6.1-terra:ver1')) {
+			log.info(`Game ${game.id} already has a batch answer, skipping`);
 			return;
 		}
 
@@ -648,8 +649,8 @@ export class SlowQuiz {
 					log.warn(`Unexpected custom_id in batch result: ${result.custom_id} (expected: slowquiz_${game.id}_day${game.days})`);
 				}
 
-				if (result.response?.body?.usage?.completion_tokens_details?.reasoning_tokens === this.#MAX_O4_MINI_OUTPUT_TOKENS) {
-					log.warn(`Batch job ${batchJob.id} response has ${this.#MAX_O4_MINI_OUTPUT_TOKENS} reasoning tokens, which means it might exceeded the limit. The response might be incomplete.`);
+				if (result.response?.body?.usage?.completion_tokens_details?.reasoning_tokens === this.#MAX_TERRA_OUTPUT_TOKENS) {
+					log.warn(`Batch job ${batchJob.id} response has ${this.#MAX_TERRA_OUTPUT_TOKENS} reasoning tokens, which means it might exceeded the limit. The response might be incomplete.`);
 				}
 
 				const content = result.response?.body?.choices?.[0]?.message?.content;
@@ -660,7 +661,7 @@ export class SlowQuiz {
 					const answer = this.#extractAnswerFromResponse(content, batchJob.model);
 					batchJob.answer = answer;
 
-					log.info(`O4-mini answer for game ${game.id}: ${answer} (${content})`);
+					log.info(`Batch answer for game ${game.id}: ${answer} (${content})`);
 					log.info(`Prompt tokens: ${result.response?.body?.usage?.prompt_tokens}`);
 					log.info(`Completion tokens: ${result.response?.body?.usage?.completion_tokens}`);
 					log.info(`Reasoning tokens: ${result.response?.body?.usage?.completion_tokens_details?.reasoning_tokens}`);
@@ -693,7 +694,7 @@ export class SlowQuiz {
 	}
 
 	#extractAnswerFromResponse(content: string, model: string): string | null {
-		if (model === 'o4-mini') {
+		if (model === 'o4-mini' || model === 'gpt-6.1-terra') {
 			const matches = (/最終解答[:：]\s*(?<answer>.+?)(?<rubyParens>（(?<ruby>.+?)）)?$/m).exec(content);
 			if (matches?.groups?.ruby) {
 				return matches.groups.ruby.replaceAll(/[^ぁ-ゟァ-ヿa-z0-9]/ig, '') ?? null;
@@ -786,7 +787,7 @@ export class SlowQuiz {
 		log.info('Creating bot answers...');
 		for (const game of this.#state.games) {
 			log.info(`Processing game ${game.id}...`);
-			const botId = 'chatgpt-4o-mini:ver1';
+			const botId = 'chatgpt-6-luna:ver1';
 			const userId = `bot:${botId}`;
 
 			if (game.status !== 'inprogress') {
@@ -794,7 +795,7 @@ export class SlowQuiz {
 				continue;
 			}
 
-			if (game.correctAnswers.some((answer) => answer.user === userId)) {
+			if (game.correctAnswers.some((answer) => answer.user === userId || answer.user === 'bot:chatgpt-4o-mini:ver1')) {
 				log.info(`Game ${game.id} already has a bot answer, skipping...`);
 				continue;
 			}
@@ -824,15 +825,15 @@ export class SlowQuiz {
 		}
 	}
 
-	async #createO4MiniBatchJobs() {
-		log.info('Creating o4-mini batch jobs...');
+	async #createTerraBatchJobs() {
+		log.info('Creating gpt-6.1-terra batch jobs...');
 		for (const game of this.#state.games) {
 			if (game.status !== 'inprogress') {
 				continue;
 			}
 
 			const existingBatchJob = this.#state.batchJobs.find((job) => (
-				job.gameId === game.id && job.model === 'o4-mini' && job.status === 'pending'
+				job.gameId === game.id && (job.model === 'gpt-6.1-terra' || job.model === 'o4-mini') && job.status === 'pending'
 			));
 
 			if (existingBatchJob) {
@@ -840,15 +841,15 @@ export class SlowQuiz {
 				continue;
 			}
 
-			const botId = 'o4-mini:ver1';
+			const botId = 'gpt-6.1-terra:ver1';
 			const userId = `bot:${botId}`;
 
-			if (game.correctAnswers.some((answer) => answer.user === userId)) {
-				log.info(`Game ${game.id} already has an o4-mini answer, skipping...`);
+			if (game.correctAnswers.some((answer) => answer.user === userId || answer.user === 'bot:o4-mini:ver1')) {
+				log.info(`Game ${game.id} already has a gpt-6.1-terra / o4-mini answer, skipping...`);
 				continue;
 			}
 
-			await this.#createO4MiniBatchJob(game);
+			await this.#createTerraBatchJob(game);
 		}
 	}
 
@@ -1103,7 +1104,7 @@ export class SlowQuiz {
 			await this.postGameStatus(true);
 		}
 		await this.#createBotAnswers();
-		await this.#createO4MiniBatchJobs();
+		await this.#createTerraBatchJobs();
 	}
 
 	async postGameStatus(replaceLatestStatusMessages: boolean, channels: string[] = []) {

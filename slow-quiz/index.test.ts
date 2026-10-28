@@ -1,7 +1,7 @@
 /* eslint-disable init-declarations */
 
 import type {MockedStateInterface} from '../lib/__mocks__/state';
-import openai from '../lib/openai';
+import openai, {systemOpenAIClient} from '../lib/openai';
 import Slack from '../lib/slackMock';
 import State from '../lib/state';
 import {SlowQuiz, validateQuestion, type StateObj, type Game} from './index';
@@ -23,12 +23,15 @@ vi.mock('../lib/openai', () => ({
 				create: vi.fn(),
 			},
 		},
+	},
+	systemOpenAIClient: {
 		batches: {
 			create: vi.fn(),
 			retrieve: vi.fn(),
 		},
 		files: {
 			create: vi.fn(),
+			content: vi.fn(),
 		},
 	},
 }));
@@ -80,18 +83,18 @@ describe('slow-quiz', () => {
 					content: '【テスト解答（てすとかいとう）】',
 				},
 			}],
-			model: 'gpt-4o-mini',
+			model: 'gpt-6-luna',
 		});
 		// @ts-expect-error: Mocking only the necessary properties
-		vi.mocked(openai.batches.create).mockResolvedValue({
+		vi.mocked(systemOpenAIClient.batches.create).mockResolvedValue({
 			id: 'batch-123',
 		});
 		// @ts-expect-error: Mocking only the necessary properties
-		vi.mocked(openai.batches.retrieve).mockResolvedValue({
+		vi.mocked(systemOpenAIClient.batches.retrieve).mockResolvedValue({
 			status: 'completed',
 		});
 		// @ts-expect-error: Mocking only the necessary properties
-		vi.mocked(openai.files.create).mockResolvedValue({
+		vi.mocked(systemOpenAIClient.files.create).mockResolvedValue({
 			id: 'file-123',
 		});
 
@@ -152,14 +155,14 @@ describe('slow-quiz', () => {
 					startDate: expect.any(Number),
 					progress: 1,
 					days: 1,
-					answeredUsers: ['bot:chatgpt-4o-mini:ver1'],
+					answeredUsers: ['bot:chatgpt-6-luna:ver1'],
 					comments: [
 						{
 							answer: '【テスト解答（てすとかいとう）】',
 							date: expect.any(Number),
 							days: 1,
 							progress: 1,
-							user: 'bot:chatgpt-4o-mini:ver1',
+							user: 'bot:chatgpt-6-luna:ver1',
 						},
 					],
 					wrongAnswers: [
@@ -168,7 +171,7 @@ describe('slow-quiz', () => {
 							date: expect.any(Number),
 							days: 1,
 							progress: 1,
-							user: 'bot:chatgpt-4o-mini:ver1',
+							user: 'bot:chatgpt-6-luna:ver1',
 						},
 					],
 				});
@@ -210,7 +213,7 @@ describe('slow-quiz', () => {
 							date: expect.any(Number),
 							days: 3,
 							progress: 3,
-							user: 'bot:chatgpt-4o-mini:ver1',
+							user: 'bot:chatgpt-6-luna:ver1',
 						},
 					],
 					wrongAnswers: [
@@ -222,14 +225,14 @@ describe('slow-quiz', () => {
 							answer: 'ふじ',
 						},
 						{
-							user: 'bot:chatgpt-4o-mini:ver1',
+							user: 'bot:chatgpt-6-luna:ver1',
 							progress: 3,
 							days: 3,
 							date: expect.any(Number),
 							answer: 'てすとかいとう',
 						},
 					],
-					answeredUsers: ['bot:chatgpt-4o-mini:ver1'],
+					answeredUsers: ['bot:chatgpt-6-luna:ver1'],
 				});
 			});
 
@@ -261,7 +264,7 @@ describe('slow-quiz', () => {
 							date: expect.any(Number),
 							days: 8,
 							progress: 8,
-							user: 'bot:chatgpt-4o-mini:ver1',
+							user: 'bot:chatgpt-6-luna:ver1',
 						},
 					],
 					comments: [
@@ -270,10 +273,10 @@ describe('slow-quiz', () => {
 							date: expect.any(Number),
 							days: 8,
 							progress: 8,
-							user: 'bot:chatgpt-4o-mini:ver1',
+							user: 'bot:chatgpt-6-luna:ver1',
 						},
 					],
-					answeredUsers: ['bot:chatgpt-4o-mini:ver1'],
+					answeredUsers: ['bot:chatgpt-6-luna:ver1'],
 				});
 			});
 

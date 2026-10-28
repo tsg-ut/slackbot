@@ -120,7 +120,7 @@ export default async (slackClients: SlackInterface) => {
 
 			log.info('Requesting to OpenAI API...');
 			const completion = await openai.chat.completions.create({
-				model: 'gpt-4o-mini',
+				model: 'gpt-6-luna',
 				messages: [
 					...prompt,
 					{

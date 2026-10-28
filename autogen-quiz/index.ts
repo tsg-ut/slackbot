@@ -170,7 +170,7 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	});
 
 	const response1 = await openai.chat.completions.create({
-		model: 'gpt-4o-mini',
+		model: 'gpt-6-luna',
 		messages: chatHistory,
 		max_tokens: 1024,
 	});
@@ -217,7 +217,7 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	});
 
 	const response2 = await openai.chat.completions.create({
-		model: 'gpt-4o-mini',
+		model: 'gpt-6-luna',
 		messages: chatHistory,
 		max_tokens: 1024,
 	});
@@ -274,7 +274,7 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	}
 
 	const response3 = await openai.chat.completions.create({
-		model: 'gpt-4o-mini',
+		model: 'gpt-6-luna',
 		messages: chatHistory,
 		max_tokens: 1024,
 	});
@@ -309,7 +309,7 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	});
 
 	const response4 = await openai.chat.completions.create({
-		model: 'gpt-4o-mini',
+		model: 'gpt-6-luna',
 		messages: chatHistory,
 		max_tokens: 1024,
 	});
@@ -329,7 +329,7 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	});
 
 	const response5 = await openai.chat.completions.create({
-		model: 'gpt-4o-mini',
+		model: 'gpt-6-luna',
 		messages: chatHistory,
 		max_tokens: 1024,
 	});
@@ -349,7 +349,7 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	});
 
 	const response6 = await openai.chat.completions.create({
-		model: 'gpt-4o-mini',
+		model: 'gpt-6-luna',
 		messages: chatHistory,
 		max_tokens: 1024,
 	});
