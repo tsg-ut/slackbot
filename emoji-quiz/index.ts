@@ -1,5 +1,5 @@
 import type {ChatPostMessageArguments, GenericMessageEvent, MessageEvent} from '@slack/web-api';
-import {EventEmitter} from 'events';
+import {EventEmitter} from 'node:events';
 import {sample} from 'lodash';
 import {AteQuiz} from '../atequiz';
 import {ChannelLimitedBot} from '../lib/channelLimitedBot';
@@ -22,7 +22,7 @@ export const getQuestions = (emoji: Record<string, string>, easy = false) => {
 			visited.add(value);
 			value = emoji[value.slice('alias:'.length)];
 		}
-		return value?.match(/^https?:\/\//) ? value : null;
+		return value && /^https?:\/\//.exec(value) ? value : null;
 	};
 	const questions = new Map<string, string[]>();
 	for (const name of Object.keys(emoji)) {
@@ -36,7 +36,7 @@ export const getQuestions = (emoji: Record<string, string>, easy = false) => {
 	return Array.from(questions, ([url, names]) => ({url, names}))
 		.filter(({names}) => !easy || names.some((name) => (
 			name.length > 0 && name.length <= EASY_MAX_NAME_LENGTH &&
-			Array.from(name).every((character) => character.charCodeAt(0) <= 0x7F)
+			Array.from(name).every((character) => character.codePointAt(0) <= 0x7F)
 		)));
 };
 
@@ -151,7 +151,7 @@ class EmojiQuizBot extends ChannelLimitedBot {
 						throw new Error('Slack did not return a message timestamp');
 					}
 					thread = response.ts;
-					started.resolve(thread);
+					void started.resolve(thread);
 				},
 			});
 		} catch (error) {
@@ -169,10 +169,12 @@ class EmojiQuizBot extends ChannelLimitedBot {
 				this.progressMessages.delete(thread);
 			}
 			if (!started.isResolved) {
-				started.resolve(null);
+				void started.resolve(null);
 			}
 		}
 	}
 }
 
-export default (slackClients: SlackInterface) => new EmojiQuizBot(slackClients);
+const emojiQuiz = (slackClients: SlackInterface) => new EmojiQuizBot(slackClients);
+
+export default emojiQuiz;
