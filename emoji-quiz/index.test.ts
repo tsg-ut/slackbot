@@ -55,6 +55,50 @@ describe('emoji-quiz', () => {
 		})).toEqual([{url: 'https://example/image.png', names: ['original', 'alias', 'chain', 'duplicate']}]);
 	});
 
+	it('filters easy questions by ASCII names of at most ten characters, including aliases', () => {
+		const emoji = {
+			abc_123456: 'https://example/ten.png',
+			abcdefghijk: 'https://example/eleven.png',
+			日本語: 'https://example/japanese.png',
+			abcあ: 'https://example/mixed.png',
+			long_original: 'https://example/alias.png',
+			short: 'alias:long_original',
+			'': 'https://example/empty.png',
+		};
+		expect(getQuestions(emoji, true)).toEqual([
+			{url: 'https://example/ten.png', names: ['abc_123456']},
+			{url: 'https://example/alias.png', names: ['long_original', 'short']},
+		]);
+		expect(getQuestions(emoji)).toHaveLength(6);
+	});
+
+	it.each(['絵文字当てクイズeasy', '絵文字当てクイズ easy'])('starts easy mode with %s', async (command) => {
+		vi.mocked(slack.webClient.emoji.list).mockResolvedValueOnce({
+			ok: true,
+			emoji: {
+				abc_123456: 'https://example/ten.png',
+				abcdefghijk: 'https://example/eleven.png',
+				日本語: 'https://example/japanese.png',
+			},
+		});
+		await send(command);
+		expect(axios.get).toHaveBeenCalledWith('https://example/ten.png', expect.any(Object));
+		expect(posts()[0]).toMatchObject({text: expect.stringContaining('easy：ASCII文字のみ・10文字以下')});
+		await send('abc_123456', {thread_ts: slack.fakeTimestamp});
+		expect(posts().at(-1).text).toContain('正解です。');
+	});
+
+	it('can start a normal quiz after no emoji matches easy mode', async () => {
+		vi.mocked(slack.webClient.emoji.list).mockResolvedValueOnce({
+			ok: true, emoji: {long_emoji_name: 'https://example/long.png'},
+		});
+		await send('絵文字当てクイズeasy');
+		expect(posts()[0]).toMatchObject({text: 'easyの条件に合う絵文字がありません。'});
+		expect(axios.get).not.toHaveBeenCalled();
+		await send('絵文字当てクイズ');
+		expect(posts().at(-1)).toHaveProperty('blocks');
+	});
+
 	it('enlarges and rehosts the image without revealing the name in the question', async () => {
 		await send('絵文字当てクイズ');
 		expect(axios.get).toHaveBeenCalledWith('https://slack.example/test_emoji.png', expect.any(Object));

@@ -9,10 +9,11 @@ import type {SlackInterface} from '../lib/slack';
 
 const log = logger.child({bot: 'emoji-quiz'});
 const timeLimitSeconds = 60;
+const EASY_MAX_NAME_LENGTH = 10;
 const PRIMARY_ICON = 'blob-thinking';
 const SECONDARY_ICON = 'hugging_face';
 
-export const getQuestions = (emoji: Record<string, string>) => {
+export const getQuestions = (emoji: Record<string, string>, easy = false) => {
 	const resolve = (name: string): string | null => {
 		const visited = new Set<string>();
 		let value = emoji[name];
@@ -34,7 +35,11 @@ export const getQuestions = (emoji: Record<string, string>) => {
 			questions.set(url, names);
 		}
 	}
-	return Array.from(questions, ([url, names]) => ({url, names}));
+	return Array.from(questions, ([url, names]) => ({url, names}))
+		.filter(({names}) => !easy || names.some((name) => (
+			name.length > 0 && name.length <= EASY_MAX_NAME_LENGTH &&
+			Array.from(name).every((character) => character.charCodeAt(0) <= 0x7F)
+		)));
 };
 
 const uploadQuestionImage = async (url: string): Promise<string> => {
@@ -93,9 +98,11 @@ export default ({eventClient, webClient}: SlackInterface) => {
 				}
 				return;
 			}
-			if (text !== '絵文字当てクイズ') {
+			const command = /^絵文字当てクイズ(?:\s*(easy))?$/.exec(text);
+			if (!command) {
 				return;
 			}
+			const easy = command[1] === 'easy';
 			if (active) {
 				await post(message.channel, 'クイズは進行中です。出題メッセージのスレッドで回答してください。');
 				return;
@@ -104,13 +111,14 @@ export default ({eventClient, webClient}: SlackInterface) => {
 			try {
 				const {emoji} = await webClient.emoji.list();
 				iconEmoji = `:${emoji?.[PRIMARY_ICON] ? PRIMARY_ICON : SECONDARY_ICON}:`;
-				const question = sample(getQuestions(emoji ?? {}));
+				const question = sample(getQuestions(emoji ?? {}, easy));
 				if (!question) {
-					await post(message.channel, '出題できる絵文字がありません。');
+					await post(message.channel, easy ? 'easyの条件に合う絵文字がありません。' : '出題できる絵文字がありません。');
 					return;
 				}
 				const imageUrl = await uploadQuestionImage(question.url);
-				const prompt = `この絵文字の登録名は何でしょう?\nスレッドでコロンを含めずに回答してください。制限時間は${timeLimitSeconds}秒です。`;
+				const mode = easy ? `（easy：ASCII文字のみ・${EASY_MAX_NAME_LENGTH}文字以下）` : '';
+				const prompt = `この絵文字の登録名は何でしょう?${mode}\nスレッドでコロンを含めずに回答してください。制限時間は${timeLimitSeconds}秒です。`;
 				const response = await webClient.chat.postMessage({
 					channel: message.channel,
 					username: 'emoji-quiz',
