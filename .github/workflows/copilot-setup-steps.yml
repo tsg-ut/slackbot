@@ -38,3 +38,5 @@ jobs:
 
       - name: Install JavaScript dependencies
         run: npm ci
+        env:
+          CFLAGS: "-Wno-error=incompatible-pointer-types"
