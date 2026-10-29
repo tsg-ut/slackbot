@@ -1,13 +1,11 @@
-import type {MessageEvent} from '@slack/web-api';
-import {Mutex} from 'async-mutex';
-import axios from 'axios';
-import {v2 as cloudinary} from 'cloudinary';
+import type {ChatPostMessageArguments, GenericMessageEvent, MessageEvent} from '@slack/web-api';
+import {EventEmitter} from 'events';
 import {sample} from 'lodash';
-import sharp from 'sharp';
-import logger from '../lib/logger';
+import {AteQuiz} from '../atequiz';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot';
+import {Deferred} from '../lib/utils';
 import type {SlackInterface} from '../lib/slack';
 
-const log = logger.child({bot: 'emoji-quiz'});
 const timeLimitSeconds = 60;
 const EASY_MAX_NAME_LENGTH = 10;
 const PRIMARY_ICON = 'blob-thinking';
@@ -42,114 +40,139 @@ export const getQuestions = (emoji: Record<string, string>, easy = false) => {
 		)));
 };
 
-const uploadQuestionImage = async (url: string): Promise<string> => {
-	const response = await axios.get<Buffer>(url, {responseType: 'arraybuffer', timeout: 30_000});
-	const image = await sharp(Buffer.from(response.data), {animated: true})
-		.resize(512, 512, {fit: 'inside'})
-		.toBuffer();
-	return new Promise((resolve, reject) => {
-		cloudinary.uploader.upload_stream((error, result) => {
-			if (error) {
-				reject(error);
-			} else if (!result?.secure_url) {
-				reject(new Error('Cloudinary did not return an image URL'));
-			} else {
-				resolve(result.secure_url);
+class EmojiAteQuiz extends AteQuiz {
+	override eventClient = new EventEmitter();
+
+	override waitSecGen() {
+		return timeLimitSeconds;
+	}
+
+	override judge(answer: string) {
+		return this.problem.correctAnswers.includes(answer.trim());
+	}
+
+	override solvedMessageGen(message: MessageEvent): ChatPostMessageArguments {
+		const answer = 'text' in message ? message.text.trim() : '';
+		const user = 'user' in message ? message.user : '';
+		return {
+			...this.problem.solvedMessage,
+			text: `<@${user}> 正解です。\n答えは *${answer}* :${answer}: です。`,
+		};
+	}
+}
+
+class EmojiQuizBot extends ChannelLimitedBot {
+	protected override readonly wakeWordRegex = /^\s*絵文字当てクイズ(?:\s*(easy))?\s*$/;
+
+	protected override readonly username = 'emoji-quiz';
+
+	protected override iconEmoji = `:${SECONDARY_ICON}:`;
+
+	protected override readonly progressMessageChannel: string | undefined = undefined;
+
+	private running: Deferred<string | null> | null = null;
+
+	private quiz: EmojiAteQuiz | null = null;
+
+	protected override async onMessageEvent(event: MessageEvent) {
+		try {
+			if ('thread_ts' in event && event.thread_ts) {
+				if (
+					this.quiz && event.channel === this.quiz.problem.problemMessage.channel &&
+					event.subtype === undefined && 'user' in event && event.user && event.text &&
+					!('bot_id' in event && event.bot_id)
+				) {
+					this.quiz.eventClient.emit('message', event);
+				}
+				return;
 			}
-		}).end(image);
-	});
-};
-
-export default ({eventClient, webClient}: SlackInterface) => {
-	const mutex = new Mutex();
-	let iconEmoji = `:${SECONDARY_ICON}:`;
-	let active: {thread: string, names: string[], timer: ReturnType<typeof setTimeout>} | null = null;
-	const post = (channel: string, text: string, thread?: string) => webClient.chat.postMessage({
-		channel,
-		username: 'emoji-quiz',
-		icon_emoji: iconEmoji,
-		text,
-		thread_ts: thread,
-		unfurl_links: false,
-		unfurl_media: false,
-	});
-
-	eventClient.on('message', (message: MessageEvent) => {
-		if (
-			message.subtype !== undefined || !('user' in message) || !message.user ||
-			('bot_id' in message && message.bot_id) ||
-			message.channel !== process.env.CHANNEL_SANDBOX || !message.text
-		) {
-			return;
+			await super.onMessageEvent(event);
+		} catch (error) {
+			this.log.error('Failed to handle emoji quiz message', {error});
 		}
-		const text = message.text.trim();
-		return mutex.runExclusive(async () => {
-			if ('thread_ts' in message && message.thread_ts) {
-				if (!active || message.thread_ts !== active.thread) {
-					return;
-				}
-				if (active.names.includes(text)) {
-					const {thread} = active;
-					clearTimeout(active.timer);
-					active = null;
-					await post(message.channel, `<@${message.user}> 正解です。答えは ${text} :${text}: です。`, thread);
-				} else {
-					await post(message.channel, '不正解です。登録名をコロンなしで回答してください。', active.thread);
-				}
+	}
+
+	protected override async onWakeWord(message: GenericMessageEvent, channel: string): Promise<string | null> {
+		if (this.running) {
+			await this.running.promise;
+			await this.postMessage({
+				channel,
+				text: 'クイズは進行中です。出題メッセージのスレッドで回答してください。',
+			});
+			return null;
+		}
+		const started = new Deferred<string | null>();
+		this.running = started;
+		void this.runQuiz(channel, message.text.trim().endsWith('easy'), started);
+		return started.promise;
+	}
+
+	private async runQuiz(channel: string, easy: boolean, started: Deferred<string | null>) {
+		let thread: string | null = null;
+		this.iconEmoji = `:${SECONDARY_ICON}:`;
+		try {
+			const {emoji} = await this.slack.emoji.list();
+			this.iconEmoji = `:${emoji?.[PRIMARY_ICON] ? PRIMARY_ICON : SECONDARY_ICON}:`;
+			const question = sample(getQuestions(emoji ?? {}, easy));
+			if (!question) {
+				await this.postMessage({
+					channel,
+					text: easy ? 'easyの条件に合う絵文字がありません。' : '出題できる絵文字がありません。',
+				});
 				return;
 			}
-			const command = /^絵文字当てクイズ(?:\s*(easy))?$/.exec(text);
-			if (!command) {
-				return;
-			}
-			const easy = command[1] === 'easy';
-			if (active) {
-				await post(message.channel, 'クイズは進行中です。出題メッセージのスレッドで回答してください。');
-				return;
-			}
-			iconEmoji = `:${SECONDARY_ICON}:`;
-			try {
-				const {emoji} = await webClient.emoji.list();
-				iconEmoji = `:${emoji?.[PRIMARY_ICON] ? PRIMARY_ICON : SECONDARY_ICON}:`;
-				const question = sample(getQuestions(emoji ?? {}, easy));
-				if (!question) {
-					await post(message.channel, easy ? 'easyの条件に合う絵文字がありません。' : '出題できる絵文字がありません。');
-					return;
-				}
-				const imageUrl = await uploadQuestionImage(question.url);
-				const mode = easy ? `（easy：ASCII文字のみ・${EASY_MAX_NAME_LENGTH}文字以下）` : '';
-				const prompt = `この絵文字の登録名は何でしょう?${mode}\nスレッドでコロンを含めずに回答してください。制限時間は${timeLimitSeconds}秒です。`;
-				const response = await webClient.chat.postMessage({
-					channel: message.channel,
-					username: 'emoji-quiz',
-					icon_emoji: iconEmoji,
+			const mode = easy ? `(easy: ASCII文字のみ, ${EASY_MAX_NAME_LENGTH}文字以下)` : '';
+			const prompt = `この絵文字の登録名は何でしょう?${mode}\nスレッドでコロンを含めずに回答してください。制限時間は${timeLimitSeconds}秒です。`;
+			this.quiz = new EmojiAteQuiz(this.slackClients, {
+				problemMessage: {
+					channel,
 					text: prompt,
 					blocks: [
 						{type: 'section', text: {type: 'plain_text', text: prompt}},
-						{type: 'image', image_url: imageUrl, alt_text: '出題の絵文字'},
+						{type: 'image', image_url: question.url, alt_text: '出題の絵文字'},
 					],
-					unfurl_links: false,
-					unfurl_media: false,
-				});
-				if (!response.ts) {
-					throw new Error('Slack did not return a message timestamp');
-				}
-				const thread = response.ts;
-				const timer = setTimeout(() => {
-					mutex.runExclusive(async () => {
-						if (active?.thread !== thread) {
-							return;
-						}
-						const {names} = active;
-						active = null;
-						await post(message.channel, `時間切れです。答えは ${names.join(',')} です。`, thread);
-					}).catch((error: unknown) => log.error('Failed to finish emoji quiz', {error}));
-				}, timeLimitSeconds * 1000);
-				active = {thread, names: question.names, timer};
-			} catch (error) {
-				log.error('Failed to start emoji quiz', {error});
-				await post(message.channel, 'クイズを開始できませんでした。時間をおいて再度試してください。');
+				},
+				hintMessages: [],
+				correctAnswers: question.names,
+				solvedMessage: {channel, text: ''},
+				incorrectMessage: {channel, text: '不正解です。登録名をコロンなしで回答してください。'},
+				unsolvedMessage: {channel, text: `時間切れです。\n答えは *${question.names.join(',')}* です。`},
+			}, {
+				username: this.username,
+				icon_emoji: this.iconEmoji,
+				reply_broadcast: false,
+				unfurl_links: false,
+				unfurl_media: false,
+			});
+			await this.quiz.start({
+				mode: 'normal',
+				onStarted: (response) => {
+					if (!response.ts) {
+						throw new Error('Slack did not return a message timestamp');
+					}
+					thread = response.ts;
+					started.resolve(thread);
+				},
+			});
+		} catch (error) {
+			this.log.error('Failed to start emoji quiz', {error});
+			try {
+				await this.postMessage({channel, text: 'クイズを開始できませんでした。時間をおいて再度試してください。'});
+			} catch (postError) {
+				this.log.error('Failed to post emoji quiz error', {error: postError});
 			}
-		}).catch((error: unknown) => log.error('Failed to handle emoji quiz message', {error}));
-	});
-};
+		} finally {
+			this.quiz?.eventClient.removeAllListeners();
+			this.quiz = null;
+			this.running = null;
+			if (thread) {
+				this.progressMessages.delete(thread);
+			}
+			if (!started.isResolved) {
+				started.resolve(null);
+			}
+		}
+	}
+}
+
+export default (slackClients: SlackInterface) => new EmojiQuizBot(slackClients);

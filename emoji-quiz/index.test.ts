@@ -1,43 +1,32 @@
-import axios from 'axios';
-import {v2 as cloudinary, type UploadApiResponse} from 'cloudinary';
-import sharp from 'sharp';
 import SlackMock from '../lib/slackMock';
 import emojiQuiz, {getQuestions} from './index';
 
-vi.mock('axios', () => ({default: {get: vi.fn()}}));
-vi.mock('cloudinary', () => ({v2: {uploader: {upload_stream: vi.fn()}}}));
-vi.mock('sharp', () => ({default: vi.fn()}));
-vi.mock('../lib/logger', () => ({default: {child: () => ({error: vi.fn()})}}));
+vi.mock('../lib/logger', () => ({default: {child: () => ({error: vi.fn(), info: vi.fn(), debug: vi.fn()})}}));
+vi.mock('../lib/slackUtils');
 
 describe('emoji-quiz', () => {
 	let slack: SlackMock;
-	const image = Buffer.from('enlarged image');
-	const resize = vi.fn();
 	const send = async (text: string, options = {}) => {
 		const message = {
 			type: 'message', channel: slack.fakeChannel, user: slack.fakeUser,
 			ts: '1234567891.000000', text, ...options,
 		};
 		await Promise.all(slack.eventClient.listeners('message').map((listener) => listener(message)));
+		await new Promise(setImmediate);
 	};
 	const posts = () => vi.mocked(slack.webClient.chat.postMessage).mock.calls.map(([post]) => post);
 
 	beforeEach(() => {
-		vi.useFakeTimers();
+		vi.useFakeTimers({toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval']});
 		vi.resetAllMocks();
 		slack = new SlackMock();
-		vi.stubEnv('CHANNEL_SANDBOX', slack.fakeChannel);
+		vi.stubEnv('CHANNEL_GAMES', slack.fakeChannel);
+		vi.stubEnv('CHANNEL_SANDBOX', 'SANDBOX');
 		vi.mocked(slack.webClient.emoji.list).mockResolvedValue({
 			ok: true, emoji: {test_emoji: 'https://slack.example/test_emoji.png', alternate: 'alias:test_emoji'},
 		});
 		vi.mocked(slack.webClient.chat.postMessage).mockResolvedValue({ok: true, ts: slack.fakeTimestamp});
-		vi.mocked(axios.get).mockResolvedValue({data: Buffer.from('source image')});
-		vi.mocked(sharp).mockReturnValue({resize} as unknown as sharp.Sharp);
-		resize.mockReturnValue({toBuffer: vi.fn().mockResolvedValue(image)});
-		vi.mocked(cloudinary.uploader.upload_stream).mockImplementation((callback) => {
-			const stream = {end: vi.fn(() => callback(undefined, {secure_url: 'https://cloudinary.example/random.png'} as UploadApiResponse))};
-			return stream as unknown as ReturnType<typeof cloudinary.uploader.upload_stream>;
-		});
+		vi.mocked(slack.webClient.reactions.add).mockResolvedValue({ok: true});
 		emojiQuiz(slack);
 	});
 
@@ -82,8 +71,10 @@ describe('emoji-quiz', () => {
 			},
 		});
 		await send(command);
-		expect(axios.get).toHaveBeenCalledWith('https://example/ten.png', expect.any(Object));
-		expect(posts()[0]).toMatchObject({text: expect.stringContaining('easy：ASCII文字のみ・10文字以下')});
+		expect(posts()[0]).toMatchObject({blocks: [
+			{type: 'section'}, {type: 'image', image_url: 'https://example/ten.png'},
+		]});
+		expect(posts()[0]).toMatchObject({text: expect.stringContaining('(easy: ASCII文字のみ, 10文字以下)')});
 		await send('abc_123456', {thread_ts: slack.fakeTimestamp});
 		expect(posts().at(-1).text).toContain('正解です。');
 	});
@@ -94,21 +85,17 @@ describe('emoji-quiz', () => {
 		});
 		await send('絵文字当てクイズeasy');
 		expect(posts()[0]).toMatchObject({text: 'easyの条件に合う絵文字がありません。'});
-		expect(axios.get).not.toHaveBeenCalled();
 		await send('絵文字当てクイズ');
 		expect(posts().at(-1)).toHaveProperty('blocks');
 	});
 
-	it('enlarges and rehosts the image without revealing the name in the question', async () => {
+	it('uses the original image URL with neutral alt text', async () => {
 		await send('絵文字当てクイズ');
-		expect(axios.get).toHaveBeenCalledWith('https://slack.example/test_emoji.png', expect.any(Object));
-		expect(sharp).toHaveBeenCalledWith(Buffer.from('source image'), {animated: true});
-		expect(resize).toHaveBeenCalledWith(512, 512, {fit: 'inside'});
 		expect(posts()[0]).toMatchObject({blocks: [
 			{type: 'section'},
-			{type: 'image', image_url: 'https://cloudinary.example/random.png', alt_text: '出題の絵文字'},
+			{type: 'image', image_url: 'https://slack.example/test_emoji.png', alt_text: '出題の絵文字'},
 		]});
-		expect(JSON.stringify(posts()[0])).not.toContain('test_emoji');
+		expect(posts()[0].text).not.toContain('test_emoji');
 	});
 
 	it('accepts plain names only, allows retries, and stops after a correct answer', async () => {
@@ -117,7 +104,7 @@ describe('emoji-quiz', () => {
 		expect(posts().at(-1).text).toBe('不正解です。登録名をコロンなしで回答してください。');
 		await send('wrong', {thread_ts: slack.fakeTimestamp});
 		await send(' test_emoji ', {thread_ts: slack.fakeTimestamp});
-		expect(posts().at(-1)).toMatchObject({thread_ts: slack.fakeTimestamp, text: '<@U00000000> 正解です。答えは test_emoji :test_emoji: です。'});
+		expect(posts().at(-1)).toMatchObject({thread_ts: slack.fakeTimestamp, text: '<@U00000000> 正解です。\n答えは *test_emoji* :test_emoji: です。'});
 		const count = posts().length;
 		await send('test_emoji', {thread_ts: slack.fakeTimestamp});
 		await vi.advanceTimersByTimeAsync(60_000);
@@ -129,11 +116,56 @@ describe('emoji-quiz', () => {
 	it('accepts an alias as a correct answer', async () => {
 		await send('絵文字当てクイズ');
 		await send('alternate', {thread_ts: slack.fakeTimestamp});
-		expect(posts().at(-1).text).toContain('正解です。答えは alternate :alternate: です。');
+		expect(posts().at(-1).text).toContain('正解です。\n答えは *alternate* :alternate: です。');
 	});
 
-	it('ignores other channels, threads, bot messages and message edits', async () => {
-		await send('絵文字当てクイズ', {channel: 'OTHER'});
+	it('runs in CHANNEL_GAMES and routes invocations from other channels there', async () => {
+		const ephemeral = vi.mocked(slack.webClient.chat.postEphemeral).mockResolvedValue({ok: true});
+		const remove = vi.mocked(slack.webClient.chat.delete).mockResolvedValue({ok: true});
+		await send('絵文字当てクイズ', {channel: 'SANDBOX'});
+		expect(posts()).toHaveLength(1);
+		expect(posts()[0]).toMatchObject({channel: process.env.CHANNEL_GAMES});
+		expect(ephemeral).toHaveBeenCalledWith(expect.objectContaining({
+			channel: 'SANDBOX', user: slack.fakeUser, text: expect.stringContaining('こちら>で実行しました。'),
+		}));
+		expect(remove).toHaveBeenCalledWith(expect.objectContaining({channel: 'SANDBOX', ts: '1234567891.000000'}));
+		await send('test_emoji', {channel: 'SANDBOX', thread_ts: slack.fakeTimestamp});
+		expect(posts()).toHaveLength(1);
+		await send('test_emoji', {thread_ts: slack.fakeTimestamp});
+		expect(posts().at(-1)).toMatchObject({channel: process.env.CHANNEL_GAMES, text: expect.stringContaining('正解です。')});
+	});
+
+	it('keeps results in the thread and reacts to incorrect answers with no_good', async () => {
+		await send('絵文字当てクイズ');
+		await send('wrong', {thread_ts: slack.fakeTimestamp});
+		await send('alternate', {thread_ts: slack.fakeTimestamp});
+		expect(posts()).toHaveLength(3);
+		for (const post of posts().slice(1)) {
+			expect(post).toMatchObject({thread_ts: slack.fakeTimestamp, reply_broadcast: false});
+		}
+		expect(slack.webClient.reactions.add).toHaveBeenCalledExactlyOnceWith({
+			name: 'no_good', channel: slack.fakeChannel, timestamp: '1234567891.000000',
+		});
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('does not accumulate message listeners after completed quizzes or startup failures', async () => {
+		const initialListeners = slack.eventClient.listenerCount('message');
+		await send('絵文字当てクイズ');
+		await send('test_emoji', {thread_ts: slack.fakeTimestamp});
+		expect(slack.eventClient.listenerCount('message')).toBe(initialListeners);
+		await send('絵文字当てクイズ');
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(slack.eventClient.listenerCount('message')).toBe(initialListeners);
+		vi.mocked(slack.webClient.chat.postMessage).mockRejectedValueOnce(new Error('failed'));
+		await send('絵文字当てクイズ');
+		expect(slack.eventClient.listenerCount('message')).toBe(initialListeners);
+		expect(vi.getTimerCount()).toBe(0);
+		await send('絵文字当てクイズ');
+		expect(posts().at(-1)).toHaveProperty('blocks');
+	});
+
+	it('ignores other threads, bot messages, message edits and answers in other channels', async () => {
 		await send('絵文字当てクイズ', {thread_ts: 'OTHER'});
 		await send('絵文字当てクイズ', {bot_id: 'BOT'});
 		await send('絵文字当てクイズ', {subtype: 'bot_message'});
@@ -153,12 +185,12 @@ describe('emoji-quiz', () => {
 		await vi.advanceTimersByTimeAsync(59_999);
 		expect(posts()).toHaveLength(1);
 		await vi.advanceTimersByTimeAsync(1);
-		expect(posts().at(-1)).toMatchObject({thread_ts: slack.fakeTimestamp, text: '時間切れです。答えは test_emoji,alternate です。'});
+		expect(posts().at(-1)).toMatchObject({thread_ts: slack.fakeTimestamp, text: '時間切れです。\n答えは *test_emoji,alternate* です。'});
 		await send('絵文字当てクイズ');
 		expect(posts()).toHaveLength(3);
 	});
 
-	it('prevents overlapping quizzes even while preparing an image', async () => {
+	it('prevents overlapping quizzes during startup', async () => {
 		await Promise.all([send('絵文字当てクイズ'), send('絵文字当てクイズ')]);
 		expect(slack.webClient.emoji.list).toHaveBeenCalledTimes(1);
 		expect(posts().at(-1).text).toContain('クイズは進行中です。');
@@ -184,9 +216,9 @@ describe('emoji-quiz', () => {
 		await send('test_emoji', {thread_ts: slack.fakeTimestamp});
 		await send('絵文字当てクイズ');
 		await vi.advanceTimersByTimeAsync(60_000);
-		vi.mocked(axios.get).mockRejectedValueOnce(new Error('failed'));
+		vi.mocked(slack.webClient.chat.postMessage).mockRejectedValueOnce(new Error('failed'));
 		await send('絵文字当てクイズ');
-		expect(posts()).toHaveLength(7);
+		expect(posts()).toHaveLength(8);
 		for (const post of posts()) {
 			expect(post).toMatchObject({icon_emoji: registered ? ':blob-thinking:' : ':hugging_face:'});
 		}
@@ -198,10 +230,8 @@ describe('emoji-quiz', () => {
 		expect(posts()[0]).toMatchObject({icon_emoji: ':hugging_face:'});
 	});
 
-	it.each(['list', 'download', 'upload', 'post'])('can retry after a %s failure', async (stage) => {
+	it.each(['list', 'post'])('can retry after a %s failure', async (stage) => {
 		if (stage === 'list') vi.mocked(slack.webClient.emoji.list).mockRejectedValueOnce(new Error('failed'));
-		if (stage === 'download') vi.mocked(axios.get).mockRejectedValueOnce(new Error('failed'));
-		if (stage === 'upload') vi.mocked(cloudinary.uploader.upload_stream).mockImplementationOnce(() => { throw new Error('failed'); });
 		if (stage === 'post') vi.mocked(slack.webClient.chat.postMessage).mockRejectedValueOnce(new Error('failed'));
 		await send('絵文字当てクイズ');
 		expect(posts().at(-1).text).toContain('クイズを開始できませんでした。');
