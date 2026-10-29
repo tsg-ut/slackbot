@@ -356,6 +356,7 @@ export const server = async ({webClient: slack, messageClient: slackInteractions
 			const completion = await openai.chat.completions.create({
 				model: 'gpt-6-luna',
 				max_completion_tokens: 1024,
+				reasoning_effort: 'none',
 				messages: prompt,
 			});
 

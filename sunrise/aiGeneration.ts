@@ -49,7 +49,7 @@ export const getWeatherCastHeadline = async (weatherData: OpenWeatherOneCallResp
 			},
 		],
 		max_completion_tokens: 100,
-		reasoning_effort: 'minimal',
+		reasoning_effort: 'none',
 	});
 
 	const result = response.choices[0]?.message?.content.trim();
@@ -102,7 +102,7 @@ export const getWeatherCastForecast = async (weatherData: OpenWeatherOneCallResp
 			},
 		],
 		max_completion_tokens: 100,
-		reasoning_effort: 'minimal',
+		reasoning_effort: 'none',
 	});
 
 	const result = response.choices[0]?.message?.content.trim();
@@ -177,7 +177,7 @@ export const getRainMinuteCast = async (weatherData: OpenWeatherOneCallResponse)
 			},
 		],
 		max_completion_tokens: 100,
-		reasoning_effort: 'minimal',
+		reasoning_effort: 'none',
 	});
 
 	const result = response.choices[0]?.message?.content.trim();

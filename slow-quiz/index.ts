@@ -500,6 +500,7 @@ export class SlowQuiz {
 				},
 			],
 			max_completion_tokens: 1024,
+			reasoning_effort: 'none',
 		});
 		log.info(`OpenAI API response: ${JSON.stringify(completion)}`);
 

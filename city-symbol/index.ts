@@ -442,6 +442,7 @@ const generateAiHints = async (city: City): Promise<string[] | null> => {
 			},
 		],
 		max_completion_tokens: 1024,
+		reasoning_effort: 'none',
 	});
 
 	log.info(`Consumed tokens: ${response?.usage?.total_tokens} (prompt = ${response?.usage?.prompt_tokens}, completion = ${response?.usage?.completion_tokens})`);
