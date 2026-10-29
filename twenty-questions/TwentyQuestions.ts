@@ -302,7 +302,7 @@ export class TwentyQuestions {
 						content: `単語リスト: ${wordList}`,
 					},
 				],
-				max_tokens: 50,
+				max_completion_tokens: 50,
 			});
 
 			const selected = completion.choices[0]?.message?.content?.trim() || sampledWords[0][0];
@@ -332,7 +332,7 @@ export class TwentyQuestions {
 					content: `単語リスト: ${finalWordList}`,
 				},
 			],
-			max_tokens: 50,
+			max_completion_tokens: 50,
 		});
 
 		const output = finalCompletion.choices[0]?.message?.content?.trim() || finalWordList;

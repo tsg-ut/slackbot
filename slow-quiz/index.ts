@@ -499,7 +499,7 @@ export class SlowQuiz {
 					].join('\n'),
 				},
 			],
-			max_tokens: 1024,
+			max_completion_tokens: 1024,
 		});
 		log.info(`OpenAI API response: ${JSON.stringify(completion)}`);
 
