@@ -23,6 +23,8 @@ jobs:
           touch shogi/boards/temp.sqlite3
 
       - run: npm ci
+        env:
+          CFLAGS: "-Wno-error=incompatible-pointer-types"
 
       - name: Typecheck files not covered by tests
         run: npx tsgo --noEmit
