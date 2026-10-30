@@ -6,6 +6,8 @@ import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 import {Deferred} from '../lib/utils';
 import {getEmojis} from '../lib/slackUtils';
 import type {SlackInterface} from '../lib/slack';
+import {increment} from '../achievements';
+import {prefixAchievements} from './achievements';
 
 const timeLimitSeconds = 60;
 const EASY_MAX_NAME_LENGTH = 10;
@@ -43,6 +45,8 @@ export const getQuestions = (emoji: Record<string, string>, easy = false) => {
 
 class EmojiAteQuiz extends AteQuiz {
 	override eventClient = new EventEmitter();
+	solvedAt: number | null = null;
+	solvedAnswer: string | null = null;
 
 	override waitSecGen() {
 		return timeLimitSeconds;
@@ -53,7 +57,9 @@ class EmojiAteQuiz extends AteQuiz {
 	}
 
 	override solvedMessageGen(message: MessageEvent): ChatPostMessageArguments {
+		this.solvedAt = Date.now();
 		const answer = 'text' in message ? message.text.trim() : '';
+		this.solvedAnswer = answer;
 		const user = 'user' in message ? message.user : '';
 		return {
 			...this.problem.solvedMessage,
@@ -110,6 +116,7 @@ class EmojiQuizBot extends ChannelLimitedBot {
 
 	private async runQuiz(channel: string, easy: boolean, started: Deferred<string | null>) {
 		let thread: string | null = null;
+		let startedAt: number | null = null;
 		this.iconEmoji = `:${SECONDARY_ICON}:`;
 		try {
 			const emoji = await getEmojis();
@@ -141,20 +148,23 @@ class EmojiQuizBot extends ChannelLimitedBot {
 			}, {
 				username: this.username,
 				icon_emoji: this.iconEmoji,
-				reply_broadcast: false,
 				unfurl_links: false,
 				unfurl_media: false,
 			});
-			await this.quiz.start({
+			const result = await this.quiz.start({
 				mode: 'normal',
 				onStarted: (response) => {
 					if (!response.ts) {
 						throw new Error('Slack did not return a message timestamp');
 					}
 					thread = response.ts;
+					startedAt = Date.now();
 					void started.resolve(thread);
 				},
 			});
+			if (result.state === 'solved' && result.correctAnswerer) {
+				await this.recordAchievements(result.correctAnswerer, easy, this.quiz, startedAt);
+			}
 		} catch (error) {
 			this.log.error('Failed to start emoji quiz', {error});
 			try {
@@ -172,6 +182,24 @@ class EmojiQuizBot extends ChannelLimitedBot {
 			if (!started.isResolved) {
 				void started.resolve(null);
 			}
+		}
+	}
+
+	private async recordAchievements(user: string, easy: boolean, quiz: EmojiAteQuiz, startedAt: number | null): Promise<void> {
+		const counters = [
+			'emoji-quiz-answer',
+			easy ? 'emoji-quiz-easy-answer' : 'emoji-quiz-normal-answer',
+			...prefixAchievements
+				.filter(({prefix}) => quiz.solvedAnswer?.startsWith(prefix))
+				.map(({counter}) => counter),
+		];
+		if (startedAt !== null && quiz.solvedAt !== null && quiz.solvedAt - startedAt <= 5000) {
+			counters.push('emoji-quiz-answer-within-5s');
+		}
+		try {
+			await Promise.all(counters.map((counter) => increment(user, counter)));
+		} catch (error) {
+			this.log.error('Failed to record emoji quiz achievements', {error});
 		}
 	}
 }

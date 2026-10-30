@@ -1,9 +1,11 @@
 import SlackMock from '../lib/slackMock';
 import {getEmojis} from '../lib/slackUtils';
 import emojiQuiz, {getQuestions} from './index';
+import {increment} from '../achievements';
 
 vi.mock('../lib/logger', () => ({default: {child: () => ({error: vi.fn(), info: vi.fn(), debug: vi.fn()})}}));
 vi.mock('../lib/slackUtils');
+vi.mock('../achievements', () => ({increment: vi.fn()}));
 
 describe('emoji-quiz', () => {
 	let slack: SlackMock;
@@ -36,6 +38,95 @@ describe('emoji-quiz', () => {
 		vi.clearAllTimers();
 		vi.useRealTimers();
 		vi.unstubAllEnvs();
+	});
+
+	it('counts easy and normal wins separately and combines them in the total', async () => {
+		await send('絵文字当てクイズ easy');
+		await send('test_emoji', {thread_ts: slack.fakeTimestamp, user: 'UWINNER'});
+		await send('絵文字当てクイズ');
+		await send('alternate', {thread_ts: slack.fakeTimestamp, user: 'UWINNER'});
+		const counters = vi.mocked(increment).mock.calls
+			.filter(([user]) => user === 'UWINNER').map(([, counter]) => counter);
+		expect(counters.filter((counter) => counter === 'emoji-quiz-answer')).toHaveLength(2);
+		expect(counters.filter((counter) => counter === 'emoji-quiz-easy-answer')).toHaveLength(1);
+		expect(counters.filter((counter) => counter === 'emoji-quiz-normal-answer')).toHaveLength(1);
+	});
+
+	it.each([
+		['sushi-', 'emoji-quiz-answer-sushi'],
+		['robot-', 'emoji-quiz-answer-robot'],
+		['taiko-', 'emoji-quiz-answer-taiko'],
+	])('counts %s achievements only when the submitted answer has the prefix', async (prefix, counter) => {
+		vi.mocked(getEmojis).mockResolvedValueOnce({
+			[`${prefix}original`]: 'https://example/image.png',
+			[`${prefix}other`]: `alias:${prefix}original`,
+			short: `alias:${prefix}other`,
+		});
+		await send('絵文字当てクイズ easy');
+		await send('short', {thread_ts: slack.fakeTimestamp});
+		expect(increment).not.toHaveBeenCalledWith(slack.fakeUser, counter);
+		vi.mocked(getEmojis).mockResolvedValueOnce({
+			[`${prefix}original`]: 'https://example/image.png',
+			[`${prefix}other`]: `alias:${prefix}original`,
+		});
+		await send('絵文字当てクイズ');
+		await send(` ${prefix}other `, {thread_ts: slack.fakeTimestamp});
+		expect(vi.mocked(increment).mock.calls.filter(([, name]) => name === counter))
+			.toEqual([[slack.fakeUser, counter]]);
+	});
+
+	it('does not award prefix achievements for names that merely contain a prefix', async () => {
+		vi.mocked(getEmojis).mockResolvedValueOnce({
+			'my-sushi-robot-taiko-': 'https://example/image.png',
+		});
+		await send('絵文字当てクイズ');
+		await send('my-sushi-robot-taiko-', {thread_ts: slack.fakeTimestamp});
+		for (const suffix of ['sushi', 'robot', 'taiko']) {
+			expect(increment).not.toHaveBeenCalledWith(slack.fakeUser, `emoji-quiz-answer-${suffix}`);
+		}
+	});
+
+	it.each([4999, 5000, 5001])('awards fast answers only within five seconds (%i ms)', async (elapsed) => {
+		await send('絵文字当てクイズ');
+		await vi.advanceTimersByTimeAsync(elapsed);
+		await send('test_emoji', {thread_ts: slack.fakeTimestamp});
+		const fastCalls = vi.mocked(increment).mock.calls.filter(([, counter]) => counter === 'emoji-quiz-answer-within-5s');
+		expect(fastCalls).toHaveLength(elapsed <= 5000 ? 1 : 0);
+	});
+
+	it('does not count startup delays or result posting delays as answering time', async () => {
+		vi.mocked(getEmojis).mockImplementationOnce(async () => {
+			vi.setSystemTime(Date.now() + 10_000);
+			return {test_emoji: 'https://example/image.png'};
+		});
+		await send('絵文字当てクイズ');
+		await vi.advanceTimersByTimeAsync(5000);
+		vi.mocked(slack.webClient.chat.postMessage).mockImplementationOnce(async () => {
+			vi.setSystemTime(Date.now() + 10_000);
+			return {ok: true, ts: slack.fakeTimestamp};
+		});
+		await send('test_emoji', {thread_ts: slack.fakeTimestamp});
+		expect(increment).toHaveBeenCalledWith(slack.fakeUser, 'emoji-quiz-answer-within-5s');
+	});
+
+	it('does not count wrong answers, timeout or repeated answers as wins', async () => {
+		await send('絵文字当てクイズ');
+		await send('wrong', {thread_ts: slack.fakeTimestamp});
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(increment).not.toHaveBeenCalled();
+		await send('絵文字当てクイズ');
+		await send('test_emoji', {thread_ts: slack.fakeTimestamp});
+		await send('test_emoji', {thread_ts: slack.fakeTimestamp});
+		expect(vi.mocked(increment).mock.calls.filter(([, counter]) => counter === 'emoji-quiz-answer')).toHaveLength(1);
+	});
+
+	it('can start another quiz when achievement recording fails', async () => {
+		vi.mocked(increment).mockRejectedValueOnce(new Error('achievement failure'));
+		await send('絵文字当てクイズ');
+		await send('test_emoji', {thread_ts: slack.fakeTimestamp});
+		expect(posts().at(-1).text).toContain('正解です。');
+		await send('絵文字当てクイズ');
+		expect(posts().at(-1)).toHaveProperty('blocks');
 	});
 
 	it('resolves aliases, groups identical images and excludes broken or cyclic aliases', () => {
@@ -134,14 +225,14 @@ describe('emoji-quiz', () => {
 		expect(posts().at(-1)).toMatchObject({channel: process.env.CHANNEL_GAMES, text: expect.stringContaining('正解です。')});
 	});
 
-	it('keeps results in the thread and reacts to incorrect answers with no_good', async () => {
+	it('broadcasts results to the channel and keeps incorrect answers in the thread', async () => {
 		await send('絵文字当てクイズ');
 		await send('wrong', {thread_ts: slack.fakeTimestamp});
 		await send('alternate', {thread_ts: slack.fakeTimestamp});
 		expect(posts()).toHaveLength(3);
-		for (const post of posts().slice(1)) {
-			expect(post).toMatchObject({thread_ts: slack.fakeTimestamp, reply_broadcast: false});
-		}
+		expect(posts()[1]).toMatchObject({thread_ts: slack.fakeTimestamp});
+		expect(posts()[1].reply_broadcast).not.toBe(true);
+		expect(posts()[2]).toMatchObject({thread_ts: slack.fakeTimestamp, reply_broadcast: true});
 		expect(slack.webClient.reactions.add).toHaveBeenCalledExactlyOnceWith({
 			name: 'no_good', channel: slack.fakeChannel, timestamp: '1234567891.000000',
 		});
@@ -184,7 +275,7 @@ describe('emoji-quiz', () => {
 		await vi.advanceTimersByTimeAsync(59_999);
 		expect(posts()).toHaveLength(1);
 		await vi.advanceTimersByTimeAsync(1);
-		expect(posts().at(-1)).toMatchObject({thread_ts: slack.fakeTimestamp, text: '時間切れです。\n答えは *test_emoji,alternate* です。'});
+		expect(posts().at(-1)).toMatchObject({thread_ts: slack.fakeTimestamp, reply_broadcast: true, text: '時間切れです。\n答えは *test_emoji,alternate* です。'});
 		await send('絵文字当てクイズ');
 		expect(posts()).toHaveLength(3);
 	});
