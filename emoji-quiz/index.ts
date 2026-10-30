@@ -163,20 +163,7 @@ class EmojiQuizBot extends ChannelLimitedBot {
 				},
 			});
 			if (result.state === 'solved' && result.correctAnswerer) {
-				try {
-					await increment(result.correctAnswerer, 'emoji-quiz-answer');
-					await increment(result.correctAnswerer, easy ? 'emoji-quiz-easy-answer' : 'emoji-quiz-normal-answer');
-					for (const {prefix, counter} of prefixAchievements) {
-						if (this.quiz.solvedAnswer?.startsWith(prefix)) {
-							await increment(result.correctAnswerer, counter);
-						}
-					}
-					if (startedAt !== null && this.quiz.solvedAt !== null && this.quiz.solvedAt - startedAt <= 5000) {
-						await increment(result.correctAnswerer, 'emoji-quiz-answer-within-5s');
-					}
-				} catch (error) {
-					this.log.error('Failed to record emoji quiz achievements', {error});
-				}
+				await this.recordAchievements(result.correctAnswerer, easy, this.quiz, startedAt);
 			}
 		} catch (error) {
 			this.log.error('Failed to start emoji quiz', {error});
@@ -195,6 +182,24 @@ class EmojiQuizBot extends ChannelLimitedBot {
 			if (!started.isResolved) {
 				void started.resolve(null);
 			}
+		}
+	}
+
+	private async recordAchievements(user: string, easy: boolean, quiz: EmojiAteQuiz, startedAt: number | null): Promise<void> {
+		const counters = [
+			'emoji-quiz-answer',
+			easy ? 'emoji-quiz-easy-answer' : 'emoji-quiz-normal-answer',
+			...prefixAchievements
+				.filter(({prefix}) => quiz.solvedAnswer?.startsWith(prefix))
+				.map(({counter}) => counter),
+		];
+		if (startedAt !== null && quiz.solvedAt !== null && quiz.solvedAt - startedAt <= 5000) {
+			counters.push('emoji-quiz-answer-within-5s');
+		}
+		try {
+			await Promise.all(counters.map((counter) => increment(user, counter)));
+		} catch (error) {
+			this.log.error('Failed to record emoji quiz achievements', {error});
 		}
 	}
 }
