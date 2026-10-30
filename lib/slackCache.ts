@@ -84,7 +84,6 @@ export default class SlackCache {
 						log.error('Failed to update emoji cache', {error});
 					});
 			});
-			void this.loadEmojis().catch((error: unknown) => log.error(`SlackCache/emoji.list(${this.config.token.team_id})`, {error}));
 		}
 
 		teamEventClient.on('message', (message) => {
@@ -160,32 +159,40 @@ export default class SlackCache {
 		if (event.subtype === 'add' && event.name && event.value) {
 			this.emojis.set(event.name, event.value);
 		} else if (event.subtype === 'remove' && event.names) {
-			const removed = new Set(event.names);
-			let changed = true;
-			while (changed) {
-				changed = false;
-				for (const [name, value] of this.emojis) {
-					if (removed.has(name) || (value.startsWith('alias:') && removed.has(value.slice('alias:'.length)))) {
-						removed.add(name);
-						this.emojis.delete(name);
-						changed = true;
-					}
-				}
-			}
+			this.removeEmojis(event.names);
 		} else if (event.subtype === 'rename' && event.old_name && event.new_name) {
-			const value = event.value ?? this.emojis.get(event.old_name);
-			this.emojis.delete(event.old_name);
-			if (value !== undefined) {
-				this.emojis.set(event.new_name, value);
-			}
-			for (const [name, target] of this.emojis) {
-				if (target === `alias:${event.old_name}`) {
-					this.emojis.set(name, `alias:${event.new_name}`);
-				}
-			}
+			this.renameEmoji(event.old_name, event.new_name, event.value);
 		} else {
 			this.loadEmojisPromise = null;
 			await this.loadEmojis();
+		}
+	}
+
+	private removeEmojis(names: string[]): void {
+		const removed = new Set(names);
+		let changed = true;
+		while (changed) {
+			changed = false;
+			for (const [name, value] of this.emojis) {
+				if (removed.has(name) || (value.startsWith('alias:') && removed.has(value.slice('alias:'.length)))) {
+					removed.add(name);
+					this.emojis.delete(name);
+					changed = true;
+				}
+			}
+		}
+	}
+
+	private renameEmoji(oldName: string, newName: string, value?: string): void {
+		const emoji = value ?? this.emojis.get(oldName);
+		this.emojis.delete(oldName);
+		if (emoji !== undefined) {
+			this.emojis.set(newName, emoji);
+		}
+		for (const [name, target] of this.emojis) {
+			if (target === `alias:${oldName}`) {
+				this.emojis.set(name, `alias:${newName}`);
+			}
 		}
 	}
 

@@ -190,6 +190,16 @@ describe('SlackCache', () => {
 		});
 	});
 	describe('getEmoji', () => {
+		it('loads lazily and shares the request between concurrent readers', async () => {
+			expect(vi.mocked(slack.webClient.emoji.list).mock.calls).toHaveLength(0);
+			const [emoji, emojis] = await Promise.all([
+				slackCache.getEmoji('slack'),
+				slackCache.getEmojis(),
+			]);
+			expect(emoji).toBe(emojis.slack);
+			expect(slack.webClient.emoji.list).toHaveBeenCalledTimes(1);
+		});
+
 		it('returns emoji at initialized', async () => {
 			const emoji1 = await slackCache.getEmoji('slack');
 			expect(emoji1).toBe('https://emoji.slack-edge.com/T00000000/slack/0123456789.png');
@@ -263,10 +273,11 @@ describe('SlackCache', () => {
 				eventClient: slack.eventClient,
 				webClient: slack.webClient,
 			});
+			const emojis = cache.getEmojis();
 			emit('emoji_changed', {subtype: 'rename', old_name: 'old', new_name: 'new', value: 'https://example/image.png'});
 			emit('emoji_changed', {subtype: 'remove', names: ['removed']});
 			resolveList({ok: true, emoji: {old: 'https://example/image.png', removed: 'https://example/removed.png'}});
-			expect(await cache.getEmojis()).toEqual({new: 'https://example/image.png'});
+			expect(await emojis).toEqual({new: 'https://example/image.png'});
 		});
 
 		it('retries failed loading instead of leaving readers waiting', async () => {
