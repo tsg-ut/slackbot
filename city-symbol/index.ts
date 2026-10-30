@@ -434,7 +434,7 @@ const generateAiHints = async (city: City): Promise<string[] | null> => {
 	log.info(`Generating AI hints for ${cityname}...`);
 
 	const response = await openai.chat.completions.create({
-		model: 'gpt-4o-mini',
+		model: 'gpt-6-luna',
 		messages: [
 			{
 				role: 'user',

@@ -41,7 +41,7 @@ export const getWeatherCastHeadline = async (weatherData: OpenWeatherOneCallResp
 	});
 
 	const response = await openai.chat.completions.create({
-		model: 'gpt-5-mini',
+		model: 'gpt-6-luna',
 		messages: [
 			{
 				role: 'user',
@@ -94,7 +94,7 @@ export const getWeatherCastForecast = async (weatherData: OpenWeatherOneCallResp
 	));
 
 	const response = await openai.chat.completions.create({
-		model: 'gpt-5-mini',
+		model: 'gpt-6-luna',
 		messages: [
 			{
 				role: 'user',
@@ -169,7 +169,7 @@ export const getRainMinuteCast = async (weatherData: OpenWeatherOneCallResponse)
 	});
 
 	const response = await openai.chat.completions.create({
-		model: 'gpt-5-mini',
+		model: 'gpt-6-luna',
 		messages: [
 			{
 				role: 'user',

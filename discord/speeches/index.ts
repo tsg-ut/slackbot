@@ -72,6 +72,14 @@ enum Voice {
 	BI = 'BI',
 	BJ = 'BJ',
 	BK = 'BK',
+	BL = 'BL',
+	BM = 'BM',
+	BN = 'BN',
+	BO = 'BO',
+	BP = 'BP',
+	BQ = 'BQ',
+	BR = 'BR',
+	BS = 'BS',
 }
 export {Voice};
 
@@ -93,6 +101,7 @@ interface Config {
 	model?: string,
 	emotional?: boolean,
 	lang?: string,
+	deprecated?: boolean,
 }
 
 export const speechConfig: Map<Voice, Config> = new Map([
@@ -133,12 +142,12 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.AI, {provider: 'google', name: 'ja-JP-Neural2-B', lang: 'ja-JP'}],
 	[Voice.AJ, {provider: 'google', name: 'ja-JP-Neural2-C', lang: 'ja-JP'}],
 	[Voice.AK, {provider: 'google', name: 'ja-JP-Neural2-D', lang: 'ja-JP'}],
-	[Voice.AL, {provider: 'openai', model: 'tts-1', name: 'alloy'}],
-	[Voice.AM, {provider: 'openai', model: 'tts-1', name: 'echo'}],
-	[Voice.AN, {provider: 'openai', model: 'tts-1', name: 'fable'}],
-	[Voice.AO, {provider: 'openai', model: 'tts-1', name: 'onyx'}],
-	[Voice.AP, {provider: 'openai', model: 'tts-1', name: 'nova'}],
-	[Voice.AQ, {provider: 'openai', model: 'tts-1', name: 'shimmer'}],
+	[Voice.AL, {provider: 'openai', model: 'tts-1', name: 'alloy', deprecated: true}],
+	[Voice.AM, {provider: 'openai', model: 'tts-1', name: 'echo', deprecated: true}],
+	[Voice.AN, {provider: 'openai', model: 'tts-1', name: 'fable', deprecated: true}],
+	[Voice.AO, {provider: 'openai', model: 'tts-1', name: 'onyx', deprecated: true}],
+	[Voice.AP, {provider: 'openai', model: 'tts-1', name: 'nova', deprecated: true}],
+	[Voice.AQ, {provider: 'openai', model: 'tts-1', name: 'shimmer', deprecated: true}],
 	[Voice.AR, {provider: 'amazon', name: 'Kazuha'}],
 	[Voice.AS, {provider: 'amazon', name: 'Tomoko'}],
 	[Voice.AT, {provider: 'azure', name: 'ja-JP-AoiNeural'}],
@@ -146,19 +155,27 @@ export const speechConfig: Map<Voice, Config> = new Map([
 	[Voice.AV, {provider: 'azure', name: 'ja-JP-MayuNeural'}],
 	[Voice.AW, {provider: 'azure', name: 'ja-JP-NaokiNeural'}],
 	[Voice.AX, {provider: 'azure', name: 'ja-JP-ShioriNeural'}],
-	[Voice.AY, {provider: 'openai', model: 'tts-1', name: 'ash'}],
-	[Voice.AZ, {provider: 'openai', model: 'tts-1', name: 'coral'}],
-	[Voice.BA, {provider: 'openai', model: 'tts-1', name: 'sage'}],
-	[Voice.BB, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'alloy'}],
-	[Voice.BC, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'ash'}],
-	[Voice.BD, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'ballad'}],
-	[Voice.BE, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'coral'}],
-	[Voice.BF, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'echo'}],
-	[Voice.BG, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'fable'}],
-	[Voice.BH, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'onyx'}],
-	[Voice.BI, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'nova'}],
-	[Voice.BJ, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'sage'}],
-	[Voice.BK, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'shimmer'}],
+	[Voice.AY, {provider: 'openai', model: 'tts-1', name: 'ash', deprecated: true}],
+	[Voice.AZ, {provider: 'openai', model: 'tts-1', name: 'coral', deprecated: true}],
+	[Voice.BA, {provider: 'openai', model: 'tts-1', name: 'sage', deprecated: true}],
+	[Voice.BB, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'alloy', deprecated: true}],
+	[Voice.BC, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'ash', deprecated: true}],
+	[Voice.BD, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'ballad', deprecated: true}],
+	[Voice.BE, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'coral', deprecated: true}],
+	[Voice.BF, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'echo', deprecated: true}],
+	[Voice.BG, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'fable', deprecated: true}],
+	[Voice.BH, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'onyx', deprecated: true}],
+	[Voice.BI, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'nova', deprecated: true}],
+	[Voice.BJ, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'sage', deprecated: true}],
+	[Voice.BK, {provider: 'openai', model: 'gpt-4o-mini-tts', name: 'shimmer', deprecated: true}],
+	[Voice.BL, {provider: 'openai', model: 'gpt-realtime-2.1-mini', name: 'alloy'}],
+	[Voice.BM, {provider: 'openai', model: 'gpt-realtime-2.1-mini', name: 'ash'}],
+	[Voice.BN, {provider: 'openai', model: 'gpt-realtime-2.1-mini', name: 'ballad'}],
+	[Voice.BO, {provider: 'openai', model: 'gpt-realtime-2.1-mini', name: 'coral'}],
+	[Voice.BP, {provider: 'openai', model: 'gpt-realtime-2.1-mini', name: 'echo'}],
+	[Voice.BQ, {provider: 'openai', model: 'gpt-realtime-2.1-mini', name: 'sage'}],
+	[Voice.BR, {provider: 'openai', model: 'gpt-realtime-2.1-mini', name: 'shimmer'}],
+	[Voice.BS, {provider: 'openai', model: 'gpt-realtime-2.1-mini', name: 'verse'}],
 	// coming soon
 	// [Voice., {provider: 'voicevox', name: 'whitecul', emotional: true}],
 	// [Voice., {provider: 'voicevox', name: 'goki', emotional: true}],
@@ -170,6 +187,10 @@ export const getSpeech = (text: string, voiceType: Voice, meta: VoiceMeta, audio
 	if (!config) {
 		log.error(`AssertionError: Voice config not found for ${voiceType}`);
 		return google(text, 'ja-JP-Wavenet-A', meta, audioTags);
+	}
+
+	if (config.deprecated) {
+		throw new Error(`ボイス ${voiceType} は廃止されました。'TTS voice' で別のボイスを選択してください。`);
 	}
 
 	if (config.provider === 'google') {

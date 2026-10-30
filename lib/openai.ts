@@ -1,5 +1,6 @@
 import type { CollectionReference, DocumentData, Timestamp } from "firebase-admin/firestore";
 import OpenAI from "openai";
+import { OpenAIRealtimeWS } from "openai/realtime/ws";
 import db from "./firestore";
 import logger from "./logger";
 import mp3Duration from "mp3-duration";
@@ -92,16 +93,8 @@ const checkUsageLimit = async (errorDestination: 'slack' | 'discord'): Promise<v
 const checkAudioSpeechCreateModel = (params: SpeechCreateParams) => {
 	const model: string = params.model;
 
-	if (
-		model === 'gpt-4o-mini-tts' ||
-		model === 'tts-1' ||
-		model === 'tts-1-hd'
-	) {
-		return model;
-	}
-
-	throw new Error(`Unsupported model for audio.speech.create: ${params.model}`);
-}
+	throw new Error(`Model ${model} is deprecated for audio.speech.create. Use realtime.speech.create instead.`);
+};
 
 const audioSpeechCreate = async (params: SpeechCreateParams): Promise<Response & {data: ArrayBuffer}> => {
 	await checkUsageLimit('discord');
@@ -155,16 +148,171 @@ const audioSpeechCreate = async (params: SpeechCreateParams): Promise<Response &
 	};
 };
 
+export interface RealtimeSpeechCreateParams {
+	model?: string;
+	voice: string;
+	input: string;
+	instructions?: string;
+}
+
+const checkRealtimeSpeechCreateModel = (params: RealtimeSpeechCreateParams): string => {
+	const model = params.model ?? 'gpt-realtime-2.1-mini';
+
+	if (model === 'gpt-realtime-2.1-mini') {
+		return model;
+	}
+
+	throw new Error(`Unsupported model for realtime.speech.create: ${params.model}`);
+};
+
+const pcm16ToWav = (pcmBuffer: Buffer, sampleRate = 24000, numChannels = 1, bitDepth = 16): Buffer => {
+	const header = Buffer.alloc(44);
+	const dataLength = pcmBuffer.length;
+	const byteRate = (sampleRate * numChannels * bitDepth) / 8;
+	const blockAlign = (numChannels * bitDepth) / 8;
+
+	header.write('RIFF', 0);
+	header.writeUInt32LE(36 + dataLength, 4);
+	header.write('WAVE', 8);
+	header.write('fmt ', 12);
+	header.writeUInt32LE(16, 16);
+	header.writeUInt16LE(1, 20); // PCM
+	header.writeUInt16LE(numChannels, 22);
+	header.writeUInt32LE(sampleRate, 24);
+	header.writeUInt32LE(byteRate, 28);
+	header.writeUInt16LE(blockAlign, 32);
+	header.writeUInt16LE(bitDepth, 34);
+	header.write('data', 36);
+	header.writeUInt32LE(dataLength, 40);
+
+	return Buffer.concat([header, pcmBuffer]);
+};
+
+const realtimeSpeechCreate = async (params: RealtimeSpeechCreateParams): Promise<{data: Buffer}> => {
+	await checkUsageLimit('discord');
+	const model = checkRealtimeSpeechCreateModel(params);
+
+	const rt = await OpenAIRealtimeWS.create(openai, {
+		model,
+	});
+
+	return new Promise<{data: Buffer}>((resolve, reject) => {
+		const audioChunks: Buffer[] = [];
+		let isResolved = false;
+
+		const timer = setTimeout(() => {
+			if (!isResolved) {
+				isResolved = true;
+				rt.close();
+				reject(new Error('OpenAI Realtime API timeout after 30 seconds'));
+			}
+		}, 30_000);
+
+		const cleanup = () => {
+			clearTimeout(timer);
+			rt.close();
+		};
+
+		rt.on('error', (err) => {
+			log.error(`OpenAI Realtime API error:`, err);
+			if (!isResolved) {
+				isResolved = true;
+				cleanup();
+				reject(err);
+			}
+		});
+
+		rt.on('session.created', () => {
+			rt.send({
+				type: 'session.update',
+				session: {
+					type: 'realtime',
+					instructions: params.instructions,
+					output_modalities: ['audio'],
+					audio: {
+						output: {
+							voice: params.voice,
+							format: {
+								type: 'audio/pcm',
+								rate: 24000,
+							},
+						},
+					},
+				},
+			});
+
+			rt.send({
+				type: 'conversation.item.create',
+				item: {
+					type: 'message',
+					role: 'user',
+					content: [
+						{
+							type: 'input_text',
+							text: params.input,
+						},
+					],
+				},
+			});
+
+			rt.send({
+				type: 'response.create',
+			});
+		});
+
+		rt.on('response.output_audio.delta', (event) => {
+			if (event.delta) {
+				audioChunks.push(Buffer.from(event.delta, 'base64'));
+			}
+		});
+
+		rt.on('response.done', async (event) => {
+			if (isResolved) return;
+			isResolved = true;
+			cleanup();
+
+			if (event.response.status === 'failed') {
+				reject(new Error(`Realtime response failed: ${JSON.stringify(event.response.status_details)}`));
+				return;
+			}
+
+			const pcmData = Buffer.concat(audioChunks);
+			const wavData = pcm16ToWav(pcmData);
+
+			const usage = event.response.usage;
+			const promptTokens = usage?.input_token_details?.text_tokens ?? usage?.input_tokens ?? 0;
+			const completionTokens = usage?.output_token_details?.audio_tokens ?? usage?.output_tokens ?? 0;
+			const totalTokens = usage?.total_tokens ?? (promptTokens + completionTokens);
+
+			// gpt-realtime-2.1-mini:
+			// Text In: $0.60 / 1M tokens
+			// Audio Out: $20.00 / 1M tokens
+			const cost = (promptTokens / 1_000_000) * 0.60 + (completionTokens / 1_000_000) * 20.00;
+			log.info(`OpenAI Realtime speech cost: $${cost.toFixed(4)} (prompt: ${promptTokens}, completion: ${completionTokens})`);
+
+			await OpenAIUsageLog?.add({
+				method: 'realtime.speech.create',
+				createdAt: firestore.FieldValue.serverTimestamp(),
+				model,
+				promptTokens,
+				completionTokens,
+				totalTokens,
+				reasoningTokens: 0,
+				cost,
+			});
+
+			resolve({data: wavData});
+		});
+	});
+};
+
 const checkChatCompletionCreateModel = (params: ChatCompletionCreateParamsNonStreaming): string => {
 	const model: string = params.model;
 
 	if (
-		model === 'gpt-4o-mini' ||
-		model === 'gpt-4.1-mini' ||
-		model === 'gpt-5-mini' ||
-		model === 'gpt-5.4-nano' ||
-		model === 'gpt-5.4-mini' ||
-		model === 'o4-mini'
+		model === 'gpt-6-luna' ||
+		model === 'gpt-6.1-terra' ||
+		model === 'gpt-5.4-mini'
 	) {
 		return model;
 	}
@@ -185,38 +333,23 @@ const chatCompletionCreate = async (params: ChatCompletionCreateParamsNonStreami
 
 	let cost: number | null = null;
 
-	if (model === 'gpt-4o-mini') {
-		// Input: $0.15 / 1M tokens
-		// Output: $0.60 / 1M tokens
+	if (model === 'gpt-6-luna') {
+		// Input: $0.10 / 1M tokens
+		// Output: $0.50 / 1M tokens
 		// https://platform.openai.com/docs/pricing
-		cost = (promptTokens / 1_000_000) * 0.15 + (completionTokens / 1_000_000) * 0.60;
-	} else if (model === 'gpt-4.1-mini') {
-		// Input: $0.40 / 1M tokens
-		// Output: $1.60 / 1M tokens
+		cost = (promptTokens / 1_000_000) * 0.10 + (completionTokens / 1_000_000) * 0.50;
+	} else if (model === 'gpt-6.1-terra') {
+		// Input: $1.00 / 1M tokens
+		// Output: $5.00 / 1M tokens
 		// https://platform.openai.com/docs/pricing
-		cost = (promptTokens / 1_000_000) * 0.40 + (completionTokens / 1_000_000) * 1.60;
-	} else if (model === 'gpt-5-mini') {
-		// Input: $0.25 / 1M tokens
-		// Output: $2.00 / 1M tokens
-		// https://platform.openai.com/docs/models/gpt-5-mini
-		cost = (promptTokens / 1_000_000) * 0.25 + (completionTokens / 1_000_000) * 2.00;
-	} else if (model === 'gpt-5.4-nano') {
-		// Input: $0.20 / 1M tokens
-		// Output: $1.25 / 1M tokens
-		// https://developers.openai.com/api/docs/models/gpt-5.4-nano
-		cost = (promptTokens / 1_000_000) * 0.20 + (completionTokens / 1_000_000) * 1.25;
-	} else if (model === 'gpt-5.4-mini') {
+		cost = (promptTokens / 1_000_000) * 1.00 + ((completionTokens + reasoningTokens) / 1_000_000) * 5.00;
+	} else {
+		assert(model === 'gpt-5.4-mini', `Unexpected model: ${model}`);
+
 		// Input: $0.75 / 1M tokens
 		// Output: $4.50 / 1M tokens
 		// https://developers.openai.com/api/docs/models/gpt-5.4-mini
 		cost = (promptTokens / 1_000_000) * 0.75 + (completionTokens / 1_000_000) * 4.50;
-	} else {
-		assert(model === 'o4-mini', `Unexpected model: ${model}`);
-
-		// Input: $1.10 / 1M tokens
-		// Output: $4.40 / 1M tokens
-		// https://platform.openai.com/docs/pricing
-		cost = (promptTokens / 1_000_000) * 1.10 + ((completionTokens + reasoningTokens) / 1_000_000) * 4.40;
 	}
 
 	log.info(`OpenAI chat.completions.create API cost: $${cost?.toFixed(4) ?? 'unknown'}`);
@@ -233,12 +366,17 @@ const chatCompletionCreate = async (params: ChatCompletionCreateParamsNonStreami
 	});
 
 	return response;
-}
+};
 
 export default {
 	audio: {
 		speech: {
 			create: audioSpeechCreate,
+		},
+	},
+	realtime: {
+		speech: {
+			create: realtimeSpeechCreate,
 		},
 	},
 	chat: {

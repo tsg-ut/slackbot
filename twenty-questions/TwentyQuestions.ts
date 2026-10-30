@@ -204,7 +204,7 @@ export class TwentyQuestions {
 		log.info(`Generating description for topic: ${topic} (ruby: ${ruby})`);
 
 		const completion = await openai.chat.completions.create({
-			model: 'gpt-5-mini',
+			model: 'gpt-6-luna',
 			messages: [
 				{
 					role: 'system',
@@ -283,7 +283,7 @@ export class TwentyQuestions {
 			const wordList = sampledWords.map(([word]) => word).join(' / ');
 
 			const completion = await openai.chat.completions.create({
-				model: 'gpt-4o-mini',
+				model: 'gpt-6-luna',
 				messages: [
 					{
 						role: 'system',
@@ -313,7 +313,7 @@ export class TwentyQuestions {
 		// Step 2: 得られた10個の単語からさらに最適な1つを選ぶ
 		const finalWordList = selectedWords.join(' / ');
 		const finalCompletion = await openai.chat.completions.create({
-			model: 'gpt-4o-mini',
+			model: 'gpt-6-luna',
 			messages: [
 				{
 					role: 'system',
@@ -612,7 +612,7 @@ export class TwentyQuestions {
 		const topicDescription = this.#state.currentGame.topicDescription;
 
 		const completion = await openai.chat.completions.create({
-			model: 'gpt-4.1-mini',
+			model: 'gpt-6-luna',
 			messages: [
 				{
 					role: 'system',
@@ -722,7 +722,7 @@ export class TwentyQuestions {
 		player.questionCount++;
 
 		const completion = await openai.chat.completions.create({
-			model: 'gpt-5-mini',
+			model: 'gpt-6-luna',
 			messages: [
 				{
 					role: 'system',

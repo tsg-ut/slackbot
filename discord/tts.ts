@@ -137,7 +137,7 @@ export default class TTS extends EventEmitter {
 
 	async assignNewVoice() {
 		const state = await this.state.load();
-		const voices: Voice[] = Object.values(Voice);
+		const voices: Voice[] = Object.values(Voice).filter((voice) => !speechConfig.get(voice)?.deprecated);
 		const assignedVoices: Voice[] = Object.values(state.userVoices);
 		const voiceCounts = countBy(assignedVoices);
 		const voice = minBy(voices, (voice) => voiceCounts[voice] || 0);
@@ -221,8 +221,15 @@ export default class TTS extends EventEmitter {
 				});
 			} else if (tokens.length === 3 && tokens[1] === 'voice') {
 				mutex.runExclusive(async () => {
-					const voice: Voice = Voice[tokens[2] as keyof typeof Voice] || Voice.A;
+					const voiceName = tokens[2].toUpperCase();
+					const voice: Voice | undefined = Voice[voiceName as keyof typeof Voice];
+					const config = voice ? speechConfig.get(voice) : undefined;
 					if (this.users.has(user)) {
+						if (!voice || !config || config.deprecated) {
+							this.emit('message', `ボイス \`${tokens[2]}\` は廃止されたか、存在しません。他のボイスを選択してください。`, message.channel.id);
+							await message.react('❌');
+							return;
+						}
 						const state = await this.state.load();
 						state.userVoices[user] = voice;
 						await message.react('🆗');
@@ -231,7 +238,7 @@ export default class TTS extends EventEmitter {
 					}
 				});
 			} else if (tokens[1] === 'voices') {
-				const voices: Voice[] = Object.values(Voice);
+				const voices: Voice[] = Object.values(Voice).filter((voice) => !speechConfig.get(voice)?.deprecated);
 				for (const voicesChunk of chunk(voices, 20)) {
 					const voicesText = voicesChunk.map((voice) => {
 						const config = speechConfig.get(voice);
@@ -333,8 +340,8 @@ export default class TTS extends EventEmitter {
 					this.emit('message', lines.join('\n'), message.channel.id);
 				});
 			} else {
-				const voices: Voice[] = Object.values(Voice);
-				const emotionalVoices: Voice[] = voices.filter((v: Voice) => (speechConfig.get(v).emotional));
+				const voices: Voice[] = Object.values(Voice).filter((voice) => !speechConfig.get(voice)?.deprecated);
+				const emotionalVoices: Voice[] = voices.filter((v: Voice) => (speechConfig.get(v)?.emotional));
 				this.emit('message', stripIndent`
 					* TTS [start] - TTSを開始 (\`-\`で始まるメッセージは読み上げられません)
 					* TTS stop - TTSを停止

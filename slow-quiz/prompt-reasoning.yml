@@ -1,4 +1,4 @@
-# < 2,000 tokens (o4-mini)
+# < 2,000 tokens (gpt-6.1-terra)
 - role: developer
   content: |
     ## 指示
