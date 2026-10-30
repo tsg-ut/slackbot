@@ -141,9 +141,9 @@ class EmojiQuizBot extends ChannelLimitedBot {
 					],
 				},
 				hintMessages: [],
+				immediateMessage: {channel, text: 'このスレッドに回答してね！登録名はコロンを付けずに入力してください。'},
 				correctAnswers: question.names,
 				solvedMessage: {channel, text: ''},
-				incorrectMessage: {channel, text: '不正解です。登録名をコロンなしで回答してください。'},
 				unsolvedMessage: {channel, text: `時間切れです。\n答えは *${question.names.join(',')}* です。`},
 			}, {
 				username: this.username,
