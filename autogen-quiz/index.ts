@@ -172,7 +172,8 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	const response1 = await openai.chat.completions.create({
 		model: 'gpt-6-luna',
 		messages: chatHistory,
-		max_tokens: 1024,
+		max_completion_tokens: 1024,
+		reasoning_effort: 'none',
 	});
 
 	const resultMessage1 = response1?.choices?.[0]?.message;
@@ -219,7 +220,8 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	const response2 = await openai.chat.completions.create({
 		model: 'gpt-6-luna',
 		messages: chatHistory,
-		max_tokens: 1024,
+		max_completion_tokens: 1024,
+		reasoning_effort: 'none',
 	});
 
 	const resultMessage2 = response2?.choices?.[0]?.message;
@@ -276,7 +278,8 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	const response3 = await openai.chat.completions.create({
 		model: 'gpt-6-luna',
 		messages: chatHistory,
-		max_tokens: 1024,
+		max_completion_tokens: 1024,
+		reasoning_effort: 'none',
 	});
 
 	const resultMessage3 = response3?.choices?.[0]?.message;
@@ -311,7 +314,8 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	const response4 = await openai.chat.completions.create({
 		model: 'gpt-6-luna',
 		messages: chatHistory,
-		max_tokens: 1024,
+		max_completion_tokens: 1024,
+		reasoning_effort: 'none',
 	});
 
 	const resultMessage4 = response4?.choices?.[0]?.message;
@@ -331,7 +335,8 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	const response5 = await openai.chat.completions.create({
 		model: 'gpt-6-luna',
 		messages: chatHistory,
-		max_tokens: 1024,
+		max_completion_tokens: 1024,
+		reasoning_effort: 'none',
 	});
 
 	const resultMessage5 = response5?.choices?.[0]?.message;
@@ -351,7 +356,8 @@ const generateQuizWikipediaMethod = async (genre: string, bigGenre: string | nul
 	const response6 = await openai.chat.completions.create({
 		model: 'gpt-6-luna',
 		messages: chatHistory,
-		max_tokens: 1024,
+		max_completion_tokens: 1024,
+		reasoning_effort: 'none',
 	});
 
 	const resultMessage6 = response6?.choices?.[0]?.message;

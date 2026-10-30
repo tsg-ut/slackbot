@@ -258,7 +258,7 @@ export class TwentyQuestions {
 				},
 			],
 			max_completion_tokens: 800,
-			reasoning_effort: 'minimal',
+			reasoning_effort: 'none',
 		});
 
 		const description = completion.choices[0]?.message?.content?.trim() || '';
@@ -302,7 +302,8 @@ export class TwentyQuestions {
 						content: `単語リスト: ${wordList}`,
 					},
 				],
-				max_tokens: 50,
+				max_completion_tokens: 50,
+				reasoning_effort: 'none',
 			});
 
 			const selected = completion.choices[0]?.message?.content?.trim() || sampledWords[0][0];
@@ -332,7 +333,8 @@ export class TwentyQuestions {
 					content: `単語リスト: ${finalWordList}`,
 				},
 			],
-			max_tokens: 50,
+			max_completion_tokens: 50,
+			reasoning_effort: 'none',
 		});
 
 		const output = finalCompletion.choices[0]?.message?.content?.trim() || finalWordList;
@@ -651,6 +653,7 @@ export class TwentyQuestions {
 				},
 			],
 			max_completion_tokens: 50,
+			reasoning_effort: 'none',
 			temperature: 0,
 			seed: CHAT_COMPLETION_SEED,
 		});
@@ -738,7 +741,7 @@ export class TwentyQuestions {
 				},
 			],
 			max_completion_tokens: 50,
-			reasoning_effort: 'minimal',
+			reasoning_effort: 'none',
 		});
 
 		log.info(`Answer evaluation completion: ${JSON.stringify(completion.choices[0]?.message)}`);

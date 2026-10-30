@@ -128,7 +128,8 @@ export default async (slackClients: SlackInterface) => {
 						content: `${promptIntro}\n【${inputMessage}】`,
 					},
 				],
-				max_tokens: 1024,
+				max_completion_tokens: 1024,
+				reasoning_effort: 'none',
 			});
 
 			const result = completion.choices?.[0]?.message?.content ?? 'すみません。この夢に関しては占えませんでした。';
