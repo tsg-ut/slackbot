@@ -211,6 +211,82 @@ describe('SlackCache', () => {
 			const emoji2 = await slackCache.getEmoji('dot-ojigineko');
 			expect(emoji2).toBe('https://emoji.slack-edge.com/T00000000/dot-ojigineko/0123456789.png');
 		});
+
+		it('keeps multiple names and aliases for the same image in a detached snapshot', async () => {
+			const url = await slackCache.getEmoji('slack');
+			emit('emoji_changed', {subtype: 'add', name: 'same_image', value: url});
+			emit('emoji_changed', {subtype: 'add', name: 'another_alias', value: 'alias:white_square'});
+			const emojis = await slackCache.getEmojis();
+			expect(emojis).toMatchObject({slack: url, same_image: url, white_square: 'alias:slack', another_alias: 'alias:white_square'});
+			delete emojis.slack;
+			expect(await slackCache.getEmoji('slack')).toBe(url);
+			expect(slack.webClient.emoji.list).toHaveBeenCalledTimes(1);
+		});
+
+		it('removes all listed names and chained aliases while preserving independent names', async () => {
+			const url = await slackCache.getEmoji('slack');
+			emit('emoji_changed', {subtype: 'add', name: 'same_image', value: url});
+			emit('emoji_changed', {subtype: 'add', name: 'chain', value: 'alias:white_square'});
+			emit('emoji_changed', {subtype: 'remove', names: ['slack', 'ojigineko']});
+			expect(await slackCache.getEmojis()).toEqual({same_image: url});
+		});
+
+		it('removes an alias without removing its original or other aliases', async () => {
+			await slackCache.getEmojis();
+			emit('emoji_changed', {subtype: 'remove', names: ['white_square']});
+			expect(await slackCache.getEmoji('white_square')).toBeUndefined();
+			expect(await slackCache.getEmoji('slack')).toBeDefined();
+		});
+
+		it('renames an emoji and updates alias references without losing other names', async () => {
+			const url = await slackCache.getEmoji('slack');
+			emit('emoji_changed', {subtype: 'add', name: 'same_image', value: url});
+			emit('emoji_changed', {subtype: 'rename', old_name: 'slack', new_name: 'renamed', value: url});
+			expect(await slackCache.getEmoji('slack')).toBeUndefined();
+			expect(await slackCache.getEmojis()).toMatchObject({renamed: url, same_image: url, white_square: 'alias:renamed'});
+		});
+
+		it('renames aliases and preserves their targets', async () => {
+			await slackCache.getEmojis();
+			emit('emoji_changed', {subtype: 'add', name: 'chain', value: 'alias:white_square'});
+			emit('emoji_changed', {subtype: 'rename', old_name: 'white_square', new_name: 'alias_name', value: 'alias:slack'});
+			expect(await slackCache.getEmoji('white_square')).toBeUndefined();
+			expect(await slackCache.getEmojis()).toMatchObject({alias_name: 'alias:slack', chain: 'alias:alias_name'});
+		});
+
+		it('applies events arriving during initial loading after the snapshot', async () => {
+			const list = vi.mocked(slack.webClient.emoji.list);
+			let resolveList: (response: {ok: boolean; emoji: Record<string, string>}) => void;
+			list.mockReturnValueOnce(new Promise((resolve) => { resolveList = resolve; }));
+			const cache = new SlackCache({
+				token: {team_id: teamId, team_name: 'TEAM', access_token: 'user', bot_user_id: 'bot', bot_access_token: 'bot'},
+				eventClient: slack.eventClient,
+				webClient: slack.webClient,
+			});
+			emit('emoji_changed', {subtype: 'rename', old_name: 'old', new_name: 'new', value: 'https://example/image.png'});
+			emit('emoji_changed', {subtype: 'remove', names: ['removed']});
+			resolveList({ok: true, emoji: {old: 'https://example/image.png', removed: 'https://example/removed.png'}});
+			expect(await cache.getEmojis()).toEqual({new: 'https://example/image.png'});
+		});
+
+		it('retries failed loading instead of leaving readers waiting', async () => {
+			vi.mocked(slack.webClient.emoji.list).mockRejectedValueOnce(new Error('failed'));
+			const cache = new SlackCache({
+				token: {team_id: teamId, team_name: 'TEAM', access_token: 'user', bot_user_id: 'bot', bot_access_token: 'bot'},
+				eventClient: slack.eventClient,
+				webClient: slack.webClient,
+			});
+			await expect(cache.getEmojis()).rejects.toThrow('failed');
+			expect(await cache.getEmoji('slack')).toBeDefined();
+		});
+
+		it('reloads unknown events and applies subsequent changes in order', async () => {
+			await slackCache.getEmojis();
+			vi.mocked(slack.webClient.emoji.list).mockResolvedValueOnce({ok: true, emoji: {fresh: 'https://example/fresh.png'}});
+			emit('emoji_changed', {});
+			emit('emoji_changed', {subtype: 'rename', old_name: 'fresh', new_name: 'renamed', value: 'https://example/fresh.png'});
+			expect(await slackCache.getEmojis()).toEqual({renamed: 'https://example/fresh.png'});
+		});
 	});
 	describe('getReactions', () => {
 		it('returns reactions', async () => {

@@ -1,4 +1,5 @@
 import SlackMock from '../lib/slackMock';
+import {getEmojis} from '../lib/slackUtils';
 import emojiQuiz, {getQuestions} from './index';
 
 vi.mock('../lib/logger', () => ({default: {child: () => ({error: vi.fn(), info: vi.fn(), debug: vi.fn()})}}));
@@ -22,8 +23,9 @@ describe('emoji-quiz', () => {
 		slack = new SlackMock();
 		vi.stubEnv('CHANNEL_GAMES', slack.fakeChannel);
 		vi.stubEnv('CHANNEL_SANDBOX', 'SANDBOX');
-		vi.mocked(slack.webClient.emoji.list).mockResolvedValue({
-			ok: true, emoji: {test_emoji: 'https://slack.example/test_emoji.png', alternate: 'alias:test_emoji'},
+		vi.mocked(slack.webClient.emoji.list).mockResolvedValue({ok: true, emoji: {}});
+		vi.mocked(getEmojis).mockResolvedValue({
+			test_emoji: 'https://slack.example/test_emoji.png', alternate: 'alias:test_emoji',
 		});
 		vi.mocked(slack.webClient.chat.postMessage).mockResolvedValue({ok: true, ts: slack.fakeTimestamp});
 		vi.mocked(slack.webClient.reactions.add).mockResolvedValue({ok: true});
@@ -62,13 +64,10 @@ describe('emoji-quiz', () => {
 	});
 
 	it.each(['絵文字当てクイズeasy', '絵文字当てクイズ easy'])('starts easy mode with %s', async (command) => {
-		vi.mocked(slack.webClient.emoji.list).mockResolvedValueOnce({
-			ok: true,
-			emoji: {
-				abc_123456: 'https://example/ten.png',
-				abcdefghijk: 'https://example/eleven.png',
-				日本語: 'https://example/japanese.png',
-			},
+		vi.mocked(getEmojis).mockResolvedValueOnce({
+			abc_123456: 'https://example/ten.png',
+			abcdefghijk: 'https://example/eleven.png',
+			日本語: 'https://example/japanese.png',
 		});
 		await send(command);
 		expect(posts()[0]).toMatchObject({blocks: [
@@ -80,8 +79,8 @@ describe('emoji-quiz', () => {
 	});
 
 	it('can start a normal quiz after no emoji matches easy mode', async () => {
-		vi.mocked(slack.webClient.emoji.list).mockResolvedValueOnce({
-			ok: true, emoji: {long_emoji_name: 'https://example/long.png'},
+		vi.mocked(getEmojis).mockResolvedValueOnce({
+			long_emoji_name: 'https://example/long.png',
 		});
 		await send('絵文字当てクイズeasy');
 		expect(posts()[0]).toMatchObject({text: 'easyの条件に合う絵文字がありません。'});
@@ -192,23 +191,21 @@ describe('emoji-quiz', () => {
 
 	it('prevents overlapping quizzes during startup', async () => {
 		await Promise.all([send('絵文字当てクイズ'), send('絵文字当てクイズ')]);
-		expect(slack.webClient.emoji.list).toHaveBeenCalledTimes(1);
+		expect(getEmojis).toHaveBeenCalledTimes(1);
+		expect(slack.webClient.emoji.list).not.toHaveBeenCalled();
 		expect(posts().at(-1).text).toContain('クイズは進行中です。');
 	});
 
 	it('handles an empty emoji list', async () => {
-		vi.mocked(slack.webClient.emoji.list).mockResolvedValueOnce({ok: true, emoji: {}});
+		vi.mocked(getEmojis).mockResolvedValueOnce({});
 		await send('絵文字当てクイズ');
 		expect(posts().at(-1).text).toBe('出題できる絵文字がありません。');
 	});
 
 	it.each([true, false])('uses the expected icon on every quiz message (blob-thinking registered: %s)', async (registered) => {
-		vi.mocked(slack.webClient.emoji.list).mockResolvedValue({
-			ok: true,
-			emoji: {
-				test_emoji: 'https://slack.example/test_emoji.png',
-				...(registered ? {'blob-thinking': 'alias:test_emoji'} : {}),
-			},
+		vi.mocked(getEmojis).mockResolvedValue({
+			test_emoji: 'https://slack.example/test_emoji.png',
+			...(registered ? {'blob-thinking': 'alias:test_emoji'} : {}),
 		});
 		await send('絵文字当てクイズ');
 		await send('絵文字当てクイズ');
@@ -225,13 +222,13 @@ describe('emoji-quiz', () => {
 	});
 
 	it('uses the fallback icon when the emoji list cannot be loaded', async () => {
-		vi.mocked(slack.webClient.emoji.list).mockRejectedValueOnce(new Error('failed'));
+		vi.mocked(getEmojis).mockRejectedValueOnce(new Error('failed'));
 		await send('絵文字当てクイズ');
 		expect(posts()[0]).toMatchObject({icon_emoji: ':hugging_face:'});
 	});
 
 	it.each(['list', 'post'])('can retry after a %s failure', async (stage) => {
-		if (stage === 'list') vi.mocked(slack.webClient.emoji.list).mockRejectedValueOnce(new Error('failed'));
+		if (stage === 'list') vi.mocked(getEmojis).mockRejectedValueOnce(new Error('failed'));
 		if (stage === 'post') vi.mocked(slack.webClient.chat.postMessage).mockRejectedValueOnce(new Error('failed'));
 		await send('絵文字当てクイズ');
 		expect(posts().at(-1).text).toContain('クイズを開始できませんでした。');

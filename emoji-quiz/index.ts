@@ -4,6 +4,7 @@ import {sample} from 'lodash';
 import {AteQuiz} from '../atequiz';
 import {ChannelLimitedBot} from '../lib/channelLimitedBot';
 import {Deferred} from '../lib/utils';
+import {getEmojis} from '../lib/slackUtils';
 import type {SlackInterface} from '../lib/slack';
 
 const timeLimitSeconds = 60;
@@ -62,7 +63,7 @@ class EmojiAteQuiz extends AteQuiz {
 }
 
 class EmojiQuizBot extends ChannelLimitedBot {
-	protected override readonly wakeWordRegex = /^\s*絵文字当てクイズ(?:\s*(easy))?\s*$/;
+	protected override readonly wakeWordRegex = /^\s*絵文字当てクイズ(?:\s*easy)?\s*$/;
 
 	protected override readonly username = 'emoji-quiz';
 
@@ -111,7 +112,7 @@ class EmojiQuizBot extends ChannelLimitedBot {
 		let thread: string | null = null;
 		this.iconEmoji = `:${SECONDARY_ICON}:`;
 		try {
-			const {emoji} = await this.slack.emoji.list();
+			const emoji = await getEmojis();
 			this.iconEmoji = `:${emoji?.[PRIMARY_ICON] ? PRIMARY_ICON : SECONDARY_ICON}:`;
 			const question = sample(getQuestions(emoji ?? {}, easy));
 			if (!question) {

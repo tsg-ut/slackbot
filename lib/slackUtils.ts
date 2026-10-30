@@ -90,6 +90,15 @@ export const getEmoji = async (name: string, team: string): Promise<string | und
 	return slackCaches.get(team)?.getEmoji(name);
 };
 
+export const getEmojis = async (team: string = process.env.TEAM_ID!): Promise<Record<string, string>> => {
+	await initializedSlackCachesDeferred.promise;
+	const slackCache = slackCaches.get(team);
+	if (!slackCache) {
+		throw new Error(`Slack cache for team ${team} not found`);
+	}
+	return slackCache.getEmojis();
+};
+
 export const plainText = (text: string, emoji: boolean = true): PlainTextElement => ({
 	type: 'plain_text' as 'plain_text',
 	text,
