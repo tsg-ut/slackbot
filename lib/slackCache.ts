@@ -15,6 +15,7 @@ import type {
 	UsersListResponse,
 	EmojiListArguments,
 	EmojiListResponse,
+	EmojiChangedEvent,
 	ReactionAddedEvent,
 	ReactionRemovedEvent,
 } from '@slack/web-api';
@@ -49,7 +50,8 @@ export default class SlackCache {
 	// ordered by the time of reaction.
 	private reactionsCache = new Map<string, Record<string, string[]>>();
 	private loadUsersDeferred = new Deferred<void>();
-	private loadEmojisDeferred = new Deferred<void>();
+	private loadEmojisPromise: Promise<void> | null = null;
+	private emojiUpdates: Promise<void> = Promise.resolve();
 
 	constructor(config: Config) {
 		this.config = config;
@@ -76,19 +78,12 @@ export default class SlackCache {
 
 		{
 			// emoji cache
-			teamEventClient.on('emoji_changed', async (event) => {
-				if (event.subtype === 'add') {
-					this.emojis.set(event.name, event.value);
-				}
+			teamEventClient.on('emoji_changed', (event: EmojiChangedEvent) => {
+				this.emojiUpdates = this.emojiUpdates.then(() => this.updateEmojis(event))
+					.catch((error: unknown) => {
+						log.error('Failed to update emoji cache', {error});
+					});
 			});
-			this.config.webClient.emoji.list({token: this.config.token.bot_access_token})
-				.then(({emoji: emojis}) => {
-					for (const name in emojis) {
-						this.emojis.set(name, emojis[name]);
-					}
-				})
-				.then(() => this.loadEmojisDeferred.resolve())
-				.catch((err: any) => log.error(`SlackCache/emoji.list(${this.config.token.team_id}): ${err}`, err));
 		}
 
 		teamEventClient.on('message', (message) => {
@@ -133,8 +128,72 @@ export default class SlackCache {
 	}
 
 	public async getEmoji(emoji: string): Promise<string|undefined> {
-		await this.loadEmojisDeferred.promise;
+		await this.loadEmojis();
+		await this.emojiUpdates;
 		return this.emojis.get(emoji);
+	}
+
+	public async getEmojis(): Promise<Record<string, string>> {
+		await this.loadEmojis();
+		await this.emojiUpdates;
+		return Object.fromEntries(this.emojis);
+	}
+
+	private loadEmojis(): Promise<void> {
+		if (!this.loadEmojisPromise) {
+			this.loadEmojisPromise = this.config.webClient.emoji.list({token: this.config.token.bot_access_token})
+				.then(({emoji}) => {
+					this.emojis = new Map(Object.entries(emoji ?? {}));
+				})
+				.catch((error: unknown) => {
+					this.loadEmojisPromise = null;
+					throw error;
+				});
+		}
+		return this.loadEmojisPromise;
+	}
+
+	private async updateEmojis(event: EmojiChangedEvent): Promise<void> {
+		// Apply events after the initial snapshot so that it cannot overwrite newer changes.
+		await this.loadEmojis();
+		if (event.subtype === 'add' && event.name && event.value) {
+			this.emojis.set(event.name, event.value);
+		} else if (event.subtype === 'remove' && event.names) {
+			this.removeEmojis(event.names);
+		} else if (event.subtype === 'rename' && event.old_name && event.new_name) {
+			this.renameEmoji(event.old_name, event.new_name, event.value);
+		} else {
+			this.loadEmojisPromise = null;
+			await this.loadEmojis();
+		}
+	}
+
+	private removeEmojis(names: string[]): void {
+		const removed = new Set(names);
+		let changed = true;
+		while (changed) {
+			changed = false;
+			for (const [name, value] of this.emojis) {
+				if (removed.has(name) || (value.startsWith('alias:') && removed.has(value.slice('alias:'.length)))) {
+					removed.add(name);
+					this.emojis.delete(name);
+					changed = true;
+				}
+			}
+		}
+	}
+
+	private renameEmoji(oldName: string, newName: string, value?: string): void {
+		const emoji = value ?? this.emojis.get(oldName);
+		this.emojis.delete(oldName);
+		if (emoji !== undefined) {
+			this.emojis.set(newName, emoji);
+		}
+		for (const [name, target] of this.emojis) {
+			if (target === `alias:${oldName}`) {
+				this.emojis.set(name, `alias:${newName}`);
+			}
+		}
 	}
 
 	public async getReactions(channel: string, ts: string): Promise<Record<string, string[]>> {

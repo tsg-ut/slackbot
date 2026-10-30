@@ -70,6 +70,7 @@ export const productionBots = [
 	'shmug',
 	'pilot',
 	'qrcode-quiz',
+	'emoji-quiz',
 	'oneiromancy',
 	'auto-archiver',
 	'city-symbol',

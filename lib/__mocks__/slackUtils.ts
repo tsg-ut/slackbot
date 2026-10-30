@@ -3,6 +3,7 @@ import { MrkdwnElement, PlainTextElement } from '@slack/web-api';
 import type { GenericMessageEvent, MessageEvent } from '@slack/bolt';
 
 export const getMemberName = vi.fn(async () => 'Dummy User');
+export const getEmojis = vi.fn<() => Promise<Record<string, string>>>();
 export const getMemberIcon = vi.fn(async () => 'https://example.com/dummy.png');
 
 export const plainText = (text: string, emoji: boolean = true): PlainTextElement => ({
