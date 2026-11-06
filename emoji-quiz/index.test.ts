@@ -17,7 +17,9 @@ describe('emoji-quiz', () => {
 		await Promise.all(slack.eventClient.listeners('message').map((listener) => listener(message)));
 		await new Promise(setImmediate);
 	};
-	const posts = () => vi.mocked(slack.webClient.chat.postMessage).mock.calls.map(([post]) => post);
+	const allPosts = () => vi.mocked(slack.webClient.chat.postMessage).mock.calls.map(([post]) => post);
+	const posts = (channel = slack.fakeChannel) => allPosts().filter((post) => post.channel === channel);
+	const progressTimestamp = '1234567892.000000';
 
 	beforeEach(() => {
 		vi.useFakeTimers({toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval']});
@@ -29,7 +31,10 @@ describe('emoji-quiz', () => {
 		vi.mocked(getEmojis).mockResolvedValue({
 			test_emoji: 'https://slack.example/test_emoji.png', alternate: 'alias:test_emoji',
 		});
-		vi.mocked(slack.webClient.chat.postMessage).mockResolvedValue({ok: true, ts: slack.fakeTimestamp});
+		vi.mocked(slack.webClient.chat.postMessage).mockImplementation(async ({channel}) => ({
+			ok: true, ts: channel === 'SANDBOX' ? progressTimestamp : slack.fakeTimestamp,
+		}));
+		vi.mocked(slack.webClient.chat.delete).mockResolvedValue({ok: true});
 		vi.mocked(slack.webClient.reactions.add).mockResolvedValue({ok: true});
 		emojiQuiz(slack);
 	});
@@ -38,6 +43,40 @@ describe('emoji-quiz', () => {
 		vi.clearAllTimers();
 		vi.useRealTimers();
 		vi.unstubAllEnvs();
+	});
+
+	it.each(['solved', 'timeout'])('posts a game link in sandbox and deletes it when %s', async (outcome) => {
+		await send('絵文字当てクイズ');
+		expect(posts('SANDBOX')).toEqual([expect.objectContaining({
+			text: `<https://example.slack.com/archives/${slack.fakeChannel}/p${slack.fakeTimestamp.replace('.', '')}|進行中のゲーム>があります！`,
+			unfurl_links: false,
+			unfurl_media: false,
+		})]);
+		expect(slack.webClient.chat.delete).not.toHaveBeenCalled();
+		if (outcome === 'solved') {
+			await send('test_emoji', {thread_ts: slack.fakeTimestamp});
+		} else {
+			await vi.advanceTimersByTimeAsync(60_000);
+		}
+		expect(slack.webClient.chat.delete).toHaveBeenCalledExactlyOnceWith({
+			channel: 'SANDBOX', ts: progressTimestamp,
+		});
+	});
+
+	it.each(['solved', 'timeout'])('can start another quiz after progress deletion fails on %s', async (outcome) => {
+		vi.mocked(slack.webClient.chat.delete).mockRejectedValueOnce(new Error('delete failed'));
+		await send('絵文字当てクイズ');
+		if (outcome === 'solved') {
+			await send('test_emoji', {thread_ts: slack.fakeTimestamp});
+		} else {
+			await vi.advanceTimersByTimeAsync(60_000);
+		}
+		expect(slack.webClient.chat.delete).toHaveBeenCalledWith({channel: 'SANDBOX', ts: progressTimestamp});
+		expect(posts()).toHaveLength(3);
+		await send('絵文字当てクイズ');
+		expect(posts()).toHaveLength(5);
+		expect(posts().at(-2)).toHaveProperty('blocks');
+		expect(posts('SANDBOX')).toHaveLength(2);
 	});
 
 	it('counts easy and normal wins separately and combines them in the total', async () => {
@@ -73,6 +112,73 @@ describe('emoji-quiz', () => {
 		await send(` ${prefix}other `, {thread_ts: slack.fakeTimestamp});
 		expect(vi.mocked(increment).mock.calls.filter(([, name]) => name === counter))
 			.toEqual([[slack.fakeUser, counter]]);
+	});
+
+	it.each(['jre_je_keiyoline', 'jrw_b_koseiline', 'tokyo-metro_g_ginza-line'])(
+		'counts a railway line answer only by its matching name (%s)', async (name) => {
+			vi.mocked(getEmojis).mockResolvedValue({
+				[name]: 'https://example/jr.png',
+				short: `alias:${name}`,
+			});
+			await send('絵文字当てクイズ');
+			await send('short', {thread_ts: slack.fakeTimestamp});
+			expect(increment).not.toHaveBeenCalledWith(slack.fakeUser, 'emoji-quiz-answer-jr');
+			await send('絵文字当てクイズ');
+			await send(name, {thread_ts: slack.fakeTimestamp});
+			expect(increment).toHaveBeenCalledWith(slack.fakeUser, 'emoji-quiz-answer-jr');
+		},
+	);
+
+	it.each(['my_jrw_osaka', 'jrc_tokaido', 'jre', 'jrw', 'toei', 'tokyo-metro', 'jre_', 'jrw-', 'jrekeiyoline', 'toeiaskakusa', 'tokyo-metrog_ginza-line', 'jre_line2', 'jre_Line', 'tokyo-metro_g_ginza-line2'])(
+		'does not count a railway line name outside the pattern (%s)', async (name) => {
+			vi.mocked(getEmojis).mockResolvedValueOnce({[name]: 'https://example/jr.png'});
+			await send('絵文字当てクイズ');
+			await send(name, {thread_ts: slack.fakeTimestamp});
+			expect(increment).toHaveBeenCalledWith(slack.fakeUser, 'emoji-quiz-answer');
+			expect(increment).not.toHaveBeenCalledWith(slack.fakeUser, 'emoji-quiz-answer-jr');
+		},
+	);
+
+	it.each(['寿司', 'すし', '🍣'])('counts a non-ASCII answer only by its matching name (%s)', async (name) => {
+		vi.mocked(getEmojis).mockResolvedValue({
+			[name]: 'https://example/unicode.png',
+			ascii_alias: `alias:${name}`,
+		});
+		await send('絵文字当てクイズ');
+		await send('ascii_alias', {thread_ts: slack.fakeTimestamp});
+		expect(increment).not.toHaveBeenCalledWith(slack.fakeUser, 'emoji-quiz-answer-unicode');
+		await send('絵文字当てクイズ');
+		await send(name, {thread_ts: slack.fakeTimestamp});
+		expect(increment).toHaveBeenCalledWith(slack.fakeUser, 'emoji-quiz-answer-unicode');
+	});
+
+	it.each(['sushi', '寿司sushi', '寿司_すし', '寿司1'])('does not count an answer containing ASCII (%s)', async (name) => {
+		vi.mocked(getEmojis).mockResolvedValueOnce({[name]: 'https://example/unicode.png'});
+		await send('絵文字当てクイズ');
+		await send(name, {thread_ts: slack.fakeTimestamp});
+		expect(increment).toHaveBeenCalledWith(slack.fakeUser, 'emoji-quiz-answer');
+		expect(increment).not.toHaveBeenCalledWith(slack.fakeUser, 'emoji-quiz-answer-unicode');
+	});
+
+	it.each(['crying', 'blob-crying', 'crying-face', 'blob-crying-face'])(
+		'counts crying answers only by the submitted name (%s)', async (name) => {
+			vi.mocked(getEmojis).mockResolvedValue({
+				[name]: 'https://example/crying.png',
+				sad: `alias:${name}`,
+			});
+			await send('絵文字当てクイズ');
+			await send('sad', {thread_ts: slack.fakeTimestamp});
+			expect(increment).not.toHaveBeenCalledWith(slack.fakeUser, 'emoji-quiz-answer-crying');
+			await send('絵文字当てクイズ');
+			await send(name, {thread_ts: slack.fakeTimestamp});
+			expect(increment).toHaveBeenCalledWith(slack.fakeUser, 'emoji-quiz-answer-crying');
+		},
+	);
+
+	it('does not award the crying achievement for an incorrect answer containing crying', async () => {
+		await send('絵文字当てクイズ');
+		await send('crying', {thread_ts: slack.fakeTimestamp});
+		expect(increment).not.toHaveBeenCalled();
 	});
 
 	it('does not award prefix achievements for names that merely contain a prefix', async () => {
@@ -300,6 +406,25 @@ describe('emoji-quiz', () => {
 		expect(posts().at(-1).text).toBe('出題できる絵文字がありません。');
 	});
 
+	it.each([
+		['blob-thinking', 'blob-thinking', true],
+		['hugging_face', 'hugging_face', true],
+		['blob-thinking', 'hugging_face', false],
+		['blob-thinking', 'alternate', false],
+	])('awards the icon achievement for the active icon name only (icon: %s, answer: %s)', async (icon, answer, expected) => {
+		vi.mocked(getEmojis).mockResolvedValueOnce({
+			alternate: 'https://example/icon.png',
+			hugging_face: 'alias:alternate',
+			...(icon === 'blob-thinking' ? {'blob-thinking': 'alias:alternate'} : {}),
+		});
+		await send('絵文字当てクイズ');
+		expect(posts()[0].icon_emoji).toBe(`:${icon}:`);
+		await send(answer, {thread_ts: slack.fakeTimestamp});
+		expect(increment).toHaveBeenCalledWith(slack.fakeUser, 'emoji-quiz-answer');
+		const iconCalls = vi.mocked(increment).mock.calls.filter(([, counter]) => counter === 'emoji-quiz-answer-icon');
+		expect(iconCalls).toHaveLength(expected ? 1 : 0);
+	});
+
 	it.each([true, false])('uses the expected icon on every quiz message (blob-thinking registered: %s)', async (registered) => {
 		vi.mocked(getEmojis).mockResolvedValue({
 			test_emoji: 'https://slack.example/test_emoji.png',
@@ -314,7 +439,7 @@ describe('emoji-quiz', () => {
 		vi.mocked(slack.webClient.chat.postMessage).mockRejectedValueOnce(new Error('failed'));
 		await send('絵文字当てクイズ');
 		expect(posts()).toHaveLength(9);
-		for (const post of posts()) {
+		for (const post of allPosts()) {
 			expect(post).toMatchObject({icon_emoji: registered ? ':blob-thinking:' : ':hugging_face:'});
 		}
 	});
