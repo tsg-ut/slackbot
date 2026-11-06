@@ -7,7 +7,7 @@ import {Deferred} from '../lib/utils';
 import {getEmojis} from '../lib/slackUtils';
 import type {SlackInterface} from '../lib/slack';
 import {increment} from '../achievements';
-import {prefixAchievements} from './achievements';
+import {answerAchievements} from './achievements';
 
 const timeLimitSeconds = 60;
 const EASY_MAX_NAME_LENGTH = 10;
@@ -74,8 +74,6 @@ class EmojiQuizBot extends ChannelLimitedBot {
 	protected override readonly username = 'emoji-quiz';
 
 	protected override iconEmoji = `:${SECONDARY_ICON}:`;
-
-	protected override readonly progressMessageChannel: string | undefined = undefined;
 
 	private running: Deferred<string | null> | null = null;
 
@@ -177,7 +175,11 @@ class EmojiQuizBot extends ChannelLimitedBot {
 			this.quiz = null;
 			this.running = null;
 			if (thread) {
-				this.progressMessages.delete(thread);
+				try {
+					await this.deleteProgressMessage(thread);
+				} catch (error) {
+					this.log.error('Failed to delete emoji quiz progress message', {error});
+				}
 			}
 			if (!started.isResolved) {
 				void started.resolve(null);
@@ -189,12 +191,15 @@ class EmojiQuizBot extends ChannelLimitedBot {
 		const counters = [
 			'emoji-quiz-answer',
 			easy ? 'emoji-quiz-easy-answer' : 'emoji-quiz-normal-answer',
-			...prefixAchievements
-				.filter(({prefix}) => quiz.solvedAnswer?.startsWith(prefix))
+			...answerAchievements
+				.filter(({pattern}) => quiz.solvedAnswer !== null && pattern.test(quiz.solvedAnswer))
 				.map(({counter}) => counter),
 		];
 		if (startedAt !== null && quiz.solvedAt !== null && quiz.solvedAt - startedAt <= 5000) {
 			counters.push('emoji-quiz-answer-within-5s');
+		}
+		if (quiz.solvedAnswer !== null && quiz.postOption.icon_emoji === `:${quiz.solvedAnswer}:`) {
+			counters.push('emoji-quiz-answer-icon');
 		}
 		try {
 			await Promise.all(counters.map((counter) => increment(user, counter)));
