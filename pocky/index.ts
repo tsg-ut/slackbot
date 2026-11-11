@@ -1,10 +1,6 @@
 import axios from 'axios';
 import * as emoji from 'node-emoji';
-import download from 'download';
-import {promises as fs, constants} from 'fs';
-import path from 'path';
-import {sample, get} from 'lodash';
-import {hiraganize} from 'japanese';
+import {get} from 'lodash';
 import {stripIndents} from 'common-tags';
 import {unlock, increment} from '../achievements/index.js';
 import logger from '../lib/logger';
@@ -12,6 +8,12 @@ import {getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
 import type {SlackInterface} from '../lib/slack';
 import type {GenericMessageEvent} from '@slack/bolt';
+import {
+	generateQuiz,
+	isCorrectAnswer,
+	revealHint,
+	type PockyQuiz,
+} from './quiz';
 
 const log = logger.child({bot: 'pocky'});
 
@@ -118,22 +120,6 @@ function normalize(text: string): string {
 		.toLowerCase();
 }
 
-async function getDictionary(): Promise<{word: string; ruby: string}[]> {
-	const dictionaryPath = path.resolve(__dirname, 'kanjibox.txt');
-	const exists = await fs.access(dictionaryPath, constants.R_OK).then(() => true).catch(() => false);
-	if (!exists) {
-		await download("https://hakata-public.s3-ap-northeast-1.amazonaws.com/slackbot/kanjibox.txt", __dirname, {filename: 'kanjibox.txt'});
-	}
-	const dictionary = await fs.readFile(dictionaryPath);
-	const entries = dictionary.toString().split('\n').filter((line) => (
-		!line.startsWith('#') && line.length !== 0)
-	).map((line) => {
-		const [, word, ruby] = line.split('\t');
-		return {word, ruby};
-	});
-	return entries;
-}
-
 export default async (clients: SlackInterface) => {
 	const {eventClient, webClient: slack} = clients;
 
@@ -158,38 +144,33 @@ export default async (clients: SlackInterface) => {
 		});
 	}
 
-	let theme: {word: string; ruby: string} | null = null;
+	let currentQuiz: PockyQuiz | null = null;
 	let thread: string | null = null;
-	let hints: string[] = [];
+	const recentThemes: string[] = [];
 
 	async function pockygame() {
-		if (theme !== null) {
+		if (currentQuiz !== null) {
 			return;
 		}
 
-		const entries = await getDictionary();
+		const quiz = await generateQuiz(recentThemes);
 
-		let failures = 0;
-
-		while (failures <= 5 && theme === null) {
-			const entry = sample(entries);
-			const suggestions = await getSuggestions(entry.word);
-			hints = suggestions.filter((hint) => hint !== entry.word && hint.startsWith(entry.word));
-			if (hints.length >= 5) {
-				theme = entry;
-			}
-			failures++;
-		}
-
-		if (theme === null) {
+		if (quiz === null) {
 			postMessage("エラーΩ＼ζ°)ﾁｰﾝ", process.env.CHANNEL_SANDBOX);
 			return;
 		}
-		log.info(theme);
+
+		currentQuiz = quiz;
+		recentThemes.push(quiz.theme.word);
+		if (recentThemes.length > 50) {
+			recentThemes.shift();
+		}
+
+		log.info(quiz.theme);
 
 		const message = await postMessage(stripIndents`
 			ポッキーゲームを始めるよ～
-			${hints.map((hint) => hint.replaceAll(theme.word, '〇〇')).join(' / ')}
+			${quiz.maskedHints.join(' / ')}
 		`, process.env.CHANNEL_SANDBOX, {broadcast: false});
 
 		thread = message.ts;
@@ -199,20 +180,29 @@ export default async (clients: SlackInterface) => {
 			スレッドで回答してね!
 			3分経過で答えを発表するよ～
 
-			${hints.map((hint) => `• ${hint.replaceAll(theme.word, '〇〇')}`).join('\n')}
+			${quiz.maskedHints.map((hint) => `• ${hint}`).join('\n')}
 		`, process.env.CHANNEL_SANDBOX, {broadcast: false, threadPosted: thread});
 
-		const currentTheme = theme;
+		const thisQuiz = quiz;
 		setTimeout(async () => {
-			if (theme === currentTheme) {
+			if (currentQuiz === thisQuiz) {
+				const {theme, hints} = currentQuiz;
 				await postMessage(stripIndents`
 					なんでわからないの？
 					答えは＊${theme.word}＊ (${theme.ruby}) だよ:anger:
 				`, process.env.CHANNEL_SANDBOX, {broadcast: true, threadPosted: thread});
+
+				const details = [
+					`• 出題ソース: ${theme.sourceDescription}`,
+					...(theme.aliases.length > 0 ? [`• 別解: ${theme.aliases.join(' / ')}`] : []),
+					'',
+					...hints.map((hint) => `• ${revealHint(hint, theme)}`),
+				].join('\n');
+
 				await postMessage(stripIndents`
-					${hints.map((hint) => hint.replace(theme.word, `• ＊${theme.word}＊`)).join('\n')}
+					${details}
 				`, process.env.CHANNEL_SANDBOX, {broadcast: false, threadPosted: thread});
-				theme = null;
+				currentQuiz = null;
 				thread = null;
 			}
 		}, 3 * 60 * 1000);
@@ -223,17 +213,26 @@ export default async (clients: SlackInterface) => {
 			return;
 		}
 		const {channel, text, thread_ts, ts} = message;
-		if (theme !== null && thread_ts === thread) {
-			if (text === theme.word || hiraganize(text) === hiraganize(theme.ruby)) {
-				const {word, ruby} = theme;
-				theme = null;
+		if (currentQuiz !== null && thread_ts === thread) {
+			if (isCorrectAnswer(text, currentQuiz.theme)) {
+				const {theme, hints} = currentQuiz;
+				const {word, ruby, aliases, sourceDescription} = theme;
+				currentQuiz = null;
 
 				await postMessage(stripIndents`
 					<@${message.user}> 正解:tada:
 					答えは＊${word}＊ (${ruby}) だよ:tada:
 				`, channel, {broadcast: true, threadPosted: thread});
+
+				const details = [
+					`• 出題ソース: ${sourceDescription}`,
+					...(aliases.length > 0 ? [`• 別解: ${aliases.join(' / ')}`] : []),
+					'',
+					...hints.map((hint) => `• ${revealHint(hint, theme)}`),
+				].join('\n');
+
 				await postMessage(stripIndents`
-					${hints.map((hint) => hint.replace(word, `• ＊${word}＊`)).join('\n')}
+					${details}
 				`, channel, {broadcast: false, threadPosted: thread});
 				increment(message.user, "pockygame-win");
 				const date = new Date().toLocaleString('en-US', {
