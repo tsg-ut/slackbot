@@ -1,6 +1,6 @@
 import type {SlackInterface} from './slack';
 import {extractMessage, isGenericMessage} from './slackUtils';
-import type {ChatPostMessageArguments, GenericMessageEvent, WebClient} from '@slack/web-api';
+import type {ChatPostMessageArguments, ChatUpdateArguments, GenericMessageEvent, WebClient} from '@slack/web-api';
 import type {MessageEvent} from '@slack/bolt';
 import logger from './logger';
 import {Deferred} from './utils';
@@ -18,6 +18,7 @@ export abstract class ChannelLimitedBot {
 	protected readonly iconEmoji: string = ':robot_face:';
 	protected readonly progressMessageChannel: string | undefined = process.env.CHANNEL_SANDBOX;
 	protected readonly progressMessages: Map<string, Deferred<string | null>> = new Map(); // gameMessageTs -> Deferred<progressMessageTs>
+	protected readonly gameMessageUrls: Map<string, string> = new Map(); // gameMessageTs -> gameMessageUrl
 
 	constructor(
 		protected readonly slackClients: SlackInterface,
@@ -87,6 +88,7 @@ export abstract class ChannelLimitedBot {
 					});
 				}
 
+				this.gameMessageUrls.set(responseTs, responseUrl);
 				const progressMessageTs = await this.postProgressMessage(channel, responseTs, responseUrl);
 				if (progressMessageTs) {
 					progressMessageDeferred.resolve(progressMessageTs);
@@ -103,6 +105,14 @@ export abstract class ChannelLimitedBot {
 				ts: event.ts!,
 			});
 		}
+	}
+
+	protected formatProgressMessage(
+		_gameMessageChannel: string,
+		_gameMessageTs: string,
+		gameMessageUrl: string,
+	): string | Partial<ChatPostMessageArguments> {
+		return `<${gameMessageUrl}|進行中のゲーム>があります！`;
 	}
 
 	protected async postProgressMessage(
@@ -127,14 +137,69 @@ export abstract class ChannelLimitedBot {
 			return undefined;
 		}
 
-		const progressMessage = await this.postMessage({
-			channel: this.progressMessageChannel,
-			text: `<${gameMessageLink}|進行中のゲーム>があります！`,
-			unfurl_links: false,
-			unfurl_media: false,
-		});
+		this.gameMessageUrls.set(gameMessageTs, gameMessageLink);
+
+		const formatted = this.formatProgressMessage(gameMessageChannel, gameMessageTs, gameMessageLink);
+		const messageArgs = (typeof formatted === 'string'
+			? {
+				channel: this.progressMessageChannel,
+				text: formatted,
+				unfurl_links: false,
+				unfurl_media: false,
+			}
+			: {
+				channel: this.progressMessageChannel,
+				unfurl_links: false,
+				unfurl_media: false,
+				...formatted,
+			}) as ChatPostMessageArguments;
+
+		const progressMessage = await this.postMessage(messageArgs);
 
 		return progressMessage.ts;
+	}
+
+	public async updateProgressMessage(
+		gameMessageTs: string,
+		message:
+			| string
+			| Partial<ChatUpdateArguments>
+			| ((url: string) => string | Partial<ChatUpdateArguments>),
+	): Promise<void> {
+		if (this.progressMessageChannel === undefined) {
+			return;
+		}
+
+		const progressMessageDeferred = this.progressMessages.get(gameMessageTs);
+		if (progressMessageDeferred === undefined) {
+			return;
+		}
+
+		const progressMessageTs = await progressMessageDeferred.promise;
+		if (progressMessageTs === null) {
+			return;
+		}
+
+		const gameMessageUrl = this.gameMessageUrls.get(gameMessageTs) ?? '';
+		const resolvedMessage = typeof message === 'function' ? message(gameMessageUrl) : message;
+
+		const updateArgs = (typeof resolvedMessage === 'string'
+			? {
+				channel: this.progressMessageChannel,
+				ts: progressMessageTs,
+				text: resolvedMessage,
+			}
+			: {
+				channel: this.progressMessageChannel,
+				ts: progressMessageTs,
+				...resolvedMessage,
+			}) as ChatUpdateArguments;
+
+		try {
+			await this.slack.chat.update(updateArgs);
+		} catch (error: any) {
+			this.log.error(`Failed to update progress message: ${error?.message}`);
+		}
 	}
 
 	protected postMessage(message: ChatPostMessageArguments) {
@@ -156,6 +221,7 @@ export abstract class ChannelLimitedBot {
 		}
 
 		this.progressMessages.delete(gameMessageTs);
+		this.gameMessageUrls.delete(gameMessageTs);
 		const progressMessageTs = await progressMessageDeferred.promise;
 
 		if (progressMessageTs !== null) {

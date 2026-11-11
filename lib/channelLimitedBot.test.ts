@@ -26,6 +26,10 @@ describe('ChannelLimitedBot', () => {
 			ok: true,
 			ts: 'progress.123',
 		});
+		(slack.webClient.chat.update as Mock).mockResolvedValue({
+			ok: true,
+			ts: 'progress.123',
+		});
 		(slack.webClient.chat.delete as Mock).mockResolvedValue({
 			ok: true,
 		});
@@ -205,5 +209,67 @@ describe('ChannelLimitedBot', () => {
 		});
 
 		expect(onWakeWord).not.toHaveBeenCalled();
+	});
+
+	it('customizes progress message using formatProgressMessage', async () => {
+		const disallowedChannel = 'C9876543210';
+		const responseTs = '12345.6789';
+		const progressChannel = 'CPROGRESS';
+
+		class TestBot extends ChannelLimitedBot {
+			protected override wakeWordRegex = /wakeword/;
+			protected override allowedChannels = [slack.fakeChannel];
+			protected override onWakeWord = vi.fn().mockResolvedValue(responseTs);
+			protected override progressMessageChannel = progressChannel;
+
+			protected override formatProgressMessage(
+				gameMessageChannel: string,
+				gameMessageTs: string,
+				gameMessageUrl: string,
+			) {
+				return `カスタム進行中: <${gameMessageUrl}|ここをクリック>`;
+			}
+		}
+		new TestBot(slack);
+
+		slack.postMessage('wakeword in disallowed channel', {channel: disallowedChannel});
+		await new Promise(setImmediate);
+
+		expect(slack.webClient.chat.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+			channel: progressChannel,
+			text: 'カスタム進行中: <https://slack.com/archives/CHANNEL_ID/p1234567890123456|ここをクリック>',
+		}));
+	});
+
+	it('updates progress message dynamically using updateProgressMessage', async () => {
+		const disallowedChannel = 'C9876543210';
+		const responseTs = '12345.6789';
+		const progressChannel = 'CPROGRESS';
+
+		let botInstance!: TestBot;
+		class TestBot extends ChannelLimitedBot {
+			protected override wakeWordRegex = /wakeword/;
+			protected override allowedChannels = [slack.fakeChannel];
+			protected override onWakeWord = vi.fn().mockResolvedValue(responseTs);
+			protected override progressMessageChannel = progressChannel;
+
+			constructor(clients: any) {
+				super(clients);
+				botInstance = this;
+			}
+		}
+		new TestBot(slack);
+
+		slack.postMessage('wakeword in disallowed channel', {channel: disallowedChannel});
+		await new Promise(setImmediate);
+
+		// Update with callback
+		await botInstance.updateProgressMessage(responseTs, (url) => `更新後: <${url}|リンク>`);
+
+		expect(slack.webClient.chat.update).toHaveBeenCalledWith(expect.objectContaining({
+			channel: progressChannel,
+			ts: 'progress.123',
+			text: '更新後: <https://slack.com/archives/CHANNEL_ID/p1234567890123456|リンク>',
+		}));
 	});
 });
