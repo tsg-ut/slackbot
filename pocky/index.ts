@@ -4,10 +4,12 @@ import {get} from 'lodash';
 import {stripIndents} from 'common-tags';
 import {unlock, increment} from '../achievements/index.js';
 import logger from '../lib/logger';
-import {getMemberName} from '../lib/slackUtils';
+import {ChannelLimitedBot} from '../lib/channelLimitedBot';
+import {extractMessage, getMemberName, isGenericMessage} from '../lib/slackUtils';
 import State from '../lib/state';
+import {Deferred} from '../lib/utils';
 import type {SlackInterface} from '../lib/slack';
-import type {GenericMessageEvent} from '@slack/bolt';
+import type {GenericMessageEvent, MessageEvent} from '@slack/bolt';
 import {
 	generateQuiz,
 	isCorrectAnswer,
@@ -120,185 +122,285 @@ function normalize(text: string): string {
 		.toLowerCase();
 }
 
-export default async (clients: SlackInterface) => {
-	const {eventClient, webClient: slack} = clients;
+interface PockyState {
+	quineSolutions: string[];
+	longQuineSolutions: string[];
+}
 
-	const state = await State.init('pocky', {
-		quineSolutions: [] as string[],
-		longQuineSolutions: [] as string[],
-	});
+interface PockyGame {
+	quiz: PockyQuiz;
+	channel: string;
+	thread: string;
+	timer: NodeJS.Timeout;
+}
 
-	function postMessage(message: string, channel: string, postThreadOptions: {broadcast?: boolean; threadPosted?: string | null} = {}) {
-		const {broadcast, threadPosted} = {
-			broadcast: false,
-			threadPosted: null,
-			...postThreadOptions,
-		};
-		return slack.chat.postMessage({
+const isNovember11 = () => (
+	new Date().toLocaleString('en-US', {
+		timeZone: 'Asia/Tokyo',
+		month: 'numeric',
+		day: 'numeric',
+	}) === '11/11'
+);
+
+class PockyBot extends ChannelLimitedBot {
+	protected override readonly wakeWordRegex = /^ポッキーゲーム$/;
+
+	protected override readonly username = 'pocky';
+
+	protected override readonly iconEmoji = ':google:';
+
+	private game: PockyGame | null = null;
+
+	// 出題の生成中に重複してゲームが開始されるのを防ぐ
+	private isGenerating = false;
+
+	private readonly recentThemes: string[] = [];
+
+	constructor(
+		protected readonly slackClients: SlackInterface,
+		private readonly state: PockyState,
+	) {
+		super(slackClients);
+	}
+
+	protected override onWakeWord(_message: GenericMessageEvent, channel: string): Promise<string | null> {
+		const gameMessageDeferred = new Deferred<string | null>();
+
+		(async () => {
+			if (this.game !== null) {
+				const {permalink} = await this.slack.chat.getPermalink({
+					channel: this.game.channel,
+					message_ts: this.game.thread,
+				});
+				await this.postMessage({
+					channel,
+					text: `<${permalink}|進行中のゲーム>があるよ:thinking_face:`,
+					unfurl_links: false,
+					unfurl_media: false,
+				});
+				gameMessageDeferred.resolve(null);
+				return;
+			}
+
+			if (this.isGenerating) {
+				gameMessageDeferred.resolve(null);
+				return;
+			}
+
+			this.isGenerating = true;
+			try {
+				gameMessageDeferred.resolve(await this.startGame(channel));
+			} finally {
+				this.isGenerating = false;
+			}
+		})().catch((error: unknown) => {
+			this.log.error('Failed to start pocky game', error);
+			const errorText =
+				error instanceof Error && error.stack !== undefined
+					? error.stack : String(error);
+			this.postMessage({
+				channel,
+				text: `エラー😢\n\`${errorText}\``,
+			});
+			gameMessageDeferred.resolve(null);
+		});
+
+		return gameMessageDeferred.promise;
+	}
+
+	private async startGame(channel: string): Promise<string | null> {
+		const quiz = await generateQuiz(this.recentThemes);
+
+		if (quiz === null) {
+			await this.postMessage({
+				channel,
+				text: 'エラーΩ＼ζ°)ﾁｰﾝ',
+			});
+			return null;
+		}
+
+		this.recentThemes.push(quiz.theme.word);
+		if (this.recentThemes.length > 50) {
+			this.recentThemes.shift();
+		}
+
+		this.log.info(quiz.theme);
+
+		const {ts: thread} = await this.postMessage({
 			channel,
-			text: message,
-			username: "pocky",
-			icon_emoji: ":google:",
-			thread_ts: threadPosted ? threadPosted : null,
-			reply_broadcast: broadcast,
+			text: stripIndents`
+				ポッキーゲームを始めるよ～
+				${quiz.maskedHints.join(' / ')}
+			`,
+		});
+
+		await this.postMessage({
+			channel,
+			thread_ts: thread,
+			text: stripIndents`
+				下の単語の〇〇に共通して入る単語は何かな～？
+				スレッドで回答してね!
+				3分経過で答えを発表するよ～
+
+				${quiz.maskedHints.map((hint) => `• ${hint}`).join('\n')}
+			`,
+		});
+
+		const timer = setTimeout(() => {
+			this.onTimeUp().catch((error: unknown) => {
+				this.log.error('Failed to finish pocky game', error);
+			});
+		}, 3 * 60 * 1000);
+
+		this.game = {quiz, channel, thread, timer};
+
+		return thread;
+	}
+
+	private async onTimeUp() {
+		const {game} = this;
+		if (game === null) {
+			return;
+		}
+		this.game = null;
+
+		const {quiz: {theme}, channel, thread} = game;
+
+		await this.postMessage({
+			channel,
+			thread_ts: thread,
+			reply_broadcast: true,
+			text: stripIndents`
+				なんでわからないの？
+				答えは＊${theme.word}＊ (${theme.ruby}) だよ:anger:
+			`,
+		});
+		await this.postAnswerDetails(game);
+		await this.deleteProgressMessage(thread);
+	}
+
+	private async onAnswer(message: GenericMessageEvent, game: PockyGame) {
+		const {quiz: {theme}, channel, thread} = game;
+
+		if (!isCorrectAnswer(message.text, theme)) {
+			await this.slack.reactions.add({
+				name: 'no_good',
+				channel: message.channel,
+				timestamp: message.ts,
+			});
+			return;
+		}
+
+		clearTimeout(game.timer);
+		this.game = null;
+
+		await this.postMessage({
+			channel,
+			thread_ts: thread,
+			reply_broadcast: true,
+			text: stripIndents`
+				<@${message.user}> 正解:tada:
+				答えは＊${theme.word}＊ (${theme.ruby}) だよ:tada:
+			`,
+		});
+		await this.postAnswerDetails(game);
+		await this.deleteProgressMessage(thread);
+
+		increment(message.user, 'pockygame-win');
+		if (isNovember11()) {
+			unlock(message.user, 'pockygame-on-nov-11');
+		}
+	}
+
+	private postAnswerDetails({quiz: {theme, hints}, channel, thread}: PockyGame) {
+		const details = [
+			`• 出題ソース: ${theme.sourceDescription}`,
+			...(theme.aliases.length > 0 ? [`• 別解: ${theme.aliases.join(' / ')}`] : []),
+			'',
+			...hints.map((hint) => `• ${revealHint(hint, theme)}`),
+		].join('\n');
+
+		return this.postMessage({
+			channel,
+			thread_ts: thread,
+			text: details,
 		});
 	}
 
-	let currentQuiz: PockyQuiz | null = null;
-	let thread: string | null = null;
-	let isGenerating: boolean = false;
-	const recentThemes: string[] = [];
-
-	async function pockygame() {
-		if (currentQuiz !== null || isGenerating) {
-			return;
-		}
-
-		isGenerating = true;
-		const quiz = await generateQuiz(recentThemes);
-
-		if (quiz === null) {
-			postMessage("エラーΩ＼ζ°)ﾁｰﾝ", process.env.CHANNEL_SANDBOX);
-			return;
-		}
-
-		currentQuiz = quiz;
-		isGenerating = false;
-		recentThemes.push(quiz.theme.word);
-		if (recentThemes.length > 50) {
-			recentThemes.shift();
-		}
-
-		log.info(quiz.theme);
-
-		const message = await postMessage(stripIndents`
-			ポッキーゲームを始めるよ～
-			${quiz.maskedHints.join(' / ')}
-		`, process.env.CHANNEL_SANDBOX, {broadcast: false});
-
-		thread = message.ts;
-
-		await postMessage(stripIndents`
-			下の単語の〇〇に共通して入る単語は何かな～？
-			スレッドで回答してね!
-			3分経過で答えを発表するよ～
-
-			${quiz.maskedHints.map((hint) => `• ${hint}`).join('\n')}
-		`, process.env.CHANNEL_SANDBOX, {broadcast: false, threadPosted: thread});
-
-		const thisQuiz = quiz;
-		setTimeout(async () => {
-			if (currentQuiz === thisQuiz) {
-				const {theme, hints} = currentQuiz;
-				await postMessage(stripIndents`
-					なんでわからないの？
-					答えは＊${theme.word}＊ (${theme.ruby}) だよ:anger:
-				`, process.env.CHANNEL_SANDBOX, {broadcast: true, threadPosted: thread});
-
-				const details = [
-					`• 出題ソース: ${theme.sourceDescription}`,
-					...(theme.aliases.length > 0 ? [`• 別解: ${theme.aliases.join(' / ')}`] : []),
-					'',
-					...hints.map((hint) => `• ${revealHint(hint, theme)}`),
-				].join('\n');
-
-				await postMessage(stripIndents`
-					${details}
-				`, process.env.CHANNEL_SANDBOX, {broadcast: false, threadPosted: thread});
-				currentQuiz = null;
-				thread = null;
-			}
-		}, 3 * 60 * 1000);
-	}
-
-	eventClient.on('message', async (message: GenericMessageEvent) => {
-		if (message.subtype) {
-			return;
-		}
-		const {channel, text, thread_ts, ts} = message;
-		if (currentQuiz !== null && thread_ts === thread) {
-			if (isCorrectAnswer(text, currentQuiz.theme)) {
-				const {theme, hints} = currentQuiz;
-				const {word, ruby, aliases, sourceDescription} = theme;
-				currentQuiz = null;
-
-				await postMessage(stripIndents`
-					<@${message.user}> 正解:tada:
-					答えは＊${word}＊ (${ruby}) だよ:tada:
-				`, channel, {broadcast: true, threadPosted: thread});
-
-				const details = [
-					`• 出題ソース: ${sourceDescription}`,
-					...(aliases.length > 0 ? [`• 別解: ${aliases.join(' / ')}`] : []),
-					'',
-					...hints.map((hint) => `• ${revealHint(hint, theme)}`),
-				].join('\n');
-
-				await postMessage(stripIndents`
-					${details}
-				`, channel, {broadcast: false, threadPosted: thread});
-				increment(message.user, "pockygame-win");
-				const date = new Date().toLocaleString('en-US', {
-					timeZone: 'Asia/Tokyo',
-					month: 'numeric',
-					day: 'numeric',
-				});
-				if (date === '11/11') {
-					unlock(message.user, "pockygame-on-nov-11");
-				}
-
-				thread = null;
-				return;
-			} else {
-				slack.reactions.add({
-					name: 'no_good',
-					channel: channel,
-					timestamp: ts,
-				});
-			}
-		}
-		if (channel !== process.env.CHANNEL_SANDBOX) {
-			return;
-		}
-		if (text === 'ポッキーゲーム') {
-			pockygame();
-			return;
-		}
-		const query = slackDecode(text.trim());
+	private async onPockyQuery(message: GenericMessageEvent) {
+		const query = slackDecode(message.text.trim());
 		const match = /([\s\S]+?)([？?]+)$/.exec(query);
 		if (!match) {
 			return;
 		}
+
 		const result = await reply(match[1], match[2].length - 1);
-		if (result !== null) {
-			postMessage(htmlEscape(result), channel, {broadcast: false, threadPosted: thread_ts});
-			unlock(message.user, "pocky");
-			getMemberName(message.user).then((value) => {
-				if (value === result) {
-					unlock(message.user, "self-pocky");
-				}
-			}, (error: Error) => {
-				log.error("error:", error.message);
-			});
-			if (Array.from(result).length >= 20) {
-				unlock(message.user, "long-pocky");
-			}
-			if (match[1] === result && !state.quineSolutions.includes(result)) {
-				unlock(message.user, "quine-pocky");
-				state.quineSolutions.push(result);
-			}
-			if (Array.from(result).length >= 20 && match[1] === result && !state.longQuineSolutions.includes(result)) {
-				unlock(message.user, "long-quine-pocky");
-				state.longQuineSolutions.push(result);
-			}
-			const date = new Date().toLocaleString('en-US', {
-				timeZone: 'Asia/Tokyo',
-				month: 'numeric',
-				day: 'numeric',
-			});
-			if (date === '11/11') {
-				unlock(message.user, "pocky-on-nov-11");
-			}
+		if (result === null) {
+			return;
 		}
+
+		await this.postMessage({
+			channel: message.channel,
+			text: htmlEscape(result),
+			...(message.thread_ts ? {thread_ts: message.thread_ts} : {}),
+		});
+
+		unlock(message.user, 'pocky');
+		getMemberName(message.user).then((value) => {
+			if (value === result) {
+				unlock(message.user, 'self-pocky');
+			}
+		}, (error: Error) => {
+			this.log.error('error:', error.message);
+		});
+		if (Array.from(result).length >= 20) {
+			unlock(message.user, 'long-pocky');
+		}
+		if (match[1] === result && !this.state.quineSolutions.includes(result)) {
+			unlock(message.user, 'quine-pocky');
+			this.state.quineSolutions.push(result);
+		}
+		if (Array.from(result).length >= 20 && match[1] === result && !this.state.longQuineSolutions.includes(result)) {
+			unlock(message.user, 'long-quine-pocky');
+			this.state.longQuineSolutions.push(result);
+		}
+		if (isNovember11()) {
+			unlock(message.user, 'pocky-on-nov-11');
+		}
+	}
+
+	protected override async onMessageEvent(event: MessageEvent) {
+		await super.onMessageEvent(event);
+
+		const message = extractMessage(event);
+
+		if (
+			message === null ||
+			!message.text ||
+			!message.user ||
+			!isGenericMessage(message)
+		) {
+			return;
+		}
+
+		const {game} = this;
+		if (game !== null && message.channel === game.channel && message.thread_ts === game.thread) {
+			await this.onAnswer(message, game);
+			return;
+		}
+
+		// サジェスト機能はゲームではないため、従来どおり #sandbox でのみ動作させる
+		if (message.channel === process.env.CHANNEL_SANDBOX && !this.wakeWordRegex.test(message.text)) {
+			await this.onPockyQuery(message);
+		}
+	}
+}
+
+export default async (slackClients: SlackInterface) => {
+	const state = await State.init<PockyState>('pocky', {
+		quineSolutions: [],
+		longQuineSolutions: [],
 	});
+
+	return new PockyBot(slackClients, state);
 };
