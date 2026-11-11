@@ -5,6 +5,8 @@
 
 class AteQuiz {
 	constructor(slack, problem, options) {
+		this.slack = (slack && slack.webClient) || slack;
+		this.eventClient = slack && slack.eventClient;
 		this.problem = problem;
 	}
 
@@ -20,7 +22,12 @@ class AteQuiz {
 
 const typicalAteQuizHintTexts = [];
 
-const typicalMessageTextsGenerator = {};
+const typicalMessageTextsGenerator = {
+	problem: (genre) => `この${genre}なーんだ`,
+	immediate: () => '15秒経過でヒントを出すよ♫',
+	solved: (answer) => `<@[[!user]]> 正解:tada:\n答えは${answer}だよ:muscle:`,
+	unsolved: (answer) => `もう、しっかりして！\n答えは${answer}だよ:anger:`,
+};
 
 module.exports = {AteQuiz, typicalAteQuizHintTexts, typicalMessageTextsGenerator};
 module.exports.default = module.exports;
