@@ -1,6 +1,6 @@
 import axios from 'axios';
 import * as emoji from 'node-emoji';
-import {inspect} from 'util';
+import {inspect} from 'node:util';
 import {get} from 'lodash';
 import {stripIndents} from 'common-tags';
 import {unlock, increment} from '../achievements/index.js';
