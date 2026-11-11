@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as emoji from 'node-emoji';
+import {inspect} from 'util';
 import {get} from 'lodash';
 import {stripIndents} from 'common-tags';
 import {unlock, increment} from '../achievements/index.js';
@@ -178,18 +179,18 @@ class PockyBot extends ChannelLimitedBot {
 					unfurl_links: false,
 					unfurl_media: false,
 				});
-				gameMessageDeferred.resolve(null);
+				void gameMessageDeferred.resolve(null);
 				return;
 			}
 
 			if (this.isGenerating) {
-				gameMessageDeferred.resolve(null);
+				void gameMessageDeferred.resolve(null);
 				return;
 			}
 
 			this.isGenerating = true;
 			try {
-				gameMessageDeferred.resolve(await this.startGame(channel));
+				void gameMessageDeferred.resolve(await this.startGame(channel));
 			} finally {
 				this.isGenerating = false;
 			}
@@ -197,12 +198,12 @@ class PockyBot extends ChannelLimitedBot {
 			this.log.error('Failed to start pocky game', error);
 			const errorText =
 				error instanceof Error && error.stack !== undefined
-					? error.stack : String(error);
+					? error.stack : inspect(error);
 			this.postMessage({
 				channel,
 				text: `エラー😢\n\`${errorText}\``,
 			});
-			gameMessageDeferred.resolve(null);
+			void gameMessageDeferred.resolve(null);
 		});
 
 		return gameMessageDeferred.promise;
@@ -306,9 +307,9 @@ class PockyBot extends ChannelLimitedBot {
 		await this.postAnswerDetails(game);
 		await this.deleteProgressMessage(thread);
 
-		increment(message.user, 'pockygame-win');
+		await increment(message.user, 'pockygame-win');
 		if (isNovember11()) {
-			unlock(message.user, 'pockygame-on-nov-11');
+			await unlock(message.user, 'pockygame-on-nov-11');
 		}
 	}
 
@@ -345,27 +346,27 @@ class PockyBot extends ChannelLimitedBot {
 			...(message.thread_ts ? {thread_ts: message.thread_ts} : {}),
 		});
 
-		unlock(message.user, 'pocky');
-		getMemberName(message.user).then((value) => {
-			if (value === result) {
-				unlock(message.user, 'self-pocky');
+		await unlock(message.user, 'pocky');
+		try {
+			if (await getMemberName(message.user) === result) {
+				await unlock(message.user, 'self-pocky');
 			}
-		}, (error: Error) => {
-			this.log.error('error:', error.message);
-		});
+		} catch (error) {
+			this.log.error('Failed to check self-pocky achievement', error);
+		}
 		if (Array.from(result).length >= 20) {
-			unlock(message.user, 'long-pocky');
+			await unlock(message.user, 'long-pocky');
 		}
 		if (match[1] === result && !this.state.quineSolutions.includes(result)) {
-			unlock(message.user, 'quine-pocky');
 			this.state.quineSolutions.push(result);
+			await unlock(message.user, 'quine-pocky');
 		}
 		if (Array.from(result).length >= 20 && match[1] === result && !this.state.longQuineSolutions.includes(result)) {
-			unlock(message.user, 'long-quine-pocky');
 			this.state.longQuineSolutions.push(result);
+			await unlock(message.user, 'long-quine-pocky');
 		}
 		if (isNovember11()) {
-			unlock(message.user, 'pocky-on-nov-11');
+			await unlock(message.user, 'pocky-on-nov-11');
 		}
 	}
 
@@ -399,11 +400,11 @@ class PockyBot extends ChannelLimitedBot {
 	}
 }
 
-export default async (slackClients: SlackInterface) => {
+export default async function pocky(slackClients: SlackInterface) {
 	const state = await State.init<PockyState>('pocky', {
 		quineSolutions: [],
 		longQuineSolutions: [],
 	});
 
 	return new PockyBot(slackClients, state);
-};
+}
