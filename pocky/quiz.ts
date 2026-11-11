@@ -297,7 +297,7 @@ ${historyPrompt}
 	const selected = sample(candidates)!;
 	return {
 		word: selected.word,
-		ruby: hiraganize(selected.ruby),
+		ruby: hiraganize(selected.ruby ?? ''),
 		aliases: (selected.aliases ?? []).map((a) => a.trim()).filter(Boolean),
 		source: 'llm',
 		sourceDescription: 'AI生成 (gpt-6-luna)',

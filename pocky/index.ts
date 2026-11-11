@@ -146,13 +146,15 @@ export default async (clients: SlackInterface) => {
 
 	let currentQuiz: PockyQuiz | null = null;
 	let thread: string | null = null;
+	let isGenerating: boolean = false;
 	const recentThemes: string[] = [];
 
 	async function pockygame() {
-		if (currentQuiz !== null) {
+		if (currentQuiz !== null || isGenerating) {
 			return;
 		}
 
+		isGenerating = true;
 		const quiz = await generateQuiz(recentThemes);
 
 		if (quiz === null) {
@@ -161,6 +163,7 @@ export default async (clients: SlackInterface) => {
 		}
 
 		currentQuiz = quiz;
+		isGenerating = false;
 		recentThemes.push(quiz.theme.word);
 		if (recentThemes.length > 50) {
 			recentThemes.shift();
