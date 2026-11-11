@@ -161,6 +161,33 @@ describe('pockygame', () => {
 
 		expect(reaction.name).toBe('no_good');
 	});
+
+	it('responds to "ほげ?" in the games channel', async () => {
+		mockedAxios.response = {data: [null, ['ほげ ふが']]};
+		const message = await slack.getResponseTo('ほげ?');
+
+		expect(message.text).toBe('ふが');
+	});
+});
+
+describe('pocky in other channels', () => {
+	beforeEach(async () => {
+		slack = new Slack();
+		process.env.CHANNEL_SANDBOX = 'CSANDBOX';
+		process.env.CHANNEL_GAMES = 'CGAMES';
+		await pocky(slack);
+	});
+
+	it('does not respond to "ほげ?"', async () => {
+		mockedAxios.response = {data: [null, ['ほげ ふが']]};
+		const postMessage = vi.fn();
+		slack.on('chat.postMessage', postMessage);
+
+		slack.postMessage('ほげ?');
+		await new Promise((resolve) => setTimeout(resolve, 50));
+
+		expect(postMessage).not.toHaveBeenCalled();
+	});
 });
 
 describe('pockygame from a non-game channel', () => {

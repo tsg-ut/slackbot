@@ -389,8 +389,11 @@ class PockyBot extends ChannelLimitedBot {
 			return;
 		}
 
-		// サジェスト機能はゲームではないため、従来どおり #sandbox でのみ動作させる
-		if (message.channel === process.env.CHANNEL_SANDBOX && !this.wakeWordRegex.test(message.text)) {
+		// サジェスト機能はゲームではないため ChannelLimitedBot の転送対象外とし、#sandbox とゲーム用チャンネルの両方で動作させる
+		const isSuggestionChannel =
+			message.channel === process.env.CHANNEL_SANDBOX ||
+			this.allowedChannels.includes(message.channel);
+		if (isSuggestionChannel && !this.wakeWordRegex.test(message.text)) {
 			await this.onPockyQuery(message);
 		}
 	}
