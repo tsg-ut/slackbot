@@ -17,24 +17,14 @@ import {SlackInterface} from '../lib/slack';
 import {Deferred, Loader} from '../lib/utils';
 import {type PrefectureKanji, prefectures} from '../room-gacha/prefectures';
 import chakuwikiTitles from './chakuwiki-title-map.json';
-
-const MediaWikiRevisionsResponseSchema = z.object({
-	query: z.object({
-		pages: z.record(z.object({
-			revisions: z.array(z.object({
-				'*': z.string(),
-			})).min(1),
-		})),
-	}),
-});
-
-const MediaWikiExtractResponseSchema = z.object({
-	query: z.object({
-		pages: z.record(z.object({
-			extract: z.string(),
-		})),
-	}),
-});
+import {
+	MediaWikiRevisionsResponseSchema,
+	MediaWikiExtractResponseSchema,
+	extractWikipediaPlaintext,
+	getPlaintextWikipedia,
+	getWikimediaImageUrl,
+} from './common';
+import {PrefectureQuizBot} from './prefecture';
 
 const chakuwikiTitleMap = new Map(Object.entries(chakuwikiTitles));
 
@@ -125,18 +115,6 @@ interface DictionaryInformation {
 	description: string;
 }
 
-const extractWikipediaPlaintext = (content: string) => {
-	const normalizedContent = content
-		.replaceAll(/<ref[^/>]*>.*?<\/ref>/g, '')
-		.replaceAll(/<ref[^>]*\/>/g, '')
-		.replaceAll(/\[\[(?:File|Image|ファイル):[^\]]+\]\]/gi, '')
-		.replaceAll(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2')
-		.replaceAll(/\[\[([^\]]+)\]\]/g, '$1')
-		.replaceAll(/^\|/g, '')
-		.replaceAll(/\{\{.*?\}\}/g, '')
-		.trim();
-	return normalizedContent;
-};
 
 const getWikipediaSource = async (prefName: string) => {
 	const title = `${prefName}の${prefName === '東京都' ? '区' : ''}市町村章一覧`;
@@ -212,25 +190,6 @@ const extractPlaceImage = (content: string) => {
 	throw new Error('Failed to extract place image');
 };
 
-const getPlaintextWikipedia = async (title: string): Promise<string> => {
-	log.info(`Getting wikipedia ${title}...`);
-
-	const url = `https://ja.wikipedia.org/w/api.php?${qs.encode({
-		format: 'json',
-		action: 'query',
-		prop: 'extracts',
-		explaintext: true,
-		titles: title,
-	})}`;
-
-	const response = await fetch(url);
-	const json = await response.json();
-	const {query: {pages}} = MediaWikiExtractResponseSchema.parse(json);
-
-	const content = Object.values(pages)[0].extract;
-
-	return content;
-};
 
 const getKotobankCityDescription = async (city: CitySymbol): Promise<DictionaryInformation | null> => {
 	log.info(`Getting kotobank britannica information for ${city.cityName}...`);
@@ -403,12 +362,6 @@ const getRandomCitySymbol = async (prefecturesFilter: PrefectureKanji[] | null):
 	return {...citySymbol, ...cityInformation};
 };
 
-const getWikimediaImageUrl = (fileName: string) => {
-	if (fileName.startsWith('http')) {
-		return fileName;
-	}
-	return `https://commons.wikimedia.org/wiki/Special:FilePath/${qs.escape(fileName)}?width=200`;
-};
 
 const getCorrectAnswers = (city: City): string[] => (
 	[
@@ -762,4 +715,7 @@ class CitySymbolBot extends ChannelLimitedBot {
 	}
 }
 
-export default (slackClients: SlackInterface) => new CitySymbolBot(slackClients);
+export default (slackClients: SlackInterface) => {
+	new CitySymbolBot(slackClients);
+	new PrefectureQuizBot(slackClients);
+};
