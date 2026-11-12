@@ -24,9 +24,9 @@ export async function fetchGoogleSuggestions(text: string): Promise<string[]> {
 export function normalize(text: string): string {
 	return text
 		.normalize('NFKC')
-		.replace(/️/g, '')
-		.replace(/‍/g, ' ')
-		.replace(/〜/g, '~')
+		.replaceAll('️', '')
+		.replaceAll('‍', ' ')
+		.replaceAll('〜', '~')
 		.toLowerCase()
 		.trim();
 }
