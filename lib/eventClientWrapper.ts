@@ -37,7 +37,7 @@ export class EventClientWrapper extends EventEmitter {
 					return;
 				}
 			} else {
-				log.warn('Event without event_id received', { event, teamId: eventBody.team_id });
+				log.warn('Event without event_id received', { event, teamId: eventBody?.team_id });
 			}
 
 			// Emit the event to our own listeners after deduplication
