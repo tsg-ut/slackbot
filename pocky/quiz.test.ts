@@ -1,8 +1,12 @@
 import {describe, it, expect, vi} from 'vitest';
 
+vi.mock('../achievements');
 vi.mock('../lib/slack');
+vi.mock('../lib/slackUtils');
 vi.mock('../lib/openai');
 
+import type {ChatPostMessageArguments} from '@slack/web-api';
+import Slack from '../lib/slackMock';
 import {
 	normalize,
 	normalizeAnswer,
@@ -10,6 +14,8 @@ import {
 	maskHint,
 	revealHint,
 	validateAndBuildQuiz,
+	PockyGameBot,
+	PockyQuiz,
 	PockyTheme,
 } from './quiz';
 
@@ -142,6 +148,96 @@ describe('pocky/quiz', () => {
 			expect(quiz).not.toBeNull();
 			expect(quiz?.hints.length).toBe(6);
 			expect(quiz?.maskedHints[0]).toBe('〇〇の日');
+		});
+	});
+});
+
+describe('PockyGameBot', () => {
+	const mockQuiz: PockyQuiz = {
+		theme: {
+			word: 'iPhone',
+			ruby: 'あいふぉん',
+			aliases: ['アイフォン', 'スマホ'],
+			source: 'llm',
+			sourceDescription: 'AI生成 (gpt-6-luna)',
+		},
+		hints: ['iPhone 16', 'iPhone ケース', 'iPhone 値段', 'iPhone 買取', 'iPhone バッテリー'],
+		maskedHints: ['〇〇 16', '〇〇 ケース', '〇〇 値段', '〇〇 買取', '〇〇 バッテリー'],
+	};
+
+	let slack: InstanceType<typeof Slack>;
+
+	const startGame = async () => {
+		const message = await slack.getResponseTo('ポッキーゲーム');
+		await slack.waitForResponse();
+		return message;
+	};
+
+	describe('in the games channel', () => {
+		beforeEach(() => {
+			slack = new Slack();
+			process.env.CHANNEL_SANDBOX = 'CSANDBOX';
+			process.env.CHANNEL_GAMES = slack.fakeChannel;
+			new PockyGameBot(slack, {generateQuiz: async () => mockQuiz});
+		});
+
+		it('starts a game by "ポッキーゲーム"', async () => {
+			const message = await startGame();
+
+			expect('username' in message && message.username).toBe('pocky');
+			expect(message.text).toContain('ポッキーゲームを始めるよ～');
+			expect(message.text).toContain('〇〇 ケース');
+			expect(message.text).not.toContain('iPhone');
+		});
+
+		it('accepts an alias answer in the thread', async () => {
+			await startGame();
+
+			const response = await slack.getResponseTo('アイフォン', {thread_ts: slack.fakeTimestamp, ts: '1234567890.999999'});
+			expect(response.text).toContain('正解:tada:');
+			expect(response.reply_broadcast).toBe(true);
+
+			const details = await slack.waitForResponse();
+			expect(details.text).toContain('出題ソース: AI生成 (gpt-6-luna)');
+			expect(details.text).toContain('別解: アイフォン / スマホ');
+		});
+
+		it('reacts to a wrong answer in the thread', async () => {
+			await startGame();
+
+			const reactionPromise = slack.waitForReaction();
+			slack.postMessage('Android', {thread_ts: slack.fakeTimestamp, ts: '1234567890.999999'});
+			const reaction = await reactionPromise;
+
+			expect(reaction.name).toBe('no_good');
+		});
+	});
+
+	describe('from a non-game channel', () => {
+		beforeEach(() => {
+			slack = new Slack();
+			process.env.CHANNEL_SANDBOX = slack.fakeChannel;
+			process.env.CHANNEL_GAMES = 'CGAMES';
+			new PockyGameBot(slack, {generateQuiz: async () => mockQuiz});
+		});
+
+		it('starts the game in the games channel instead', async () => {
+			const gameMessagePromise = new Promise<ChatPostMessageArguments>((resolve) => {
+				slack.on('chat.postMessage', (options: ChatPostMessageArguments) => {
+					if (options.channel === 'CGAMES' && options.thread_ts === undefined) {
+						resolve(options);
+					}
+				});
+			});
+			const ephemeralPromise = slack.waitForEvent('chat.postEphemeral') as Promise<{text: string}>;
+
+			slack.postMessage('ポッキーゲーム');
+
+			const gameMessage = await gameMessagePromise;
+			expect(gameMessage.text).toContain('ポッキーゲームを始めるよ～');
+
+			const ephemeral = await ephemeralPromise;
+			expect(ephemeral.text).toContain('このチャンネルではBOTを実行できません。');
 		});
 	});
 });
