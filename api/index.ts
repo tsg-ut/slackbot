@@ -30,7 +30,18 @@ export default () => {
 	});
 
 	fastify.get('/slack/users', async (request, reply) => {
-		const members = await getAllTSGMembers();
+		// The cache may still be initializing (e.g. Slack API outage). Fail fast instead of hanging until the proxy times out.
+		let timer: NodeJS.Timeout | undefined;
+		const timeout = new Promise<null>((resolve) => {
+			timer = setTimeout(() => resolve(null), 10 * 1000);
+		});
+		const members = await Promise.race([getAllTSGMembers(), timeout]).finally(() => clearTimeout(timer));
+		if (members === null) {
+			reply.statusCode = 503;
+			reply.header('Retry-After', '10');
+			reply.send('Slack user cache is not ready');
+			return;
+		}
 		reply.send(members);
 	});
 
