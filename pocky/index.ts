@@ -1,19 +1,12 @@
-import axios from 'axios';
 import * as emoji from 'node-emoji';
-import {get} from 'lodash';
-import {stripIndents} from 'common-tags';
-import {unlock, increment} from '../achievements/index.js';
+import {unlock} from '../achievements/index.js';
 import logger from '../lib/logger';
 import {getMemberName} from '../lib/slackUtils';
 import State from '../lib/state';
 import type {SlackInterface} from '../lib/slack';
 import type {GenericMessageEvent} from '@slack/bolt';
-import {
-	generateQuiz,
-	isCorrectAnswer,
-	revealHint,
-	type PockyQuiz,
-} from './quiz';
+import {PockyGameBot} from './quiz';
+import {fetchGoogleSuggestions, normalize} from './util';
 
 const log = logger.child({bot: 'pocky'});
 
@@ -21,25 +14,9 @@ const stripRe = /^[、。？！,.，．…・?!：；:;\s]+|[、。？！,.，�
 
 const ignoreRe = /( 英語| 韓国語| 中国語|の?意味|meaning|とは)+$/i;
 
-async function getSuggestions(text: string): Promise<string[]> {
-	const response = await axios({
-		url: "https://www.google.com/complete/search",
-		params: {
-			client: "firefox",
-			hl: "ja",
-			q: text,
-		},
-		headers: {
-			"User-Agent": "Mozilla/5.0",
-		},
-		method: "GET",
-	});
-	return get(response, ['data', 1], []);
-}
-
 async function reply(text: string, index: number): Promise<string | null> {
 	try {
-		const suggestions = await getSuggestions(text);
+		const suggestions = await fetchGoogleSuggestions(text);
 		return generateReply(text, suggestions, index);
 	} catch (e) {
 		log.error(e);
@@ -111,15 +88,6 @@ function htmlEscape(text: string): string {
 		.replace(/>/g, "&gt;");
 }
 
-function normalize(text: string): string {
-	return text
-		.normalize("NFKC")
-		.replace(/\ufe0f/g, "")
-		.replace(/\u200d/g, " ")
-		.replace(/\u301c/g, "~")
-		.toLowerCase();
-}
-
 export default async (clients: SlackInterface) => {
 	const {eventClient, webClient: slack} = clients;
 
@@ -144,124 +112,17 @@ export default async (clients: SlackInterface) => {
 		});
 	}
 
-	let currentQuiz: PockyQuiz | null = null;
-	let thread: string | null = null;
-	let isGenerating: boolean = false;
-	const recentThemes: string[] = [];
-
-	async function pockygame() {
-		if (currentQuiz !== null || isGenerating) {
-			return;
-		}
-
-		isGenerating = true;
-		const quiz = await generateQuiz(recentThemes);
-
-		if (quiz === null) {
-			postMessage("エラーΩ＼ζ°)ﾁｰﾝ", process.env.CHANNEL_SANDBOX);
-			return;
-		}
-
-		currentQuiz = quiz;
-		isGenerating = false;
-		recentThemes.push(quiz.theme.word);
-		if (recentThemes.length > 50) {
-			recentThemes.shift();
-		}
-
-		log.info(quiz.theme);
-
-		const message = await postMessage(stripIndents`
-			ポッキーゲームを始めるよ～
-			${quiz.maskedHints.join(' / ')}
-		`, process.env.CHANNEL_SANDBOX, {broadcast: false});
-
-		thread = message.ts;
-
-		await postMessage(stripIndents`
-			下の単語の〇〇に共通して入る単語は何かな～？
-			スレッドで回答してね!
-			3分経過で答えを発表するよ～
-
-			${quiz.maskedHints.map((hint) => `• ${hint}`).join('\n')}
-		`, process.env.CHANNEL_SANDBOX, {broadcast: false, threadPosted: thread});
-
-		const thisQuiz = quiz;
-		setTimeout(async () => {
-			if (currentQuiz === thisQuiz) {
-				const {theme, hints} = currentQuiz;
-				await postMessage(stripIndents`
-					なんでわからないの？
-					答えは＊${theme.word}＊ (${theme.ruby}) だよ:anger:
-				`, process.env.CHANNEL_SANDBOX, {broadcast: true, threadPosted: thread});
-
-				const details = [
-					`• 出題ソース: ${theme.sourceDescription}`,
-					...(theme.aliases.length > 0 ? [`• 別解: ${theme.aliases.join(' / ')}`] : []),
-					'',
-					...hints.map((hint) => `• ${revealHint(hint, theme)}`),
-				].join('\n');
-
-				await postMessage(stripIndents`
-					${details}
-				`, process.env.CHANNEL_SANDBOX, {broadcast: false, threadPosted: thread});
-				currentQuiz = null;
-				thread = null;
-			}
-		}, 3 * 60 * 1000);
-	}
-
 	eventClient.on('message', async (message: GenericMessageEvent) => {
 		if (message.subtype) {
 			return;
 		}
-		const {channel, text, thread_ts, ts} = message;
-		if (currentQuiz !== null && thread_ts === thread) {
-			if (isCorrectAnswer(text, currentQuiz.theme)) {
-				const {theme, hints} = currentQuiz;
-				const {word, ruby, aliases, sourceDescription} = theme;
-				currentQuiz = null;
-
-				await postMessage(stripIndents`
-					<@${message.user}> 正解:tada:
-					答えは＊${word}＊ (${ruby}) だよ:tada:
-				`, channel, {broadcast: true, threadPosted: thread});
-
-				const details = [
-					`• 出題ソース: ${sourceDescription}`,
-					...(aliases.length > 0 ? [`• 別解: ${aliases.join(' / ')}`] : []),
-					'',
-					...hints.map((hint) => `• ${revealHint(hint, theme)}`),
-				].join('\n');
-
-				await postMessage(stripIndents`
-					${details}
-				`, channel, {broadcast: false, threadPosted: thread});
-				increment(message.user, "pockygame-win");
-				const date = new Date().toLocaleString('en-US', {
-					timeZone: 'Asia/Tokyo',
-					month: 'numeric',
-					day: 'numeric',
-				});
-				if (date === '11/11') {
-					unlock(message.user, "pockygame-on-nov-11");
-				}
-
-				thread = null;
-				return;
-			} else {
-				slack.reactions.add({
-					name: 'no_good',
-					channel: channel,
-					timestamp: ts,
-				});
-			}
-		}
-		if (channel !== process.env.CHANNEL_SANDBOX) {
+		const {channel, text, thread_ts} = message;
+		const isGamesChannel = channel === process.env.CHANNEL_GAMES;
+		if (channel !== process.env.CHANNEL_SANDBOX && !isGamesChannel) {
 			return;
 		}
-		if (text === 'ポッキーゲーム') {
-			pockygame();
+		// #tsgbot-games のスレッドはポッキーゲームの回答に使われるため、サジェストの対象外とする
+		if (isGamesChannel && thread_ts) {
 			return;
 		}
 		const query = slackDecode(text.trim());
@@ -301,4 +162,6 @@ export default async (clients: SlackInterface) => {
 			}
 		}
 	});
+
+	return new PockyGameBot(clients);
 };
