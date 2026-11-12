@@ -17,6 +17,18 @@ import {
 } from './prefecture';
 import {prefectureMetaList} from './common';
 
+vi.mock('../achievements');
+vi.mock('../lib/state');
+vi.mock('../lib/slack', () => ({
+	__esModule: true,
+	eventClient: {on: vi.fn()},
+	getTokens: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('../lib/openai', () => ({
+	__esModule: true,
+	default: {},
+}));
+
 describe('PrefectureAteQuiz', () => {
 	const createMockSlack = () => {
 		const chat = {
