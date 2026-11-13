@@ -9,6 +9,7 @@ import {TeamEventClient} from './slackEventClient';
 import {EventClientWrapper} from './eventClientWrapper';
 import type {EventEmitter} from 'events';
 import {Deferred} from './utils';
+import logger from './logger';
 import {Token} from '../oauth/tokens';
 
 export interface SlackInterface {
@@ -66,6 +67,20 @@ const loadTokens = async () => {
 	}]));
 };
 
-loadTokens();
+const loadTokensWithRetry = async () => {
+	let delay = 1000;
+	for (;;) {
+		try {
+			await loadTokens();
+			return;
+		} catch (error) {
+			logger.error(`Failed to load tokens: retrying in ${delay}ms`, {error});
+			await new Promise((resolve) => setTimeout(resolve, delay));
+			delay = Math.min(delay * 2, 60 * 1000);
+		}
+	}
+};
+
+loadTokensWithRetry();
 
 export const getTokens = (): Promise<Token[]> => loadTokensDeferred.promise;

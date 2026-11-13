@@ -42,6 +42,10 @@ interface Config {
 
 const TSG_TEAM_ID = process.env.TEAM_ID || 'T00000000';
 
+const USERS_LIST_PAGE_SIZE = 200;
+const USERS_RETRY_INITIAL_DELAY_MS = 1000;
+const USERS_RETRY_MAX_DELAY_MS = 60 * 1000;
+
 export default class SlackCache {
 	private readonly config: Config;
 	private users = new Map<string, Member>();
@@ -50,6 +54,8 @@ export default class SlackCache {
 	// ordered by the time of reaction.
 	private reactionsCache = new Map<string, Record<string, string[]>>();
 	private loadUsersDeferred = new Deferred<void>();
+	// Users updated by events while users.list is in flight; the (possibly older) listing must not overwrite them.
+	private usersUpdatedDuringLoad = new Set<string>();
 	private loadEmojisPromise: Promise<void> | null = null;
 	private emojiUpdates: Promise<void> = Promise.resolve();
 
@@ -60,20 +66,13 @@ export default class SlackCache {
 		{
 			// user cache
 			teamEventClient.on('team_join', ({user}: {user: Member}) => {
-				this.users.set(user.id!, user);
+				this.updateUser(user);
 			});
 			teamEventClient.on('user_change', ({user}: {user: Member}) => {
-				this.users.set(user.id!, user);
+				this.updateUser(user);
 			});
 
-			this.config.webClient.users.list({token: this.config.token.bot_access_token})
-				.then(({members}) => {
-					for (const member of members!) {
-						this.users.set(member.id!, member);
-					}
-				})
-				.then(() => this.loadUsersDeferred.resolve())
-				.catch((err: any) => log.error(`SlackCache/users.list(${this.config.token.team_id}): ${err}`, err));
+			this.loadUsersWithRetry();
 		}
 
 		{
@@ -117,6 +116,51 @@ export default class SlackCache {
 			),
 		);
 	}
+
+	private updateUser(user: Member): void {
+		this.users.set(user.id!, user);
+		if (!this.loadUsersDeferred.isResolved) {
+			this.usersUpdatedDuringLoad.add(user.id!);
+		}
+	}
+
+	private async fetchAllUsers(): Promise<Member[]> {
+		const members: Member[] = [];
+		let cursor: string | undefined;
+		do {
+			const response = await this.config.webClient.users.list({
+				token: this.config.token.bot_access_token,
+				limit: USERS_LIST_PAGE_SIZE,
+				...(cursor ? {cursor} : {}),
+			});
+			members.push(...(response.members ?? []));
+			cursor = response.response_metadata?.next_cursor || undefined;
+		} while (cursor);
+		return members;
+	}
+
+	private async loadUsersWithRetry(): Promise<void> {
+		let delay = USERS_RETRY_INITIAL_DELAY_MS;
+		for (;;) {
+			try {
+				// Publish nothing until every page has been fetched, so that a partial list is never visible.
+				const members = await this.fetchAllUsers();
+				for (const member of members) {
+					if (!this.usersUpdatedDuringLoad.has(member.id!)) {
+						this.users.set(member.id!, member);
+					}
+				}
+				this.usersUpdatedDuringLoad.clear();
+				this.loadUsersDeferred.resolve();
+				return;
+			} catch (error: unknown) {
+				log.error(`SlackCache/users.list(${this.config.token.team_id}): retrying in ${delay}ms`, {error});
+				await new Promise((resolve) => setTimeout(resolve, delay));
+				delay = Math.min(delay * 2, USERS_RETRY_MAX_DELAY_MS);
+			}
+		}
+	}
+
 	public async getUsers(): Promise<Member[]> {
 		await this.loadUsersDeferred.promise;
 		return Array.from(this.users.values());

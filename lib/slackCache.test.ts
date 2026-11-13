@@ -56,7 +56,9 @@ describe('SlackCache', () => {
 		const mockedUsersList = vi.mocked(slack.webClient.users.list);
 		mockedUsersList.mockImplementation(async () => {
 			const fn = path.join(__dirname, '__testdata__/users.list.json');
-			return fs.readJson(fn);
+			const res = await fs.readJson(fn);
+			delete res.response_metadata;
+			return res;
 		});
 
 		const mockedEmojiList = vi.mocked(slack.webClient.emoji.list);
@@ -366,6 +368,113 @@ describe('SlackCache', () => {
 			const react2 = await slackCache.getReactions('C00000000', '1640001000.000000');
 			expect(react2).toEqual({
 				ojigineko: [userA],
+			});
+		});
+	});
+
+	describe('users.list loading', () => {
+		type Cursor = {cursor?: string};
+
+		const setup = (pages: Array<{members?: Array<{id: string, name?: string}>, next?: string} | Error>) => {
+			const slack = new Slack();
+			const calls: Cursor[] = [];
+			vi.mocked(slack.webClient.users.list).mockImplementation(async (args: Cursor) => {
+				calls.push(args);
+				const page = pages[calls.length - 1];
+				if (page instanceof Error) {
+					throw page;
+				}
+				return {
+					ok: true,
+					members: page.members,
+					response_metadata: {next_cursor: page.next ?? ''},
+				} as any;
+			});
+			const cache = new SlackCache({
+				token: {
+					team_id: teamId,
+					team_name: 'TEAM',
+					access_token: 'xoxp-user',
+					bot_user_id: 'fakebot',
+					bot_access_token: 'xoxb-bot',
+				},
+				eventClient: slack.eventClient,
+				webClient: slack.webClient,
+			});
+			return {slack, cache, calls};
+		};
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('retries with backoff until users.list succeeds', async () => {
+			vi.useFakeTimers();
+			const {cache, calls} = setup([new Error('fatal_error'), {members: [{id: 'U1'}]}]);
+
+			const result = cache.getUsers();
+			await vi.advanceTimersByTimeAsync(999);
+			expect(calls).toHaveLength(1);
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(calls).toHaveLength(2);
+			expect((await result).map(({id}) => id)).toEqual(['U1']);
+		});
+
+		it('fetches all pages with limit and cursor', async () => {
+			const {cache, calls} = setup([
+				{members: [{id: 'U1'}], next: 'c1'},
+				{members: [{id: 'U2'}], next: 'c2'},
+				{members: [{id: 'U3'}]},
+			]);
+
+			const ids = (await cache.getUsers()).map(({id}) => id).sort();
+			expect(ids).toEqual(['U1', 'U2', 'U3']);
+			expect(calls.map(({cursor}) => cursor)).toEqual([undefined, 'c1', 'c2']);
+			expect(calls[0]).toMatchObject({limit: 200});
+		});
+
+		it('does not publish a partial listing when a later page fails', async () => {
+			vi.useFakeTimers();
+			const {cache, calls} = setup([
+				{members: [{id: 'U1'}], next: 'c1'},
+				new Error('fatal_error'),
+				{members: [{id: 'U1'}, {id: 'U2'}]},
+			]);
+
+			const result = cache.getUsers();
+			await vi.advanceTimersByTimeAsync(0);
+			expect(calls).toHaveLength(2);
+
+			await vi.advanceTimersByTimeAsync(1000);
+			expect((await result).map(({id}) => id).sort()).toEqual(['U1', 'U2']);
+			expect(calls.map(({cursor}) => cursor)).toEqual([undefined, 'c1', undefined]);
+		});
+
+		it('does not overwrite users updated by events during loading', async () => {
+			const slack = new Slack();
+			let release: () => void = () => {};
+			vi.mocked(slack.webClient.users.list).mockImplementation(() => new Promise((resolve) => {
+				release = () => resolve({ok: true, members: [{id: 'U1', name: 'old'}, {id: 'U2', name: 'two'}]} as any);
+			}));
+			const cache = new SlackCache({
+				token: {
+					team_id: teamId,
+					team_name: 'TEAM',
+					access_token: 'xoxp-user',
+					bot_user_id: 'fakebot',
+					bot_access_token: 'xoxb-bot',
+				},
+				eventClient: slack.eventClient,
+				webClient: slack.webClient,
+			});
+			slack.eventClient.emit('user_change', {user: {id: 'U1', name: 'new'}}, {team_id: teamId});
+			slack.eventClient.emit('team_join', {user: {id: 'U3', name: 'three'}}, {team_id: teamId});
+			release();
+
+			const users = await cache.getUsers();
+			expect(Object.fromEntries(users.map(({id, name}) => [id, name]))).toEqual({
+				U1: 'new', U2: 'two', U3: 'three',
 			});
 		});
 	});
